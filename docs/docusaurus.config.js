@@ -14,12 +14,12 @@ const config = {
   url: 'https://koralium.github.io',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/Flowtide.NET/',
+  baseUrl: '/flowtide/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'koralium', // Usually your GitHub org/user name.
-  projectName: 'Flowtide.NET', // Usually your repo name.
+  projectName: 'flowtide', // Usually your repo name.
   trailingSlash: false,
   deploymentBranch: 'gh-pages',
 
@@ -44,14 +44,14 @@ const config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/koralium/Flowtide.NET/tree/main/docs',
+            'https://github.com/koralium/flowtide/tree/main/docs',
         },
         blog: {
           showReadingTime: true,
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/koralium/Flowtide.NET/tree/main/docs',
+            'https://github.com/koralium/flowtide/tree/main/docs',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -80,7 +80,7 @@ const config = {
           },
           // {to: '/blog', label: 'Blog', position: 'left'},
           {
-            href: 'https://github.com/koralium/Flowtide.NET',
+            href: 'https://github.com/koralium/flowtide',
             label: 'GitHub',
             position: 'right',
           },
@@ -112,7 +112,7 @@ const config = {
               // },
               {
                 label: 'GitHub',
-                href: 'https://github.com/koralium/Flowtide.NET',
+                href: 'https://github.com/koralium/flowtide',
               },
             ],
           },

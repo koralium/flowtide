@@ -6,7 +6,7 @@
   <p align="center">
     Differential dataflow stream
   <br />
-    <a href="https://koralium.github.io/Flowtide.NET/docs/intro"><strong>Explore the docs »</strong></a>
+    <a href="https://koralium.github.io/flowtide/docs/intro"><strong>Explore the docs »</strong></a>
   </p>
 </p>
 
