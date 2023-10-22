@@ -961,5 +961,35 @@ namespace FlowtideDotNet.Substrait.Tests
                     }
                 }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
         }
+
+        [Fact]
+        public void CreateTableWithNoType()
+        {
+            var b1 = new SqlPlanBuilder();
+            b1.Sql(@"
+                CREATE TABLE test (
+                    c1 amy,
+                    c2 any
+                );
+
+                SELECT c1, c2 FROM test
+            ");
+
+            var b2 = new SqlPlanBuilder();
+            b2.Sql(@"
+                CREATE TABLE test (
+                    c1,
+                    c2
+                );
+
+                SELECT c1, c2 FROM test
+            ");
+
+            var b1plan = b1.GetPlan();
+            var b2plan = b2.GetPlan();
+
+            b2plan.Should().BeEquivalentTo(b1plan, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+
+        }
     }
 }
