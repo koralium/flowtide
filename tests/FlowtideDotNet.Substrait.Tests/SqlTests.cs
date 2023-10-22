@@ -17,6 +17,7 @@ using FlowtideDotNet.Substrait.Expressions.ScalarFunctions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Sql.Internal;
+using FlowtideDotNet.Substrait.Type;
 using FluentAssertions;
 
 namespace FlowtideDotNet.Substrait.Tests
@@ -810,6 +811,61 @@ namespace FlowtideDotNet.Substrait.Tests
                                     BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
                                     NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                                 }
+                            }
+                        }
+                    }
+                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+        }
+
+        [Fact]
+        public void QuotaUsageSpecialWord()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    [key] any
+                );
+
+                SELECT c1, [key] FROM testtable
+            ");
+
+            var plan = builder.GetPlan();
+
+            plan.Should().BeEquivalentTo(
+                new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){2,3},
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 1
+                                    }
+                                }
+                            },
+                            Input = new ReadRelation()
+                            {
+                                BaseSchema = new Type.NamedStruct(){ 
+                                    Names = new List<string>() { "c1", "key" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
+                                NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                             }
                         }
                     }

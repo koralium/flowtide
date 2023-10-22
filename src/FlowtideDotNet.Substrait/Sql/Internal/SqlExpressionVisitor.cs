@@ -134,8 +134,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override ExpressionData VisitCompoundIdentifier(SqlParser.Ast.Expression.CompoundIdentifier compoundIdentifier, EmitData state)
         {
+            var removedQuotaIdentifier = new SqlParser.Ast.Expression.CompoundIdentifier(new Sequence<Ident>(compoundIdentifier.Idents.Select(x => new Ident(x.Value))));
             // First try and get the index directly based on the expression
-            if (state.TryGetEmitIndex(compoundIdentifier, out var index))
+            if (state.TryGetEmitIndex(removedQuotaIdentifier, out var index))
             {
                 var r = new DirectFieldReference()
                 {
@@ -149,7 +150,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             // Otherwise try and find a a part of it.
 
-            return base.VisitCompoundIdentifier(compoundIdentifier, state);
+            return base.VisitCompoundIdentifier(removedQuotaIdentifier, state);
         }
 
         protected override ExpressionData VisitLiteralValue(SqlParser.Ast.Expression.LiteralValue literalValue, EmitData state)
