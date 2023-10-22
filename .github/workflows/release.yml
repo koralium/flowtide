@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  publishNuget:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Extract tag name
+      id: tag
+      run: echo ::set-output name=VERSION::$(echo ${GITHUB_REF##*/v})
+    - name: Setup dotnet
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 7.0.x
+    - name: Update project version
+      uses: roryprimrose/set-vs-sdk-project-version@v1
+      with:
+        version: ${{ steps.tag.outputs.VERSION }}
+    - name: Npm install UI
+      run: |
+        npm install
+        npm run build
+      working-directory: ./src/FlowtideDotNet.AspNetCore/ClientApp
+    - name: Install dependencies
+      run: dotnet restore
+      working-directory: .
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+      working-directory: .
+    - name: Package storage
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Storage/FlowtideDotNet.Storage.csproj
+    - name: Package base
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Base/FlowtideDotNet.Base.csproj
+    - name: Package substrait
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Substrait/FlowtideDotNet.Substrait.csproj
+    - name: Package core
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Core/FlowtideDotNet.Core.csproj
+    - name: Packages sql server
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.SqlServer/FlowtideDotNet.SqlServer.csproj
+    - name: Packages aspnetcore
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.AspNetCore/FlowtideDotNet.AspNetCore.csproj
+    - name: Publish
+      run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_KEY }} -s https://api.nuget.org/v3/index.json
