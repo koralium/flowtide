@@ -89,7 +89,13 @@ namespace FlowtideDotNet.Substrait.Tests
                             },
                             Input = new ReadRelation()
                             {
-                                BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                BaseSchema = new Type.NamedStruct(){
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
                                 NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                             }
                         }
@@ -140,7 +146,13 @@ namespace FlowtideDotNet.Substrait.Tests
                             Input = new FilterRelation(){
                                 Input = new ReadRelation()
                                 {
-                                    BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                    BaseSchema = new Type.NamedStruct() {
+                                        Names = new List<string>() { "c1", "c2" },
+                                        Struct = new Type.Struct()
+                                        {
+                                            Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                        }
+                                    },
                                     NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                                 },
                                 Condition = new BooleanComparison()
@@ -194,7 +206,13 @@ namespace FlowtideDotNet.Substrait.Tests
                         },
                         Input = new ReadRelation()
                         {
-                            BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1" }},
+                            BaseSchema = new Type.NamedStruct(){
+                                Names = new List<string>() { "c1" },
+                                Struct = new Type.Struct()
+                                {
+                                    Types = new List<Type.SubstraitBaseType>(){ new AnyType() }
+                                }
+                            },
                             NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                         }
                     },
@@ -271,12 +289,24 @@ namespace FlowtideDotNet.Substrait.Tests
                                 Type = JoinType.Left,
                                 Left = new ReadRelation()
                                 {
-                                    BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                    BaseSchema = new Type.NamedStruct(){
+                                        Names = new List<string>() { "c1", "c2" },
+                                        Struct = new Type.Struct()
+                                        {
+                                            Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                        }
+                                    },
                                     NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                                 },
                                 Right = new ReadRelation()
                                 {
-                                    BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                    BaseSchema = new Type.NamedStruct(){
+                                        Names = new List<string>() { "c1", "c2" },
+                                        Struct = new Type.Struct()
+                                        {
+                                            Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                        }
+                                    },
                                     NamedTable = new Type.NamedTable(){Names = new List<string> { "other" }}
                                 },
                                 Expression = new BooleanComparison()
@@ -346,12 +376,24 @@ namespace FlowtideDotNet.Substrait.Tests
                                 Type = JoinType.Inner,
                                 Left = new ReadRelation()
                                 {
-                                    BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                    BaseSchema = new Type.NamedStruct(){
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
                                     NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                                 },
                                 Right = new ReadRelation()
                                 {
-                                    BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                    BaseSchema = new Type.NamedStruct(){
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
                                     NamedTable = new Type.NamedTable(){Names = new List<string> { "other" }}
                                 },
                                 Expression = new BooleanComparison()
@@ -425,7 +467,13 @@ namespace FlowtideDotNet.Substrait.Tests
                                     },
                                     Input = new ReadRelation()
                                     {
-                                        BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                        BaseSchema = new Type.NamedStruct() {
+                                            Names = new List<string>() { "c1", "c2" },
+                                            Struct = new Type.Struct()
+                                            {
+                                                Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                            }
+                                        },
                                         NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                                     }
                                 },
@@ -451,7 +499,13 @@ namespace FlowtideDotNet.Substrait.Tests
                                     },
                                     Input = new ReadRelation()
                                     {
-                                        BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                        BaseSchema = new Type.NamedStruct() {
+                                            Names = new List<string>() { "c1", "c2" },
+                                            Struct = new Type.Struct()
+                                            {
+                                                Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                            }
+                                        },
                                         NamedTable = new Type.NamedTable(){Names = new List<string> { "other" }}
                                     }
                                 }
@@ -513,7 +567,13 @@ namespace FlowtideDotNet.Substrait.Tests
                             },
                             Input = new ReadRelation()
                             {
-                                BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                BaseSchema = new Type.NamedStruct() {
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
                                 NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                             }
                         }
@@ -593,7 +653,13 @@ namespace FlowtideDotNet.Substrait.Tests
                             },
                             Input = new ReadRelation()
                             {
-                                BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                BaseSchema = new Type.NamedStruct(){ 
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
                                 NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                             }
                         }
@@ -675,7 +741,13 @@ namespace FlowtideDotNet.Substrait.Tests
                             },
                             Input = new ReadRelation()
                             {
-                                BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                BaseSchema = new Type.NamedStruct(){
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
                                 NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                             }
                         }
@@ -718,7 +790,13 @@ namespace FlowtideDotNet.Substrait.Tests
                             },
                             Input = new ReadRelation()
                             {
-                                BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                BaseSchema = new Type.NamedStruct(){
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
                                 NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                             }
                         }
@@ -754,7 +832,13 @@ namespace FlowtideDotNet.Substrait.Tests
                             },
                             Input = new ReadRelation()
                             {
-                                BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                BaseSchema = new Type.NamedStruct(){
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
                                 NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                             }
                         }
@@ -808,7 +892,13 @@ namespace FlowtideDotNet.Substrait.Tests
                                 },
                                 Input = new ReadRelation()
                                 {
-                                    BaseSchema = new Type.NamedStruct(){ Names = new List<string>() { "c1", "c2" }},
+                                    BaseSchema = new Type.NamedStruct() {
+                                        Names = new List<string>() { "c1", "c2" },
+                                        Struct = new Type.Struct()
+                                        {
+                                            Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                        }
+                                    },
                                     NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                                 }
                             }
