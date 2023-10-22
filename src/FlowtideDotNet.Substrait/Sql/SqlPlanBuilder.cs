@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Substrait.Sql.Internal;
 using SqlParser;
+using SqlParser.Dialects;
 
 namespace FlowtideDotNet.Substrait.Sql
 {
@@ -32,7 +33,7 @@ namespace FlowtideDotNet.Substrait.Sql
 
         public void Sql(string sqlText)
         {
-            var statements = _parser.ParseSql(sqlText);
+            var statements = _parser.ParseSql(sqlText, new SqlParser.Dialects.MsSqlDialect());
 
             SqlSubstraitVisitor sqlSubstraitVisitor = new SqlSubstraitVisitor(this);
             foreach (var statement in statements)
