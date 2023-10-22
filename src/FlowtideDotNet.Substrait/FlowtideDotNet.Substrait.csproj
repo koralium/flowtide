@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.12.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.51.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+	  <PackageReference Include="Google.Protobuf" Version="3.21.10" />
+	  <PackageReference Include="SqlParserCS" Version="0.1.4" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<Protobuf Include="proto/substrait/**/*.proto" ProtoRoot="proto/" CompileOutputs="false" OutputDir="generated/proto/" GrpcServices="None" />
+	</ItemGroup>
+
+</Project>
