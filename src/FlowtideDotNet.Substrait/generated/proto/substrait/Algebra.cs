@@ -3706,10 +3706,24 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public string UriPath {
-              get { return pathTypeCase_ == PathTypeOneofCase.UriPath ? (string) pathType_ : ""; }
+              get { return HasUriPath ? (string) pathType_ : ""; }
               set {
                 pathType_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
                 pathTypeCase_ = PathTypeOneofCase.UriPath;
+              }
+            }
+            /// <summary>Gets whether the "uri_path" field is set</summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool HasUriPath {
+              get { return pathTypeCase_ == PathTypeOneofCase.UriPath; }
+            }
+            /// <summary> Clears the value of the oneof if it's currently set to "uri_path" </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearUriPath() {
+              if (HasUriPath) {
+                ClearPathType();
               }
             }
 
@@ -3724,10 +3738,24 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public string UriPathGlob {
-              get { return pathTypeCase_ == PathTypeOneofCase.UriPathGlob ? (string) pathType_ : ""; }
+              get { return HasUriPathGlob ? (string) pathType_ : ""; }
               set {
                 pathType_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
                 pathTypeCase_ = PathTypeOneofCase.UriPathGlob;
+              }
+            }
+            /// <summary>Gets whether the "uri_path_glob" field is set</summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool HasUriPathGlob {
+              get { return pathTypeCase_ == PathTypeOneofCase.UriPathGlob; }
+            }
+            /// <summary> Clears the value of the oneof if it's currently set to "uri_path_glob" </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearUriPathGlob() {
+              if (HasUriPathGlob) {
+                ClearPathType();
               }
             }
 
@@ -3739,10 +3767,24 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public string UriFile {
-              get { return pathTypeCase_ == PathTypeOneofCase.UriFile ? (string) pathType_ : ""; }
+              get { return HasUriFile ? (string) pathType_ : ""; }
               set {
                 pathType_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
                 pathTypeCase_ = PathTypeOneofCase.UriFile;
+              }
+            }
+            /// <summary>Gets whether the "uri_file" field is set</summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool HasUriFile {
+              get { return pathTypeCase_ == PathTypeOneofCase.UriFile; }
+            }
+            /// <summary> Clears the value of the oneof if it's currently set to "uri_file" </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearUriFile() {
+              if (HasUriFile) {
+                ClearPathType();
               }
             }
 
@@ -3754,10 +3796,24 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public string UriFolder {
-              get { return pathTypeCase_ == PathTypeOneofCase.UriFolder ? (string) pathType_ : ""; }
+              get { return HasUriFolder ? (string) pathType_ : ""; }
               set {
                 pathType_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
                 pathTypeCase_ = PathTypeOneofCase.UriFolder;
+              }
+            }
+            /// <summary>Gets whether the "uri_folder" field is set</summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public bool HasUriFolder {
+              get { return pathTypeCase_ == PathTypeOneofCase.UriFolder; }
+            }
+            /// <summary> Clears the value of the oneof if it's currently set to "uri_folder" </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearUriFolder() {
+              if (HasUriFolder) {
+                ClearPathType();
               }
             }
 
@@ -3949,10 +4005,10 @@ namespace Substrait.Protobuf {
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public override int GetHashCode() {
               int hash = 1;
-              if (pathTypeCase_ == PathTypeOneofCase.UriPath) hash ^= UriPath.GetHashCode();
-              if (pathTypeCase_ == PathTypeOneofCase.UriPathGlob) hash ^= UriPathGlob.GetHashCode();
-              if (pathTypeCase_ == PathTypeOneofCase.UriFile) hash ^= UriFile.GetHashCode();
-              if (pathTypeCase_ == PathTypeOneofCase.UriFolder) hash ^= UriFolder.GetHashCode();
+              if (HasUriPath) hash ^= UriPath.GetHashCode();
+              if (HasUriPathGlob) hash ^= UriPathGlob.GetHashCode();
+              if (HasUriFile) hash ^= UriFile.GetHashCode();
+              if (HasUriFolder) hash ^= UriFolder.GetHashCode();
               if (PartitionIndex != 0UL) hash ^= PartitionIndex.GetHashCode();
               if (Start != 0UL) hash ^= Start.GetHashCode();
               if (Length != 0UL) hash ^= Length.GetHashCode();
@@ -3981,19 +4037,19 @@ namespace Substrait.Protobuf {
             #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               output.WriteRawMessage(this);
             #else
-              if (pathTypeCase_ == PathTypeOneofCase.UriPath) {
+              if (HasUriPath) {
                 output.WriteRawTag(10);
                 output.WriteString(UriPath);
               }
-              if (pathTypeCase_ == PathTypeOneofCase.UriPathGlob) {
+              if (HasUriPathGlob) {
                 output.WriteRawTag(18);
                 output.WriteString(UriPathGlob);
               }
-              if (pathTypeCase_ == PathTypeOneofCase.UriFile) {
+              if (HasUriFile) {
                 output.WriteRawTag(26);
                 output.WriteString(UriFile);
               }
-              if (pathTypeCase_ == PathTypeOneofCase.UriFolder) {
+              if (HasUriFolder) {
                 output.WriteRawTag(34);
                 output.WriteString(UriFolder);
               }
@@ -4039,19 +4095,19 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-              if (pathTypeCase_ == PathTypeOneofCase.UriPath) {
+              if (HasUriPath) {
                 output.WriteRawTag(10);
                 output.WriteString(UriPath);
               }
-              if (pathTypeCase_ == PathTypeOneofCase.UriPathGlob) {
+              if (HasUriPathGlob) {
                 output.WriteRawTag(18);
                 output.WriteString(UriPathGlob);
               }
-              if (pathTypeCase_ == PathTypeOneofCase.UriFile) {
+              if (HasUriFile) {
                 output.WriteRawTag(26);
                 output.WriteString(UriFile);
               }
-              if (pathTypeCase_ == PathTypeOneofCase.UriFolder) {
+              if (HasUriFolder) {
                 output.WriteRawTag(34);
                 output.WriteString(UriFolder);
               }
@@ -4097,16 +4153,16 @@ namespace Substrait.Protobuf {
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public int CalculateSize() {
               int size = 0;
-              if (pathTypeCase_ == PathTypeOneofCase.UriPath) {
+              if (HasUriPath) {
                 size += 1 + pb::CodedOutputStream.ComputeStringSize(UriPath);
               }
-              if (pathTypeCase_ == PathTypeOneofCase.UriPathGlob) {
+              if (HasUriPathGlob) {
                 size += 1 + pb::CodedOutputStream.ComputeStringSize(UriPathGlob);
               }
-              if (pathTypeCase_ == PathTypeOneofCase.UriFile) {
+              if (HasUriFile) {
                 size += 1 + pb::CodedOutputStream.ComputeStringSize(UriFile);
               }
-              if (pathTypeCase_ == PathTypeOneofCase.UriFolder) {
+              if (HasUriFolder) {
                 size += 1 + pb::CodedOutputStream.ComputeStringSize(UriFolder);
               }
               if (PartitionIndex != 0UL) {
@@ -10821,10 +10877,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public string Uri {
-          get { return targetTypeCase_ == TargetTypeOneofCase.Uri ? (string) targetType_ : ""; }
+          get { return HasUri ? (string) targetType_ : ""; }
           set {
             targetType_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
             targetTypeCase_ = TargetTypeOneofCase.Uri;
+          }
+        }
+        /// <summary>Gets whether the "uri" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasUri {
+          get { return targetTypeCase_ == TargetTypeOneofCase.Uri; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "uri" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearUri() {
+          if (HasUri) {
+            ClearTargetType();
           }
         }
 
@@ -10888,7 +10958,7 @@ namespace Substrait.Protobuf {
         public override int GetHashCode() {
           int hash = 1;
           hash ^= partitionId_.GetHashCode();
-          if (targetTypeCase_ == TargetTypeOneofCase.Uri) hash ^= Uri.GetHashCode();
+          if (HasUri) hash ^= Uri.GetHashCode();
           if (targetTypeCase_ == TargetTypeOneofCase.Extended) hash ^= Extended.GetHashCode();
           hash ^= (int) targetTypeCase_;
           if (_unknownFields != null) {
@@ -10910,7 +10980,7 @@ namespace Substrait.Protobuf {
           output.WriteRawMessage(this);
         #else
           partitionId_.WriteTo(output, _repeated_partitionId_codec);
-          if (targetTypeCase_ == TargetTypeOneofCase.Uri) {
+          if (HasUri) {
             output.WriteRawTag(18);
             output.WriteString(Uri);
           }
@@ -10929,7 +10999,7 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
           partitionId_.WriteTo(ref output, _repeated_partitionId_codec);
-          if (targetTypeCase_ == TargetTypeOneofCase.Uri) {
+          if (HasUri) {
             output.WriteRawTag(18);
             output.WriteString(Uri);
           }
@@ -10948,7 +11018,7 @@ namespace Substrait.Protobuf {
         public int CalculateSize() {
           int size = 0;
           size += partitionId_.CalculateSize(_repeated_partitionId_codec);
-          if (targetTypeCase_ == TargetTypeOneofCase.Uri) {
+          if (HasUri) {
             size += 1 + pb::CodedOutputStream.ComputeStringSize(Uri);
           }
           if (targetTypeCase_ == TargetTypeOneofCase.Extended) {
@@ -14778,10 +14848,24 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public string Enum {
-      get { return argTypeCase_ == ArgTypeOneofCase.Enum ? (string) argType_ : ""; }
+      get { return HasEnum ? (string) argType_ : ""; }
       set {
         argType_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
         argTypeCase_ = ArgTypeOneofCase.Enum;
+      }
+    }
+    /// <summary>Gets whether the "enum" field is set</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool HasEnum {
+      get { return argTypeCase_ == ArgTypeOneofCase.Enum; }
+    }
+    /// <summary> Clears the value of the oneof if it's currently set to "enum" </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearEnum() {
+      if (HasEnum) {
+        ClearArgType();
       }
     }
 
@@ -14857,7 +14941,7 @@ namespace Substrait.Protobuf {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override int GetHashCode() {
       int hash = 1;
-      if (argTypeCase_ == ArgTypeOneofCase.Enum) hash ^= Enum.GetHashCode();
+      if (HasEnum) hash ^= Enum.GetHashCode();
       if (argTypeCase_ == ArgTypeOneofCase.Type) hash ^= Type.GetHashCode();
       if (argTypeCase_ == ArgTypeOneofCase.Value) hash ^= Value.GetHashCode();
       hash ^= (int) argTypeCase_;
@@ -14879,7 +14963,7 @@ namespace Substrait.Protobuf {
     #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       output.WriteRawMessage(this);
     #else
-      if (argTypeCase_ == ArgTypeOneofCase.Enum) {
+      if (HasEnum) {
         output.WriteRawTag(10);
         output.WriteString(Enum);
       }
@@ -14901,7 +14985,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-      if (argTypeCase_ == ArgTypeOneofCase.Enum) {
+      if (HasEnum) {
         output.WriteRawTag(10);
         output.WriteString(Enum);
       }
@@ -14923,7 +15007,7 @@ namespace Substrait.Protobuf {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public int CalculateSize() {
       int size = 0;
-      if (argTypeCase_ == ArgTypeOneofCase.Enum) {
+      if (HasEnum) {
         size += 1 + pb::CodedOutputStream.ComputeStringSize(Enum);
       }
       if (argTypeCase_ == ArgTypeOneofCase.Type) {
@@ -16157,10 +16241,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public string Specified {
-          get { return enumKindCase_ == EnumKindOneofCase.Specified ? (string) enumKind_ : ""; }
+          get { return HasSpecified ? (string) enumKind_ : ""; }
           set {
             enumKind_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
             enumKindCase_ = EnumKindOneofCase.Specified;
+          }
+        }
+        /// <summary>Gets whether the "specified" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasSpecified {
+          get { return enumKindCase_ == EnumKindOneofCase.Specified; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "specified" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearSpecified() {
+          if (HasSpecified) {
+            ClearEnumKind();
           }
         }
 
@@ -16223,7 +16321,7 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public override int GetHashCode() {
           int hash = 1;
-          if (enumKindCase_ == EnumKindOneofCase.Specified) hash ^= Specified.GetHashCode();
+          if (HasSpecified) hash ^= Specified.GetHashCode();
           if (enumKindCase_ == EnumKindOneofCase.Unspecified) hash ^= Unspecified.GetHashCode();
           hash ^= (int) enumKindCase_;
           if (_unknownFields != null) {
@@ -16244,7 +16342,7 @@ namespace Substrait.Protobuf {
         #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           output.WriteRawMessage(this);
         #else
-          if (enumKindCase_ == EnumKindOneofCase.Specified) {
+          if (HasSpecified) {
             output.WriteRawTag(10);
             output.WriteString(Specified);
           }
@@ -16262,7 +16360,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-          if (enumKindCase_ == EnumKindOneofCase.Specified) {
+          if (HasSpecified) {
             output.WriteRawTag(10);
             output.WriteString(Specified);
           }
@@ -16280,7 +16378,7 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public int CalculateSize() {
           int size = 0;
-          if (enumKindCase_ == EnumKindOneofCase.Specified) {
+          if (HasSpecified) {
             size += 1 + pb::CodedOutputStream.ComputeStringSize(Specified);
           }
           if (enumKindCase_ == EnumKindOneofCase.Unspecified) {
@@ -16668,10 +16766,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public bool Boolean {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.Boolean ? (bool) literalType_ : false; }
+          get { return HasBoolean ? (bool) literalType_ : false; }
           set {
             literalType_ = value;
             literalTypeCase_ = LiteralTypeOneofCase.Boolean;
+          }
+        }
+        /// <summary>Gets whether the "boolean" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasBoolean {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.Boolean; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "boolean" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearBoolean() {
+          if (HasBoolean) {
+            ClearLiteralType();
           }
         }
 
@@ -16680,10 +16792,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public int I8 {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.I8 ? (int) literalType_ : 0; }
+          get { return HasI8 ? (int) literalType_ : 0; }
           set {
             literalType_ = value;
             literalTypeCase_ = LiteralTypeOneofCase.I8;
+          }
+        }
+        /// <summary>Gets whether the "i8" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasI8 {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.I8; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "i8" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearI8() {
+          if (HasI8) {
+            ClearLiteralType();
           }
         }
 
@@ -16692,10 +16818,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public int I16 {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.I16 ? (int) literalType_ : 0; }
+          get { return HasI16 ? (int) literalType_ : 0; }
           set {
             literalType_ = value;
             literalTypeCase_ = LiteralTypeOneofCase.I16;
+          }
+        }
+        /// <summary>Gets whether the "i16" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasI16 {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.I16; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "i16" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearI16() {
+          if (HasI16) {
+            ClearLiteralType();
           }
         }
 
@@ -16704,10 +16844,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public int I32 {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.I32 ? (int) literalType_ : 0; }
+          get { return HasI32 ? (int) literalType_ : 0; }
           set {
             literalType_ = value;
             literalTypeCase_ = LiteralTypeOneofCase.I32;
+          }
+        }
+        /// <summary>Gets whether the "i32" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasI32 {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.I32; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "i32" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearI32() {
+          if (HasI32) {
+            ClearLiteralType();
           }
         }
 
@@ -16716,10 +16870,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public long I64 {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.I64 ? (long) literalType_ : 0L; }
+          get { return HasI64 ? (long) literalType_ : 0L; }
           set {
             literalType_ = value;
             literalTypeCase_ = LiteralTypeOneofCase.I64;
+          }
+        }
+        /// <summary>Gets whether the "i64" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasI64 {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.I64; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "i64" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearI64() {
+          if (HasI64) {
+            ClearLiteralType();
           }
         }
 
@@ -16728,10 +16896,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public float Fp32 {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.Fp32 ? (float) literalType_ : 0F; }
+          get { return HasFp32 ? (float) literalType_ : 0F; }
           set {
             literalType_ = value;
             literalTypeCase_ = LiteralTypeOneofCase.Fp32;
+          }
+        }
+        /// <summary>Gets whether the "fp32" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasFp32 {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.Fp32; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "fp32" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearFp32() {
+          if (HasFp32) {
+            ClearLiteralType();
           }
         }
 
@@ -16740,10 +16922,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public double Fp64 {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.Fp64 ? (double) literalType_ : 0D; }
+          get { return HasFp64 ? (double) literalType_ : 0D; }
           set {
             literalType_ = value;
             literalTypeCase_ = LiteralTypeOneofCase.Fp64;
+          }
+        }
+        /// <summary>Gets whether the "fp64" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasFp64 {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.Fp64; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "fp64" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearFp64() {
+          if (HasFp64) {
+            ClearLiteralType();
           }
         }
 
@@ -16752,10 +16948,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public string String {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.String ? (string) literalType_ : ""; }
+          get { return HasString ? (string) literalType_ : ""; }
           set {
             literalType_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
             literalTypeCase_ = LiteralTypeOneofCase.String;
+          }
+        }
+        /// <summary>Gets whether the "string" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasString {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.String; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "string" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearString() {
+          if (HasString) {
+            ClearLiteralType();
           }
         }
 
@@ -16764,10 +16974,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public pb::ByteString Binary {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.Binary ? (pb::ByteString) literalType_ : pb::ByteString.Empty; }
+          get { return HasBinary ? (pb::ByteString) literalType_ : pb::ByteString.Empty; }
           set {
             literalType_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
             literalTypeCase_ = LiteralTypeOneofCase.Binary;
+          }
+        }
+        /// <summary>Gets whether the "binary" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasBinary {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.Binary; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "binary" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearBinary() {
+          if (HasBinary) {
+            ClearLiteralType();
           }
         }
 
@@ -16779,10 +17003,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public long Timestamp {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.Timestamp ? (long) literalType_ : 0L; }
+          get { return HasTimestamp ? (long) literalType_ : 0L; }
           set {
             literalType_ = value;
             literalTypeCase_ = LiteralTypeOneofCase.Timestamp;
+          }
+        }
+        /// <summary>Gets whether the "timestamp" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasTimestamp {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.Timestamp; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "timestamp" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearTimestamp() {
+          if (HasTimestamp) {
+            ClearLiteralType();
           }
         }
 
@@ -16794,10 +17032,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public int Date {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.Date ? (int) literalType_ : 0; }
+          get { return HasDate ? (int) literalType_ : 0; }
           set {
             literalType_ = value;
             literalTypeCase_ = LiteralTypeOneofCase.Date;
+          }
+        }
+        /// <summary>Gets whether the "date" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasDate {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.Date; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "date" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearDate() {
+          if (HasDate) {
+            ClearLiteralType();
           }
         }
 
@@ -16809,10 +17061,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public long Time {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.Time ? (long) literalType_ : 0L; }
+          get { return HasTime ? (long) literalType_ : 0L; }
           set {
             literalType_ = value;
             literalTypeCase_ = LiteralTypeOneofCase.Time;
+          }
+        }
+        /// <summary>Gets whether the "time" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasTime {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.Time; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "time" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearTime() {
+          if (HasTime) {
+            ClearLiteralType();
           }
         }
 
@@ -16845,10 +17111,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public string FixedChar {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.FixedChar ? (string) literalType_ : ""; }
+          get { return HasFixedChar ? (string) literalType_ : ""; }
           set {
             literalType_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
             literalTypeCase_ = LiteralTypeOneofCase.FixedChar;
+          }
+        }
+        /// <summary>Gets whether the "fixed_char" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasFixedChar {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.FixedChar; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "fixed_char" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearFixedChar() {
+          if (HasFixedChar) {
+            ClearLiteralType();
           }
         }
 
@@ -16869,10 +17149,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public pb::ByteString FixedBinary {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.FixedBinary ? (pb::ByteString) literalType_ : pb::ByteString.Empty; }
+          get { return HasFixedBinary ? (pb::ByteString) literalType_ : pb::ByteString.Empty; }
           set {
             literalType_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
             literalTypeCase_ = LiteralTypeOneofCase.FixedBinary;
+          }
+        }
+        /// <summary>Gets whether the "fixed_binary" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasFixedBinary {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.FixedBinary; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "fixed_binary" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearFixedBinary() {
+          if (HasFixedBinary) {
+            ClearLiteralType();
           }
         }
 
@@ -16920,10 +17214,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public long TimestampTz {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.TimestampTz ? (long) literalType_ : 0L; }
+          get { return HasTimestampTz ? (long) literalType_ : 0L; }
           set {
             literalType_ = value;
             literalTypeCase_ = LiteralTypeOneofCase.TimestampTz;
+          }
+        }
+        /// <summary>Gets whether the "timestamp_tz" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasTimestampTz {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.TimestampTz; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "timestamp_tz" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearTimestampTz() {
+          if (HasTimestampTz) {
+            ClearLiteralType();
           }
         }
 
@@ -16932,10 +17240,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public pb::ByteString Uuid {
-          get { return literalTypeCase_ == LiteralTypeOneofCase.Uuid ? (pb::ByteString) literalType_ : pb::ByteString.Empty; }
+          get { return HasUuid ? (pb::ByteString) literalType_ : pb::ByteString.Empty; }
           set {
             literalType_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
             literalTypeCase_ = LiteralTypeOneofCase.Uuid;
+          }
+        }
+        /// <summary>Gets whether the "uuid" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasUuid {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.Uuid; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "uuid" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearUuid() {
+          if (HasUuid) {
+            ClearLiteralType();
           }
         }
 
@@ -17134,28 +17456,28 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public override int GetHashCode() {
           int hash = 1;
-          if (literalTypeCase_ == LiteralTypeOneofCase.Boolean) hash ^= Boolean.GetHashCode();
-          if (literalTypeCase_ == LiteralTypeOneofCase.I8) hash ^= I8.GetHashCode();
-          if (literalTypeCase_ == LiteralTypeOneofCase.I16) hash ^= I16.GetHashCode();
-          if (literalTypeCase_ == LiteralTypeOneofCase.I32) hash ^= I32.GetHashCode();
-          if (literalTypeCase_ == LiteralTypeOneofCase.I64) hash ^= I64.GetHashCode();
-          if (literalTypeCase_ == LiteralTypeOneofCase.Fp32) hash ^= pbc::ProtobufEqualityComparers.BitwiseSingleEqualityComparer.GetHashCode(Fp32);
-          if (literalTypeCase_ == LiteralTypeOneofCase.Fp64) hash ^= pbc::ProtobufEqualityComparers.BitwiseDoubleEqualityComparer.GetHashCode(Fp64);
-          if (literalTypeCase_ == LiteralTypeOneofCase.String) hash ^= String.GetHashCode();
-          if (literalTypeCase_ == LiteralTypeOneofCase.Binary) hash ^= Binary.GetHashCode();
-          if (literalTypeCase_ == LiteralTypeOneofCase.Timestamp) hash ^= Timestamp.GetHashCode();
-          if (literalTypeCase_ == LiteralTypeOneofCase.Date) hash ^= Date.GetHashCode();
-          if (literalTypeCase_ == LiteralTypeOneofCase.Time) hash ^= Time.GetHashCode();
+          if (HasBoolean) hash ^= Boolean.GetHashCode();
+          if (HasI8) hash ^= I8.GetHashCode();
+          if (HasI16) hash ^= I16.GetHashCode();
+          if (HasI32) hash ^= I32.GetHashCode();
+          if (HasI64) hash ^= I64.GetHashCode();
+          if (HasFp32) hash ^= pbc::ProtobufEqualityComparers.BitwiseSingleEqualityComparer.GetHashCode(Fp32);
+          if (HasFp64) hash ^= pbc::ProtobufEqualityComparers.BitwiseDoubleEqualityComparer.GetHashCode(Fp64);
+          if (HasString) hash ^= String.GetHashCode();
+          if (HasBinary) hash ^= Binary.GetHashCode();
+          if (HasTimestamp) hash ^= Timestamp.GetHashCode();
+          if (HasDate) hash ^= Date.GetHashCode();
+          if (HasTime) hash ^= Time.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.IntervalYearToMonth) hash ^= IntervalYearToMonth.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.IntervalDayToSecond) hash ^= IntervalDayToSecond.GetHashCode();
-          if (literalTypeCase_ == LiteralTypeOneofCase.FixedChar) hash ^= FixedChar.GetHashCode();
+          if (HasFixedChar) hash ^= FixedChar.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.VarChar) hash ^= VarChar.GetHashCode();
-          if (literalTypeCase_ == LiteralTypeOneofCase.FixedBinary) hash ^= FixedBinary.GetHashCode();
+          if (HasFixedBinary) hash ^= FixedBinary.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.Decimal) hash ^= Decimal.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.Struct) hash ^= Struct.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.Map) hash ^= Map.GetHashCode();
-          if (literalTypeCase_ == LiteralTypeOneofCase.TimestampTz) hash ^= TimestampTz.GetHashCode();
-          if (literalTypeCase_ == LiteralTypeOneofCase.Uuid) hash ^= Uuid.GetHashCode();
+          if (HasTimestampTz) hash ^= TimestampTz.GetHashCode();
+          if (HasUuid) hash ^= Uuid.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.Null) hash ^= Null.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.List) hash ^= List.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.EmptyList) hash ^= EmptyList.GetHashCode();
@@ -17182,51 +17504,51 @@ namespace Substrait.Protobuf {
         #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           output.WriteRawMessage(this);
         #else
-          if (literalTypeCase_ == LiteralTypeOneofCase.Boolean) {
+          if (HasBoolean) {
             output.WriteRawTag(8);
             output.WriteBool(Boolean);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.I8) {
+          if (HasI8) {
             output.WriteRawTag(16);
             output.WriteInt32(I8);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.I16) {
+          if (HasI16) {
             output.WriteRawTag(24);
             output.WriteInt32(I16);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.I32) {
+          if (HasI32) {
             output.WriteRawTag(40);
             output.WriteInt32(I32);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.I64) {
+          if (HasI64) {
             output.WriteRawTag(56);
             output.WriteInt64(I64);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Fp32) {
+          if (HasFp32) {
             output.WriteRawTag(85);
             output.WriteFloat(Fp32);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Fp64) {
+          if (HasFp64) {
             output.WriteRawTag(89);
             output.WriteDouble(Fp64);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.String) {
+          if (HasString) {
             output.WriteRawTag(98);
             output.WriteString(String);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Binary) {
+          if (HasBinary) {
             output.WriteRawTag(106);
             output.WriteBytes(Binary);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Timestamp) {
+          if (HasTimestamp) {
             output.WriteRawTag(112);
             output.WriteInt64(Timestamp);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Date) {
+          if (HasDate) {
             output.WriteRawTag(128, 1);
             output.WriteInt32(Date);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Time) {
+          if (HasTime) {
             output.WriteRawTag(136, 1);
             output.WriteInt64(Time);
           }
@@ -17238,7 +17560,7 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(162, 1);
             output.WriteMessage(IntervalDayToSecond);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.FixedChar) {
+          if (HasFixedChar) {
             output.WriteRawTag(170, 1);
             output.WriteString(FixedChar);
           }
@@ -17246,7 +17568,7 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(178, 1);
             output.WriteMessage(VarChar);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.FixedBinary) {
+          if (HasFixedBinary) {
             output.WriteRawTag(186, 1);
             output.WriteBytes(FixedBinary);
           }
@@ -17262,11 +17584,11 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(210, 1);
             output.WriteMessage(Map);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.TimestampTz) {
+          if (HasTimestampTz) {
             output.WriteRawTag(216, 1);
             output.WriteInt64(TimestampTz);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Uuid) {
+          if (HasUuid) {
             output.WriteRawTag(226, 1);
             output.WriteBytes(Uuid);
           }
@@ -17308,51 +17630,51 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-          if (literalTypeCase_ == LiteralTypeOneofCase.Boolean) {
+          if (HasBoolean) {
             output.WriteRawTag(8);
             output.WriteBool(Boolean);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.I8) {
+          if (HasI8) {
             output.WriteRawTag(16);
             output.WriteInt32(I8);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.I16) {
+          if (HasI16) {
             output.WriteRawTag(24);
             output.WriteInt32(I16);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.I32) {
+          if (HasI32) {
             output.WriteRawTag(40);
             output.WriteInt32(I32);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.I64) {
+          if (HasI64) {
             output.WriteRawTag(56);
             output.WriteInt64(I64);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Fp32) {
+          if (HasFp32) {
             output.WriteRawTag(85);
             output.WriteFloat(Fp32);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Fp64) {
+          if (HasFp64) {
             output.WriteRawTag(89);
             output.WriteDouble(Fp64);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.String) {
+          if (HasString) {
             output.WriteRawTag(98);
             output.WriteString(String);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Binary) {
+          if (HasBinary) {
             output.WriteRawTag(106);
             output.WriteBytes(Binary);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Timestamp) {
+          if (HasTimestamp) {
             output.WriteRawTag(112);
             output.WriteInt64(Timestamp);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Date) {
+          if (HasDate) {
             output.WriteRawTag(128, 1);
             output.WriteInt32(Date);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Time) {
+          if (HasTime) {
             output.WriteRawTag(136, 1);
             output.WriteInt64(Time);
           }
@@ -17364,7 +17686,7 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(162, 1);
             output.WriteMessage(IntervalDayToSecond);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.FixedChar) {
+          if (HasFixedChar) {
             output.WriteRawTag(170, 1);
             output.WriteString(FixedChar);
           }
@@ -17372,7 +17694,7 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(178, 1);
             output.WriteMessage(VarChar);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.FixedBinary) {
+          if (HasFixedBinary) {
             output.WriteRawTag(186, 1);
             output.WriteBytes(FixedBinary);
           }
@@ -17388,11 +17710,11 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(210, 1);
             output.WriteMessage(Map);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.TimestampTz) {
+          if (HasTimestampTz) {
             output.WriteRawTag(216, 1);
             output.WriteInt64(TimestampTz);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Uuid) {
+          if (HasUuid) {
             output.WriteRawTag(226, 1);
             output.WriteBytes(Uuid);
           }
@@ -17434,40 +17756,40 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public int CalculateSize() {
           int size = 0;
-          if (literalTypeCase_ == LiteralTypeOneofCase.Boolean) {
+          if (HasBoolean) {
             size += 1 + 1;
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.I8) {
+          if (HasI8) {
             size += 1 + pb::CodedOutputStream.ComputeInt32Size(I8);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.I16) {
+          if (HasI16) {
             size += 1 + pb::CodedOutputStream.ComputeInt32Size(I16);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.I32) {
+          if (HasI32) {
             size += 1 + pb::CodedOutputStream.ComputeInt32Size(I32);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.I64) {
+          if (HasI64) {
             size += 1 + pb::CodedOutputStream.ComputeInt64Size(I64);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Fp32) {
+          if (HasFp32) {
             size += 1 + 4;
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Fp64) {
+          if (HasFp64) {
             size += 1 + 8;
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.String) {
+          if (HasString) {
             size += 1 + pb::CodedOutputStream.ComputeStringSize(String);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Binary) {
+          if (HasBinary) {
             size += 1 + pb::CodedOutputStream.ComputeBytesSize(Binary);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Timestamp) {
+          if (HasTimestamp) {
             size += 1 + pb::CodedOutputStream.ComputeInt64Size(Timestamp);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Date) {
+          if (HasDate) {
             size += 2 + pb::CodedOutputStream.ComputeInt32Size(Date);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Time) {
+          if (HasTime) {
             size += 2 + pb::CodedOutputStream.ComputeInt64Size(Time);
           }
           if (literalTypeCase_ == LiteralTypeOneofCase.IntervalYearToMonth) {
@@ -17476,13 +17798,13 @@ namespace Substrait.Protobuf {
           if (literalTypeCase_ == LiteralTypeOneofCase.IntervalDayToSecond) {
             size += 2 + pb::CodedOutputStream.ComputeMessageSize(IntervalDayToSecond);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.FixedChar) {
+          if (HasFixedChar) {
             size += 2 + pb::CodedOutputStream.ComputeStringSize(FixedChar);
           }
           if (literalTypeCase_ == LiteralTypeOneofCase.VarChar) {
             size += 2 + pb::CodedOutputStream.ComputeMessageSize(VarChar);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.FixedBinary) {
+          if (HasFixedBinary) {
             size += 2 + pb::CodedOutputStream.ComputeBytesSize(FixedBinary);
           }
           if (literalTypeCase_ == LiteralTypeOneofCase.Decimal) {
@@ -17494,10 +17816,10 @@ namespace Substrait.Protobuf {
           if (literalTypeCase_ == LiteralTypeOneofCase.Map) {
             size += 2 + pb::CodedOutputStream.ComputeMessageSize(Map);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.TimestampTz) {
+          if (HasTimestampTz) {
             size += 2 + pb::CodedOutputStream.ComputeInt64Size(TimestampTz);
           }
-          if (literalTypeCase_ == LiteralTypeOneofCase.Uuid) {
+          if (HasUuid) {
             size += 2 + pb::CodedOutputStream.ComputeBytesSize(Uuid);
           }
           if (literalTypeCase_ == LiteralTypeOneofCase.Null) {
@@ -32242,10 +32564,24 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public global::Substrait.Protobuf.SortField.Types.SortDirection Direction {
-      get { return sortKindCase_ == SortKindOneofCase.Direction ? (global::Substrait.Protobuf.SortField.Types.SortDirection) sortKind_ : global::Substrait.Protobuf.SortField.Types.SortDirection.Unspecified; }
+      get { return HasDirection ? (global::Substrait.Protobuf.SortField.Types.SortDirection) sortKind_ : global::Substrait.Protobuf.SortField.Types.SortDirection.Unspecified; }
       set {
         sortKind_ = value;
         sortKindCase_ = SortKindOneofCase.Direction;
+      }
+    }
+    /// <summary>Gets whether the "direction" field is set</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool HasDirection {
+      get { return sortKindCase_ == SortKindOneofCase.Direction; }
+    }
+    /// <summary> Clears the value of the oneof if it's currently set to "direction" </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearDirection() {
+      if (HasDirection) {
+        ClearSortKind();
       }
     }
 
@@ -32254,10 +32590,24 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public uint ComparisonFunctionReference {
-      get { return sortKindCase_ == SortKindOneofCase.ComparisonFunctionReference ? (uint) sortKind_ : 0; }
+      get { return HasComparisonFunctionReference ? (uint) sortKind_ : 0; }
       set {
         sortKind_ = value;
         sortKindCase_ = SortKindOneofCase.ComparisonFunctionReference;
+      }
+    }
+    /// <summary>Gets whether the "comparison_function_reference" field is set</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool HasComparisonFunctionReference {
+      get { return sortKindCase_ == SortKindOneofCase.ComparisonFunctionReference; }
+    }
+    /// <summary> Clears the value of the oneof if it's currently set to "comparison_function_reference" </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearComparisonFunctionReference() {
+      if (HasComparisonFunctionReference) {
+        ClearSortKind();
       }
     }
 
@@ -32309,8 +32659,8 @@ namespace Substrait.Protobuf {
     public override int GetHashCode() {
       int hash = 1;
       if (expr_ != null) hash ^= Expr.GetHashCode();
-      if (sortKindCase_ == SortKindOneofCase.Direction) hash ^= Direction.GetHashCode();
-      if (sortKindCase_ == SortKindOneofCase.ComparisonFunctionReference) hash ^= ComparisonFunctionReference.GetHashCode();
+      if (HasDirection) hash ^= Direction.GetHashCode();
+      if (HasComparisonFunctionReference) hash ^= ComparisonFunctionReference.GetHashCode();
       hash ^= (int) sortKindCase_;
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
@@ -32334,11 +32684,11 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(10);
         output.WriteMessage(Expr);
       }
-      if (sortKindCase_ == SortKindOneofCase.Direction) {
+      if (HasDirection) {
         output.WriteRawTag(16);
         output.WriteEnum((int) Direction);
       }
-      if (sortKindCase_ == SortKindOneofCase.ComparisonFunctionReference) {
+      if (HasComparisonFunctionReference) {
         output.WriteRawTag(24);
         output.WriteUInt32(ComparisonFunctionReference);
       }
@@ -32356,11 +32706,11 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(10);
         output.WriteMessage(Expr);
       }
-      if (sortKindCase_ == SortKindOneofCase.Direction) {
+      if (HasDirection) {
         output.WriteRawTag(16);
         output.WriteEnum((int) Direction);
       }
-      if (sortKindCase_ == SortKindOneofCase.ComparisonFunctionReference) {
+      if (HasComparisonFunctionReference) {
         output.WriteRawTag(24);
         output.WriteUInt32(ComparisonFunctionReference);
       }
@@ -32377,10 +32727,10 @@ namespace Substrait.Protobuf {
       if (expr_ != null) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(Expr);
       }
-      if (sortKindCase_ == SortKindOneofCase.Direction) {
+      if (HasDirection) {
         size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Direction);
       }
-      if (sortKindCase_ == SortKindOneofCase.ComparisonFunctionReference) {
+      if (HasComparisonFunctionReference) {
         size += 1 + pb::CodedOutputStream.ComputeUInt32Size(ComparisonFunctionReference);
       }
       if (_unknownFields != null) {

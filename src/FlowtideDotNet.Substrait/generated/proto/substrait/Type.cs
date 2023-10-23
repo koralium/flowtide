@@ -572,10 +572,26 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public uint UserDefinedTypeReference {
-      get { return kindCase_ == KindOneofCase.UserDefinedTypeReference ? (uint) kind_ : 0; }
+      get { return HasUserDefinedTypeReference ? (uint) kind_ : 0; }
       set {
         kind_ = value;
         kindCase_ = KindOneofCase.UserDefinedTypeReference;
+      }
+    }
+    /// <summary>Gets whether the "user_defined_type_reference" field is set</summary>
+    [global::System.ObsoleteAttribute]
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool HasUserDefinedTypeReference {
+      get { return kindCase_ == KindOneofCase.UserDefinedTypeReference; }
+    }
+    /// <summary> Clears the value of the oneof if it's currently set to "user_defined_type_reference" </summary>
+    [global::System.ObsoleteAttribute]
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearUserDefinedTypeReference() {
+      if (HasUserDefinedTypeReference) {
+        ClearKind();
       }
     }
 
@@ -695,7 +711,7 @@ namespace Substrait.Protobuf {
       if (kindCase_ == KindOneofCase.List) hash ^= List.GetHashCode();
       if (kindCase_ == KindOneofCase.Map) hash ^= Map.GetHashCode();
       if (kindCase_ == KindOneofCase.UserDefined) hash ^= UserDefined.GetHashCode();
-      if (kindCase_ == KindOneofCase.UserDefinedTypeReference) hash ^= UserDefinedTypeReference.GetHashCode();
+      if (HasUserDefinedTypeReference) hash ^= UserDefinedTypeReference.GetHashCode();
       hash ^= (int) kindCase_;
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
@@ -807,7 +823,7 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(242, 1);
         output.WriteMessage(UserDefined);
       }
-      if (kindCase_ == KindOneofCase.UserDefinedTypeReference) {
+      if (HasUserDefinedTypeReference) {
         output.WriteRawTag(248, 1);
         output.WriteUInt32(UserDefinedTypeReference);
       }
@@ -917,7 +933,7 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(242, 1);
         output.WriteMessage(UserDefined);
       }
-      if (kindCase_ == KindOneofCase.UserDefinedTypeReference) {
+      if (HasUserDefinedTypeReference) {
         output.WriteRawTag(248, 1);
         output.WriteUInt32(UserDefinedTypeReference);
       }
@@ -1007,7 +1023,7 @@ namespace Substrait.Protobuf {
       if (kindCase_ == KindOneofCase.UserDefined) {
         size += 2 + pb::CodedOutputStream.ComputeMessageSize(UserDefined);
       }
-      if (kindCase_ == KindOneofCase.UserDefinedTypeReference) {
+      if (HasUserDefinedTypeReference) {
         size += 2 + pb::CodedOutputStream.ComputeUInt32Size(UserDefinedTypeReference);
       }
       if (_unknownFields != null) {
@@ -7600,10 +7616,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public bool Boolean {
-          get { return parameterCase_ == ParameterOneofCase.Boolean ? (bool) parameter_ : false; }
+          get { return HasBoolean ? (bool) parameter_ : false; }
           set {
             parameter_ = value;
             parameterCase_ = ParameterOneofCase.Boolean;
+          }
+        }
+        /// <summary>Gets whether the "boolean" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasBoolean {
+          get { return parameterCase_ == ParameterOneofCase.Boolean; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "boolean" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearBoolean() {
+          if (HasBoolean) {
+            ClearParameter();
           }
         }
 
@@ -7612,10 +7642,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public long Integer {
-          get { return parameterCase_ == ParameterOneofCase.Integer ? (long) parameter_ : 0L; }
+          get { return HasInteger ? (long) parameter_ : 0L; }
           set {
             parameter_ = value;
             parameterCase_ = ParameterOneofCase.Integer;
+          }
+        }
+        /// <summary>Gets whether the "integer" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasInteger {
+          get { return parameterCase_ == ParameterOneofCase.Integer; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "integer" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearInteger() {
+          if (HasInteger) {
+            ClearParameter();
           }
         }
 
@@ -7624,10 +7668,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public string Enum {
-          get { return parameterCase_ == ParameterOneofCase.Enum ? (string) parameter_ : ""; }
+          get { return HasEnum ? (string) parameter_ : ""; }
           set {
             parameter_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
             parameterCase_ = ParameterOneofCase.Enum;
+          }
+        }
+        /// <summary>Gets whether the "enum" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasEnum {
+          get { return parameterCase_ == ParameterOneofCase.Enum; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "enum" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearEnum() {
+          if (HasEnum) {
+            ClearParameter();
           }
         }
 
@@ -7636,10 +7694,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public string String {
-          get { return parameterCase_ == ParameterOneofCase.String ? (string) parameter_ : ""; }
+          get { return HasString ? (string) parameter_ : ""; }
           set {
             parameter_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
             parameterCase_ = ParameterOneofCase.String;
+          }
+        }
+        /// <summary>Gets whether the "string" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasString {
+          get { return parameterCase_ == ParameterOneofCase.String; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "string" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearString() {
+          if (HasString) {
+            ClearParameter();
           }
         }
 
@@ -7699,10 +7771,10 @@ namespace Substrait.Protobuf {
           int hash = 1;
           if (parameterCase_ == ParameterOneofCase.Null) hash ^= Null.GetHashCode();
           if (parameterCase_ == ParameterOneofCase.DataType) hash ^= DataType.GetHashCode();
-          if (parameterCase_ == ParameterOneofCase.Boolean) hash ^= Boolean.GetHashCode();
-          if (parameterCase_ == ParameterOneofCase.Integer) hash ^= Integer.GetHashCode();
-          if (parameterCase_ == ParameterOneofCase.Enum) hash ^= Enum.GetHashCode();
-          if (parameterCase_ == ParameterOneofCase.String) hash ^= String.GetHashCode();
+          if (HasBoolean) hash ^= Boolean.GetHashCode();
+          if (HasInteger) hash ^= Integer.GetHashCode();
+          if (HasEnum) hash ^= Enum.GetHashCode();
+          if (HasString) hash ^= String.GetHashCode();
           hash ^= (int) parameterCase_;
           if (_unknownFields != null) {
             hash ^= _unknownFields.GetHashCode();
@@ -7730,19 +7802,19 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(18);
             output.WriteMessage(DataType);
           }
-          if (parameterCase_ == ParameterOneofCase.Boolean) {
+          if (HasBoolean) {
             output.WriteRawTag(24);
             output.WriteBool(Boolean);
           }
-          if (parameterCase_ == ParameterOneofCase.Integer) {
+          if (HasInteger) {
             output.WriteRawTag(32);
             output.WriteInt64(Integer);
           }
-          if (parameterCase_ == ParameterOneofCase.Enum) {
+          if (HasEnum) {
             output.WriteRawTag(42);
             output.WriteString(Enum);
           }
-          if (parameterCase_ == ParameterOneofCase.String) {
+          if (HasString) {
             output.WriteRawTag(50);
             output.WriteString(String);
           }
@@ -7764,19 +7836,19 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(18);
             output.WriteMessage(DataType);
           }
-          if (parameterCase_ == ParameterOneofCase.Boolean) {
+          if (HasBoolean) {
             output.WriteRawTag(24);
             output.WriteBool(Boolean);
           }
-          if (parameterCase_ == ParameterOneofCase.Integer) {
+          if (HasInteger) {
             output.WriteRawTag(32);
             output.WriteInt64(Integer);
           }
-          if (parameterCase_ == ParameterOneofCase.Enum) {
+          if (HasEnum) {
             output.WriteRawTag(42);
             output.WriteString(Enum);
           }
-          if (parameterCase_ == ParameterOneofCase.String) {
+          if (HasString) {
             output.WriteRawTag(50);
             output.WriteString(String);
           }
@@ -7796,16 +7868,16 @@ namespace Substrait.Protobuf {
           if (parameterCase_ == ParameterOneofCase.DataType) {
             size += 1 + pb::CodedOutputStream.ComputeMessageSize(DataType);
           }
-          if (parameterCase_ == ParameterOneofCase.Boolean) {
+          if (HasBoolean) {
             size += 1 + 1;
           }
-          if (parameterCase_ == ParameterOneofCase.Integer) {
+          if (HasInteger) {
             size += 1 + pb::CodedOutputStream.ComputeInt64Size(Integer);
           }
-          if (parameterCase_ == ParameterOneofCase.Enum) {
+          if (HasEnum) {
             size += 1 + pb::CodedOutputStream.ComputeStringSize(Enum);
           }
-          if (parameterCase_ == ParameterOneofCase.String) {
+          if (HasString) {
             size += 1 + pb::CodedOutputStream.ComputeStringSize(String);
           }
           if (_unknownFields != null) {

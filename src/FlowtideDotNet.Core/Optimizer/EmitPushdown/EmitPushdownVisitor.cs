@@ -31,20 +31,71 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             if (readRelation.EmitSet)
             {
                 newMappings = new Dictionary<int, int>();
+
+                // Find all fields that are used in the filter
+                var usageVisitor = new ExpressionFieldUsageVisitor(readRelation.BaseSchema.Names.Count);
+                if (readRelation.Filter != null)
+                {
+                    usageVisitor.Visit(readRelation.Filter, default);
+                }
+                var usageList = usageVisitor.UsedFieldsLeft.Distinct().OrderBy(x => x).ToList();
+
+                // Find all fields that needs to be emitted.
+                if (readRelation.EmitSet)
+                {
+                    for (int i = 0; i < readRelation.Emit.Count; i++)
+                    {
+                        if (!usageList.Contains(readRelation.Emit[i]))
+                        {
+                            usageList.Add(readRelation.Emit[i]);
+                        }
+                    }
+                }
+                usageList = usageList.OrderBy(x => x).ToList();
+                for (int i = 0; i < usageList.Count; i++)
+                {
+                    newMappings.Add(usageList[i], i);
+                }
+
+                // Remove all unnused fields in base schema and struct types
                 int relativeOffset = 0;
                 int lastField = 0;
-                for (int i = 0; i < readRelation.Emit.Count; i++)
+                for (int i = 0; i < usageList.Count; i++)
                 {
-                    var emitField = readRelation.Emit[i] - relativeOffset;
+                    var emitField = usageList[i] - relativeOffset;
                     for (int k = lastField; k < emitField; k++)
                     {
                         readRelation.BaseSchema.Names.RemoveAt(lastField);
                         readRelation.BaseSchema.Struct.Types.RemoveAt(lastField);
                         relativeOffset++;
                     }
-                    newMappings.Add(readRelation.Emit[i], i);
-                    lastField = readRelation.Emit[i] - relativeOffset + 1;
-                    readRelation.Emit[i] = i;
+                    lastField = usageList[i] - relativeOffset + 1;
+                }
+                if (lastField < readRelation.BaseSchema.Names.Count)
+                {
+                    readRelation.BaseSchema.Names.RemoveRange(lastField, readRelation.BaseSchema.Names.Count - lastField);
+                    readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                }
+
+                if (readRelation.Filter != null)
+                {
+                    // Replace all the fields in the filter
+                    var replaceVisitor = new ExpressionFieldReplaceVisitor(newMappings);
+                    replaceVisitor.Visit(readRelation.Filter, default);
+                }
+                if (readRelation.EmitSet)
+                {
+                    for (int i = 0; i < readRelation.Emit.Count; i++)
+                    {
+                        if (newMappings.TryGetValue(readRelation.Emit[i], out var newMapping))
+                        {
+                            readRelation.Emit[i] = newMapping;
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Could not find the correct new mapping id");
+                        }
+                    }
                 }
                 if (lastField < readRelation.BaseSchema.Names.Count)
                 {

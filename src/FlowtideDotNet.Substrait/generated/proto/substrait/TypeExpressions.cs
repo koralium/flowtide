@@ -584,10 +584,26 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public uint UserDefinedPointer {
-      get { return kindCase_ == KindOneofCase.UserDefinedPointer ? (uint) kind_ : 0; }
+      get { return HasUserDefinedPointer ? (uint) kind_ : 0; }
       set {
         kind_ = value;
         kindCase_ = KindOneofCase.UserDefinedPointer;
+      }
+    }
+    /// <summary>Gets whether the "user_defined_pointer" field is set</summary>
+    [global::System.ObsoleteAttribute]
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool HasUserDefinedPointer {
+      get { return kindCase_ == KindOneofCase.UserDefinedPointer; }
+    }
+    /// <summary> Clears the value of the oneof if it's currently set to "user_defined_pointer" </summary>
+    [global::System.ObsoleteAttribute]
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearUserDefinedPointer() {
+      if (HasUserDefinedPointer) {
+        ClearKind();
       }
     }
 
@@ -596,10 +612,24 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public string TypeParameterName {
-      get { return kindCase_ == KindOneofCase.TypeParameterName ? (string) kind_ : ""; }
+      get { return HasTypeParameterName ? (string) kind_ : ""; }
       set {
         kind_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
         kindCase_ = KindOneofCase.TypeParameterName;
+      }
+    }
+    /// <summary>Gets whether the "type_parameter_name" field is set</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool HasTypeParameterName {
+      get { return kindCase_ == KindOneofCase.TypeParameterName; }
+    }
+    /// <summary> Clears the value of the oneof if it's currently set to "type_parameter_name" </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearTypeParameterName() {
+      if (HasTypeParameterName) {
+        ClearKind();
       }
     }
 
@@ -608,10 +638,24 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public string IntegerParameterName {
-      get { return kindCase_ == KindOneofCase.IntegerParameterName ? (string) kind_ : ""; }
+      get { return HasIntegerParameterName ? (string) kind_ : ""; }
       set {
         kind_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
         kindCase_ = KindOneofCase.IntegerParameterName;
+      }
+    }
+    /// <summary>Gets whether the "integer_parameter_name" field is set</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool HasIntegerParameterName {
+      get { return kindCase_ == KindOneofCase.IntegerParameterName; }
+    }
+    /// <summary> Clears the value of the oneof if it's currently set to "integer_parameter_name" </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearIntegerParameterName() {
+      if (HasIntegerParameterName) {
+        ClearKind();
       }
     }
 
@@ -620,10 +664,24 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public int IntegerLiteral {
-      get { return kindCase_ == KindOneofCase.IntegerLiteral ? (int) kind_ : 0; }
+      get { return HasIntegerLiteral ? (int) kind_ : 0; }
       set {
         kind_ = value;
         kindCase_ = KindOneofCase.IntegerLiteral;
+      }
+    }
+    /// <summary>Gets whether the "integer_literal" field is set</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool HasIntegerLiteral {
+      get { return kindCase_ == KindOneofCase.IntegerLiteral; }
+    }
+    /// <summary> Clears the value of the oneof if it's currently set to "integer_literal" </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearIntegerLiteral() {
+      if (HasIntegerLiteral) {
+        ClearKind();
       }
     }
 
@@ -805,10 +863,10 @@ namespace Substrait.Protobuf {
       if (kindCase_ == KindOneofCase.List) hash ^= List.GetHashCode();
       if (kindCase_ == KindOneofCase.Map) hash ^= Map.GetHashCode();
       if (kindCase_ == KindOneofCase.UserDefined) hash ^= UserDefined.GetHashCode();
-      if (kindCase_ == KindOneofCase.UserDefinedPointer) hash ^= UserDefinedPointer.GetHashCode();
-      if (kindCase_ == KindOneofCase.TypeParameterName) hash ^= TypeParameterName.GetHashCode();
-      if (kindCase_ == KindOneofCase.IntegerParameterName) hash ^= IntegerParameterName.GetHashCode();
-      if (kindCase_ == KindOneofCase.IntegerLiteral) hash ^= IntegerLiteral.GetHashCode();
+      if (HasUserDefinedPointer) hash ^= UserDefinedPointer.GetHashCode();
+      if (HasTypeParameterName) hash ^= TypeParameterName.GetHashCode();
+      if (HasIntegerParameterName) hash ^= IntegerParameterName.GetHashCode();
+      if (HasIntegerLiteral) hash ^= IntegerLiteral.GetHashCode();
       if (kindCase_ == KindOneofCase.UnaryOp) hash ^= UnaryOp.GetHashCode();
       if (kindCase_ == KindOneofCase.BinaryOp) hash ^= BinaryOp.GetHashCode();
       if (kindCase_ == KindOneofCase.IfElse) hash ^= IfElse.GetHashCode();
@@ -924,7 +982,7 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(242, 1);
         output.WriteMessage(UserDefined);
       }
-      if (kindCase_ == KindOneofCase.UserDefinedPointer) {
+      if (HasUserDefinedPointer) {
         output.WriteRawTag(248, 1);
         output.WriteUInt32(UserDefinedPointer);
       }
@@ -932,15 +990,15 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(130, 2);
         output.WriteMessage(Uuid);
       }
-      if (kindCase_ == KindOneofCase.TypeParameterName) {
+      if (HasTypeParameterName) {
         output.WriteRawTag(138, 2);
         output.WriteString(TypeParameterName);
       }
-      if (kindCase_ == KindOneofCase.IntegerParameterName) {
+      if (HasIntegerParameterName) {
         output.WriteRawTag(146, 2);
         output.WriteString(IntegerParameterName);
       }
-      if (kindCase_ == KindOneofCase.IntegerLiteral) {
+      if (HasIntegerLiteral) {
         output.WriteRawTag(152, 2);
         output.WriteInt32(IntegerLiteral);
       }
@@ -1062,7 +1120,7 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(242, 1);
         output.WriteMessage(UserDefined);
       }
-      if (kindCase_ == KindOneofCase.UserDefinedPointer) {
+      if (HasUserDefinedPointer) {
         output.WriteRawTag(248, 1);
         output.WriteUInt32(UserDefinedPointer);
       }
@@ -1070,15 +1128,15 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(130, 2);
         output.WriteMessage(Uuid);
       }
-      if (kindCase_ == KindOneofCase.TypeParameterName) {
+      if (HasTypeParameterName) {
         output.WriteRawTag(138, 2);
         output.WriteString(TypeParameterName);
       }
-      if (kindCase_ == KindOneofCase.IntegerParameterName) {
+      if (HasIntegerParameterName) {
         output.WriteRawTag(146, 2);
         output.WriteString(IntegerParameterName);
       }
-      if (kindCase_ == KindOneofCase.IntegerLiteral) {
+      if (HasIntegerLiteral) {
         output.WriteRawTag(152, 2);
         output.WriteInt32(IntegerLiteral);
       }
@@ -1180,16 +1238,16 @@ namespace Substrait.Protobuf {
       if (kindCase_ == KindOneofCase.UserDefined) {
         size += 2 + pb::CodedOutputStream.ComputeMessageSize(UserDefined);
       }
-      if (kindCase_ == KindOneofCase.UserDefinedPointer) {
+      if (HasUserDefinedPointer) {
         size += 2 + pb::CodedOutputStream.ComputeUInt32Size(UserDefinedPointer);
       }
-      if (kindCase_ == KindOneofCase.TypeParameterName) {
+      if (HasTypeParameterName) {
         size += 2 + pb::CodedOutputStream.ComputeStringSize(TypeParameterName);
       }
-      if (kindCase_ == KindOneofCase.IntegerParameterName) {
+      if (HasIntegerParameterName) {
         size += 2 + pb::CodedOutputStream.ComputeStringSize(IntegerParameterName);
       }
-      if (kindCase_ == KindOneofCase.IntegerLiteral) {
+      if (HasIntegerLiteral) {
         size += 2 + pb::CodedOutputStream.ComputeInt32Size(IntegerLiteral);
       }
       if (kindCase_ == KindOneofCase.UnaryOp) {
