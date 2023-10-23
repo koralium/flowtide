@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
@@ -16,7 +16,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ZoneTree" Version="1.6.0" />
+    <PackageReference Include="ZoneTree" Version="1.6.9" />
   </ItemGroup>
 
   <ItemGroup>
