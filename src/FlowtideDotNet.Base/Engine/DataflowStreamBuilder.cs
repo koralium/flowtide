@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using App.Metrics;
 using FlowtideDotNet.Base.Engine.Internal;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Vertices;
@@ -30,7 +29,6 @@ namespace FlowtideDotNet.Base.Engine
         private IStateHandler? _stateHandler;
         private readonly string _streamName;
         private IStreamScheduler? _streamScheduler;
-        private IMetricsRoot? _metricsRoot;
         private IStreamNotificationReciever? _streamNotificationReciever;
         private StateManagerOptions? _stateManagerOptions;
         private ILoggerFactory? _loggerFactory;
@@ -80,12 +78,6 @@ namespace FlowtideDotNet.Base.Engine
             return this;
         }
 
-        public DataflowStreamBuilder WithMetrics(IMetricsRoot metricsRoot)
-        {
-            _metricsRoot = metricsRoot;
-            return this;
-        }
-
         public DataflowStreamBuilder WithStateOptions(StateManagerOptions stateManagerOptions)
         {
             _stateManagerOptions = stateManagerOptions;
@@ -124,10 +116,6 @@ namespace FlowtideDotNet.Base.Engine
             {
                 _streamScheduler = new DefaultStreamScheduler();
             }
-            if (_metricsRoot == null)
-            {
-                _metricsRoot = new MetricsBuilder().Build();
-            }
 
             var streamContext = new StreamContext(
                 _streamName, 
@@ -136,8 +124,7 @@ namespace FlowtideDotNet.Base.Engine
                 _egressBlocks, 
                 _stateHandler, 
                 _state, 
-                _streamScheduler, 
-                _metricsRoot,
+                _streamScheduler,
                 _streamNotificationReciever,
                 _stateManagerOptions,
                 _loggerFactory,

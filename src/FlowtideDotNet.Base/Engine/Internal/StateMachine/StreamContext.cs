@@ -13,7 +13,6 @@
 using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Base.Vertices;
-using App.Metrics;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Base.Metrics.Counter;
@@ -43,7 +42,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly Dictionary<string, IStreamEgressVertex> egressBlocks;
         internal readonly Dictionary<string, IStreamVertex> _blockLookup;
         internal readonly IStateHandler stateHandler;
-        internal readonly IMetrics metrics;
         internal readonly StreamMetrics _streamMetrics;
         private readonly IStreamNotificationReciever? _notificationReciever;
         internal readonly ILoggerFactory loggerFactory;
@@ -80,7 +78,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             IStateHandler stateHandler,
             StreamState? fromState,
             IStreamScheduler streamScheduler,
-            IMetrics metrics,
             IStreamNotificationReciever? notificationReciever,
             StateManagerOptions stateManagerOptions,
             ILoggerFactory? loggerFactory,
@@ -93,7 +90,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             this.stateHandler = stateHandler;
             _lastState = fromState;
             _streamScheduler = streamScheduler;
-            this.metrics = metrics;
             _streamMetrics = new StreamMetrics(streamName);
             _notificationReciever = notificationReciever;
             _streamVersionInformation = streamVersionInformation;
