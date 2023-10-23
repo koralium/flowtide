@@ -13,14 +13,11 @@
 using FlowtideDotNet.Core.Optimizer.EmitPushdown;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Expressions.Literals;
+using FlowtideDotNet.Substrait.Expressions.ScalarFunctions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using FluentAssertions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.OptimizerTests
 {
@@ -172,6 +169,191 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                                     {
                                         Types = new List<Substrait.Type.SubstraitBaseType>()
                                         {
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
+                );
+        }
+
+        [Fact]
+        public void ReadRelationWithFilterColumnInEmit()
+        {
+            var plan = new Plan()
+            {
+                Relations = new List<Substrait.Relations.Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Emit = new List<int>(){0, 1, 3, 5},
+                        Input = new ReadRelation()
+                        {
+                            Filter = new BooleanComparison()
+                            {
+                                Left = new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 3
+                                    }
+                                },
+                                Right = new StringLiteral() { Value = "test" },
+                            },
+                            NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                            BaseSchema = new Substrait.Type.NamedStruct()
+                            {
+                                Names = new List<string>() { "Col1", "Col2", "Col3", "Col4", "Col5", "Col6"},
+                                Struct = new Substrait.Type.Struct()
+                                {
+                                    Types = new List<Substrait.Type.SubstraitBaseType>()
+                                    {
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var optimizedPlan = EmitPushdown.Optimize(plan);
+
+            optimizedPlan.Should()
+                .BeEquivalentTo(
+                    new Plan()
+                    {
+                        Relations = new List<Substrait.Relations.Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){0, 1, 2, 3},
+                            Input = new ReadRelation()
+                            {
+                                Filter = new BooleanComparison()
+                                {
+                                    Left = new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 2
+                                        }
+                                    },
+                                    Right = new StringLiteral() { Value = "test" },
+                                },
+                                Emit = new List<int>(){ 0, 1, 2, 3},
+                                NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                                BaseSchema = new Substrait.Type.NamedStruct()
+                                {
+                                    Names = new List<string>() { "Col1", "Col2", "Col4", "Col6" },
+                                    Struct = new Substrait.Type.Struct()
+                                    {
+                                        Types = new List<Substrait.Type.SubstraitBaseType>()
+                                        {
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
+                );
+        }
+
+        [Fact]
+        public void ReadRelationWithFilterColumnOutsideEmit()
+        {
+            var plan = new Plan()
+            {
+                Relations = new List<Substrait.Relations.Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Emit = new List<int>(){0, 1, 3, 5},
+                        Input = new ReadRelation()
+                        {
+                            Filter = new BooleanComparison()
+                            {
+                                Left = new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 4
+                                    }
+                                },
+                                Right = new StringLiteral() { Value = "test" },
+                            },
+                            NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                            BaseSchema = new Substrait.Type.NamedStruct()
+                            {
+                                Names = new List<string>() { "Col1", "Col2", "Col3", "Col4", "Col5", "Col6"},
+                                Struct = new Substrait.Type.Struct()
+                                {
+                                    Types = new List<Substrait.Type.SubstraitBaseType>()
+                                    {
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var optimizedPlan = EmitPushdown.Optimize(plan);
+
+            optimizedPlan.Should()
+                .BeEquivalentTo(
+                    new Plan()
+                    {
+                        Relations = new List<Substrait.Relations.Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){0, 1, 2, 3},
+                            Input = new ReadRelation()
+                            {
+                                Filter = new BooleanComparison()
+                                {
+                                    Left = new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 3
+                                        }
+                                    },
+                                    Right = new StringLiteral() { Value = "test" },
+                                },
+                                Emit = new List<int>(){ 0, 1, 2, 4},
+                                NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                                BaseSchema = new Substrait.Type.NamedStruct()
+                                {
+                                    Names = new List<string>() { "Col1", "Col2", "Col4", "Col5", "Col6" },
+                                    Struct = new Substrait.Type.Struct()
+                                    {
+                                        Types = new List<Substrait.Type.SubstraitBaseType>()
+                                        {
+                                            new AnyType(),
                                             new AnyType(),
                                             new AnyType(),
                                             new AnyType(),
