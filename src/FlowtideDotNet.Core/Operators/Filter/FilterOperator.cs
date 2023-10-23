@@ -34,7 +34,8 @@ namespace FlowtideDotNet.Core.Operators.Filter
             }
             else
             {
-                _filterImplementation = new DateFilterLoopAll(filterRelation);
+                throw new NotImplementedException("Filter based on current date is not yet supported.");
+                //_filterImplementation = new DateFilterLoopAll(filterRelation);
             }
         }
 
