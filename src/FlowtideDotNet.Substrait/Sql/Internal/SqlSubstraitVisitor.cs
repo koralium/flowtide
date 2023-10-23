@@ -182,8 +182,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override RelationData? VisitTable(TableFactor.Table table, object? state)
         {
-            var tableName = table.Name.ToString();
-            if (tablesMetadata.Tables.TryGetValue(tableName, out var t))
+            var tableName = string.Join('.', table.Name.Values.Select(x => x.Value));
+            if (tablesMetadata.TryGetTable(tableName, out var t))
             {
                 var emitData = new EmitData();
 

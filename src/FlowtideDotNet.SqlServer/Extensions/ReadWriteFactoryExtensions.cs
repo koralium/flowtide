@@ -22,6 +22,10 @@ namespace FlowtideDotNet.Core.Engine
     {
         public static ReadWriteFactory AddSqlServerSource(this ReadWriteFactory readWriteFactory, string regexPattern, Func<string> connectionStringFunc, Action<ReadRelation>? transform = null)
         {
+            if (regexPattern == "*")
+            {
+                regexPattern = ".*";
+            }
             readWriteFactory.AddReadResolver((relation, dataflowopt) =>
             {
                 var regexResult = Regex.Match(relation.NamedTable.DotSeperated, regexPattern, RegexOptions.IgnoreCase);
@@ -63,6 +67,11 @@ namespace FlowtideDotNet.Core.Engine
 
         public static ReadWriteFactory AddSqlServerSink(this ReadWriteFactory readWriteFactory, string regexPattern, Func<string> connectionStringFunc, Action<WriteRelation>? transform = null)
         {
+            if (regexPattern == "*")
+            {
+                regexPattern = ".*";
+            }
+
             readWriteFactory.AddWriteResolver((relation, dataflowopts) =>
             {
                 var regexResult = Regex.Match(relation.NamedObject.DotSeperated, regexPattern, RegexOptions.IgnoreCase);

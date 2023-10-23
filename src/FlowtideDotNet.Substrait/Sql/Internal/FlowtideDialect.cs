@@ -32,12 +32,18 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         public override Statement? ParseStatement(Parser parser)
         {
             if (parser.ParseKeyword(Keyword.CREATE))
-            {
+            {   
                 if (parser.ParseKeyword(Keyword.TABLE))
                 {
                     return ParseCreateTable(parser, false, false, false, false);
                 }
+                else
+                {
+                    parser.PrevToken();
+                    return base.ParseStatement(parser);
+                }
             }
+            
             return base.ParseStatement(parser);
         }
 
