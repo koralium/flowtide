@@ -545,10 +545,26 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public uint UserDefinedPointer {
-      get { return kindCase_ == KindOneofCase.UserDefinedPointer ? (uint) kind_ : 0; }
+      get { return HasUserDefinedPointer ? (uint) kind_ : 0; }
       set {
         kind_ = value;
         kindCase_ = KindOneofCase.UserDefinedPointer;
+      }
+    }
+    /// <summary>Gets whether the "user_defined_pointer" field is set</summary>
+    [global::System.ObsoleteAttribute]
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool HasUserDefinedPointer {
+      get { return kindCase_ == KindOneofCase.UserDefinedPointer; }
+    }
+    /// <summary> Clears the value of the oneof if it's currently set to "user_defined_pointer" </summary>
+    [global::System.ObsoleteAttribute]
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void ClearUserDefinedPointer() {
+      if (HasUserDefinedPointer) {
+        ClearKind();
       }
     }
 
@@ -682,7 +698,7 @@ namespace Substrait.Protobuf {
       if (kindCase_ == KindOneofCase.List) hash ^= List.GetHashCode();
       if (kindCase_ == KindOneofCase.Map) hash ^= Map.GetHashCode();
       if (kindCase_ == KindOneofCase.UserDefined) hash ^= UserDefined.GetHashCode();
-      if (kindCase_ == KindOneofCase.UserDefinedPointer) hash ^= UserDefinedPointer.GetHashCode();
+      if (HasUserDefinedPointer) hash ^= UserDefinedPointer.GetHashCode();
       if (kindCase_ == KindOneofCase.TypeParameter) hash ^= TypeParameter.GetHashCode();
       hash ^= (int) kindCase_;
       if (_unknownFields != null) {
@@ -795,7 +811,7 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(242, 1);
         output.WriteMessage(UserDefined);
       }
-      if (kindCase_ == KindOneofCase.UserDefinedPointer) {
+      if (HasUserDefinedPointer) {
         output.WriteRawTag(248, 1);
         output.WriteUInt32(UserDefinedPointer);
       }
@@ -909,7 +925,7 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(242, 1);
         output.WriteMessage(UserDefined);
       }
-      if (kindCase_ == KindOneofCase.UserDefinedPointer) {
+      if (HasUserDefinedPointer) {
         output.WriteRawTag(248, 1);
         output.WriteUInt32(UserDefinedPointer);
       }
@@ -1003,7 +1019,7 @@ namespace Substrait.Protobuf {
       if (kindCase_ == KindOneofCase.UserDefined) {
         size += 2 + pb::CodedOutputStream.ComputeMessageSize(UserDefined);
       }
-      if (kindCase_ == KindOneofCase.UserDefinedPointer) {
+      if (HasUserDefinedPointer) {
         size += 2 + pb::CodedOutputStream.ComputeUInt32Size(UserDefinedPointer);
       }
       if (kindCase_ == KindOneofCase.TypeParameter) {
@@ -4883,10 +4899,24 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public int Literal {
-          get { return integerTypeCase_ == IntegerTypeOneofCase.Literal ? (int) integerType_ : 0; }
+          get { return HasLiteral ? (int) integerType_ : 0; }
           set {
             integerType_ = value;
             integerTypeCase_ = IntegerTypeOneofCase.Literal;
+          }
+        }
+        /// <summary>Gets whether the "literal" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasLiteral {
+          get { return integerTypeCase_ == IntegerTypeOneofCase.Literal; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "literal" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearLiteral() {
+          if (HasLiteral) {
+            ClearIntegerType();
           }
         }
 
@@ -4948,7 +4978,7 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public override int GetHashCode() {
           int hash = 1;
-          if (integerTypeCase_ == IntegerTypeOneofCase.Literal) hash ^= Literal.GetHashCode();
+          if (HasLiteral) hash ^= Literal.GetHashCode();
           if (integerTypeCase_ == IntegerTypeOneofCase.Parameter) hash ^= Parameter.GetHashCode();
           hash ^= (int) integerTypeCase_;
           if (_unknownFields != null) {
@@ -4969,7 +4999,7 @@ namespace Substrait.Protobuf {
         #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           output.WriteRawMessage(this);
         #else
-          if (integerTypeCase_ == IntegerTypeOneofCase.Literal) {
+          if (HasLiteral) {
             output.WriteRawTag(8);
             output.WriteInt32(Literal);
           }
@@ -4987,7 +5017,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-          if (integerTypeCase_ == IntegerTypeOneofCase.Literal) {
+          if (HasLiteral) {
             output.WriteRawTag(8);
             output.WriteInt32(Literal);
           }
@@ -5005,7 +5035,7 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public int CalculateSize() {
           int size = 0;
-          if (integerTypeCase_ == IntegerTypeOneofCase.Literal) {
+          if (HasLiteral) {
             size += 1 + pb::CodedOutputStream.ComputeInt32Size(Literal);
           }
           if (integerTypeCase_ == IntegerTypeOneofCase.Parameter) {
