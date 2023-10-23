@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
     public class EmitPushdownTests
     {
         [Fact]
-        public void ReadRelationProjection()
+        public void ReadRelationProjectionTrimEnd()
         {
             var plan = new Plan()
             {
@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 {
                     new ProjectRelation()
                     {
-                        Emit = new List<int>(){0, 1, 3, 5, 6},
+                        Emit = new List<int>(){0, 1, 3, 5, 8},
                         Expressions = new List<Substrait.Expressions.Expression>()
                         {
                             new DirectFieldReference()
@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
                             BaseSchema = new Substrait.Type.NamedStruct()
                             {
-                                Names = new List<string>() { "Col1", "Col2", "Col3", "Col4", "Col5", "Col6" },
+                                Names = new List<string>() { "Col1", "Col2", "Col3", "Col4", "Col5", "Col6", "col7", "col8" },
                                 Struct = new Substrait.Type.Struct()
                                 {
                                     Types = new List<Substrait.Type.SubstraitBaseType>()
@@ -91,6 +91,76 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                                     }
                                 }
                             },
+                            Input = new ReadRelation()
+                            {
+                                Emit = new List<int>(){ 0, 1, 2, 3},
+                                NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                                BaseSchema = new Substrait.Type.NamedStruct()
+                                {
+                                    Names = new List<string>() { "Col1", "Col2", "Col4", "Col6" },
+                                    Struct = new Substrait.Type.Struct()
+                                    {
+                                        Types = new List<Substrait.Type.SubstraitBaseType>()
+                                        {
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
+                );
+        }
+
+        [Fact]
+        public void ReadRelationProjectionEmitEnd()
+        {
+            var plan = new Plan()
+            {
+                Relations = new List<Substrait.Relations.Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Emit = new List<int>(){0, 1, 3, 5},
+                        Input = new ReadRelation()
+                        {
+                            NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                            BaseSchema = new Substrait.Type.NamedStruct()
+                            {
+                                Names = new List<string>() { "Col1", "Col2", "Col3", "Col4", "Col5", "Col6"},
+                                Struct = new Substrait.Type.Struct()
+                                {
+                                    Types = new List<Substrait.Type.SubstraitBaseType>()
+                                    {
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var optimizedPlan = EmitPushdown.Optimize(plan);
+
+            optimizedPlan.Should()
+                .BeEquivalentTo(
+                    new Plan()
+                    {
+                        Relations = new List<Substrait.Relations.Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){0, 1, 2, 3},
                             Input = new ReadRelation()
                             {
                                 Emit = new List<int>(){ 0, 1, 2, 3},
