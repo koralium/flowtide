@@ -97,6 +97,11 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                         }
                     }
                 }
+                if (lastField < readRelation.BaseSchema.Names.Count)
+                {
+                    readRelation.BaseSchema.Names.RemoveRange(lastField, readRelation.BaseSchema.Names.Count - lastField);
+                    readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                }
             }
             return readRelation;
         }

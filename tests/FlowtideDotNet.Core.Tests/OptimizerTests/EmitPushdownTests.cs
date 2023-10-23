@@ -367,5 +367,75 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                     }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
                 );
         }
+
+        [Fact]
+        public void ReadRelationProjectionEmitEnd()
+        {
+            var plan = new Plan()
+            {
+                Relations = new List<Substrait.Relations.Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Emit = new List<int>(){0, 1, 3, 5},
+                        Input = new ReadRelation()
+                        {
+                            NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                            BaseSchema = new Substrait.Type.NamedStruct()
+                            {
+                                Names = new List<string>() { "Col1", "Col2", "Col3", "Col4", "Col5", "Col6"},
+                                Struct = new Substrait.Type.Struct()
+                                {
+                                    Types = new List<Substrait.Type.SubstraitBaseType>()
+                                    {
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var optimizedPlan = EmitPushdown.Optimize(plan);
+
+            optimizedPlan.Should()
+                .BeEquivalentTo(
+                    new Plan()
+                    {
+                        Relations = new List<Substrait.Relations.Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){0, 1, 2, 3},
+                            Input = new ReadRelation()
+                            {
+                                Emit = new List<int>(){ 0, 1, 2, 3},
+                                NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                                BaseSchema = new Substrait.Type.NamedStruct()
+                                {
+                                    Names = new List<string>() { "Col1", "Col2", "Col4", "Col6" },
+                                    Struct = new Substrait.Type.Struct()
+                                    {
+                                        Types = new List<Substrait.Type.SubstraitBaseType>()
+                                        {
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
+                );
+        }
     }
 }
