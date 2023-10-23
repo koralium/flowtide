@@ -42,7 +42,8 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         private IngressState<TData>? _ingressState;
         private readonly Dictionary<int, Task> _runningTasks;
         private ILogger? _logger;
-        
+        private bool _isHealthy = true;
+
         public string Name { get; private set; }
 
         protected string StreamName { get; private set; }
@@ -307,12 +308,22 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 return 0.0M;
             });
 
+            Metrics.CreateObservableGauge("health", () =>
+            {
+                return _isHealthy ? 1 : 0;
+            });
+
             await InitializeOrRestore(restoreTime, dState, vertexHandler.StateClient);
 
             lock(_stateLock)
             {
                 _ingressState._taskEnabled = true;
             }
+        }
+
+        protected void SetHealth(bool healthy)
+        {
+            _isHealthy = healthy;
         }
 
         protected abstract Task InitializeOrRestore(long restoreTime, TState? state, IStateManagerClient stateManagerClient);

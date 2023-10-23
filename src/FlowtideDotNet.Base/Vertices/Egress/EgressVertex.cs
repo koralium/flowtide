@@ -27,6 +27,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private Action<string>? _checkpointDone;
         private readonly ExecutionDataflowBlockOptions _executionDataflowBlockOptions;
         private IEgressImplementation? _targetBlock;
+        private bool _isHealthy = true;
 
         public string Name { get; private set; }
 
@@ -136,7 +137,17 @@ namespace FlowtideDotNet.Base.Vertices.Egress
                 return _targetBlock.InputQueue;
             });
 
+            Metrics.CreateObservableGauge("health", () =>
+            {
+                return _isHealthy ? 1 : 0;
+            });
+
             return InitializeOrRestore(restoreTime, dState, vertexHandler.StateClient);
+        }
+
+        protected void SetHealth(bool healthy)
+        {
+            _isHealthy = healthy;
         }
 
         protected abstract Task InitializeOrRestore(long restoreTime, TState? state, IStateManagerClient stateManagerClient);
