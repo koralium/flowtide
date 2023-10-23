@@ -10,18 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Substrait.Sql.Internal
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Substrait.Sql
 {
-    internal class TableMetadata
+    public interface ITableProvider
     {
-        public TableMetadata(string name, List<string> columns)
-        {
-            Name = name;
-            Columns = columns;
-        }
-
-        public string Name { get; }
-
-        public List<string> Columns { get; }
+        bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata);
     }
 }

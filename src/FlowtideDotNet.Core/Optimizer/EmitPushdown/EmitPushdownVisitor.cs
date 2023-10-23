@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Relations;
+using System.ComponentModel.DataAnnotations;
 
 namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 {
@@ -21,6 +22,32 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
         public EmitPushdownVisitor(Dictionary<int, List<ReferenceRelation>> referenceRelations)
         {
             this.referenceRelations = referenceRelations;
+        }
+
+        public override Relation VisitReadRelation(ReadRelation readRelation, object state)
+        {
+            // If emit is set, filter out the struct of the table to only select the fields that are needed
+            Dictionary<int, int>? newMappings = default;
+            if (readRelation.EmitSet)
+            {
+                newMappings = new Dictionary<int, int>();
+                int relativeOffset = 0;
+                int lastField = 0;
+                for (int i = 0; i < readRelation.Emit.Count; i++)
+                {
+                    var emitField = readRelation.Emit[i] - relativeOffset;
+                    for (int k = lastField; k < emitField; k++)
+                    {
+                        readRelation.BaseSchema.Names.RemoveAt(lastField);
+                        readRelation.BaseSchema.Struct.Types.RemoveAt(lastField);
+                        relativeOffset++;
+                    }
+                    newMappings.Add(readRelation.Emit[i], i);
+                    lastField = readRelation.Emit[i] - relativeOffset + 1;
+                    readRelation.Emit[i] = i;
+                }
+            }
+            return readRelation;
         }
 
         public override Relation VisitProjectRelation(ProjectRelation projectRelation, object state)
@@ -34,9 +61,12 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 var input = projectRelation.Input;
 
                 var usageVisitor = new ExpressionFieldUsageVisitor(projectRelation.Input.OutputLength);
-                foreach(var expr in projectRelation.Expressions)
+                if (projectRelation.Expressions != null)
                 {
-                    usageVisitor.Visit(expr, default);
+                    foreach (var expr in projectRelation.Expressions)
+                    {
+                        usageVisitor.Visit(expr, default);
+                    }
                 }
 
                 if (!usageVisitor.CanOptimize)
@@ -53,7 +83,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                         if (field < input.OutputLength)
                         {
                             // Add all fields that are in the emit that are from the input
-                            usedFields.Add(field);
+                            if (!usedFields.Contains(field))
+                            {
+                                usedFields.Add(field);
+                            }
                         }
                     }
                 }
@@ -74,16 +107,35 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                         count++;
                     }
                     var replaceVisitor = new ExpressionFieldReplaceVisitor(oldToNew);
-                    foreach (var expr in projectRelation.Expressions)
+                    if (projectRelation.Expressions != null)
                     {
-                        replaceVisitor.Visit(expr, default);
+                        foreach (var expr in projectRelation.Expressions)
+                        {
+                            replaceVisitor.Visit(expr, default);
+                        }
                     }
+                    
                     if (projectRelation.EmitSet)
                     {
                         var diff = input.OutputLength - emit.Count;
                         for (int i = 0; i < projectRelation.Emit.Count; i++)
                         {
-                            projectRelation.Emit[i] = projectRelation.Emit[i] - diff;
+                            if (projectRelation.Emit[i] >= input.OutputLength)
+                            {
+                                projectRelation.Emit[i] = projectRelation.Emit[i] - diff;
+                            }
+                            else
+                            {
+                                if (oldToNew.TryGetValue(projectRelation.Emit[i], out var newMapping))
+                                {
+                                    projectRelation.Emit[i] = newMapping;
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException("Could not find new mapping during optmization.");
+                                }
+                            }
+                            
                         }
                     }
 
