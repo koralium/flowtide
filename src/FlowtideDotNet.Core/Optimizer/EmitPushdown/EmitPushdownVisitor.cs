@@ -46,6 +46,11 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                     lastField = readRelation.Emit[i] - relativeOffset + 1;
                     readRelation.Emit[i] = i;
                 }
+                if (lastField < readRelation.BaseSchema.Names.Count)
+                {
+                    readRelation.BaseSchema.Names.RemoveRange(lastField, readRelation.BaseSchema.Names.Count - lastField);
+                    readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                }
             }
             return readRelation;
         }
