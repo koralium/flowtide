@@ -133,9 +133,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 await allInput.FlushAsync();
 #endif
                 _state.ChangeTrackingVersion = changeVersion;
+                SetHealth(true);
             }
             catch(Exception ex)
             {
+                SetHealth(false);
                 Logger.LogWarning(ex, "Exception fetching changes, will try again in 5 seconds");
                 await sqlConnection.DisposeAsync();
 
@@ -267,9 +269,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             await output.SendAsync(new StreamEventBatch(null, outdata));
                         }
                         retryCount = 0;
+                        SetHealth(true);
                     }
                     catch(Exception e)
                     {
+                        SetHealth(false);
                         Logger.LogError(e, "Error reading data from sql server.");
 
                         var waitTime = TimeSpan.FromSeconds(retryCount * 15);

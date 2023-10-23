@@ -43,6 +43,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private readonly int targetCount;
         private readonly ExecutionDataflowBlockOptions executionDataflowBlockOptions;
         private readonly List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)> _links = new List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)>();
+        private bool _isHealthy = true;
 
         private string? _name;
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
@@ -418,9 +419,18 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 Debug.Assert(_transformBlock != null, nameof(_transformBlock));
                 return ((decimal)_transformBlock.OutputCount) / executionDataflowBlockOptions.BoundedCapacity;
             });
+            Metrics.CreateObservableGauge("health", () =>
+            {
+                return _isHealthy ? 1 : 0;
+            });
 
             _currentTime = newTime;
             return InitializeOrRestore(parsedState, vertexHandler.StateClient);
+        }
+
+        protected void SetHealth(bool healthy)
+        {
+            _isHealthy = healthy;
         }
 
         protected abstract Task InitializeOrRestore(TState? state, IStateManagerClient stateManagerClient);

@@ -15,6 +15,8 @@ using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Sql;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using SqlSampleWithUI;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -63,7 +65,17 @@ builder.Services.AddFlowtideStream(b =>
     });
 });
 
+builder.Services.AddHealthChecks()
+    .AddFlowtideCheck();
+
 var app = builder.Build();
+app.UseHealthChecks("/health", new HealthCheckOptions()
+{
+    Predicate = _ => true
+});
+
 app.UseFlowtideUI("/");
+
+
 
 app.Run();
