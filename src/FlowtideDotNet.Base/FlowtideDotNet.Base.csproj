@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="App.Metrics" Version="4.3.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\FlowtideDotNet.Storage\FlowtideDotNet.Storage.csproj" />
   </ItemGroup>
 </Project>

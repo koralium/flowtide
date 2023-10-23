@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using App.Metrics;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -61,12 +60,6 @@ namespace FlowtideDotNet.Core.Engine
         {
             dataflowStreamBuilder.WithStateHandler(stateHandler);
             _stateHandler = stateHandler;
-            return this;
-        }
-
-        public FlowtideBuilder WithMetrics(IMetricsRoot metricsRoot)
-        {
-            dataflowStreamBuilder.WithMetrics(metricsRoot);
             return this;
         }
 
