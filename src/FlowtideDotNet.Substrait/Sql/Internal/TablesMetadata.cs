@@ -10,17 +10,54 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {
     internal class TablesMetadata
     {
-        private readonly Dictionary<string, TableMetadata> _tables = new Dictionary<string, TableMetadata>();
+        /// <summary>
+        /// Cache of all known tables
+        /// </summary>
+        private readonly Dictionary<string, TableMetadata> _tables;
 
-        internal IReadOnlyDictionary<string, TableMetadata> Tables => _tables;
+        /// <summary>
+        /// List of table providers to use to get table information
+        /// </summary>
+        private readonly List<ITableProvider> _tableProviders;
+
+        public TablesMetadata()
+        {
+            _tables = new Dictionary<string, TableMetadata>(StringComparer.OrdinalIgnoreCase);
+            _tableProviders = new List<ITableProvider>();
+        }
 
         public void AddTable(string name, IEnumerable<string> columnNames)
         {
             _tables.Add(name, new TableMetadata(name, columnNames.ToList()));
+        }
+
+        public void AddTableProvider(ITableProvider tableProvider)
+        {
+            _tableProviders.Add(tableProvider);
+        }
+
+        public bool TryGetTable(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        {
+            if (_tables.TryGetValue(tableName, out tableMetadata))
+            {
+                return true;
+            }
+            foreach(var tableProvider in _tableProviders)
+            {
+                if (tableProvider.TryGetTableInformation(tableName, out tableMetadata))
+                {
+                    _tables.TryAdd(tableName, tableMetadata);
+                    return true;
+                }
+            }
+            tableMetadata = default;
+            return false;
         }
     }
 }

@@ -31,6 +31,11 @@ namespace FlowtideDotNet.Substrait.Sql
             _tablesMetadata.AddTable(name, columnNames);
         }
 
+        public void AddTableProvider(ITableProvider tableProvider)
+        {
+            _tablesMetadata.AddTableProvider(tableProvider);
+        }
+
         public void Sql(string sqlText)
         {
             var statements = _parser.ParseSql(sqlText, new FlowtideDialect());

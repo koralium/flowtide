@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         public EmitData()
         {
             emitList = new Dictionary<Expression, EmitInformation>();
-            compundIdentifiers = new SortedDictionary<string, Expression.CompoundIdentifier>();
+            compundIdentifiers = new SortedDictionary<string, Expression.CompoundIdentifier>(StringComparer.OrdinalIgnoreCase);
             _names = new List<string>();
         }
 
@@ -140,6 +140,25 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 index = emitInfo.Index.First();
                 return true;
             }
+
+            // If it is a compound identifier, we can try to look for it with case insensitive lookup
+            if (expression is Expression.CompoundIdentifier compoundIndentifier)
+            {
+                var textString = compoundIndentifier.ToSql();
+                if (compundIdentifiers.TryGetValue(textString, out var compoundIdentifier))
+                {
+                    if (emitList.TryGetValue(compoundIdentifier, out var emitInfo2))
+                    {
+                        if (emitInfo2.Index.Count > 1)
+                        {
+                            throw new InvalidOperationException($"Multiple matches for expression: '{expression.ToSql()}'");
+                        }
+                        index = emitInfo2.Index.First();
+                        return true;
+                    }
+                }
+            }
+
             index = -1;
             return false;
         }

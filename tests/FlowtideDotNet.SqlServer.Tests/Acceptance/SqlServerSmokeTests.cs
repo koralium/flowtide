@@ -14,6 +14,12 @@ using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Tests.SmokeTests;
 using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
+using FlowtideDotNet.Substrait.Sql;
+using FluentAssertions;
+using FlowtideDotNet.Substrait;
+using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 {
@@ -59,6 +65,67 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
         public override async Task UpdateShipmodes(IEnumerable<Shipmode> shipmode)
         {
             await sqlServerFixture.dbContext.BulkUpdateAsync(shipmode);
+        }
+
+        [Fact]
+        public void TestSqlTableProvider()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.AddSqlServerProvider(() => sqlServerFixture.ConnectionString);
+            sqlPlanBuilder.Sql("SELECT orderKey FROM tpch.dbo.orders");
+            var plan = sqlPlanBuilder.GetPlan();
+
+            plan.Should().BeEquivalentTo(
+                new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>() { 9 },
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                }
+                            },
+                            Input = new ReadRelation()
+                            {
+                                NamedTable = new NamedTable()
+                                {
+                                    Names = new List<string>() { "tpch.dbo.orders" }
+                                },
+                                BaseSchema = new Substrait.Type.NamedStruct()
+                                {
+                                    Names = new List<string>()
+                                    {
+                                        "Orderkey", "Custkey", "Orderstatus", "Totalprice", "Orderdate", "Orderpriority", "Clerk", "Shippriority", "Comment"
+                                    },
+                                    Struct = new Substrait.Type.Struct()
+                                    {
+                                        Types = new List<Substrait.Type.SubstraitBaseType>()
+                                        {
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
+                );
         }
     }
 }

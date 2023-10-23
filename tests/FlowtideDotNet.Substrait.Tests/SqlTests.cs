@@ -19,6 +19,7 @@ using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Sql.Internal;
 using FlowtideDotNet.Substrait.Type;
 using FluentAssertions;
+using SqlParser;
 
 namespace FlowtideDotNet.Substrait.Tests
 {
@@ -40,7 +41,7 @@ namespace FlowtideDotNet.Substrait.Tests
                 );
             ");
 
-            var exists = builder._tablesMetadata.Tables.TryGetValue("testtable", out var table);
+            var exists = builder._tablesMetadata.TryGetTable("testtable", out var table);
             Assert.True(exists);
 
             table.Should().BeEquivalentTo(
@@ -183,7 +184,7 @@ namespace FlowtideDotNet.Substrait.Tests
             CREATE VIEW testview AS
             SELECT c1 FROM testtable;
 
-            SELECT c1 from testview;
+            SELECT c1 FROM testview;
             ");
 
             var plan = builder.GetPlan();
@@ -989,7 +990,72 @@ namespace FlowtideDotNet.Substrait.Tests
             var b2plan = b2.GetPlan();
 
             b2plan.Should().BeEquivalentTo(b1plan, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+        }
 
+        private sealed class TestTableProvider : ITableProvider
+        {
+            public bool TryGetTableInformation(string tableName, out TableMetadata? tableMetadata)
+            {
+                if (tableName.Equals("testtable", StringComparison.OrdinalIgnoreCase))
+                {
+                    tableMetadata = new TableMetadata("testtable", new List<string>() { "c1", "c2" });
+                    return true;
+                }
+                tableMetadata = default;
+                return false;
+            }
+        }
+
+        [Fact]
+        public void TableProviderTest()
+        {
+            SqlPlanBuilder tmpBuilder = new SqlPlanBuilder();
+            tmpBuilder.AddTableProvider(new TestTableProvider());
+            tmpBuilder.Sql(@"
+                SELECT c1, c2 FROM testtable
+            ");
+
+            var plan = tmpBuilder.GetPlan();
+
+            plan.Should().BeEquivalentTo(
+                new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){2,3},
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 1
+                                    }
+                                }
+                            },
+                            Input = new ReadRelation()
+                            {
+                                BaseSchema = new Type.NamedStruct(){
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
+                                NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                            }
+                        }
+                    }
+                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
         }
     }
 }
