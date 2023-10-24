@@ -26,6 +26,8 @@ namespace FlowtideDotNet.Base.Engine
 
         public StreamStateValue State => streamContext.currentState;
 
+        public StreamStatus Status => streamContext.GetStatus();
+
         public Task StartAsync()
         {
             return streamContext.StartAsync();

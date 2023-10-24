@@ -30,45 +30,22 @@ namespace FlowtideDotNet.AspNetCore.HealthCheck
         }
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
-            var graph = dataflowStream.GetDiagnosticsGraph();
-            if (graph.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running)
+            var status = dataflowStream.Status;
+
+            switch (status)
             {
-                bool degraded = false;
-                string? desc = default;
-                foreach(var node in graph.Nodes)
-                {
-                    foreach(var gauge in node.Value.Gauges)
-                    {
-                        if (gauge.Name == "health")
-                        {
-                            if(gauge.Dimensions.TryGetValue(string.Empty, out var val))
-                            {
-                                if (val.Value != 1)
-                                {
-                                    desc = $"Operator '{node.Value.OperatorName}:{node.Value.DisplayName}' is unhealthy";
-                                    degraded = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                if (degraded)
-                {
-                    return Task.FromResult(new HealthCheckResult(HealthStatus.Degraded, desc));
-                }
-                else
-                {
+                case StreamStatus.Failing:
+                    return Task.FromResult(new HealthCheckResult(HealthStatus.Unhealthy, "Stream is in state 'failing'."));
+                case StreamStatus.Running:
                     return Task.FromResult(new HealthCheckResult(HealthStatus.Healthy));
-                }
-            }
-            else if (graph.State == Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
-            {
-                return Task.FromResult(new HealthCheckResult(HealthStatus.Unhealthy, "Stream is in state 'failure'."));
-            }
-            else
-            {
-                return Task.FromResult(new HealthCheckResult(HealthStatus.Degraded, $"Stream is in state '{graph.State.ToString()}'."));
+                case StreamStatus.Starting:
+                    return Task.FromResult(new HealthCheckResult(HealthStatus.Degraded, "Stream is in state 'starting'."));
+                case StreamStatus.Stopped:
+                    return Task.FromResult(new HealthCheckResult(HealthStatus.Unhealthy, "Stream is in state 'stopped'."));
+                case StreamStatus.Degraded:
+                    return Task.FromResult(new HealthCheckResult(HealthStatus.Degraded, "Stream is in state 'degraded'."));
+                default:
+                    return Task.FromResult(new HealthCheckResult(HealthStatus.Degraded, "Stream is in unknown state."));
             }
         }
     }
