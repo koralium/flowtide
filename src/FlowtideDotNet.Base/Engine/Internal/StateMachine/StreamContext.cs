@@ -66,6 +66,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal StreamStateValue currentState;
 
+        /// <summary>
+        /// Flag that tells if the stream has failed once
+        /// </summary>
+        private bool _hasFailed = false;
+
         internal FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState> _stateManager;
         internal readonly ILogger<StreamContext> _logger;
         
@@ -168,6 +173,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 case StreamStateValue.Starting:
                     return TransitionTo(current, new StartStreamState());
                 case StreamStateValue.Failure:
+                    _hasFailed = true;
                     return TransitionTo(current, new FailureStreamState());
                 case StreamStateValue.Running:
                     return TransitionTo(current, new RunningStreamState());
@@ -458,6 +464,33 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
 
             return new StreamGraph(nodes, edges, currentState);
+        }
+
+        internal StreamStatus GetStatus()
+        {
+            switch (currentState)
+            {
+                case StreamStateValue.NotStarted:
+                    return StreamStatus.Stopped;
+                case StreamStateValue.Starting:
+                    if (_hasFailed)
+                    {
+                        return StreamStatus.Failing;
+                    }
+                    return StreamStatus.Starting;
+                case StreamStateValue.Running:
+                    var graph = GetGraph();
+                    var hasDegradedNode = graph.Nodes.Any(x => x.Value.Gauges.Any(y => y.Name == "health" && y.Dimensions[""].Value != 1));
+                    if (hasDegradedNode)
+                    {
+                        return StreamStatus.Degraded;
+                    }
+                    return StreamStatus.Running;
+                case StreamStateValue.Failure:
+                    return StreamStatus.Failing;
+                default:
+                    return StreamStatus.Degraded;
+            }
         }
     }
 }

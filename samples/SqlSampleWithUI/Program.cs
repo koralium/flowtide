@@ -69,10 +69,7 @@ builder.Services.AddHealthChecks()
     .AddFlowtideCheck();
 
 var app = builder.Build();
-app.UseHealthChecks("/health", new HealthCheckOptions()
-{
-    Predicate = _ => true
-});
+app.UseHealthChecks("/health");
 
 app.UseFlowtideUI("/");
 
