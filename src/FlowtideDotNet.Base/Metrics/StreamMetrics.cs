@@ -145,6 +145,14 @@ namespace FlowtideDotNet.Base.Metrics
                 var operatorName = instrument.Meter.Name.Substring(streamPrefix.Length);
                 var innerType = instrument.GetType().GetGenericArguments()[0];
 
+                var key = $"{instrument.Meter.Name}.{instrument.Name}";
+
+                // Do not create more instruments that already exist
+                if (_instruments.ContainsKey(key))
+                {
+                    return;
+                }
+
                 if (typeDefinition.Equals(typeof(Counter<>)))
                 {
                     AddCounter(innerType, operatorName, instrument, meterListener);

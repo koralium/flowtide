@@ -33,12 +33,12 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 
         public override async Task AddLineItems(IEnumerable<LineItem> lineItems)
         {
-            await sqlServerFixture.dbContext.BulkInsertAsync(lineItems);
+            await sqlServerFixture.DbContext.BulkInsertAsync(lineItems);
         }
 
         public override async Task AddOrders(IEnumerable<Order> orders)
         {
-            await sqlServerFixture.dbContext.BulkInsertAsync(orders);
+            await sqlServerFixture.DbContext.BulkInsertAsync(orders);
         }
 
         public override void AddReadResolvers(ReadWriteFactory readWriteFactory)
@@ -52,19 +52,20 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 
         public override async Task AddShipmodes(IEnumerable<Shipmode> shipmodes)
         {
-            await sqlServerFixture.dbContext.BulkInsertAsync(shipmodes);
+            await sqlServerFixture.DbContext.BulkInsertAsync(shipmodes);
         }
 
         public override async Task ClearAllTables()
         {
-            await sqlServerFixture.dbContext.LineItems.ExecuteDeleteAsync();
-            await sqlServerFixture.dbContext.Orders.ExecuteDeleteAsync();
-            await sqlServerFixture.dbContext.Shipmodes.ExecuteDeleteAsync();
+            var context = sqlServerFixture.DbContext;
+            await context.LineItems.ExecuteDeleteAsync();
+            await context.Orders.ExecuteDeleteAsync();
+            await context.Shipmodes.ExecuteDeleteAsync();
         }
 
         public override async Task UpdateShipmodes(IEnumerable<Shipmode> shipmode)
         {
-            await sqlServerFixture.dbContext.BulkUpdateAsync(shipmode);
+            await sqlServerFixture.DbContext.BulkUpdateAsync(shipmode);
         }
 
         [Fact]
@@ -126,6 +127,16 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                     },
                 }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
                 );
+        }
+
+        public override Task Crash()
+        {
+            return sqlServerFixture.StopAsync();
+        }
+
+        public override Task Restart()
+        {
+            return sqlServerFixture.StartAsync();
         }
     }
 }
