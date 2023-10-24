@@ -19,6 +19,7 @@ using FlowtideDotNet.Core.Tests.SmokeTests.LineItemLeftJoinOrders;
 using FlowtideDotNet.Core.Tests.SmokeTests.StringJoin;
 using FASTER.core;
 using FluentAssertions;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Tests.SmokeTests
 {
@@ -241,6 +242,10 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
         public abstract Task AddShipmodes(IEnumerable<Shipmode> shipmodes);
 
         public abstract Task UpdateShipmodes(IEnumerable<Shipmode> shipmode);
+
+        public abstract Task Crash();
+
+        public abstract Task Restart();
 
         [Fact]
         public async Task LineItemInnerJoinOrders()
@@ -599,6 +604,64 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             };
             Assert.Single(actualData);
             actualData[0].Should().BeEquivalentTo(expectedData);
+        }
+
+        [Fact]
+        public async Task InnerJoinWithCrash()
+        {
+            var truck = TpchData.GetShipmodes().First(x => x.Mode == "TRUCK");
+            await AddLineItems(new List<LineItem>() { TpchData.GetLineItems().First(x => x.Shipmode == "TRUCK") });
+
+            List<StringJoinResult>? actualData = default;
+            await StartStream<StringJoinResult>("./SmokeTests/StringJoin/queryplan.json", rows =>
+            {
+                actualData = rows;
+            });
+
+            while (changesCounter < 1)
+            {
+                await _streamScheduler.Tick();
+                await Task.Delay(TimeSpan.FromMilliseconds(10));
+            }
+
+            await Crash();
+
+            var graph = dataflowStream.GetDiagnosticsGraph();
+            while (dataflowStream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            {
+                graph = dataflowStream.GetDiagnosticsGraph();
+                await _streamScheduler.Tick();
+                await Task.Delay(TimeSpan.FromMilliseconds(10));
+            }
+
+            await Restart();
+
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            while (true)
+            {
+                if (dataflowStream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running)
+                {
+                    graph = dataflowStream.GetDiagnosticsGraph();
+                    graph.Nodes.TryGetValue("3", out var node1);
+                    graph.Nodes.TryGetValue("5", out var node2);
+                    var node1Health = node1!.Gauges.FirstOrDefault(x => x.Name == "health")!.Dimensions[""].Value;
+                    var node2Health = node2!.Gauges.FirstOrDefault(x => x.Name == "health")!.Dimensions[""].Value;
+
+                    if (node1Health == 1 && node2Health == 1)
+                    {
+                        break;
+                    }
+                }
+
+                if (stopwatch.Elapsed > TimeSpan.FromSeconds(60))
+                {
+                    Assert.Fail("Timed out waiting for stream to become healthy");
+                }
+
+                await _streamScheduler.Tick();
+                await Task.Delay(TimeSpan.FromMilliseconds(10));
+            }
         }
     }
 }

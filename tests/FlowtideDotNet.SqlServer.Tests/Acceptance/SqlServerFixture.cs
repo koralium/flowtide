@@ -20,14 +20,35 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
     public class SqlServerFixture : IAsyncLifetime
     {
         MsSqlContainer _msSqlContainer;
-        public TpchDbContext dbContext;
+        private TpchDbContext dbContext;
         public SqlServerFixture()
         {
             _msSqlContainer = new MsSqlBuilder()
                 .Build();
         }
 
-        public string ConnectionString { get; private set; }
+        public string ConnectionString
+        {
+            get
+            {
+                var connectionStringBuilder = new SqlConnectionStringBuilder(_msSqlContainer.GetConnectionString());
+                connectionStringBuilder.InitialCatalog = "tpch";
+                var tpchConnectionString = connectionStringBuilder.ToString();
+                return  tpchConnectionString;
+
+            }
+        }
+
+        public TpchDbContext DbContext
+        {
+            get
+            {
+                var optionsBuilder = new DbContextOptionsBuilder<TpchDbContext>();
+                optionsBuilder.UseSqlServer(ConnectionString, b => b.MigrationsAssembly("FlowtideDotNet.SqlServer.Tests"));
+                dbContext = new TpchDbContext(optionsBuilder.Options);
+                return dbContext;
+            }
+        }
 
         public async Task DisposeAsync()
         {
@@ -69,7 +90,6 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             var connectionStringBuilder = new SqlConnectionStringBuilder(connstr);
             connectionStringBuilder.InitialCatalog = "tpch";
             var tpchConnectionString = connectionStringBuilder.ToString();
-            ConnectionString = tpchConnectionString;
 
             optionsBuilder.UseSqlServer(tpchConnectionString, b => b.MigrationsAssembly("FlowtideDotNet.SqlServer.Tests"));
             dbContext = new TpchDbContext(optionsBuilder.Options);
