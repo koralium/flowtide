@@ -1,0 +1,9 @@
+{
+    "label": "Monitoring",
+    "position": 4,
+    "link": {
+      "type": "generated-index",
+      "description": "This section describes the different monitoring options of Flowtide."
+    }
+  }
+  
