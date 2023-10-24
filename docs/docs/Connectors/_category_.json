@@ -1,0 +1,9 @@
+{
+    "label": "Connectors",
+    "position": 3,
+    "link": {
+      "type": "generated-index",
+      "description": "This page shows the different available connectors."
+    }
+  }
+  
