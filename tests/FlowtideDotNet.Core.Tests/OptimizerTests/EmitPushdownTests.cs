@@ -14,7 +14,7 @@ using FlowtideDotNet.Core.Optimizer.EmitPushdown;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.Literals;
-using FlowtideDotNet.Substrait.Expressions.ScalarFunctions;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using FluentAssertions;
@@ -106,16 +106,21 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         Emit = new List<int>(){0, 1, 3, 5},
                         Input = new ReadRelation()
                         {
-                            Filter = new BooleanComparison()
+                            Filter = new ScalarFunction()
                             {
-                                Left = new DirectFieldReference()
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.Equal,
+                                Arguments = new List<Expression>()
                                 {
-                                    ReferenceSegment = new StructReferenceSegment()
+                                    new DirectFieldReference()
                                     {
-                                        Field = 3
-                                    }
-                                },
-                                Right = new StringLiteral() { Value = "test" },
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 3
+                                        }
+                                    },
+                                    new StringLiteral() { Value = "test" }
+                                }
                             },
                             NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
                             BaseSchema = new Substrait.Type.NamedStruct()
@@ -152,16 +157,21 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             Emit = new List<int>(){0, 1, 2, 3},
                             Input = new ReadRelation()
                             {
-                                Filter = new BooleanComparison()
+                                Filter = new ScalarFunction()
                                 {
-                                    Left = new DirectFieldReference()
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.Equal,
+                                    Arguments = new List<Expression>()
                                     {
-                                        ReferenceSegment = new StructReferenceSegment()
+                                        new DirectFieldReference()
                                         {
-                                            Field = 2
-                                        }
-                                    },
-                                    Right = new StringLiteral() { Value = "test" },
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = 2
+                                            }
+                                        },
+                                        new StringLiteral() { Value = "test" }
+                                    }
                                 },
                                 Emit = new List<int>(){ 0, 1, 2, 3},
                                 NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
@@ -198,16 +208,21 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         Emit = new List<int>(){0, 1, 3, 5},
                         Input = new ReadRelation()
                         {
-                            Filter = new BooleanComparison()
+                            Filter = new ScalarFunction()
                             {
-                                Left = new DirectFieldReference()
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.Equal,
+                                Arguments = new List<Expression>()
                                 {
-                                    ReferenceSegment = new StructReferenceSegment()
+                                    new DirectFieldReference()
                                     {
-                                        Field = 4
-                                    }
-                                },
-                                Right = new StringLiteral() { Value = "test" },
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 4
+                                        }
+                                    },
+                                    new StringLiteral() { Value = "test" }
+                                }
                             },
                             NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
                             BaseSchema = new Substrait.Type.NamedStruct()
@@ -244,16 +259,21 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             Emit = new List<int>(){0, 1, 2, 3},
                             Input = new ReadRelation()
                             {
-                                Filter = new BooleanComparison()
+                                Filter = new ScalarFunction()
                                 {
-                                    Left = new DirectFieldReference()
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.Equal,
+                                    Arguments = new List<Expression>()
                                     {
-                                        ReferenceSegment = new StructReferenceSegment()
+                                        new DirectFieldReference()
                                         {
-                                            Field = 3
-                                        }
-                                    },
-                                    Right = new StringLiteral() { Value = "test" },
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = 3
+                                            }
+                                        },
+                                        new StringLiteral() { Value = "test" }
+                                    }
                                 },
                                 Emit = new List<int>(){ 0, 1, 2, 4},
                                 NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },

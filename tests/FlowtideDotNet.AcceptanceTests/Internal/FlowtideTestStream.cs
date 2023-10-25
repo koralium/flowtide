@@ -15,6 +15,7 @@ using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
@@ -32,10 +33,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly object _lock = new object();
         private List<byte[]>? _actualData;
         int updateCounter = 0;
+        FlowtideBuilder flowtideBuilder;
 
         public IReadOnlyList<User> Users  => generator.Users;
 
         public IReadOnlyList<Order> Orders => generator.Orders;
+
+        public IFunctionsRegister FunctionsRegister => flowtideBuilder.FunctionsRegister;
 
         public FlowtideTestStream()
         {
@@ -43,6 +47,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator = new DatasetGenerator(_db);
             sqlPlanBuilder = new SqlPlanBuilder();
             sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+            flowtideBuilder = new FlowtideBuilder("stream");
         }
 
         public void Generate(int count = 1000)
@@ -62,7 +67,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     return new MockDataSink(opt, OnDataUpdate);
                 });
 
-            FlowtideBuilder flowtideBuilder = new FlowtideBuilder("stream")
+            flowtideBuilder
                 .AddPlan(plan)
                 .AddReadWriteFactory(factory)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()

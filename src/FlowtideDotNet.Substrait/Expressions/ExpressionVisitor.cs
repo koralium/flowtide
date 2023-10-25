@@ -10,10 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Substrait.Expressions.Functions;
+
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
-using FlowtideDotNet.Substrait.Expressions.ScalarFunctions;
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
@@ -24,24 +23,8 @@ namespace FlowtideDotNet.Substrait.Expressions
             return expression.Accept(this, state);
         }
 
-        public virtual TOutput? VisitEqualsFunction(EqualsFunction equalsFunction, TState state)
-        {
-            equalsFunction.Left.Accept(this, state);
-            equalsFunction.Right.Accept(this, state);
-            return default;
-        }
-
         public virtual TOutput? VisitDirectFieldReference(DirectFieldReference directFieldReference, TState state)
         {
-            return default;
-        }
-
-        public virtual TOutput? VisitAndFunction(AndFunction andFunction, TState state)
-        {
-            foreach(var arg in andFunction.Arguments)
-            {
-                arg.Accept(this, state);
-            }
             return default;
         }
 
@@ -50,48 +33,9 @@ namespace FlowtideDotNet.Substrait.Expressions
             return default;
         }
 
-        public virtual TOutput? VisitOrFunction(OrFunction orFunction, TState state)
-        {
-            foreach(var arg in orFunction.Arguments)
-            {
-                arg.Accept(this, state);
-            }
-            return default;
-        }
-
-        public virtual TOutput? VisitGetDateTimeFunction(GetDateTimeFunction getDateTimeFunction, TState state)
-        {
-            return default;
-        }
-
-        public virtual TOutput? VisitBooleanComparison(BooleanComparison booleanComparison, TState state)
-        {
-            booleanComparison.Left.Accept(this, state);
-            booleanComparison.Right.Accept(this, state);
-            return default;
-        }
-
-        public virtual TOutput? VisitConcatFunction(ConcatFunction concatFunction, TState state)
-        {
-            foreach(var expr in concatFunction.Expressions)
-            {
-                expr.Accept(this, state);
-            }
-            return default;
-        }
-
         public virtual TOutput? VisitArrayLiteral(ArrayLiteral arrayLiteral, TState state)
         {
             foreach (var expr in arrayLiteral.Expressions)
-            {
-                expr.Accept(this, state);
-            }
-            return default;
-        }
-
-        public virtual TOutput? VisitMakeArrayFunction(MakeArrayFunction makeArrayFunction, TState state)
-        {
-            foreach (var expr in makeArrayFunction.Expressions)
             {
                 expr.Accept(this, state);
             }
@@ -125,14 +69,20 @@ namespace FlowtideDotNet.Substrait.Expressions
             return default;
         }
 
-        public virtual TOutput? VisitIsNotNull(IsNotNullFunction isNotNullFunction, TState state)
+        public virtual TOutput? VisitBoolLiteral(BoolLiteral boolLiteral, TState state)
         {
-            isNotNullFunction.Expression.Accept(this, state);
             return default;
         }
 
-        public virtual TOutput? VisitBoolLiteral(BoolLiteral boolLiteral, TState state)
+        public virtual TOutput? VisitScalarFunction(ScalarFunction scalarFunction, TState state)
         {
+            if (scalarFunction.Arguments != null)
+            {
+                foreach(var arg in scalarFunction.Arguments)
+                {
+                    arg.Accept(this, state);
+                }
+            }
             return default;
         }
     }

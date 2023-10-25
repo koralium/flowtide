@@ -10,19 +10,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Substrait.Expressions.ScalarFunctions
+using FlexBuffers;
+
+namespace FlowtideDotNet.Core.Compute.Internal
 {
-    public class OrFunction : BooleanFunction
+    internal class FlxValueBoolFunctions
     {
-        public override BooleanFunctionType Type => BooleanFunctionType.Or;
-
-        public override string ExtensionUri => "/functions_boolean.yaml";
-
-        public override string ExtensionName => "or:bool";
-
-        public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
+        public static bool ToBool(FlxValue value)
         {
-            return visitor.VisitOrFunction(this, state);
+            if (value.ValueType == FlexBuffers.Type.Bool)
+            {
+                return value.AsBool;
+            }
+            if (value.ValueType == FlexBuffers.Type.Int)
+            {
+                return value.AsLong > 0;
+            }
+            return false;
         }
     }
 }

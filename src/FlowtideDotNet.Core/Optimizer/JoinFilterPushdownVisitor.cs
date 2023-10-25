@@ -12,9 +12,9 @@
 
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.Literals;
-using FlowtideDotNet.Substrait.Expressions.ScalarFunctions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Core.Optimizer.EmitPushdown;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 
 namespace FlowtideDotNet.Core.Optimizer
 {
@@ -52,33 +52,35 @@ namespace FlowtideDotNet.Core.Optimizer
                 }
             }
 
-            if (joinRelation.Expression is AndFunction andFunction)
+            if (joinRelation.Expression is ScalarFunction andFunctionScalar &&
+                andFunctionScalar.ExtensionUri == FunctionsBoolean.Uri &&
+                andFunctionScalar.ExtensionName == FunctionsBoolean.And)
             {
                 List<Expression> leftPushDown = new List<Expression>();
                 List<Expression> rightPushDown = new List<Expression>();
-                for (int i = 0; i < andFunction.Arguments.Count; i++)
+                for (int i = 0; i < andFunctionScalar.Arguments.Count; i++)
                 {
-                    var expr = andFunction.Arguments[i];
+                    var expr = andFunctionScalar.Arguments[i];
                     var andVisitor = new JoinExpressionVisitor(joinRelation.Left.OutputLength);
                     andVisitor.Visit(expr, state);
                     if (andVisitor.fieldInLeft && !andVisitor.fieldInRight)
                     {
                         leftPushDown.Add(expr);
-                        andFunction.Arguments.RemoveAt(i);
+                        andFunctionScalar.Arguments.RemoveAt(i);
                         i--;
                     }
                     // Only field in right is used
                     else if (!andVisitor.fieldInLeft && andVisitor.fieldInRight)
                     {
                         rightPushDown.Add(expr);
-                        andFunction.Arguments.RemoveAt(i);
+                        andFunctionScalar.Arguments.RemoveAt(i);
                         i--;
                     }
-                    if (andFunction.Arguments.Count == 1)
+                    if (andFunctionScalar.Arguments.Count == 1)
                     {
-                        joinRelation.Expression = andFunction.Arguments[0];
+                        joinRelation.Expression = andFunctionScalar.Arguments[0];
                     }
-                    else if(andFunction.Arguments.Count == 0)
+                    else if(andFunctionScalar.Arguments.Count == 0)
                     {
                         joinRelation.Expression = new BoolLiteral() { Value = true };
                     }
@@ -98,7 +100,7 @@ namespace FlowtideDotNet.Core.Optimizer
                     {
                         joinRelation.Left = new FilterRelation()
                         {
-                            Condition = new AndFunction() { Arguments = leftPushDown },
+                            Condition = new ScalarFunction() { ExtensionUri = FunctionsBoolean.Uri, ExtensionName = FunctionsBoolean.And, Arguments = leftPushDown },
                             Input = joinRelation.Left
                         };
                     }
@@ -137,7 +139,7 @@ namespace FlowtideDotNet.Core.Optimizer
                     {
                         joinRelation.Right = new FilterRelation()
                         {
-                            Condition = new AndFunction() { Arguments = rightPushDown },
+                            Condition = new ScalarFunction() { ExtensionUri = FunctionsBoolean.Uri, ExtensionName = FunctionsBoolean.And, Arguments = rightPushDown },
                             Input = joinRelation.Right
                         };
                     }

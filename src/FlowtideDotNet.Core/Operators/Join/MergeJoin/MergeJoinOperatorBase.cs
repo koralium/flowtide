@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.MultipleInput;
-using FlowtideDotNet.Core.Compute.Filter;
 using FlowtideDotNet.Core.Operators.Join.NestedLoopJoin;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
@@ -21,6 +20,8 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics.Metrics;
 using System.Buffers;
 using System.Diagnostics;
+using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.Compute;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -48,7 +49,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private StreamWriter outputWriter;
 #endif
 
-        public MergeJoinOperatorBase(MergeJoinRelation mergeJoinRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
+        public MergeJoinOperatorBase(MergeJoinRelation mergeJoinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
             
             this.mergeJoinRelation = mergeJoinRelation;
@@ -61,7 +62,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             if (mergeJoinRelation.PostJoinFilter != null)
             {
-                _postCondition = FilterCompiler.CompileJoinFilter<JoinStreamEvent>(mergeJoinRelation.PostJoinFilter, mergeJoinRelation.Left.OutputLength);
+                _postCondition = BooleanCompiler.Compile<JoinStreamEvent>(mergeJoinRelation.PostJoinFilter, functionsRegister, mergeJoinRelation.Left.OutputLength);
             }
             else
             {

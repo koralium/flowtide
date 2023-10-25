@@ -15,13 +15,14 @@ using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Substrait.Relations;
 using System.Text;
 using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Core.Compute.Filter;
 using System.Diagnostics.Metrics;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Serializers;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.Compute;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
@@ -43,12 +44,13 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         public NormalizationOperator(
             NormalizationRelation normalizationRelation, 
+            FunctionsRegister functionsRegister,
             ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this.normalizationRelation = normalizationRelation;
             if (normalizationRelation.Filter != null)
             {
-                _filter = FilterCompiler.Compile(normalizationRelation.Filter);
+                _filter = BooleanCompiler.Compile<StreamEvent>(normalizationRelation.Filter, functionsRegister);
             }
         }
 

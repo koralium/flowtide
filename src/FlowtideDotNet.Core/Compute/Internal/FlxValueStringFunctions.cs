@@ -13,7 +13,7 @@
 using FlexBuffers;
 using System.Text;
 
-namespace FlowtideDotNet.Core.Compute.Project
+namespace FlowtideDotNet.Core.Compute.Internal
 {
     internal static class FlxValueStringFunctions
     {
@@ -28,9 +28,9 @@ namespace FlowtideDotNet.Core.Compute.Project
             if (values.Length == 1 && values[0].ValueType == FlexBuffers.Type.String)
             {
                 return values[0];
-            } 
+            }
             StringBuilder stringBuilder = new StringBuilder();
-            foreach(var v in values)
+            foreach (var v in values)
             {
                 if (v.IsNull)
                 {

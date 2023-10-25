@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Normalization
                     }
                 },
                 KeyIndex = new List<int>() { 0 }
-            }, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions()
+            }, new Compute.FunctionsRegister(), new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions()
             {
                 BoundedCapacity = 100,
                 MaxDegreeOfParallelism = 1

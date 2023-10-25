@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Expressions;
-using FlowtideDotNet.Substrait.Expressions.ScalarFunctions;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Core.Optimizer
@@ -20,11 +20,15 @@ namespace FlowtideDotNet.Core.Optimizer
     {
         private bool Check(JoinRelation joinRelation, Expression expression, out DirectFieldReference? leftKey, out DirectFieldReference? rightKey)
         {
-            if (expression is BooleanComparison booleanComparison)
+            if (expression is ScalarFunction booleanComparison &&
+                booleanComparison.ExtensionUri == FunctionsComparison.Uri &&
+                booleanComparison.ExtensionName == FunctionsComparison.Equal)
             {
-                if (booleanComparison.Left is DirectFieldReference leftDirectFieldReference &&
+                var left = booleanComparison.Arguments[0];
+                var right = booleanComparison.Arguments[1];
+                if (left is DirectFieldReference leftDirectFieldReference &&
                     leftDirectFieldReference.ReferenceSegment is StructReferenceSegment leftStruct &&
-                    booleanComparison.Right is DirectFieldReference rightDirectFieldReference &&
+                    right is DirectFieldReference rightDirectFieldReference &&
                     rightDirectFieldReference.ReferenceSegment is StructReferenceSegment rightStruct)
                 {
                     // Check if left is in left and right in right
@@ -72,7 +76,9 @@ namespace FlowtideDotNet.Core.Optimizer
                 };
             }
             
-            if (joinRelation.Expression is AndFunction andFunction)
+            if (joinRelation.Expression is ScalarFunction andFunction &&
+                andFunction.ExtensionUri == FunctionsBoolean.Uri &&
+                andFunction.ExtensionName == FunctionsBoolean.And)
             {
                 List<FieldReference> leftKeys = new List<FieldReference>();
                 List<FieldReference> rightKeys = new List<FieldReference>();

@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.Unary;
-using FlowtideDotNet.Core.Compute.Project;
 using FlowtideDotNet.Storage.StateManager;
 using FlexBuffers;
 using Microsoft.Extensions.Logging;
@@ -19,6 +18,8 @@ using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics.Metrics;
 using System.Threading.Tasks.Dataflow;
 using System.Diagnostics;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Internal;
 
 namespace FlowtideDotNet.Core.Operators.Project
 {
@@ -37,13 +38,13 @@ namespace FlowtideDotNet.Core.Operators.Project
 
         public override string DisplayName => "Projection";
 
-        public ProjectOperator(ProjectRelation projectRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
+        public ProjectOperator(ProjectRelation projectRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             _expressions = new Func<StreamEvent, FlxValue>[projectRelation.Expressions.Count];
             
             for (int i = 0; i < _expressions.Length; i++)
             {
-                _expressions[i] = ProjectCompiler.Compile(projectRelation.Expressions[i]);
+                _expressions[i] = ProjectCompiler.Compile(projectRelation.Expressions[i], functionsRegister);
             }
 
             this.projectRelation = projectRelation;

@@ -13,7 +13,6 @@
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
-using FlowtideDotNet.Substrait.Expressions.ScalarFunctions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using Protobuf = Substrait.Protobuf;
@@ -28,7 +27,7 @@ namespace FlowtideDotNet.Substrait
 
             public ExpressionDeserializerImpl(Protobuf.Plan plan)
             {
-                foreach(var extension in plan.Extensions)
+                foreach (var extension in plan.Extensions)
                 {
                     var id = extension.ExtensionFunction.FunctionAnchor;
                     var uri = plan.ExtensionUris.First(x => x.ExtensionUriAnchor == extension.ExtensionFunction.ExtensionUriReference).Uri;
@@ -64,13 +63,13 @@ namespace FlowtideDotNet.Substrait
             {
                 // Skip casts for now
                 return VisitExpression(cast.Input);
-            } 
+            }
 
             private Expressions.Expression VisitIfThen(Protobuf.Expression.Types.IfThen ifThen)
             {
                 List<IfClause> ifClauses = new List<IfClause>();
 
-                foreach(var clause in ifThen.Ifs)
+                foreach (var clause in ifThen.Ifs)
                 {
                     ifClauses.Add(new IfClause()
                     {
@@ -162,156 +161,37 @@ namespace FlowtideDotNet.Substrait
                 {
                     throw new NotImplementedException();
                 }
-                switch (functionName)
-                {
-                    case "/functions_comparison.yaml:equal":
-                        return VisitBooleanComparison(scalarFunction, BooleanComparisonType.Equals);
-                    case "/functions_comparison.yaml:not_equal":
-                        return VisitBooleanComparison(scalarFunction, BooleanComparisonType.NotEqualTo);
-                    case "/functions_comparison.yaml:gt":
-                        return VisitBooleanComparison(scalarFunction, BooleanComparisonType.GreaterThan);
-                    case "/functions_comparison.yaml:gte":
-                        return VisitBooleanComparison(scalarFunction, BooleanComparisonType.GreaterThanOrEqualTo);
-                    case "/functions_boolean.yaml:and":
-                        return VisitAnd(scalarFunction);
-                    case "/functions_string.yaml:concat":
-                        return VisitConcatString(scalarFunction);
-                    case "/functions_comparison.yaml:is_not_null":
-                        return VisitIsNotNull(scalarFunction);
-                    case "/functions_boolean.yaml:or":
-                        return VisitOrFunction(scalarFunction);
-                }
-                throw new NotImplementedException(functionName);
-            }
 
-            private Expressions.Expression VisitOrFunction(Protobuf.Expression.Types.ScalarFunction scalarFunction)
-            {
-                List<Expressions.Expression> expressions = new List<Expression>();
-                if (scalarFunction.Args.Count > 0)
-                {
-                    for (int i = 0; i < scalarFunction.Args.Count; i++)
-                    {
-                        expressions.Add(VisitExpression(scalarFunction.Args[i]));
-                    }
-                }
-                else if (scalarFunction.Arguments.Count > 0)
-                {
-                    for (int i = 0; i < scalarFunction.Arguments.Count; i++)
-                    {
-                        expressions.Add(VisitExpression(scalarFunction.Arguments[i].Value));
-                    }
-                }
-                else
-                {
-                    throw new InvalidOperationException("OR must have more than 0 arguments");
-                }
+                var uri = functionName.Substring(0, functionName.IndexOf(':'));
+                var name = functionName.Substring(functionName.IndexOf(':') + 1);
 
-                return new OrFunction()
-                {
-                    Arguments = expressions
-                };
-            }
-            private Expressions.Expression VisitIsNotNull(Protobuf.Expression.Types.ScalarFunction scalarFunction)
-            {
-                Expressions.Expression? arg;
-                if (scalarFunction.Args.Count == 1)
-                {
-                    arg = VisitExpression(scalarFunction.Args[0]);
-                }
-                else if (scalarFunction.Arguments.Count == 1)
-                {
-                    arg = VisitExpression(scalarFunction.Arguments[0].Value);
-                }
-                else
-                {
-                    throw new InvalidOperationException("IsNotNull must have 1 argument");
-                }
+                List<Expression> args = new List<Expression>();
 
-                return new IsNotNullFunction()
-                {
-                    Expression = arg
-                };
-            }
-
-            private Expressions.Expression VisitConcatString(Protobuf.Expression.Types.ScalarFunction scalarFunction)
-            {
-                List<Expressions.Expression> expressions = new List<Expressions.Expression>();
-                if (scalarFunction.Args.Count > 0)
+                if (scalarFunction.Args != null && scalarFunction.Args.Count > 0)
                 {
                     foreach (var arg in scalarFunction.Args)
                     {
-                        expressions.Add(VisitExpression(arg));
+                        args.Add(VisitExpression(arg));
                     }
                 }
-                else
+                else if (scalarFunction.Arguments != null && scalarFunction.Arguments.Count > 0)
                 {
                     foreach (var arg in scalarFunction.Arguments)
                     {
-                        expressions.Add(VisitExpression(arg.Value));
+                        args.Add(VisitExpression(arg.Value));
                     }
                 }
+
+                return new ScalarFunction()
+                {
+                    ExtensionUri = uri,
+                    ExtensionName = name,
+                    Arguments = args
+                };
+
+
                 
-                return new ConcatFunction()
-                {
-                    Expressions = expressions,
-                };
-            }
-
-            private Expressions.Expression VisitAnd(Protobuf.Expression.Types.ScalarFunction scalarFunction)
-            {
-                List<Expressions.Expression> expressions = new List<Expression>();
-                if (scalarFunction.Args.Count > 0)
-                {
-                    for (int i = 0; i < scalarFunction.Args.Count; i++)
-                    {
-                        expressions.Add(VisitExpression(scalarFunction.Args[i]));
-                    }
-                }
-                else if (scalarFunction.Arguments.Count > 0)
-                {
-                    for (int i = 0; i < scalarFunction.Arguments.Count; i++)
-                    {
-                        expressions.Add(VisitExpression(scalarFunction.Arguments[i].Value));
-                    }
-                }
-                else
-                {
-                    throw new InvalidOperationException("AND must have more than 0 arguments");
-                }
-
-                return new AndFunction()
-                {
-                    Arguments = expressions
-                };
-            }
-
-            private Expressions.Expression VisitBooleanComparison(Protobuf.Expression.Types.ScalarFunction scalarFunction, BooleanComparisonType booleanComparisonType)
-            {
-                Expressions.Expression? left = null;
-                Expressions.Expression? right = null;
-
-                if (scalarFunction.Args.Count == 2)
-                {
-                    left = VisitExpression(scalarFunction.Args[0]);
-                    right = VisitExpression(scalarFunction.Args[1]);
-                }
-                else if (scalarFunction.Arguments.Count == 2)
-                {
-                    left = VisitExpression(scalarFunction.Arguments[0].Value);
-                    right = VisitExpression(scalarFunction.Arguments[1].Value);
-                }
-                else
-                {
-                    throw new InvalidOperationException("Equals must have 2 arguments");
-                }
-                
-                var output = new BooleanComparison()
-                {
-                    Left = left,
-                    Right = right,
-                    Type = booleanComparisonType
-                };
-                return output;
+                throw new NotImplementedException(functionName);
             }
         }
 
@@ -320,7 +200,7 @@ namespace FlowtideDotNet.Substrait
             private readonly Protobuf.Plan plan;
             private readonly ExpressionDeserializerImpl expressionDeserializer;
 
-            public SubstraitDeserializerImpl(Protobuf.Plan plan) 
+            public SubstraitDeserializerImpl(Protobuf.Plan plan)
             {
                 this.plan = plan;
                 expressionDeserializer = new ExpressionDeserializerImpl(plan);
@@ -344,7 +224,7 @@ namespace FlowtideDotNet.Substrait
 
             private Relation VisitPlanRel(Protobuf.PlanRel planRel)
             {
-                switch(planRel.RelTypeCase)
+                switch (planRel.RelTypeCase)
                 {
                     case Protobuf.PlanRel.RelTypeOneofCase.Rel:
 
@@ -414,7 +294,7 @@ namespace FlowtideDotNet.Substrait
             {
                 var set = new SetRelation();
                 set.Inputs = new List<Relation>();
-                for(int i = 0; i < setRel.Inputs.Count; i++)
+                for (int i = 0; i < setRel.Inputs.Count; i++)
                 {
                     set.Inputs.Add(VisitRel(setRel.Inputs[i]));
                 }
@@ -435,7 +315,7 @@ namespace FlowtideDotNet.Substrait
 
                 if (projectRel.Expressions.Count > 0)
                 {
-                    foreach(var expr in projectRel.Expressions)
+                    foreach (var expr in projectRel.Expressions)
                     {
                         project.Expressions.Add(expressionDeserializer.VisitExpression(expr));
                     }
@@ -462,7 +342,7 @@ namespace FlowtideDotNet.Substrait
                 {
                     var st = new Type.Struct();
                     st.Types = new List<Type.SubstraitBaseType>();
-                    foreach(var type in readRel.BaseSchema.Struct.Types_)
+                    foreach (var type in readRel.BaseSchema.Struct.Types_)
                     {
                         switch (type.KindCase)
                         {

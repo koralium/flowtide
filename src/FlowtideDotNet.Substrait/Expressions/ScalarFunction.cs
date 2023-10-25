@@ -12,9 +12,16 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public abstract class ScalarFunction : Expression
+    public class ScalarFunction : Expression
     {
-        public abstract string ExtensionUri { get; }
-        public abstract string ExtensionName { get; }
+        public required string ExtensionUri { get; set; }
+        public required string ExtensionName { get; set; }
+
+        public List<Expression> Arguments { get; set; }
+
+        public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
+        {
+            return visitor.VisitScalarFunction(this, state);
+        }
     }
 }

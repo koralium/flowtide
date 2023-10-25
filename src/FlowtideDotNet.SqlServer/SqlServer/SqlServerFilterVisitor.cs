@@ -13,8 +13,9 @@
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
-using FlowtideDotNet.Substrait.Expressions.ScalarFunctions;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics;
 using System.Text;
 
 namespace FlowtideDotNet.SqlServer.SqlServer
@@ -43,32 +44,59 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             this.readRelation = readRelation;
         }
 
-        public override FilterResult? VisitBooleanComparison(BooleanComparison booleanComparison, object state)
+        public override FilterResult? VisitScalarFunction(ScalarFunction scalarFunction, object state)
         {
-            var left = Visit(booleanComparison.Left, state);
-            var right = Visit(booleanComparison.Right, state);
-
-            string? op = default;
-            switch (booleanComparison.Type)
+            if (scalarFunction.ExtensionUri == FunctionsComparison.Uri)
             {
-                case BooleanComparisonType.Equals:
-                    op = "=";
-                    break;
-                case BooleanComparisonType.GreaterThanOrEqualTo:
-                    op = ">=";
-                    break;
-                case BooleanComparisonType.GreaterThan:
-                    op = ">";
-                    break;
-                case BooleanComparisonType.NotEqualTo:
-                    op = "!=";
-                    break;
+                switch (scalarFunction.ExtensionName)
+                {
+                    case FunctionsComparison.Equal:
+                        return VisitBooleanComparison(scalarFunction, "=", state);
+                    case FunctionsComparison.GreaterThan:
+                        return VisitBooleanComparison(scalarFunction, ">", state);
+                    case FunctionsComparison.GreaterThanOrEqual:
+                        return VisitBooleanComparison(scalarFunction, ">=", state);
+                    case FunctionsComparison.LessThan:
+                        return VisitBooleanComparison(scalarFunction, "<", state);
+                    case FunctionsComparison.LessThanOrEqual:
+                        return VisitBooleanComparison(scalarFunction, "<=", state);
+                    case FunctionsComparison.NotEqual:
+                        return VisitBooleanComparison(scalarFunction, "!=", state);
+                    case FunctionsComparison.IsNotNull:
+                        return VisitIsNotNull(scalarFunction, state);
+                }
             }
+            if (scalarFunction.ExtensionUri == FunctionsBoolean.Uri)
+            {
+                if (scalarFunction.ExtensionName == FunctionsBoolean.And)
+                {
+                    return VisitAndFunction(scalarFunction, state);
+                }
+                if (scalarFunction.ExtensionName == FunctionsBoolean.Or)
+                {
+                    return VisitOrFunction(scalarFunction, state);
+                }
+            }
+            if (scalarFunction.ExtensionUri == FunctionsString.Uri)
+            {
+                if (scalarFunction.ExtensionName == FunctionsString.Concat)
+                {
+                    return VisitConcatFunction(scalarFunction, state);
+                }
+            }
+            return base.VisitScalarFunction(scalarFunction, state);
+        }
+
+        private FilterResult? VisitBooleanComparison(ScalarFunction scalarFunction, string op, object state)
+        {
+            Debug.Assert(scalarFunction.Arguments.Count == 2);
+            var left = Visit(scalarFunction.Arguments[0], state);
+            var right = Visit(scalarFunction.Arguments[1], state);
 
             return new FilterResult($"{left.Content} {op} {right.Content}", true);
         }
 
-        public override FilterResult? VisitAndFunction(AndFunction andFunction, object state)
+        private FilterResult? VisitAndFunction(ScalarFunction andFunction, object state)
         {
             List<string> resolved = new List<string>();
             foreach(var expr in andFunction.Arguments)
@@ -105,10 +133,10 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new FilterResult($"'{stringLiteral.Value}'", false);
         }
 
-        public override FilterResult? VisitConcatFunction(ConcatFunction concatFunction, object state)
+        private FilterResult? VisitConcatFunction(ScalarFunction concatFunction, object state)
         {
             List<string> resolved = new List<string>();
-            foreach (var expr in concatFunction.Expressions)
+            foreach (var expr in concatFunction.Arguments)
             {
                 var result = Visit(expr, state);
                 if (result == null)
@@ -134,7 +162,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new(numericLiteral.Value.ToString(), false);
         }
 
-        public override FilterResult? VisitOrFunction(OrFunction orFunction, object state)
+        private FilterResult? VisitOrFunction(ScalarFunction orFunction, object state)
         {
             List<string> resolved = new List<string>();
             foreach (var expr in orFunction.Arguments)
@@ -212,9 +240,10 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new FilterResult(stringBuilder.ToString(), false);
         }
 
-        public override FilterResult? VisitIsNotNull(IsNotNullFunction isNotNullFunction, object state)
+        private FilterResult? VisitIsNotNull(ScalarFunction isNotNullFunction, object state)
         {
-            var result = Visit(isNotNullFunction.Expression, state);
+            Debug.Assert(isNotNullFunction.Arguments.Count == 1);
+            var result = Visit(isNotNullFunction.Arguments[0], state);
             if (result == null)
             {
                 return null;

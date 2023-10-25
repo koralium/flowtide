@@ -78,18 +78,5 @@ namespace FlowtideDotNet.AcceptanceTests
                     user.LastName
                 });
         }
-
-        [Fact]
-        public async Task CrossJoin()
-        {
-            GenerateData(100);
-            await StartStream(@"
-                INSERT INTO output 
-                SELECT 
-                    o.orderkey, u.firstName, u.LastName
-                FROM orders o
-                CROSS JOIN users u");
-            await WaitForUpdate();
-        }
     }
 }

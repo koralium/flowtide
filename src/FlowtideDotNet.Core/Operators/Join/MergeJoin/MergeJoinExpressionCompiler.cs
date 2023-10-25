@@ -10,17 +10,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Compute.Index;
 using FlexBuffers;
+using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using System.Linq.Expressions;
-using static FlowtideDotNet.Core.Compute.Index.IndexCompilerVisitor;
+using System.Reflection;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
     internal static class MergeJoinExpressionCompiler
     {
+        internal static System.Linq.Expressions.MethodCallExpression CompareRef(System.Linq.Expressions.Expression a, System.Linq.Expressions.Expression b)
+        {
+            MethodInfo compareMethod = typeof(FlxValueRefComparer).GetMethod("CompareTo", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            return System.Linq.Expressions.Expression.Call(compareMethod, a, b);
+        }
+
+        private static System.Linq.Expressions.Expression AccessRootVector(ParameterExpression p)
+        {
+            var props = typeof(JoinStreamEvent).GetProperties().FirstOrDefault(x => x.Name == "Vector");
+            var getMethod = props.GetMethod;
+            return System.Linq.Expressions.Expression.Property(p, getMethod);
+        }
+
+
         private static System.Linq.Expressions.Expression GetAccessFieldExpression(System.Linq.Expressions.ParameterExpression parameter, FieldReference fieldReference, int relativeIndex)
         {
             if (fieldReference is DirectFieldReference directFieldReference &&
@@ -74,18 +88,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 var leftKeyAccessLeft = GetAccessFieldExpression(paramLeft, leftKey, 0);
                 var leftKeyAccessRight = GetAccessFieldExpression(paramRight, leftKey, 0);
                 // Compare the same field but with different inputs, used for insertion
-                var comparisonLeftKey = IndexCompiler.CompareRef(leftKeyAccessLeft, leftKeyAccessRight);
+                var comparisonLeftKey = CompareRef(leftKeyAccessLeft, leftKeyAccessRight);
 
                 leftIndexExpressions.Add(comparisonLeftKey);
 
                 var rightKeyAccessLeft = GetAccessFieldExpression(paramLeft, rightKey, mergeJoinRelation.Left.OutputLength);
                 var rightKeyAccessRight = GetAccessFieldExpression(paramRight, rightKey, mergeJoinRelation.Left.OutputLength);
-                var comparisonRightKey = IndexCompiler.CompareRef(rightKeyAccessLeft, rightKeyAccessRight);
+                var comparisonRightKey = CompareRef(rightKeyAccessLeft, rightKeyAccessRight);
 
                 rightIndexExpressions.Add(comparisonRightKey);
 
                 // Create the seek comparison that is used when seeking for a value
-                var seekCompare = IndexCompiler.CompareRef(leftKeyAccessLeft, rightKeyAccessRight);
+                var seekCompare = CompareRef(leftKeyAccessLeft, rightKeyAccessRight);
                 seekExpressions.Add(seekCompare);
 
                 // Create equal expression used in the condition when looping over values.

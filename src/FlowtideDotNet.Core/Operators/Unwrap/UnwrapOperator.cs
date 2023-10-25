@@ -11,8 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.Unary;
-using FlowtideDotNet.Core.Compute.Filter;
-using FlowtideDotNet.Core.Compute.Project;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Compute.Unwrap;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
@@ -29,16 +29,16 @@ namespace FlowtideDotNet.Core.Operators.Unwrap
 
         public override string DisplayName => "Unwrap";
 
-        public UnwrapOperator(UnwrapRelation unwrapRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+        public UnwrapOperator(UnwrapRelation unwrapRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
             : base(executionDataflowBlockOptions)
         {
             this.unwrapRelation = unwrapRelation;
 
             if (unwrapRelation.Filter != null)
             {
-                _filter = FilterCompiler.Compile(unwrapRelation.Filter);
+                _filter = BooleanCompiler.Compile<StreamEvent>(unwrapRelation.Filter, functionsRegister);
             }
-            _fieldProjectFunc = ProjectCompiler.Compile(unwrapRelation.Field);
+            _fieldProjectFunc = ProjectCompiler.Compile(unwrapRelation.Field, functionsRegister);
             _unwrapFunc = UnwrapCompiler.CompileUnwrap(unwrapRelation.BaseSchema.Names);
         }
 

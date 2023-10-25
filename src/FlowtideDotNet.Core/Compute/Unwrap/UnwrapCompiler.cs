@@ -18,7 +18,6 @@ namespace FlowtideDotNet.Core.Compute.Unwrap
     {
         public static Func<FlexBuffers.FlxValue, IReadOnlyList<IReadOnlyList<FlexBuffers.FlxValue>>> CompileUnwrap(IReadOnlyList<string> FieldNames)
         {
-            //System.Linq.Expressions.Expression.
             return (val) =>
             {
                 List<IReadOnlyList<FlexBuffers.FlxValue>> output = new List<IReadOnlyList<FlexBuffers.FlxValue>>();
