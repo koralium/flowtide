@@ -10,23 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Compute.Project
+namespace FlowtideDotNet.Substrait.FunctionExtensions
 {
-    internal static class FlxValueArrayFunctions
+    public static class FunctionsBoolean
     {
-        public static FlxValue CreateArray(params FlxValue[] input)
-        {
-            var bytes = FlexBufferBuilder.Vector(v =>
-            {
-                foreach (var i in input)
-                {
-                    v.Add(i);
-                }
-            });
-
-            return FlxValue.FromMemory(bytes);
-        } 
+        public const string Uri = "/functions_boolean.yaml";
+        public const string And = "and";
+        public const string Or = "or";
     }
 }

@@ -10,9 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Core.Compute
+namespace FlowtideDotNet.Core.Compute.Internal
 {
-    internal class IndexCreationVisitor
+    internal static class BuiltinFunctions
     {
+        public static void RegisterFunctions(FunctionsRegister functionsRegister)
+        {
+            BuiltInComparisonFunctions.AddComparisonFunctions(functionsRegister);
+            BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);
+            BuiltInStringFunctions.AddStringFunctions(functionsRegister);
+        }
     }
 }

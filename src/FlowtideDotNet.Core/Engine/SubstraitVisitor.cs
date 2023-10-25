@@ -24,6 +24,7 @@ using FlowtideDotNet.Core.Operators.VirtualTable;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Substrait;
+using FlowtideDotNet.Core.Compute;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -46,6 +47,7 @@ namespace FlowtideDotNet.Core.Engine
         private readonly DataflowStreamBuilder dataflowStreamBuilder;
         private readonly IReadWriteFactory readFactory;
         private readonly int queueSize;
+        private readonly FunctionsRegister functionsRegister;
         private int _operatorId = 0;
         private Dictionary<int, RelationTree> _doneRelations;
 
@@ -83,19 +85,20 @@ namespace FlowtideDotNet.Core.Engine
             return relationTree;
         } 
 
-        public SubstraitVisitor(Plan plan, DataflowStreamBuilder dataflowStreamBuilder, IReadWriteFactory readFactory, int queueSize)
+        public SubstraitVisitor(Plan plan, DataflowStreamBuilder dataflowStreamBuilder, IReadWriteFactory readFactory, int queueSize, FunctionsRegister functionsRegister)
         {
             this.plan = plan;
             this.dataflowStreamBuilder = dataflowStreamBuilder;
             this.readFactory = readFactory;
             this.queueSize = queueSize;
+            this.functionsRegister = functionsRegister;
             _doneRelations = new Dictionary<int, RelationTree>();
         }
 
         public override IStreamVertex VisitFilterRelation(FilterRelation filterRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new FilterOperator(filterRelation, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions()
+            var op = new FilterOperator(filterRelation, functionsRegister, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions()
             {
                 BoundedCapacity = queueSize,
                 MaxDegreeOfParallelism = 1
@@ -114,7 +117,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitProjectRelation(ProjectRelation projectRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new ProjectOperator(projectRelation, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1});
+            var op = new ProjectOperator(projectRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1});
 
             if (state != null)
             {
@@ -130,7 +133,7 @@ namespace FlowtideDotNet.Core.Engine
         {
             var id = _operatorId++;
 
-            var op = new UnwrapOperator(unwrapRelation, new ExecutionDataflowBlockOptions()
+            var op = new UnwrapOperator(unwrapRelation, functionsRegister, new ExecutionDataflowBlockOptions()
             {
                 BoundedCapacity = queueSize,
                 MaxDegreeOfParallelism = 1
@@ -151,7 +154,7 @@ namespace FlowtideDotNet.Core.Engine
         {
             var id = _operatorId++;
 
-            var op = new MergeJoinOperatorBase(mergeJoinRelation, new ExecutionDataflowBlockOptions()
+            var op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, new ExecutionDataflowBlockOptions()
             {
                 BoundedCapacity = queueSize,
                 MaxDegreeOfParallelism = 1
@@ -175,7 +178,7 @@ namespace FlowtideDotNet.Core.Engine
             if (joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Inner)
             {
                 //throw new NotSupportedException();
-                var op = new BlockNestedJoinOperator(joinRelation, new ExecutionDataflowBlockOptions()
+                var op = new BlockNestedJoinOperator(joinRelation, functionsRegister, new ExecutionDataflowBlockOptions()
                 {
                     BoundedCapacity = queueSize,
                     MaxDegreeOfParallelism = 1
@@ -228,7 +231,7 @@ namespace FlowtideDotNet.Core.Engine
             if (info.NormalizationRelation != null)
             {
                 var normId = _operatorId++;
-                NormalizationOperator normOp = new NormalizationOperator(info.NormalizationRelation, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                NormalizationOperator normOp = new NormalizationOperator(info.NormalizationRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
 
                 if (state != null)
                 {
@@ -295,7 +298,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitNormalizationRelation(NormalizationRelation normalizationRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            NormalizationOperator op = new NormalizationOperator(normalizationRelation, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            NormalizationOperator op = new NormalizationOperator(normalizationRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
 
             if (state != null)
             {

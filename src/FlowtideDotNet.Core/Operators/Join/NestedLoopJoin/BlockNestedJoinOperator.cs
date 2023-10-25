@@ -17,12 +17,13 @@ using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Core.Operators.Join.MergeJoin;
 using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Core.Compute.Filter;
 using FlowtideDotNet.Substrait.Relations;
 using FlexBuffers;
 using System.Buffers;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.Compute;
 
 namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 {
@@ -45,10 +46,10 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 
         private readonly int _leftSize;
 
-        public BlockNestedJoinOperator(JoinRelation joinRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
+        public BlockNestedJoinOperator(JoinRelation joinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
             _flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
-            _condition = FilterCompiler.CompileJoinFilter<StreamEvent>(joinRelation.Expression, joinRelation.Left.OutputLength);
+            _condition = BooleanCompiler.Compile<StreamEvent>(joinRelation.Expression, functionsRegister, joinRelation.Left.OutputLength);
             this.joinRelation = joinRelation;
             _leftSize = joinRelation.Left.OutputLength;
         }

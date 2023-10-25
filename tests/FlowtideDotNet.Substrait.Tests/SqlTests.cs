@@ -13,7 +13,7 @@
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
-using FlowtideDotNet.Substrait.Expressions.ScalarFunctions;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Sql.Internal;
@@ -156,13 +156,18 @@ namespace FlowtideDotNet.Substrait.Tests
                                     },
                                     NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
                                 },
-                                Condition = new BooleanComparison()
+                                Condition = new ScalarFunction()
                                 {
-                                    Left = new DirectFieldReference()
+                                    ExtensionName = FunctionsComparison.Equal,
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    Arguments = new List<Expression>()
                                     {
-                                        ReferenceSegment = new StructReferenceSegment(){ Field = 0 }
-                                    },
-                                    Right = new StringLiteral(){ Value = "test" }
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment(){ Field = 0 }
+                                        },
+                                        new StringLiteral(){ Value = "test" }
+                                    }
                                 }
                             }
                         }
@@ -310,15 +315,20 @@ namespace FlowtideDotNet.Substrait.Tests
                                     },
                                     NamedTable = new Type.NamedTable(){Names = new List<string> { "other" }}
                                 },
-                                Expression = new BooleanComparison()
+                                Expression = new ScalarFunction()
                                 {
-                                    Left = new DirectFieldReference()
+                                    ExtensionName = FunctionsComparison.Equal,
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    Arguments = new List<Expression>()
                                     {
-                                        ReferenceSegment = new StructReferenceSegment(){ Field = 0 }
-                                    },
-                                    Right =  new DirectFieldReference()
-                                    {
-                                        ReferenceSegment = new StructReferenceSegment(){ Field = 2 }
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment(){ Field = 0 }
+                                        },
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment(){ Field = 2 }
+                                        }
                                     }
                                 }
                             }
@@ -397,15 +407,20 @@ namespace FlowtideDotNet.Substrait.Tests
                                 },
                                     NamedTable = new Type.NamedTable(){Names = new List<string> { "other" }}
                                 },
-                                Expression = new BooleanComparison()
+                                Expression = new ScalarFunction()
                                 {
-                                    Left = new DirectFieldReference()
+                                    ExtensionName = FunctionsComparison.Equal,
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    Arguments = new List<Expression>()
                                     {
-                                        ReferenceSegment = new StructReferenceSegment(){ Field = 0 }
-                                    },
-                                    Right =  new DirectFieldReference()
-                                    {
-                                        ReferenceSegment = new StructReferenceSegment(){ Field = 2 }
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment(){ Field = 0 }
+                                        },
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment(){ Field = 2 }
+                                        }
                                     }
                                 }
                             }
@@ -512,7 +527,7 @@ namespace FlowtideDotNet.Substrait.Tests
                                 }
                             }
                         },
-                        
+
                     }
                 }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
         }
@@ -541,9 +556,11 @@ namespace FlowtideDotNet.Substrait.Tests
                             Emit = new List<int>(){2},
                             Expressions = new List<Expression>()
                             {
-                                new ConcatFunction()
+                                new ScalarFunction()
                                 {
-                                    Expressions = new List<Expression>()
+                                    ExtensionUri = FunctionsString.Uri,
+                                    ExtensionName = FunctionsString.Concat,
+                                    Arguments = new List<Expression>()
                                     {
                                         new DirectFieldReference()
                                         {
@@ -612,38 +629,40 @@ namespace FlowtideDotNet.Substrait.Tests
                                     {
                                         new IfClause()
                                         {
-                                            If = new BooleanComparison()
+                                            If = new ScalarFunction()
                                             {
-                                                Type = BooleanComparisonType.Equals,
-                                                Left = new DirectFieldReference()
+                                                ExtensionName = FunctionsComparison.Equal,
+                                                ExtensionUri = FunctionsComparison.Uri,
+                                                Arguments = new List<Expression>()
                                                 {
-                                                    ReferenceSegment = new StructReferenceSegment()
+                                                    new DirectFieldReference()
                                                     {
-                                                        Field = 0
+                                                        ReferenceSegment = new StructReferenceSegment(){ Field = 0 }
+                                                    },
+                                                    new StringLiteral()
+                                                    {
+                                                        Value = "test"
                                                     }
-                                                },
-                                                Right = new StringLiteral()
-                                                {
-                                                    Value = "test"
                                                 }
                                             },
                                             Then = new NumericLiteral(){Value = 1 }
                                         },
                                         new IfClause()
                                         {
-                                            If = new BooleanComparison()
+                                            If = new ScalarFunction()
                                             {
-                                                Type = BooleanComparisonType.Equals,
-                                                Left = new DirectFieldReference()
+                                                ExtensionName = FunctionsComparison.Equal,
+                                                ExtensionUri = FunctionsComparison.Uri,
+                                                Arguments = new List<Expression>()
                                                 {
-                                                    ReferenceSegment = new StructReferenceSegment()
+                                                    new DirectFieldReference()
                                                     {
-                                                        Field = 0
+                                                        ReferenceSegment = new StructReferenceSegment(){ Field = 0 }
+                                                    },
+                                                    new StringLiteral()
+                                                    {
+                                                        Value = "test2"
                                                     }
-                                                },
-                                                Right = new StringLiteral()
-                                                {
-                                                    Value = "test2"
                                                 }
                                             },
                                             Then = new NumericLiteral(){Value = 2 }
@@ -654,7 +673,7 @@ namespace FlowtideDotNet.Substrait.Tests
                             },
                             Input = new ReadRelation()
                             {
-                                BaseSchema = new Type.NamedStruct(){ 
+                                BaseSchema = new Type.NamedStruct(){
                                     Names = new List<string>() { "c1", "c2" },
                                     Struct = new Type.Struct()
                                     {
@@ -698,13 +717,18 @@ namespace FlowtideDotNet.Substrait.Tests
                                     {
                                         new IfClause()
                                         {
-                                            If = new IsNotNullFunction()
+                                            If = new ScalarFunction()
                                             {
-                                                Expression = new DirectFieldReference()
+                                                ExtensionUri = FunctionsComparison.Uri,
+                                                ExtensionName = FunctionsComparison.IsNotNull,
+                                                Arguments = new List<Expression>()
                                                 {
-                                                    ReferenceSegment = new StructReferenceSegment()
+                                                    new DirectFieldReference()
                                                     {
-                                                        Field = 0
+                                                        ReferenceSegment = new StructReferenceSegment()
+                                                        {
+                                                            Field = 0
+                                                        }
                                                     }
                                                 }
                                             },
@@ -718,13 +742,18 @@ namespace FlowtideDotNet.Substrait.Tests
                                         },
                                         new IfClause()
                                         {
-                                            If = new IsNotNullFunction()
+                                            If = new ScalarFunction()
                                             {
-                                                Expression = new DirectFieldReference()
+                                                ExtensionUri = FunctionsComparison.Uri,
+                                                ExtensionName = FunctionsComparison.IsNotNull,
+                                                Arguments = new List<Expression>()
                                                 {
-                                                    ReferenceSegment = new StructReferenceSegment()
+                                                    new DirectFieldReference()
                                                     {
-                                                        Field = 1
+                                                        ReferenceSegment = new StructReferenceSegment()
+                                                        {
+                                                            Field = 1
+                                                        }
                                                     }
                                                 }
                                             },
@@ -859,7 +888,7 @@ namespace FlowtideDotNet.Substrait.Tests
                 SELECT c1 FROM testtable
                 WHERE c1 is not null
             ");
-            
+
             var plan = builder.GetPlan();
 
             plan.Should().BeEquivalentTo(
@@ -881,13 +910,18 @@ namespace FlowtideDotNet.Substrait.Tests
                                 }
                             },
                             Input = new FilterRelation(){
-                                Condition = new IsNotNullFunction()
+                                Condition = new ScalarFunction()
                                 {
-                                    Expression = new DirectFieldReference()
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.IsNotNull,
+                                    Arguments = new List<Expression>()
                                     {
-                                        ReferenceSegment = new StructReferenceSegment()
+                                        new DirectFieldReference()
                                         {
-                                            Field = 0
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = 0
+                                            }
                                         }
                                     }
                                 },
@@ -949,7 +983,7 @@ namespace FlowtideDotNet.Substrait.Tests
                             },
                             Input = new ReadRelation()
                             {
-                                BaseSchema = new Type.NamedStruct(){ 
+                                BaseSchema = new Type.NamedStruct(){
                                     Names = new List<string>() { "c1", "key" },
                                     Struct = new Type.Struct()
                                     {

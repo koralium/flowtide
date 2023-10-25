@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Core.Compute;
 
 namespace FlowtideDotNet.Core.Operators.Filter
 {
@@ -24,19 +25,9 @@ namespace FlowtideDotNet.Core.Operators.Filter
         public override string DisplayName => "Filter";
 
         private readonly IFilterImplementation _filterImplementation;
-        public FilterOperator(FilterRelation filterRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
+        public FilterOperator(FilterRelation filterRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
-            var containsDate = new ContainsDateFilterVisitor().Visit(filterRelation.Condition, null);
-
-            if (!containsDate)
-            {
-                _filterImplementation = new NormalFilterImpl(filterRelation);
-            }
-            else
-            {
-                throw new NotImplementedException("Filter based on current date is not yet supported.");
-                //_filterImplementation = new DateFilterLoopAll(filterRelation);
-            }
+            _filterImplementation = new NormalFilterImpl(filterRelation, functionsRegister);
         }
 
         public override Task Compact()

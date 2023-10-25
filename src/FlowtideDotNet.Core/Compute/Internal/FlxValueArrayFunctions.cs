@@ -10,13 +10,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Substrait.Expressions.ScalarFunctions
+using FlexBuffers;
+
+namespace FlowtideDotNet.Core.Compute.Internal
 {
-    public enum BooleanComparisonType
+    internal static class FlxValueArrayFunctions
     {
-        Equals,
-        GreaterThan,
-        GreaterThanOrEqualTo,
-        NotEqualTo
+        public static FlxValue CreateArray(params FlxValue[] input)
+        {
+            var bytes = FlexBufferBuilder.Vector(v =>
+            {
+                foreach (var i in input)
+                {
+                    v.Add(i);
+                }
+            });
+
+            return FlxValue.FromMemory(bytes);
+        }
     }
 }

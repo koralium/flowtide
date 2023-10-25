@@ -13,7 +13,7 @@
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
-using FlowtideDotNet.Substrait.Expressions.ScalarFunctions;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using SqlParser;
 using SqlParser.Ast;
 using System.Diagnostics;
@@ -30,54 +30,100 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             switch (binaryOp.Op)
             {
                 case SqlParser.Ast.BinaryOperator.Eq:
-                    var boolExpr = new BooleanComparison()
+                    var func = new ScalarFunction()
                     {
-                        Left = left.Expr,
-                        Right = right.Expr,
-                        Type = BooleanComparisonType.Equals
+                        ExtensionUri = FunctionsComparison.Uri,
+                        ExtensionName = FunctionsComparison.Equal,
+                        Arguments = new List<Expressions.Expression>()
+                        {
+                            left.Expr,
+                            right.Expr
+                        }
                     };
-                    return new ExpressionData(boolExpr, $"{left.Name}_{right.Name}");
+                    return new ExpressionData(func, $"{left.Name}_{right.Name}");
                 case BinaryOperator.Gt:
                     return new ExpressionData(
-                        new BooleanComparison()
+                        new ScalarFunction()
                         {
-                            Left = left.Expr,
-                            Right = right.Expr,
-                            Type = BooleanComparisonType.GreaterThan
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.GreaterThan,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                left.Expr,
+                                right.Expr
+                            }
                         }, $"{left.Name}_{right.Name}"
                         );
                 case BinaryOperator.GtEq:
                     return new ExpressionData(
-                        new BooleanComparison()
+                        new ScalarFunction()
                         {
-                            Left = left.Expr,
-                            Right = right.Expr,
-                            Type = BooleanComparisonType.GreaterThanOrEqualTo
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.GreaterThanOrEqual,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                left.Expr,
+                                right.Expr
+                            }
+                        }, $"{left.Name}_{right.Name}"
+                        );
+                case BinaryOperator.Lt:
+                    return new ExpressionData(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.LessThan,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                left.Expr,
+                                right.Expr
+                            }
+                        }, $"{left.Name}_{right.Name}"
+                        );
+                case BinaryOperator.LtEq:
+                    return new ExpressionData(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.LessThanOrEqual,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                left.Expr,
+                                right.Expr
+                            }
                         }, $"{left.Name}_{right.Name}"
                         );
                 case BinaryOperator.NotEq:
                     return new ExpressionData(
-                        new BooleanComparison()
+                        new ScalarFunction()
                         {
-                            Left = left.Expr,
-                            Right = right.Expr,
-                            Type = BooleanComparisonType.NotEqualTo
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.NotEqual,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                left.Expr,
+                                right.Expr
+                            }
                         }, $"{left.Name}_{right.Name}"
                         );
                 case BinaryOperator.And:
                     // Merge and functions together into one big list
                     List<FlowtideDotNet.Substrait.Expressions.Expression> expressions = new List<FlowtideDotNet.Substrait.Expressions.Expression>();
-                    if (left.Expr is AndFunction andFunc)
+                    if (left.Expr is ScalarFunction leftScalar && 
+                        leftScalar.ExtensionUri == FunctionsBoolean.Uri &&
+                        leftScalar.ExtensionName == FunctionsBoolean.And)
                     {
-                        expressions.AddRange(andFunc.Arguments);
+                        expressions.AddRange(leftScalar.Arguments);
                     }
                     else
                     {
                         expressions.Add(left.Expr);
                     }
-                    if (right.Expr is AndFunction andFuncRight)
+                    if (right.Expr is ScalarFunction rightScalar &&
+                        rightScalar.ExtensionUri == FunctionsBoolean.Uri &&
+                        rightScalar.ExtensionName == FunctionsBoolean.And)
                     {
-                        expressions.AddRange(andFuncRight.Arguments);
+                        expressions.AddRange(rightScalar.Arguments);
                     }
                     else
                     {
@@ -85,16 +131,20 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     }
 
                     return new ExpressionData(
-                        new AndFunction()
+                        new ScalarFunction()
                         {
-                            Arguments = expressions
+                            Arguments = expressions,
+                            ExtensionName = FunctionsBoolean.And,
+                            ExtensionUri = FunctionsBoolean.Uri
                         }, $"{left.Name}_{right.Name}"
                         );
                 case BinaryOperator.Or:
                     return new ExpressionData(
-                        new OrFunction()
+                        new ScalarFunction()
                         {
-                            Arguments = new List<FlowtideDotNet.Substrait.Expressions.Expression>()
+                            ExtensionUri = FunctionsBoolean.Uri,
+                            ExtensionName = FunctionsBoolean.Or,
+                            Arguments = new List<Expressions.Expression>()
                             {
                                 left.Expr,
                                 right.Expr
@@ -103,26 +153,32 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         );
                 case BinaryOperator.StringConcat:
                     List<Expressions.Expression> concatExpressions = new List<Expressions.Expression>();
-                    if (left.Expr is ConcatFunction leftConcat)
+                    if (left.Expr is ScalarFunction leftConcat &&
+                        leftConcat.ExtensionUri == FunctionsString.Uri &&
+                        leftConcat.ExtensionName == FunctionsString.Concat)
                     {
-                        concatExpressions.AddRange(leftConcat.Expressions);
+                        concatExpressions.AddRange(leftConcat.Arguments);
                     }
                     else
                     {
                         concatExpressions.Add(left.Expr);
                     }
-                    if (right.Expr is ConcatFunction rightConcat)
+                    if (right.Expr is ScalarFunction rightConcat &&
+                        rightConcat.ExtensionUri == FunctionsString.Uri &&
+                        rightConcat.ExtensionName == FunctionsString.Concat)
                     {
-                        concatExpressions.AddRange(rightConcat.Expressions);
+                        concatExpressions.AddRange(rightConcat.Arguments);
                     }
                     else
                     {
                         concatExpressions.Add(right.Expr);
                     }
                     return new ExpressionData(
-                        new ConcatFunction()
+                        new ScalarFunction()
                         {
-                            Expressions = concatExpressions
+                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionName = FunctionsString.Concat,
+                            Arguments = concatExpressions
                         }, $"$concat");
 
 
@@ -249,7 +305,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             var expr = Visit(funcExpr.Expression, state);
                             ifThenStatement.Ifs.Add(new IfClause()
                             {
-                                If = new IsNotNullFunction() { Expression = expr.Expr },
+                                If = new ScalarFunction() 
+                                { 
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.IsNotNull,
+                                    Arguments = new List<Expressions.Expression>() { expr.Expr } 
+                                },
                                 Then = expr.Expr
                             });
                         }
@@ -289,9 +350,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         protected override ExpressionData VisitIsNotNull(SqlParser.Ast.Expression.IsNotNull isNotNull, EmitData state)
         {
             var expr = Visit(isNotNull.Expression, state);
-            return new ExpressionData(new IsNotNullFunction()
+            return new ExpressionData(new ScalarFunction()
             {
-                Expression = expr.Expr
+                ExtensionUri = FunctionsComparison.Uri,
+                ExtensionName = FunctionsComparison.IsNotNull,
+                Arguments = new List<Expressions.Expression>()
+                {
+                    expr.Expr
+                }
             }, "$isnotnull");
         }
     }

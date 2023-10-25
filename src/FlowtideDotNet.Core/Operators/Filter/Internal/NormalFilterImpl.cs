@@ -10,7 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Compute.Filter;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Core.Operators.Filter.Internal
@@ -18,9 +19,9 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
     internal class NormalFilterImpl : IFilterImplementation
     {
         private readonly Func<StreamEvent, bool> _expression;
-        public NormalFilterImpl(FilterRelation filterRelation)
+        public NormalFilterImpl(FilterRelation filterRelation, FunctionsRegister functionsRegister)
         {
-            _expression = FilterCompiler.Compile(filterRelation.Condition);
+            _expression = BooleanCompiler.Compile<StreamEvent>(filterRelation.Condition, functionsRegister);
         }
 
         public Task Compact()

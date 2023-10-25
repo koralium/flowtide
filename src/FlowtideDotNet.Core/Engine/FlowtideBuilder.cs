@@ -17,6 +17,8 @@ using FlowtideDotNet.Substrait;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Internal;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -28,10 +30,16 @@ namespace FlowtideDotNet.Core.Engine
         private IStateHandler? _stateHandler;
         private StateManagerOptions? _stateManagerOptions;
         private int _queueSize = 100;
+        private FunctionsRegister _functionsRegister;
         public FlowtideBuilder(string streamName)
         {
             dataflowStreamBuilder = new DataflowStreamBuilder(streamName);
+            _functionsRegister = new FunctionsRegister();
+            // Register default functions directly
+            BuiltinFunctions.RegisterFunctions(_functionsRegister);
         }
+
+        public IFunctionsRegister FunctionsRegister => _functionsRegister;
 
         public FlowtideBuilder AddPlan(Plan plan, bool optimize = true)
         {
@@ -107,7 +115,7 @@ namespace FlowtideDotNet.Core.Engine
             var hash = ComputePlanHash();
             dataflowStreamBuilder.SetVersionInformation(1, hash);
 
-            SubstraitVisitor visitor = new SubstraitVisitor(_plan, dataflowStreamBuilder, _readWriteFactory, _queueSize);
+            SubstraitVisitor visitor = new SubstraitVisitor(_plan, dataflowStreamBuilder, _readWriteFactory, _queueSize, _functionsRegister);
             visitor.BuildPlan();
 
             return dataflowStreamBuilder.Build();

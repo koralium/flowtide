@@ -13,3 +13,4 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("FlowtideDotNet.Substrait.Tests")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Core")]

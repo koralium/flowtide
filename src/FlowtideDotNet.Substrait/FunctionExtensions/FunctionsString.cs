@@ -10,19 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Substrait.Expressions.ScalarFunctions
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Substrait.FunctionExtensions
 {
-    public class IsNotNullFunction : ScalarFunction
+    public static class FunctionsString
     {
-        public Expression Expression { get; set; }
-        
-        public override string ExtensionUri => "/functions_comparison.yaml";
-
-        public override string ExtensionName => "is_not_null:any";
-
-        public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
-        {
-            return visitor.VisitIsNotNull(this, state);
-        }
+        public const string Uri = "/functions_string.yaml";
+        public const string Concat = "concat";
     }
 }

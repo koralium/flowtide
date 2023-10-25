@@ -13,16 +13,16 @@
 using FlexBuffers;
 using FlowtideDotNet.Substrait.Expressions;
 
-namespace FlowtideDotNet.Core.Compute.Project
+namespace FlowtideDotNet.Core.Compute.Internal
 {
     internal static class ProjectCompiler
     {
-        public static Func<StreamEvent, FlxValue> Compile(Expression expression)
+        public static Func<StreamEvent, FlxValue> Compile(Expression expression, FunctionsRegister functionsRegister)
         {
-            var visitor = new ProjectVisitor();
+            var visitor = new FlowtideExpressionVisitor(functionsRegister, typeof(StreamEvent)); //new ProjectVisitor();
 
             var param = System.Linq.Expressions.Expression.Parameter(typeof(StreamEvent));
-            var expr = visitor.Visit(expression, param);
+            var expr = visitor.Visit(expression, new ParametersInfo(new List<System.Linq.Expressions.ParameterExpression> { param }, new List<int>() { 0 }));
             var lambda = System.Linq.Expressions.Expression.Lambda<Func<StreamEvent, FlxValue>>(expr, param);
             return lambda.Compile();
         }
