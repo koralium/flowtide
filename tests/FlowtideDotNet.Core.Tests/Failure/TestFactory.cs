@@ -16,7 +16,7 @@ using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Core.Tests.Acceptance
+namespace FlowtideDotNet.Core.Tests.Failure
 {
     internal class TestFactory : IReadWriteFactory
     {

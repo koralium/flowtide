@@ -18,7 +18,7 @@ using FlowtideDotNet.Substrait;
 using FASTER.core;
 using Microsoft.Extensions.Logging;
 
-namespace FlowtideDotNet.Core.Tests.Acceptance
+namespace FlowtideDotNet.Core.Tests.Failure
 {
     public class FailureTests
     {
