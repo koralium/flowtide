@@ -13,9 +13,9 @@
 using SqlParser;
 using SqlParser.Ast;
 
-namespace FlowtideDotNet.Substrait.Sql.Internal
+namespace FlowtideDotNet.Substrait.Sql
 {
-    internal class EmitData
+    public class EmitData
     {
         private sealed class EmitInformation
         {
@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 if (emitList.TryGetValue(ci.Value, out var indexInfo))
                 {
-                    clone.AddWithAlias(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(ci.Value.Idents.Prepend(new Ident(alias)))), indexInfo.Index.First());
+                    clone.AddWithAlias(new Expression.CompoundIdentifier(new Sequence<Ident>(ci.Value.Idents.Prepend(new Ident(alias)))), indexInfo.Index.First());
                 }
                 else
                 {

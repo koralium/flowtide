@@ -12,9 +12,9 @@
 
 using SqlParser.Ast;
 
-namespace FlowtideDotNet.Substrait.Sql.Internal
+namespace FlowtideDotNet.Substrait.Sql
 {
-    internal class BaseExpressionVisitor<TReturn, TState>
+    public abstract class BaseExpressionVisitor<TReturn, TState>
     {
         public virtual TReturn Visit(Expression expression, TState state)
         {
@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
             if (expression is Expression.Case caseExpr)
             {
-                return VisitCaseExpression(caseExpr, state);   
+                return VisitCaseExpression(caseExpr, state);
             }
             if (expression is Expression.Function function)
             {
