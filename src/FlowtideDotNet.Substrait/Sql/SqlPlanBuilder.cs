@@ -21,10 +21,15 @@ namespace FlowtideDotNet.Substrait.Sql
         internal readonly TablesMetadata _tablesMetadata = new TablesMetadata();
         private readonly Parser _parser = new Parser();
         internal PlanModifier _planModifier = new PlanModifier();
+        private SqlFunctionRegister _sqlFunctionRegister;
 
         public SqlPlanBuilder()
         {
+            _sqlFunctionRegister = new SqlFunctionRegister();
+            BuiltInSqlFunctions.AddBuiltInFunctions(_sqlFunctionRegister);
         }
+
+        public ISqlFunctionRegister FunctionRegister => _sqlFunctionRegister;
 
         public void AddTableDefinition(string name, IEnumerable<string> columnNames)
         {
@@ -40,7 +45,7 @@ namespace FlowtideDotNet.Substrait.Sql
         {
             var statements = _parser.ParseSql(sqlText, new FlowtideDialect());
 
-            SqlSubstraitVisitor sqlSubstraitVisitor = new SqlSubstraitVisitor(this);
+            SqlSubstraitVisitor sqlSubstraitVisitor = new SqlSubstraitVisitor(this, _sqlFunctionRegister);
             foreach (var statement in statements)
             {
                 var result = sqlSubstraitVisitor.Visit(statement, default);

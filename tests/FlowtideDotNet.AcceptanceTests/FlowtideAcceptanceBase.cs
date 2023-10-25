@@ -13,6 +13,7 @@
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Substrait.Sql;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,6 +29,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public IReadOnlyList<User> Users => flowtideTestStream.Users;
         public IReadOnlyList<Order> Orders => flowtideTestStream.Orders;
         public IFunctionsRegister FunctionsRegister => flowtideTestStream.FunctionsRegister;
+        public ISqlFunctionRegister SqlFunctionRegister => flowtideTestStream.SqlFunctionRegister;
 
         protected Task StartStream(string sql) => flowtideTestStream.StartStream(sql);
 

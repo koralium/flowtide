@@ -41,6 +41,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public IFunctionsRegister FunctionsRegister => flowtideBuilder.FunctionsRegister;
 
+        public ISqlFunctionRegister SqlFunctionRegister => sqlPlanBuilder.FunctionRegister;
+
         public FlowtideTestStream()
         {
             _db = new Internal.MockDatabase();

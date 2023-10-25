@@ -12,9 +12,9 @@
 
 using FlowtideDotNet.Substrait.Expressions;
 
-namespace FlowtideDotNet.Substrait.Sql.Internal
+namespace FlowtideDotNet.Substrait.Sql
 {
-    internal class ExpressionData
+    public class ExpressionData
     {
         public ExpressionData(Expression expr, string name)
         {

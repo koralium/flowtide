@@ -14,14 +14,22 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
+using FlowtideDotNet.Substrait.Sql.Internal;
 using SqlParser;
 using SqlParser.Ast;
 using System.Diagnostics;
 
-namespace FlowtideDotNet.Substrait.Sql.Internal
+namespace FlowtideDotNet.Substrait.Sql
 {
-    internal class SqlExpressionVisitor : BaseExpressionVisitor<ExpressionData, EmitData>
+    public class SqlExpressionVisitor : BaseExpressionVisitor<ExpressionData, EmitData>
     {
+        private readonly SqlFunctionRegister sqlFunctionRegister;
+
+        internal SqlExpressionVisitor(SqlFunctionRegister sqlFunctionRegister)
+        {
+            this.sqlFunctionRegister = sqlFunctionRegister;
+        }
+
         protected override ExpressionData VisitBinaryOperation(SqlParser.Ast.Expression.BinaryOp binaryOp, EmitData state)
         {
             var left = Visit(binaryOp.Left, state);
@@ -29,7 +37,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             switch (binaryOp.Op)
             {
-                case SqlParser.Ast.BinaryOperator.Eq:
+                case BinaryOperator.Eq:
                     var func = new ScalarFunction()
                     {
                         ExtensionUri = FunctionsComparison.Uri,
@@ -108,8 +116,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         );
                 case BinaryOperator.And:
                     // Merge and functions together into one big list
-                    List<FlowtideDotNet.Substrait.Expressions.Expression> expressions = new List<FlowtideDotNet.Substrait.Expressions.Expression>();
-                    if (left.Expr is ScalarFunction leftScalar && 
+                    List<Expressions.Expression> expressions = new List<Expressions.Expression>();
+                    if (left.Expr is ScalarFunction leftScalar &&
                         leftScalar.ExtensionUri == FunctionsBoolean.Uri &&
                         leftScalar.ExtensionName == FunctionsBoolean.And)
                     {
@@ -251,8 +259,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 Ifs = new List<IfClause>()
             };
-            
-            for(int i = 0; i < caseExpression.Conditions.Count; i++)
+
+            for (int i = 0; i < caseExpression.Conditions.Count; i++)
             {
                 var condition = Visit(caseExpression.Conditions[i], state);
                 var result = Visit(caseExpression.Results[i], state);
@@ -273,78 +281,19 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         protected override ExpressionData VisitFunction(SqlParser.Ast.Expression.Function function, EmitData state)
         {
             var functionName = function.Name.ToSql();
-            if (functionName.Equals("coalesce", StringComparison.OrdinalIgnoreCase))
+            var functionType = sqlFunctionRegister.GetFunctionType(functionName);
+
+            if (functionType == FunctionType.Scalar)
             {
-                return VisitCoalesce(function, state);
+                var mapper = sqlFunctionRegister.GetScalarMapper(functionName);
+                var expr = mapper(function, this, state);
+                return new ExpressionData(
+                    expr,
+                    $"${functionName}"
+                    );
             }
 
             return base.VisitFunction(function, state);
-        }
-
-        /// <summary>
-        /// Coalesce is done with a if then else statement
-        /// </summary>
-        /// <param name="function"></param>
-        /// <param name="state"></param>
-        /// <returns></returns>
-        private ExpressionData VisitCoalesce(SqlParser.Ast.Expression.Function function, EmitData state)
-        {
-            var ifThenStatement = new IfThenExpression()
-            {
-                Ifs = new List<IfClause>()
-            };
-            {
-                Debug.Assert(function.Args != null);
-                for (int i = 0; i < function.Args.Count - 1; i++)
-                {
-                    var arg = function.Args[i];
-                    if (arg is FunctionArg.Unnamed unnamed)
-                    {
-                        if (unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
-                        {
-                            var expr = Visit(funcExpr.Expression, state);
-                            ifThenStatement.Ifs.Add(new IfClause()
-                            {
-                                If = new ScalarFunction() 
-                                { 
-                                    ExtensionUri = FunctionsComparison.Uri,
-                                    ExtensionName = FunctionsComparison.IsNotNull,
-                                    Arguments = new List<Expressions.Expression>() { expr.Expr } 
-                                },
-                                Then = expr.Expr
-                            });
-                        }
-                        else
-                        {
-                            throw new NotImplementedException("Coalesce does not support the input parameter");
-                        }
-                    }
-                    else
-                    {
-                        throw new NotImplementedException("Coalesce does not support the input parameter");
-                    }
-                }
-            }
-            {
-                var lastArg = function.Args[function.Args.Count - 1];
-                if (lastArg is FunctionArg.Unnamed unnamed)
-                {
-                    if (unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
-                    {
-                        var expr = Visit(funcExpr.Expression, state);
-                        ifThenStatement.Else = expr.Expr;
-                    }
-                    else
-                    {
-                        throw new NotImplementedException("Coalesce does not support the input parameter");
-                    }
-                }
-                else
-                {
-                    throw new NotImplementedException("Coalesce does not support the input parameter");
-                }
-            }
-            return new ExpressionData(ifThenStatement, "$coalesce");
         }
 
         protected override ExpressionData VisitIsNotNull(SqlParser.Ast.Expression.IsNotNull isNotNull, EmitData state)

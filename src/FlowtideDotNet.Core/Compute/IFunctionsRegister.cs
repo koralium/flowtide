@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlexBuffers;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
@@ -31,5 +32,10 @@ namespace FlowtideDotNet.Core.Compute
             string uri,
             string name,
             Func<ScalarFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc);
+
+        void RegisterScalarFunctionWithExpression(
+            string uri,
+            string name,
+            System.Linq.Expressions.Expression<Func<FlxValue, FlxValue>> expression);
     }
 }

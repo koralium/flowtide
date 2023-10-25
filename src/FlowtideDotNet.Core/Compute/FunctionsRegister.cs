@@ -10,11 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlexBuffers;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -37,6 +39,28 @@ namespace FlowtideDotNet.Core.Compute
         public void RegisterScalarFunction(string uri, string name, Func<ScalarFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc)
         {
             _scalarFunctions.Add($"{uri}:{name}", new FunctionDefinition(uri, name, mapFunc));
+        }
+
+        public void RegisterScalarFunctionWithExpression(string uri, string name, Expression<Func<FlxValue, FlxValue>> expression)
+        {
+            RegisterScalarFunction(uri, name, (scalarFunction, parametersInfo, expressionVisitor) =>
+            {
+                if (scalarFunction.Arguments.Count != 1)
+                {
+                    throw new ArgumentException($"Scalar function {name} must have one argument");
+                }
+
+                var p1 = expressionVisitor.Visit(scalarFunction.Arguments[0], parametersInfo);
+                var expressionBody = expression.Body;
+                // TODO: Replace parameter with p1
+                var expressionBodyWithParameter = new ParameterReplacerVisitor(expression.Parameters[0], p1).Visit(expressionBody);
+                return expressionBodyWithParameter;
+            });
+        }
+
+        public void RegisterScalarFunctionWithExpression(string uri, string name, Expression<Func<FlxValue, FlxValue, FlxValue>> expression)
+        {
+            throw new NotImplementedException();
         }
     }
 }

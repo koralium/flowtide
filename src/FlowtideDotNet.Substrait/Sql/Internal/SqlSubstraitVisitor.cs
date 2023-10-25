@@ -22,10 +22,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
     {
         private readonly TablesMetadata tablesMetadata;
         private readonly SqlPlanBuilder sqlPlanBuilder;
+        private readonly SqlFunctionRegister sqlFunctionRegister;
 
-        public SqlSubstraitVisitor(SqlPlanBuilder sqlPlanBuilder)
+        public SqlSubstraitVisitor(SqlPlanBuilder sqlPlanBuilder, SqlFunctionRegister sqlFunctionRegister)
         {
             this.sqlPlanBuilder = sqlPlanBuilder;
+            this.sqlFunctionRegister = sqlFunctionRegister;
             tablesMetadata = sqlPlanBuilder._tablesMetadata;
         }
 
@@ -110,7 +112,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             if (select.Selection != null)
             {
-                var exprVisitor = new SqlExpressionVisitor();
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
                 var expr = exprVisitor.Visit(select.Selection, outNode.EmitData);
                 outNode = new RelationData(new FilterRelation()
                 {
@@ -143,7 +145,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             int outputCounter = 0;
             foreach (var s in selects)
             {
-                var exprVisitor = new SqlExpressionVisitor();
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
                 if (s is SelectItem.ExpressionWithAlias exprAlias)
                 {
                     var condition = exprVisitor.Visit(exprAlias.Expression, parent.EmitData);
@@ -243,7 +245,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                 if (leftOuter.JoinConstraint is JoinConstraint.On on)
                 {
-                    var exprVisitor = new SqlExpressionVisitor();
+                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
                     var condition = exprVisitor.Visit(on.Expression, joinEmitData);
                     joinRelation.Expression = condition.Expr;
                 }
@@ -257,7 +259,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 joinRelation.Type = JoinType.Inner;
                 if (inner.JoinConstraint is JoinConstraint.On on)
                 {
-                    var exprVisitor = new SqlExpressionVisitor();
+                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
                     var condition = exprVisitor.Visit(on.Expression, joinEmitData);
                     joinRelation.Expression = condition.Expr;
                 }
