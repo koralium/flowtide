@@ -10,13 +10,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Core.Operators.Set
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.AcceptanceTests.Entities
 {
-    public class BPlusTreeStreamEventComparer : IComparer<StreamEvent>
+    public class User
     {
-        public int Compare(StreamEvent x, StreamEvent y)
-        {
-            return x.Span.SequenceCompareTo(y.Span);
-        }
+        [Key]
+        public int UserKey { get; set; }
+
+        public Gender Gender { get; set; }
+
+        public string? FirstName { get; set; }
+
+        public string LastName { get; set; }
     }
 }

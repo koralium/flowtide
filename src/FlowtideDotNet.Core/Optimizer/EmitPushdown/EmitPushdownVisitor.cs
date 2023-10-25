@@ -204,6 +204,124 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             return base.VisitProjectRelation(projectRelation, state);
         }
 
+        public override Relation VisitJoinRelation(JoinRelation joinRelation, object state)
+        {
+            var inputLength = joinRelation.Left.OutputLength + joinRelation.Right.OutputLength;
+
+            if (joinRelation.Left is ReferenceRelation leftReference)
+            {
+                var projectRel = new ProjectRelation()
+                {
+                    Expressions = new List<FlowtideDotNet.Substrait.Expressions.Expression>(),
+                    Input = leftReference
+                };
+                joinRelation.Left = projectRel;
+            }
+            if (joinRelation.Right is ReferenceRelation rightReference)
+            {
+                var projectRel = new ProjectRelation()
+                {
+                    Expressions = new List<FlowtideDotNet.Substrait.Expressions.Expression>(),
+                    Input = rightReference
+                };
+                joinRelation.Right = projectRel;
+            }
+
+            if (inputLength > joinRelation.OutputLength)
+            {
+                var usageVisitor = new ExpressionFieldUsageVisitor(joinRelation.Left.OutputLength);
+                // Visit all possible field references
+
+                if (joinRelation.Expression != null)
+                {
+                    usageVisitor.Visit(joinRelation.Expression, default);
+                }
+                if (joinRelation.PostJoinFilter != null)
+                {
+                    usageVisitor.Visit(joinRelation.PostJoinFilter, default);
+                }
+
+
+                var leftUsage = usageVisitor.UsedFieldsLeft.ToList();
+                var rightUsage = usageVisitor.UsedFieldsRight.ToList();
+
+                if (joinRelation.EmitSet)
+                {
+                    foreach (var field in joinRelation.Emit!)
+                    {
+                        if (field < joinRelation.Left.OutputLength)
+                        {
+                            leftUsage.Add(field);
+                        }
+                        else
+                        {
+                            rightUsage.Add(field);
+                        }
+                    }
+                }
+
+                leftUsage = leftUsage.Distinct().OrderBy(x => x).ToList();
+                rightUsage = rightUsage.Distinct().OrderBy(x => x).ToList();
+
+                Dictionary<int, int> oldToNew = new Dictionary<int, int>();
+                int replacementCounter = 0;
+                List<int> leftEmit = new List<int>();
+                List<int> rightEmit = new List<int>();
+
+                foreach (var field in leftUsage)
+                {
+                    leftEmit.Add(field);
+                    oldToNew.Add(field, replacementCounter);
+                    replacementCounter += 1;
+                }
+
+                foreach (var field in rightUsage)
+                {
+                    var rightIndex = field - joinRelation.Left.OutputLength;
+
+                    rightEmit.Add(rightIndex);
+                    oldToNew.Add(field, replacementCounter);
+                    replacementCounter += 1;
+                }
+                if (leftEmit.Count < joinRelation.Left.OutputLength)
+                {
+                    joinRelation.Left.Emit = leftEmit;
+                }
+                // Check if right side can be made smaller
+                if (rightEmit.Count < joinRelation.Right.OutputLength)
+                {
+                    joinRelation.Right.Emit = rightEmit;
+                }
+
+                // Replace all used fields
+                var replaceVisitor = new ExpressionFieldReplaceVisitor(oldToNew);
+                if (joinRelation.PostJoinFilter != null)
+                {
+                    replaceVisitor.Visit(joinRelation.PostJoinFilter, default);
+                }
+                if (joinRelation.Expression != null)
+                {
+                    replaceVisitor.Visit(joinRelation.Expression, default);
+                }
+
+                if (joinRelation.EmitSet)
+                {
+                    for (int i = 0; i < joinRelation.Emit.Count; i++)
+                    {
+                        if (oldToNew.TryGetValue(joinRelation.Emit[i], out var newVal))
+                        {
+                            joinRelation.Emit[i] = newVal;
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Error in emit pushdown optimizer");
+                        }
+                    }
+                }
+            }
+            return base.VisitJoinRelation(joinRelation, state);
+        }
+
         public override Relation VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, object state)
         {
             var inputLength = mergeJoinRelation.Left.OutputLength + mergeJoinRelation.Right.OutputLength;

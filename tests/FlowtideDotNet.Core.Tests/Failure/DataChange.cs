@@ -12,7 +12,7 @@
 
 using FlexBuffers;
 
-namespace FlowtideDotNet.Core.Tests.Acceptance
+namespace FlowtideDotNet.Core.Tests.Failure
 {
     internal class DataChange
     {

@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core
         private FlxVector _vector;
         private readonly uint _iteration;
 
-        internal StreamEvent(int weight, uint iteration, Memory<byte> bytes)
+        public StreamEvent(int weight, uint iteration, Memory<byte> bytes)
         {
             _data = bytes;
             _weight = weight;

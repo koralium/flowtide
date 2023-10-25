@@ -28,6 +28,8 @@ namespace FlowtideDotNet.Base.Engine
 
         public StreamStatus Status => streamContext.GetStatus();
 
+        public IStreamScheduler Scheduler => streamContext._streamScheduler;
+
         public Task StartAsync()
         {
             return streamContext.StartAsync();
