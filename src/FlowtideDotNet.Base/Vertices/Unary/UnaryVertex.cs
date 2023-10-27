@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 }
                 if (streamEvent is Watermark watermark)
                 {
-                    return Passthrough(watermark);
+                    return HandleWatermark(watermark);
                 }
 
                 throw new NotSupportedException();
@@ -121,6 +121,20 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 _sourceBlock = broadcastBlock;
                 existingSource.LinkTo(broadcastBlock, new DataflowLinkOptions() { PropagateCompletion = true });
             }
+        }
+
+        private async IAsyncEnumerable<IStreamEvent> HandleWatermark(Watermark watermark)
+        {
+            await foreach (var e in OnWatermark(watermark))
+            {
+                yield return new StreamMessage<T>(e, _currentTime);
+            }
+            yield return watermark;
+        }
+
+        protected virtual async IAsyncEnumerable<T> OnWatermark(Watermark watermark)
+        {
+            yield break;
         }
 
         public async Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)

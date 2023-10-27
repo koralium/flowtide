@@ -59,6 +59,39 @@ namespace FlowtideDotNet.Substrait
                 throw new NotImplementedException();
             }
 
+            public Expressions.AggregateFunction VisitAggregateFunction(Protobuf.AggregateFunction aggregateFunction)
+            {
+                if (!idToFunctionLookup.TryGetValue(aggregateFunction.FunctionReference, out var functionName))
+                {
+                    throw new NotImplementedException();
+                }
+
+                var uri = functionName.Substring(0, functionName.IndexOf(':'));
+                var name = functionName.Substring(functionName.IndexOf(':') + 1);
+
+                var result = new AggregateFunction()
+                {
+                    ExtensionName = name,
+                    ExtensionUri = uri,
+                    Arguments = new List<Expression>()
+                };
+                if (aggregateFunction.Args.Count > 0)
+                {
+                    foreach(var arg in aggregateFunction.Args)
+                    {
+                        result.Arguments.Add(VisitExpression(arg));
+                    }
+                }
+                else if (aggregateFunction.Arguments.Count > 0)
+                {
+                    foreach (var arg in aggregateFunction.Arguments)
+                    {
+                        result.Arguments.Add(VisitExpression(arg.Value));
+                    }
+                }
+                return result;
+            }
+
             private Expressions.Expression VisitCast(Protobuf.Expression.Types.Cast cast)
             {
                 // Skip casts for now
@@ -267,9 +300,55 @@ namespace FlowtideDotNet.Substrait
                         break;
                     case Protobuf.Rel.RelTypeOneofCase.Set:
                         return VisitSet(rel.Set);
+                    case Protobuf.Rel.RelTypeOneofCase.Aggregate:
+                        return VisitAggregate(rel.Aggregate);
                     default:
                         throw new NotImplementedException();
                 }
+            }
+
+            private Relation VisitAggregate(Protobuf.AggregateRel aggregateRel)
+            {
+                var relation = new AggregateRelation()
+                {
+                    Groupings = new List<AggregateGrouping>(),
+                    Measures = new List<AggregateMeasure>()
+                };
+                relation.Input = VisitRel(aggregateRel.Input);
+                
+                if (aggregateRel.Groupings.Count > 0)
+                {
+                    foreach(var grouping in aggregateRel.Groupings)
+                    {
+                        var aggGroup = new AggregateGrouping()
+                        {
+                            GroupingExpressions = new List<Expression>()
+                        };
+                        foreach(var expr in grouping.GroupingExpressions)
+                        {
+                            aggGroup.GroupingExpressions.Add(expressionDeserializer.VisitExpression(expr));
+                        }
+                    }
+                }
+                if (aggregateRel.Measures.Count > 0)
+                {
+                    foreach(var measure in aggregateRel.Measures)
+                    {
+                        Expression? filter = default;
+                        if (measure.Filter != null)
+                        {
+                            filter = expressionDeserializer.VisitExpression(measure.Filter);
+                        }
+                        var func = expressionDeserializer.VisitAggregateFunction(measure.Measure_);
+                        relation.Measures.Add(new AggregateMeasure()
+                        {
+                            Filter = filter,
+                            Measure = func
+                        });
+                    }
+                }
+
+                return relation;
             }
 
             private List<int>? GetEmit(Protobuf.RelCommon relCommon)

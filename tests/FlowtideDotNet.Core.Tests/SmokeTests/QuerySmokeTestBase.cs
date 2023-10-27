@@ -20,6 +20,7 @@ using FlowtideDotNet.Core.Tests.SmokeTests.StringJoin;
 using FASTER.core;
 using FluentAssertions;
 using System.Diagnostics;
+using FlowtideDotNet.Core.Tests.SmokeTests.Count;
 
 namespace FlowtideDotNet.Core.Tests.SmokeTests
 {
@@ -53,7 +54,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             return Task.CompletedTask;
         }
 
-        private async Task StartStream<TResult>(string planLocation, Action<List<TResult>> datachange, PlanOptimizerSettings? settings = null)
+        private async Task StartStream<TResult>(string planLocation, Action<List<TResult>> datachange, List<int> primaryKeysOutput, PlanOptimizerSettings? settings = null)
         {
             var plantext = File.ReadAllText(planLocation);
             var plan = deserializer.Deserialize(plantext);
@@ -72,7 +73,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             _streamScheduler = new DefaultStreamScheduler();
             readWriteFactory.AddWriteResolver((rel, opt) =>
             {
-                return new SmokeTests.TestWriteOperator<TResult>(new List<int>() { 0, 1 }, (rows) =>
+                return new SmokeTests.TestWriteOperator<TResult>(primaryKeysOutput, (rows) =>
                 {
                     changesCounter++;
                     gotData = true;
@@ -108,7 +109,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<LineItem>("./SmokeTests/SelectLineItems/queryplan.json", rows =>
             {
                 actualData = rows;
-            });
+            }, new List<int>() { 0, 1});
 
             while(changesCounter == 0)
             {
@@ -124,6 +125,38 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
         }
 
         [Fact]
+        public async Task CountLineItems()
+        {
+            // add all line items
+            var lineItems = TpchData.GetLineItems();
+            await AddLineItems(lineItems.Take(1000));
+            List<CountResult>? actualData = default;
+            await StartStream<CountResult>("./SmokeTests/Count/queryplan.json", rows =>
+            {
+                actualData = rows;
+            }, new List<int>() { 0 });
+
+            while (changesCounter == 0)
+            {
+                await _streamScheduler.Tick();
+                await Task.Delay(TimeSpan.FromMilliseconds(10));
+            }
+            await AddLineItems(lineItems.Skip(1000).Take(1000));
+            while (changesCounter == 1)
+            {
+                await _streamScheduler.Tick();
+                await Task.Delay(TimeSpan.FromMilliseconds(10));
+            }
+
+            var lineItemsExpected = new List<CountResult>() { new CountResult() { Count = 2000 } };
+            Assert.Equal(lineItemsExpected.Count, actualData!.Count);
+            for (int i = 0; i < lineItemsExpected.Count; i++)
+            {
+                actualData[i].Should().BeEquivalentTo(lineItemsExpected[i]);
+            }
+        }
+
+        [Fact]
         public async Task FilterLineItemsOnShipmode()
         {
             await AddLineItems(TpchData.GetLineItems());
@@ -131,7 +164,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<LineItem>("./SmokeTests/FilterLineItemsOnShipmode/queryplan.json", rows =>
             {
                 actualData = rows;
-            });
+            }, new List<int>() { 0, 1 });
 
             while (changesCounter == 0)
             {
@@ -159,7 +192,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<LineItemJoinOrderResult>("./SmokeTests/LineItemLeftJoinOrders/queryplan.json", rows =>
             {
                 actualData = rows;
-            });
+            }, new List<int>() { 0, 1 });
 
             while (changesCounter == 0)
             {
@@ -200,7 +233,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<LineItemJoinOrderResult>("./SmokeTests/LineItemLeftJoinOrders/queryplan.json", rows =>
             {
                 actualData = rows;
-            }, new PlanOptimizerSettings() { NoMergeJoin = true });
+            }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
 
             while (changesCounter == 0)
             {
@@ -256,7 +289,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<LineItemJoinOrderResult>("./SmokeTests/LineItemInnerJoinOrders/queryplan.json", rows =>
             {
                 actualData = rows;
-            });
+            }, new List<int>() { 0, 1 });
 
             while (changesCounter == 0)
             {
@@ -297,7 +330,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<LineItemJoinOrderResult>("./SmokeTests/LineItemInnerJoinOrders/queryplan.json", rows =>
             {
                 actualData = rows;
-            }, new PlanOptimizerSettings() { NoMergeJoin = true});
+            }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true});
 
             while (changesCounter == 0)
             {
@@ -338,7 +371,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<StringJoinResult>("./SmokeTests/StringJoin/queryplan.json", rows =>
             {
                 actualData = rows;
-            });
+            }, new List<int>() { 0, 1 });
 
             while (changesCounter == 0)
             {
@@ -378,7 +411,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<StringJoinResult>("./SmokeTests/LeftJoinUpdateLeftValues/queryplan.json", rows =>
             {
                 actualData = rows;
-            });
+            }, new List<int>() { 0, 1 });
 
             while (changesCounter < 1)
             {
@@ -462,7 +495,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<StringJoinResult>("./SmokeTests/LeftJoinUpdateLeftValues/queryplan.json", rows =>
             {
                 actualData = rows;
-            }, new PlanOptimizerSettings() { NoMergeJoin = true });
+            }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
 
             while (changesCounter < 1)
             {
@@ -546,7 +579,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<StringJoinResult>("./SmokeTests/StringJoin/queryplan.json", rows =>
             {
                 actualData = rows;
-            }, new PlanOptimizerSettings() { NoMergeJoin = true });
+            }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
 
             while (changesCounter < 1)
             {
@@ -616,7 +649,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<StringJoinResult>("./SmokeTests/StringJoin/queryplan.json", rows =>
             {
                 actualData = rows;
-            });
+            }, new List<int>() { 0, 1 });
 
             while (changesCounter < 1)
             {

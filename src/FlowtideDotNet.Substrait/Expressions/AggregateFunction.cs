@@ -10,16 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Core.Compute.Internal
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Substrait.Expressions
 {
-    internal static class BuiltinFunctions
+    public class AggregateFunction
     {
-        public static void RegisterFunctions(FunctionsRegister functionsRegister)
-        {
-            BuiltInComparisonFunctions.AddComparisonFunctions(functionsRegister);
-            BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);
-            BuiltInStringFunctions.AddStringFunctions(functionsRegister);
-            BuiltInAggregateGenericFunctions.AddBuiltInAggregateGenericFunctions(functionsRegister);
-        }
+        public required string ExtensionUri { get; set; }
+        public required string ExtensionName { get; set; }
+
+        public List<Expression> Arguments { get; set; }
+
     }
 }

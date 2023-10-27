@@ -15,6 +15,7 @@ using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -23,7 +24,7 @@ namespace FlowtideDotNet.Core.Compute
     public interface IFunctionsRegister
     {
         /// <summary>
-        /// Register a scalar function
+        /// Register a scalar function, this is the low level call where the user has to visit the arguments with the visitor.
         /// </summary>
         /// <param name="uri">file uri of the scalar function</param>
         /// <param name="name">name of the scalar function</param>
@@ -37,5 +38,16 @@ namespace FlowtideDotNet.Core.Compute
             string uri,
             string name,
             System.Linq.Expressions.Expression<Func<FlxValue, FlxValue>> expression);
+
+        /// <summary>
+        /// Register an aggregate function, this is the low level call which requires the user to visit the expressions with the visitor.
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <param name="name"></param>
+        void RegisterAggregateFunction(
+            string uri, 
+            string name,
+            Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
+            Func<byte[], FlxValue> stateToValueFunc);
     }
 }

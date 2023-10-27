@@ -10,16 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Core.Compute.Internal
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Core.Tests.SmokeTests.Count
 {
-    internal static class BuiltinFunctions
+    public class CountResult
     {
-        public static void RegisterFunctions(FunctionsRegister functionsRegister)
-        {
-            BuiltInComparisonFunctions.AddComparisonFunctions(functionsRegister);
-            BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);
-            BuiltInStringFunctions.AddStringFunctions(functionsRegister);
-            BuiltInAggregateGenericFunctions.AddBuiltInAggregateGenericFunctions(functionsRegister);
-        }
+        [JsonPropertyName("EXPR$0")]
+        public long Count { get; set; }
     }
 }

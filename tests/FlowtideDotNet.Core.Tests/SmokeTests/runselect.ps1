@@ -13,3 +13,6 @@ java -jar isthmus-0.15.0-all.jar -c $CreateCommand $SelectCommand > ./StringJoin
 
 ($SelectCommand = Get-Content -Path './LeftJoinUpdateLeftValues/query.sql' -Raw) | out-null;
 java -jar isthmus-0.15.0-all.jar -c $CreateCommand $SelectCommand > ./LeftJoinUpdateLeftValues/queryplan.json
+
+($SelectCommand = Get-Content -Path './Count/query.sql' -Raw) | out-null;
+java -jar isthmus-0.15.0-all.jar -c $CreateCommand $SelectCommand > ./Count/queryplan.json
