@@ -83,5 +83,10 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             return default;
         }
+
+        public virtual TReturn VisitAggregateRelation(AggregateRelation aggregateRelation, TState state)
+        {
+            return default;
+        }
     }
 }

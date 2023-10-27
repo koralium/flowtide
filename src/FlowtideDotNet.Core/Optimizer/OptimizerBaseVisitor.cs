@@ -96,5 +96,11 @@ namespace FlowtideDotNet.Core.Optimizer
             mergeJoinRelation.Right = Visit(mergeJoinRelation.Right, state);
             return mergeJoinRelation;
         }
+
+        public override Relation VisitAggregateRelation(AggregateRelation aggregateRelation, object state)
+        {
+            aggregateRelation.Input = Visit(aggregateRelation.Input, state);
+            return aggregateRelation;
+        }
     }
 }

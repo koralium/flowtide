@@ -25,6 +25,7 @@ using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Operators.Aggregate;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -125,6 +126,21 @@ namespace FlowtideDotNet.Core.Engine
             }
             
             projectRelation.Input.Accept(this, op);
+            dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
+            return op;
+        }
+
+        public override IStreamVertex VisitAggregateRelation(AggregateRelation aggregateRelation, ITargetBlock<IStreamEvent> state)
+        {
+            var id = _operatorId++;
+            var op = new AggregateOperator(aggregateRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+
+            if (state != null)
+            {
+                op.LinkTo(state);
+            }
+
+            aggregateRelation.Input.Accept(this, op);
             dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
             return op;
         }

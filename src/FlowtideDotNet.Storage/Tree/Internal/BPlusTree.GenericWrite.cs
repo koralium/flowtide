@@ -622,9 +622,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 if (result.operation == GenericWriteOperation.Upsert)
                 {
-                    Debug.Assert(value != null, "Value returned was null, cant insert a null value.");
+                    Debug.Assert(result.result != null, "Value returned was null, cant insert a null value.");
                     index = ~index;
-                    leafNode.InsertAt(key, value, index);
+                    leafNode.InsertAt(key, result.result, index);
                     return result.operation;
                 }
                 if (result.operation == GenericWriteOperation.Delete)

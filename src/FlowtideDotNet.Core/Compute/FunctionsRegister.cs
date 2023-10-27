@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
@@ -25,10 +26,12 @@ namespace FlowtideDotNet.Core.Compute
     internal class FunctionsRegister : IFunctionsRegister
     {
         private Dictionary<string, FunctionDefinition> _scalarFunctions;
+        private Dictionary<string, AggregateFunctionDefinition> _aggregateFunctions;
 
         public FunctionsRegister()
         {
-            _scalarFunctions = new Dictionary<string, FunctionDefinition>();
+            _scalarFunctions = new Dictionary<string, FunctionDefinition>(StringComparer.OrdinalIgnoreCase);
+            _aggregateFunctions = new Dictionary<string, AggregateFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
         }
 
         public bool TryGetScalarFunction(string uri, string name, out FunctionDefinition functionDefinition)
@@ -58,9 +61,18 @@ namespace FlowtideDotNet.Core.Compute
             });
         }
 
-        public void RegisterScalarFunctionWithExpression(string uri, string name, Expression<Func<FlxValue, FlxValue, FlxValue>> expression)
+        public void RegisterAggregateFunction(
+            string uri, 
+            string name, 
+            Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
+            Func<byte[], FlxValue> stateToValueFunc)
         {
-            throw new NotImplementedException();
+            _aggregateFunctions.Add($"{uri}:{name}", new AggregateFunctionDefinition(uri, name, mapFunc, stateToValueFunc));
+        }
+
+        public bool TryGetAggregateFunction(string uri, string name, [NotNullWhen(true)] out AggregateFunctionDefinition? aggregateFunctionDefinition)
+        {
+            return _aggregateFunctions.TryGetValue($"{uri}:{name}", out aggregateFunctionDefinition);
         }
     }
 }
