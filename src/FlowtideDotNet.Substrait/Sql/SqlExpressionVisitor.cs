@@ -30,6 +30,22 @@ namespace FlowtideDotNet.Substrait.Sql
             this.sqlFunctionRegister = sqlFunctionRegister;
         }
 
+        public override ExpressionData Visit(SqlParser.Ast.Expression expression, EmitData state)
+        {
+            if (state.TryGetEmitIndex(expression, out var index))
+            {
+                var r = new DirectFieldReference()
+                {
+                    ReferenceSegment = new StructReferenceSegment()
+                    {
+                        Field = index
+                    }
+                };
+                return new ExpressionData(r, state.GetName(index));
+            }
+            return base.Visit(expression, state);
+        }
+
         protected override ExpressionData VisitBinaryOperation(SqlParser.Ast.Expression.BinaryOp binaryOp, EmitData state)
         {
             var left = Visit(binaryOp.Left, state);

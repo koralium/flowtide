@@ -1091,5 +1091,155 @@ namespace FlowtideDotNet.Substrait.Tests
                     }
                 }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
         }
+
+        [Fact]
+        public void SelectAggregate()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                SELECT count(*) FROM testtable
+            ");
+
+            var plan = builder.GetPlan();
+
+            plan.Should().BeEquivalentTo(
+                new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){1},
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                }
+                            },
+                            Input = new AggregateRelation()
+                            {
+                                Input = new ReadRelation()
+                                {
+                                    BaseSchema = new Type.NamedStruct(){
+                                        Names = new List<string>() { "c1", "c2" },
+                                        Struct = new Type.Struct()
+                                        {
+                                            Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                        }
+                                    },
+                                    NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                                },
+                                Measures = new List<AggregateMeasure>()
+                                {
+                                    new AggregateMeasure()
+                                    {
+                                        Measure = new AggregateFunction()
+                                        {
+                                            ExtensionUri = FunctionsAggregateGeneric.Uri,
+                                            ExtensionName = FunctionsAggregateGeneric.Count,
+                                            Arguments = new List<Expression>()
+                                        }
+                                    }
+                                }
+                            }   
+                        }
+                    }
+                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+        }
+
+        [Fact]
+        public void SelectAggregateWithGroup()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                SELECT c1, count(*) FROM testtable
+                GROUP BY c1
+            ");
+
+            var plan = builder.GetPlan();
+
+            plan.Should().BeEquivalentTo(
+                new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){2,3},
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 1
+                                    }
+                                }
+                            },
+                            Input = new AggregateRelation()
+                            {
+                                Input = new ReadRelation()
+                                {
+                                    BaseSchema = new Type.NamedStruct(){
+                                        Names = new List<string>() { "c1", "c2" },
+                                        Struct = new Type.Struct()
+                                        {
+                                            Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                        }
+                                    },
+                                    NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                                },
+                                Groupings = new List<AggregateGrouping>()
+                                {
+                                    new AggregateGrouping()
+                                    {
+                                        GroupingExpressions = new List<Expression>()
+                                        {
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = 0
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                Measures = new List<AggregateMeasure>()
+                                {
+                                    new AggregateMeasure()
+                                    {
+                                        Measure = new AggregateFunction()
+                                        {
+                                            ExtensionUri = FunctionsAggregateGeneric.Uri,
+                                            ExtensionName = FunctionsAggregateGeneric.Count,
+                                            Arguments = new List<Expression>()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+        }
     }
 }

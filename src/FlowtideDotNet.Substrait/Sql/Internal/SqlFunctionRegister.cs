@@ -29,10 +29,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
     internal class SqlFunctionRegister : ISqlFunctionRegister
     {
         private Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression>> _scalarFunctions;
+        private Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction>> _aggregateFunctions;
 
         public SqlFunctionRegister()
         {
             _scalarFunctions = new Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression>>(StringComparer.OrdinalIgnoreCase);
+            _aggregateFunctions = new Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction>>(StringComparer.OrdinalIgnoreCase);
         }
 
         public void RegisterScalarFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression> mapFunc)
@@ -45,13 +47,27 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return _scalarFunctions[name];
         }
 
+        public Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction> GetAggregateMapper(string name)
+        {
+            return _aggregateFunctions[name];
+        }
+
         public FunctionType GetFunctionType(string name)
         {
             if (_scalarFunctions.ContainsKey(name))
             {
                 return FunctionType.Scalar;
             }
+            if (_aggregateFunctions.ContainsKey(name))
+            {
+                return FunctionType.Aggregate;
+            }
             return FunctionType.NotExist;
+        }
+
+        public void RegisterAggregateFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction> mapFunc)
+        {
+            _aggregateFunctions.Add(name, mapFunc);
         }
     }
 }

@@ -31,6 +31,23 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 return VisitCoalesce(f, visitor, emitData).Expr;
             });
+            sqlFunctionRegister.RegisterAggregateFunction("count", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("count must have exactly one argument, and be '*'");
+                }
+                if (!(f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException("count must have exactly one argument, and be '*'");
+                }
+                return new AggregateFunction()
+                {
+                    ExtensionUri = FunctionsAggregateGeneric.Uri,
+                    ExtensionName = FunctionsAggregateGeneric.Count,
+                    Arguments = new List<Expressions.Expression>()
+                };
+            });
         }
 
         private static ExpressionData VisitCoalesce(SqlParser.Ast.Expression.Function function, SqlExpressionVisitor visitor, EmitData state)
