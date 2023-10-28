@@ -294,18 +294,18 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             {
                 Debug.Assert(_ingressState?._block != null, nameof(_ingressState._block));
 
-                return ((decimal)_ingressState._block.Count) / options.BoundedCapacity;
+                return ((float)_ingressState._block.Count) / options.BoundedCapacity;
             });
-            Metrics.CreateObservableGauge<decimal>("busy", () =>
+            Metrics.CreateObservableGauge<float>("busy", () =>
             {
                 Debug.Assert(_ingressState?._block != null, nameof(_ingressState._block));
 
-                var backpressurevalue = ((decimal)_ingressState._block.Count) / options.BoundedCapacity;
+                var backpressurevalue = ((float)_ingressState._block.Count) / options.BoundedCapacity;
                 if (_runningTasks.Count > 0)
                 {
-                    return (1.0M - backpressurevalue);
+                    return (1.0f - backpressurevalue);
                 }
-                return 0.0M;
+                return 0.0f;
             });
 
             Metrics.CreateObservableGauge("health", () =>
