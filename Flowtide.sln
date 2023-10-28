@@ -41,6 +41,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.AcceptanceTe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonitoringPrometheus", "samples\MonitoringPrometheus\MonitoringPrometheus.csproj", "{3D8888A3-E85D-4DED-BB2E-AC9090515947}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonitoringAzureMonitor", "samples\MonitoringAzureMonitor\MonitoringAzureMonitor.csproj", "{021E55B4-1743-46DB-BD51-5D1EC2B9FA1C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -111,6 +113,10 @@ Global
 		{3D8888A3-E85D-4DED-BB2E-AC9090515947}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3D8888A3-E85D-4DED-BB2E-AC9090515947}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3D8888A3-E85D-4DED-BB2E-AC9090515947}.Release|Any CPU.Build.0 = Release|Any CPU
+		{021E55B4-1743-46DB-BD51-5D1EC2B9FA1C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{021E55B4-1743-46DB-BD51-5D1EC2B9FA1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{021E55B4-1743-46DB-BD51-5D1EC2B9FA1C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{021E55B4-1743-46DB-BD51-5D1EC2B9FA1C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -132,6 +138,7 @@ Global
 		{F8672D0D-CE9F-4F5A-ACF7-C4FAF076C81E} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
 		{4CB7B16A-1E7A-4002-A440-D873093C5B8A} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 		{3D8888A3-E85D-4DED-BB2E-AC9090515947} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
+		{021E55B4-1743-46DB-BD51-5D1EC2B9FA1C} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {314C9503-DE99-42AA-8FB0-E355C91986C4}
