@@ -29,6 +29,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public DatasetGenerator(MockDatabase mockDatabase)
         {
             this.mockDatabase = mockDatabase;
+            Users = new List<User>();
+            Orders = new List<Order>();
         }
 
         public void Generate(int count = 1000, int seed = 8675309)
@@ -47,10 +49,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .RuleFor(x => x.LastName, (f, u) => f.Name.LastName((Bogus.DataSets.Name.Gender)u.Gender));
 
 
-            Users = testUsers.Generate(count);
+            var newUsers = testUsers.Generate(count);
+            Users.AddRange(newUsers);
 
             var mockTable = mockDatabase.GetOrCreateTable<User>("users");
-            mockTable.AddOrUpdate(Users);
+            mockTable.AddOrUpdate(newUsers);
         }
 
         private void GenerateOrders(int count)
@@ -60,15 +63,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .RuleFor(x => x.UserKey, (f, u) => f.PickRandom(Users).UserKey)
                 .RuleFor(x => x.Orderdate, (f, u) => f.Date.Between(DateTime.Parse("1980-01-01"), DateTime.Parse("2000-01-01")));
 
-            Orders = testOrders.Generate(count);
+            var newOrders = testOrders.Generate(count);
+            Orders.AddRange(newOrders);
 
             var mockTable = mockDatabase.GetOrCreateTable<Order>("orders");
-            mockTable.AddOrUpdate(Orders);
-        }
-
-        private void ChangeTracker_StateChanged(object? sender, Microsoft.EntityFrameworkCore.ChangeTracking.EntityStateChangedEventArgs e)
-        {
-            throw new NotImplementedException();
+            mockTable.AddOrUpdate(newOrders);
         }
     }
 }

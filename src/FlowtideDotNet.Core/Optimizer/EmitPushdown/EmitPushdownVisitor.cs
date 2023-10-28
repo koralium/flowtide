@@ -130,6 +130,17 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                         usageVisitor.Visit(measure.Filter, default);
                     }
                 }
+                if (aggregateRelation.Groupings != null)
+                {
+                    foreach (var grouping in aggregateRelation.Groupings)
+                    {
+                        foreach (var expr in grouping.GroupingExpressions)
+                        {
+                            usageVisitor.Visit(expr, default);
+                        }
+                    }
+                }
+                
                 var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
 
                 Dictionary<int, int> oldToNew = new Dictionary<int, int>();
@@ -157,6 +168,18 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                         replaceVisitor.Visit(measure.Filter, default);
                     }
                 }
+
+                if (aggregateRelation.Groupings != null)
+                {
+                    foreach (var grouping in aggregateRelation.Groupings)
+                    {
+                        foreach (var expr in grouping.GroupingExpressions)
+                        {
+                            replaceVisitor.Visit(expr, default);
+                        }
+                    }
+                }
+
                 input.Emit = emit;
             }
             return base.VisitAggregateRelation(aggregateRelation, state);

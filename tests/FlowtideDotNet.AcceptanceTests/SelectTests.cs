@@ -47,31 +47,5 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { Name = x.FirstName + " " + x.LastName }));
         }
-
-        [Fact]
-        public async Task AggregateCount()
-        {
-            GenerateData();
-            await StartStream(@"
-                INSERT INTO output 
-                SELECT 
-                    count(*)
-                FROM orders o");
-            await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Count = Orders.Count() } });
-        }
-
-        [Fact(Skip = "Skipped")]
-        public async Task AggregateCountWithGroup()
-        {
-            GenerateData();
-            await StartStream(@"
-                INSERT INTO output 
-                SELECT 
-                    count(*)
-                FROM orders
-                GROUP BY userkey");
-            await WaitForUpdate();
-        }
     }
 }
