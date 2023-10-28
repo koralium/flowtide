@@ -128,7 +128,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             Metrics.CreateObservableGauge("busy", () =>
             {
                 Debug.Assert(_targetBlock != null, nameof(_targetBlock));
-                return ((decimal)_targetBlock.InputQueue) / _targetBlock.MaxInputQueue;
+                return ((float)_targetBlock.InputQueue) / _targetBlock.MaxInputQueue;
             });
 
             Metrics.CreateObservableGauge("InputQueue", () =>

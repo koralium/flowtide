@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Base.Metrics
 
         private string GetStreamPrefix()
         {
-            return $"{_streamName}.";
+            return $"flowtide.{_streamName}.operator.";
         }
 
         private string GetVertexMeterName(string operatorName)

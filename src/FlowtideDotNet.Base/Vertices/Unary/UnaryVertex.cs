@@ -154,12 +154,12 @@ namespace FlowtideDotNet.Base.Vertices.Unary
             Metrics.CreateObservableGauge("busy", () =>
             {
                 Debug.Assert(_transformBlock != null, nameof(_transformBlock));
-                return ((decimal)_transformBlock.InputCount) / executionDataflowBlockOptions.BoundedCapacity;
+                return ((float)_transformBlock.InputCount) / executionDataflowBlockOptions.BoundedCapacity;
             });
             Metrics.CreateObservableGauge("backpressure", () =>
             {
                 Debug.Assert(_transformBlock != null, nameof(_transformBlock));
-                return ((decimal)_transformBlock.OutputCount) / executionDataflowBlockOptions.BoundedCapacity;
+                return ((float)_transformBlock.OutputCount) / executionDataflowBlockOptions.BoundedCapacity;
             });
             Metrics.CreateObservableGauge("health", () =>
             {

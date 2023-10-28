@@ -21,6 +21,7 @@ using FlowtideDotNet.Storage.StateManager;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
@@ -51,6 +52,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly IStreamScheduler _streamScheduler;
         private readonly object _contextLock = new object();
         internal readonly StreamVersionInformation? _streamVersionInformation;
+        private readonly Meter _contextMeter;
 
         internal StreamState? _lastState;
         internal long producingTime = 0;
@@ -99,6 +101,24 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _notificationReciever = notificationReciever;
             _streamVersionInformation = streamVersionInformation;
 
+            _contextMeter = new Meter($"flowtide.{streamName}");
+            _contextMeter.CreateObservableGauge<float>("health", () =>
+            {
+                var currentStatus = GetStatus();
+                switch (currentStatus)
+                {
+                    case StreamStatus.Running:
+                        return 1.0f;
+                    case StreamStatus.Failing:
+                    case StreamStatus.Stopped:
+                        return 0.0f;
+                    case StreamStatus.Starting:
+                    case StreamStatus.Degraded:
+                        return 0.5f;
+                    default:
+                        return 0.0f;
+                }
+            });
             if (loggerFactory == null)
             {
                 this.loggerFactory = new NullLoggerFactory();
