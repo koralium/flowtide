@@ -20,6 +20,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);
             BuiltInStringFunctions.AddStringFunctions(functionsRegister);
             BuiltInAggregateGenericFunctions.AddBuiltInAggregateGenericFunctions(functionsRegister);
+            BuiltInArithmaticFunctions.AddBuiltInArithmaticFunctions(functionsRegister);
         }
     }
 }

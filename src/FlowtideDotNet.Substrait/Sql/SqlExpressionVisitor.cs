@@ -18,6 +18,7 @@ using FlowtideDotNet.Substrait.Sql.Internal;
 using SqlParser;
 using SqlParser.Ast;
 using System.Diagnostics;
+using System.Runtime;
 
 namespace FlowtideDotNet.Substrait.Sql
 {
@@ -204,7 +205,34 @@ namespace FlowtideDotNet.Substrait.Sql
                             ExtensionName = FunctionsString.Concat,
                             Arguments = concatExpressions
                         }, $"$concat");
-
+                case BinaryOperator.Plus:
+                    return new ExpressionData(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionName = FunctionsArithmetic.Add,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                left.Expr,
+                                right.Expr
+                            }
+                        },
+                        $"$add"
+                        );
+                case BinaryOperator.Minus:
+                    return new ExpressionData(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionName = FunctionsArithmetic.Subtract,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                left.Expr,
+                                right.Expr
+                            }
+                        },
+                        $"$subtract"
+                        );
 
                 default:
                     throw new NotImplementedException($"Binary operation {binaryOp.Op.ToString()}' is not yet supported in SQL mode.");

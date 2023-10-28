@@ -1241,5 +1241,65 @@ namespace FlowtideDotNet.Substrait.Tests
                     }
                 }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
         }
+
+        [Fact]
+        public void SelectWithAddition()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                SELECT c1 + 1 FROM testtable
+            ");
+
+            var plan = builder.GetPlan();
+
+            plan.Should().BeEquivalentTo(
+                new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){2},
+                            Expressions = new List<Expression>()
+                            {
+                                new ScalarFunction()
+                                {
+                                    ExtensionUri = FunctionsArithmetic.Uri,
+                                    ExtensionName = FunctionsArithmetic.Add,
+                                    Arguments = new List<Expression>()
+                                    {
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = 0
+                                            }
+                                        },
+                                        new NumericLiteral()
+                                        {
+                                            Value = 1
+                                        }
+                                    }
+                                }
+                            },
+                            Input = new ReadRelation()
+                            {
+                                BaseSchema = new Type.NamedStruct(){
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
+                                NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                            }
+                        }
+                    }
+                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+        }
     }
 }

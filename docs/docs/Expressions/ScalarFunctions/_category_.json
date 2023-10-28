@@ -1,0 +1,9 @@
+{
+    "label": "Scalar Functions",
+    "position": 1,
+    "link": {
+      "type": "generated-index",
+      "description": "This page shows the different implemented substrait functions."
+    }
+  }
+  

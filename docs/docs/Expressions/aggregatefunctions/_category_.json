@@ -1,0 +1,9 @@
+{
+    "label": "Aggregate Functions",
+    "position": 2,
+    "link": {
+      "type": "generated-index",
+      "description": "This page shows the different implemented substrait functions."
+    }
+  }
+  
