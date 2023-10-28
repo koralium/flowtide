@@ -75,7 +75,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 {
                     var column = typeAccessor[rowOperation.Object, columnName];
 
-                    if (column is int intVal)
+                    if (column == null)
+                    {
+                        b.AddNull();
+                    }
+                    else if (column is int intVal)
                     {
                         b.Add(intVal);
                     }
