@@ -106,6 +106,62 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             return readRelation;
         }
 
+        public override Relation VisitAggregateRelation(AggregateRelation aggregateRelation, object state)
+        {
+            if (aggregateRelation.Input is ReferenceRelation referenceRelation)
+            {
+                return aggregateRelation;
+            }
+            if (aggregateRelation.Input.OutputLength >= aggregateRelation.OutputLength)
+            {
+                var input = aggregateRelation.Input;
+                var usageVisitor = new ExpressionFieldUsageVisitor(aggregateRelation.Input.OutputLength);
+                foreach(var measure in aggregateRelation.Measures)
+                {
+                    if (measure.Measure.Arguments != null)
+                    {
+                        foreach (var arg in measure.Measure.Arguments)
+                        {
+                            usageVisitor.Visit(arg, default);
+                        }
+                    }
+                    if (measure.Filter != null)
+                    {
+                        usageVisitor.Visit(measure.Filter, default);
+                    }
+                }
+                var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
+
+                Dictionary<int, int> oldToNew = new Dictionary<int, int>();
+                List<int> emit = new List<int>();
+                int count = 0;
+                foreach (var field in usedFields.OrderBy(x => x))
+                {
+                    emit.Add(field);
+                    oldToNew.Add(field, count);
+                    count++;
+                }
+
+                var replaceVisitor = new ExpressionFieldReplaceVisitor(oldToNew);
+                foreach (var measure in aggregateRelation.Measures)
+                {
+                    if (measure.Measure.Arguments != null)
+                    {
+                        foreach (var arg in measure.Measure.Arguments)
+                        {
+                            replaceVisitor.Visit(arg, default);
+                        }
+                    }
+                    if (measure.Filter != null)
+                    {
+                        replaceVisitor.Visit(measure.Filter, default);
+                    }
+                }
+                input.Emit = emit;
+            }
+            return base.VisitAggregateRelation(aggregateRelation, state);
+        }
+
         public override Relation VisitProjectRelation(ProjectRelation projectRelation, object state)
         {
             if (projectRelation.Input is ReferenceRelation referenceRelation)

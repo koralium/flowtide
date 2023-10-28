@@ -48,7 +48,7 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(Users.Select(x => new { Name = x.FirstName + " " + x.LastName }));
         }
 
-        [Fact(Skip = "Skipped")]
+        [Fact]
         public async Task AggregateCount()
         {
             GenerateData();
@@ -58,6 +58,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     count(*)
                 FROM orders o");
             await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Count = Orders.Count() } });
         }
 
         [Fact(Skip = "Skipped")]

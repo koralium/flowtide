@@ -109,7 +109,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 throw new NotImplementedException("Only queries that does 'FROM' with potential joins is supported at this time");
             }
-
+            
             if (select.Selection != null)
             {
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
@@ -123,12 +123,69 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             if (select.Projection != null)
             {
+                ContainsAggregateVisitor containsAggregateVisitor = new ContainsAggregateVisitor(sqlFunctionRegister);
+                bool containsAggregate = select.GroupBy != null;
+                foreach (var item in select.Projection)
+                {
+                    containsAggregate |= containsAggregateVisitor.VisitSelectItem(item);
+                }
+                if (containsAggregate)
+                {
+                    outNode = VisitSelectAggregate(select, containsAggregateVisitor, outNode);
+                }
+            }
+
+            if (select.Projection != null)
+            {
                 outNode = VisitProjection(select.Projection, outNode);
             }
 
-
-
             return outNode;
+        }
+
+        private RelationData VisitSelectAggregate(Select select, ContainsAggregateVisitor containsAggregateVisitor, RelationData parent)
+        {
+            var aggRel = new AggregateRelation()
+            {
+                Input = parent.Relation
+            };
+            aggRel.Measures = new List<AggregateMeasure>();
+
+            EmitData aggEmitData = new EmitData();
+
+            int emitcount = 0;
+
+            if (select.GroupBy != null)
+            {
+                aggRel.Groupings = new List<AggregateGrouping>();
+                var grouping = new AggregateGrouping()
+                {
+                    GroupingExpressions = new List<Expressions.Expression>()
+                };
+                aggRel.Groupings.Add(grouping);
+                foreach (var group in select.GroupBy)
+                {
+                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                    var result = exprVisitor.Visit(group, parent.EmitData);
+                    grouping.GroupingExpressions.Add(result.Expr);
+                    aggEmitData.Add(group, emitcount, result.Name);
+                    emitcount++;
+                }
+            }
+
+            foreach (var foundMeasure in containsAggregateVisitor.AggregateFunctions)
+            {
+                var mapper = sqlFunctionRegister.GetAggregateMapper(foundMeasure.Name);
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                aggRel.Measures.Add(new AggregateMeasure()
+                {
+                    Measure = mapper(foundMeasure, exprVisitor, parent.EmitData)
+                });
+                aggEmitData.Add(foundMeasure, emitcount, $"$expr{emitcount}");
+                emitcount++;
+            }
+
+            return new RelationData(aggRel, aggEmitData);
         }
 
         private RelationData? VisitProjection(SqlParser.Sequence<SelectItem> selects, RelationData parent)
