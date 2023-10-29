@@ -108,7 +108,7 @@ SELECT coalesce(column1, column2) FROM ...
 
 Checks if a numeric value is positive or negative infinite. If the value is NaN (0 / 0), or another type, it returns false.
 
-### SQL USage
+### SQL Usage
 
 ```sql
 SELECT is_infinite(column1) FROM ...
@@ -120,7 +120,7 @@ SELECT is_infinite(column1) FROM ...
 
 Checks if a numeric value is not positive or negative infinite or NaN. If the value is not nuermic it returns false.
 
-### SQL USage
+### SQL Usage
 
 ```sql
 SELECT is_finite(column1) FROM ...
