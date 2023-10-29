@@ -104,10 +104,24 @@ SELECT coalesce(column1, column2) FROM ...
 
 ## Is Infinite
 
+[Substrait definition](https://substrait.io/extensions/functions_comparison/#is_infinite)
+
 Checks if a numeric value is positive or negative infinite. If the value is NaN (0 / 0), or another type, it returns false.
 
 ### SQL USage
 
 ```sql
 SELECT is_infinite(column1) FROM ...
+```
+
+## Is Finite
+
+[Substrait definition](https://substrait.io/extensions/functions_comparison/#is_finite)
+
+Checks if a numeric value is not positive or negative infinite or NaN. If the value is not nuermic it returns false.
+
+### SQL USage
+
+```sql
+SELECT is_finite(column1) FROM ...
 ```

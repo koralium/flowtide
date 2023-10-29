@@ -96,6 +96,28 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
+            sqlFunctionRegister.RegisterScalarFunction("is_finite", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("is_finite must have exactly one argument");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var expr = visitor.Visit(funcExpr.Expression, emitData);
+                    return new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsComparison.Uri,
+                        ExtensionName = FunctionsComparison.IsFinite,
+                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    };
+                }
+                else
+                {
+                    throw new NotImplementedException("is_finite does not support the input parameter");
+                }
+            });
+
 
             sqlFunctionRegister.RegisterAggregateFunction("count", (f, visitor, emitData) =>
             {
