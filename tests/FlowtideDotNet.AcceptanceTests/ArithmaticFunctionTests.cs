@@ -55,5 +55,50 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { FirstName = default(string) }));
         }
+
+        [Fact]
+        public async Task SelectWithMultiplyNumber()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT userkey * 3 as UserKey FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey * 3 }));
+        }
+
+        [Fact]
+        public async Task SelectWithMultiplyString()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT firstName * 3 as firstName FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { FirstName = default(string) }));
+        }
+
+        [Fact]
+        public async Task SelectWithDivideNumber()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT userkey / 3 as UserKey FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey / (double)3 }));
+        }
+
+        [Fact]
+        public async Task SelectWithDivideNumberZero()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT userkey / 0 as UserKey FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey / (double)0 }));
+        }
+
+        [Fact]
+        public async Task SelectWithDivideString()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT firstName / 3 as firstName FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { FirstName = default(string) }));
+        }
     }
 }
