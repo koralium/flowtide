@@ -13,8 +13,10 @@
 using FlexBuffers;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -29,6 +31,46 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Subtract, (x, y) => SubtractImplementation(x, y));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Multiply, (x, y) => MultiplyImplementation(x, y));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Divide, (x, y) => DivideImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Negate, (x) => NegateImplementation(x));
+
+            // Aggregate functions
+            functionsRegister.RegisterAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, 
+                (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>
+                {
+                    if (aggregateFunction.Arguments.Count != 1)
+                    {
+                        throw new InvalidOperationException("Sum must have one argument.");
+                    }
+                    var arg = visitor.Visit(aggregateFunction.Arguments[0], parametersInfo);
+                    var expr = GetSumBody();
+                    var body = expr.Body;
+                    var replacer = new ParameterReplacerVisitor(expr.Parameters[0], arg!);
+                    Expression e = replacer.Visit(body);
+                    replacer = new ParameterReplacerVisitor(expr.Parameters[1], stateParameter);
+                    e = replacer.Visit(e);
+                    replacer = new ParameterReplacerVisitor(expr.Parameters[2], weightParameter);
+                    e = replacer.Visit(e);
+                    return e;
+                }, GetSumValue);
+
+            functionsRegister.RegisterAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum0,
+                (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>
+                {
+                    if (aggregateFunction.Arguments.Count != 1)
+                    {
+                        throw new InvalidOperationException("Sum must have one argument.");
+                    }
+                    var arg = visitor.Visit(aggregateFunction.Arguments[0], parametersInfo);
+                    var expr = GetSumBody();
+                    var body = expr.Body;
+                    var replacer = new ParameterReplacerVisitor(expr.Parameters[0], arg!);
+                    Expression e = replacer.Visit(body);
+                    replacer = new ParameterReplacerVisitor(expr.Parameters[1], stateParameter);
+                    e = replacer.Visit(e);
+                    replacer = new ParameterReplacerVisitor(expr.Parameters[2], weightParameter);
+                    e = replacer.Visit(e);
+                    return e;
+                }, GetSum0Value);
         }
 
         private static FlxValue AddImplementation(FlxValue x, FlxValue y)
@@ -153,6 +195,64 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 }
             }
             return NullValue;
+        }
+
+        private static FlxValue NegateImplementation(FlxValue x)
+        {
+            if (x.ValueType == FlexBuffers.Type.Float)
+            {
+                return FlxValue.FromBytes(FlexBuffer.SingleValue(-x.AsDouble));
+            }
+            else if (x.ValueType == FlexBuffers.Type.Int)
+            {
+                return FlxValue.FromBytes(FlexBuffer.SingleValue(-x.AsLong));
+            }
+            return NullValue;
+        }
+
+        private static FlxValue GetSumValue(byte[] state)
+        {
+            if (state == null)
+            {
+                return NullValue;
+            }
+            var sum = BinaryPrimitives.ReadDoubleLittleEndian(state);
+            return FlxValue.FromBytes(FlexBuffer.SingleValue(sum));
+        }
+
+        private static FlxValue GetSum0Value(byte[] state)
+        {
+            if (state == null)
+            {
+                return FlxValue.FromBytes(FlexBuffer.SingleValue(0.0));
+            }
+            var sum = BinaryPrimitives.ReadDoubleLittleEndian(state);
+            return FlxValue.FromBytes(FlexBuffer.SingleValue(sum));
+        }
+
+        private static Expression<Func<FlxValue, byte[], long, byte[]>> GetSumBody()
+        {
+            return (ev, bytes, weight) => DoSum(ev, bytes, weight);
+        }
+
+        private static byte[] DoSum(FlxValue column, byte[] currentState, long weight)
+        {
+            if (currentState == null)
+            {
+                currentState = new byte[8];
+            }
+            var currentSum = BinaryPrimitives.ReadDoubleLittleEndian(currentState);
+            if (column.ValueType == FlexBuffers.Type.Int)
+            {
+                currentSum += (column.AsLong * weight);
+            }
+            else if (column.ValueType == FlexBuffers.Type.Float)
+            {
+                currentSum += (column.AsDouble * weight);
+            }
+
+            BinaryPrimitives.WriteDoubleLittleEndian(currentState, currentSum);
+            return currentState;
         }
     }
 }

@@ -100,5 +100,50 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { FirstName = default(string) }));
         }
+
+        [Fact]
+        public async Task SelectWithNegation()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT -userkey FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = -x.UserKey }));
+        }
+
+        [Fact]
+        public async Task SelectSum()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT sum(userkey) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] {new {Sum = (double)Users.Sum(x => x.UserKey)}} );
+        }
+
+        [Fact]
+        public async Task SelectSumNoRows()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT sum(userkey) FROM users WHERE userkey = -1");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Sum = default(double?) } });
+        }
+
+        [Fact]
+        public async Task SelectSum0()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT sum0(userkey) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Sum = (double)Users.Sum(x => x.UserKey) } });
+        }
+
+        [Fact]
+        public async Task SelectSum0NoRows()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT sum0(userkey) FROM users WHERE userkey = -1");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Sum = default(double) } });
+        }
     }
 }

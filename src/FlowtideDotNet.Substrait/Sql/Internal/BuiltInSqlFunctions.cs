@@ -90,6 +90,52 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     Arguments = new List<Expressions.Expression>()
                 };
             });
+
+            sqlFunctionRegister.RegisterAggregateFunction("sum", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("sum must have exactly one argument, and not be '*'");
+                }
+                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException("sum must have exactly one argument, and not be '*'");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+                    return new AggregateFunction()
+                    {
+                        ExtensionUri = FunctionsArithmetic.Uri,
+                        ExtensionName = FunctionsArithmetic.Sum,
+                        Arguments = new List<Expressions.Expression>() { argExpr }
+                    };
+                }
+                throw new InvalidOperationException("sum must have exactly one argument, and not be '*'");
+            });
+
+            sqlFunctionRegister.RegisterAggregateFunction("sum0", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("sum0 must have exactly one argument, and not be '*'");
+                }
+                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException("sum0 must have exactly one argument, and not be '*'");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+                    return new AggregateFunction()
+                    {
+                        ExtensionUri = FunctionsArithmetic.Uri,
+                        ExtensionName = FunctionsArithmetic.Sum0,
+                        Arguments = new List<Expressions.Expression>() { argExpr }
+                    };
+                }
+                throw new InvalidOperationException("sum0 must have exactly one argument, and not be '*'");
+            });
         }
 
         private static ExpressionData VisitCoalesce(SqlParser.Ast.Expression.Function function, SqlExpressionVisitor visitor, EmitData state)
