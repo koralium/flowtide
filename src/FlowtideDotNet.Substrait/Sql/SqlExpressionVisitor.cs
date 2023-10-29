@@ -19,6 +19,7 @@ using SqlParser;
 using SqlParser.Ast;
 using System.Diagnostics;
 using System.Runtime;
+using static SqlParser.Ast.Expression;
 
 namespace FlowtideDotNet.Substrait.Sql
 {
@@ -375,6 +376,30 @@ namespace FlowtideDotNet.Substrait.Sql
                     expr.Expr
                 }
             }, "$isnotnull");
+        }
+
+        protected override ExpressionData VisitFloor(SqlParser.Ast.Expression.Floor floor, EmitData state)
+        {
+            var expr = Visit(floor.Expression, state);
+            return new ExpressionData(
+                new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsRounding.Uri,
+                    ExtensionName = FunctionsRounding.Floor,
+                    Arguments = new List<Expressions.Expression>() { expr.Expr }
+                }, "$floor");
+        }
+
+        protected override ExpressionData VisitCeil(SqlParser.Ast.Expression.Ceil ceil, EmitData state)
+        {
+            var expr = Visit(ceil.Expression, state);
+            return new ExpressionData(
+                new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsRounding.Uri,
+                    ExtensionName = FunctionsRounding.Ceil,
+                    Arguments = new List<Expressions.Expression>() { expr.Expr }
+                }, "ceil");
         }
     }
 }

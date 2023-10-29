@@ -48,7 +48,25 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitIsNotNull(isNotNull, state);
             }
+            if (expression is Expression.Floor floor)
+            {
+                return VisitFloor(floor, state);
+            }
+            if (expression is Expression.Ceil ceil)
+            {
+                return VisitCeil(ceil, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitCeil(Expression.Ceil ceil, TState state)
+        {
+            throw new NotImplementedException("Ceil is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitFloor(Expression.Floor floor, TState state)
+        {
+            throw new NotImplementedException("Floor is not supported in SQL");
         }
 
         protected virtual TReturn VisitIsNotNull(Expression.IsNotNull isNotNull, TState state)

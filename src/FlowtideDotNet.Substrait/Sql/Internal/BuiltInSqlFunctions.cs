@@ -27,6 +27,48 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
     {
         public static void AddBuiltInFunctions(SqlFunctionRegister sqlFunctionRegister)
         {
+            sqlFunctionRegister.RegisterScalarFunction("ceiling", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("ceiling must have exactly one argument");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var expr = visitor.Visit(funcExpr.Expression, emitData);
+                    return new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsRounding.Uri,
+                        ExtensionName = FunctionsRounding.Ceil,
+                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    };
+                }
+                else
+                {
+                    throw new NotImplementedException("ceiling does not support the input parameter");
+                }
+            });
+            sqlFunctionRegister.RegisterScalarFunction("round", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("round must have exactly one argument");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var expr = visitor.Visit(funcExpr.Expression, emitData);
+                    return new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsRounding.Uri,
+                        ExtensionName = FunctionsRounding.Round,
+                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    };
+                }
+                else
+                {
+                    throw new NotImplementedException("round does not support the input parameter");
+                }
+            });
             sqlFunctionRegister.RegisterScalarFunction("coalesce", (f, visitor, emitData) =>
             {
                 return VisitCoalesce(f, visitor, emitData).Expr;
