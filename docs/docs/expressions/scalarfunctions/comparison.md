@@ -111,3 +111,13 @@ Checks if a numeric value is positive or negative infinite. If the value is NaN 
 ```sql
 SELECT is_infinite(column1) FROM ...
 ```
+
+## Is Finite
+
+Checks if a numeric value is not positive or negative infinite or NaN. If the value is not nuermic it returns false.
+
+### SQL USage
+
+```sql
+SELECT is_finite(column1) FROM ...
+```

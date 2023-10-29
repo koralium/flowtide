@@ -30,5 +30,6 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string IsNotNull = "is_not_null";
         public const string Coalesce = "coalesce";
         public const string isInfinite = "is_infinite";
+        public const string IsFinite = "is_finite";
     }
 }

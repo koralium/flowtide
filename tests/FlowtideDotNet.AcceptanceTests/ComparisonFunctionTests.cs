@@ -73,5 +73,32 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = false }));
         }
+
+        [Fact]
+        public async Task IsFinitePositiveInfinite()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT is_finite(1 / 0) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = false }));
+        }
+
+        [Fact]
+        public async Task IsFiniteNegativeInfinite()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT is_finite(-1 / 0) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = false }));
+        }
+
+        [Fact]
+        public async Task IsFiniteMuneric()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT is_finite(userkey) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = true }));
+        }
     }
 }
