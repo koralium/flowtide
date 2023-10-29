@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# Arithmatic Functions
+# Arithmetic Functions
 
 ## Add
 
@@ -108,4 +108,22 @@ There are some special cases when dividing with zero:
 
 ```sql
 SELECT column1 / 3 FROM ...
+```
+
+## Negate
+
+[Substrait definition](https://substrait.io/extensions/functions_arithmetic/#negate)
+
+Negates a numeric value, example:
+
+* 1 becomes -1
+* -1 becomes 1
+* 1.3 becomes -1.3
+
+Non numeric values becomes 'null'.
+
+### SQL Usage
+
+```sql
+SELECT -column1 FROM ...
 ```

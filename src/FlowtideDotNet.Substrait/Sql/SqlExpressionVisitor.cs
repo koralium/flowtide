@@ -401,5 +401,35 @@ namespace FlowtideDotNet.Substrait.Sql
                     Arguments = new List<Expressions.Expression>() { expr.Expr }
                 }, "ceil");
         }
+
+        protected override ExpressionData VisitUnaryOperation(UnaryOp unaryOp, EmitData state)
+        {
+            var exprResult = Visit(unaryOp.Expression, state);
+            switch (unaryOp.Op)
+            {
+                case UnaryOperator.Minus:
+                    return VisitMinusUnaryOp(exprResult);
+            }
+            return base.VisitUnaryOperation(unaryOp, state);
+        }
+
+        private ExpressionData VisitMinusUnaryOp(ExpressionData expressionData)
+        {
+            if (expressionData.Expr is NumericLiteral numeric)
+            {
+                return new ExpressionData(new NumericLiteral()
+                {
+                    Value = -numeric.Value
+                }, $"$minus");
+            }
+            return new ExpressionData(
+                new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsArithmetic.Uri,
+                    ExtensionName = FunctionsArithmetic.Negate,
+                    Arguments = new List<Expressions.Expression>() { expressionData.Expr }
+                }, "$negate"
+                );
+        }
     }
 }

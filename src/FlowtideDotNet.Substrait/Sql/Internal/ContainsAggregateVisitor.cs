@@ -124,5 +124,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             return Visit(ceil.Expression, state);
         }
+
+        protected override bool VisitUnaryOperation(Expression.UnaryOp unaryOp, object state)
+        {
+            return Visit(unaryOp.Expression, state);
+        }
     }
 }

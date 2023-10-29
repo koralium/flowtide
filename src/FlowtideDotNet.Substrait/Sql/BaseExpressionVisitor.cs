@@ -56,7 +56,16 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitCeil(ceil, state);
             }
+            if (expression is Expression.UnaryOp unaryOp)
+            {
+                return VisitUnaryOperation(unaryOp, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitUnaryOperation(Expression.UnaryOp unaryOp, TState state)
+        {
+            throw new NotImplementedException($"The unary expression '{unaryOp.Op.ToString()}' is not supported in SQL");
         }
 
         protected virtual TReturn VisitCeil(Expression.Ceil ceil, TState state)
