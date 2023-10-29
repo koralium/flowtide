@@ -114,6 +114,23 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     var arg = visitor.Visit(scalarFunction.Arguments[0], parametersInfo);
                     return System.Linq.Expressions.Expression.Not(AccessIsNullProperty(arg));
                 });
+
+            functionsRegister.RegisterScalarFunction(FunctionsComparison.Uri, FunctionsComparison.Coalesce,
+                (scalarFunction, parametersInfo, visitor) =>
+                {
+                    // Start from bottom and build up
+                    var lastArg = visitor.Visit(scalarFunction.Arguments[scalarFunction.Arguments.Count - 1], parametersInfo);
+
+                    var expr = lastArg;
+                    for (int i = scalarFunction.Arguments.Count - 2; i >= 0; i--)
+                    {
+                        var newArg = visitor.Visit(scalarFunction.Arguments[i], parametersInfo);
+                        var condition = System.Linq.Expressions.Expression.Not(AccessIsNullProperty(newArg));
+                        expr = System.Linq.Expressions.Expression.Condition(condition, newArg, expr);
+                    }
+
+                    return expr;
+                });
         }
     }
 }

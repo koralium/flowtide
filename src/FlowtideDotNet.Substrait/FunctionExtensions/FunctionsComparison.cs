@@ -28,5 +28,6 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string LessThan = "lt";
         public const string LessThanOrEqual = "lte";
         public const string IsNotNull = "is_not_null";
+        public const string Coalesce = "coalesce";
     }
 }

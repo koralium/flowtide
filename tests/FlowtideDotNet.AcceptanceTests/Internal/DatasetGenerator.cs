@@ -16,6 +16,7 @@ using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Data.Common;
+using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -42,11 +43,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         private void GenerateUsers(int count)
         {
+            string?[] nullableStrings = new string?[] { null, "value" };
+
             var testUsers = new Faker<User>()
                 .RuleFor(x => x.UserKey, (f, u) => f.UniqueIndex)
                 .RuleFor(x => x.Gender, (f, u) => f.PickRandom<Gender>())
                 .RuleFor(x => x.FirstName, (f, u) => f.Name.FirstName((Bogus.DataSets.Name.Gender)u.Gender))
-                .RuleFor(x => x.LastName, (f, u) => f.Name.LastName((Bogus.DataSets.Name.Gender)u.Gender));
+                .RuleFor(x => x.LastName, (f, u) => f.Name.LastName((Bogus.DataSets.Name.Gender)u.Gender))
+                .RuleFor(x => x.NullableString, (f, u) => f.PickRandom(nullableStrings));
 
 
             var newUsers = testUsers.Generate(count);

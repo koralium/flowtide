@@ -89,3 +89,15 @@ Checks if a single argument is not equal to null.
 ```sql
 ... WHERE c1 is not null
 ```
+
+## Coalesce
+
+[Substrait definition](https://substrait.io/extensions/functions_comparison/#coalesce)
+
+Returns the first value, left to right that is not equal to null. If all values are null, a null value is returned.
+
+### SQL Usage
+
+```sql
+SELECT coalesce(column1, column2) FROM ...
+```
