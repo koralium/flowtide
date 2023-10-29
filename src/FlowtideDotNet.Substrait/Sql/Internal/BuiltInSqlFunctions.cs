@@ -140,13 +140,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         private static ExpressionData VisitCoalesce(SqlParser.Ast.Expression.Function function, SqlExpressionVisitor visitor, EmitData state)
         {
-            var ifThenStatement = new IfThenExpression()
+            var coalesceFunction = new ScalarFunction()
             {
-                Ifs = new List<IfClause>()
+                ExtensionUri = FunctionsComparison.Uri,
+                ExtensionName = FunctionsComparison.Coalesce,
+                Arguments = new List<Expressions.Expression>()
             };
+
             {
                 Debug.Assert(function.Args != null);
-                for (int i = 0; i < function.Args.Count - 1; i++)
+                for (int i = 0; i < function.Args.Count; i++)
                 {
                     var arg = function.Args[i];
                     if (arg is FunctionArg.Unnamed unnamed)
@@ -154,16 +157,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         if (unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                         {
                             var expr = visitor.Visit(funcExpr.Expression, state);
-                            ifThenStatement.Ifs.Add(new IfClause()
-                            {
-                                If = new ScalarFunction()
-                                {
-                                    ExtensionUri = FunctionsComparison.Uri,
-                                    ExtensionName = FunctionsComparison.IsNotNull,
-                                    Arguments = new List<Expressions.Expression>() { expr.Expr }
-                                },
-                                Then = expr.Expr
-                            });
+                            coalesceFunction.Arguments.Add(expr.Expr);
                         }
                         else
                         {
@@ -176,26 +170,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     }
                 }
             }
-            {
-                var lastArg = function.Args[function.Args.Count - 1];
-                if (lastArg is FunctionArg.Unnamed unnamed)
-                {
-                    if (unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
-                    {
-                        var expr = visitor.Visit(funcExpr.Expression, state);
-                        ifThenStatement.Else = expr.Expr;
-                    }
-                    else
-                    {
-                        throw new NotImplementedException("Coalesce does not support the input parameter");
-                    }
-                }
-                else
-                {
-                    throw new NotImplementedException("Coalesce does not support the input parameter");
-                }
-            }
-            return new ExpressionData(ifThenStatement, "$coalesce");
+            return new ExpressionData(coalesceFunction, "$coalesce");
         }
     }
 }

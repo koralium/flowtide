@@ -28,6 +28,8 @@ namespace FlowtideDotNet.AcceptanceTests.Entities
 
         public string? FirstName { get; set; }
 
-        public string LastName { get; set; }
+        public string? LastName { get; set; }
+
+        public string? NullableString { get; set; }
     }
 }

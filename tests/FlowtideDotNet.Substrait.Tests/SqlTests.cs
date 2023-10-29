@@ -711,62 +711,28 @@ namespace FlowtideDotNet.Substrait.Tests
                             Emit = new List<int>(){2},
                             Expressions = new List<Expression>()
                             {
-                                new IfThenExpression()
+                                new ScalarFunction()
                                 {
-                                    Ifs = new List<IfClause>()
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.Coalesce,
+                                    Arguments = new List<Expression>()
                                     {
-                                        new IfClause()
+                                        new DirectFieldReference()
                                         {
-                                            If = new ScalarFunction()
+                                            ReferenceSegment = new StructReferenceSegment()
                                             {
-                                                ExtensionUri = FunctionsComparison.Uri,
-                                                ExtensionName = FunctionsComparison.IsNotNull,
-                                                Arguments = new List<Expression>()
-                                                {
-                                                    new DirectFieldReference()
-                                                    {
-                                                        ReferenceSegment = new StructReferenceSegment()
-                                                        {
-                                                            Field = 0
-                                                        }
-                                                    }
-                                                }
-                                            },
-                                            Then = new DirectFieldReference()
-                                            {
-                                                ReferenceSegment = new StructReferenceSegment()
-                                                {
-                                                    Field = 0
-                                                }
+                                                Field = 0
                                             }
                                         },
-                                        new IfClause()
+                                        new DirectFieldReference()
                                         {
-                                            If = new ScalarFunction()
+                                            ReferenceSegment = new StructReferenceSegment()
                                             {
-                                                ExtensionUri = FunctionsComparison.Uri,
-                                                ExtensionName = FunctionsComparison.IsNotNull,
-                                                Arguments = new List<Expression>()
-                                                {
-                                                    new DirectFieldReference()
-                                                    {
-                                                        ReferenceSegment = new StructReferenceSegment()
-                                                        {
-                                                            Field = 1
-                                                        }
-                                                    }
-                                                }
-                                            },
-                                            Then = new DirectFieldReference()
-                                            {
-                                                ReferenceSegment = new StructReferenceSegment()
-                                                {
-                                                    Field = 1
-                                                }
+                                                Field = 1
                                             }
-                                        }
-                                    },
-                                    Else = new NumericLiteral(){ Value = 1 }
+                                        },
+                                        new NumericLiteral(){ Value = 1 }
+                                    }
                                 }
                             },
                             Input = new ReadRelation()
