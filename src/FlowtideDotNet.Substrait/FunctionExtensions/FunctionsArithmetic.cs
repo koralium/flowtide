@@ -23,5 +23,7 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Uri = "/functions_arithmetic.yaml";
         public const string Add = "add";
         public const string Subtract = "subtract";
+        public const string Multiply = "multiply";
+        public const string Divide = "divide";
     }
 }

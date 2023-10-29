@@ -27,6 +27,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
         {
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Add, (x, y) => AddImplementation(x, y));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Subtract, (x, y) => SubtractImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Multiply, (x, y) => MultiplyImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Divide, (x, y) => DivideImplementation(x, y));
         }
 
         private static FlxValue AddImplementation(FlxValue x, FlxValue y)
@@ -86,6 +88,68 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 else if (y.ValueType == FlexBuffers.Type.Float)
                 {
                     return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsLong - y.AsDouble));
+                }
+            }
+            return NullValue;
+        }
+
+        private static FlxValue MultiplyImplementation(FlxValue x, FlxValue y)
+        {
+            if (x.ValueType == FlexBuffers.Type.Float)
+            {
+                // Float add float always return a float
+                if (y.ValueType == FlexBuffers.Type.Float)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsDouble * y.AsDouble));
+                }
+                // Float add int, will always return a float
+                else if (y.ValueType == FlexBuffers.Type.Int)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsDouble * y.AsLong));
+                }
+            }
+            else if (x.ValueType == FlexBuffers.Type.Int)
+            {
+                // Int add int, will always return an int
+                if (y.ValueType == FlexBuffers.Type.Int)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsLong * y.AsLong));
+                }
+                // Int add float, will always return a float
+                else if (y.ValueType == FlexBuffers.Type.Float)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsLong * y.AsDouble));
+                }
+            }
+            return NullValue;
+        }
+
+        private static FlxValue DivideImplementation(FlxValue x, FlxValue y)
+        {
+            if (x.ValueType == FlexBuffers.Type.Float)
+            {
+                // Float add float always return a float
+                if (y.ValueType == FlexBuffers.Type.Float)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsDouble / y.AsDouble));
+                }
+                // Float add int, will always return a float
+                else if (y.ValueType == FlexBuffers.Type.Int)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsDouble / y.AsLong));
+                }
+            }
+            else if (x.ValueType == FlexBuffers.Type.Int)
+            {
+                // Int add int, will always return a double when dividing
+                if (y.ValueType == FlexBuffers.Type.Int)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsLong / (double)y.AsLong));
+                }
+                // Int add float, will always return a float
+                else if (y.ValueType == FlexBuffers.Type.Float)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsLong / y.AsDouble));
                 }
             }
             return NullValue;

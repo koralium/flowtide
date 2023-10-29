@@ -87,6 +87,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     {
                         b.Add(stringVal);
                     }
+                    else if (column is double doubleVal)
+                    {
+                        b.Add(doubleVal);
+                    }
                     else if (column.GetType().IsEnum)
                     {
                         b.Add((int)column);

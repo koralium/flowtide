@@ -233,7 +233,30 @@ namespace FlowtideDotNet.Substrait.Sql
                         },
                         $"$subtract"
                         );
-
+                case BinaryOperator.Multiply:
+                    return new ExpressionData(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionName = FunctionsArithmetic.Multiply,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                left.Expr,
+                                right.Expr
+                            }
+                        }, "$multiply");
+                case BinaryOperator.Divide:
+                    return new ExpressionData(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionName = FunctionsArithmetic.Divide,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                left.Expr,
+                                right.Expr
+                            }
+                        }, "$divide");
                 default:
                     throw new NotImplementedException($"Binary operation {binaryOp.Op.ToString()}' is not yet supported in SQL mode.");
             }
