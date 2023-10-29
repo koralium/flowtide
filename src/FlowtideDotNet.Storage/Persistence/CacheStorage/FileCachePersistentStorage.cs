@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public ValueTask CheckpointAsync(byte[] metadata)
         {
+            Write(1, metadata);
             _version++;
             return ValueTask.CompletedTask;
         }

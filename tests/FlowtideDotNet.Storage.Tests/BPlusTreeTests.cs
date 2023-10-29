@@ -15,12 +15,15 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FASTER.core;
+using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowtideDotNet.Storage.Tests
 {
-    public class BPlusTreeTests
+    public class BPlusTreeTests : IDisposable
     {
         private IBPlusTree<long, string> _tree;
+        StateManager.StateManagerSync stateManager;
         public BPlusTreeTests()
         {
             _tree = Init().GetAwaiter().GetResult();
@@ -30,13 +33,11 @@ namespace FlowtideDotNet.Storage.Tests
         {
             var localStorage = new LocalStorageNamedDeviceFactory(deleteOnClose: true);
             localStorage.Initialize("./data/temp");
-            StateManager.StateManagerAdvanced stateManager = new StateManager.StateManagerAdvanced<object>(new StateManagerOptions()
+            stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = 10,
-                LogDevice = Devices.CreateLogDevice("./data/persistent2.log"),
-                CheckpointDir = "./data",
-                TemporaryStorageFactory = localStorage
-            });
+                PersistentStorage = new FileCachePersistentStorage(new FileCacheOptions())
+            }, new NullLogger<StateManagerSync>());
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
@@ -186,6 +187,14 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
             Assert.Equal(200, count);
+        }
+
+        public void Dispose()
+        {
+            if (stateManager != null)
+            {
+                stateManager.Dispose();
+            }
         }
     }
 }

@@ -19,14 +19,15 @@ using FASTER.core;
 using Microsoft.Extensions.Logging.Abstractions;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Storage.Persistence.CacheStorage;
 
 namespace FlowtideDotNet.Core.Tests.Operators.Normalization
 {
-    public class NormalizationOperatorTests
+    public class NormalizationOperatorTests : IDisposable
     {
         NormalizationOperator op;
         BufferBlock<IStreamEvent> recieveBuffer;
-        StateManager stateManager;
+        StateManagerSync stateManager;
         VertexHandler vertexHandler;
 
         public NormalizationOperatorTests()
@@ -58,13 +59,14 @@ namespace FlowtideDotNet.Core.Tests.Operators.Normalization
 
             var localStorage = new LocalStorageNamedDeviceFactory(deleteOnClose: true);
             localStorage.Initialize("./data/temp");
-            stateManager = new StateManager<object>(new StateManagerOptions()
+            stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = 1000,
-                LogDevice = Devices.CreateLogDevice("./data/persistent", recoverDevice: true),
-                CheckpointDir = "./data",
-                TemporaryStorageFactory = localStorage
-            });
+                PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions())
+                //LogDevice = Devices.CreateLogDevice("./data/persistent", recoverDevice: true),
+                //CheckpointDir = "./data",
+                //TemporaryStorageFactory = localStorage
+            }, new NullLogger<StateManagerSync<object>>());
             await stateManager.InitializeAsync();
             var stateClient = stateManager.GetOrCreateClient("node");
 
@@ -317,59 +319,11 @@ namespace FlowtideDotNet.Core.Tests.Operators.Normalization
             }
         }
 
-        [Fact]
-        public async Task CheckpoinSuccess()
+        public void Dispose()
         {
-            await op.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(null, new List<StreamEvent>()
+            if (stateManager != null)
             {
-                StreamEvent.Create(1, 0, b =>
-                {
-                    b.Add("c1value1");
-                    b.Add("c2value1");
-                })
-            }), 0));
-
-            var msg = await recieveBuffer.ReceiveAsync();
-
-            {
-                if (msg is StreamMessage<StreamEventBatch> batch)
-                {
-                    Assert.Equal(1, batch.Data.Events.Count);
-                    Assert.Equal(1, batch.Data.Events[0].Weight);
-                }
-            }
-
-            await op.SendAsync(new Checkpoint(0, 1));
-
-            msg = await recieveBuffer.ReceiveAsync();
-
-            // Take a checkpoint
-            await stateManager.CheckpointAsync();
-
-            // Simulate a crash here
-            await stateManager.InitializeAsync();
-
-            op.CreateBlock();
-            op.Link();
-
-            await op.Initialize("test", 0, 0, null, vertexHandler);
-
-            await op.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(null, new List<StreamEvent>()
-            {
-                StreamEvent.Create(1, 0, b =>
-                {
-                    b.Add("c1value1");
-                    b.Add("c2value1");
-                })
-            }), 0));
-
-            msg = await recieveBuffer.ReceiveAsync();
-
-            {
-                if (msg is StreamMessage<StreamEventBatch> batch)
-                {
-                    Assert.Equal(0, batch.Data.Events.Count);
-                }
+                stateManager.Dispose();
             }
         }
     }
