@@ -114,5 +114,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             return false;
         }
+
+        protected override bool VisitFloor(Expression.Floor floor, object state)
+        {
+            return Visit(floor.Expression, state);
+        }
+
+        protected override bool VisitCeil(Expression.Ceil ceil, object state)
+        {
+            return Visit(ceil.Expression, state);
+        }
     }
 }

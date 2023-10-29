@@ -83,6 +83,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     {
                         b.Add(intVal);
                     }
+                    else if (column is long longVal)
+                    {
+                        b.Add(longVal);
+                    }
                     else if (column is string stringVal)
                     {
                         b.Add(stringVal);
