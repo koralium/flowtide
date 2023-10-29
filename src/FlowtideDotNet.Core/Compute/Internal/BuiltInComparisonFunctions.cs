@@ -23,6 +23,9 @@ namespace FlowtideDotNet.Core.Compute.Internal
 {
     internal static class BuiltInComparisonFunctions
     {
+        private static readonly FlxValue TrueVal = FlxValue.FromBytes(FlexBuffer.SingleValue(true));
+        private static readonly FlxValue FalseVal = FlxValue.FromBytes(FlexBuffer.SingleValue(false));
+
         private static System.Linq.Expressions.MethodCallExpression Compare(System.Linq.Expressions.Expression a, System.Linq.Expressions.Expression b)
         {
             MethodInfo compareMethod = typeof(FlxValueComparer).GetMethod("CompareTo", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
@@ -131,6 +134,25 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
                     return expr;
                 });
+
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.isInfinite, (x) => IsInfiniteImplementation(x));
+        }
+
+        private static FlxValue IsInfiniteImplementation(FlxValue x)
+        {
+            if (x.ValueType == FlexBuffers.Type.Float)
+            {
+                var val = x.AsDouble;
+                if (val == double.PositiveInfinity || val == double.NegativeInfinity)
+                {
+                    return TrueVal;
+                }
+                else
+                {
+                    return FalseVal;
+                }
+            }
+            return FalseVal;
         }
     }
 }

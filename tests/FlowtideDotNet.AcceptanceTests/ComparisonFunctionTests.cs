@@ -37,5 +37,41 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = x.NullableString }));
         }
+
+        [Fact]
+        public async Task IsInfinitePositiveInfiniteTrue()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT is_infinite(1 / 0) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = true }));
+        }
+
+        [Fact]
+        public async Task IsInfiniteNegativeInfiniteTrue()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT is_infinite(-1 / 0) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = true }));
+        }
+
+        [Fact]
+        public async Task IsInfiniteNaNFalse()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT is_infinite(0 / 0) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = false }));
+        }
+
+        [Fact]
+        public async Task IsInfiniteStringFalse()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT is_infinite(firstName) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = false }));
+        }
     }
 }
