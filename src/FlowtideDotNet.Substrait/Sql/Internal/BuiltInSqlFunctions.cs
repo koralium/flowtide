@@ -73,6 +73,30 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 return VisitCoalesce(f, visitor, emitData).Expr;
             });
+
+            sqlFunctionRegister.RegisterScalarFunction("is_infinite", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("is_infinite must have exactly one argument");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var expr = visitor.Visit(funcExpr.Expression, emitData);
+                    return new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsComparison.Uri,
+                        ExtensionName = FunctionsComparison.isInfinite,
+                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    };
+                }
+                else
+                {
+                    throw new NotImplementedException("is_infinite does not support the input parameter");
+                }
+            });
+
+
             sqlFunctionRegister.RegisterAggregateFunction("count", (f, visitor, emitData) =>
             {
                 if (f.Args == null || f.Args.Count != 1)

@@ -101,3 +101,13 @@ Returns the first value, left to right that is not equal to null. If all values 
 ```sql
 SELECT coalesce(column1, column2) FROM ...
 ```
+
+## Is Infinite
+
+Checks if a numeric value is positive or negative infinite. If the value is NaN (0 / 0), or another type, it returns false.
+
+### SQL USage
+
+```sql
+SELECT is_infinite(column1) FROM ...
+```

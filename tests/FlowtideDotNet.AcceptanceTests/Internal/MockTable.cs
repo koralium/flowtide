@@ -95,6 +95,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     {
                         b.Add(doubleVal);
                     }
+                    else if (column is bool boolVal)
+                    {
+                        b.Add(boolVal);
+                    }
                     else if (column.GetType().IsEnum)
                     {
                         b.Add((int)column);
