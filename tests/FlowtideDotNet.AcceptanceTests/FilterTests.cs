@@ -145,5 +145,19 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Where(x => x.LastName != null).Select(x => new { x.UserKey }));
         }
+
+        [Fact]
+        public async Task WhereNull()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey 
+                FROM users u
+                WHERE null");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => x.UserKey == -999).Select(x => new { x.UserKey }));
+        }
     }
 }

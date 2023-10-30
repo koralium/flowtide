@@ -50,7 +50,7 @@ The source uses the following logic to fetch data into the stream:
     HasMoreExisting -> LoadExisting [label = "Yes"]
     HasMoreExisting -> FetchChanges
     FetchChanges -> StoreChangeVersion
-    StoreChangeVersion -> FetchChanges
+    StoreChangeVersion -> FetchChanges 
   }
 ```
 

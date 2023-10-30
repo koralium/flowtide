@@ -32,5 +32,8 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string isInfinite = "is_infinite";
         public const string IsFinite = "is_finite";
         public const string Between = "between";
+        public const string IsNull = "is_null";
+        public const string IsNan = "is_nan";
+        public const string NullIf = "nullif";
     }
 }

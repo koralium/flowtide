@@ -26,17 +26,20 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public List<User> Users { get; private set; }
         public List<Order> Orders { get; private set; }
+        public List<Company> Companies { get; private set;}
 
         public DatasetGenerator(MockDatabase mockDatabase)
         {
             this.mockDatabase = mockDatabase;
             Users = new List<User>();
             Orders = new List<Order>();
+            Companies = new List<Company>();
         }
 
         public void Generate(int count = 1000, int seed = 8675309)
         {
             Randomizer.Seed = new Random(seed);
+            GenerateCompanies(1);
             GenerateUsers(count);
             GenerateOrders(count);
         }
@@ -50,7 +53,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .RuleFor(x => x.Gender, (f, u) => f.PickRandom<Gender>())
                 .RuleFor(x => x.FirstName, (f, u) => f.Name.FirstName((Bogus.DataSets.Name.Gender)u.Gender))
                 .RuleFor(x => x.LastName, (f, u) => f.Name.LastName((Bogus.DataSets.Name.Gender)u.Gender))
-                .RuleFor(x => x.NullableString, (f, u) => f.PickRandom(nullableStrings));
+                .RuleFor(x => x.NullableString, (f, u) => f.PickRandom(nullableStrings))
+                .RuleFor(x => x.CompanyId, (f, u) =>
+                {
+                    if (f.Random.Bool())
+                    {
+                        return f.PickRandom(Companies).CompanyId;
+                    }
+                    return null;
+                })
+                .RuleFor(x => x.Visits, (f, u) => f.Random.Number(1, 10).OrNull(f));
 
 
             var newUsers = testUsers.Generate(count);
@@ -72,6 +84,25 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             var mockTable = mockDatabase.GetOrCreateTable<Order>("orders");
             mockTable.AddOrUpdate(newOrders);
+        }
+
+        private void GenerateCompanies(int count)
+        {
+            var testCompanies = new Faker<Company>()
+                .RuleFor(x => x.CompanyId, (f, u) => $"{f.Company.Random.AlphaNumeric(5)}-{f.Company.Random.AlphaNumeric(3)}")
+                .RuleFor(x => x.Name, (f, u) => f.Company.CompanyName());
+
+            var newCompanies = testCompanies.Generate(count);
+            
+            // Add a null company for unit testing, useful for Kleene logic testing
+            newCompanies.Add(new Company()
+            {
+                CompanyId = null,
+                Name = "Null company"
+            });
+            Companies.AddRange(newCompanies);
+            var mockTable = mockDatabase.GetOrCreateTable<Company>("companies");
+            mockTable.AddOrUpdate(newCompanies);
         }
     }
 }
