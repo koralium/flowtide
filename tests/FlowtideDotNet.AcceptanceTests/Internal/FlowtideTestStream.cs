@@ -39,6 +39,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public IReadOnlyList<Order> Orders => generator.Orders;
 
+        public IReadOnlyList<Company> Companies => generator.Companies;
+
         public IFunctionsRegister FunctionsRegister => flowtideBuilder.FunctionsRegister;
 
         public ISqlFunctionRegister SqlFunctionRegister => sqlPlanBuilder.FunctionRegister;

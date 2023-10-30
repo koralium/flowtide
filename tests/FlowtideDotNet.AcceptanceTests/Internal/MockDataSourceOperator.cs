@@ -98,7 +98,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));
             output.ExitCheckpointLock();
-            this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));
+            this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
         }
     }
 }

@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Bogus.DataSets;
+
 namespace FlowtideDotNet.AcceptanceTests
 {
     public class JoinTests : FlowtideAcceptanceBase
@@ -28,6 +30,26 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
+        }
+
+        /// <summary>
+        /// Check that Kleene logic applies to merge joins
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task InnerJoinMergeJoinNullConditionEqual()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey, c.name
+                FROM users u
+                INNER JOIN companies c
+                ON u.companyid = c.companyid");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Join(Companies, x => x.CompanyId, x => x.CompanyId, (l, r) => new { l.UserKey, r.Name }).ToList());
         }
 
         [Fact]
@@ -52,6 +74,30 @@ namespace FlowtideDotNet.AcceptanceTests
                     order.OrderKey,
                     subuser.FirstName,
                     subuser.LastName
+                });
+        }
+
+        [Fact]
+        public async Task LeftJoinMergeJoinNullCondition()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey, c.name
+                FROM users u
+                LEFT JOIN companies c
+                ON u.companyid = c.companyid");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from user in Users
+                join company in Companies on user.CompanyId equals company.CompanyId into gj
+                from subcompany in gj.DefaultIfEmpty()
+                select new
+                {
+                    user.UserKey,
+                    companyName = subcompany?.Name ?? default(string)
                 });
         }
 
