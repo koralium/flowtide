@@ -28,6 +28,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public IReadOnlyList<User> Users => flowtideTestStream.Users;
         public IReadOnlyList<Order> Orders => flowtideTestStream.Orders;
+        public IReadOnlyList<Company> Companies => flowtideTestStream.Companies;
         public IFunctionsRegister FunctionsRegister => flowtideTestStream.FunctionsRegister;
         public ISqlFunctionRegister SqlFunctionRegister => flowtideTestStream.SqlFunctionRegister;
 

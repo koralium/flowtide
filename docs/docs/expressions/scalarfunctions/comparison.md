@@ -10,6 +10,7 @@ sidebar_position: 3
 
 Compares equality of two values.
 If the two values have different types they are not considered equal, so a float with value 1 will not equal an integer with value 1.
+If any argument is null, the result is null.
 
 ### SQL Usage
 
@@ -23,6 +24,7 @@ If the two values have different types they are not considered equal, so a float
 
 Checks two values for non equality.
 Different types will immedietly return true, that the values are not equal.
+If any argument is null, the result is null.
 
 ### SQL Usage
 
@@ -35,6 +37,7 @@ Different types will immedietly return true, that the values are not equal.
 [Substrait definition](https://substrait.io/extensions/functions_comparison/#gt)
 
 Checks if the left value is greater than the right value.
+If any argument is null, the result is null.
 
 ### SQL Usage
 
@@ -47,6 +50,7 @@ Checks if the left value is greater than the right value.
 [Substrait definition](https://substrait.io/extensions/functions_comparison/#gte)
 
 Checks if the left value is greater than or equal to the right value.
+If any argument is null, the result is null.
 
 ### SQL Usage
 
@@ -59,6 +63,7 @@ Checks if the left value is greater than or equal to the right value.
 [Substrait definition](https://substrait.io/extensions/functions_comparison/#lt)
 
 Checks if the left value is less than the right value.
+If any argument is null, the result is null.
 
 ### SQL Usage
 
@@ -71,6 +76,7 @@ Checks if the left value is less than the right value.
 [Substrait definition](https://substrait.io/extensions/functions_comparison/#lte)
 
 Checks if the left value is less than or equal to the right value.
+If any argument is null, the result is null.
 
 ### SQL Usage
 
@@ -100,6 +106,18 @@ Checks if a single argument is not equal to null.
 
 ```sql
 ... WHERE c1 is not null
+```
+
+## Is Null
+
+[Substrait definition](https://substrait.io/extensions/functions_comparison/#is_null)
+
+Checks if a signle argument is null.
+
+### SQL Usage
+
+```sql
+... WHERE c1 is null
 ```
 
 ## Coalesce
@@ -136,4 +154,16 @@ Checks if a numeric value is not positive or negative infinite or NaN. If the va
 
 ```sql
 SELECT is_finite(column1) FROM ...
+```
+
+## Is NaN
+
+[Substrait definition](https://substrait.io/extensions/functions_comparison/#is_nan)
+
+Checks if an exprssion is not a numeric value. A null value returns null as in the substrait definition.
+
+### SQL Usage
+
+```sql
+SELECT is_nan(column1) FROM ...
 ```

@@ -12,8 +12,10 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
+using Google.Protobuf.WellKnownTypes;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -50,6 +52,29 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 return System.Linq.Expressions.Expression.Call(AccessRootVector(parameter), method, System.Linq.Expressions.Expression.Constant(referenceSegment.Field - relativeIndex));
             }
             throw new NotSupportedException("Only direct field references are supported in merge join keys");
+        }
+
+        private static bool EqualImplementation(in FlxValueRef x, in FlxValueRef y)
+        {
+            // If either is null, return null
+            if (x.IsNull || y.IsNull)
+            {
+                return false;
+            }
+            else if (FlxValueRefComparer.CompareTo(x, y) == 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        internal static System.Linq.Expressions.MethodCallExpression EqualRef(System.Linq.Expressions.Expression a, System.Linq.Expressions.Expression b)
+        {
+            MethodInfo compareMethod = typeof(MergeJoinExpressionCompiler).GetMethod("EqualImplementation", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            return System.Linq.Expressions.Expression.Call(compareMethod, a, b);
         }
 
         public class MergeCompileResult
@@ -103,7 +128,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 seekExpressions.Add(seekCompare);
 
                 // Create equal expression used in the condition when looping over values.
-                var fieldEquals = System.Linq.Expressions.Expression.Equal(seekCompare, System.Linq.Expressions.Expression.Constant(0));
+                var fieldEquals = EqualRef(leftKeyAccessLeft, rightKeyAccessRight);
                 fieldEqualExpressions.Add(fieldEquals);
             }
 

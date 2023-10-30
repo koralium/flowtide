@@ -15,6 +15,7 @@ using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,6 +24,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
 {
     internal static class BuiltInComparisonFunctions
     {
+        private static FlxValue NullValue = FlxValue.FromBytes(FlexBuffer.Null());
         private static readonly FlxValue TrueVal = FlxValue.FromBytes(FlexBuffer.SingleValue(true));
         private static readonly FlxValue FalseVal = FlxValue.FromBytes(FlexBuffer.SingleValue(false));
 
@@ -41,82 +43,14 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         public static void AddComparisonFunctions(FunctionsRegister functionsRegister)
         {
-            // Equals
-            functionsRegister.RegisterScalarFunction(FunctionsComparison.Uri, FunctionsComparison.Equal,
-                (scalarFunction, parametersInfo, visitor) =>
-                {
-                    if (scalarFunction.Arguments.Count != 2)
-                        throw new ArgumentException("Equal function requires 2 arguments");
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.Equal, (x, y) => EqualImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.NotEqual, (x, y) => NotEqualImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.GreaterThan, (x, y) => GreaterThanImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.GreaterThanOrEqual, (x, y) => GreaterThanOrEqualImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.LessThan, (x, y) => LessThanImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.LessThanOrEqual, (x, y) => LessThanOrEqualImplementation(x, y));
 
-                    var left = visitor.Visit(scalarFunction.Arguments[0], parametersInfo);
-                    var right = visitor.Visit(scalarFunction.Arguments[1], parametersInfo);
-                    return System.Linq.Expressions.Expression.Equal(Compare(left, right), System.Linq.Expressions.Expression.Constant(0));
-                });
-            // Not equal
-            functionsRegister.RegisterScalarFunction(FunctionsComparison.Uri, FunctionsComparison.NotEqual,
-                 (scalarFunction, parametersInfo, visitor) =>
-                 {
-                     if (scalarFunction.Arguments.Count != 2)
-                         throw new ArgumentException("Not equal function requires 2 arguments");
-
-                     var left = visitor.Visit(scalarFunction.Arguments[0], parametersInfo);
-                     var right = visitor.Visit(scalarFunction.Arguments[1], parametersInfo);
-                     return System.Linq.Expressions.Expression.NotEqual(Compare(left, right), System.Linq.Expressions.Expression.Constant(0));
-                 });
-            // Greater than
-            functionsRegister.RegisterScalarFunction(FunctionsComparison.Uri, FunctionsComparison.GreaterThan,
-                (scalarFunction, parametersInfo, visitor) =>
-                {
-                    if (scalarFunction.Arguments.Count != 2)
-                        throw new ArgumentException("Greater than function requires 2 arguments");
-
-                    var left = visitor.Visit(scalarFunction.Arguments[0], parametersInfo);
-                    var right = visitor.Visit(scalarFunction.Arguments[1], parametersInfo);
-                    return System.Linq.Expressions.Expression.GreaterThan(Compare(left, right), System.Linq.Expressions.Expression.Constant(0));
-                });
-            // Greater than or equal
-            functionsRegister.RegisterScalarFunction(FunctionsComparison.Uri, FunctionsComparison.GreaterThanOrEqual,
-                (scalarFunction, parametersInfo, visitor) =>
-                {
-                    if (scalarFunction.Arguments.Count != 2)
-                        throw new ArgumentException("Greater than or equal function requires 2 arguments");
-
-                    var left = visitor.Visit(scalarFunction.Arguments[0], parametersInfo);
-                    var right = visitor.Visit(scalarFunction.Arguments[1], parametersInfo);
-                    return System.Linq.Expressions.Expression.GreaterThanOrEqual(Compare(left, right), System.Linq.Expressions.Expression.Constant(0));
-                });
-            // Less than
-            functionsRegister.RegisterScalarFunction(FunctionsComparison.Uri, FunctionsComparison.LessThan,
-                (scalarFunction, parametersInfo, visitor) =>
-                {
-                    if (scalarFunction.Arguments.Count != 2)
-                        throw new ArgumentException("Less than function requires 2 arguments");
-
-                    var left = visitor.Visit(scalarFunction.Arguments[0], parametersInfo);
-                    var right = visitor.Visit(scalarFunction.Arguments[1], parametersInfo);
-                    return System.Linq.Expressions.Expression.LessThan(Compare(left, right), System.Linq.Expressions.Expression.Constant(0));
-                });
-            // Less than or equal
-            functionsRegister.RegisterScalarFunction(FunctionsComparison.Uri, FunctionsComparison.LessThanOrEqual,
-                (scalarFunction, parametersInfo, visitor) =>
-                {
-                    if (scalarFunction.Arguments.Count != 2)
-                        throw new ArgumentException("Less than or equal function requires 2 arguments");
-
-                    var left = visitor.Visit(scalarFunction.Arguments[0], parametersInfo);
-                    var right = visitor.Visit(scalarFunction.Arguments[1], parametersInfo);
-                    return System.Linq.Expressions.Expression.LessThanOrEqual(Compare(left, right), System.Linq.Expressions.Expression.Constant(0));
-                });
-            // Is not null
-            functionsRegister.RegisterScalarFunction(FunctionsComparison.Uri, FunctionsComparison.IsNotNull,
-                (scalarFunction, parametersInfo, visitor) =>
-                {
-                    if (scalarFunction.Arguments.Count != 1)
-                        throw new ArgumentException("Is not null function requires 1 argument");
-
-                    var arg = visitor.Visit(scalarFunction.Arguments[0], parametersInfo);
-                    return System.Linq.Expressions.Expression.Not(AccessIsNullProperty(arg));
-                });
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.IsNotNull, (x) => x.IsNull ? FalseVal : TrueVal);
 
             functionsRegister.RegisterScalarFunction(FunctionsComparison.Uri, FunctionsComparison.Coalesce,
                 (scalarFunction, parametersInfo, visitor) =>
@@ -138,9 +72,122 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.isInfinite, (x) => IsInfiniteImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.IsFinite, (x) => IsFiniteImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.Between, (x, y, z) => BetweenImplementation(x, y, z));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.IsNull, (x) => x.IsNull ? TrueVal : FalseVal);
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.IsNan, (x) => IsNanImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.NullIf, (x, y) => NullIfImplementation(x, y));
         }
-        
-        private static FlxValue IsInfiniteImplementation(FlxValue x)
+
+        /// <summary>
+        /// Equals with Kleene logic
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <returns></returns>
+        private static FlxValue EqualImplementation(in FlxValue x, in FlxValue y)
+        {
+            // If either is null, return null
+            if (x.IsNull || y.IsNull)
+            {
+                return NullValue;
+            }
+            else if (FlxValueComparer.CompareTo(x, y) == 0)
+            {
+                return TrueVal;
+            }
+            else
+            {
+                return FalseVal;
+            }
+        }
+
+        private static FlxValue NotEqualImplementation(in FlxValue x, in FlxValue y)
+        {
+            // If either is null, return null
+            if (x.IsNull || y.IsNull)
+            {
+                return NullValue;
+            }
+            else if (FlxValueComparer.CompareTo(x, y) != 0)
+            {
+                return TrueVal;
+            }
+            else
+            {
+                return FalseVal;
+            }
+        }
+
+        private static FlxValue GreaterThanImplementation(in FlxValue x, in FlxValue y)
+        {
+            // If either is null, return null
+            if (x.IsNull || y.IsNull)
+            {
+                return NullValue;
+            }
+            else if (FlxValueComparer.CompareTo(x, y) > 0)
+            {
+                return TrueVal;
+            }
+            else
+            {
+                return FalseVal;
+            }
+        }
+
+        private static FlxValue GreaterThanOrEqualImplementation(in FlxValue x, in FlxValue y)
+        {
+            // If either is null, return null
+            if (x.IsNull || y.IsNull)
+            {
+                return NullValue;
+            }
+            else if (FlxValueComparer.CompareTo(x, y) >= 0)
+            {
+                return TrueVal;
+            }
+            else
+            {
+                return FalseVal;
+            }
+        }
+
+        private static FlxValue LessThanImplementation(in FlxValue x, in FlxValue y)
+        {
+            // If either is null, return null
+            if (x.IsNull || y.IsNull)
+            {
+                return NullValue;
+            }
+            else if (FlxValueComparer.CompareTo(x, y) < 0)
+            {
+                return TrueVal;
+            }
+            else
+            {
+                return FalseVal;
+            }
+        }
+
+        private static FlxValue LessThanOrEqualImplementation(in FlxValue x, in FlxValue y)
+        {
+            // If either is null, return null
+            if (x.IsNull || y.IsNull)
+            {
+                return NullValue;
+            }
+            else if (FlxValueComparer.CompareTo(x, y) <= 0)
+            {
+                return TrueVal;
+            }
+            else
+            {
+                return FalseVal;
+            }
+        }
+
+
+
+        private static FlxValue IsInfiniteImplementation(in FlxValue x)
         {
             if (x.ValueType == FlexBuffers.Type.Float)
             {
@@ -157,7 +204,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return FalseVal;
         }
 
-        private static FlxValue IsFiniteImplementation(FlxValue x)
+        private static FlxValue IsFiniteImplementation(in FlxValue x)
         {
             if (x.ValueType == FlexBuffers.Type.Float)
             {
@@ -178,7 +225,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return FalseVal;
         }
 
-        private static FlxValue BetweenImplementation(FlxValue expr, FlxValue low, FlxValue high)
+        private static FlxValue BetweenImplementation(in FlxValue expr, in FlxValue low, in FlxValue high)
         {
             if (FlxValueComparer.CompareTo(expr, low) >= 0 && FlxValueComparer.CompareTo(expr, high) <= 0)
             {
@@ -187,6 +234,43 @@ namespace FlowtideDotNet.Core.Compute.Internal
             else
             {
                 return FalseVal;
+            }
+        }
+
+        private static FlxValue IsNanImplementation(in FlxValue x)
+        {
+            if (x.IsNull)
+            {
+                return NullValue;
+            }
+            if (x.ValueType == FlexBuffers.Type.Float)
+            {
+                var val = x.AsDouble;
+                if (val == double.NaN)
+                {
+                    return TrueVal;
+                }
+                else
+                {
+                    return TrueVal;
+                }
+            }
+            else if (x.ValueType == FlexBuffers.Type.Int)
+            {
+                return FalseVal;
+            }
+            return TrueVal;
+        }
+
+        private static FlxValue NullIfImplementation(in FlxValue x, in FlxValue y)
+        {
+            if (FlxValueComparer.CompareTo(x, y) == 0)
+            {
+                return NullValue;
+            }
+            else
+            {
+                return x;
             }
         }
     }
