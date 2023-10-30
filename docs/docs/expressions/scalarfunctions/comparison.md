@@ -78,6 +78,18 @@ Checks if the left value is less than or equal to the right value.
 ... WHERE c1 <= 1
 ```
 
+## Between
+
+[Substrait definition](https://substrait.io/extensions/functions_comparison/#between)
+
+Checks if an expression is between two values.
+
+### SQL Usage
+
+```sql
+... WHERE c1 BETWEEN 100 AND 200
+```
+
 ## Is not null
 
 [Substrait definition](https://substrait.io/extensions/functions_comparison/#is_not_null)
@@ -118,7 +130,7 @@ SELECT is_infinite(column1) FROM ...
 
 [Substrait definition](https://substrait.io/extensions/functions_comparison/#is_finite)
 
-Checks if a numeric value is not positive or negative infinite or NaN. If the value is not nuermic it returns false.
+Checks if a numeric value is not positive or negative infinite or NaN. If the value is not numeric it returns false.
 
 ### SQL Usage
 

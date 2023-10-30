@@ -100,5 +100,19 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = true }));
         }
+
+        [Fact]
+        public async Task Between()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey 
+                FROM users u
+                WHERE u.userkey BETWEEN 100 AND 200");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => x.UserKey >= 100 && x.UserKey <= 200).Select(x => new { x.UserKey }));
+        }
     }
 }

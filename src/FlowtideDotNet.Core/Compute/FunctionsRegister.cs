@@ -80,6 +80,27 @@ namespace FlowtideDotNet.Core.Compute
             });
         }
 
+        public void RegisterScalarFunctionWithExpression(string uri, string name, Expression<Func<FlxValue, FlxValue, FlxValue, FlxValue>> expression)
+        {
+            RegisterScalarFunction(uri, name, (scalarFunction, parametersInfo, expressionVisitor) =>
+            {
+                if (scalarFunction.Arguments.Count != 3)
+                {
+                    throw new ArgumentException($"Scalar function {name} must have three arguments");
+                }
+
+                var p1 = expressionVisitor.Visit(scalarFunction.Arguments[0], parametersInfo);
+                var p2 = expressionVisitor.Visit(scalarFunction.Arguments[1], parametersInfo);
+                var p3 = expressionVisitor.Visit(scalarFunction.Arguments[2], parametersInfo);
+                var expressionBody = expression.Body;
+                // TODO: Replace parameter with p1
+                expressionBody = new ParameterReplacerVisitor(expression.Parameters[0], p1).Visit(expressionBody);
+                expressionBody = new ParameterReplacerVisitor(expression.Parameters[1], p2).Visit(expressionBody);
+                expressionBody = new ParameterReplacerVisitor(expression.Parameters[2], p3).Visit(expressionBody);
+                return expressionBody;
+            });
+        }
+
         public void RegisterAggregateFunction(
             string uri, 
             string name, 
