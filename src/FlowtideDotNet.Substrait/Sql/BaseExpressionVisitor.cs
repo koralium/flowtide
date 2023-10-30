@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using SqlParser.Ast;
+using static SqlParser.Ast.Expression;
 
 namespace FlowtideDotNet.Substrait.Sql
 {
@@ -64,7 +65,16 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitBetween(between, state);
             }
+            if (expression is Expression.IsNull isNull)
+            {
+                return VisitIsNull(isNull, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitIsNull(Expression.IsNull isNull, TState state)
+        {
+            throw new NotImplementedException($"The expression '{isNull.GetType().Name}' is not supported in SQL");
         }
 
         protected virtual TReturn VisitBetween(Expression.Between between, TState state)

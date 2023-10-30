@@ -129,5 +129,19 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             return Visit(unaryOp.Expression, state);
         }
+
+        protected override bool VisitBetween(Expression.Between between, object state)
+        {
+            bool containsAggregate = false;
+            containsAggregate |= Visit(between.Expression, state);
+            containsAggregate |= Visit(between.Low, state);
+            containsAggregate |= Visit(between.High, state);
+            return containsAggregate;
+        }
+
+        protected override bool VisitIsNull(Expression.IsNull isNull, object state)
+        {
+            return Visit(isNull.Expression, state);
+        }
     }
 }
