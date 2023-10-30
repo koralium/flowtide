@@ -102,6 +102,18 @@ Checks if a single argument is not equal to null.
 ... WHERE c1 is not null
 ```
 
+## Is Null
+
+[Substrait definition](https://substrait.io/extensions/functions_comparison/#is_null)
+
+Checks if a signle argument is null.
+
+### SQL Usage
+
+```sql
+... WHERE c1 is null
+```
+
 ## Coalesce
 
 [Substrait definition](https://substrait.io/extensions/functions_comparison/#coalesce)
@@ -136,4 +148,16 @@ Checks if a numeric value is not positive or negative infinite or NaN. If the va
 
 ```sql
 SELECT is_finite(column1) FROM ...
+```
+
+## Is NaN
+
+[Substrait definition](https://substrait.io/extensions/functions_comparison/#is_nan)
+
+Checks if an exprssion is not a numeric value. A null value returns null as in the substrait definition.
+
+### SQL Usage
+
+```sql
+SELECT is_nan(column1) FROM ...
 ```

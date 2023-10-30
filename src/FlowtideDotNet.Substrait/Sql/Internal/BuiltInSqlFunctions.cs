@@ -20,6 +20,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static SqlParser.Ast.WildcardExpression;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {
@@ -116,6 +117,62 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new NotImplementedException("is_finite does not support the input parameter");
                 }
+            });
+
+            sqlFunctionRegister.RegisterScalarFunction("is_nan", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("is_nan must have exactly one argument");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var expr = visitor.Visit(funcExpr.Expression, emitData);
+                    return new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsComparison.Uri,
+                        ExtensionName = FunctionsComparison.IsNan,
+                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    };
+                }
+                else
+                {
+                    throw new NotImplementedException("is_nan does not support the input parameter");
+                }
+            });
+
+            sqlFunctionRegister.RegisterScalarFunction("nullif", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 2)
+                {
+                    throw new InvalidOperationException("nullif must have exactly two arguments");
+                }
+                var arguments = new List<Expressions.Expression>();
+                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var expr = visitor.Visit(funcExpr.Expression, emitData);
+                    arguments.Add(expr.Expr);
+                }
+                else
+                {
+                    throw new NotImplementedException("nullif does not support the input parameter");
+                }
+                if (f.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
+                {
+                    var expr = visitor.Visit(funcExpr2.Expression, emitData);
+                    arguments.Add(expr.Expr);
+                }
+                else
+                {
+                    throw new NotImplementedException("nullif does not support the input parameter");
+                }
+
+                return new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionName = FunctionsComparison.NullIf,
+                    Arguments = arguments
+                };
             });
 
 

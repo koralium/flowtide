@@ -23,6 +23,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
 {
     internal static class BuiltInComparisonFunctions
     {
+        private static FlxValue NullValue = FlxValue.FromBytes(FlexBuffer.Null());
         private static readonly FlxValue TrueVal = FlxValue.FromBytes(FlexBuffer.SingleValue(true));
         private static readonly FlxValue FalseVal = FlxValue.FromBytes(FlexBuffer.SingleValue(false));
 
@@ -138,6 +139,9 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.isInfinite, (x) => IsInfiniteImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.IsFinite, (x) => IsFiniteImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.Between, (x, y, z) => BetweenImplementation(x, y, z));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.IsNull, (x) => x.IsNull ? TrueVal : FalseVal);
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.IsNan, (x) => IsNanImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.NullIf, (x, y) => NullIfImplementation(x, y));
         }
         
         private static FlxValue IsInfiniteImplementation(FlxValue x)
@@ -187,6 +191,43 @@ namespace FlowtideDotNet.Core.Compute.Internal
             else
             {
                 return FalseVal;
+            }
+        }
+
+        private static FlxValue IsNanImplementation(FlxValue x)
+        {
+            if (x.IsNull)
+            {
+                return NullValue;
+            }
+            if (x.ValueType == FlexBuffers.Type.Float)
+            {
+                var val = x.AsDouble;
+                if (val == double.NaN)
+                {
+                    return TrueVal;
+                }
+                else
+                {
+                    return TrueVal;
+                }
+            }
+            else if (x.ValueType == FlexBuffers.Type.Int)
+            {
+                return FalseVal;
+            }
+            return TrueVal;
+        }
+
+        private static FlxValue NullIfImplementation(FlxValue x, FlxValue y)
+        {
+            if (FlxValueComparer.CompareTo(x, y) == 0)
+            {
+                return NullValue;
+            }
+            else
+            {
+                return x;
             }
         }
     }

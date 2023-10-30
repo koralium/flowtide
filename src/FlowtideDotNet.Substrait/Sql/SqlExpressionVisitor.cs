@@ -452,5 +452,21 @@ namespace FlowtideDotNet.Substrait.Sql
                 }, "$between"
             );
         }
+
+        protected override ExpressionData VisitIsNull(IsNull isNull, EmitData state)
+        {
+            var expr = Visit(isNull.Expression, state);
+            return new ExpressionData(
+                new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionName = FunctionsComparison.IsNull,
+                    Arguments = new List<Expressions.Expression>()
+                    {
+                        expr.Expr
+                    }
+                }, "$isnull"
+            );
+        }
     }
 }

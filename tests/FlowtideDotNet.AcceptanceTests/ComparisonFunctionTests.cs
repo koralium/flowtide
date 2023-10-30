@@ -114,5 +114,45 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Where(x => x.UserKey >= 100 && x.UserKey <= 200).Select(x => new { x.UserKey }));
         }
+
+        [Fact]
+        public async Task IsNull()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey 
+                FROM users u
+                WHERE u.nullablestring is null");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => x.NullableString == null).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task IsNan()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    is_nan(0/0), is_nan(userkey), is_nan(nullablestring) 
+                FROM users u");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { nan = true, userkey = false, nullString = x.NullableString == null ? default(bool?) : true}));
+        }
+
+        [Fact]
+        public async Task NullIf()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    nullif(u.userkey, 17)
+                FROM users u");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.UserKey == 17 ? default(int?) : x.UserKey }));
+        }
     }
 }
