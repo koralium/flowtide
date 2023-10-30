@@ -431,5 +431,26 @@ namespace FlowtideDotNet.Substrait.Sql
                 }, "$negate"
                 );
         }
+
+        protected override ExpressionData VisitBetween(Between between, EmitData state)
+        {
+            var expr = Visit(between.Expression, state);
+            var low = Visit(between.Low, state);
+            var high = Visit(between.High, state);
+
+            return new ExpressionData(
+                new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionName = FunctionsComparison.Between,
+                    Arguments = new List<Expressions.Expression>()
+                    {
+                        expr.Expr,
+                        low.Expr,
+                        high.Expr
+                    }
+                }, "$between"
+            );
+        }
     }
 }

@@ -60,7 +60,16 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitUnaryOperation(unaryOp, state);
             }
+            if (expression is Expression.Between between)
+            {
+                return VisitBetween(between, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitBetween(Expression.Between between, TState state)
+        {
+            throw new NotImplementedException($"The expression '{between.GetType().Name}' is not supported in SQL");
         }
 
         protected virtual TReturn VisitUnaryOperation(Expression.UnaryOp unaryOp, TState state)

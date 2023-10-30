@@ -137,8 +137,9 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.isInfinite, (x) => IsInfiniteImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.IsFinite, (x) => IsFiniteImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.Between, (x, y, z) => BetweenImplementation(x, y, z));
         }
-
+        
         private static FlxValue IsInfiniteImplementation(FlxValue x)
         {
             if (x.ValueType == FlexBuffers.Type.Float)
@@ -175,6 +176,18 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 return TrueVal;
             }
             return FalseVal;
+        }
+
+        private static FlxValue BetweenImplementation(FlxValue expr, FlxValue low, FlxValue high)
+        {
+            if (FlxValueComparer.CompareTo(expr, low) >= 0 && FlxValueComparer.CompareTo(expr, high) <= 0)
+            {
+                return TrueVal;
+            }
+            else
+            {
+                return FalseVal;
+            }
         }
     }
 }
