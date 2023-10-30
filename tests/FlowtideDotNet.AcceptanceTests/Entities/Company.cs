@@ -19,21 +19,11 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.AcceptanceTests.Entities
 {
-    public class User
+    public class Company
     {
         [Key]
-        public int UserKey { get; set; }
+        public string CompanyId { get; set; }
 
-        public Gender Gender { get; set; }
-
-        public string? FirstName { get; set; }
-
-        public string? LastName { get; set; }
-
-        public string? NullableString { get; set; }
-
-        public string? CompanyId { get; set; }
-
-        public int? Visits { get; set; }
+        public string Name { get; set; }
     }
 }

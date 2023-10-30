@@ -154,5 +154,75 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = x.UserKey == 17 ? default(int?) : x.UserKey }));
         }
+
+        [Fact]
+        public async Task EqualNullable()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE u.nullablestring = 'value'");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => x.NullableString == "value").Select(x => new { val = x.UserKey }));
+        }
+
+        [Fact]
+        public async Task GreaterThanNullable()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey 
+                FROM users u
+                WHERE u.visits > 3");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => x.Visits > 3).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task GreaterThanOrEqualNullable()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey 
+                FROM users u
+                WHERE u.visits >= 3");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => x.Visits >= 3).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task LessThanNullable()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey 
+                FROM users u
+                WHERE u.visits < 3");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => x.Visits < 3).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task LessThanOrEqualNullable()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey 
+                FROM users u
+                WHERE u.visits <= 3");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => x.Visits <= 3).Select(x => new { x.UserKey }));
+        }
     }
 }
