@@ -55,6 +55,11 @@ namespace FlowtideDotNet.AcceptanceTests
             return flowtideTestStream.WaitForUpdate();
         }
 
+        public void AddOrUpdateUser(User user)
+        {
+            flowtideTestStream.AddOrUpdateUser(user);
+        }
+
         public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper)
         {
             var baseType = this.GetType();

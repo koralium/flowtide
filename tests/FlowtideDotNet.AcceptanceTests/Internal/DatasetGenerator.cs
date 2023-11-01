@@ -44,6 +44,22 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             GenerateOrders(count);
         }
 
+        public void AddOrUpdateUser(User user)
+        {
+            var index = Users.FindIndex(x => x.UserKey == user.UserKey);
+
+            if (index >= 0)
+            {
+                Users[index] = user;
+            }
+            else
+            {
+                Users.Add(user);
+            }
+            var mockTable = mockDatabase.GetOrCreateTable<User>("users");
+            mockTable.AddOrUpdate(new List<User>() { user });
+        }
+
         private void GenerateUsers(int count)
         {
             string?[] nullableStrings = new string?[] { null, "value" };

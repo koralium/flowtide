@@ -64,6 +64,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.Generate(count);
         }
 
+        public void AddOrUpdateUser(User user)
+        {
+            generator.AddOrUpdateUser(user);
+        }
+
         public async Task StartStream(string sql)
         {
             sqlPlanBuilder.Sql(sql);
