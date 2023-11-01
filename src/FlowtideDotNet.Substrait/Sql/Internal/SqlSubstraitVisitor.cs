@@ -23,12 +23,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private readonly TablesMetadata tablesMetadata;
         private readonly SqlPlanBuilder sqlPlanBuilder;
         private readonly SqlFunctionRegister sqlFunctionRegister;
+        private readonly Dictionary<string, CTEContainer> cteContainers;
 
         public SqlSubstraitVisitor(SqlPlanBuilder sqlPlanBuilder, SqlFunctionRegister sqlFunctionRegister)
         {
             this.sqlPlanBuilder = sqlPlanBuilder;
             this.sqlFunctionRegister = sqlFunctionRegister;
             tablesMetadata = sqlPlanBuilder._tablesMetadata;
+            cteContainers = new Dictionary<string, CTEContainer>(StringComparer.OrdinalIgnoreCase);
         }
 
         protected override RelationData? VisitInsertStatement(Statement.Insert insert, object? state)
@@ -88,6 +90,48 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override RelationData? VisitQuery(Query query, object? state)
         {
+            if (query.With != null)
+            {
+                
+                
+                foreach (var with in query.With.CteTables)
+                {
+                    var emitDataExtractor = new EmitDataExtractorVisitor(tablesMetadata, sqlFunctionRegister);
+                    var cteEmitData = emitDataExtractor.Visit(with.Query, state);
+                    if (cteEmitData == null)
+                    {
+                        throw new InvalidOperationException("Could not extract emit information from with query");
+                    }
+                    var alias = with.Alias.Name.ToSql();
+                    var container = new CTEContainer(alias, cteEmitData, cteEmitData.GetNames().Count);
+                    
+                    cteContainers.Add(alias, container);
+                    var p = Visit(with.Query, state)!.Relation;
+                    
+                    // Check if this is recursive CTE
+                    if (container.UsageCounter > 0)
+                    {
+                        p = new IterationRelation()
+                        {
+                            LoopPlan = p,
+                            IterationName = alias
+                        };
+                    }
+                    var plan = new Plan()
+                    {
+                        Relations = new List<Relation>()
+                        {
+                            p
+                        }
+                    };
+                    // Remove from containers since it will be added as a view now.
+                    cteContainers.Remove(alias);
+                    // With queries should be registered as views in the plan
+                    // So they can be reused multiple times in the query
+                    sqlPlanBuilder._planModifier.AddPlanAsView(alias, plan);
+                    tablesMetadata.AddTable(alias, cteEmitData.GetNames());
+                }
+            }
             return Visit(query.Body, state);
         }
 
@@ -242,6 +286,22 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         protected override RelationData? VisitTable(TableFactor.Table table, object? state)
         {
             var tableName = string.Join('.', table.Name.Values.Select(x => x.Value));
+
+            if (cteContainers.TryGetValue(tableName, out var cteContainer))
+            {
+                var emitData = cteContainer.EmitData;
+                cteContainer.UsageCounter++;
+                if (table.Alias != null)
+                {
+                    emitData = emitData.ClonewithAlias(table.Alias.Name.Value);
+                }
+                return new RelationData(new IterationReferenceReadRelation()
+                {
+                    IterationName = cteContainer.Alias,
+                    ReferenceOutputLength = cteContainer.OutputLength
+                }, emitData);
+            }
+
             if (tablesMetadata.TryGetTable(tableName, out var t))
             {
                 var emitData = new EmitData();

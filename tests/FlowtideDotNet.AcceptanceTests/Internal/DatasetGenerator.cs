@@ -48,6 +48,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             string?[] nullableStrings = new string?[] { null, "value" };
 
+            List<int> availableManagers = new List<int>();
+
             var testUsers = new Faker<User>()
                 .RuleFor(x => x.UserKey, (f, u) => f.UniqueIndex)
                 .RuleFor(x => x.Gender, (f, u) => f.PickRandom<Gender>())
@@ -62,7 +64,21 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     }
                     return null;
                 })
-                .RuleFor(x => x.Visits, (f, u) => f.Random.Number(1, 10).OrNull(f));
+                .RuleFor(x => x.Visits, (f, u) => f.Random.Number(1, 10).OrNull(f))
+                .RuleFor(x => x.ManagerKey, (f, u) =>
+                {
+                    if (availableManagers.Count == 0)
+                    {
+                        availableManagers.Add(u.UserKey);
+                        return default(int?);
+                    }
+                    else
+                    {
+                        var managerKey = f.PickRandom(availableManagers);
+                        availableManagers.Add(u.UserKey);
+                        return managerKey;
+                    }
+                });
 
 
             var newUsers = testUsers.Generate(count);

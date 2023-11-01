@@ -102,5 +102,20 @@ namespace FlowtideDotNet.Core.Optimizer
             aggregateRelation.Input = Visit(aggregateRelation.Input, state);
             return aggregateRelation;
         }
+
+        public override Relation VisitIterationRelation(IterationRelation iterationRelation, object state)
+        {
+            if (iterationRelation.Input != null)
+            {
+                iterationRelation.Input = Visit(iterationRelation.Input, state);
+            }
+            iterationRelation.LoopPlan = Visit(iterationRelation.LoopPlan, state);
+            return iterationRelation;
+        }
+
+        public override Relation VisitIterationReferenceReadRelation(IterationReferenceReadRelation iterationReferenceReadRelation, object state)
+        {
+            return iterationReferenceReadRelation;
+        }
     }
 }

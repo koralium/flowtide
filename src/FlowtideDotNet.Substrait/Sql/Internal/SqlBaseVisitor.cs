@@ -108,7 +108,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         private TReturn VisitInsertSetExpression(SetExpression.Insert insert, TState state)
         {
-            throw new NotImplementedException();
+            return Visit(insert.Statement, state);
         }
 
         private TReturn VisitQuerySetExpression(SetExpression.QueryExpression queryExpression, TState state)

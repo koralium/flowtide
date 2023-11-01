@@ -18,11 +18,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
 {
     public class CustomScalarTests : FlowtideAcceptanceBase
     {
+        public CustomScalarTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
+        {
+        }
+
         [Fact]
         public async Task CustomStaticScalar()
         {

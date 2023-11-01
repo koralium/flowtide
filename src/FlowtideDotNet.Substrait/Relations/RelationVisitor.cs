@@ -88,5 +88,15 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             return default;
         }
+        
+        public virtual TReturn VisitIterationRelation(IterationRelation iterationRelation, TState state)
+        {
+            return default;
+        }
+
+        public virtual TReturn VisitIterationReferenceReadRelation(IterationReferenceReadRelation iterationReferenceReadRelation, TState state)
+        {
+            return default;
+        }
     }
 }

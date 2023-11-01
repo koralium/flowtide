@@ -91,6 +91,10 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     }
                     return Empty();
                 }
+                if (r.Value is LockingEventPrepare lockingEventPrepare)
+                {
+                    return HandleLockingEventPrepare(r.Key, lockingEventPrepare);
+                }
                 if (r.Value is TriggerEvent triggerEvent)
                 {
                     var enumerator = OnTrigger(triggerEvent.Name, triggerEvent.State);
@@ -172,6 +176,28 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     }
                 }
             }, this, CancellationToken.None, Common.GetContinuationOptions(), TaskScheduler.Default);
+        }
+
+        private async IAsyncEnumerable<IStreamEvent> HandleLockingEventPrepare(int targetId, LockingEventPrepare lockingEventPrepare)
+        {
+            // Check that all other inputs are waiting for checkpoint.
+            bool allInCheckpoint = true;
+            for (int i = 0; i < _targetInCheckpoint.Length; i++)
+            {
+                if (i == targetId)
+                {
+                    continue;
+                }
+                if (_targetInCheckpoint[i] == null)
+                {
+                    allInCheckpoint = false;
+                }
+            }
+            if (!allInCheckpoint)
+            {
+                lockingEventPrepare.OtherInputsNotInCheckpoint = true;
+            }
+            yield return lockingEventPrepare;
         }
 
         private async IAsyncEnumerable<IStreamEvent> HandleWatermark(int targetId, Watermark watermark)
