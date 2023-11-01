@@ -10,15 +10,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Substrait.Sql;
+using Microsoft.VisualStudio.TestPlatform.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
 {
@@ -33,6 +37,8 @@ namespace FlowtideDotNet.AcceptanceTests
         public ISqlFunctionRegister SqlFunctionRegister => flowtideTestStream.SqlFunctionRegister;
 
         protected Task StartStream(string sql) => flowtideTestStream.StartStream(sql);
+
+        public List<FlxVector> GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 
         protected void AssertCurrentDataEqual<T>(IEnumerable<T> data)
         {
@@ -49,12 +55,30 @@ namespace FlowtideDotNet.AcceptanceTests
             return flowtideTestStream.WaitForUpdate();
         }
 
-        public FlowtideAcceptanceBase()
+        public void AddOrUpdateUser(User user)
         {
-            flowtideTestStream = new FlowtideTestStream();
+            flowtideTestStream.AddOrUpdateUser(user);
         }
+
+        public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper)
+        {
+            var baseType = this.GetType();
+            var testName = GetTestClassName(testOutputHelper);
+            flowtideTestStream = new FlowtideTestStream($"{baseType.Name}/{testName}");
+        }
+
+        private static string GetTestClassName(ITestOutputHelper output)
+        {
+            var type = output.GetType();
+            var testMember = type.GetField("test", BindingFlags.Instance | BindingFlags.NonPublic);
+            var test = (ITest)testMember.GetValue(output);
+            return test.TestCase.TestMethod.Method.Name;
+            //return ((ITest)testMember.GetValue(helper)).TestCase.TestMethod.TestClass.Class.Name;
+        }
+
         public async Task DisposeAsync()
         {
+            
             await flowtideTestStream.DisposeAsync();
         }
 

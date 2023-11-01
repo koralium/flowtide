@@ -12,30 +12,30 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.AcceptanceTests.Entities
+namespace FlowtideDotNet.Substrait.Sql.Internal
 {
-    public class User
+    internal class CTEContainer
     {
-        [Key]
-        public int UserKey { get; set; }
+        public CTEContainer(string alias, EmitData emitData, int outputLength)
+        {
+            Alias = alias;
+            EmitData = emitData;
+            UsageCounter = 0;
+            OutputLength = outputLength;
+        }
 
-        public Gender Gender { get; set; }
+        public string Alias { get; }
+        public EmitData EmitData { get; }
 
-        public string? FirstName { get; set; }
+        public int OutputLength { get; }
 
-        public string? LastName { get; set; }
-
-        public string? NullableString { get; set; }
-
-        public string? CompanyId { get; set; }
-
-        public int? Visits { get; set; }
-
-        public int? ManagerKey { get; set; }
+        /// <summary>
+        /// Counter that increments if the CTE is used inside its own query, this will mark it as recursive.
+        /// </summary>
+        public int UsageCounter { get; set; }
     }
 }

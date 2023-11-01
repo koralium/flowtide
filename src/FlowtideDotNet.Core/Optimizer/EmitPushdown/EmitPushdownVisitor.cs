@@ -185,6 +185,19 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             return base.VisitAggregateRelation(aggregateRelation, state);
         }
 
+        public override Relation VisitIterationReferenceReadRelation(IterationReferenceReadRelation iterationReferenceReadRelation, object state)
+        {
+            // Add a project relation infront of iteration reference read, since it cant be emit limitted.
+            var projectRelation = new ProjectRelation()
+            {
+                Expressions = new List<FlowtideDotNet.Substrait.Expressions.Expression>(),
+                Emit = iterationReferenceReadRelation.Emit,
+                Input = iterationReferenceReadRelation
+            };
+            iterationReferenceReadRelation.Emit = null;
+            return projectRelation;
+        }
+
         public override Relation VisitProjectRelation(ProjectRelation projectRelation, object state)
         {
             if (projectRelation.Input is ReferenceRelation referenceRelation)

@@ -26,6 +26,7 @@ using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Aggregate;
+using FlowtideDotNet.Core.Operators.Iteration;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -51,6 +52,7 @@ namespace FlowtideDotNet.Core.Engine
         private readonly FunctionsRegister functionsRegister;
         private int _operatorId = 0;
         private Dictionary<int, RelationTree> _doneRelations;
+        private Dictionary<string, IterationOperator> _iterationOperators = new Dictionary<string, IterationOperator>();
 
         public void BuildPlan()
         {
@@ -342,6 +344,42 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitRootRelation(RootRelation rootRelation, ITargetBlock<IStreamEvent>? state)
         {
             return Visit(rootRelation.Input, state);
+        }
+
+        public override IStreamVertex VisitIterationRelation(IterationRelation iterationRelation, ITargetBlock<IStreamEvent> state)
+        {
+            var id = _operatorId++;
+            var op = new IterationOperator(new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            if (state != null)
+            {
+                op.EgressSource.LinkTo(state);
+            }
+            if (iterationRelation.Input == null)
+            {
+                var ingressId = _operatorId++;
+                var readDummy = new IterationDummyRead(new DataflowBlockOptions() { BoundedCapacity = queueSize });
+                readDummy.LinkTo(op.IngressTarget);
+                dataflowStreamBuilder.AddIngressBlock(ingressId.ToString(), readDummy);
+            }
+            else
+            {
+                Visit(iterationRelation.Input, op.IngressTarget);
+            }
+            dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
+
+            _iterationOperators.Add(iterationRelation.IterationName, op);
+            Visit(iterationRelation.LoopPlan, op.FeedbackTarget);
+            
+            return (op.EgressSource as IStreamVertex)!;
+        }
+
+        public override IStreamVertex VisitIterationReferenceReadRelation(IterationReferenceReadRelation iterationReferenceReadRelation, ITargetBlock<IStreamEvent> state)
+        {
+            if (_iterationOperators.TryGetValue(iterationReferenceReadRelation.IterationName, out var op))
+            {
+                op.LoopSource.LinkTo(state);
+            }
+            return op;
         }
     }
 }

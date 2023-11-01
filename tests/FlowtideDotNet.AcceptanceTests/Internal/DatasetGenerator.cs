@@ -44,9 +44,27 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             GenerateOrders(count);
         }
 
+        public void AddOrUpdateUser(User user)
+        {
+            var index = Users.FindIndex(x => x.UserKey == user.UserKey);
+
+            if (index >= 0)
+            {
+                Users[index] = user;
+            }
+            else
+            {
+                Users.Add(user);
+            }
+            var mockTable = mockDatabase.GetOrCreateTable<User>("users");
+            mockTable.AddOrUpdate(new List<User>() { user });
+        }
+
         private void GenerateUsers(int count)
         {
             string?[] nullableStrings = new string?[] { null, "value" };
+
+            List<int> availableManagers = new List<int>();
 
             var testUsers = new Faker<User>()
                 .RuleFor(x => x.UserKey, (f, u) => f.UniqueIndex)
@@ -62,7 +80,21 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     }
                     return null;
                 })
-                .RuleFor(x => x.Visits, (f, u) => f.Random.Number(1, 10).OrNull(f));
+                .RuleFor(x => x.Visits, (f, u) => f.Random.Number(1, 10).OrNull(f))
+                .RuleFor(x => x.ManagerKey, (f, u) =>
+                {
+                    if (availableManagers.Count == 0)
+                    {
+                        availableManagers.Add(u.UserKey);
+                        return default(int?);
+                    }
+                    else
+                    {
+                        var managerKey = f.PickRandom(availableManagers);
+                        availableManagers.Add(u.UserKey);
+                        return managerKey;
+                    }
+                });
 
 
             var newUsers = testUsers.Generate(count);

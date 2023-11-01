@@ -15,11 +15,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
 {
     public class ComparisonFunctionTests : FlowtideAcceptanceBase
     {
+        public ComparisonFunctionTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
+        {
+        }
+
         [Fact]
         public async Task CoalesceTwoArgs()
         {

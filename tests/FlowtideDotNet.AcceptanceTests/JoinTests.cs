@@ -11,11 +11,16 @@
 // limitations under the License.
 
 using Bogus.DataSets;
+using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
 {
     public class JoinTests : FlowtideAcceptanceBase
     {
+        public JoinTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
+        {
+        }
+
         [Fact]
         public async Task InnerJoinMergeJoin()
         {

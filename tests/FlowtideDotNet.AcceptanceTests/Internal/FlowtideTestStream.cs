@@ -20,6 +20,8 @@ using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Substrait.Sql;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Debug;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
@@ -31,6 +33,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private SqlPlanBuilder sqlPlanBuilder;
         private Base.Engine.DataflowStream? _stream;
         private readonly object _lock = new object();
+        private readonly string testName;
         private List<byte[]>? _actualData;
         int updateCounter = 0;
         FlowtideBuilder flowtideBuilder;
@@ -45,18 +48,25 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public ISqlFunctionRegister SqlFunctionRegister => sqlPlanBuilder.FunctionRegister;
 
-        public FlowtideTestStream()
+        public FlowtideTestStream(string testName)
         {
             _db = new Internal.MockDatabase();
             generator = new DatasetGenerator(_db);
             sqlPlanBuilder = new SqlPlanBuilder();
             sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
-            flowtideBuilder = new FlowtideBuilder("stream");
+            flowtideBuilder = new FlowtideBuilder("stream")
+                .WithLoggerFactory(new LoggerFactory(new List<ILoggerProvider>() { new DebugLoggerProvider() }));
+            this.testName = testName;
         }
 
         public void Generate(int count = 1000)
         {
             generator.Generate(count);
+        }
+
+        public void AddOrUpdateUser(User user)
+        {
+            generator.AddOrUpdateUser(user);
         }
 
         public async Task StartStream(string sql)
@@ -76,7 +86,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .AddReadWriteFactory(factory)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
-                    PersistentStorage = new FileCachePersistentStorage(new Storage.FileCacheOptions())
+                    PersistentStorage = new FileCachePersistentStorage(new Storage.FileCacheOptions()
+                    {
+                        DirectoryPath = $"./data/tempFiles/{testName}/persist"
+                    }),
+                    TemporaryStorageOptions = new Storage.FileCacheOptions()
+                    {
+                        DirectoryPath = $"./data/tempFiles/{testName}/tmp"
+                    }
                 });
             var stream = flowtideBuilder.Build();
             _stream = stream;
@@ -103,6 +120,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
             while (updateCounter == currentCounter)
             {
+                //if (_stream.Status == StreamStatus.Failing)
+                //{
+                //    throw new InvalidOperationException("Stream failed");
+                //}
                 await scheduler!.Tick();
                 await Task.Delay(10);
             }
@@ -146,10 +167,24 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
                 if (!expectedRow.SequenceEqual(actualRow))
                 {
-                    Assert.Fail($"Expected:{Environment.NewLine}{FlxValue.FromMemory(expectedRow).ToJson}{Environment.NewLine}but got:{Environment.NewLine}{FlxValue.FromMemory(actualRow).ToJson}");
+                    var expectedRowJson = FlxValue.FromMemory(expectedRow).ToJson;
+                    var actualRowJson = FlxValue.FromMemory(actualRow).ToJson;
+                    if (!expectedRowJson.Equals(actualRowJson))
+                    {
+                        Assert.Fail($"Expected:{Environment.NewLine}{expectedRowJson}{Environment.NewLine}but got:{Environment.NewLine}{actualRowJson}");
+                    }
                 }
-                Assert.Equal(expectedRow, actualRow);
             }
+        }
+
+        public List<FlxVector> GetActualRowsAsVectors()
+        {
+            List<FlxVector> output = new List<FlxVector>();
+            for(int i = 0; i < _actualData.Count; i++)
+            {
+                output.Add(FlxValue.FromMemory(_actualData[i]).AsVector);
+            }
+            return output;
         }
 
         public async ValueTask DisposeAsync()

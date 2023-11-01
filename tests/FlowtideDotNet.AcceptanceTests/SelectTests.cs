@@ -1,7 +1,13 @@
+using Xunit.Abstractions;
+
 namespace FlowtideDotNet.AcceptanceTests
 {
     public class SelectTests : FlowtideAcceptanceBase
     {
+        public SelectTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
+        {
+        }
+
         [Fact]
         public async Task SelectTwoColumnsWithId()
         {

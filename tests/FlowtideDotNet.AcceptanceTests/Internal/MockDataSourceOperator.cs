@@ -15,6 +15,7 @@ using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.VisualStudio.TestPlatform.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -54,8 +55,46 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return Task.CompletedTask;
         }
 
+        private async Task FetchChanges(IngressOutput<StreamEventBatch> output, object? state)
+        {
+            await output.EnterCheckpointLock();
+            var (operations, fetchedOffset) = _table.GetOperations(_lastestOffset);
+            bool sentData = false;
+            List<StreamEvent> o = new List<StreamEvent>();
+            foreach (var operation in operations)
+            {
+                o.Add(MockTable.ToStreamEvent(operation, readRelation.BaseSchema.Names));
+
+                if (o.Count > 100)
+                {
+                    sentData = true;
+                    await output.SendAsync(new StreamEventBatch(null, o));
+                    o = new List<StreamEvent>();
+                }
+            }
+
+            if (o.Count > 0)
+            {
+                sentData = true;
+                await output.SendAsync(new StreamEventBatch(null, o));
+            }
+            _lastestOffset = fetchedOffset;
+
+            if (sentData)
+            {
+                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));
+                this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+            }
+            
+            output.ExitCheckpointLock();
+        }
+
         public override Task OnTrigger(string triggerName, object? state)
         {
+            if (triggerName == "changes")
+            {
+                RunTask(FetchChanges);
+            }
             return Task.CompletedTask;
         }
 
@@ -96,8 +135,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 await output.SendAsync(new StreamEventBatch(null, o));
             }
+            _lastestOffset = fetchedOffset;
             await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));
             output.ExitCheckpointLock();
+            await this.RegisterTrigger("changes", TimeSpan.FromMilliseconds(50));
             this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
         }
     }

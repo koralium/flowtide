@@ -73,6 +73,10 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                         return Passthrough(streamEvent);
                     }
                 }
+                if (streamEvent is LockingEventPrepare lockingEventPrepare)
+                {
+                    return Passthrough(lockingEventPrepare);
+                }
                 if (streamEvent is TriggerEvent triggerEvent)
                 {
                     var enumerator = OnTrigger(triggerEvent.Name, triggerEvent.State);
