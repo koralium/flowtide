@@ -53,6 +53,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
         private Meter? _metrics;
         protected Meter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
+        private bool _isHealthy = true;
 
         public ITargetBlock<IStreamEvent> IngressTarget => _ingressTarget;
         public ITargetBlock<IStreamEvent> FeedbackTarget => _feedbackTarget;
@@ -270,6 +271,21 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             {
                 parsedState = JsonSerializer.Deserialize<TState>(state.Value);
             }
+
+            Metrics.CreateObservableGauge("busy", () =>
+            {
+                Debug.Assert(_transformBlock != null, nameof(_transformBlock));
+                return ((float)_transformBlock.InputCount) / _executionDataflowBlockOptions.BoundedCapacity;
+            });
+            Metrics.CreateObservableGauge("backpressure", () =>
+            {
+                Debug.Assert(_transformBlock != null, nameof(_transformBlock));
+                return ((float)_transformBlock.OutputCount) / _executionDataflowBlockOptions.BoundedCapacity;
+            });
+            Metrics.CreateObservableGauge("health", () =>
+            {
+                return _isHealthy ? 1 : 0;
+            });
 
             return InitializeOrRestore(parsedState, vertexHandler.StateClient);
         }
