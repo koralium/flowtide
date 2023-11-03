@@ -14,6 +14,7 @@ FROM table_source
 ((LEFT | INNER)? JOIN table_source ON scalar_expression)*
 (WHERE scalar_expression)?
 (GROUP BY scalar_expression)?
+(HAVING scalar_or_aggregate_expression)?
 ```
 
 All fields which says expression, can take in expressions found under the [Expressions chapter](/docs/category/expressions).

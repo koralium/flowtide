@@ -67,7 +67,63 @@ namespace FlowtideDotNet.AcceptanceTests
                 GROUP BY u.firstName");
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName }).GroupBy(x => x.FirstName).Select(x => new { FirstName = x.Key, Count = x.Count() })); ;
+            AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName }).GroupBy(x => x.FirstName).Select(x => new { FirstName = x.Key, Count = x.Count() }));
+        }
+
+        [Fact]
+        public async Task MultipleAggregates()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, sum(orderkey), count(*)
+                FROM orders
+                GROUP BY userkey
+                ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders
+                .GroupBy(x => x.UserKey)
+                .Select(x => new { Userkey = x.Key, Sum = (double)x.Sum(y => y.OrderKey), Count = x.Count() }));
+        }
+
+        [Fact]
+        public async Task HavingSameAggregate()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, count(*)
+                FROM orders
+                GROUP BY userkey
+                HAVING count(*) > 1
+                ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { FirstName = x.Key, Count = x.Count() }).Where(x => x.Count > 1));
+        }
+
+        [Fact]
+        public async Task HavingDifferentAggregate()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, sum(orderkey)
+                FROM orders
+                GROUP BY userkey
+                HAVING count(*) > 1
+                ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders
+                .GroupBy(x => x.UserKey)
+                .Select(x => new { Userkey = x.Key, Count = x.Count(), Sum = (double)x.Sum(y => y.OrderKey) })
+                .Where(x => x.Count > 1)
+                .Select(x => new {x.Userkey, x.Sum}));
         }
     }
 }

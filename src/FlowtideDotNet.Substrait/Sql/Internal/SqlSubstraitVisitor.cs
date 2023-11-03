@@ -165,18 +165,25 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }, outNode.EmitData);
             }
 
+
+            ContainsAggregateVisitor containsAggregateVisitor = new ContainsAggregateVisitor(sqlFunctionRegister);
+            bool containsAggregate = select.GroupBy != null;
+            if (select.Having != null)
+            {
+                containsAggregate |= containsAggregateVisitor.Visit(select.Having, default);
+            }
+
             if (select.Projection != null)
             {
-                ContainsAggregateVisitor containsAggregateVisitor = new ContainsAggregateVisitor(sqlFunctionRegister);
-                bool containsAggregate = select.GroupBy != null;
                 foreach (var item in select.Projection)
                 {
                     containsAggregate |= containsAggregateVisitor.VisitSelectItem(item);
                 }
-                if (containsAggregate)
-                {
-                    outNode = VisitSelectAggregate(select, containsAggregateVisitor, outNode);
-                }
+            }
+
+            if (containsAggregate)
+            {
+                outNode = VisitSelectAggregate(select, containsAggregateVisitor, outNode);
             }
 
             if (select.Projection != null)
@@ -194,6 +201,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 Input = parent.Relation
             };
             aggRel.Measures = new List<AggregateMeasure>();
+            Relation outputRelation = aggRel;
 
             EmitData aggEmitData = new EmitData();
 
@@ -229,7 +237,17 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 emitcount++;
             }
 
-            return new RelationData(aggRel, aggEmitData);
+            if (select.Having != null)
+            {
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                outputRelation = new FilterRelation()
+                {
+                    Condition = exprVisitor.Visit(select.Having, aggEmitData).Expr,
+                    Input = aggRel
+                };
+            }
+
+            return new RelationData(outputRelation, aggEmitData);
         }
 
         private RelationData? VisitProjection(SqlParser.Sequence<SelectItem> selects, RelationData parent)
