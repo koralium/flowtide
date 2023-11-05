@@ -94,6 +94,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         private FilterResult? VisitLowerFunction(ScalarFunction scalarFunction, object state)
         {
             var input = Visit(scalarFunction.Arguments[0], state);
+
+            if (input == null)
+            {
+                return null;
+            }
+
             return new FilterResult($"LOWER({input.Content})", false);
         }
 
@@ -103,6 +109,10 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             var left = Visit(scalarFunction.Arguments[0], state);
             var right = Visit(scalarFunction.Arguments[1], state);
 
+            if (left == null || right == null)
+            {
+                return null;
+            }
             return new FilterResult($"{left.Content} {op} {right.Content}", true);
         }
 
