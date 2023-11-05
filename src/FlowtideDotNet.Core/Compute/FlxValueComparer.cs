@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Core.Compute
                 // Check for string comparison
                 if (a.ValueType == FlexBuffers.Type.String)
                 {
-                    return string.Compare(a.AsString, b.AsString, StringComparison.OrdinalIgnoreCase);
+                    return string.Compare(a.AsString, b.AsString);
                 }
                 if (a.ValueType == FlexBuffers.Type.Int)
                 {

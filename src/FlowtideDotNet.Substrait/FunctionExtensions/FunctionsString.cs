@@ -22,5 +22,7 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
     {
         public const string Uri = "/functions_string.yaml";
         public const string Concat = "concat";
+        public const string Lower = "lower";
+        public const string Upper = "upper";
     }
 }

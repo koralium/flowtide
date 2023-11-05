@@ -83,8 +83,18 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 {
                     return VisitConcatFunction(scalarFunction, state);
                 }
+                else if (scalarFunction.ExtensionName == FunctionsString.Lower)
+                {
+                    return VisitLowerFunction(scalarFunction, state);
+                }
             }
             return base.VisitScalarFunction(scalarFunction, state);
+        }
+
+        private FilterResult? VisitLowerFunction(ScalarFunction scalarFunction, object state)
+        {
+            var input = Visit(scalarFunction.Arguments[0], state);
+            return new FilterResult($"LOWER({input.Content})", false);
         }
 
         private FilterResult? VisitBooleanComparison(ScalarFunction scalarFunction, string op, object state)
