@@ -41,7 +41,7 @@ SELECT lower(c1) FROM ...
 
 ## Upper
 
-[Substrait definition](https://substrait.io/extensions/functions_string/#lower)
+[Substrait definition](https://substrait.io/extensions/functions_string/#upper)
 
 Returns the input string in all uppercase characters. If any other type than string is entered, the function will return 'null'.
 
