@@ -26,3 +26,27 @@ If any argument is null, the return value will always be null.
 ```sql
 SELECT c1 || ' hello ' || c2 FROM ... 
 ```
+
+## Lower
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#lower)
+
+Returns the input string in all lowercase characters. If any other type than string is entered, the function will return 'null'.
+
+### SQL Usage
+
+```sql
+SELECT lower(c1) FROM ... 
+```
+
+## Upper
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#upper)
+
+Returns the input string in all uppercase characters. If any other type than string is entered, the function will return 'null'.
+
+### SQL Usage
+
+```sql
+SELECT upper(c1) FROM ... 
+```

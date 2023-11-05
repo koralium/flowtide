@@ -1,2 +1,2 @@
 ﻿SELECT * FROM lineitems
-where shipmode = 'truck'
+where lower(shipmode) = 'truck'

@@ -23,10 +23,15 @@ namespace FlowtideDotNet.Core.Flexbuffer
 
         public int CompareTo(in FlxString other)
         {
-            return Utf8Utility.CompareToOrdinalIgnoreCaseUtf8(span, other.span);
+            return Compare(this, other);
         }
 
-        public static int Compare(in FlxString v1, FlxString v2)
+        public static int Compare(in FlxString v1, in FlxString v2)
+        {
+            return v1.span.SequenceCompareTo(v2.span);
+        }
+
+        public static int CompareIgnoreCase(in FlxString v1, in FlxString v2)
         {
             return Utf8Utility.CompareToOrdinalIgnoreCaseUtf8(v1.span, v2.span);
         }

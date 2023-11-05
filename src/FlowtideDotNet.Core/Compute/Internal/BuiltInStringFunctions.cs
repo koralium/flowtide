@@ -23,6 +23,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
 {
     internal static class BuiltInStringFunctions
     {
+        private static FlxValue NullValue = FlxValue.FromBytes(FlexBuffer.Null());
+
         private static System.Linq.Expressions.MethodCallExpression ConcatExpr(System.Linq.Expressions.Expression array)
         {
             MethodInfo toStringMethod = typeof(FlxValueStringFunctions).GetMethod("Concat", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
@@ -42,6 +44,29 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     var array = System.Linq.Expressions.Expression.NewArrayInit(typeof(FlxValue), expressions);
                     return ConcatExpr(array);
                 });
+
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Lower, (x) => LowerImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Upper, (x) => UpperImplementation(x));
+        }
+
+        private static FlxValue LowerImplementation(in FlxValue val)
+        {
+            if (val.ValueType != FlexBuffers.Type.String)
+            {
+                return NullValue;
+            }
+
+            return FlxValue.FromBytes(FlexBuffer.SingleValue(val.AsString.ToLower()));
+        }
+
+        private static FlxValue UpperImplementation(in FlxValue val)
+        {
+            if (val.ValueType != FlexBuffers.Type.String)
+            {
+                return NullValue;
+            }
+
+            return FlxValue.FromBytes(FlexBuffer.SingleValue(val.AsString.ToUpper()));
         }
     }
 }
