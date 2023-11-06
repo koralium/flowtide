@@ -26,7 +26,7 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
-    internal class FlowtideTestStream : IAsyncDisposable
+    public class FlowtideTestStream : IAsyncDisposable
     {
         private MockDatabase _db;
         private DatasetGenerator generator;
@@ -74,12 +74,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
 
-            var factory = new ReadWriteFactory()
-                .AddMockSource("*", _db)
-                .AddWriteResolver((rel, opt) =>
-                {
-                    return new MockDataSink(opt, OnDataUpdate);
-                });
+            var factory = new ReadWriteFactory();
+            AddReadResolvers(factory);
+            AddWriteResolvers(factory);
 
             flowtideBuilder
                 .AddPlan(plan)
@@ -127,6 +124,19 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 await scheduler!.Tick();
                 await Task.Delay(10);
             }
+        }
+
+        protected virtual void AddReadResolvers(ReadWriteFactory factory)
+        {
+            factory.AddMockSource("*", _db);
+        }
+
+        protected virtual void AddWriteResolvers(ReadWriteFactory factory)
+        {
+            factory.AddWriteResolver((rel, opt) =>
+            {
+                return new MockDataSink(opt, OnDataUpdate);
+            });
         }
 
         public void AssertCurrentDataEqual<T>(IEnumerable<T> data)

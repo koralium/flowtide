@@ -39,9 +39,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlSampleWithUI", "samples\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.AcceptanceTests", "tests\FlowtideDotNet.AcceptanceTests\FlowtideDotNet.AcceptanceTests.csproj", "{4CB7B16A-1E7A-4002-A440-D873093C5B8A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonitoringPrometheus", "samples\MonitoringPrometheus\MonitoringPrometheus.csproj", "{3D8888A3-E85D-4DED-BB2E-AC9090515947}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MonitoringPrometheus", "samples\MonitoringPrometheus\MonitoringPrometheus.csproj", "{3D8888A3-E85D-4DED-BB2E-AC9090515947}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonitoringAzureMonitor", "samples\MonitoringAzureMonitor\MonitoringAzureMonitor.csproj", "{021E55B4-1743-46DB-BD51-5D1EC2B9FA1C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MonitoringAzureMonitor", "samples\MonitoringAzureMonitor\MonitoringAzureMonitor.csproj", "{021E55B4-1743-46DB-BD51-5D1EC2B9FA1C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.CosmosDB", "src\FlowtideDotNet.Connector.CosmosDB\FlowtideDotNet.Connector.CosmosDB.csproj", "{0E05589F-1216-4224-BB9A-35B8585F56DD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.CosmosDB.Tests", "tests\FlowtideDotNet.Connector.CosmosDB.Tests\FlowtideDotNet.Connector.CosmosDB.Tests.csproj", "{4E3A4272-645E-4C6B-A5F4-88541C422EAC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -117,6 +121,14 @@ Global
 		{021E55B4-1743-46DB-BD51-5D1EC2B9FA1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{021E55B4-1743-46DB-BD51-5D1EC2B9FA1C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{021E55B4-1743-46DB-BD51-5D1EC2B9FA1C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E05589F-1216-4224-BB9A-35B8585F56DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E05589F-1216-4224-BB9A-35B8585F56DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E05589F-1216-4224-BB9A-35B8585F56DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E05589F-1216-4224-BB9A-35B8585F56DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4E3A4272-645E-4C6B-A5F4-88541C422EAC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E3A4272-645E-4C6B-A5F4-88541C422EAC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E3A4272-645E-4C6B-A5F4-88541C422EAC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E3A4272-645E-4C6B-A5F4-88541C422EAC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -139,6 +151,8 @@ Global
 		{4CB7B16A-1E7A-4002-A440-D873093C5B8A} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 		{3D8888A3-E85D-4DED-BB2E-AC9090515947} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
 		{021E55B4-1743-46DB-BD51-5D1EC2B9FA1C} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
+		{0E05589F-1216-4224-BB9A-35B8585F56DD} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
+		{4E3A4272-645E-4C6B-A5F4-88541C422EAC} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {314C9503-DE99-42AA-8FB0-E355C91986C4}

@@ -44,5 +44,7 @@ jobs:
       run: dotnet pack -c Release -o . src/FlowtideDotNet.SqlServer/FlowtideDotNet.SqlServer.csproj
     - name: Packages aspnetcore
       run: dotnet pack -c Release -o . src/FlowtideDotNet.AspNetCore/FlowtideDotNet.AspNetCore.csproj
+    - name: Package cosmosdb
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.CosmosDB/FlowtideDotNet.Connector.CosmosDB.csproj
     - name: Publish
       run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_KEY }} -s https://api.nuget.org/v3/index.json
