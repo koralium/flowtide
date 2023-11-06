@@ -16,6 +16,8 @@ namespace FlowtideDotNet.Core.Flexbuffer
     {
         private readonly Span<byte> span;
 
+        public ReadOnlySpan<byte> Span => span;
+
         public FlxString(Span<byte> span)
         {
             this.span = span;
