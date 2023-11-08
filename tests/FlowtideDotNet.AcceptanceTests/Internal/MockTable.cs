@@ -99,6 +99,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     {
                         b.Add(boolVal);
                     }
+                    else if (column is DateTime dateTime)
+                    {
+                        b.Add(new DateTimeOffset(dateTime).ToUnixTimeMilliseconds() * 1000);
+                    }
                     else if (column.GetType().IsEnum)
                     {
                         b.Add((int)column);
