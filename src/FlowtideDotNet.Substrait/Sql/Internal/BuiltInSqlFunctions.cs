@@ -219,6 +219,30 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
+            sqlFunctionRegister.RegisterScalarFunction("strftime", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 2)
+                {
+                    throw new InvalidOperationException("strftime must have exactly two arguments");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr1 &&
+                f.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
+                {
+                    var expr1 = visitor.Visit(funcExpr1.Expression, emitData);
+                    var expr2 = visitor.Visit(funcExpr2.Expression, emitData);
+                    return new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsDatetime.Uri,
+                        ExtensionName = FunctionsDatetime.Strftime,
+                        Arguments = new List<Expressions.Expression>() { expr1.Expr, expr2.Expr }
+                    };
+                }
+                else
+                {
+                    throw new NotImplementedException("stftime does not support the input parameter");
+                }
+            });
+
 
             sqlFunctionRegister.RegisterAggregateFunction("count", (f, visitor, emitData) =>
             {
