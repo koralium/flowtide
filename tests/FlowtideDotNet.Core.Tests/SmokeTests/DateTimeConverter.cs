@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
     {
         public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            var dateTimeOffset = DateTimeOffset.FromUnixTimeMilliseconds(reader.GetInt64());
+            var dateTimeOffset = DateTimeOffset.FromUnixTimeMilliseconds(reader.GetInt64() / 1000);
             var local = dateTimeOffset.ToLocalTime();
 
             return local.DateTime; //DateTime.UnixEpoch.AddMilliseconds(reader.GetInt64());

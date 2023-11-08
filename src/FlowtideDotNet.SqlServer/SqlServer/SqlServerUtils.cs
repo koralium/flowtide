@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                                 return;
                             }
                             var dateTime = reader.GetDateTime(index);
-                            var unixTime = ((DateTimeOffset)dateTime).ToUnixTimeMilliseconds();
+                            var unixTime = ((DateTimeOffset)dateTime).ToUnixTimeMilliseconds() * 1000;
                             builder.Add(unixTime);
                         });
                         break;
@@ -172,7 +172,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                                 return;
                             }
                             var dateTime = reader.GetDateTime(index);
-                            var unixTime = ((DateTimeOffset)dateTime).ToUnixTimeMilliseconds();
+                            var unixTime = ((DateTimeOffset)dateTime).ToUnixTimeMilliseconds() * 1000;
                             builder.Add(unixTime);
                         });
                         break;
@@ -646,7 +646,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     {
                         return null;
                     }
-                    return DateTimeOffset.FromUnixTimeMilliseconds(c.AsLong);
+                    return DateTimeOffset.FromUnixTimeMilliseconds(c.AsLong / 1000);
                 };
             }
             if (t.Equals(typeof(decimal)))
