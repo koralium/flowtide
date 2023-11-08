@@ -27,6 +27,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             this.stateManager = stateManager;
         }
 
+        public IStateManagerClient GetChildManager(string name)
+        {
+            throw new NotImplementedException();
+        }
 
         public async ValueTask<IBPlusTree<K, V>> GetOrCreateTree<K, V>(string name, BPlusTreeOptions<K, V> options)
         {

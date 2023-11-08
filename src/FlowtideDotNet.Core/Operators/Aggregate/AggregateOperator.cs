@@ -35,13 +35,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
     {
         private static byte[] EmptyVector = FlexBufferBuilder.Vector(b => { });
         private readonly AggregateRelation aggregateRelation;
+        private readonly FunctionsRegister functionsRegister;
         private List<Func<StreamEvent, FlxValue>>? groupExpressions;
         private IBPlusTree<StreamEvent, AggregateRowState> _tree;
         private IBPlusTree<StreamEvent, int> _temporaryTree;
         private FlexBuffer _flexBufferNewValue;
         private FlexBuffer _flexBufferOldValue;
-        private List<Func<StreamEvent, byte[]?, long, byte[]>> _measuresStateUpdate;
-        private List<Func<byte[]?, FlxValue>> _measureGetValues;
+        private List<IAggregateContainer> _measures;
 
         /// <summary>
         /// All the mapping functions for the measures.
@@ -49,8 +49,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
         private List<Func<StreamEvent, byte[]?, int, (FlxValue? oldValue, FlxValue newValue, byte[] newState)>> mappingFunctions;
         public AggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
-            _measuresStateUpdate = new List<Func<StreamEvent, byte[]?, long, byte[]>>();
-            _measureGetValues = new List<Func<byte[]?, FlxValue>>();
+            _measures = new List<IAggregateContainer>();
             _flexBufferNewValue = new FlexBuffer(ArrayPool<byte>.Shared);
             _flexBufferOldValue = new FlexBuffer(ArrayPool<byte>.Shared);
             if (aggregateRelation.Groupings != null && aggregateRelation.Groupings.Count > 0)
@@ -68,17 +67,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                     groupExpressions.Add(ProjectCompiler.Compile(expr, functionsRegister));
                 }
             }
-            if (aggregateRelation.Measures != null && aggregateRelation.Measures.Count > 0)
-            {
-                foreach(var measure in aggregateRelation.Measures)
-                {
-                    var (stateUpdateFunc, getValueFunc) = MeasureCompiler.CompileMeasure(measure.Measure, functionsRegister);
-                    _measuresStateUpdate.Add(stateUpdateFunc);
-                    _measureGetValues.Add(getValueFunc);
-                }
-            }
 
             this.aggregateRelation = aggregateRelation;
+            this.functionsRegister = functionsRegister;
         }
 
         public override string DisplayName => "Aggregation";
@@ -104,59 +95,56 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             // If no group expressions, then we are just doing a global aggregation, so we fetch the new value and compare it with the old
             if (groupExpressions == null || groupExpressions.Count == 0)
             {
-                // TODO: Change to RMW?
-                // Might be better to RMW than to fetch and then update.
-                await _tree.RMW(new StreamEvent(0, 0, EmptyVector), default, (input, current, exist) =>
+                var (found, val) = await _tree.GetValue(new StreamEvent(0, 0, EmptyVector));
+
+                if (found)
                 {
-                    if (exist)
+                    _flexBufferNewValue.NewObject();
+                    var vectorStart = _flexBufferNewValue.StartVector();
+                    for (int i = 0; i < val.MeasureStates.Length; i++)
                     {
-                        _flexBufferNewValue.NewObject();
-                        var vectorStart = _flexBufferNewValue.StartVector();
-                        for (int i = 0; i < current.MeasureStates.Length; i++)
+                        var measureResult = await _measures[i].GetValue(new StreamEvent(0, 0, EmptyVector), val.MeasureStates[i]);
+                        _flexBufferNewValue.Add(measureResult);
+                    }
+                    _flexBufferNewValue.EndVector(vectorStart, false, false);
+                    var outputData = _flexBufferNewValue.Finish();
+                    var outputEvent = new StreamEvent(1, 0, outputData);
+                    if (val.PreviousValue != null)
+                    {
+                        // If the row has changed from previous
+                        if (!val.PreviousValue.SequenceEqual(outputData))
                         {
-                            var measureResult = _measureGetValues[i](current.MeasureStates[i]);
-                            _flexBufferNewValue.Add(measureResult);
-                        }
-                        _flexBufferNewValue.EndVector(vectorStart, false, false);
-                        var outputData = _flexBufferNewValue.Finish();
-                        var outputEvent = new StreamEvent(1, 0, outputData);
-                        if (current.PreviousValue != null)
-                        {
-                            // If the row has changed from previous
-                            if (!current.PreviousValue.SequenceEqual(outputData))
-                            {
-                                var oldEvent = new StreamEvent(-1, 0, current.PreviousValue);
-                                outputs.Add(outputEvent);
-                                outputs.Add(oldEvent);
-                            }
-                        }
-                        else
-                        {
+                            var oldEvent = new StreamEvent(-1, 0, val.PreviousValue);
                             outputs.Add(outputEvent);
+                            outputs.Add(oldEvent);
                         }
-                        // Replace the previous value with the new value
-                        current.PreviousValue = outputData;
                     }
                     else
                     {
-                        current = new AggregateRowState()
-                        {
-                            MeasureStates = new byte[_measuresStateUpdate.Count][]
-                        };
-                        _flexBufferNewValue.NewObject();
-                        var vectorStart = _flexBufferNewValue.StartVector();
-                        for (int i = 0; i < current.MeasureStates.Length; i++)
-                        {
-                            var measureResult = _measureGetValues[i](current.MeasureStates[i]);
-                            _flexBufferNewValue.Add(measureResult);
-                        }
-                        _flexBufferNewValue.EndVector(vectorStart, false, false);
-                        var outputData = _flexBufferNewValue.Finish();
-                        current.PreviousValue = outputData;
-                        outputs.Add(new StreamEvent(1, 0, outputData));
+                        outputs.Add(outputEvent);
                     }
-                    return (current, GenericWriteOperation.Upsert);
-                });
+                    // Replace the previous value with the new value
+                    val.PreviousValue = outputData;
+                }
+                else
+                {
+                    val = new AggregateRowState()
+                    {
+                        MeasureStates = new byte[_measures.Count][]
+                    };
+                    _flexBufferNewValue.NewObject();
+                    var vectorStart = _flexBufferNewValue.StartVector();
+                    for (int i = 0; i < val.MeasureStates.Length; i++)
+                    {
+                        var measureResult = await _measures[i].GetValue(new StreamEvent(0, 0, EmptyVector), val.MeasureStates[i]);
+                        _flexBufferNewValue.Add(measureResult);
+                    }
+                    _flexBufferNewValue.EndVector(vectorStart, false, false);
+                    var outputData = _flexBufferNewValue.Finish();
+                    val.PreviousValue = outputData;
+                    outputs.Add(new StreamEvent(1, 0, outputData));
+                }
+                await _tree.Upsert(new StreamEvent(0, 0, EmptyVector), val);
             }
             else
             {
@@ -167,59 +155,58 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 {
                     foreach(var kv in page)
                     {
-                        await _tree.RMW(kv.Key, default, (_, current, exist) =>
+                        var (found, val) = await _tree.GetValue(kv.Key);
+
+                        if (!found)
                         {
-                            if (!exist)
+                            continue;
+                        }
+
+                        // If weight is zero, then we need to delete the row
+                        if (val!.Weight == 0)
+                        {
+                            // CHeck if a value has been emitted
+                            if (val.PreviousValue != null)
                             {
-                                return (default, GenericWriteOperation.None);
+                                // Negate that row on the stream
+                                outputs.Add(new StreamEvent(-1, 0, val.PreviousValue));
                             }
-                            // If weight is zero, then we need to delete the row
-                            if (current!.Weight == 0)
+                            await _tree.Delete(kv.Key);
+                        }
+                        _flexBufferNewValue.NewObject();
+                        var vectorStart = _flexBufferNewValue.StartVector();
+                        for (int i = 0; i < groupExpressions.Count; i++)
+                        {
+                            _flexBufferNewValue.Add(kv.Key.Vector[i]);
+                        }
+                        for (int i = 0; i < val.MeasureStates.Length; i++)
+                        {
+                            var measureResult = await _measures[i].GetValue(kv.Key, val.MeasureStates[i]);
+                            _flexBufferNewValue.Add(measureResult);
+                        }
+                        _flexBufferNewValue.EndVector(vectorStart, false, false);
+                        var newObjectValue = _flexBufferNewValue.Finish();
+                        if (val.PreviousValue != null)
+                        {
+                            // If the row has changed from previous
+                            if (!val.PreviousValue.SequenceEqual(newObjectValue))
                             {
-                                // CHeck if a value has been emitted
-                                if (current.PreviousValue != null)
-                                {
-                                    // Negate that row on the stream
-                                    outputs.Add(new StreamEvent(-1, 0, current.PreviousValue));
-                                }    
-                                return (default, GenericWriteOperation.Delete);
-                            }
-                            _flexBufferNewValue.NewObject();
-                            var vectorStart = _flexBufferNewValue.StartVector();
-                            for (int i = 0; i < groupExpressions.Count; i++)
-                            {
-                                _flexBufferNewValue.Add(kv.Key.Vector[i]);
-                            }
-                            for (int i = 0; i < current.MeasureStates.Length; i++)
-                            {
-                                var measureResult = _measureGetValues[i](current.MeasureStates[i]);
-                                _flexBufferNewValue.Add(measureResult);
-                            }
-                            _flexBufferNewValue.EndVector(vectorStart, false, false);
-                            var newObjectValue = _flexBufferNewValue.Finish();
-                            if (current.PreviousValue != null)
-                            {
-                                // If the row has changed from previous
-                                if (!current.PreviousValue.SequenceEqual(newObjectValue))
-                                {
-                                    var oldEvent = new StreamEvent(-1, 0, current.PreviousValue);
-                                    outputs.Add(oldEvent);
-                                    outputs.Add(new StreamEvent(1, 0, newObjectValue));
-                                }
-                                else
-                                {
-                                    return (current, GenericWriteOperation.None);
-                                }
+                                var oldEvent = new StreamEvent(-1, 0, val.PreviousValue);
+                                outputs.Add(oldEvent);
+                                outputs.Add(new StreamEvent(1, 0, newObjectValue));
                             }
                             else
                             {
-                                outputs.Add(new StreamEvent(1, 0, newObjectValue));
+                                continue;
                             }
+                        }
+                        else
+                        {
+                            outputs.Add(new StreamEvent(1, 0, newObjectValue));
+                        }
 
-                            current.PreviousValue = newObjectValue;
-
-                            return (current, GenericWriteOperation.Upsert);
-                        });
+                        val.PreviousValue = newObjectValue;
+                        await _tree.Upsert(kv.Key, val);
                     }
                 }
 
@@ -277,51 +264,45 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                     key = new StreamEvent(e.Weight, 0, EmptyVector);
                 }
 
-                await _tree.RMW(key.Value, default, (_, current, exist) =>
+                var (found, val) = await _tree.GetValue(key.Value);
+
+                if (_measures.Count > 0)
                 {
-                    // Check if there are measures to update state for, if not
-                    // this is just a group by, so we only update weight for this group.
-                    // Updating weight is required so we know if this group should be deleted or not.
-                    if (_measuresStateUpdate.Count > 0)
+                    if (found)
                     {
-                        if (exist)
+                        for (int i = 0; i < _measures.Count; i++)
                         {
-                            for (int i = 0; i < _measuresStateUpdate.Count; i++)
-                            {
-                                current!.MeasureStates[i] = _measuresStateUpdate[i](e, current!.MeasureStates[i], e.Weight);
-                            }
-                            current!.Weight += e.Weight;
-                        }
-                        else
-                        {
-                            current = new AggregateRowState()
-                            {
-                                MeasureStates = new byte[_measuresStateUpdate.Count][]
-                            };
-                            for (int i = 0; i < _measuresStateUpdate.Count; i++)
-                            {
-                                current.MeasureStates[i] = _measuresStateUpdate[i](e, null, e.Weight);
-                            }
-                            current.Weight += e.Weight;
+                            val!.MeasureStates[i] = await _measures[i].Compute(key.Value, e, val!.MeasureStates[i], e.Weight);
                         }
                     }
                     else
                     {
-                        if (exist)
+                        val = new AggregateRowState()
                         {
-                            current.Weight += e.Weight;
-                        }
-                        else
+                            MeasureStates = new byte[_measures.Count][]
+                        };
+                        for (int i = 0; i < _measures.Count; i++)
                         {
-                            current = new AggregateRowState()
-                            {
-                                Weight = e.Weight
-                            };
+                            val.MeasureStates[i] = await _measures[i].Compute(key.Value, e, null, e.Weight);
                         }
+                        val.Weight += e.Weight;
                     }
-                    
-                    return (current, GenericWriteOperation.Upsert);
-                });
+                }
+                else
+                {
+                    if (found)
+                    {
+                        val!.Weight += e.Weight;
+                    }
+                    else
+                    {
+                        val = new AggregateRowState()
+                        {
+                            Weight = e.Weight
+                        };
+                    }
+                }
+                await _tree.Upsert(key.Value, val);
             }
 
             yield break;
@@ -329,6 +310,16 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
         protected override async Task InitializeOrRestore(AggregateOperatorState? state, IStateManagerClient stateManagerClient)
         {
+            if (aggregateRelation.Measures != null && aggregateRelation.Measures.Count > 0)
+            {
+                for (int i = 0; i < aggregateRelation.Measures.Count; i++)
+                {
+                    var measure = aggregateRelation.Measures[i];
+                    var aggregateContainer = await MeasureCompiler.CompileMeasure(groupExpressions?.Count ?? 0, stateManagerClient.GetChildManager(i.ToString()), measure.Measure, functionsRegister);
+                    _measures.Add(aggregateContainer);
+                }
+            }
+
             _tree = await stateManagerClient.GetOrCreateTree<StreamEvent, AggregateRowState>("grouping_set_1_v1", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<StreamEvent, AggregateRowState>()
             {
                 KeySerializer = new StreamEventBPlusTreeSerializer(),

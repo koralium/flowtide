@@ -84,7 +84,15 @@ namespace FlexBuffers
             buffer.Add(value);
             return buffer.Finish();
         }
-        
+
+        public static byte[] SingleValue(FlxValue value)
+        {
+            var buffer = new FlexBuffer(ArrayPool<byte>.Shared);
+            buffer.NewObject();
+            buffer.Add(value);
+            return buffer.Finish();
+        }
+
         public static byte[] SingleValue(ulong value)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 10);

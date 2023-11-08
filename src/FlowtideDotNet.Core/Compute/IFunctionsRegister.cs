@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
@@ -18,6 +19,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using static FlowtideDotNet.Core.Compute.IFunctionsRegister;
 
 namespace FlowtideDotNet.Core.Compute
 {
@@ -44,10 +46,44 @@ namespace FlowtideDotNet.Core.Compute
         /// </summary>
         /// <param name="uri"></param>
         /// <param name="name"></param>
-        void RegisterAggregateFunction(
+        void RegisterStreamingAggregateFunction(
             string uri, 
             string name,
             Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
             Func<byte[], FlxValue> stateToValueFunc);
+
+
+        delegate Task<T> AggregateInitializeFunction<T>(int groupingLength, IStateManagerClient stateManagerClient);
+        
+        delegate System.Linq.Expressions.Expression AggregateMapFunction(
+            AggregateFunction function,
+            ParametersInfo parametersInfo,
+            ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo> visitor,
+            ParameterExpression stateParameters,
+            ParameterExpression weightParameter,
+            ParameterExpression singletonAccess,
+            ParameterExpression groupingKeyParameter);
+
+        delegate ValueTask<FlxValue> AggregateStateToValueFunction<T>(byte[] state, StreamEvent groupingKey, T singleton);
+
+        /// <summary>
+        /// Register a stateful aggregate function.
+        /// This allows a function to handle its own persistent state.
+        /// This is useful in functions such as MIN/MAX or MEDIAN, where all values must be known.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="uri"></param>
+        /// <param name="name"></param>
+        /// <param name="stateFunction">State creation function</param>
+        /// <param name="disposeFunction">Disposing function of the state, if required</param>
+        /// <param name="mapFunc"></param>
+        /// <param name="stateToValueFunc"></param>
+        void RegisterStatefulAggregateFunction<T>(
+            string uri,
+            string name,
+            AggregateInitializeFunction<T> initializeFunction,
+            Action<T> disposeFunction,
+            AggregateMapFunction mapFunc,
+            AggregateStateToValueFunction<T> stateToValueFunc);
     }
 }

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Buffers.Binary;
@@ -34,7 +35,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Negate, (x) => NegateImplementation(x));
 
             // Aggregate functions
-            functionsRegister.RegisterAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, 
+            functionsRegister.RegisterStreamingAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, 
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>
                 {
                     if (aggregateFunction.Arguments.Count != 1)
@@ -53,7 +54,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     return e;
                 }, GetSumValue);
 
-            functionsRegister.RegisterAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum0,
+            functionsRegister.RegisterStreamingAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum0,
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>
                 {
                     if (aggregateFunction.Arguments.Count != 1)
@@ -71,6 +72,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     e = replacer.Visit(e);
                     return e;
                 }, GetSum0Value);
+
+            MinAggregationRegistration.Register(functionsRegister);
         }
 
         private static FlxValue AddImplementation(FlxValue x, FlxValue y)

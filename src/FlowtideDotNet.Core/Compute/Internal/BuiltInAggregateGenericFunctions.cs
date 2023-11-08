@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
     {
         public static void AddBuiltInAggregateGenericFunctions(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterAggregateFunction(
+            functionsRegister.RegisterStreamingAggregateFunction(
                 FunctionsAggregateGeneric.Uri,
                 FunctionsAggregateGeneric.Count,
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>

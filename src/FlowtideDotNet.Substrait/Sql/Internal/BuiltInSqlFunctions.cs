@@ -307,6 +307,29 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 throw new InvalidOperationException("sum0 must have exactly one argument, and not be '*'");
             });
+
+            sqlFunctionRegister.RegisterAggregateFunction("min", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("min must have exactly one argument, and not be '*'");
+                }
+                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException("min must have exactly one argument, and not be '*'");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+                    return new AggregateFunction()
+                    {
+                        ExtensionUri = FunctionsArithmetic.Uri,
+                        ExtensionName = FunctionsArithmetic.Min,
+                        Arguments = new List<Expressions.Expression>() { argExpr }
+                    };
+                }
+                throw new InvalidOperationException("min must have exactly one argument, and not be '*'");
+            });
         }
 
         private static ExpressionData VisitCoalesce(SqlParser.Ast.Expression.Function function, SqlExpressionVisitor visitor, EmitData state)

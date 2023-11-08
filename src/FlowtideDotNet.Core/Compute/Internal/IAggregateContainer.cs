@@ -10,19 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.Tree;
+using FlexBuffers;
 
-namespace FlowtideDotNet.Storage.StateManager
+namespace FlowtideDotNet.Core.Compute.Internal
 {
-    public interface IStateManagerClient
+    internal interface IAggregateContainer
     {
-        /// <summary>
-        /// Gets or creates a BPlusTree with the specified name.
-        /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
-        ValueTask<IBPlusTree<K, V>> GetOrCreateTree<K, V>(string name, BPlusTreeOptions<K, V> options);
+        ValueTask<byte[]> Compute(StreamEvent key, StreamEvent row, byte[] state, long weight);
 
-        IStateManagerClient GetChildManager(string name);
+        void Disponse();
+
+        ValueTask<FlxValue> GetValue(StreamEvent key, byte[] state);
     }
 }
