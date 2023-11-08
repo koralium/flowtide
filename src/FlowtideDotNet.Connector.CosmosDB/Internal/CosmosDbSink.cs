@@ -54,6 +54,32 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             return new CosmosDbSinkState();
         }
 
+        private async Task CompleteTasks(List<Task<ResponseMessage>> tasks, List<MemoryStream> activeStreams)
+        {
+            try
+            {
+                var responses = await Task.WhenAll(tasks);
+                foreach (var response in responses)
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new InvalidOperationException($"CosmosDB transaction failed with status code {response.StatusCode} and error message: {response.ErrorMessage}");
+                    }
+                }
+                tasks.Clear();
+            }
+            finally
+            {
+                // Always dispose the memory streams to not have memory leaks
+                foreach(var stream in activeStreams)
+                {
+                    stream.Dispose();
+                }
+                activeStreams.Clear();
+            }
+            
+        }
+
         private async Task FlushAsync()
         {
             if (!m_hasModified)
@@ -69,8 +95,8 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             var iterator = m_modified.CreateIterator();
             await iterator.SeekFirst();
 
-            Dictionary<PartitionKey, TransactionalBatch> transactions = new Dictionary<PartitionKey, TransactionalBatch>();
             List<MemoryStream> activeStreams = new List<MemoryStream>();
+            List<Task<ResponseMessage>> tasks = new List<Task<ResponseMessage>>();
             int operationCount = 0;
             await foreach (var page in iterator)
             {
@@ -79,12 +105,6 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
                 {
                     operationCount++;
                     var pk = m_eventToPartitionKey(kv.Key);
-                    
-                    if (!transactions.TryGetValue(pk, out var batch))
-                    {
-                        batch = m_container.CreateTransactionalBatch(pk);
-                        transactions.Add(pk, batch);
-                    }
 
                     var (rows, isDeleted) = await this.GetGroup(kv.Key);
 
@@ -94,7 +114,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
                         var lastRow = rows.Last();
                         MemoryStream stream = new MemoryStream();
                         m_serializer.Write(stream, lastRow);
-                        batch.UpsertItemStream(stream);
+                        tasks.Add(m_container.UpsertItemStreamAsync(stream, pk));
                         activeStreams.Add(stream);
                     }
                     else if (rows.Count == 1)
@@ -102,81 +122,24 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
                         
                         MemoryStream stream = new MemoryStream();
                         m_serializer.Write(stream, rows[0]);
-                        //var resp = await m_container.CreateItemStreamAsync(stream, pk);
-                        batch.UpsertItemStream(stream);
+                        tasks.Add(m_container.UpsertItemStreamAsync(stream, pk));
                         activeStreams.Add(stream);
                     }
                     else if (isDeleted)
                     {
                         var idString = GetIdValue(kv.Key);
-                        batch.DeleteItem(idString);
+                        tasks.Add(m_container.DeleteItemStreamAsync(idString, pk));
                     }
-                    if (operationCount >= 99)
+                    if (tasks.Count >= 1000)
                     {
-                        List<Task<TransactionalBatchResponse>> tasks = new List<Task<TransactionalBatchResponse>>();
-                        try
-                        {
-                            foreach (var transaction in transactions)
-                            {
-                                tasks.Add(transaction.Value.ExecuteAsync());
-                            }
-                            transactions.Clear();
-                            var responses = await Task.WhenAll(tasks);
-
-                            foreach (var activeStream in activeStreams)
-                            {
-                                activeStream.Dispose();
-                            }
-                            activeStreams.Clear();
-
-                            // Check all responses
-                            foreach (var response in responses)
-                            {
-                                if (!response.IsSuccessStatusCode)
-                                {
-                                    throw new InvalidOperationException($"CosmosDB transaction failed with status code {response.StatusCode} and error message: {response.ErrorMessage}");
-                                }
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            throw;
-                        }
+                        await CompleteTasks(tasks, activeStreams);
                     }
                 }
             }
 
-            if (transactions.Count > 0)
+            if (tasks.Count > 0)
             {
-                List<Task<TransactionalBatchResponse>> tasks = new List<Task<TransactionalBatchResponse>>();
-                try
-                {
-                    foreach (var transaction in transactions)
-                    {
-                        tasks.Add(transaction.Value.ExecuteAsync());
-                    }
-                    transactions.Clear();
-                    var responses = await Task.WhenAll(tasks);
-
-                    foreach (var activeStream in activeStreams)
-                    {
-                        activeStream.Dispose();
-                    }
-                    activeStreams.Clear();
-
-                    // Check all responses
-                    foreach (var response in responses)
-                    {
-                        if (!response.IsSuccessStatusCode)
-                        {
-                            throw new InvalidOperationException($"CosmosDB transaction failed with status code {response.StatusCode} and error message: {response.ErrorMessage}");
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    throw;
-                }
+                await CompleteTasks(tasks, activeStreams);
             }
 
             // Clear the modified table
@@ -221,6 +184,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             m_cosmosClient = new CosmosClient(cosmosOptions.ConnectionString, new CosmosClientOptions()
             {
                 MaxRetryAttemptsOnRateLimitedRequests = 100,
+                AllowBulkExecution = true,
                 MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(120)
             });
             m_container = m_cosmosClient.GetContainer(cosmosOptions.DatabaseName, cosmosOptions.ContainerName);
