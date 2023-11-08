@@ -150,5 +150,43 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(new[] { new { Sum = default(double) } });
         }
+
+        [Fact]
+        public async Task SelectMin()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT min(userkey) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Min = (double)Users.Min(x => x.UserKey) } });
+        }
+
+        [Fact]
+        public async Task SelectMinNonZero()
+        {
+            GenerateData();
+            await StartStream(@"
+
+            CREATE VIEW t AS
+            SELECT userkey FROM users WHERE userkey > 200;
+            INSERT INTO output SELECT min(userkey) FROM t");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Min = (double)Users.Where(x => x.UserKey > 200).Min(x => x.UserKey) } });
+        }
+
+        [Fact]
+        public async Task MinWithGrouping()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, min(orderkey)
+                FROM orders
+                GROUP BY userkey
+                ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, MinVal = x.Min(y => y.OrderKey) }));
+        }
     }
 }

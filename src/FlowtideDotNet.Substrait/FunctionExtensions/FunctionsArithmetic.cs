@@ -30,5 +30,6 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         //Aggregate
         public const string Sum = "sum";
         public const string Sum0 = "sum0";
+        public const string Min = "min";
     }
 }

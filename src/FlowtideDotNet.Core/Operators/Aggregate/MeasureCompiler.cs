@@ -13,6 +13,7 @@
 using FlexBuffers;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
@@ -26,20 +27,28 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 {
     internal static class MeasureCompiler
     {
-        public static (Func<StreamEvent, byte[], long, byte[]>, Func<byte[], FlxValue>) CompileMeasure(AggregateFunction aggregateFunction, FunctionsRegister functionsRegister)
+        public static Task<IAggregateContainer> CompileMeasure(int groupingLength, IStateManagerClient stateManagerClient, AggregateFunction aggregateFunction, FunctionsRegister functionsRegister)
         {
             if (functionsRegister.TryGetAggregateFunction(aggregateFunction.ExtensionUri, aggregateFunction.ExtensionName, out var definition))
             {
                 var param = System.Linq.Expressions.Expression.Parameter(typeof(StreamEvent));
                 var stateParam = System.Linq.Expressions.Expression.Parameter(typeof(byte[]));
                 var weightParam = System.Linq.Expressions.Expression.Parameter(typeof(long));
-
+                var groupingKeyParameter = System.Linq.Expressions.Expression.Parameter(typeof(StreamEvent));
                 var parametersInfo = new ParametersInfo(new List<ParameterExpression>() { param }, new List<int> { 0 });
                 var expressionVisitor = new FlowtideExpressionVisitor(functionsRegister, typeof(StreamEvent));
-                var expr = definition.UpdateStateFunc(aggregateFunction, parametersInfo, expressionVisitor, stateParam, weightParam);
-                var lambda = System.Linq.Expressions.Expression.Lambda<Func<StreamEvent, byte[], long, byte[]>>(expr, param, stateParam, weightParam);
+                var container =  definition.CreateContainer(
+                    groupingLength,
+                    stateManagerClient,
+                    aggregateFunction,
+                    parametersInfo,
+                    expressionVisitor,
+                    param,
+                    stateParam,
+                    weightParam,
+                    groupingKeyParameter);
 
-                return (lambda.Compile(), definition.StateToValueFunc);
+                return container;
             }
             else
             {

@@ -12,6 +12,7 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
@@ -101,18 +102,33 @@ namespace FlowtideDotNet.Core.Compute
             });
         }
 
-        public void RegisterAggregateFunction(
+        public void RegisterStreamingAggregateFunction(
             string uri, 
             string name, 
             Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
             Func<byte[], FlxValue> stateToValueFunc)
         {
-            _aggregateFunctions.Add($"{uri}:{name}", new AggregateFunctionDefinition(uri, name, mapFunc, stateToValueFunc));
+            _aggregateFunctions.Add($"{uri}:{name}", new StreamingAggregateFunctionDefinition(uri, name, mapFunc, stateToValueFunc));
         }
 
         public bool TryGetAggregateFunction(string uri, string name, [NotNullWhen(true)] out AggregateFunctionDefinition? aggregateFunctionDefinition)
         {
             return _aggregateFunctions.TryGetValue($"{uri}:{name}", out aggregateFunctionDefinition);
+        }
+
+        public void RegisterStatefulAggregateFunction<T>(
+            string uri, 
+            string name, 
+            IFunctionsRegister.AggregateInitializeFunction<T> stateFunction, 
+            Action<T> disposeFunction, 
+            IFunctionsRegister.AggregateMapFunction mapFunc, 
+            IFunctionsRegister.AggregateStateToValueFunction<T> stateToValueFunc)
+        {
+            _aggregateFunctions.Add($"{uri}:{name}", new StatefulAggregateFunctionDefinition<T>(
+                stateFunction,
+                disposeFunction,
+                mapFunc,
+                stateToValueFunc));
         }
     }
 }

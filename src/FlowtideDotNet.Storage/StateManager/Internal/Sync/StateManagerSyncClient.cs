@@ -26,6 +26,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.stateManager = stateManager;
         }
 
+        public IStateManagerClient GetChildManager(string name)
+        {
+            return new StateManagerSyncClient($"{m_name}_{name}", stateManager);
+        }
+
         public async ValueTask<IBPlusTree<K, V>> GetOrCreateTree<K, V>(string name, BPlusTreeOptions<K, V> options)
         {
             var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, new BPlusTreeSerializer<K, V>(options.KeySerializer, options.ValueSerializer));
