@@ -4,11 +4,13 @@ sidebar_position: 1
 
 # Getting started
 
-To get started with Flowtide, the easiest way is to create a new C# project.
+To get started with Flowtide, the easiest way is to create a new C# project. This guide will show an example with SQL Server, but you can change
+to another connector as well.
 
 Create a minimal API AspNetCore application and install the following nuget package:
 
 * FlowtideDotNet.AspNetCore
+* FlowtideDotNet.SqlServer
 
 ## Creating a plan
 
@@ -22,23 +24,25 @@ Add the following to your _Program.cs_:
 var sqlBuilder = new SqlPlanBuilder();
 
 sqlBuilder.Sql(@"
-CREATE TABLE testtable (
+CREATE TABLE {sqlserver database name}.{schema name}.{tablename} (
   val any
 );
 
-CREATE TABLE other (
+CREATE TABLE {sqlserver database name}.{schema name}.{othertablename} (
   val any
 );
 
-INSERT INTO output
-SELECT t.val FROM testtable t
-LEFT JOIN other o
+INSERT INTO {sqlserver database name}.{schema name}.{destinationname}
+SELECT t.val FROM {sqlserver database name}.{schema name}.{tablename} t
+LEFT JOIN {sqlserver database name}.{schema name}.{othertablename} o
 ON t.val = o.val
 WHERE t.val = 123;
 ");
 
 var plan = sqlBuilder.GetPlan();
 ```
+
+Replace all values with that are between { } with your own table names in your SQL Server.
 
 ## Setting up a read and write factory
 
@@ -115,17 +119,17 @@ var builder = WebApplication.CreateBuilder(args);
 var sqlBuilder = new SqlPlanBuilder();
 
 sqlBuilder.Sql(@"
-CREATE TABLE testtable (
+CREATE TABLE {sqlserver database name}.{schema name}.{tablename} (
   val any
 );
 
-CREATE TABLE other (
+CREATE TABLE {sqlserver database name}.{schema name}.{othertablename} (
   val any
 );
 
-INSERT INTO output
-SELECT t.val FROM testtable t
-LEFT JOIN other o
+INSERT INTO {sqlserver database name}.{schema name}.{destinationname}
+SELECT t.val FROM {sqlserver database name}.{schema name}.{tablename} t
+LEFT JOIN {sqlserver database name}.{schema name}.{othertablename} o
 ON t.val = o.val
 WHERE t.val = 123;
 ");
