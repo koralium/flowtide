@@ -389,21 +389,26 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
             // Add update statement
             // This statement only updates rows if there is a difference
-            stringBuilder.AppendLine($"WHEN MATCHED AND src.[md_operation] = 'I' THEN");
-            stringBuilder.Append("UPDATE SET ");
-
-            List<string> updateSets = new List<string>();
-            for (int i = 1; i < dataTable.Columns.Count; i++)
+            // Check that there are columns except primary keys
+            if (primaryKeys.Count != (dataTable.Columns.Count - 1))
             {
-                var col = dataTable.Columns[i];
-                if (primaryKeys.Contains(col.ColumnName))
-                {
-                    continue;
-                }
+                stringBuilder.AppendLine($"WHEN MATCHED AND src.[md_operation] = 'I' THEN");
+                stringBuilder.Append("UPDATE SET ");
 
-                updateSets.Add($"tgt.{col.ColumnName} = src.{col.ColumnName}");
+                List<string> updateSets = new List<string>();
+                for (int i = 1; i < dataTable.Columns.Count; i++)
+                {
+                    var col = dataTable.Columns[i];
+                    if (primaryKeys.Contains(col.ColumnName))
+                    {
+                        continue;
+                    }
+
+                    updateSets.Add($"tgt.{col.ColumnName} = src.{col.ColumnName}");
+                }
+                stringBuilder.AppendLine(string.Join(", ", updateSets));
             }
-            stringBuilder.AppendLine(string.Join(", ", updateSets));
+            
 
             // Add delete statement
             stringBuilder.AppendLine($"WHEN MATCHED AND src.[md_operation] = 'D' THEN");

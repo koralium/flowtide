@@ -21,6 +21,14 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Type;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using FlowtideDotNet.SqlServer.SqlServer;
+using FlowtideDotNet.Base.Engine.Internal;
+using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base;
+using FlowtideDotNet.Storage.StateManager;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Core;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 {
@@ -164,6 +172,85 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
         public override Task Restart()
         {
             return sqlServerFixture.StartAsync();
+        }
+
+        [Fact]
+        public async Task PrimaryKeyOnlyColumnInSink()
+        {
+            var writeRel = new WriteRelation()
+            {
+                Input = new ReadRelation()
+                {
+                    BaseSchema = new NamedStruct()
+                    {
+                        Names = new List<string>() { "id" },
+                        Struct = new Struct() { Types = new List<SubstraitBaseType>() { new AnyType() } }
+                    }
+                },
+                NamedObject = new NamedTable()
+                {
+                    Names = new List<string>() { "tpch.dbo.notracking" }
+                },
+                TableSchema = new NamedStruct()
+                {
+                    Names = new List<string>() { "id" },
+                    Struct = new Struct() { Types = new List<SubstraitBaseType>() { new AnyType() } }
+                }
+            };
+
+            var stateManager = new StateManagerSync<object>(new StateManagerOptions()
+            {
+                CachePageCount = 1000,
+                PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions())
+            }, new NullLogger<StateManagerSync<object>>());
+            await stateManager.InitializeAsync();
+            var stateClient = stateManager.GetOrCreateClient("node");
+
+            StreamMetrics streamMetrics = new StreamMetrics("stream");
+            var nodeMetrics = streamMetrics.GetOrCreateVertexMeter("node1");
+
+            var vertexHandler = new VertexHandler("mergejoinstream", "op", (time) =>
+            {
+
+            }, async (v1, v2, time) =>
+            {
+
+            }, nodeMetrics, stateClient, new NullLoggerFactory());
+            var sink = new SqlServerSink(() => sqlServerFixture.ConnectionString, writeRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
+
+            sink.Setup("mergejoinstream", "op");
+            sink.CreateBlock();
+            sink.Link();
+
+            
+            await sink.Initialize("1", 0, 0, null, vertexHandler);
+
+            await sink.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(null, new List<StreamEvent>()
+            {
+                StreamEvent.Create(1, 0, (b) =>
+                {
+                    b.Add(1);
+                })
+            }), 0));
+
+            await sink.SendAsync(new Checkpoint(0, 1));
+
+            var token = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            while (true)
+            {
+                token.Token.ThrowIfCancellationRequested();
+
+                var hasRow = await sqlServerFixture.ExecuteReader("SELECT id FROM tpch.dbo.notracking",
+                    (reader) =>
+                    {
+                        return reader.Read();
+                    });
+
+                if(hasRow)
+                {
+                    break;
+                }
+            }
         }
     }
 }
