@@ -188,5 +188,16 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, MinVal = x.Min(y => y.OrderKey) }));
         }
+
+        [Fact]
+        public async Task SelectMinWithUpdate()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT min(userkey) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Min = (double)Users.Min(x => x.UserKey) } });
+            GenerateData();
+            await WaitForUpdate();
+        }
     }
 }

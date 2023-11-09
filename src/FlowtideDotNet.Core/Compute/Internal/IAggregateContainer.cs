@@ -20,6 +20,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         void Disponse();
 
+        Task Commit();
+
         ValueTask<FlxValue> GetValue(StreamEvent key, byte[] state);
     }
 }

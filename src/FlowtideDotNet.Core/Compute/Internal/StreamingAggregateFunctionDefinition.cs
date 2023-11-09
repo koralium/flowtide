@@ -28,6 +28,11 @@ namespace FlowtideDotNet.Core.Compute.Internal
             this.stateToValueFunc = stateToValueFunc;
         }
 
+        public Task Commit()
+        {
+            return Task.CompletedTask;
+        }
+
         public ValueTask<byte[]> Compute(StreamEvent key, StreamEvent row, byte[] state, long weight)
         {
             return ValueTask.FromResult(mapFunc(row, state, weight));
