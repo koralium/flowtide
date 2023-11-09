@@ -85,5 +85,46 @@ namespace FlowtideDotNet.Substrait.Expressions
             }
             return default;
         }
+
+        public virtual TOutput? VisitSingularOrList(SingularOrListExpression singularOrList, TState state)
+        {
+            if (singularOrList.Value != null)
+            {
+                singularOrList.Value.Accept(this, state);
+            }
+            if (singularOrList.Options != null)
+            {
+                foreach(var opt in singularOrList.Options)
+                {
+                    opt.Accept(this, state);
+                }
+            }
+            return default;
+        }
+
+        public virtual TOutput? VisitMultiOrList(MultiOrListExpression multiOrList, TState state)
+        {
+            if (multiOrList.Value != null)
+            {
+                foreach(var e in multiOrList.Value)
+                {
+                    e.Accept(this, state);
+                }
+            }
+            if (multiOrList.Options != null)
+            {
+                foreach(var record in multiOrList.Options)
+                {
+                    if (record.Fields != null)
+                    {
+                        foreach(var field in record.Fields)
+                        {
+                            field.Accept(this, state);
+                        }
+                    }
+                }
+            }
+            return default;
+        }
     }
 }

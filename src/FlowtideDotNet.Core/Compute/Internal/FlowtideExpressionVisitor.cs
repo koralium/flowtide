@@ -14,6 +14,7 @@ using FlexBuffers;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -145,6 +146,33 @@ namespace FlowtideDotNet.Core.Compute.Internal
         public override System.Linq.Expressions.Expression? VisitStringLiteral(StringLiteral stringLiteral, ParametersInfo state)
         {
             return System.Linq.Expressions.Expression.Constant(FlxValue.FromBytes(FlexBuffer.SingleValue(stringLiteral.Value)));
+        }
+
+        public override System.Linq.Expressions.Expression? VisitSingularOrList(SingularOrListExpression singularOrList, ParametersInfo state)
+        {
+            // For now we convert the singular or list to a series of equals statements with OR between them.
+            ScalarFunction scalarFunction = new ScalarFunction()
+            {
+                ExtensionUri = FunctionsBoolean.Uri,
+                ExtensionName = FunctionsBoolean.Or,
+                Arguments = new List<Substrait.Expressions.Expression>()
+            };
+
+            foreach(var opt in singularOrList.Options)
+            {
+                scalarFunction.Arguments.Add(new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionName = FunctionsComparison.Equal,
+                    Arguments = new List<Substrait.Expressions.Expression>()
+                    {
+                        singularOrList.Value,
+                        opt
+                    }
+                });
+            }
+
+            return Visit(scalarFunction, state);
         }
     }
 }

@@ -468,5 +468,24 @@ namespace FlowtideDotNet.Substrait.Sql
                 }, "$isnull"
             );
         }
+
+        protected override ExpressionData VisitInList(InList inList, EmitData state)
+        {
+            var expr = Visit(inList.Expression, state);
+            List<Expressions.Expression> options = new List<Expressions.Expression>();
+            foreach(var v in inList.List)
+            {
+                options.Add(Visit(v, state).Expr);
+            }
+            
+            return new ExpressionData(
+                new SingularOrListExpression()
+                {
+                    Value = expr.Expr,
+                    Options = options
+                },
+                "$inlist"
+                );
+        }
     }
 }
