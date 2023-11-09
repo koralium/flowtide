@@ -206,6 +206,14 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return SqlServerUtils.GetPrimaryKeys(conn, readRelation.NamedTable.DotSeperated).GetAwaiter().GetResult();
         }
 
+        internal bool IsChangeTrackingEnabled()
+        {
+            using var conn = new SqlConnection(connectionStringFunc());
+            conn.Open();
+            return SqlServerUtils.IsChangeTrackingEnabled(conn, readRelation.NamedTable.DotSeperated).GetAwaiter().GetResult();
+
+        }
+
         public override ValueTask DisposeAsync()
         {
             if (sqlConnection != null)

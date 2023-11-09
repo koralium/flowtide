@@ -99,6 +99,8 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             await RunCommand("ALTER TABLE tpch.dbo.orders ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
             await RunCommand("ALTER TABLE tpch.dbo.shipmodes ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
 
+            await RunCommand("CREATE TABLE tpch.dbo.notracking (id int)");
+
             //await TpchData.InsertIntoDbContext(dbContext);
         }
     }
