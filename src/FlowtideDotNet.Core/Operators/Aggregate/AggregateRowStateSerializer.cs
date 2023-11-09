@@ -28,7 +28,15 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             for (int i = 0; i < measureLength; i++)
             {
                 var length = reader.ReadInt32();
-                measureStates[i] = reader.ReadBytes(length);
+                if (length == 0)
+                {
+                    measureStates[i] = null;
+                }
+                else
+                {
+                    measureStates[i] = reader.ReadBytes(length);
+                }
+                
             }
             var weight = reader.ReadInt64();
             var previousLength = reader.ReadInt32();
@@ -50,6 +58,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             writer.Write(value.MeasureStates.Length);
             foreach (var measureState in value.MeasureStates)
             {
+                if (measureState == null)
+                {
+                    writer.Write(0);
+                    continue;
+                }
                 writer.Write(measureState.Length);
                 writer.Write(measureState);
             }
