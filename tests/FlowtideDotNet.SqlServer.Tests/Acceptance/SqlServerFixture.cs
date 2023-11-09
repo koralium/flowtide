@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.Tests.SmokeTests;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using System.Data.Common;
 using Testcontainers.MsSql;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance
@@ -66,6 +67,17 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             }
         }
 
+        public async Task<T> ExecuteReader<T>(string command, Func<SqlDataReader, T> func)
+        {
+            using (SqlConnection sqlConnection = new SqlConnection(_msSqlContainer.GetConnectionString()))
+            {
+                await sqlConnection.OpenAsync();
+                using var cmd = sqlConnection.CreateCommand();
+                cmd.CommandText = command;
+                return func(await cmd.ExecuteReaderAsync());
+            }
+        }
+
         public async Task StopAsync()
         {
             await _msSqlContainer.StopAsync();
@@ -99,7 +111,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             await RunCommand("ALTER TABLE tpch.dbo.orders ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
             await RunCommand("ALTER TABLE tpch.dbo.shipmodes ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
 
-            await RunCommand("CREATE TABLE tpch.dbo.notracking (id int)");
+            await RunCommand("CREATE TABLE tpch.dbo.notracking (id int PRIMARY KEY)");
 
             //await TpchData.InsertIntoDbContext(dbContext);
         }
