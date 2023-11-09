@@ -194,6 +194,11 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             return currentState;
         }
 
+        private static async Task Commit(MinAggregationSingleton singleton)
+        {
+            await singleton.Tree.Commit();
+        }
+
         public static void Register(IFunctionsRegister functionsRegister)
         {
             functionsRegister.RegisterStatefulAggregateFunction<MinAggregationSingleton>(
@@ -201,6 +206,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
                 FunctionsArithmetic.Min,
                 Initialize,
                 (singleton) => { },
+                Commit,
                 MinMapFunction,
                 MinGetValue
                 );

@@ -121,12 +121,14 @@ namespace FlowtideDotNet.Core.Compute
             string name, 
             IFunctionsRegister.AggregateInitializeFunction<T> stateFunction, 
             Action<T> disposeFunction, 
+            Func<T, Task> commitFunction,
             IFunctionsRegister.AggregateMapFunction mapFunc, 
             IFunctionsRegister.AggregateStateToValueFunction<T> stateToValueFunc)
         {
             _aggregateFunctions.Add($"{uri}:{name}", new StatefulAggregateFunctionDefinition<T>(
                 stateFunction,
                 disposeFunction,
+                commitFunction,
                 mapFunc,
                 stateToValueFunc));
         }

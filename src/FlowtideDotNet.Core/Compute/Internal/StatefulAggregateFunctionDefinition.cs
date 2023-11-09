@@ -20,6 +20,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
 {
     internal abstract class StatefulAggregateContainer : IAggregateContainer
     {
+        public abstract Task Commit();
         public abstract ValueTask<byte[]> Compute(StreamEvent key, StreamEvent row, byte[] state, long weight);
         public abstract void Disponse();
         public abstract ValueTask<FlxValue> GetValue(StreamEvent key, byte[] state);
@@ -28,22 +29,30 @@ namespace FlowtideDotNet.Core.Compute.Internal
     internal class StatefulAggregateContainer<T> : StatefulAggregateContainer
     {
         private readonly Action<T> disposeFunction;
+        private readonly Func<T, Task> commitFunction;
         private readonly AggregateStateToValueFunction<T> stateToValueFunc;
 
         public StatefulAggregateContainer(
             T singleton,
             Func<StreamEvent, byte[], long, T, StreamEvent, ValueTask<byte[]>> mapFunction,
             Action<T> disposeFunction,
+            Func<T, Task> commitFunction,
             AggregateStateToValueFunction<T> stateToValueFunc)
         {
             Singleton = singleton;
             MapFunction = mapFunction;
             this.disposeFunction = disposeFunction;
+            this.commitFunction = commitFunction;
             this.stateToValueFunc = stateToValueFunc;
         }
 
         public T Singleton { get; }
         public Func<StreamEvent, byte[], long, T, StreamEvent, ValueTask<byte[]>> MapFunction { get; }
+
+        public override Task Commit()
+        {
+            return commitFunction(Singleton);
+        }
 
         public override ValueTask<byte[]> Compute(StreamEvent key, StreamEvent row, byte[] state, long weight)
         {
@@ -66,11 +75,13 @@ namespace FlowtideDotNet.Core.Compute.Internal
         public StatefulAggregateFunctionDefinition(
             AggregateInitializeFunction<T> initializeFunction, 
             Action<T> disposeFunction, 
+            Func<T, Task> commitFunction,
             AggregateMapFunction mapFunc, 
             AggregateStateToValueFunction<T> stateToValueFunc)
         {
             InitializeFunction = initializeFunction;
             DisposeFunction = disposeFunction;
+            CommitFunction = commitFunction;
             MapFunc = mapFunc;
             StateToValueFunc = stateToValueFunc;
         }
@@ -78,7 +89,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
         public AggregateInitializeFunction<T> InitializeFunction { get; }
 
         public Action<T> DisposeFunction { get; }
-
+        public Func<T, Task> CommitFunction { get; }
         public AggregateMapFunction MapFunc { get; }
 
         public AggregateStateToValueFunction<T> StateToValueFunc { get; }
@@ -101,7 +112,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             var lambda = System.Linq.Expressions.Expression.Lambda<Func<StreamEvent, byte[], long, T, StreamEvent, ValueTask<byte[]>>>(mapResult, eventParameter, stateParameter, weightParameter, singletonParameter, groupingKeyParameter);
             var compiled = lambda.Compile();
 
-            var container = new StatefulAggregateContainer<T>(singleton, compiled, DisposeFunction, StateToValueFunc);
+            var container = new StatefulAggregateContainer<T>(singleton, compiled, DisposeFunction, CommitFunction, StateToValueFunc);
             return container;
         }
     }

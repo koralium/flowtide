@@ -83,6 +83,7 @@ namespace FlowtideDotNet.Core.Compute
             string name,
             AggregateInitializeFunction<T> initializeFunction,
             Action<T> disposeFunction,
+            Func<T, Task> commitFunction,
             AggregateMapFunction mapFunc,
             AggregateStateToValueFunction<T> stateToValueFunc);
     }
