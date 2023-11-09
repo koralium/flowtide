@@ -143,5 +143,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             return Visit(isNull.Expression, state);
         }
+
+        protected override bool VisitInList(Expression.InList inList, object state)
+        {
+            bool containsAggregate = false;
+            containsAggregate |= Visit(inList.Expression, state);
+            foreach(var o in inList.List)
+            {
+                containsAggregate |= Visit(o, state);
+            }
+            return containsAggregate;
+        }
     }
 }

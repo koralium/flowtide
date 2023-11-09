@@ -69,7 +69,16 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitIsNull(isNull, state);
             }
+            if (expression is Expression.InList inList)
+            {
+                return VisitInList(inList, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitInList(Expression.InList inList, TState state)
+        {
+            throw new NotImplementedException($"The expression '{inList.GetType().Name}' is not supported in SQL");
         }
 
         protected virtual TReturn VisitIsNull(Expression.IsNull isNull, TState state)

@@ -164,5 +164,35 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Where(x => x.UserKey == -999).Select(x => new { x.UserKey }));
         }
+
+        [Fact]
+        public async Task WhereInSingularOrList()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey 
+                FROM users u
+                WHERE u.userkey IN (1, 5, 17, 325)");
+            await WaitForUpdate();
+            List<int> list = new List<int>() { 1, 5, 17, 325 };
+            AssertCurrentDataEqual(Users.Where(x => list.Contains(x.UserKey)).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task WhereInSingularOrListOneValue()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey 
+                FROM users u
+                WHERE u.userkey IN (325)");
+            await WaitForUpdate();
+            List<int> list = new List<int>() { 325 };
+            AssertCurrentDataEqual(Users.Where(x => list.Contains(x.UserKey)).Select(x => new { x.UserKey }));
+        }
     }
 }

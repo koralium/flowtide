@@ -21,3 +21,15 @@ SELECT
     END
 FROM ...
 ```
+
+## Or List Expression
+
+[Substrait definition](https://substrait.io/expressions/specialized_record_expressions/#or-list-equality-expression)
+
+Checks if a value is equal to any value in a list. This uses Kleene logic for equality.
+
+### SQL Usage
+
+```sql
+... WHERE column1 IN (1, 5, 17)
+```
