@@ -20,6 +20,7 @@ using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Type;
+using FlowtideDotNet.Storage.Persistence.CacheStorage;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 {
@@ -127,6 +128,32 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                     },
                 }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
                 );
+        }
+
+        [Fact]
+        public void TestChangeTrackingError()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.AddSqlServerProvider(() => sqlServerFixture.ConnectionString);
+            sqlPlanBuilder.Sql("SELECT id FROM tpch.dbo.notracking");
+            var plan = sqlPlanBuilder.GetPlan();
+
+            ReadWriteFactory readWriteFactory = new ReadWriteFactory();
+            readWriteFactory.AddSqlServerSource("*", () => sqlServerFixture.ConnectionString);
+
+            var e = Assert.Throws<InvalidOperationException>(() =>
+            {
+                var stream = new FlowtideBuilder("stream")
+                .AddPlan(plan)
+                .AddReadWriteFactory(readWriteFactory)
+                .WithStateOptions(new Storage.StateManager.StateManagerOptions()
+                {
+                    PersistentStorage = new FileCachePersistentStorage(new Storage.FileCacheOptions())
+                })
+                .Build();
+            });
+            Assert.Equal("Change tracking must be enabled on table 'tpch.dbo.notracking'", e.Message);
+
         }
 
         public override Task Crash()

@@ -38,6 +38,11 @@ namespace FlowtideDotNet.Core.Engine
                 var source = new SqlServerDataSource(connectionStringFunc, relation, dataflowopt);
                 var primaryKeys = source.GetPrimaryKeys();
 
+                if (!source.IsChangeTrackingEnabled())
+                {
+                    throw new InvalidOperationException($"Change tracking must be enabled on table '{relation.NamedTable.DotSeperated}'");
+                }
+
                 List<int> pkIndices = new List<int>();
                 foreach(var pk in primaryKeys)
                 {

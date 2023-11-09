@@ -18,6 +18,7 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Text;
+using Microsoft.VisualBasic;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
@@ -425,6 +426,36 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             stringBuilder.AppendLine(";");
 
             return stringBuilder.ToString();
+        }
+
+        public static async Task<bool> IsChangeTrackingEnabled(SqlConnection sqlConnection, string tableFullName)
+        {
+            var splitName = tableFullName.Split('.');
+
+            if (splitName.Length != 3)
+            {
+                throw new InvalidOperationException("Table name must contain database.schema.tablename");
+            }
+            var db = splitName[0];
+            var schema = splitName[1];
+            var table = splitName[2];
+
+            await sqlConnection.ChangeDatabaseAsync(db);
+
+            string query = "SELECT sys.schemas.name as schema_name, sys.tables.name as table_name\n" +
+                "FROM sys.change_tracking_tables\n" +
+                "JOIN sys.tables ON sys.tables.object_id = sys.change_tracking_tables.object_id\n" +
+                "JOIN sys.schemas ON sys.schemas.schema_id = sys.tables.schema_id\n" +
+                "WHERE sys.tables.name = @tableName AND sys.schemas.name = @schema;";
+
+            using var cmd = sqlConnection.CreateCommand();
+            cmd.CommandText = query;
+            cmd.Parameters.Add(new SqlParameter("tableName", table));
+            cmd.Parameters.Add(new SqlParameter("schema", schema));
+
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            return await reader.ReadAsync();
         }
 
         public static async Task<long> GetLatestChangeVersion(SqlConnection sqlConnection)
