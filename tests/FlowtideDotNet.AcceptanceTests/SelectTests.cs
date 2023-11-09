@@ -42,6 +42,20 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task SelectWithCaseNoElse()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    CASE WHEN Gender = 1 THEN firstName
+                    END AS name
+                FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { Name = x.Gender == Entities.Gender.Female ? x.FirstName : null }));
+        }
+
+        [Fact]
         public async Task SelectWithConcat()
         {
             GenerateData();

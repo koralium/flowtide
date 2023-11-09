@@ -82,7 +82,15 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         public override System.Linq.Expressions.Expression? VisitIfThen(IfThenExpression ifThenExpression, ParametersInfo state)
         {
-            var elseStatement = Visit(ifThenExpression.Else, state);
+            System.Linq.Expressions.Expression? elseStatement = default;
+            if (ifThenExpression.Else != null)
+            {
+                elseStatement = Visit(ifThenExpression.Else, state);
+            }
+            else
+            {
+                elseStatement = System.Linq.Expressions.Expression.Constant(FlxValue.FromBytes(FlexBuffer.Null()));
+            }
 
             var expr = elseStatement;
             for (int i = ifThenExpression.Ifs.Count - 1; i >= 0; i--)
