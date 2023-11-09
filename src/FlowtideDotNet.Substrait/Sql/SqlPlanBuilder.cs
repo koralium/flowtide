@@ -43,7 +43,11 @@ namespace FlowtideDotNet.Substrait.Sql
 
         public void Sql(string sqlText)
         {
-            var statements = _parser.ParseSql(sqlText, new FlowtideDialect());
+            
+            var statements = _parser.ParseSql(sqlText, new FlowtideDialect(), new ParserOptions()
+            {
+                RecursionLimit = 100000
+            });
 
             SqlSubstraitVisitor sqlSubstraitVisitor = new SqlSubstraitVisitor(this, _sqlFunctionRegister);
             foreach (var statement in statements)

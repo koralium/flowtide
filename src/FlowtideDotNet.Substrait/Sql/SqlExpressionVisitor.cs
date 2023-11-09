@@ -280,8 +280,7 @@ namespace FlowtideDotNet.Substrait.Sql
             }
 
             // Otherwise try and find a a part of it.
-
-            return base.VisitCompoundIdentifier(removedQuotaIdentifier, state);
+            throw new InvalidOperationException($"Could not find column '{compoundIdentifier.ToSql()}' in the table.");
         }
 
         protected override ExpressionData VisitLiteralValue(SqlParser.Ast.Expression.LiteralValue literalValue, EmitData state)
