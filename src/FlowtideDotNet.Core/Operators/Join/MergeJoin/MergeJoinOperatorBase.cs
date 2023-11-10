@@ -223,6 +223,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                                 if (output.Count > 100)
                                 {
+                                    _eventsCounter.Add(output.Count);
                                     yield return new StreamEventBatch(null, output);
                                     output = new List<StreamEvent>();
                                 }
@@ -248,6 +249,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     output.Add(CreateLeftWithNullRightEvent(e.Weight, joinEventCheck));
                     if (output.Count > 100)
                     {
+                        _eventsCounter.Add(output.Count);
                         yield return new StreamEventBatch(null, output);
                         output = new List<StreamEvent>();
                     }
@@ -350,6 +352,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                                 if (output.Count > 100)
                                 {
+                                    _eventsCounter.Add(output.Count);
                                     yield return new StreamEventBatch(null, output);
                                     output = new List<StreamEvent>();
                                 }
@@ -415,6 +418,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                     if (output.Count > 100)
                     {
+                        _eventsCounter.Add(output.Count);
                         yield return new StreamEventBatch(null, output);
                         output = new List<StreamEvent>();
                     }
