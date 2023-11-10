@@ -17,20 +17,27 @@ namespace FlowtideDotNet.Core.Optimizer
     internal class JoinExpressionVisitor : ExpressionVisitor<object, object>
     {
         private readonly int leftSize;
+        private readonly List<int>? emitMapping;
         public bool fieldInLeft;
         public bool fieldInRight;
         public bool unknownCase;
 
-        public JoinExpressionVisitor(int leftSize)
+        public JoinExpressionVisitor(int leftSize, List<int>? emitMapping = null)
         {
             this.leftSize = leftSize;
+            this.emitMapping = emitMapping;
         }
 
         public override object? VisitDirectFieldReference(DirectFieldReference directFieldReference, object state)
         {
             if (directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                if (structReferenceSegment.Field < leftSize)
+                var field = structReferenceSegment.Field;
+                if (emitMapping != null)
+                {
+                    field = emitMapping[field];
+                }
+                if (field < leftSize)
                 {
                     fieldInLeft = true;
                 }
