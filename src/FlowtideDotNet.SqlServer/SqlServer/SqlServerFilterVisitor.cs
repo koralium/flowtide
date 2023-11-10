@@ -91,6 +91,26 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return base.VisitScalarFunction(scalarFunction, state);
         }
 
+        public override FilterResult? VisitSingularOrList(SingularOrListExpression singularOrList, object state)
+        {
+            var columnExpr = Visit(singularOrList.Value, state);
+            if (columnExpr == null)
+            {
+                return null;
+            }
+            List<string> values = new List<string>();
+            for(int i = 0; i < singularOrList.Options.Count; i++)
+            {
+                var v = Visit(singularOrList.Options[i], state);
+                if (v == null)
+                {
+                    return null;
+                }
+                values.Add(v.Content);
+            }
+            return new FilterResult($"{columnExpr.Content} IN ({string.Join(", ", values)})", true);
+        }
+
         private FilterResult? VisitLowerFunction(ScalarFunction scalarFunction, object state)
         {
             var input = Visit(scalarFunction.Arguments[0], state);
