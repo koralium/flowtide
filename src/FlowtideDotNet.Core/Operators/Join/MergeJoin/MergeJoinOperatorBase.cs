@@ -220,6 +220,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 int outputWeight = e.Weight * kv.Value.Weight;
                                 output.Add(OnConditionSuccess(joinEventCheck, kv.Key, outputWeight));
                                 joinWeight += outputWeight;
+
+                                if (output.Count > 100)
+                                {
+                                    yield return new StreamEventBatch(null, output);
+                                    output = new List<StreamEvent>();
+                                }
+                                
                             }
                         }
                         else
@@ -239,7 +246,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 {
                     // Emit null if left join or full outer join
                     output.Add(CreateLeftWithNullRightEvent(e.Weight, joinEventCheck));
-
+                    if (output.Count > 100)
+                    {
+                        yield return new StreamEventBatch(null, output);
+                        output = new List<StreamEvent>();
+                    }
+                    
                     await _leftTree.RMW(joinEvent, new JoinStorageValue() { Weight = e.Weight, JoinWeight = joinWeight }, (input, current, found) =>
                     {
                         if (found)
@@ -335,6 +347,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                         leftJoinWeight.Add(kv.Key, outputWeight);
                                     }
                                 }
+
+                                if (output.Count > 100)
+                                {
+                                    yield return new StreamEventBatch(null, output);
+                                    output = new List<StreamEvent>();
+                                }
+                                
                             }
                         }
                         else
@@ -393,6 +412,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     {
                         output.Add(CreateLeftWithNullRightEvent(val.Weight, kv.Key));
                     }
+
+                    if (output.Count > 100)
+                    {
+                        yield return new StreamEventBatch(null, output);
+                        output = new List<StreamEvent>();
+                    }
+                    
                 }
                 leftJoinWeight.Clear();
             }
