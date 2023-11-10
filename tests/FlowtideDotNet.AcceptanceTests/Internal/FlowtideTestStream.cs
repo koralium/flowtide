@@ -85,7 +85,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 {
                     PersistentStorage = new FileCachePersistentStorage(new Storage.FileCacheOptions()
                     {
-                        DirectoryPath = $"./data/tempFiles/{testName}/persist"
+                        DirectoryPath = $"./data/tempFiles/{testName}/persist",
+                        SegmentSize = 1024L * 1024 * 1024 * 64
                     }),
                     TemporaryStorageOptions = new Storage.FileCacheOptions()
                     {

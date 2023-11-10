@@ -129,5 +129,21 @@ namespace FlowtideDotNet.AcceptanceTests
                     user.LastName
                 });
         }
+
+        [Fact]
+        public async Task LargeInnerJoinMergeJoin()
+        {
+            GenerateData(1_000_000);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey = u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
+        }
     }
 }

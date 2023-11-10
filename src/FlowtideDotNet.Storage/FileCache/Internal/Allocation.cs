@@ -19,5 +19,6 @@ namespace FlowtideDotNet.Storage.FileCache
         public long? pageKey;
         public long position;
         public int fileNumber;
+        public string removeLocation;
     }
 }
