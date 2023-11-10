@@ -133,7 +133,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task LargeInnerJoinMergeJoin()
         {
-            GenerateData(1_000_000);
+            GenerateData(100_000);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 

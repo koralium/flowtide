@@ -56,7 +56,6 @@ namespace FlowtideDotNet.Storage.FileCache
         private readonly int m_sectorSize;
         Dictionary<long, LinkedListNode<Allocation>> allocatedPages = new Dictionary<long, LinkedListNode<Allocation>>();
         LinkedList<Allocation> memoryNodes = new LinkedList<Allocation>();
-        //SortedDictionary<long, List<LinkedListNode<Allocation>>> _freePages = new SortedDictionary<long, List<LinkedListNode<Allocation>>>();
         SortedSet<FreePage> _freePages = new SortedSet<FreePage>();
 
         private Dictionary<int, FileCacheSegmentWriter> segmentWriters = new Dictionary<int, FileCacheSegmentWriter>();
@@ -145,8 +144,12 @@ namespace FlowtideDotNet.Storage.FileCache
                 if (node.Previous != null && node.Previous.ValueRef.pageKey == null && node.Previous.ValueRef.fileNumber == node.ValueRef.fileNumber)
                 {
                     var previousNode = node.Previous;
+                    // Remove the previous node since we need to update its location since it increased in since
+                    _freePages.Remove(new FreePage(node.Previous.ValueRef.allocatedSize, node.Previous));
                     node.Previous.ValueRef.allocatedSize = node.Previous.ValueRef.allocatedSize + node.ValueRef.allocatedSize;
-                    
+                    // Readd the previous node
+                    _freePages.Add(new FreePage(node.Previous.ValueRef.allocatedSize, node.Previous));
+
                     // remove the node
                     if (node.List != null)
                     {
@@ -165,9 +168,11 @@ namespace FlowtideDotNet.Storage.FileCache
                     // Remove the node completely
                     if (node.List != null)
                     {
+                        _freePages.Remove(new FreePage(node.ValueRef.allocatedSize, node));
                         node.ValueRef.removeLocation = "168";
                         memoryNodes.Remove(node);
                     }
+
                     
                     allocatedPages.Remove(pageKey);
                     // Schedule a remove file task for that segment
@@ -253,77 +258,6 @@ namespace FlowtideDotNet.Storage.FileCache
             memoryNodes.AddAfter(iteratorNode, newNode);
             _freePages.Remove(page);
             _freePages.Add(new FreePage(newNode.ValueRef.allocatedSize, newNode));
-            
-            //for (int i = 0; i < _freePages.Count; i++)
-            //{
-            //    if (_freePages[])
-            //}
-            //var iteratorNode = memoryNodes.First;
-
-            //while (true)
-            //{
-            //    if (iteratorNode.ValueRef.pageKey == null && iteratorNode.ValueRef.allocatedSize >= allocationSize)
-            //    {
-            //        break;
-            //    }
-            //    if (iteratorNode.Next != null)
-            //    {
-            //        iteratorNode = iteratorNode.Next;
-            //    }
-            //    else
-            //    {
-            //        break;
-            //    }
-            //}
-            //if (iteratorNode.ValueRef.pageKey == null && iteratorNode.ValueRef.allocatedSize >= allocationSize)
-            //{
-            //    // Allocate this page
-            //    iteratorNode.ValueRef.pageKey = pageKey;
-            //    iteratorNode.ValueRef.size = size;
-
-            //    allocatedPages.Add(pageKey, iteratorNode);
-
-            //    var newNode = new LinkedListNode<Allocation>(new Allocation()
-            //    {
-            //        pageKey = null,
-            //        position = iteratorNode.ValueRef.position + allocationSize,
-            //        allocatedSize = iteratorNode.ValueRef.allocatedSize - allocationSize
-            //    });
-            //    iteratorNode.ValueRef.allocatedSize = allocationSize;
-
-            //    memoryNodes.AddAfter(iteratorNode, newNode);
-            //}
-            //else if (iteratorNode.ValueRef.allocatedSize < allocationSize)
-            //{
-            //    // Create a new node for a new segment allocated for the page key
-            //    var allocatedNode = new LinkedListNode<Allocation>(new Allocation()
-            //    {
-            //        pageKey = pageKey,
-            //        position = 0,
-            //        allocatedSize = allocationSize,
-            //        fileNumber = iteratorNode.ValueRef.fileNumber + 1,
-            //        size = size
-            //    });
-            //    // Create a new tail node for the new segment that contains the rest
-            //    var tailNode = new LinkedListNode<Allocation>(new Allocation()
-            //    {
-            //        pageKey = null,
-            //        position = allocationSize,
-            //        fileNumber = allocatedNode.ValueRef.fileNumber,
-            //        allocatedSize = cacheSegmentSize - allocationSize
-            //    });
-            //    iteratorNode.ValueRef.fileNumber = iteratorNode.ValueRef.fileNumber++;
-            //    memoryNodes.AddAfter(iteratorNode, allocatedNode);
-            //    memoryNodes.AddAfter(allocatedNode, tailNode);
-
-            //    allocatedPages.Add(pageKey, allocatedNode);
-
-            //    segmentWriters.Add(allocatedNode.ValueRef.fileNumber, new FileCacheSegmentWriter(GenerateFileName(allocatedNode.ValueRef.fileNumber), fileCacheOptions));
-            //}
-            //else
-            //{
-            //    throw new Exception("Unexpected error");
-            //}
         }
 
         /// <summary>
@@ -409,7 +343,6 @@ namespace FlowtideDotNet.Storage.FileCache
                         position = node.ValueRef.position;
                         size = node.ValueRef.size;
                         segmentWriter = segment;
-                        //return await segment.Read(node.ValueRef.position, node.ValueRef.size).ConfigureAwait(false);
                     }
                 }
             }
@@ -418,13 +351,6 @@ namespace FlowtideDotNet.Storage.FileCache
             {
                 return segmentWriter.Read(position, size);
             }
-            //if (allocatedPages.TryGetValue(pageKey, out var node))
-            //{
-            //    if (segmentWriters.TryGetValue(node.ValueRef.fileNumber, out var segment))
-            //    {
-            //        return await segment.Read(node.ValueRef.position, node.ValueRef.size).ConfigureAwait(false);
-            //    }
-            //}
             throw new Exception();
         }
 
