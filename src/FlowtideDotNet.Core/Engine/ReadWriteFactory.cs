@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 
@@ -43,7 +44,7 @@ namespace FlowtideDotNet.Core.Engine
                     return result;
                 }
             }
-            throw new NotImplementedException("No read resolver matched the read relation.");
+            throw new FlowtideException("No read resolver matched the read relation.");
         }
 
         public IStreamEgressVertex GetWriteOperator(WriteRelation readRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
@@ -56,7 +57,7 @@ namespace FlowtideDotNet.Core.Engine
                     return result;
                 }
             }
-            throw new NotImplementedException("No write resolver matched the read relation.");
+            throw new FlowtideException("No write resolver matched the read relation.");
         }
     }
 }

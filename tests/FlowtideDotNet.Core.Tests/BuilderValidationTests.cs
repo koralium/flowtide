@@ -1,0 +1,95 @@
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Core.Exceptions;
+using FlowtideDotNet.Core.Tests.Failure;
+using FlowtideDotNet.Substrait.Sql;
+
+namespace FlowtideDotNet.Core.Tests
+{
+    public class BuilderValidationTests
+    {
+        [Fact]
+        public void TestNoPlan()
+        {
+            var e = Assert.Throws<InvalidOperationException>(() =>
+            {
+                var stream = new FlowtideBuilder("test")
+                    .Build();
+            });
+            Assert.Equal("No plan has been added.", e.Message);
+        }
+
+        [Fact]
+        public void TestNoReadWriteFactory()
+        {
+            SqlPlanBuilder builder = new SqlPlanBuilder();
+            builder.AddTableDefinition("a", new List<string>() { "c1" });
+            builder.Sql("INSERT INTO test SELECT c1 FROM a");
+            var plan = builder.GetPlan();
+
+            var e = Assert.Throws<InvalidOperationException>(() =>
+            {
+                var stream = new FlowtideBuilder("test")
+                    .AddPlan(plan)
+                    .Build();
+            });
+            Assert.Equal("No read write factory has been added.", e.Message);
+        }
+
+        [Fact]
+        public void TestNoSuitableReadResolver()
+        {
+            SqlPlanBuilder builder = new SqlPlanBuilder();
+            builder.AddTableDefinition("a", new List<string>() { "c1" });
+            builder.Sql("INSERT INTO test SELECT c1 FROM a");
+            var plan = builder.GetPlan();
+
+            var factory = new ReadWriteFactory();
+            factory.AddConsoleSink(".*");
+
+            var e = Assert.Throws<FlowtideException>(() =>
+            {
+                var stream = new FlowtideBuilder("test")
+                    .AddPlan(plan)
+                    .AddReadWriteFactory(factory)
+                    .Build();
+            });
+            Assert.Equal("No read resolver matched the read relation.", e.Message);
+        }
+
+        [Fact]
+        public void TestNoSuitableWriteResolver()
+        {
+            SqlPlanBuilder builder = new SqlPlanBuilder();
+            builder.AddTableDefinition("a", new List<string>() { "c1" });
+            builder.Sql("INSERT INTO test SELECT c1 FROM a");
+            var plan = builder.GetPlan();
+
+            var factory = new ReadWriteFactory();
+            factory.AddReadResolver((rel, opt) =>
+            {
+                return new ReadOperatorInfo(new FailureIngress(opt));
+            });
+
+            var e = Assert.Throws<FlowtideException>(() =>
+            {
+                var stream = new FlowtideBuilder("test")
+                    .AddPlan(plan)
+                    .AddReadWriteFactory(factory)
+                    .Build();
+            });
+            Assert.Equal("No write resolver matched the read relation.", e.Message);
+        }
+    }
+}

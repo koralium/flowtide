@@ -112,6 +112,10 @@ namespace FlowtideDotNet.Core.Engine
             {
                 throw new InvalidOperationException("No plan has been added.");
             }
+            if (_readWriteFactory == null)
+            {
+                throw new InvalidOperationException("No read write factory has been added.");
+            }
             var hash = ComputePlanHash();
             dataflowStreamBuilder.SetVersionInformation(1, hash);
 
