@@ -31,7 +31,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
     }
     public class SqlServerSink : GroupedWriteBaseOperator<SqlServerSinkState>
     {
-        private const string tmpTableName = "#inserttable";
+        private string tmpTableName;
         private readonly Func<string> connectionStringFunc;
         private readonly WriteRelation writeRelation;
         private IBPlusTree<StreamEvent, int> m_modified;
@@ -49,6 +49,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         {
             this.connectionStringFunc = connectionStringFunc;
             this.writeRelation = writeRelation;
+            tmpTableName = $"tmp_{Guid.NewGuid().ToString().Replace("-", "")}";
         }
 
         public override string DisplayName => "SQL Server Sink";
