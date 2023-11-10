@@ -13,11 +13,42 @@
 using FlowtideDotNet.Storage.FileCache.Internal;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
 
 namespace FlowtideDotNet.Storage.FileCache
 {
     internal class FileCache : IDisposable
     {
+        private struct FreePage : IComparable<FreePage>
+        {
+            public FreePage(long size, LinkedListNode<Allocation>? node = null)
+            {
+                Size = size;
+                Node = node;
+            }
+
+            public long Size { get; }
+            public LinkedListNode<Allocation>? Node { get; set; }
+
+            public int CompareTo(FreePage other)
+            {
+                var c = Size.CompareTo(other.Size);
+                if (c != 0)
+                {
+                    return c;
+                }
+                if (Node == null)
+                {
+                    return -1;
+                }
+                if (other.Node == null)
+                {
+                    return 1;
+                }
+                return Node.ValueRef.position.CompareTo(other.Node.ValueRef.position);
+            }
+        }
+
         private readonly long cacheSegmentSize;
         private readonly object m_lock = new object();
         private readonly FileCacheOptions fileCacheOptions;
@@ -25,6 +56,7 @@ namespace FlowtideDotNet.Storage.FileCache
         private readonly int m_sectorSize;
         Dictionary<long, LinkedListNode<Allocation>> allocatedPages = new Dictionary<long, LinkedListNode<Allocation>>();
         LinkedList<Allocation> memoryNodes = new LinkedList<Allocation>();
+        SortedSet<FreePage> _freePages = new SortedSet<FreePage>();
 
         private Dictionary<int, FileCacheSegmentWriter> segmentWriters = new Dictionary<int, FileCacheSegmentWriter>();
         private bool disposedValue;
@@ -72,6 +104,9 @@ namespace FlowtideDotNet.Storage.FileCache
             if (((node.Previous != null && node.Previous.ValueRef.fileNumber != node.ValueRef.fileNumber) || node.Previous == null) &&
                         (node.Next == null || node.ValueRef.fileNumber != node.Next.ValueRef.fileNumber))
             {
+                // Remove the node completely
+                node.ValueRef.removeLocation = "109";
+                _freePages.Remove(new FreePage(node.ValueRef.allocatedSize, node));
                 memoryNodes.Remove(node);
                 if (segmentWriters.TryGetValue(node.ValueRef.fileNumber, out var segment))
                 {
@@ -95,8 +130,11 @@ namespace FlowtideDotNet.Storage.FileCache
                     node.ValueRef.pageKey = null;
                     node.ValueRef.allocatedSize = node.ValueRef.allocatedSize + node.Next.ValueRef.allocatedSize;
                     // remove the next node since we took its size
+                    node.Next.ValueRef.removeLocation = "134";
+                    _freePages.Remove(new FreePage(node.Next.ValueRef.allocatedSize, node.Next));
                     memoryNodes.Remove(node.Next);
                     allocatedPages.Remove(pageKey);
+                    
 
                     // Check if we can remove this segment
                     CheckifSegmentCanBeRemoved(node);
@@ -106,11 +144,16 @@ namespace FlowtideDotNet.Storage.FileCache
                 if (node.Previous != null && node.Previous.ValueRef.pageKey == null && node.Previous.ValueRef.fileNumber == node.ValueRef.fileNumber)
                 {
                     var previousNode = node.Previous;
+                    // Remove the previous node since we need to update its location since it increased in since
+                    _freePages.Remove(new FreePage(node.Previous.ValueRef.allocatedSize, node.Previous));
                     node.Previous.ValueRef.allocatedSize = node.Previous.ValueRef.allocatedSize + node.ValueRef.allocatedSize;
-                    
+                    // Readd the previous node
+                    _freePages.Add(new FreePage(node.Previous.ValueRef.allocatedSize, node.Previous));
+
                     // remove the node
                     if (node.List != null)
                     {
+                        node.ValueRef.removeLocation = "153";
                         memoryNodes.Remove(node);
                     }
                     allocatedPages.Remove(pageKey);
@@ -125,8 +168,11 @@ namespace FlowtideDotNet.Storage.FileCache
                     // Remove the node completely
                     if (node.List != null)
                     {
+                        _freePages.Remove(new FreePage(node.ValueRef.allocatedSize, node));
+                        node.ValueRef.removeLocation = "168";
                         memoryNodes.Remove(node);
                     }
+
                     
                     allocatedPages.Remove(pageKey);
                     // Schedule a remove file task for that segment
@@ -146,6 +192,12 @@ namespace FlowtideDotNet.Storage.FileCache
                     // Only free this allocation
                     node.ValueRef.pageKey = null;
                     allocatedPages.Remove(pageKey);
+                }
+
+                if (node.List != null)
+                {
+                    // Add the page to the free pages if it is not removed
+                    _freePages.Add(new FreePage(node.ValueRef.allocatedSize, node));
                 }
             }
         }
@@ -168,7 +220,7 @@ namespace FlowtideDotNet.Storage.FileCache
             if (memoryNodes.Count == 0)
             {
                 segmentWriters.Add(0, new FileCacheSegmentWriter(GenerateFileName(0), fileCacheOptions));
-                memoryNodes.AddLast(new Allocation()
+                var startNode = memoryNodes.AddLast(new Allocation()
                 {
                     fileNumber = 0,
                     pageKey = null,
@@ -176,74 +228,36 @@ namespace FlowtideDotNet.Storage.FileCache
                     allocatedSize = cacheSegmentSize,
                     size = 0
                 });
+                _freePages.Add(new FreePage(cacheSegmentSize, startNode));
             }
 
-            var iteratorNode = memoryNodes.First;
+            // Get pages that are free and can fit the allocation size
+            var freePagesView = _freePages.GetViewBetween(new FreePage(allocationSize), new FreePage(long.MaxValue));
 
-            while (true)
+            var page = freePagesView.FirstOrDefault();
+
+            if (page.Node == null)
             {
-                if (iteratorNode.ValueRef.pageKey == null && iteratorNode.ValueRef.allocatedSize >= allocationSize)
-                {
-                    break;
-                }
-                if (iteratorNode.Next != null)
-                {
-                    iteratorNode = iteratorNode.Next;
-                }
-                else
-                {
-                    break;
-                }
+                throw new InvalidOperationException("Cache is full");
             }
-            if (iteratorNode.ValueRef.pageKey == null && iteratorNode.ValueRef.allocatedSize >= allocationSize)
+
+            var iteratorNode = page.Node;
+            iteratorNode.ValueRef.pageKey = pageKey;
+            iteratorNode.ValueRef.size = size;
+
+            allocatedPages.Add(pageKey, iteratorNode);
+
+            var newNode = new LinkedListNode<Allocation>(new Allocation()
             {
-                // Allocate this page
-                iteratorNode.ValueRef.pageKey = pageKey;
-                iteratorNode.ValueRef.size = size;
+                pageKey = null,
+                position = iteratorNode.ValueRef.position + allocationSize,
+                allocatedSize = iteratorNode.ValueRef.allocatedSize - allocationSize
+            });
+            iteratorNode.ValueRef.allocatedSize = allocationSize;
 
-                allocatedPages.Add(pageKey, iteratorNode);
-
-                var newNode = new LinkedListNode<Allocation>(new Allocation()
-                {
-                    pageKey = null,
-                    position = iteratorNode.ValueRef.position + allocationSize,
-                    allocatedSize = iteratorNode.ValueRef.allocatedSize - allocationSize
-                });
-                iteratorNode.ValueRef.allocatedSize = allocationSize;
-
-                memoryNodes.AddAfter(iteratorNode, newNode);
-            }
-            else if (iteratorNode.ValueRef.allocatedSize < allocationSize)
-            {
-                // Create a new node for a new segment allocated for the page key
-                var allocatedNode = new LinkedListNode<Allocation>(new Allocation()
-                {
-                    pageKey = pageKey,
-                    position = 0,
-                    allocatedSize = allocationSize,
-                    fileNumber = iteratorNode.ValueRef.fileNumber + 1,
-                    size = size
-                });
-                // Create a new tail node for the new segment that contains the rest
-                var tailNode = new LinkedListNode<Allocation>(new Allocation()
-                {
-                    pageKey = null,
-                    position = allocationSize,
-                    fileNumber = allocatedNode.ValueRef.fileNumber,
-                    allocatedSize = cacheSegmentSize - allocationSize
-                });
-                iteratorNode.ValueRef.fileNumber = iteratorNode.ValueRef.fileNumber++;
-                memoryNodes.AddAfter(iteratorNode, allocatedNode);
-                memoryNodes.AddAfter(allocatedNode, tailNode);
-
-                allocatedPages.Add(pageKey, allocatedNode);
-
-                segmentWriters.Add(allocatedNode.ValueRef.fileNumber, new FileCacheSegmentWriter(GenerateFileName(allocatedNode.ValueRef.fileNumber), fileCacheOptions));
-            }
-            else
-            {
-                throw new Exception("Unexpected error");
-            }
+            memoryNodes.AddAfter(iteratorNode, newNode);
+            _freePages.Remove(page);
+            _freePages.Add(new FreePage(newNode.ValueRef.allocatedSize, newNode));
         }
 
         /// <summary>
@@ -329,7 +343,6 @@ namespace FlowtideDotNet.Storage.FileCache
                         position = node.ValueRef.position;
                         size = node.ValueRef.size;
                         segmentWriter = segment;
-                        //return await segment.Read(node.ValueRef.position, node.ValueRef.size).ConfigureAwait(false);
                     }
                 }
             }
@@ -338,13 +351,6 @@ namespace FlowtideDotNet.Storage.FileCache
             {
                 return segmentWriter.Read(position, size);
             }
-            //if (allocatedPages.TryGetValue(pageKey, out var node))
-            //{
-            //    if (segmentWriters.TryGetValue(node.ValueRef.fileNumber, out var segment))
-            //    {
-            //        return await segment.Read(node.ValueRef.position, node.ValueRef.size).ConfigureAwait(false);
-            //    }
-            //}
             throw new Exception();
         }
 
