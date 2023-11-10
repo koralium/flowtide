@@ -128,8 +128,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                     if (outputs.Count > 100)
                     {
                         yield return new StreamEventBatch(null, outputs);
+                        outputs = new List<StreamEvent>();
                     }
-                    outputs = new List<StreamEvent>();
+                    
                     // Replace the previous value with the new value
                     val.PreviousValue = outputData;
                 }
@@ -154,8 +155,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                     if (outputs.Count > 100)
                     {
                         yield return new StreamEventBatch(null, outputs);
+                        outputs = new List<StreamEvent>();
                     }
-                    outputs = new List<StreamEvent>();
+                    
                 }
                 await _tree.Upsert(new StreamEvent(0, 0, EmptyVector), val);
             }
@@ -221,8 +223,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                         if (outputs.Count > 100)
                         {
                             yield return new StreamEventBatch(null, outputs);
+                            outputs = new List<StreamEvent>();
                         }
-                        outputs = new List<StreamEvent>();
+                        
 
                         val.PreviousValue = newObjectValue;
                         await _tree.Upsert(kv.Key, val);

@@ -224,8 +224,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 if (output.Count > 100)
                                 {
                                     yield return new StreamEventBatch(null, output);
+                                    output = new List<StreamEvent>();
                                 }
-                                output = new List<StreamEvent>();
+                                
                             }
                         }
                         else
@@ -248,8 +249,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     if (output.Count > 100)
                     {
                         yield return new StreamEventBatch(null, output);
+                        output = new List<StreamEvent>();
                     }
-                    output = new List<StreamEvent>();
+                    
                     await _leftTree.RMW(joinEvent, new JoinStorageValue() { Weight = e.Weight, JoinWeight = joinWeight }, (input, current, found) =>
                     {
                         if (found)
@@ -349,8 +351,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 if (output.Count > 100)
                                 {
                                     yield return new StreamEventBatch(null, output);
+                                    output = new List<StreamEvent>();
                                 }
-                                output = new List<StreamEvent>();
+                                
                             }
                         }
                         else
@@ -413,8 +416,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     if (output.Count > 100)
                     {
                         yield return new StreamEventBatch(null, output);
+                        output = new List<StreamEvent>();
                     }
-                    output = new List<StreamEvent>();
+                    
                 }
                 leftJoinWeight.Clear();
             }
