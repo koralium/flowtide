@@ -38,7 +38,7 @@ namespace FlexBuffers
         private readonly Options _options;
         private bool _finished = false;
 
-        public FlexBuffer(ArrayPool<byte> pool, ulong size = 2048, Options options = Options.ShareKeys | Options.ShareStrings | Options.ShareKeyVectors)
+        public FlexBuffer(ArrayPool<byte> pool, ulong size = 2048, Options options = Options.ShareKeys | Options.ShareKeyVectors)
         {
             if (size > 0)
             {
