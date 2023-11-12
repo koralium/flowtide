@@ -142,7 +142,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
 
         public IEnumerable<ITargetBlock<IStreamEvent>> GetLinks()
         {
-            throw new NotImplementedException();
+            return _links.Select(x => x.Item1);
         }
 
         public ValueTask DisposeAsync()
