@@ -13,6 +13,7 @@
 using FlexBuffers;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Type = FlexBuffers.Type;
@@ -78,6 +79,78 @@ namespace FlowtideDotNet.Core.Flexbuffer
         public int BufferOffset => _offset;
 
         public bool IsNull => _type == Type.Null;
+
+        private static readonly byte[] _nullBytes = { 0 };
+
+        public void AddToHash(in XxHash32 xxHash)
+        {
+            if (_type == Type.Null)
+            {
+                xxHash.Append(_nullBytes);
+            }
+            if (_type == Type.Int || 
+                _type == Type.Uint ||
+                _type == Type.Float)
+            {
+                HashNonIndirect(xxHash);
+            }
+            if (_type == Type.String)
+            {
+                HashString(xxHash);
+            }
+            if (_type == Type.Vector)
+            {
+                var vec = AsVector;
+                for (int i = 0; i < vec.Length; i++)
+                {
+                    vec[i].AddToHash(xxHash);
+                }
+            }
+            if (_type == Type.Map)
+            {
+                var map = AsMap;
+                for (int i = 0; i < map.Length; i++)
+                {
+                    map.Keys[i].AddToHash(xxHash);
+                    map.ValueByIndex(i).AddToHash(xxHash);
+                }
+            }
+        }
+
+        private void HashNonIndirect(in XxHash32 xxHash)
+        {
+            if (_parentWidth == 1)
+            {
+                xxHash.Append(_buffer.Slice(_offset, 1));
+                return;
+            }
+
+            if (_parentWidth == 2)
+            {
+                xxHash.Append(_buffer.Slice(_offset, 2));
+                return;
+            }
+
+            if (_parentWidth == 4)
+            {
+                xxHash.Append(_buffer.Slice(_offset, 4));
+                return;
+            }
+            xxHash.Append(_buffer.Slice(_offset, 8));
+        }
+
+        private void HashString(in XxHash32 xxHash)
+        {
+            var indirectOffset = ComputeIndirectOffset(_buffer, _offset, _parentWidth);
+            var size = (int)ReadULong(_buffer, indirectOffset - _byteWidth, _byteWidth);
+            var sizeWidth = (int)_byteWidth;
+            while (_buffer[indirectOffset + size] != 0)
+            {
+                sizeWidth <<= 1;
+                size = (int)ReadULong(_buffer, indirectOffset - sizeWidth, (byte)sizeWidth);
+            }
+            xxHash.Append(_buffer.Slice(indirectOffset, size));
+        }
 
         public long AsLong
         {
