@@ -107,6 +107,24 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
+        /// <summary>
+        /// Simulate a crash on the stream, waits until the stream has failed.
+        /// </summary>
+        /// <returns></returns>
+        public async Task Crash()
+        {
+            await _stream!.CallTrigger("crash", default);
+
+            var graph = _stream.GetDiagnosticsGraph();
+            var scheduler = _stream.Scheduler as DefaultStreamScheduler;
+            while (_stream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            {
+                graph = _stream.GetDiagnosticsGraph();
+                await scheduler!.Tick();
+                await Task.Delay(TimeSpan.FromMilliseconds(10));
+            }
+        }
+
         public async Task WaitForUpdate()
         {
             Debug.Assert(_stream != null);
