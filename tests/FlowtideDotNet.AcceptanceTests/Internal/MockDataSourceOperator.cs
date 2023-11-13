@@ -28,7 +28,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 {
     internal class MockDataSourceState
     {
-
+        public int LatestOffset { get; set; }
     }
     internal class MockDataSourceOperator : ReadBaseOperator<MockDataSourceState>
     {
@@ -95,6 +95,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 RunTask(FetchChanges);
             }
+            else if (triggerName == "crash")
+            {
+                RunTask((output, state) => throw new Exception("crash"));
+            }
             return Task.CompletedTask;
         }
 
@@ -105,12 +109,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override Task InitializeOrRestore(long restoreTime, MockDataSourceState? state, IStateManagerClient stateManagerClient)
         {
+            if (state != null)
+            {
+                _lastestOffset = state.LatestOffset;
+            }
+            RegisterTrigger("crash");
             return Task.CompletedTask;
         }
 
         protected override Task<MockDataSourceState> OnCheckpoint(long checkpointTime)
         {
-            return Task.FromResult(new MockDataSourceState());
+            return Task.FromResult(new MockDataSourceState() { LatestOffset = _lastestOffset });
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
