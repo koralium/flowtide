@@ -87,6 +87,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
         public override async Task<AggregateOperatorState> OnCheckpoint()
         {
             await _tree.Commit();
+
+            // Commit each measure
+            foreach (var measure in _measures)
+            {
+                await measure.Commit();
+            }
             return new AggregateOperatorState();
         }
 
@@ -334,6 +340,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
         {
             if (aggregateRelation.Measures != null && aggregateRelation.Measures.Count > 0)
             {
+                _measures.Clear();
                 for (int i = 0; i < aggregateRelation.Measures.Count; i++)
                 {
                     var measure = aggregateRelation.Measures[i];
@@ -354,6 +361,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 ValueSerializer = new IntSerializer(),
                 Comparer = new BPlusTreeStreamEventComparer()
             });
+            await _temporaryTree.Clear();
         }
     }
 }

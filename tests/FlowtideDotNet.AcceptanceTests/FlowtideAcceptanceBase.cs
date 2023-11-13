@@ -55,6 +55,11 @@ namespace FlowtideDotNet.AcceptanceTests
             return flowtideTestStream.WaitForUpdate();
         }
 
+        protected Task Crash()
+        {
+            return flowtideTestStream.Crash();
+        }
+
         public void AddOrUpdateUser(User user)
         {
             flowtideTestStream.AddOrUpdateUser(user);
