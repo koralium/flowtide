@@ -31,6 +31,8 @@ namespace FlowtideDotNet.Core.Engine
         private StateManagerOptions? _stateManagerOptions;
         private int _queueSize = 100;
         private FunctionsRegister _functionsRegister;
+        private int _parallelism = 1;
+
         public FlowtideBuilder(string streamName)
         {
             dataflowStreamBuilder = new DataflowStreamBuilder(streamName);
@@ -95,6 +97,12 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder SetParallelism(int parallelism)
+        {
+            _parallelism = parallelism;
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             using (SHA256 sha256 = SHA256.Create())
@@ -119,7 +127,7 @@ namespace FlowtideDotNet.Core.Engine
             var hash = ComputePlanHash();
             dataflowStreamBuilder.SetVersionInformation(1, hash);
 
-            SubstraitVisitor visitor = new SubstraitVisitor(_plan, dataflowStreamBuilder, _readWriteFactory, _queueSize, _functionsRegister);
+            SubstraitVisitor visitor = new SubstraitVisitor(_plan, dataflowStreamBuilder, _readWriteFactory, _queueSize, _functionsRegister, _parallelism);
             visitor.BuildPlan();
 
             return dataflowStreamBuilder.Build();
