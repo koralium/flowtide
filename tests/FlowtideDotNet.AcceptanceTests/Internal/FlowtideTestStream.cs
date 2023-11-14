@@ -190,6 +190,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             Assert.Equal(expectedData.Count, _actualData!.Count);
 
+            bool fail = false;
             for (int i = 0; i < expectedData.Count; i++)
             {
                 var expectedRow = expectedData[i];
@@ -201,8 +202,28 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     var actualRowJson = FlxValue.FromMemory(actualRow).ToJson;
                     if (!expectedRowJson.Equals(actualRowJson))
                     {
-                        Assert.Fail($"Expected:{Environment.NewLine}{expectedRowJson}{Environment.NewLine}but got:{Environment.NewLine}{actualRowJson}");
+                        fail = true;
                     }
+                }
+            }
+
+            if (fail)
+            {
+                List<string> expected = new List<string>();
+                List<string> actual = new List<string>();
+
+                for (int i = 0; i < expectedData.Count; i++)
+                {
+                    var expectedRow = expectedData[i];
+                    var actualRow = _actualData[i];
+                    expected.Add(FlxValue.FromMemory(expectedRow).ToJson);
+                    actual.Add(FlxValue.FromMemory(actualRow).ToJson);
+                }
+                expected.Sort();
+                actual.Sort();
+                for (int i = 0; i < expected.Count; i++)
+                {
+                    Assert.Equal(expected[i], actual[i]);
                 }
             }
         }

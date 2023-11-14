@@ -183,5 +183,29 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
         }
+
+        [Fact]
+        public async Task LeftJoinMergeJoinWithPushdown()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey, c.name
+                FROM users u
+                LEFT JOIN companies c
+                ON trim(u.companyid) = trim(c.companyid)");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from user in Users
+                join company in Companies on user.CompanyId equals company.CompanyId into gj
+                from subcompany in gj.DefaultIfEmpty()
+                select new
+                {
+                    user.UserKey,
+                    companyName = subcompany?.Name ?? default(string)
+                });
+        }
     }
 }

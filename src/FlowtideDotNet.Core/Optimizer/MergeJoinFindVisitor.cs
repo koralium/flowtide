@@ -62,6 +62,7 @@ namespace FlowtideDotNet.Core.Optimizer
             {
                 return new MergeJoinRelation()
                 {
+                    Emit = joinRelation.Emit,
                     Left = joinRelation.Left,
                     Right = joinRelation.Right,
                     LeftKeys = new List<FieldReference>()
@@ -100,6 +101,7 @@ namespace FlowtideDotNet.Core.Optimizer
                 {
                     return new MergeJoinRelation()
                     {
+                        Emit = joinRelation.Emit,
                         Left = joinRelation.Left,
                         Right = joinRelation.Right,
                         LeftKeys = leftKeys,

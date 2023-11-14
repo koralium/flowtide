@@ -33,6 +33,15 @@ namespace FlowtideDotNet.Core.Optimizer
                 var filterIntoRead = new FilterIntoReadOptimizer();
                 relation = filterIntoRead.Visit(relation, null);
 
+                plan.Relations[i] = relation;
+            }
+
+            plan = JoinProjectionPushdown.JoinProjectionPushdown.Optimize(plan);
+
+            for (int i = 0; i < plan.Relations.Count; i++)
+            {
+                var relation = plan.Relations[i];
+
                 if (!settings.NoMergeJoin)
                 {
                     var mergeJoinOptimize = new MergeJoinFindVisitor();
