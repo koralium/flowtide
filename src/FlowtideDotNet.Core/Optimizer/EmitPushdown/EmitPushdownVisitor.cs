@@ -247,10 +247,27 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                     // Remap the expression emits also to reflect the changes
                     Dictionary<int, int> oldToNew = new Dictionary<int, int>();
                     List<int> emit = new List<int>();
+
+                    Dictionary<int, int> inputEmitToInternal = new Dictionary<int, int>();
+                    if (input.EmitSet)
+                    {
+                        for (int i = 0; i < input.Emit.Count; i++)
+                        {
+                            inputEmitToInternal.Add(i, input.Emit[i]);
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < input.OutputLength; i++)
+                        {
+                            inputEmitToInternal.Add(i, i);
+                        }
+                    }
+
                     int count = 0;
                     foreach(var field in usedFields.OrderBy(x => x))
                     {
-                        emit.Add(field);
+                        emit.Add(inputEmitToInternal[field]);
                         oldToNew.Add(field, count);
                         count++;
                     }
