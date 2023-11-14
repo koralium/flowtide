@@ -66,11 +66,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                 await run._context.stateHandler.WriteLatestState(run._context.streamName, run._context._lastState);
 
-                // TODO: Enable, For now, compact every 100 checkpoints
-                //if (_currentCheckpoint.CheckpointTime % 100 == 0)
-                //{
-                //    await run._context._stateManager.Compact();
-                //}
+
+                // Compaction: if more than 30% of the pages has been changed since last compaction, do compaction
+                long changesSinceLastCompaction = run._context._stateManager.PageCommitsSinceLastCompaction;
+                var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
+                if (changesSinceLastCompaction > compactionThreshold)
+                {
+                    await run._context._stateManager.Compact();
+                }
 
 
                 // After writing do compaction
