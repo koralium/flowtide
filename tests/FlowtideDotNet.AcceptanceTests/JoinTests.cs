@@ -207,5 +207,35 @@ namespace FlowtideDotNet.AcceptanceTests
                     companyName = subcompany?.Name ?? default(string)
                 });
         }
+
+        /// <summary>
+        /// Special case for optimizer
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task JoinJoinWithPushdown()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey, c.name
+                FROM users u
+                LEFT JOIN companies c
+                ON trim(u.companyid) = trim(c.companyid)
+                LEFT JOIN companies c2
+                ON u.companyid = c2.companyid");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from user in Users
+                join company in Companies on user.CompanyId equals company.CompanyId into gj
+                from subcompany in gj.DefaultIfEmpty()
+                select new
+                {
+                    user.UserKey,
+                    companyName = subcompany?.Name ?? default(string)
+                });
+        }
     }
 }
