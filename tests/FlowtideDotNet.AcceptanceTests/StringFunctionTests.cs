@@ -60,5 +60,32 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { Name = x.FirstName.ToUpper() }));
         }
+
+        [Fact]
+        public async Task SelectWithTrim()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT trim(TrimmableNullableString) as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { Name = x.TrimmableNullableString?.Trim() }));
+        }
+        
+        [Fact]
+        public async Task SelectWithLTrim()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT ltrim(TrimmableNullableString) as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { Name = x.TrimmableNullableString?.TrimStart() }));
+        }
+
+        [Fact]
+        public async Task SelectWithRTrim()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT rtrim(TrimmableNullableString) as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { Name = x.TrimmableNullableString?.TrimEnd() }));
+        }
     }
 }

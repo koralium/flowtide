@@ -219,6 +219,50 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
+            sqlFunctionRegister.RegisterScalarFunction("ltrim", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("ltrim must have exactly one argument");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var expr = visitor.Visit(funcExpr.Expression, emitData);
+                    return new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsString.Uri,
+                        ExtensionName = FunctionsString.LTrim,
+                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    };
+                }
+                else
+                {
+                    throw new NotImplementedException("ltrim does not support the input parameter");
+                }
+            });
+
+            sqlFunctionRegister.RegisterScalarFunction("rtrim", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("rtrim must have exactly one argument");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var expr = visitor.Visit(funcExpr.Expression, emitData);
+                    return new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsString.Uri,
+                        ExtensionName = FunctionsString.RTrim,
+                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    };
+                }
+                else
+                {
+                    throw new NotImplementedException("rtrim does not support the input parameter");
+                }
+            });
+
             sqlFunctionRegister.RegisterScalarFunction("strftime", (f, visitor, emitData) =>
             {
                 if (f.Args == null || f.Args.Count != 2)

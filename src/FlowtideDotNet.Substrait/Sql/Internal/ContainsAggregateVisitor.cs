@@ -154,5 +154,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
             return containsAggregate;
         }
+
+        protected override bool VisitTrim(Expression.Trim trim, object state)
+        {
+            return Visit(trim.Expression, state);
+        }
     }
 }

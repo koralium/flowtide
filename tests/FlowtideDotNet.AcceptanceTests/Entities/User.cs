@@ -37,5 +37,7 @@ namespace FlowtideDotNet.AcceptanceTests.Entities
         public int? Visits { get; set; }
 
         public int? ManagerKey { get; set; }
+
+        public string? TrimmableNullableString { get; set; }
     }
 }
