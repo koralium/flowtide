@@ -36,7 +36,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public IFunctionsRegister FunctionsRegister => flowtideTestStream.FunctionsRegister;
         public ISqlFunctionRegister SqlFunctionRegister => flowtideTestStream.SqlFunctionRegister;
 
-        protected Task StartStream(string sql) => flowtideTestStream.StartStream(sql);
+        protected Task StartStream(string sql, int parallelism = 1) => flowtideTestStream.StartStream(sql, parallelism);
 
         public List<FlxVector> GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 

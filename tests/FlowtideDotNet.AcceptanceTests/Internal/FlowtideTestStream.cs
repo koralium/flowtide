@@ -69,7 +69,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.AddOrUpdateUser(user);
         }
 
-        public async Task StartStream(string sql)
+        public async Task StartStream(string sql, int parallelism = 1)
         {
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
@@ -80,6 +80,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             flowtideBuilder
                 .AddPlan(plan)
+                .SetParallelism(parallelism)
                 .AddReadWriteFactory(factory)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
