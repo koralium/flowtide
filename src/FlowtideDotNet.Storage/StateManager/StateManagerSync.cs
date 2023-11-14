@@ -72,6 +72,14 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public bool Initialized { get; private set; }
 
+        public ulong PageCommits => m_metadata != null ? Volatile.Read(ref m_metadata.PageCommits) : throw new InvalidOperationException("Manager must be initialized before getting page commits");
+
+        public ulong PageCommitsAtLastCompaction => m_metadata != null ? m_metadata.PageCommitsAtLastCompaction : throw new InvalidOperationException("Manager must be initialized before getting page commits");
+
+        public long PageCommitsSinceLastCompaction => (long)(PageCommits - PageCommitsAtLastCompaction);
+
+        public long PageCount => m_metadata != null ? Volatile.Read(ref m_metadata.PageCount) : throw new InvalidOperationException("Manager must be initialized before getting page count");
+
         internal StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILogger logger)
         {
             m_lruTable = new LruTableSync(options.CachePageCount, logger);
@@ -87,25 +95,8 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 m_persistentStorage = options.PersistentStorage;
             }
-
-            
-            //m_persistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
-            //{
-            //    RemoveOutdatedCheckpoints = true,
-            //    //MutableFraction = 0.1,
-            //    MemorySize = 1024 * 1024 * 128,
-            //    PageSize = 1024 * 1024 * 16,
-            //    LogDevice = options.LogDevice,
-            //    CheckpointManager = options.CheckpointManager,
-            //    CheckpointDir = options.CheckpointDir,
-            //    //ReadCacheEnabled = true,
-            //    //ReadCopyOptions = ReadCopyOptions.None
-            //    //ConcurrencyControlMode = ConcurrencyControlMode.RecordIsolation
-            //});
             this.m_metadataSerializer = metadataSerializer;
             this.options = options;
-            //m_functions = new Functions();
-            //m_adminSession = m_persistentStorage.For(m_functions).NewSession(m_functions);
             m_fileCacheOptions = options.TemporaryStorageOptions ?? new FileCacheOptions()
             {
                 DirectoryPath = "./data/tempFiles"
@@ -152,49 +143,6 @@ namespace FlowtideDotNet.Storage.StateManager
             return false;
         }
 
-        internal void WriteToPersistentStore(in long key, in byte[] bytes, in ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> session)
-        {
-            var spanByte = SpanByte.FromPinnedMemory(bytes);
-            var status = session.Upsert(key, spanByte);
-            if (status.IsCompleted || status.IsPending)
-            {
-                session.CompletePending(true);
-            }
-        }
-
-        internal void DeleteFromPersistentStore(in long key, in ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> session)
-        {
-            var status = session.Delete(key);
-            if (!status.IsCompleted || status.IsPending)
-            {
-                session.CompletePending(true);
-            }
-        }
-
-        internal byte[] ReadFromPersistentStore(in long key, in ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> session)
-        {
-            var result = session.Read(key);
-            if (result.status.IsCompleted && !result.status.IsPending)
-            {
-                return result.output;
-            }
-            if (session.CompletePendingWithOutputs(out var completedOutputs, true))
-            {
-                var hasNext = completedOutputs.Next();
-                var bytes = completedOutputs.Current.Output;
-                hasNext = completedOutputs.Next();
-                if (hasNext)
-                {
-                    throw new Exception();
-                }
-                return bytes;
-            }
-            else
-            {
-                throw new Exception();
-            }
-        }
-
         public async ValueTask CheckpointAsync()
         {
             byte[] bytes;
@@ -205,32 +153,13 @@ namespace FlowtideDotNet.Storage.StateManager
             }
 
             await m_persistentStorage.CheckpointAsync(bytes);
-            //var status = m_adminSession.Upsert(1, SpanByte.FromFixedSpan(bytes));
-            //if (status.IsCompleted || status.IsPending)
-            //{
-            //    m_adminSession.CompletePending(true);
-            //}
-
-            //var guid = await TakeCheckpointAsync();
         }
-
-        //internal async Task<Guid> TakeCheckpointAsync()
-        //{
-        //    bool success = false;
-        //    Guid token;
-        //    do
-        //    {
-        //        (success, token) = await m_persistentStorage.TakeHybridLogCheckpointAsync(CheckpointType.FoldOver).ConfigureAwait(false);
-        //    } while (!success);
-        //    return token;
-        //}
 
         public async Task Compact()
         {
+            Debug.Assert(m_metadata != null);
             await m_persistentStorage.CompactAsync();
-            //m_adminSession.Compact(m_persistentStorage.Log.SafeReadOnlyAddress, CompactionType.Lookup);
-            //m_persistentStorage.Log.Truncate();
-            //await m_persistentStorage.TakeFullCheckpointAsync(CheckpointType.Snapshot);
+            m_metadata.PageCommitsAtLastCompaction = m_metadata.PageCommits;
         }
 
         internal async ValueTask<IStateClient<TValue, TMetadata>> CreateClientAsync<TValue, TMetadata>(string client, StateClientOptions<TValue> options)

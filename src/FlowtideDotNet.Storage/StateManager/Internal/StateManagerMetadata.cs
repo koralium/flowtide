@@ -37,6 +37,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
 
         public Dictionary<string, long> ClientMetadataLocations { get; set; }
 
+        /// <summary>
+        /// Incremental counter for all commited pages.
+        /// Can be used to detect changes
+        /// </summary>
+        public ulong PageCommits;
+
+        /// <summary>
+        /// Total amount of pages in the state manager
+        /// </summary>
+        public long PageCount;
+
+        /// <summary>
+        /// The page commit number at the last compaction.
+        /// Can be used together with page commits to see how many changes have happened.
+        /// </summary>
+        public ulong PageCommitsAtLastCompaction { get; set; }
+
         public void EnterWriteLock()
         {
             throw new NotImplementedException();

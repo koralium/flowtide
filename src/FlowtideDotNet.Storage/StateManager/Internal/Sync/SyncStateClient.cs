@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Persistence;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
@@ -26,6 +27,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private Dictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
+
+        /// <summary>
+        /// Value of how many pages have changed since last commit.
+        /// </summary>
+        private long newPages;
 
         public SyncStateClient(
             StateManagerSync stateManager,
@@ -71,12 +77,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             lock (m_lock)
             {
+                
                 foreach(var kv in m_modified)
                 {
                     if (kv.Value == -1)
                     {
                         // deleted
                         session.Delete(kv.Key);
+
+                        // Remove a page from the new pages counter
+                        Interlocked.Decrement(ref newPages);
                         //stateManager.DeleteFromPersistentStore(kv.Key, session);
                         continue;
                     }
@@ -104,6 +114,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         //stateManager.WriteToPersistentStore(kv.Key, bytes, session);
                     }
                 }
+                var modifiedPagesCount = m_modified.Count;
+                Debug.Assert(stateManager.m_metadata != null);
+                // Add modified page count to the page commits counter
+                Interlocked.Add(ref stateManager.m_metadata.PageCommits, (ulong)modifiedPagesCount);
+                // Modify active pages
+                Interlocked.Add(ref stateManager.m_metadata.PageCount, newPages);
+                newPages = 0;
                 m_modified.Clear();
                 {
                     var bytes = StateClientMetadataSerializer.Instance.Serialize(metadata);
@@ -126,6 +143,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public long GetNewPageId()
         {
+            // Add to the new pages counter
+            Interlocked.Increment(ref newPages);
             return stateManager.GetNewPageId();
         }
 
