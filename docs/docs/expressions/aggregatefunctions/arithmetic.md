@@ -35,6 +35,7 @@ SELECT sum0(column1) FROM ...
 [Substrait definition](https://substrait.io/extensions/functions_arithmetic/#min)
 
 Returns the minimum value in the result. If there are no rows a NULL value is returned.
+MIN ignores any null input values.
 
 ### SQL Usage
 

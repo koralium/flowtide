@@ -125,5 +125,29 @@ namespace FlowtideDotNet.AcceptanceTests
                 .Where(x => x.Count > 1)
                 .Select(x => new {x.Userkey, x.Sum}));
         }
+
+        [Fact]
+        public async Task AggregateWithStateCrash()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, min(orderkey)
+                FROM orders
+                GROUP BY userkey
+                ");
+            await WaitForUpdate();
+
+            await Crash();
+
+            GenerateData(1000);
+
+            await WaitForUpdate();
+
+
+
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, MinVal = x.Min(y => y.OrderKey) }));
+        }
     }
 }

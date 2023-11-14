@@ -27,6 +27,9 @@ using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Aggregate;
 using FlowtideDotNet.Core.Operators.Iteration;
+using FlowtideDotNet.Core.Operators.Partition;
+using FlowtideDotNet.Base.Vertices.PartitionVertices;
+using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -50,6 +53,7 @@ namespace FlowtideDotNet.Core.Engine
         private readonly IReadWriteFactory readFactory;
         private readonly int queueSize;
         private readonly FunctionsRegister functionsRegister;
+        private readonly int parallelism;
         private int _operatorId = 0;
         private Dictionary<int, RelationTree> _doneRelations;
         private Dictionary<string, IterationOperator> _iterationOperators = new Dictionary<string, IterationOperator>();
@@ -88,13 +92,20 @@ namespace FlowtideDotNet.Core.Engine
             return relationTree;
         } 
 
-        public SubstraitVisitor(Plan plan, DataflowStreamBuilder dataflowStreamBuilder, IReadWriteFactory readFactory, int queueSize, FunctionsRegister functionsRegister)
+        public SubstraitVisitor(
+            Plan plan, 
+            DataflowStreamBuilder dataflowStreamBuilder, 
+            IReadWriteFactory readFactory, 
+            int queueSize, 
+            FunctionsRegister functionsRegister,
+            int parallelism)
         {
             this.plan = plan;
             this.dataflowStreamBuilder = dataflowStreamBuilder;
             this.readFactory = readFactory;
             this.queueSize = queueSize;
             this.functionsRegister = functionsRegister;
+            this.parallelism = parallelism;
             _doneRelations = new Dictionary<int, RelationTree>();
         }
 
@@ -132,19 +143,55 @@ namespace FlowtideDotNet.Core.Engine
             return op;
         }
 
-        public override IStreamVertex VisitAggregateRelation(AggregateRelation aggregateRelation, ITargetBlock<IStreamEvent> state)
+        public override IStreamVertex VisitAggregateRelation(AggregateRelation aggregateRelation, ITargetBlock<IStreamEvent>? state)
         {
-            var id = _operatorId++;
-            var op = new AggregateOperator(aggregateRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
-
-            if (state != null)
+            if (aggregateRelation.Groupings != null && aggregateRelation.Groupings.Count == 1 && parallelism > 1)
             {
-                op.LinkTo(state);
-            }
+                
+                var partitionOperatorId = _operatorId++;
+                var partitionOperator = new PartitionOperator(new PartitionOperatorOptions(aggregateRelation.Groupings[0].GroupingExpressions), functionsRegister, parallelism, new ExecutionDataflowBlockOptions()
+                {
+                    BoundedCapacity = 100,
+                    MaxDegreeOfParallelism = 1
+                });
+                dataflowStreamBuilder.AddPropagatorBlock(partitionOperatorId.ToString(), partitionOperator);
 
-            aggregateRelation.Input.Accept(this, op);
-            dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
-            return op;
+                var partitionCombinerId = _operatorId++;
+                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch, object>(parallelism, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                dataflowStreamBuilder.AddPropagatorBlock(partitionCombinerId.ToString(), partitionCombiner);
+
+                for (int i = 0; i < parallelism; i++)
+                {
+                    var aggregateOperatorId = _operatorId++;
+                    var aggregateOperator = new AggregateOperator(aggregateRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                    // Link partition output to the aggregate operator
+                    partitionOperator.Sources[i].LinkTo(aggregateOperator);
+                    dataflowStreamBuilder.AddPropagatorBlock(aggregateOperatorId.ToString(), aggregateOperator);
+
+                    // Link aggregate output to the combiner
+                    aggregateOperator.LinkTo(partitionCombiner.Targets[i]);
+                }
+                if (state != null)
+                {
+                    partitionCombiner.LinkTo(state);
+                }
+                aggregateRelation.Input.Accept(this, partitionOperator);
+                return partitionOperator;
+            }
+            else
+            {
+                var id = _operatorId++;
+                var op = new AggregateOperator(aggregateRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+
+                if (state != null)
+                {
+                    op.LinkTo(state);
+                }
+
+                aggregateRelation.Input.Accept(this, op);
+                dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
+                return op;
+            }
         }
 
         public override IStreamVertex VisitUnwrapRelation(UnwrapRelation unwrapRelation, ITargetBlock<IStreamEvent>? state)
@@ -170,23 +217,83 @@ namespace FlowtideDotNet.Core.Engine
 
         public override IStreamVertex VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, ITargetBlock<IStreamEvent>? state)
         {
-            var id = _operatorId++;
+            if (parallelism > 1)
+            {
+                var leftPartitionOperatorId = _operatorId++;
+                var leftPartitionOperator = new PartitionOperator(new PartitionOperatorOptions(mergeJoinRelation.LeftKeys.ToList<Substrait.Expressions.Expression>()), functionsRegister, parallelism, new ExecutionDataflowBlockOptions()
+                {
+                    BoundedCapacity = queueSize,
+                    MaxDegreeOfParallelism = 1
+                });
+                dataflowStreamBuilder.AddPropagatorBlock(leftPartitionOperatorId.ToString(), leftPartitionOperator);
+                var rightPartitionOperatorId = _operatorId++;
+                var rightPartitionOperator = new PartitionOperator(new PartitionOperatorOptions(mergeJoinRelation.RightKeys.Select(x =>
+                {
+                    if (x is DirectFieldReference direct && direct.ReferenceSegment is StructReferenceSegment structReference)
+                    {
+                        return new DirectFieldReference()
+                        {
+                            ReferenceSegment = new StructReferenceSegment()
+                            {
+                                Field = structReference.Field - mergeJoinRelation.Left.OutputLength,
+                            }
+                        };
+                    }
+                    return x;
+                }).ToList<Substrait.Expressions.Expression>()), functionsRegister, parallelism, new ExecutionDataflowBlockOptions()
+                {
+                    BoundedCapacity = queueSize,
+                    MaxDegreeOfParallelism = 1
+                });
+                dataflowStreamBuilder.AddPropagatorBlock(rightPartitionOperatorId.ToString(), rightPartitionOperator);
 
-            var op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, new ExecutionDataflowBlockOptions()
-            {
-                BoundedCapacity = queueSize,
-                MaxDegreeOfParallelism = 1
-            });
-            if (state != null)
-            {
-                op.LinkTo(state);
+                var partitionCombinerId = _operatorId++;
+                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch, object>(parallelism, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                dataflowStreamBuilder.AddPropagatorBlock(partitionCombinerId.ToString(), partitionCombiner);
+
+                for (int i = 0; i < parallelism; i++)
+                {
+                    var id = _operatorId++;
+                    var op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, new ExecutionDataflowBlockOptions()
+                    {
+                        BoundedCapacity = queueSize,
+                        MaxDegreeOfParallelism = 1
+                    });
+                    leftPartitionOperator.Sources[i].LinkTo(op.Targets[0]);
+                    rightPartitionOperator.Sources[i].LinkTo(op.Targets[1]);
+                    op.LinkTo(partitionCombiner.Targets[i]);
+                    dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
+                }
+
+                if (state != null)
+                {
+                    partitionCombiner.LinkTo(state);
+                }
+
+                mergeJoinRelation.Left.Accept(this, leftPartitionOperator);
+                mergeJoinRelation.Right.Accept(this, rightPartitionOperator);
+                return partitionCombiner;
             }
+            else
+            {
+                var id = _operatorId++;
 
-            mergeJoinRelation.Left.Accept(this, op.Targets[0]);
-            mergeJoinRelation.Right.Accept(this, op.Targets[1]);
-            dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
+                var op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, new ExecutionDataflowBlockOptions()
+                {
+                    BoundedCapacity = queueSize,
+                    MaxDegreeOfParallelism = 1
+                });
+                if (state != null)
+                {
+                    op.LinkTo(state);
+                }
 
-            return op;
+                mergeJoinRelation.Left.Accept(this, op.Targets[0]);
+                mergeJoinRelation.Right.Accept(this, op.Targets[1]);
+                dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
+
+                return op;
+            }
         }
 
         public override IStreamVertex VisitJoinRelation(JoinRelation joinRelation, ITargetBlock<IStreamEvent>? state)

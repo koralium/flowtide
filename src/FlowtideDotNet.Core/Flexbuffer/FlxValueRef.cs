@@ -11,8 +11,10 @@
 // limitations under the License.
 
 using FlexBuffers;
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Type = FlexBuffers.Type;
@@ -78,6 +80,89 @@ namespace FlowtideDotNet.Core.Flexbuffer
         public int BufferOffset => _offset;
 
         public bool IsNull => _type == Type.Null;
+
+        private static readonly byte[] _nullBytes = { 0 };
+        private static readonly byte[] _trueBytes = { 1 };
+
+        public void AddToHash(in XxHash32 xxHash)
+        {
+            if (_type == Type.Null)
+            {
+                xxHash.Append(_nullBytes);
+            }
+            else if (_type == Type.Int)
+            {
+                var v = ReadLong(_buffer, _offset, _parentWidth);
+                Span<byte> buffer = stackalloc byte[8];
+                BinaryPrimitives.WriteInt64LittleEndian(buffer, v);
+                xxHash.Append(buffer);
+            }
+            else if (_type == Type.Uint)
+            {
+                var v = ReadULong(_buffer, _offset, _parentWidth);
+                Span<byte> buffer = stackalloc byte[8];
+                BinaryPrimitives.WriteUInt64LittleEndian(buffer, v);
+                xxHash.Append(buffer);
+            }
+            else if (_type == Type.Float)
+            {
+                var v = ReadDouble(_buffer, _offset, _parentWidth);
+                Span<byte> buffer = stackalloc byte[8];
+                BinaryPrimitives.WriteDoubleLittleEndian(buffer, v);
+                xxHash.Append(buffer);
+            }
+            else if (_type == Type.Bool)
+            {
+                var v = AsBool;
+                if (v)
+                {
+                    xxHash.Append(_trueBytes);
+                }
+                else
+                {
+                    xxHash.Append(_nullBytes);
+                }
+            }
+            else if (_type == Type.String)
+            {
+                HashString(xxHash);
+            }
+            else if (_type == Type.Vector)
+            {
+                var vec = AsVector;
+                for (int i = 0; i < vec.Length; i++)
+                {
+                    vec[i].AddToHash(xxHash);
+                }
+            }
+            else if (_type == Type.Map)
+            {
+                var map = AsMap;
+                for (int i = 0; i < map.Length; i++)
+                {
+                    map.Keys[i].AddToHash(xxHash);
+                    map.ValueByIndex(i).AddToHash(xxHash);
+                }
+            }
+            else if (_type == Type.Blob)
+            {
+                var blob = AsBlob;
+                xxHash.Append(blob);
+            }
+        }
+
+        private void HashString(in XxHash32 xxHash)
+        {
+            var indirectOffset = ComputeIndirectOffset(_buffer, _offset, _parentWidth);
+            var size = (int)ReadULong(_buffer, indirectOffset - _byteWidth, _byteWidth);
+            var sizeWidth = (int)_byteWidth;
+            while (_buffer[indirectOffset + size] != 0)
+            {
+                sizeWidth <<= 1;
+                size = (int)ReadULong(_buffer, indirectOffset - sizeWidth, (byte)sizeWidth);
+            }
+            xxHash.Append(_buffer.Slice(indirectOffset, size));
+        }
 
         public long AsLong
         {

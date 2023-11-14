@@ -69,7 +69,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.AddOrUpdateUser(user);
         }
 
-        public async Task StartStream(string sql)
+        public async Task StartStream(string sql, int parallelism = 1)
         {
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
@@ -80,6 +80,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             flowtideBuilder
                 .AddPlan(plan)
+                .SetParallelism(parallelism)
                 .AddReadWriteFactory(factory)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
@@ -104,6 +105,24 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 _actualData = actualData;
                 updateCounter++;
+            }
+        }
+
+        /// <summary>
+        /// Simulate a crash on the stream, waits until the stream has failed.
+        /// </summary>
+        /// <returns></returns>
+        public async Task Crash()
+        {
+            await _stream!.CallTrigger("crash", default);
+
+            var graph = _stream.GetDiagnosticsGraph();
+            var scheduler = _stream.Scheduler as DefaultStreamScheduler;
+            while (_stream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            {
+                graph = _stream.GetDiagnosticsGraph();
+                await scheduler!.Tick();
+                await Task.Delay(TimeSpan.FromMilliseconds(10));
             }
         }
 

@@ -167,6 +167,10 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
 
         private static async ValueTask<byte[]> DoMin(FlxValue column, byte[] currentState, long weight, MinAggregationSingleton singleton, StreamEvent groupingKey)
         {
+            if (column.IsNull)
+            {
+                return currentState;
+            }
             var vector = FlexBufferBuilder.Vector(v =>
             {
                 for (int i = 0; i < groupingKey.Vector.Length; i++)
