@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Substrait.Relations;
 using System.ComponentModel.DataAnnotations;
+using static SqlParser.Ast.DataType;
 
 namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 {
@@ -498,9 +499,41 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 List<int> leftEmit = new List<int>();
                 List<int> rightEmit = new List<int>();
 
+                Dictionary<int, int> leftEmitToInternal = new Dictionary<int, int>();
+                if (mergeJoinRelation.Left.EmitSet)
+                {
+                    for (int i = 0; i < mergeJoinRelation.Left.Emit.Count; i++)
+                    {
+                        leftEmitToInternal.Add(i, mergeJoinRelation.Left.Emit[i]);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < mergeJoinRelation.Left.OutputLength; i++)
+                    {
+                        leftEmitToInternal.Add(i, i);
+                    }
+                }
+
+                Dictionary<int, int> rightEmitToInternal = new Dictionary<int, int>();
+                if (mergeJoinRelation.Right.EmitSet)
+                {
+                    for (int i = 0; i < mergeJoinRelation.Right.Emit.Count; i++)
+                    {
+                        rightEmitToInternal.Add(i, mergeJoinRelation.Right.Emit[i]);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < mergeJoinRelation.Right.OutputLength; i++)
+                    {
+                        rightEmitToInternal.Add(i, i);
+                    }
+                }
+
                 foreach (var field in leftUsage)
                 {
-                    leftEmit.Add(field);
+                    leftEmit.Add(leftEmitToInternal[field]);
                     oldToNew.Add(field, replacementCounter);
                     replacementCounter += 1;
                 }
@@ -509,7 +542,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 {
                     var rightIndex = field- mergeJoinRelation.Left.OutputLength;
 
-                    rightEmit.Add(rightIndex);
+                    rightEmit.Add(rightEmitToInternal[rightIndex]);
                     oldToNew.Add(field, replacementCounter);
                     replacementCounter += 1;
                 }
