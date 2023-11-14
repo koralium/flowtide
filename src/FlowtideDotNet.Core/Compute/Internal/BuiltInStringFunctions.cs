@@ -47,6 +47,9 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Lower, (x) => LowerImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Upper, (x) => UpperImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Trim, (x) => TrimImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.LTrim, (x) => LTrimImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.RTrim, (x) => RTrimImplementation(x));
         }
 
         private static FlxValue LowerImplementation(in FlxValue val)
@@ -67,6 +70,36 @@ namespace FlowtideDotNet.Core.Compute.Internal
             }
 
             return FlxValue.FromBytes(FlexBuffer.SingleValue(val.AsString.ToUpper()));
+        }
+
+        private static FlxValue TrimImplementation(in FlxValue val)
+        {
+            if (val.ValueType != FlexBuffers.Type.String)
+            {
+                return NullValue;
+            }
+
+            return FlxValue.FromBytes(FlexBuffer.SingleValue(val.AsString.Trim()));
+        }
+
+        private static FlxValue LTrimImplementation(in FlxValue val)
+        {
+            if (val.ValueType != FlexBuffers.Type.String)
+            {
+                return NullValue;
+            }
+
+            return FlxValue.FromBytes(FlexBuffer.SingleValue(val.AsString.TrimStart()));
+        }
+
+        private static FlxValue RTrimImplementation(in FlxValue val)
+        {
+            if (val.ValueType != FlexBuffers.Type.String)
+            {
+                return NullValue;
+            }
+
+            return FlxValue.FromBytes(FlexBuffer.SingleValue(val.AsString.TrimEnd()));
         }
     }
 }

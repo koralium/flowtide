@@ -24,5 +24,8 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Concat = "concat";
         public const string Lower = "lower";
         public const string Upper = "upper";
+        public const string Trim = "trim";
+        public const string LTrim = "ltrim";
+        public const string RTrim = "rtrim";
     }
 }

@@ -94,7 +94,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                         availableManagers.Add(u.UserKey);
                         return managerKey;
                     }
-                });
+                })
+                .RuleFor(x => x.TrimmableNullableString, (f, u) => u.NullableString != null ? $" {u.NullableString} " : null);
 
 
             var newUsers = testUsers.Generate(count);

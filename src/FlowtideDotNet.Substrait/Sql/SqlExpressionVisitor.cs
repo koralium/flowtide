@@ -263,6 +263,53 @@ namespace FlowtideDotNet.Substrait.Sql
             }
         }
 
+        protected override ExpressionData VisitTrim(Trim trim, EmitData state)
+        {
+            var expr = Visit(trim.Expression, state);
+
+            if (trim.TrimWhere == TrimWhereField.Both || trim.TrimWhere == TrimWhereField.None)
+            {
+                return new ExpressionData(
+                    new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsString.Uri,
+                        ExtensionName = FunctionsString.Trim,
+                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    },
+                    "$trim"
+                );
+            }
+            else if (trim.TrimWhere == TrimWhereField.Trailing)
+            {
+                return new ExpressionData(
+                    new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsString.Uri,
+                        ExtensionName = FunctionsString.RTrim,
+                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    },
+                    "$trim"
+                );
+            }
+            else if (trim.TrimWhere == TrimWhereField.Leading)
+            {
+                return new ExpressionData(
+                    new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsString.Uri,
+                        ExtensionName = FunctionsString.LTrim,
+                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    },
+                    "$trim"
+                );
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
+            
+        }
+
         protected override ExpressionData VisitCompoundIdentifier(SqlParser.Ast.Expression.CompoundIdentifier compoundIdentifier, EmitData state)
         {
             var removedQuotaIdentifier = new SqlParser.Ast.Expression.CompoundIdentifier(new Sequence<Ident>(compoundIdentifier.Idents.Select(x => new Ident(x.Value))));

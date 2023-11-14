@@ -73,7 +73,16 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitInList(inList, state);
             }
+            if (expression is Expression.Trim trim)
+            {
+                return VisitTrim(trim, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitTrim(Expression.Trim trim, TState state)
+        {
+            throw new NotImplementedException($"The expression '{trim.GetType().Name}' is not supported in SQL");
         }
 
         protected virtual TReturn VisitInList(Expression.InList inList, TState state)
