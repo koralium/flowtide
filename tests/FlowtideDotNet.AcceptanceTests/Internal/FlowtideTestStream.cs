@@ -37,6 +37,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private List<byte[]>? _actualData;
         int updateCounter = 0;
         FlowtideBuilder flowtideBuilder;
+        private int _egressCrashOnCheckpointCount;
 
         public IReadOnlyList<User> Users  => generator.Users;
 
@@ -126,6 +127,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
+        public void EgressCrashOnCheckpoint(int times)
+        {
+            _egressCrashOnCheckpointCount = times;
+        }
+
         public async Task WaitForUpdate()
         {
             Debug.Assert(_stream != null);
@@ -155,7 +161,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             factory.AddWriteResolver((rel, opt) =>
             {
-                return new MockDataSink(opt, OnDataUpdate);
+                return new MockDataSink(opt, OnDataUpdate, _egressCrashOnCheckpointCount);
             });
         }
 
