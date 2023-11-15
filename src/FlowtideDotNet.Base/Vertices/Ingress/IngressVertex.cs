@@ -126,7 +126,10 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         {
             Debug.Assert(_ingressState?._block != null, nameof(_ingressState._block));
 
-            _ingressState._block.Complete();
+            lock (_stateLock)
+            {
+                _ingressState._block.Complete();
+            }
         }
 
         public IStreamEvent? ConsumeMessage(DataflowMessageHeader messageHeader, ITargetBlock<IStreamEvent> target, out bool messageConsumed)
@@ -139,7 +142,11 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public void Fault(Exception exception)
         {
             Debug.Assert(_ingressState?._block != null, nameof(_ingressState._block));
-            (_ingressState._block as IDataflowBlock).Fault(exception);
+            lock (_stateLock)
+            {
+                _ingressState._taskEnabled = false;
+                (_ingressState._block as IDataflowBlock).Fault(exception);
+            }
         }
 
         public IDisposable LinkTo(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)

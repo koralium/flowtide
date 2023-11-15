@@ -60,6 +60,11 @@ namespace FlowtideDotNet.AcceptanceTests
             return flowtideTestStream.Crash();
         }
 
+        protected void EgressCrashOnCheckpoint(int times)
+        {
+            flowtideTestStream.EgressCrashOnCheckpoint(times);
+        }
+
         public void AddOrUpdateUser(User user)
         {
             flowtideTestStream.AddOrUpdateUser(user);
