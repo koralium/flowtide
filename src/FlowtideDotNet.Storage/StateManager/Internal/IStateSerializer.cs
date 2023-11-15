@@ -16,15 +16,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
 {
     internal interface IStateSerializer
     {
-        byte[] Serialize(in ICacheObject value);
+        byte[] Serialize(in ICacheObject value, in StateSerializeOptions stateSerializeOptions);
 
-        ICacheObject DeserializeCacheObject(IMemoryOwner<byte> bytes, int length);
+        ICacheObject DeserializeCacheObject(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions);
     }
     internal interface IStateSerializer<T> : IStateSerializer
         where T: ICacheObject
     {
-        byte[] Serialize(in T value);
+        byte[] Serialize(in T value, in StateSerializeOptions stateSerializeOptions);
 
-        T Deserialize(IMemoryOwner<byte> bytes, int length);
+        T Deserialize(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions);
     }
 }

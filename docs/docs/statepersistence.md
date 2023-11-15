@@ -149,3 +149,28 @@ A data page is fetched using the following logic:
     IsInModifiedCache -> FetchFrompersistentStorage [label = "No"]
   }
 ```
+
+## Compression
+
+It is possible to compress pages in the state.
+This is done by providing two functions to state serialize options, a compress function and a decompress function.
+
+Example using ZLib compression:
+
+```csharp
+builder.WithStateOptions(new StateManagerOptions()
+{
+    ...
+    SerializeOptions = new StateSerializeOptions()
+    {
+        CompressFunc = (stream) =>
+        {
+            return new System.IO.Compression.ZLibStream(stream, CompressionMode.Compress);
+        },
+        DecompressFunc = (stream) =>
+        {
+            return new System.IO.Compression.ZLibStream(stream, CompressionMode.Decompress);
+        }
+    }
+})
+```

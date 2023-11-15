@@ -37,5 +37,7 @@ namespace FlowtideDotNet.Storage.StateManager
 
         [Obsolete]
         public bool RemoveOutdatedCheckpoints { get; set; } = true;
+
+        public StateSerializeOptions SerializeOptions { get; set; } = new StateSerializeOptions();
     }
 }

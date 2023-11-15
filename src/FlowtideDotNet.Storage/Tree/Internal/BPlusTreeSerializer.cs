@@ -29,12 +29,17 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             this._valueSerializer = valueSerializer;
         }
 
-        public IBPlusTreeNode Deserialize(IMemoryOwner<byte> bytes, int length)
+        public IBPlusTreeNode Deserialize(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
         {
             var arr = bytes.Memory.ToArray();
             using var memoryStream = new MemoryStream(arr);
+            Stream readStream = memoryStream;
+            if (stateSerializeOptions.DecompressFunc != null)
+            {
+                readStream = stateSerializeOptions.DecompressFunc(memoryStream);
+            }
             bytes.Dispose();
-            using var reader = new BinaryReader(memoryStream);
+            using var reader = new BinaryReader(readStream);
 
             var typeId = reader.ReadByte();
 
@@ -87,15 +92,20 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             throw new NotImplementedException();
         }
 
-        public ICacheObject DeserializeCacheObject(IMemoryOwner<byte> bytes, int length)
+        public ICacheObject DeserializeCacheObject(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
         {
-            return Deserialize(bytes, length);
+            return Deserialize(bytes, length, stateSerializeOptions);
         }
 
-        public byte[] Serialize(in IBPlusTreeNode value)
+        public byte[] Serialize(in IBPlusTreeNode value, in StateSerializeOptions stateSerializeOptions)
         {
             using var memoryStream = new MemoryStream();
-            using var writer = new BinaryWriter(memoryStream);
+            Stream writeMemStream = memoryStream;
+            if (stateSerializeOptions.CompressFunc != null)
+            {
+                writeMemStream = stateSerializeOptions.CompressFunc(memoryStream);
+            }
+            using var writer = new BinaryWriter(writeMemStream);
             if (value is LeafNode<K, V> leaf)
             {
                 // Write type id
@@ -116,6 +126,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
                     _valueSerializer.Serialize(writer, leaf.values[i]);
                 }
+
+                writer.Flush();
+                writeMemStream.Close();
                 return memoryStream.ToArray();
             }
             if (value is InternalNode<K, V> parent)
@@ -134,16 +147,18 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
                     writer.Write(parent.children[i]);
                 }
+                writer.Flush();
+                writeMemStream.Close();
                 return memoryStream.ToArray();
             }
             throw new NotImplementedException();
         }
 
-        public byte[] Serialize(in ICacheObject value)
+        public byte[] Serialize(in ICacheObject value, in StateSerializeOptions stateSerializeOptions)
         {
             if (value is IBPlusTreeNode node)
             {
-                return Serialize(node);
+                return Serialize(node, stateSerializeOptions);
             }
             throw new NotImplementedException();
         }

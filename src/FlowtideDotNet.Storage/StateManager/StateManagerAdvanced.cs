@@ -160,7 +160,7 @@ namespace FlowtideDotNet.Storage.StateManager
             {
 
             }
-            var deserialized = serializer.Deserialize(new ByteMemoryOwner(page.output), page.output.Length);
+            var deserialized = serializer.Deserialize(new ByteMemoryOwner(page.output), page.output.Length, new StateSerializeOptions());
             var lruTask = lruTable.Add(key, deserialized, serializer);
 
             if (!lruTask.IsCompleted)
@@ -185,7 +185,7 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 if (outputs.Current.Key == pageId)
                 {
-                    return serializer.Deserialize(new ByteMemoryOwner(outputs.Current.Output), outputs.Current.Output.Length);
+                    return serializer.Deserialize(new ByteMemoryOwner(outputs.Current.Output), outputs.Current.Output.Length, new StateSerializeOptions());
                 }
                 else
                 {
@@ -211,7 +211,7 @@ namespace FlowtideDotNet.Storage.StateManager
             var bytes = m_fileCache.Read(key);
             //var (bytes, length) = await m_temporaryStorage.ReadAsync(storageLocation);
 
-            var deserialized = serializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length);
+            var deserialized = serializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, new StateSerializeOptions());
             await lruTable.Add(key, deserialized, serializer);
 
             return deserialized;
@@ -287,7 +287,7 @@ namespace FlowtideDotNet.Storage.StateManager
                         if (lruTable.TryGetValueNoRefresh(key, out var val))
                         {
                             // Serialize the value
-                            var bytes = val!.Value.stateSerializer.Serialize(val.Value.value);
+                            var bytes = val!.Value.stateSerializer.Serialize(val.Value.value, new StateSerializeOptions());
 
                             // Write to persistent storage
                             await WriteAsync(key, bytes, session, "Commit1");
@@ -402,7 +402,7 @@ namespace FlowtideDotNet.Storage.StateManager
             lock (m_lock)
             {
                 m_metadata.CheckpointVersion = m_persistentStorage.CurrentVersion;
-                bytes = m_metadataSerializer.Serialize(m_metadata);
+                bytes = m_metadataSerializer.Serialize(m_metadata, new StateSerializeOptions());
             }
             
             await m_adminSession.UpsertAsync(1, SpanByte.FromFixedSpan(bytes));
@@ -510,7 +510,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     lock (m_lock)
                     {
-                        m_metadata = m_metadataSerializer.Deserialize(new ByteMemoryOwner(data.Output), data.Output.Length);
+                        m_metadata = m_metadataSerializer.Deserialize(new ByteMemoryOwner(data.Output), data.Output.Length, new StateSerializeOptions());
                     }
                     await m_persistentStorage.RecoverAsync(recoverTo: m_metadata.CheckpointVersion).ConfigureAwait(false);
                 }
@@ -557,7 +557,7 @@ namespace FlowtideDotNet.Storage.StateManager
                         // Store the modified data to disk in temporary storage
                         // must lock the data before writing since this call can come from another thread
                         val.value.EnterWriteLock();
-                        m_fileCache.WriteAsync(val.key, val.stateSerializer.Serialize(val.value));
+                        m_fileCache.WriteAsync(val.key, val.stateSerializer.Serialize(val.value, new StateSerializeOptions()));
                         //var location = m_temporaryStorage.Enqueue(val.stateSerializer.Serialize(val.value));
 
                         //if (minimumTempLocation > location)

@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
 {
     internal class StateManagerMetadataSerializer<T> : IStateSerializer<StateManagerMetadata>
     {
-        public StateManagerMetadata Deserialize(IMemoryOwner<byte> bytes, int length)
+        public StateManagerMetadata Deserialize(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
         {
             var slice = bytes.Memory.Span.Slice(0, length);
             var reader = new Utf8JsonReader(slice);
@@ -26,12 +26,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             return deserializedValue;
         }
 
-        public ICacheObject DeserializeCacheObject(IMemoryOwner<byte> bytes, int length)
+        public ICacheObject DeserializeCacheObject(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
         {
-            return Deserialize(bytes, length);
+            return Deserialize(bytes, length, stateSerializeOptions);
         }
 
-        public byte[] Serialize(in StateManagerMetadata value)
+        public byte[] Serialize(in StateManagerMetadata value, in StateSerializeOptions stateSerializeOptions)
         {
             if (value is StateManagerMetadata<T> metadata)
             {
@@ -42,11 +42,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             throw new NotSupportedException();
         }
 
-        public byte[] Serialize(in ICacheObject value)
+        public byte[] Serialize(in ICacheObject value, in StateSerializeOptions stateSerializeOptions)
         {
             if (value is StateManagerMetadata<T> metadata)
             {
-                return Serialize(metadata);
+                return Serialize(metadata, stateSerializeOptions);
             }
             throw new NotSupportedException();
         }
@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
 
     internal class StateManagerMetadataSerializer : IStateSerializer<StateManagerMetadata>
     {
-        public StateManagerMetadata Deserialize(IMemoryOwner<byte> bytes, int length)
+        public StateManagerMetadata Deserialize(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
         {
             var slice = bytes.Memory.Span.Slice(0, length);
             var reader = new Utf8JsonReader(slice);
@@ -63,23 +63,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             return deserializedValue;
         }
 
-        public ICacheObject DeserializeCacheObject(IMemoryOwner<byte> bytes, int length)
+        public ICacheObject DeserializeCacheObject(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
         {
-            return Deserialize(bytes, length);
+            return Deserialize(bytes, length, stateSerializeOptions);
         }
 
-        public byte[] Serialize(in StateManagerMetadata value)
+        public byte[] Serialize(in StateManagerMetadata value, in StateSerializeOptions stateSerializeOptions)
         {
             using MemoryStream memoryStream = new MemoryStream();
             JsonSerializer.Serialize(memoryStream, value);
             return memoryStream.ToArray();
         }
 
-        public byte[] Serialize(in ICacheObject value)
+        public byte[] Serialize(in ICacheObject value, in StateSerializeOptions stateSerializeOptions)
         {
             if (value is StateManagerMetadata metadata)
             {
-                return Serialize(metadata);
+                return Serialize(metadata, stateSerializeOptions);
             }
             throw new NotSupportedException();
         }

@@ -72,6 +72,8 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public bool Initialized { get; private set; }
 
+        internal StateSerializeOptions SerializeOptions => options.SerializeOptions;
+
         public ulong PageCommits => m_metadata != null ? Volatile.Read(ref m_metadata.PageCommits) : throw new InvalidOperationException("Manager must be initialized before getting page commits");
 
         public ulong PageCommitsAtLastCompaction => m_metadata != null ? m_metadata.PageCommitsAtLastCompaction : throw new InvalidOperationException("Manager must be initialized before getting page commits");
@@ -149,7 +151,7 @@ namespace FlowtideDotNet.Storage.StateManager
             lock (m_lock)
             {
                 m_metadata.CheckpointVersion = m_persistentStorage.CurrentVersion;
-                bytes = m_metadataSerializer.Serialize(m_metadata);
+                bytes = m_metadataSerializer.Serialize(m_metadata, options.SerializeOptions);
             }
 
             await m_persistentStorage.CheckpointAsync(bytes);
@@ -235,7 +237,7 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 lock (m_lock)
                 {
-                    m_metadata = m_metadataSerializer.Deserialize(new ByteMemoryOwner(metadataBytes), metadataBytes.Length);
+                    m_metadata = m_metadataSerializer.Deserialize(new ByteMemoryOwner(metadataBytes), metadataBytes.Length, options.SerializeOptions);
                 }
                 await m_persistentStorage.RecoverAsync(m_metadata.CheckpointVersion).ConfigureAwait(false);
             }
