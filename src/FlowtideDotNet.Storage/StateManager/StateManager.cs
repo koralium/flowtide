@@ -103,7 +103,7 @@ namespace FlowtideDotNet.Storage.StateManager
         public async ValueTask CheckpointAsync()
         {
             m_metadata.CheckpointVersion = m_persistentStorage.CurrentVersion;
-            var bytes = m_metadataSerializer.Serialize(m_metadata);
+            var bytes = m_metadataSerializer.Serialize(m_metadata, new StateSerializeOptions());
             await m_adminSession.UpsertAsync(1, SpanByte.FromFixedSpan(bytes));
             
             var guid = await BeginCheckpointAsync();
@@ -187,7 +187,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 var data = await m_adminSession.ReadAsync(1);
                 if (data.Status.Found)
                 {
-                    m_metadata = m_metadataSerializer.Deserialize(new ByteMemoryOwner(data.Output), data.Output.Length);
+                    m_metadata = m_metadataSerializer.Deserialize(new ByteMemoryOwner(data.Output), data.Output.Length, new StateSerializeOptions());
                     await m_persistentStorage.RecoverAsync(recoverTo: m_metadata.CheckpointVersion).ConfigureAwait(false);
                 }
                 else
@@ -258,7 +258,7 @@ namespace FlowtideDotNet.Storage.StateManager
             where T : ICacheObject
         {
             await _semaphore.WaitAsync();
-            var bytes = serializer.Serialize(value);
+            var bytes = serializer.Serialize(value, new StateSerializeOptions());
             if (!(bytes[0] == 2 || bytes[0] == 3))
             {
 
@@ -295,7 +295,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     return ReadAsync_Slow(pageId, serializer, session);
                 }
                 //var (status, result) = page.Complete();
-                var deserialized = serializer.Deserialize(new ByteMemoryOwner(page.output), page.output.Length);
+                var deserialized = serializer.Deserialize(new ByteMemoryOwner(page.output), page.output.Length, new StateSerializeOptions());
                 _semaphore.Release();
                 return ValueTask.FromResult(deserialized);
             }
@@ -319,7 +319,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 if (outputs.Current.Key == pageId)
                 {
                     _semaphore.Release();
-                    return serializer.Deserialize(new ByteMemoryOwner(outputs.Current.Output), outputs.Current.Output.Length);
+                    return serializer.Deserialize(new ByteMemoryOwner(outputs.Current.Output), outputs.Current.Output.Length, new StateSerializeOptions());
                 }
                 else
                 {

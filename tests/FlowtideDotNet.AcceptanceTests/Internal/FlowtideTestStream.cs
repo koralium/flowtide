@@ -18,10 +18,12 @@ using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Operators.Set;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
+using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
@@ -70,8 +72,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.AddOrUpdateUser(user);
         }
 
-        public async Task StartStream(string sql, int parallelism = 1)
+        public async Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default)
         {
+            if (stateSerializeOptions == null)
+            {
+                stateSerializeOptions = new StateSerializeOptions();
+            }
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
 
@@ -85,6 +91,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .AddReadWriteFactory(factory)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
+                    SerializeOptions = stateSerializeOptions,
                     PersistentStorage = new FileCachePersistentStorage(new Storage.FileCacheOptions()
                     {
                         DirectoryPath = $"./data/tempFiles/{testName}/persist",

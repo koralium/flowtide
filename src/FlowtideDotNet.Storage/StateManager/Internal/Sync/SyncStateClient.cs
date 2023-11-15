@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     if (stateManager.TryGetValueFromCache<V>(kv.Key, out var val))
                     {
-                        var bytes = options.ValueSerializer.Serialize(val);
+                        var bytes = options.ValueSerializer.Serialize(val, stateManager.SerializeOptions);
                         // Write to persistence
                         session.Write(kv.Key, bytes);
                         //stateManager.WriteToPersistentStore(kv.Key, bytes, session);
@@ -160,14 +160,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 if (m_modified.ContainsKey(key))
                 {
                     var bytes = m_fileCache.Read(key);
-                    var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length);
+                    var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
                     stateManager.AddOrUpdate(key, value, this);
                     return ValueTask.FromResult<V?>(value);
                 }
                 // Read from persistent store
                 {
                     var bytes = session.Read(key); //stateManager.ReadFromPersistentStore(key, session);
-                    var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length);
+                    var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
                     stateManager.AddOrUpdate(key, value, this);
                     return ValueTask.FromResult<V?>(value);
                 }
@@ -222,7 +222,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             foreach (var value in valuesToEvict)
             {
                 value.Item1.ValueRef.value.EnterWriteLock();
-                var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value);
+                var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value, stateManager.SerializeOptions);
                 m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);
                 value.Item1.ValueRef.value.ExitWriteLock();
             }
