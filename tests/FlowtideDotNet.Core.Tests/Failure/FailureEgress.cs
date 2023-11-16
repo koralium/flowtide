@@ -19,6 +19,8 @@ namespace FlowtideDotNet.Core.Tests.Failure
     internal class FailureEgressOptions 
     {
         public Action? OnCheckpoint { get; set; }
+
+        public Action? OnCompaction { get; set; }
     }
 
     internal class FailureEgress : GroupedWriteBaseOperator<TestWriteState>
@@ -32,6 +34,12 @@ namespace FlowtideDotNet.Core.Tests.Failure
             primaryKeyIds = new List<int>();
             primaryKeyIds.Add(0);
             this.failureEgressOptions = failureEgressOptions;
+        }
+
+        public override Task Compact()
+        {
+            failureEgressOptions.OnCompaction?.Invoke();
+            return base.Compact();
         }
 
         public override string DisplayName => "FailureEgress";

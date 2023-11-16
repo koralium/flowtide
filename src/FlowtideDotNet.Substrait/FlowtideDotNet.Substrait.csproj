@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
@@ -17,6 +17,14 @@
 
 	<ItemGroup>
 		<Protobuf Include="proto/substrait/**/*.proto" ProtoRoot="proto/" CompileOutputs="false" OutputDir="generated/proto/" GrpcServices="None" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Remove="CustomProto\custom_proto.proto" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Protobuf Include="CustomProto\custom_proto.proto" AdditionalImportDirs="proto/"   />
 	</ItemGroup>
 
 </Project>

@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Core.Tests.Failure;
+using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Substrait.Sql;
 
 namespace FlowtideDotNet.Core.Tests
@@ -90,6 +91,69 @@ namespace FlowtideDotNet.Core.Tests
                     .Build();
             });
             Assert.Equal("No write resolver matched the read relation.", e.Message);
+        }
+
+        [Fact]
+        public async Task ValidateSamePlan()
+        {
+            SqlPlanBuilder builder = new SqlPlanBuilder();
+            builder.AddTableDefinition("a", new List<string>() { "c1" });
+            builder.Sql("INSERT INTO test SELECT c1 FROM a");
+            var plan = builder.GetPlan();
+
+            int checkpointCount = 0;
+            var factory = new ReadWriteFactory();
+            factory.AddWriteResolver((rel, opt) =>
+            {
+                return new FailureEgress(opt, new FailureEgressOptions()
+                {
+                    OnCompaction = () =>
+                    {
+                        checkpointCount++;
+                    }
+                });
+            });
+            factory.AddReadResolver((rel, opt) =>
+            {
+                return new ReadOperatorInfo(new TestIngress(opt));
+            });
+
+            var cache = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions());
+            var stream = new FlowtideBuilder("test")
+                    .AddPlan(plan)
+                    .AddReadWriteFactory(factory)
+                    .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
+                    {
+                        PersistentStorage = cache
+                    })
+                    .Build();
+            await stream.StartAsync();
+            while (stream.Status != Base.Engine.StreamStatus.Running || checkpointCount == 0)
+            {
+                await Task.Delay(10);
+            }
+
+            SqlPlanBuilder builder2 = new SqlPlanBuilder();
+            builder2.AddTableDefinition("a", new List<string>() { "c1" });
+            builder2.Sql("INSERT INTO test2 SELECT c1 FROM a");
+            var plan2 = builder2.GetPlan();
+
+            var stream2 = new FlowtideBuilder("test")
+                    .AddPlan(plan2)
+                    .AddReadWriteFactory(factory)
+                    .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
+                    {
+                        PersistentStorage = cache
+                    })
+                    .Build();
+
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await stream2.StartAsync();
+            });
+            Assert.Equal("Stream plan hash stored in storage is different than the hash used.", ex.Message);
+            
         }
     }
 }

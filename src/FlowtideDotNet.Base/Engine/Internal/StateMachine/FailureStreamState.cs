@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private readonly object _lock = new object();
         private Task? _currentTask;
 
-        public override void Initialize()
+        public override void Initialize(StreamStateValue previousState)
         {
             lock (_lock)
             {
@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task OnFailure()
         {
-            Initialize();
+            Initialize(StreamStateValue.Failure);
             return Task.CompletedTask;
         }
 
