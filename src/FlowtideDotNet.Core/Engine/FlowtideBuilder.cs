@@ -107,9 +107,16 @@ namespace FlowtideDotNet.Core.Engine
         {
             using (SHA256 sha256 = SHA256.Create())
             {
-                MemoryStream memoryStream = new MemoryStream();
-                JsonSerializer.Serialize(memoryStream, _plan);
-                var hashBytes = sha256.ComputeHash(memoryStream);
+                string json = "";
+                try
+                {
+                    json = new SubstraitSerializer().SerializeToJson(_plan);
+                }
+                catch
+                {
+                    Console.Error.WriteLine("Failed to serialize plan for hash check.");
+                }
+                var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(json));
                 return Convert.ToBase64String(hashBytes);
             }
         }

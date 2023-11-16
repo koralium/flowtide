@@ -144,7 +144,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
-        public override void Initialize()
+        public override void Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
 

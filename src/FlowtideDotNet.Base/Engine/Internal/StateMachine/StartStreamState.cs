@@ -69,31 +69,39 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             TransitionTo(StreamStateValue.Running);
         }
 
-        public override void Initialize()
+        public override void Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
             _context._logger.LogInformation("Starting stream");
-            lock(_lock)
+
+            if (previousState == StreamStateValue.NotStarted)
             {
-                if (_runningTask == null)
+                StartStream().GetAwaiter().GetResult();
+            }
+            else
+            {
+                lock (_lock)
                 {
-                    _runningTask = Task.Factory.StartNew(async () =>
+                    if (_runningTask == null)
                     {
-                        await StartStream();
-                    })
-                        .Unwrap()
-                        .ContinueWith(async (t, state) =>
+                        _runningTask = Task.Factory.StartNew(async () =>
                         {
-                            StartStreamState run = (StartStreamState)state!;
-                            Debug.Assert(run._context != null, nameof(_context));
-                            if (t.IsFaulted)
+                            await StartStream();
+                        })
+                            .Unwrap()
+                            .ContinueWith(async (t, state) =>
                             {
-                                // Wait some time between starting up.
-                                await Task.Delay(100);
-                                await run._context.OnFailure(t.Exception);
-                            }
-                        }, this)
-                        .Unwrap();
+                                StartStreamState run = (StartStreamState)state!;
+                                Debug.Assert(run._context != null, nameof(_context));
+                                if (t.IsFaulted)
+                                {
+                                    // Wait some time between starting up.
+                                    await Task.Delay(100);
+                                    await run._context.OnFailure(t.Exception);
+                                }
+                            }, this)
+                            .Unwrap();
+                    }
                 }
             }
         }

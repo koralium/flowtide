@@ -158,7 +158,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _state.SetContext(this);
         }
 
-        private Task TransitionTo(StreamStateMachineState current, StreamStateMachineState state)
+        private Task TransitionTo(StreamStateMachineState current, StreamStateMachineState state, StreamStateValue previous)
         {
             lock(_contextLock)
             {
@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 this._state = state;
                 this._state.SetContext(this);
-                this._state.Initialize();
+                this._state.Initialize(previous);
             }
             return Task.CompletedTask;
         }
@@ -187,20 +187,21 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     // All errors are catched so notification reciever cant break the stream
                 }
             }
+            var oldState = currentState;
             currentState = newState;
             switch (newState)
             {
                 case StreamStateValue.Starting:
-                    return TransitionTo(current, new StartStreamState());
+                    return TransitionTo(current, new StartStreamState(), oldState);
                 case StreamStateValue.Failure:
                     _hasFailed = true;
-                    return TransitionTo(current, new FailureStreamState());
+                    return TransitionTo(current, new FailureStreamState(), oldState);
                 case StreamStateValue.Running:
-                    return TransitionTo(current, new RunningStreamState());
+                    return TransitionTo(current, new RunningStreamState(), oldState);
                 case StreamStateValue.Deleting:
-                    return TransitionTo(current, new DeletingStreamState());
+                    return TransitionTo(current, new DeletingStreamState(), oldState);
                 case StreamStateValue.Deleted:
-                    return TransitionTo(current, new DeletedStreamState());
+                    return TransitionTo(current, new DeletedStreamState(), oldState);
             }
             return Task.CompletedTask;
         }
