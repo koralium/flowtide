@@ -10,16 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Storage
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Storage.FileCache.Internal
 {
-    public class FileCacheOptions
+    public interface IFileCacheWriter : IDisposable
     {
-        public string DirectoryPath { get; set; } = "./data/tempFiles";
-        
-        public long SegmentSize { get; set; } = (long)1024 * 1024 * 1024 * 80;
-
-        public FileShare FileShare { get; set; } = FileShare.None;
-
-        public bool UseDirectIOOnLinux { get; set; } = true;
+        void Write(long position, byte[] data);
+        byte[] Read(long position, int length);
+        void Flush();
     }
 }

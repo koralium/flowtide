@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.FileCache.Internal;
+using FlowtideDotNet.Storage.FileCache.Internal.Unix;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
@@ -58,8 +59,9 @@ namespace FlowtideDotNet.Storage.FileCache
         LinkedList<Allocation> memoryNodes = new LinkedList<Allocation>();
         SortedSet<FreePage> _freePages = new SortedSet<FreePage>();
 
-        private Dictionary<int, FileCacheSegmentWriter> segmentWriters = new Dictionary<int, FileCacheSegmentWriter>();
+        private Dictionary<int, IFileCacheWriter> segmentWriters = new Dictionary<int, IFileCacheWriter>();
         private bool disposedValue;
+        private Func<int, IFileCacheWriter> createWriterFunc;
 
         public FileCache(FileCacheOptions fileCacheOptions, string fileName)
         {
@@ -68,6 +70,15 @@ namespace FlowtideDotNet.Storage.FileCache
             this.fileName = fileName;
 
             m_sectorSize = GetSectorSize();
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && fileCacheOptions.UseDirectIOOnLinux)
+            {
+                createWriterFunc = (i) => new FileCacheUnixDirectWriter(GenerateFileName(i), m_sectorSize, fileCacheOptions);
+            }
+            else
+            {
+                createWriterFunc = (i) => new FileCacheSegmentWriter(GenerateFileName(i), fileCacheOptions);
+            }
         }
 
         private int GetSectorSize()
@@ -82,6 +93,10 @@ namespace FlowtideDotNet.Storage.FileCache
                     return (int)sectorSize;
                 }
                 return 512;
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                return UnixFileSystemInfo.GetAlignment(GenerateFileName(0));
             }
             return 512;
         }
@@ -219,7 +234,7 @@ namespace FlowtideDotNet.Storage.FileCache
             // If there are no memory nodes, initialize them and a segment file.
             if (memoryNodes.Count == 0)
             {
-                segmentWriters.Add(0, new FileCacheSegmentWriter(GenerateFileName(0), fileCacheOptions));
+                segmentWriters.Add(0, createWriterFunc(0));
                 var startNode = memoryNodes.AddLast(new Allocation()
                 {
                     fileNumber = 0,
@@ -269,7 +284,7 @@ namespace FlowtideDotNet.Storage.FileCache
         public void WriteAsync(long pageKey, byte[] data)
         {
             long position = 0;
-            FileCacheSegmentWriter? segmentWriter = null;
+            IFileCacheWriter? segmentWriter = null;
             lock (m_lock)
             {
                 if (allocatedPages.TryGetValue(pageKey, out var node))
@@ -331,7 +346,7 @@ namespace FlowtideDotNet.Storage.FileCache
 
         public byte[] Read(long pageKey)
         {
-            FileCacheSegmentWriter? segmentWriter = default;
+            IFileCacheWriter? segmentWriter = default;
             long position = 0;
             int size = 0;
             lock (m_lock)

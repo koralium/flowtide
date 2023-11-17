@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Storage.FileCache
     /// <summary>
     /// Handles reading and writing to a single segment file
     /// </summary>
-    internal class FileCacheSegmentWriter : IDisposable
+    internal class FileCacheSegmentWriter : IFileCacheWriter
     {
         private FileStream fileStream;
         private bool disposedValue;
@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Storage.FileCache
                 File.Delete(fileName);
             }
 
-            fileStream = new FileStream(fileName, FileMode.Create, FileAccess.ReadWrite, fileCacheOptions.FileShare, 512, FileOptions.DeleteOnClose | FileOptions.WriteThrough);
+            fileStream = new FileStream(fileName, FileMode.Create, FileAccess.ReadWrite, fileCacheOptions.FileShare, 512, FileOptions.DeleteOnClose | FileOptions.RandomAccess);
         }
 
         public void Write(long position, byte[] data)
