@@ -48,13 +48,24 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
         [DllImport("libc", SetLastError = true)]
         private static extern IntPtr pwrite(int fd, IntPtr buffer, IntPtr count, IntPtr offset);
 
+        [DllImport("libc")]
+        private static extern IntPtr strerror(int errnum);
+
+        private static string GetErrorMessage(int errorCode)
+        {
+            return Marshal.PtrToStringAnsi(strerror(errorCode));
+        }
+
+
         public FileCacheUnixDirectWriter(string fileName, int sectorSize, FileCacheOptions fileCacheOptions)
         {
             this.alignment = sectorSize;
             this.fileDescriptor = open(fileName, O_RDWR | O_DIRECT | O_CREAT, S_IRUSR | S_IWUSR);
             if (this.fileDescriptor == -1)
             {
-                throw new InvalidOperationException("Unable to open file.");
+                int errorCode = Marshal.GetLastWin32Error();
+
+                throw new InvalidOperationException($"Open failed with error code {errorCode}: {strerror(errorCode)}");
             }
             alignedBuffer = new AlignedBuffer(sectorSize * 1024, sectorSize);
         }
@@ -79,7 +90,9 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
                 IntPtr bytesWritten = pwrite(fileDescriptor, alignedBuffer.Buffer, (IntPtr)data.Length, (IntPtr)position);
                 if (bytesWritten.ToInt64() <= 0)
                 {
-                    throw new InvalidOperationException("Failed to write data.");
+                    int errorCode = Marshal.GetLastWin32Error();
+
+                    throw new InvalidOperationException($"Failed to write data. {errorCode}: {strerror(errorCode)}");
                 }
             }
         }
