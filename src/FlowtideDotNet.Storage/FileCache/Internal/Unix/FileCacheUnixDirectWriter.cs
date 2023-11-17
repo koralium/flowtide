@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
                     throw new ArgumentException("Position must be aligned to block size.");
                 }
                 Marshal.Copy(data, 0, alignedBuffer.Buffer, data.Length);
-                IntPtr bytesWritten = pwrite(fileDescriptor, alignedBuffer.Buffer, (IntPtr)data.Length, (IntPtr)position);
+                IntPtr bytesWritten = pwrite(fileDescriptor, alignedBuffer.Buffer, (IntPtr)alignedLength, (IntPtr)position);
                 if (bytesWritten.ToInt64() <= 0)
                 {
                     int errorCode = Marshal.GetLastWin32Error();
