@@ -451,7 +451,7 @@ namespace FlowtideDotNet.Substrait
                 {
                     Detail = new Google.Protobuf.WellKnownTypes.Any()
                     {
-                        TypeUrl = "flowtide/IterationRelation",
+                        TypeUrl = "flowtide/flowtide.IterationRelation",
                         Value = iterRel.ToByteString()
                     }
                 };
@@ -483,7 +483,7 @@ namespace FlowtideDotNet.Substrait
                 var rel = new Protobuf.ExtensionLeafRel();
                 rel.Detail = new Google.Protobuf.WellKnownTypes.Any()
                 {
-                    TypeUrl = "flowtide/IterationReferenceReadRelation",
+                    TypeUrl = "flowtide/flowtide.IterationReferenceReadRelation",
                     Value = iterRel.ToByteString()
                 };
 
@@ -674,7 +674,7 @@ namespace FlowtideDotNet.Substrait
                 }
                 rel.Detail = new Google.Protobuf.WellKnownTypes.Any()
                 {
-                    TypeUrl = "flowtide/NormalizationRelation",
+                    TypeUrl = "flowtide/flowtide.NormalizationRelation",
                     Value = customRel.ToByteString()
                 };
 
@@ -703,7 +703,7 @@ namespace FlowtideDotNet.Substrait
                 {
                     Detail = new Google.Protobuf.WellKnownTypes.Any()
                     {
-                        TypeUrl = "flowtide/ReferenceRelation",
+                        TypeUrl = "flowtide/flowtide.ReferenceRelation",
                         Value = refRel.ToByteString()
                     }
                 };
