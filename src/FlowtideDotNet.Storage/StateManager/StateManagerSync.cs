@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Storage.StateManager
 {
     public class StateManagerSync<TMetadata> : StateManagerSync
     {
-        public StateManagerSync(StateManagerOptions options, ILogger logger) : base(new StateManagerMetadataSerializer<TMetadata>(), options, logger)
+        public StateManagerSync(Func<StateManagerOptions> getOptions, ILogger logger) : base(new StateManagerMetadataSerializer<TMetadata>(), getOptions, logger)
         {
         }
 
@@ -55,24 +55,26 @@ namespace FlowtideDotNet.Storage.StateManager
 
     public abstract class StateManagerSync : IStateManager, IDisposable
     {
-        private LruTableSync m_lruTable;
+        private LruTableSync? m_lruTable;
         //private readonly FasterKV<long, SpanByte> m_persistentStorage;
         private readonly IStateSerializer<StateManagerMetadata> m_metadataSerializer;
-        private readonly StateManagerOptions options;
+        private readonly Func<StateManagerOptions> getOptions;
+        private readonly ILogger logger;
+        private StateManagerOptions? options;
         private readonly object m_lock = new object();
         internal StateManagerMetadata? m_metadata;
         //private Functions m_functions;
-        private FileCacheOptions m_fileCacheOptions;
+        private FileCacheOptions? m_fileCacheOptions;
         private bool disposedValue;
 
         //private ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> m_adminSession;
         readonly Dictionary<string, IStateManagerClient> _clients = new Dictionary<string, IStateManagerClient>();
         private readonly Dictionary<string, StateClient> _stateClients = new Dictionary<string, StateClient>();
-        private readonly IPersistentStorage m_persistentStorage;
+        private IPersistentStorage? m_persistentStorage;
 
         public bool Initialized { get; private set; }
 
-        internal StateSerializeOptions SerializeOptions => options.SerializeOptions;
+        internal StateSerializeOptions SerializeOptions => options?.SerializeOptions ?? throw new InvalidOperationException("Manager must be initialized before getting serialize options");
 
         public ulong PageCommits => m_metadata != null ? Volatile.Read(ref m_metadata.PageCommits) : throw new InvalidOperationException("Manager must be initialized before getting page commits");
 
@@ -82,10 +84,26 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public long PageCount => m_metadata != null ? Volatile.Read(ref m_metadata.PageCount) : throw new InvalidOperationException("Manager must be initialized before getting page count");
 
-        internal StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILogger logger)
+        internal StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, Func<StateManagerOptions> getOptions, ILogger logger)
         {
-            m_lruTable = new LruTableSync(options.CachePageCount, logger);
+            this.m_metadataSerializer = metadataSerializer;
+            this.getOptions = getOptions;
+            this.logger = logger;
+        }
 
+        private void Setup()
+        {
+            this.options = getOptions();
+            if (m_lruTable == null)
+            {
+                m_lruTable = new LruTableSync(options.CachePageCount, logger);
+            }
+
+            if (m_persistentStorage != null)
+            {
+                m_persistentStorage.Dispose();
+                m_persistentStorage = null;
+            }
             if (options.PersistentStorage == null)
             {
                 m_persistentStorage = new FileCachePersistentStorage(new FileCacheOptions()
@@ -97,8 +115,6 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 m_persistentStorage = options.PersistentStorage;
             }
-            this.m_metadataSerializer = metadataSerializer;
-            this.options = options;
             m_fileCacheOptions = options.TemporaryStorageOptions ?? new FileCacheOptions()
             {
                 DirectoryPath = "./data/tempFiles"
@@ -125,17 +141,20 @@ namespace FlowtideDotNet.Storage.StateManager
         internal void AddOrUpdate<V>(in long key, in V value, in ILruEvictHandler evictHandler)
             where V : ICacheObject
         {
+            Debug.Assert(m_lruTable != null);
             m_lruTable.Add(key, value, evictHandler);
         }
 
         internal void DeleteFromCache(in long key)
         {
+            Debug.Assert(m_lruTable != null);
             m_lruTable.Delete(key);
         }
 
         internal bool TryGetValueFromCache<T>(in long key, out T? value)
             where T : ICacheObject
         {
+            Debug.Assert(m_lruTable != null);
             if (m_lruTable.TryGetValue(key, out var obj))
             {
                 value = (T)obj!;
@@ -147,6 +166,9 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public async ValueTask CheckpointAsync()
         {
+            Debug.Assert(m_metadata != null);
+            Debug.Assert(m_persistentStorage != null);
+            Debug.Assert(options != null);
             byte[] bytes;
             lock (m_lock)
             {
@@ -160,6 +182,8 @@ namespace FlowtideDotNet.Storage.StateManager
         public async Task Compact()
         {
             Debug.Assert(m_metadata != null);
+            Debug.Assert(m_persistentStorage != null);
+
             await m_persistentStorage.CompactAsync();
             m_metadata.PageCommitsAtLastCompaction = m_metadata.PageCommits;
         }
@@ -167,6 +191,10 @@ namespace FlowtideDotNet.Storage.StateManager
         internal async ValueTask<IStateClient<TValue, TMetadata>> CreateClientAsync<TValue, TMetadata>(string client, StateClientOptions<TValue> options)
             where TValue : ICacheObject
         {
+            Debug.Assert(m_metadata != null);
+            Debug.Assert(m_persistentStorage != null);
+            Debug.Assert(m_fileCacheOptions != null);
+
             Monitor.Enter(m_lock);
             if (_stateClients.TryGetValue(client, out var cachedClient))
             {
@@ -229,7 +257,10 @@ namespace FlowtideDotNet.Storage.StateManager
         public async Task InitializeAsync()
         {
             bool newMetadata = false;
-
+            Setup();
+            Debug.Assert(m_lruTable != null);
+            Debug.Assert(m_persistentStorage != null);
+            Debug.Assert(options != null);
             m_lruTable.Clear();
             await m_persistentStorage.InitializeAsync().ConfigureAwait(false);
 
@@ -267,7 +298,10 @@ namespace FlowtideDotNet.Storage.StateManager
                 if (disposing)
                 {
                     // TODO: dispose managed state (managed objects)
-                    m_persistentStorage.Dispose();
+                    if (m_persistentStorage != null)
+                    {
+                        m_persistentStorage.Dispose();
+                    }
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer

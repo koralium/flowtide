@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             StreamState? fromState,
             IStreamScheduler streamScheduler,
             IStreamNotificationReciever? notificationReciever,
-            StateManagerOptions stateManagerOptions,
+            Func<StateManagerOptions> stateManagerOptions,
             ILoggerFactory? loggerFactory,
             StreamVersionInformation? streamVersionInformation)
         {

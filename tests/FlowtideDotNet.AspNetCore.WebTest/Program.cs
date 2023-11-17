@@ -40,7 +40,7 @@ builder.Services.AddFlowtideStream(b =>
 {
     b.AddPlan(plan);
     b.AddReadWriteFactory(factory);
-    b.WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
+    b.WithStateOptions(() => new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
     {
         PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
         {

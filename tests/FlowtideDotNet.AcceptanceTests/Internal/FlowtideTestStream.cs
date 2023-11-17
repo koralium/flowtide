@@ -40,6 +40,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         int updateCounter = 0;
         FlowtideBuilder flowtideBuilder;
         private int _egressCrashOnCheckpointCount;
+        private FileCachePersistentStorage _fileCachePersistence;
 
         public IReadOnlyList<User> Users  => generator.Users;
 
@@ -85,18 +86,20 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             AddReadResolvers(factory);
             AddWriteResolvers(factory);
 
+            _fileCachePersistence = new FileCachePersistentStorage(new Storage.FileCacheOptions()
+            {
+                DirectoryPath = $"./data/tempFiles/{testName}/persist",
+                SegmentSize = 1024L * 1024 * 1024 * 64
+            }, true);
+
             flowtideBuilder
                 .AddPlan(plan)
                 .SetParallelism(parallelism)
                 .AddReadWriteFactory(factory)
-                .WithStateOptions(new Storage.StateManager.StateManagerOptions()
+                .WithStateOptions(() => new Storage.StateManager.StateManagerOptions()
                 {
                     SerializeOptions = stateSerializeOptions,
-                    PersistentStorage = new FileCachePersistentStorage(new Storage.FileCacheOptions()
-                    {
-                        DirectoryPath = $"./data/tempFiles/{testName}/persist",
-                        SegmentSize = 1024L * 1024 * 1024 * 64
-                    }),
+                    PersistentStorage = _fileCachePersistence,
                     TemporaryStorageOptions = new Storage.FileCacheOptions()
                     {
                         DirectoryPath = $"./data/tempFiles/{testName}/tmp"
@@ -256,6 +259,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (_stream != null)
             {
                 await _stream.DisposeAsync();
+            }
+            if (_fileCachePersistence != null)
+            {
+                _fileCachePersistence.ForceDispose();
             }
         }
     }

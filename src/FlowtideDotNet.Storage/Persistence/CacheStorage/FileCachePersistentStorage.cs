@@ -16,12 +16,14 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 {
     public class FileCachePersistentStorage : IPersistentStorage
     {
+        private readonly bool _ignoreDispose;
         private long _version;
         private FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
 
-        public FileCachePersistentStorage(FileCacheOptions fileCacheOptions)
+        public FileCachePersistentStorage(FileCacheOptions fileCacheOptions, bool ignoreDispose = false)
         {
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, "persitent");
+            this._ignoreDispose = ignoreDispose;
         }
 
         public long CurrentVersion => _version;
@@ -44,6 +46,17 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
         }
 
         public void Dispose()
+        {
+            if (!_ignoreDispose)
+            {
+                m_fileCache.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Force dispose even if ignoreDispose is true.
+        /// </summary>
+        public void ForceDispose()
         {
             m_fileCache.Dispose();
         }

@@ -154,7 +154,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                 var stream = new FlowtideBuilder("stream")
                 .AddPlan(plan)
                 .AddReadWriteFactory(readWriteFactory)
-                .WithStateOptions(new Storage.StateManager.StateManagerOptions()
+                .WithStateOptions(() => new Storage.StateManager.StateManagerOptions()
                 {
                     PersistentStorage = new FileCachePersistentStorage(new Storage.FileCacheOptions())
                 })
@@ -198,7 +198,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                 }
             };
 
-            var stateManager = new StateManagerSync<object>(new StateManagerOptions()
+            var stateManager = new StateManagerSync<object>(() => new StateManagerOptions()
             {
                 CachePageCount = 1000,
                 PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions())
