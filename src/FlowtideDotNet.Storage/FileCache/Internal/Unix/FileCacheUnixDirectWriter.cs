@@ -60,6 +60,19 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
         public FileCacheUnixDirectWriter(string fileName, int sectorSize, FileCacheOptions fileCacheOptions)
         {
             this.alignment = sectorSize;
+
+            var directoryName = Path.GetDirectoryName(fileName);
+            if (directoryName != null && !Directory.Exists(directoryName))
+            {
+                Directory.CreateDirectory(directoryName);
+            }
+
+            // Check if the file already exists, if so delete it
+            if (File.Exists(fileName))
+            {
+                File.Delete(fileName);
+            }
+
             this.fileDescriptor = open(fileName, O_RDWR | O_DIRECT | O_CREAT, S_IRUSR | S_IWUSR);
             if (this.fileDescriptor == -1)
             {
