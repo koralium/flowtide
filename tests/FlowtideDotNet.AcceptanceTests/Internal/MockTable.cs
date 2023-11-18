@@ -107,6 +107,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     {
                         b.Add((int)column);
                     }
+                    else if (column is List<int> listInt)
+                    {
+                        b.Vector(b =>
+                        {
+                            foreach (var item in listInt)
+                            {
+                                b.Add(item);
+                            }
+                        });
+                    }
                     else
                     {
                         throw new NotImplementedException($"{column.GetType().Name}");
