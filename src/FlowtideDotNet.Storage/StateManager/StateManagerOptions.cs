@@ -19,6 +19,15 @@ namespace FlowtideDotNet.Storage.StateManager
     {
         public int CachePageCount { get; set; } = 10000;
 
+        /// <summary>
+        /// Optional: Set a maximum process memory limit for the state manager. If the limit is reached, the state manager will start evicting pages from the cache.
+        /// This can help keep the application at a steady memory usage, but can also cause performance issues if the limit is too low.
+        /// Setting this value increases cache page count if memory usage is low.
+        /// 
+        /// -1 disables the limit and only uses cache page count.
+        /// </summary>
+        public long MaxProcessMemory { get; set; } = -1;
+
         [Obsolete]
         public IDevice? LogDevice { get; set; }
 
