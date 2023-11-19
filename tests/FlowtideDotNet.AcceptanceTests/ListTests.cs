@@ -70,5 +70,20 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(new[] { new { list = Orders.Select(x => new KeyValuePair<string, int>(x.OrderKey.ToString(), x.OrderKey)).ToList() } });
         }
+
+        [Fact]
+        public async Task ListAggWithList()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_agg(list(orderkey, userkey))
+                FROM orders
+                ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Orders.Select(x => new List<int>() { x.OrderKey, x.UserKey }).ToList() } });
+        }
     }
 }

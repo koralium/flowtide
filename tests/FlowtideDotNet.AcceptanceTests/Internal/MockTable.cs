@@ -12,6 +12,7 @@
 
 using FastMember;
 using FlowtideDotNet.Core;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -126,6 +127,22 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                                 v.Map(m =>
                                 {
                                     m.Add(item.Key, item.Value);
+                                });
+                            }
+                        });
+                    }
+                    else if (column is List<List<int>> listListInt)
+                    {
+                        b.Vector(v =>
+                        {
+                            foreach (var item in listListInt)
+                            {
+                                v.Vector(m =>
+                                {
+                                    foreach(var inner in item)
+                                    {
+                                        m.Add(inner);
+                                    }
                                 });
                             }
                         });
