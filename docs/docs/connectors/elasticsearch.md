@@ -28,7 +28,7 @@ The table name in the write relation becomes the index the sink writes to.
 
 ### Example
 
-Having a column named 'id' and also a column matching the configured primary key is required for the sink to function.
+Having a column named '_id' is required for the sink to function.
 
 ```csharp
 sqlBuilder.Sql(@"
