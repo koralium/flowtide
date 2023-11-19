@@ -54,17 +54,10 @@ namespace FlowtideDotNet.Connector.CosmosDB.Tests
                 .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new WaitUntil()))
                 .Build();
             await container.StartAsync();
-
-            //container = new Testcontainers.Elasticsearch.ElasticsearchBuilder()
-            //    .WithEnvironment("xpack.security.enabled", "false")
-            //    .Build();
-            //await container.StartAsync();
-            //container.GetConnectionString();
         }
 
         public ConnectionSettings GetConnectionSettings()
         {
-            //return new ConnectionSettings(new Uri("http://localhost:9200"));
             return new ConnectionSettings(new Uri($"http://localhost:{container.GetMappedPublicPort(9200)}"));
         }
     }
