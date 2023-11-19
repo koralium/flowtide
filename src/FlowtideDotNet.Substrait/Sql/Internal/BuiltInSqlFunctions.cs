@@ -287,6 +287,43 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
+            sqlFunctionRegister.RegisterScalarFunction("map", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count % 2 != 0)
+                {
+                    throw new InvalidOperationException("Map must have an even number of arguments, one for key and one for value.");
+                }
+                MapNestedExpression mapNestedExpression = new MapNestedExpression();
+                mapNestedExpression.KeyValues = new List<KeyValuePair<Expressions.Expression, Expressions.Expression>>();
+                for (int i = 0; i < f.Args.Count; i += 2)
+                {
+                    var keyArg = f.Args[i];
+                    var valArg = f.Args[i + 1];
+                    if (keyArg is FunctionArg.Unnamed keyunnamed && keyunnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression keyFuncExprUnnamed)
+                    {
+                        var keyExpr = visitor.Visit(keyFuncExprUnnamed.Expression, emitData);
+                        
+                        if (valArg is FunctionArg.Unnamed valunnamed && valunnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression valFuncExprUnnamed)
+                        {
+                            var valExpr = visitor.Visit(valFuncExprUnnamed.Expression, emitData);
+                            mapNestedExpression.KeyValues.Add(new KeyValuePair<Expressions.Expression, Expressions.Expression>(
+                                keyExpr.Expr,
+                                valExpr.Expr
+                                ));
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("map does not support the input parameter");
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("map does not support the input parameter");
+                    }
+                }
+                return mapNestedExpression;
+            });
+
 
             sqlFunctionRegister.RegisterAggregateFunction("count", (f, visitor, emitData) =>
             {
