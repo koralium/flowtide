@@ -6,6 +6,16 @@ sidebar_position: 3
 
 ## Nested Type Constructor Expressions
 
+### List
+
+Allows the creation of a list object.
+
+#### SQL Usage
+
+```sql
+SELECT list(col1, col2) FROM ...
+```
+
 ### Map
 
 Allows the creation of a *map* object type. A map is a typical 'json' object with property names and values.

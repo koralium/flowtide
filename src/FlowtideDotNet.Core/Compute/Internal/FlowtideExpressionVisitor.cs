@@ -240,7 +240,52 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return blockExpr;
         }
 
-        
+        public override System.Linq.Expressions.Expression? VisitListNestedExpression(ListNestedExpression listNestedExpression, ParametersInfo state)
+        {
+            var builder = new FlexBuffer(ArrayPool<byte>.Shared);
+            var builderConstant = System.Linq.Expressions.Expression.Constant(builder);
+            List<System.Linq.Expressions.Expression> blockExpressions = new List<System.Linq.Expressions.Expression>();
+
+            var newObjectMethod = typeof(FlexBuffer).GetMethod("NewObject", BindingFlags.Instance | BindingFlags.Public);
+            var startVectorMethod = typeof(FlexBuffer).GetMethod("StartVector", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var addKeyMethod = typeof(FlexBuffer).GetMethod("AddKey", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var addValueMethod = typeof(FlexBuffer).GetMethod("Add", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, new System.Type[] { typeof(FlxValue) });
+            var endVectorMethod = typeof(FlexBuffer).GetMethod("EndVector", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var finishMethod = typeof(FlexBuffer).GetMethod("Finish", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var flxValueFromBytesMethod = typeof(FlxValue).GetMethod("FromBytes", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic, new System.Type[] { typeof(byte[]) });
+            var flxValueToStringMethod = typeof(FlxValueStringFunctions).GetMethod("ToString", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic, new System.Type[] { typeof(FlxValue) });
+            Debug.Assert(newObjectMethod != null);
+            Debug.Assert(startVectorMethod != null);
+            Debug.Assert(addKeyMethod != null);
+
+            var vectorStartVariable = System.Linq.Expressions.Expression.Variable(typeof(int), "vectorStart");
+            var bytesVariable = System.Linq.Expressions.Expression.Variable(typeof(byte[]), "bytes");
+
+            // Create a new object
+            blockExpressions.Add(System.Linq.Expressions.Expression.Call(builderConstant, newObjectMethod));
+            // Start the vector and assign vector start variable
+            blockExpressions.Add(System.Linq.Expressions.Expression.Assign(vectorStartVariable, System.Linq.Expressions.Expression.Call(builderConstant, startVectorMethod)));
+
+            // Add all the key value pairs to the map
+            for (int i = 0; i < listNestedExpression.Values.Count; i++)
+            {
+                var value = listNestedExpression.Values[i];
+                var valueExpr = Visit(value, state);
+                var addValueCall = System.Linq.Expressions.Expression.Call(builderConstant, addValueMethod, valueExpr);
+                blockExpressions.Add(addValueCall);
+            }
+
+            // End vector
+            blockExpressions.Add(System.Linq.Expressions.Expression.Call(builderConstant, endVectorMethod, vectorStartVariable, System.Linq.Expressions.Expression.Constant(false), System.Linq.Expressions.Expression.Constant(false)));
+            // Finish
+            blockExpressions.Add(System.Linq.Expressions.Expression.Assign(bytesVariable, System.Linq.Expressions.Expression.Call(builderConstant, finishMethod)));
+
+            blockExpressions.Add(System.Linq.Expressions.Expression.Call(flxValueFromBytesMethod, bytesVariable));
+
+            var blockExpr = System.Linq.Expressions.Expression.Block(typeof(FlxValue), new List<ParameterExpression>() { vectorStartVariable, bytesVariable }, blockExpressions);
+
+            return blockExpr;
+        }
 
 
     }

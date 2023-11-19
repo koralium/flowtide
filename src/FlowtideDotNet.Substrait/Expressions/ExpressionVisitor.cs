@@ -139,5 +139,17 @@ namespace FlowtideDotNet.Substrait.Expressions
             }
             return default;
         }
+
+        public virtual TOutput? VisitListNestedExpression(ListNestedExpression listNestedExpression, TState state)
+        {
+            if (listNestedExpression.Values != null)
+            {
+                foreach(var val in listNestedExpression.Values)
+                {
+                    Visit(val, state);
+                }
+            }
+            return default;
+        }
     }
 }

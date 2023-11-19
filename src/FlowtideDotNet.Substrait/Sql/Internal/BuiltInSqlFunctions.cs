@@ -324,6 +324,26 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return mapNestedExpression;
             });
 
+            sqlFunctionRegister.RegisterScalarFunction("list", (f, visitor, emitData) =>
+            {
+                ListNestedExpression mapNestedExpression = new ListNestedExpression();
+                mapNestedExpression.Values = new List<Expressions.Expression>();
+                for (int i = 0; i < f.Args.Count; i += 1)
+                {
+                    var arg = f.Args[i];
+                    if (arg is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExprUnnamed)
+                    {
+                        var expr = visitor.Visit(funcExprUnnamed.Expression, emitData);
+                        mapNestedExpression.Values.Add(expr.Expr);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("list does not support the input parameter");
+                    }
+                }
+                return mapNestedExpression;
+            });
+
 
             sqlFunctionRegister.RegisterAggregateFunction("count", (f, visitor, emitData) =>
             {
