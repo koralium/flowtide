@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -43,11 +44,17 @@ namespace FlowtideDotNet.Core
             writer.WriteStartObject();
             for(int i = 0; i < streamEvent.Vector.Length; i++)
             {
-                writer.WritePropertyName(propertyNames[i]);
+                WritePropertyName(writer, i);
                 WriteColumnValue(writer, streamEvent.Vector.GetRef(i), i);
             }
             writer.WriteEndObject();
             writer.Flush();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void WritePropertyName(in Utf8JsonWriter writer, in int index)
+        {
+            writer.WritePropertyName(propertyNames[index]);
         }
 
         protected virtual void WriteColumnValue(in Utf8JsonWriter writer, in FlxValueRef val, in int index)
