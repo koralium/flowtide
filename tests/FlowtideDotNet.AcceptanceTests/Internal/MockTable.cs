@@ -117,6 +117,19 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                             }
                         });
                     }
+                    else if (column is List<KeyValuePair<string, int>> listKeyInt)
+                    {
+                        b.Vector(v =>
+                        {
+                            foreach (var item in listKeyInt)
+                            {
+                                v.Map(m =>
+                                {
+                                    m.Add(item.Key, item.Value);
+                                });
+                            }
+                        });
+                    }
                     else
                     {
                         throw new NotImplementedException($"{column.GetType().Name}");

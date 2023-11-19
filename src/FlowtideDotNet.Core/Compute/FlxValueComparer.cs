@@ -137,6 +137,43 @@ namespace FlowtideDotNet.Core.Compute
                     }
                     return 0;
                 }
+                if (a.ValueType == FlexBuffers.Type.Map)
+                {
+                    var amap = a.AsMap;
+                    var bmap = b.AsMap;
+
+                    // First just go after length of vector as a comparison
+                    var lengthCompare = amap.Length.CompareTo(bmap.Length);
+                    if (lengthCompare != 0)
+                    {
+                        return lengthCompare;
+                    }
+
+                    // Compare each key
+                    for (int i = 0; i < amap.Length; i++)
+                    {
+                        int keyCompare = CompareTo(amap.Keys[i], bmap.Keys[i]);
+                        if (keyCompare != 0)
+                        {
+                            return keyCompare;
+                        }
+                    }
+
+                    // Compare each element in order, if one doesnt match return the compare value
+                    for (int i = 0; i < amap.Length; i++)
+                    {
+                        int valCompare = CompareTo(amap.Values[i], bmap.Values[i]);
+                        if (valCompare != 0)
+                        {
+                            return valCompare;
+                        }
+                    }
+                    return 0;
+                }
+                if (a.ValueType == FlexBuffers.Type.Key)
+                {
+                    return string.Compare(a.AsString, b.AsString);
+                }
                 throw new NotImplementedException();
             }
             if (a._type < b._type)
