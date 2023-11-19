@@ -10,33 +10,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.CosmosDB;
-using FlowtideDotNet.Connector.CosmosDB.Internal;
-using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Connector.ElasticSearch;
+using FlowtideDotNet.Connector.ElasticSearch.Internal;
 using FlowtideDotNet.Substrait.Relations;
+using Nest;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Engine
 {
-    public static class FlowtideCosmosDbReadWriteFactoryExtensions
+    public static class FlowtideElasticsearchReadWriteFactoryExtensions
     {
-        public static ReadWriteFactory AddCosmosDbSink(
-            this ReadWriteFactory readWriteFactory, 
-            string regexPattern,
-            string connectionString,
-            string databaseName,
-            string containerName,
-            Action<WriteRelation>? transform = null)
+        public static ReadWriteFactory AddElasticsearchSink(this ReadWriteFactory factory, string regexPattern, ConnectionSettings options, Action<WriteRelation>? transform = null)
         {
             if (regexPattern == "*")
             {
                 regexPattern = ".*";
             }
-            readWriteFactory.AddWriteResolver((writeRel, opt) =>
+            factory.AddWriteResolver((writeRel, opt) =>
             {
                 var regexResult = Regex.Match(writeRel.NamedObject.DotSeperated, regexPattern, RegexOptions.IgnoreCase);
                 if (!regexResult.Success)
@@ -45,14 +40,14 @@ namespace FlowtideDotNet.Core.Engine
                 }
                 transform?.Invoke(writeRel);
 
-                return new CosmosDbSink(new FlowtideCosmosOptions()
+                FlowtideElasticsearchOptions flowtideElasticsearchOptions = new FlowtideElasticsearchOptions()
                 {
-                    ConnectionString = connectionString,
-                    ContainerName = containerName,
-                    DatabaseName = databaseName
-                }, writeRel, opt);
+                    ConnectionSettings = options
+                };
+
+                return new ElasticSearchSink(writeRel, flowtideElasticsearchOptions, Operators.Write.ExecutionMode.OnCheckpoint, opt);
             });
-            return readWriteFactory;
+            return factory;
         }
     }
 }

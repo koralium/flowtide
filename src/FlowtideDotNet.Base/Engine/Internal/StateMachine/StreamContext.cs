@@ -168,8 +168,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 this._state = state;
                 this._state.SetContext(this);
-                this._state.Initialize(previous);
             }
+            this._state.Initialize(previous);
             return Task.CompletedTask;
         }
 
@@ -415,10 +415,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task StartAsync()
         {
-            lock(_contextLock)
-            {
-                return _state!.StartAsync();
-            }
+            return _state!.StartAsync();
         }
 
         internal Task DeleteAsync()
