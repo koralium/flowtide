@@ -11,12 +11,14 @@
 // limitations under the License.
 
 using FlexBuffers;
+using System;
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks.Sources;
 using Type = FlexBuffers.Type;
 
 namespace FlowtideDotNet.Core.Flexbuffer
@@ -306,6 +308,16 @@ namespace FlowtideDotNet.Core.Flexbuffer
                     {
                         sizeWidth <<= 1;
                         size = (int)ReadULong(_buffer, indirectOffset - sizeWidth, (byte)sizeWidth);
+                    }
+                    return new FlxString(_buffer.Slice(indirectOffset, size));
+                }
+                if (_type == Type.Key)
+                {
+                    var indirectOffset = ComputeIndirectOffset(_buffer, _offset, _parentWidth);
+                    var size = 0;
+                    while (indirectOffset + size < _buffer.Length && _buffer[indirectOffset + size] != 0)
+                    {
+                        size++;
                     }
                     return new FlxString(_buffer.Slice(indirectOffset, size));
                 }
