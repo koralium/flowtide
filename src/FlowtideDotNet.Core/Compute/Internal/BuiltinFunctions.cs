@@ -24,6 +24,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             BuiltInRoundingFunctions.AddBuiltInRoundingFunctions(functionsRegister);
             BuiltInDatetimeFunctions.AddBuiltInDatetimeFunctions(functionsRegister);
             BuiltInListFunctions.AddListFunctions(functionsRegister);
+            BuiltInGuidFunctions.AddBuiltInGuidFunctions(functionsRegister);
         }
     }
 }
