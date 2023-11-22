@@ -108,6 +108,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     {
                         b.Add((int)column);
                     }
+                    else if (column is Guid guid)
+                    {
+                        var bytes = guid.ToByteArray();
+                        b.Add(bytes);
+                    }
                     else if (column is List<int> listInt)
                     {
                         b.Vector(b =>

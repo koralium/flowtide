@@ -73,6 +73,12 @@ namespace FlowtideDotNet.Core.Compute
                     }
                     return 0;
                 }
+                if (a.ValueType == FlexBuffers.Type.Blob)
+                {
+                    var ablob = a.AsBlob;
+                    var bblob = b.AsBlob;
+                    return ablob.SequenceCompareTo(bblob);
+                }
                 throw new NotImplementedException();
             }
             return tComp;
@@ -173,6 +179,12 @@ namespace FlowtideDotNet.Core.Compute
                 if (a.ValueType == FlexBuffers.Type.Key)
                 {
                     return string.Compare(a.AsString, b.AsString);
+                }
+                if (a.ValueType == FlexBuffers.Type.Blob)
+                {
+                    var ablob = a.AsBlob;
+                    var bblob = b.AsBlob;
+                    return ablob.SequenceCompareTo(bblob);
                 }
                 throw new NotImplementedException();
             }

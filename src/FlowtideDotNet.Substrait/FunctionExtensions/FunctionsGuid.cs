@@ -12,22 +12,15 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.AcceptanceTests.Entities
+namespace FlowtideDotNet.Substrait.FunctionExtensions
 {
-    public class Order
+    public static class FunctionsGuid
     {
-        [Key]
-        public int OrderKey { get; set; }
-
-        public int UserKey { get; set; }
-
-        public DateTime Orderdate { get; set; }
-
-        public Guid GuidVal { get; set; }
+        public const string Uri = "/functions_guid.yaml";
+        public const string ParseGuid = "parse_guid";
     }
 }

@@ -19,6 +19,7 @@ using System.Data;
 using System.Data.Common;
 using System.Text;
 using Microsoft.VisualBasic;
+using System.Buffers.Binary;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
@@ -211,6 +212,20 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             }
 
                             builder.Add(reader.GetDouble(index));
+                        });
+                        break;
+                    case "uniqueidentifier":
+                        columns.Add((reader, builder) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                builder.AddNull();
+                                return;
+                            }
+
+                            var guid = reader.GetGuid(index);
+                            var bytes = guid.ToByteArray();
+                            builder.Add(bytes);
                         });
                         break;
                     default:
@@ -751,6 +766,19 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         return null;
                     }
                     return c.AsLong;
+                };
+            }
+            if (t.Equals(typeof(Guid)))
+            {
+                return (e) =>
+                {
+                    var c = e.Vector.Get(index);
+                    if (c.IsNull)
+                    {
+                        return null;
+                    }
+                    var blob = c.AsBlob;
+                    return new Guid(blob);
                 };
             }
 
