@@ -49,7 +49,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         {
             this.connectionStringFunc = connectionStringFunc;
             this.writeRelation = writeRelation;
-            tmpTableName = $"tmp_{Guid.NewGuid().ToString().Replace("-", "")}";
+            tmpTableName = GetTmpTableName();
+        }
+
+        internal string GetTmpTableName()
+        {
+            return $"#tmp_{Guid.NewGuid().ToString("N")}";
         }
 
         public override string DisplayName => "SQL Server Sink";
