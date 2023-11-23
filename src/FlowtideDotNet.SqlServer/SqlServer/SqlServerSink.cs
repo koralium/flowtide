@@ -157,9 +157,9 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             m_dataTable.Columns.Add("md_operation");
             foreach (var column in dbSchema)
             {
-                if (column.DataType != null)
+                if (column.DataType == typeof(Guid))
                 {
-                    m_dataTable.Columns.Add(column.ColumnName, column.DataType);
+                    m_dataTable.Columns.Add(column.ColumnName, typeof(Guid));
                 }
                 else
                 {
