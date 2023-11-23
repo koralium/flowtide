@@ -157,7 +157,15 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             m_dataTable.Columns.Add("md_operation");
             foreach (var column in dbSchema)
             {
-                m_dataTable.Columns.Add(column.ColumnName);
+                if (column.DataType != null)
+                {
+                    m_dataTable.Columns.Add(column.ColumnName, column.DataType);
+                }
+                else
+                {
+                    m_dataTable.Columns.Add(column.ColumnName);
+                }
+                
             }
 
             m_mapRowFunc = SqlServerUtils.GetDataRowMapFunc(dbSchema, m_primaryKeys);
