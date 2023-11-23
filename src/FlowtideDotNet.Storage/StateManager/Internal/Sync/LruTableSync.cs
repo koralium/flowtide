@@ -222,6 +222,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 else
                 {
                     m_lastSeenCacheHits = cacheHitsLocal;
+                    m_sameCaheHitsCount = 0;
                     return;
                 }
             }
