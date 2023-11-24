@@ -788,6 +788,19 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     return new Guid(blob);
                 };
             }
+            if (t.Equals(typeof(byte[])))
+            {
+                return (e) =>
+                {
+                    var c = e.Vector.Get(index);
+                    if (c.IsNull)
+                    {
+                        return null;
+                    }
+
+                    return c.AsBlob.ToArray();
+                };
+            }
 
             throw new NotImplementedException();
         }
