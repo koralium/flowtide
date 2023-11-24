@@ -94,6 +94,11 @@ namespace FlowtideDotNet.Core
                 writer.WriteStringValue(flxValue.AsFlxString.Span);
                 return;
             }
+            if (flxValue.ValueType == FlexBuffers.Type.Decimal)
+            {
+                writer.WriteNumberValue(flxValue.AsDecimal);
+                return;
+            }
             if (flxValue.ValueType == FlexBuffers.Type.Vector)
             {
                 var vec = flxValue.AsVector;

@@ -13,6 +13,7 @@
 using FlexBuffers;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -58,6 +59,16 @@ namespace FlowtideDotNet.Core.Tests.Flexbuff
             var actualRef = FlxValue.FromMemory(bytes).AsVector.GetRef(0).AsDecimal;
             Assert.Equal(expected, actual);
             Assert.Equal(expected, actualRef);
+        }
+
+        [Fact]
+        public void TestDecimalToJson()
+        {
+            decimal expectedValue = 12345678.91011M;
+            var decimalBytes = FlexBuffer.SingleValue(expectedValue);
+            var flxVal = FlxValue.FromMemory(decimalBytes);
+            var actual = flxVal.ToJson;
+            Assert.Equal(expectedValue.ToString(CultureInfo.CurrentCulture), actual);
         }
     }
 }
