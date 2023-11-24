@@ -380,7 +380,6 @@ namespace FlexBuffers
             // Write decimal
             decimal.GetBits(value, MemoryMarshal.Cast<byte, int>(span.Slice((int)_offset, 16)));
             _offset = newOffset;
-            _offset = newOffset;
             _stack.Add(StackValue.Value(decimalOffset, BitWidth.Width8, Type.Decimal));
             return Type.Decimal;
         }
