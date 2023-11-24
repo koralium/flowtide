@@ -454,6 +454,10 @@ namespace FlexBuffers
                 {
                     return $"\"{Convert.ToBase64String(AsBlob)}\"";
                 }
+                if (_type == Type.Decimal)
+                {
+                    return AsDecimal.ToString(CultureInfo.CurrentCulture);
+                }
                 
                 throw new Exception($"Unexpected type {_type}");
             }
