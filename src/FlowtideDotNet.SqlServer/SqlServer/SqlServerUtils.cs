@@ -165,7 +165,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                                 return;
                             }
 
-                            builder.Add((double)reader.GetDecimal(index));
+                            builder.Add(reader.GetDecimal(index));
                         });
                         break;
                     case "date":
@@ -800,7 +800,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     {
                         return null;
                     }
-                    return c.AsDouble;
+                    return c.AsDecimal;
                 };
             }
             if (t.Equals(typeof(bool)))
