@@ -17,6 +17,7 @@ using System.Collections;
 using System.Globalization;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace FlexBuffers
@@ -328,6 +329,20 @@ namespace FlexBuffers
                 }
                 
                 throw new Exception($"Type {_type} is not convertible to string");
+            }
+        }
+
+        public decimal AsDecimal
+        {
+            get
+            {
+                if (_type == Type.Decimal)
+                {
+                    var span = _buffer.Span;
+                    var indirectOffset = ComputeIndirectOffset(span, _offset, _parentWidth);
+                    return new decimal(MemoryMarshal.Cast<byte, int>(span.Slice(indirectOffset, 16)));
+                }
+                throw new Exception($"Type {_type} is not convertible to decimal");
             }
         }
         

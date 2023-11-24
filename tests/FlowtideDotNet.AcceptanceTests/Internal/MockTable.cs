@@ -152,6 +152,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                             }
                         });
                     }
+                    else if (column is decimal dec)
+                    {
+                        b.Add(dec);
+                    }
                     else
                     {
                         throw new NotImplementedException($"{column.GetType().Name}");

@@ -83,6 +83,7 @@ namespace FlexBuffers
         void Vector(Action<IFlexBufferVectorBuilder> vector);
 
         void Add(FlxValue flxValue);
+        void Add(decimal value);
     }
 
     internal struct FlexBufferMapBuilder : IFlexBufferMapBuilder
@@ -430,6 +431,11 @@ namespace FlexBuffers
         public void Add(FlxValue flxValue)
         {
             _buffer.Add(flxValue);
+        }
+
+        public void Add(decimal value)
+        {
+            _buffer.Add(value);
         }
     }
 }
