@@ -720,6 +720,19 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     return DateTimeOffset.FromUnixTimeMilliseconds(c.AsLong / 1000);
                 };
             }
+            if (t.Equals(typeof(double)))
+            {
+                return (e) =>
+                {
+                    var c = e.Vector.Get(index);
+                    if (c.IsNull)
+                    {
+                        return null;
+                    }
+
+                    return c.AsDouble;
+                };
+            }
             if (t.Equals(typeof(decimal)))
             {
                 return (e) =>
