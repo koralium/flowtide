@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                                 builder.AddNull();
                                 return;
                             }
-                            
+
                             builder.Add(reader.GetInt32(index));
                         });
                         break;
@@ -296,9 +296,9 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 {
                     filters = pkFilters;
                 }
-                
+
             }
-            
+
             if (filters != null)
             {
                 stringBuilder.AppendLine($"WHERE {filters}");
@@ -352,7 +352,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             var joinCondition = string.Join(" AND ", primaryKeyEquals);
 
             stringBuilder.Append("SELECT ");
-            
+
             stringBuilder.Append(string.Join(", ", columnSelects));
 
             stringBuilder.Append(", c.SYS_CHANGE_VERSION, c.SYS_CHANGE_OPERATION from CHANGETABLE(CHANGES ");
@@ -423,7 +423,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 }
                 stringBuilder.AppendLine(string.Join(", ", updateSets));
             }
-            
+
 
             // Add delete statement
             stringBuilder.AppendLine($"WHEN MATCHED AND src.[md_operation] = 'D' THEN");
@@ -438,7 +438,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 columnNames.Add(col.ColumnName);
             }
 
-                stringBuilder.AppendLine($"INSERT ({string.Join(", ", columnNames)})");
+            stringBuilder.AppendLine($"INSERT ({string.Join(", ", columnNames)})");
             stringBuilder.AppendLine($"VALUES ({string.Join(", ", columnNames)});");
 
             stringBuilder.Append("DELETE FROM ");
@@ -509,7 +509,14 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 var columnType = column.DataTypeName;
                 if (columnType == "varchar" || columnType == "nvarchar" || columnType == "char")
                 {
-                    columnType = $"{columnType}({column.ColumnSize})";
+                    if (column.ColumnSize > 8000)
+                    {
+                        columnType = $"{columnType}(MAX)";
+                    }
+                    else
+                    {
+                        columnType = $"{columnType}({column.ColumnSize})";
+                    }
                 }
                 if (columnType == "decimal")
                 {
@@ -535,7 +542,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         public static async Task<List<string>> GetPrimaryKeys(SqlConnection connection, string tableFullName)
         {
             var splitName = tableFullName.Split('.');
-            
+
             if (splitName.Length != 3)
             {
                 throw new InvalidOperationException("Table name must contain database.schema.tablename");
@@ -604,10 +611,10 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         }
 
         public static async Task<(List<StreamEvent>, Dictionary<string, object>)> InitialSelect(
-            ReadRelation readRelation, 
-            SqlConnection sqlConnection, 
-            List<string> primaryKeys, 
-            int batchSize, 
+            ReadRelation readRelation,
+            SqlConnection sqlConnection,
+            List<string> primaryKeys,
+            int batchSize,
             Dictionary<string, object> pkValues,
             Func<SqlDataReader, StreamEvent> transformFunction,
             string? filter)
@@ -621,12 +628,12 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             else
             {
                 command.CommandText = CreateInitialSelectStatement(readRelation, primaryKeys, batchSize, true, filter);
-                foreach(var pk in pkValues)
+                foreach (var pk in pkValues)
                 {
                     command.Parameters.Add(new SqlParameter(pk.Key, pk.Value));
                 }
             }
-            
+
             using var reader = await command.ExecuteReaderAsync();
 
             List<int> primaryKeyOrdinals = new List<int>();
@@ -663,7 +670,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         public static Func<StreamEvent, object?> GetDataTableValueMap(DbColumn dbColumn, int index)
         {
             var t = dbColumn.DataType;
-            
+
             if (t.Equals(typeof(string)))
             {
                 return (e) =>
