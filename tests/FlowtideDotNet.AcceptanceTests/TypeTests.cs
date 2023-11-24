@@ -12,6 +12,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -40,6 +41,24 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             AssertCurrentDataEqual(Orders.Where(x => x.GuidVal.Equals(order.GuidVal)).Select(x => new { x.GuidVal } ));
+        }
+
+        [Fact]
+        public async Task TestDecimal()
+        {
+            GenerateData();
+            var order = Orders.First();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+            Money
+            FROM orders
+            WHERE money < 500
+            ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.Where(x => x.Money < 500).Select(x => new { x.Money }));
+
         }
     }
 }
