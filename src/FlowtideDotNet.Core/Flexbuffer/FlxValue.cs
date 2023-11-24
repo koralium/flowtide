@@ -572,7 +572,7 @@ namespace FlexBuffers
             return this[index];
         }
 
-        public FlxValueRef GetRef(in int index)
+        public FlxValueRef GetRef(scoped in int index)
         {
             var span = _buffer.Span;
             return GetRefWithSpan(index, _buffer.Span);
@@ -619,7 +619,7 @@ namespace FlexBuffers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public FlxValueRef GetRefWithSpan(in int index, Span<byte> span)
+        public FlxValueRef GetRefWithSpan(scoped in int index, scoped in Span<byte> span)
         {
             //Debug.Assert(index < 0 || index >= _length, $"Bad index {index}, should be 0...{_length}");
             if (index < 0 || index >= _length)

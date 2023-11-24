@@ -42,10 +42,10 @@ namespace FlowtideDotNet.Core
         {
             var writer = new Utf8JsonWriter(stream);
             writer.WriteStartObject();
-            for(int i = 0; i < streamEvent.Vector.Length; i++)
+            for(int i = 0; i < streamEvent.Length; i++)
             {
                 WritePropertyName(writer, i);
-                WriteColumnValue(writer, streamEvent.Vector.GetRef(i), i);
+                WriteColumnValue(writer, streamEvent.GetColumnRef(i), i);
             }
             writer.WriteEndObject();
             writer.Flush();

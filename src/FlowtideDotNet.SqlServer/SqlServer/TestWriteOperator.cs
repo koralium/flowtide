@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Core.Tests.Acceptance
                 for (int i = 0; i < primaryKeyIds.Count; i++)
                 {
                     var primaryKeyIndex = primaryKeyIds[i];
-                    key.Add(writeRelation.TableSchema.Names[primaryKeyIndex], m.Vector[primaryKeyIndex]);
+                    key.Add(writeRelation.TableSchema.Names[primaryKeyIndex], m.GetColumn(primaryKeyIndex));
                 }
                 if (m.GetColumn(0).AsString.Equals("PILAN\\JENU"))
                 {

@@ -70,9 +70,9 @@ namespace FlowtideDotNet.Core.Operators.Unwrap
                 {
                     var filterEvent = StreamEvent.Create(e.Weight, 0, b =>
                     {
-                        for (int i = 0; i < e.Vector.Length; i++)
+                        for (int i = 0; i < e.Length; i++)
                         {
-                            b.Add(e.Vector[i]);
+                            b.Add(e.GetColumn(i));
                         }
                         for (int i = 0; i < unwrapRow.Count; i++)
                         {
@@ -86,21 +86,21 @@ namespace FlowtideDotNet.Core.Operators.Unwrap
                             for (int i = 0; i < unwrapRelation.Emit!.Count; i++)
                             {
                                 var index = unwrapRelation.Emit[i];
-                                if (index >= e.Vector.Length)
+                                if (index >= e.Length)
                                 {
-                                    b.Add(unwrapRow[index - e.Vector.Length]);
+                                    b.Add(unwrapRow[index - e.Length]);
                                 }
                                 else
                                 {
-                                    b.Add(e.Vector[index]);
+                                    b.Add(e.GetColumn(index));
                                 }
                             }
                         }
                         else
                         {
-                            for (int i = 0; i < e.Vector.Length; i++)
+                            for (int i = 0; i < e.Length; i++)
                             {
-                                b.Add(e.Vector[i]);
+                                b.Add(e.GetColumn(i));
                             }
                             for (int i = 0; i < unwrapRow.Count; i++)
                             {

@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
         {
             for (int i = 0; i < length; i++)
             {
-                var c = FlxValueRefComparer.CompareTo(x.Vector.GetRef(i), y.Vector.GetRef(i));
+                var c = FlxValueRefComparer.CompareTo(x.GetColumnRef(i), y.GetColumnRef(i));
                 if (c != 0)
                 {
                     return c;
@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
         {
             for (int i = 0; i < keyLength; i++)
             {
-                var c = FlxValueRefComparer.CompareTo(x.Vector.GetRef(i), y.Vector.GetRef(i));
+                var c = FlxValueRefComparer.CompareTo(x.GetColumnRef(i), y.GetColumnRef(i));
                 if (c != 0)
                 {
                     return false;
@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
         {
             var vector = FlexBufferBuilder.Vector(v =>
             {
-                for (int i = 0; i < groupingKey.Vector.Length; i++)
+                for (int i = 0; i < groupingKey.Length; i++)
                 {
                     v.Add(groupingKey.GetColumn(i));
                 }
@@ -173,7 +173,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             }
             var vector = FlexBufferBuilder.Vector(v =>
             {
-                for (int i = 0; i < groupingKey.Vector.Length; i++)
+                for (int i = 0; i < groupingKey.Length; i++)
                 {
                     v.Add(groupingKey.GetColumn(i));
                 }

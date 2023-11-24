@@ -25,13 +25,14 @@
 */
 using FASTER.core;
 using FlexBuffers;
+using FlowtideDotNet.Core.Flexbuffer;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Core
 {
-    public struct StreamEvent : ILogEnqueueEntry
+    public struct StreamEvent : IRowEvent
     {
         private readonly Memory<byte> _data;
         private int _weight;
@@ -54,9 +55,11 @@ namespace FlowtideDotNet.Core
             _iteration = iteration;
         }
 
-        public Span<byte> Span => _data.Span;
+        public int Length => _vector.Length;
 
-        public Memory<byte> Memory => _data;
+        //public Span<byte> Span => _data.Span;
+
+        //public Memory<byte> Memory => _data;
 
         public int Weight
         {
@@ -72,20 +75,26 @@ namespace FlowtideDotNet.Core
 
         public uint Iteration => _iteration;
 
-        public FlxVector Vector => _vector;
+        //public FlxVector Vector => _vector;
 
         public int SerializedLength => _data.Length + 4;
 
-        public void SerializeTo(Span<byte> dest)
-        {
-            BinaryPrimitives.WriteInt32LittleEndian(dest, _weight);
-            Span.CopyTo(dest.Slice(4));
-        }
+        //public void SerializeTo(Span<byte> dest)
+        //{
+        //    BinaryPrimitives.WriteInt32LittleEndian(dest, _weight);
+        //    Span.CopyTo(dest.Slice(4));
+        //}
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public FlxValue GetColumn(int index)
         {
-            return Vector[index];
+            return _vector[index];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public FlxValueRef GetColumnRef(in int index)
+        {
+            return _vector.GetRef(index);
         }
 
         public static StreamEvent CreateFromWal(Memory<byte> bytes)

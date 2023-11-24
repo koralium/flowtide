@@ -668,7 +668,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -680,7 +680,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -692,7 +692,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -704,7 +704,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -716,7 +716,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -748,7 +748,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -760,7 +760,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -772,7 +772,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;

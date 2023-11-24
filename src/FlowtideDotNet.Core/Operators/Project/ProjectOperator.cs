@@ -82,27 +82,26 @@ namespace FlowtideDotNet.Core.Operators.Project
                 }
                 var projectedEvent = StreamEvent.Create(e.Weight, 0, b =>
                 {
-                    var vectorSpan = e.Vector.Span;
                     if (projectRelation.EmitSet)
                     {
                         for (int i = 0; i < projectRelation.Emit!.Count; i++)
                         {
                             var index = projectRelation.Emit[i];
-                            if (index >= e.Vector.Length)
+                            if (index >= e.Length)
                             {
-                                b.Add(extraFelds[index - e.Vector.Length]);
+                                b.Add(extraFelds[index - e.Length]);
                             }
                             else
                             {
-                                b.Add(e.Vector.GetWithSpan(index, vectorSpan));
+                                b.Add(e.GetColumn(index));
                             }
                         }
                     }
                     else
                     {
-                        for(int i = 0; i < e.Vector.Length; i++)
+                        for(int i = 0; i < e.Length; i++)
                         {
-                            b.Add(e.Vector.GetWithSpan(i, vectorSpan));
+                            b.Add(e.GetColumn(i));
                         }
                         for (int i = 0; i < extraFelds.Length; i++)
                         {

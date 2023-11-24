@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
 
                         for (int i = 0; i < _emitList.Count; i++)
                         {
-                            _flexBuffer.Add(e.Vector[_emitList[i]]);
+                            _flexBuffer.Add(e.GetColumn(_emitList[i]));
                         }
 
                         _flexBuffer.EndVector(vectorStart, false, false);

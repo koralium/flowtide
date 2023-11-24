@@ -198,7 +198,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                         var vectorStart = _flexBufferNewValue.StartVector();
                         for (int i = 0; i < groupExpressions.Count; i++)
                         {
-                            _flexBufferNewValue.Add(kv.Key.Vector[i]);
+                            _flexBufferNewValue.Add(kv.Key.GetColumn(i));
                         }
                         for (int i = 0; i < val.MeasureStates.Length; i++)
                         {

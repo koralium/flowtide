@@ -188,11 +188,7 @@ namespace FlowtideDotNet.Core.Compute
                 }
                 throw new NotImplementedException();
             }
-            if (a._type < b._type)
-            {
-                return -1;
-            }
-            return 1;
+            return a._type - b._type;
         }
     }
 }

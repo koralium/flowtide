@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                     var stringBuilder = new StringBuilder();
                     foreach(var i in normalizationRelation.KeyIndex)
                     {
-                        stringBuilder.Append(e.Vector[i].ToJson);
+                        stringBuilder.Append(e.GetColumn(i).ToJson);
                         stringBuilder.Append('|');
                     }
                     var key = stringBuilder.ToString();
@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                     var stringBuilder = new StringBuilder();
                     foreach (var i in normalizationRelation.KeyIndex)
                     {
-                        stringBuilder.Append(e.Vector[i].ToJson);
+                        stringBuilder.Append(e.GetColumn(i).ToJson);
                         stringBuilder.Append('|');
                     }
                     var key = stringBuilder.ToString();
@@ -149,20 +149,19 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
             var ingressInput = IngressData.Create(b =>
             {
-                var inputSpan = input.Vector.Span;
                 if (normalizationRelation.EmitSet)
                 {
                     for (int i = 0; i < normalizationRelation.Emit!.Count; i++)
                     {
                         var index = normalizationRelation.Emit[i];
-                        b.Add(input.Vector.GetWithSpan(index, inputSpan));
+                        b.Add(input.GetColumn(index));
                     }
                 }
                 else
                 {
-                    for (int i = 0; i < input.Vector.Length; i++)
+                    for (int i = 0; i < input.Length; i++)
                     {
-                        b.Add(input.Vector.GetWithSpan(i, inputSpan));
+                        b.Add(input.GetColumn(i));
                     }
                 }
             });
