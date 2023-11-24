@@ -100,13 +100,16 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             for (int i = 0; i < dbColumns.Count; i++)
             {
                 var column = dbColumns[i];
-
                 int index = i;
                 switch (column.DataTypeName)
                 {
+                    case "nchar":
                     case "char":
                     case "varchar":
                     case "nvarchar":
+                    case "ntext":
+                    case "text":
+                    case "xml":
                         columns.Add((reader, builder) =>
                         {
                             if (reader.IsDBNull(index))
@@ -152,6 +155,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             builder.Add(reader.GetInt32(index));
                         });
                         break;
+                    case "money":
                     case "decimal":
                         columns.Add((reader, builder) =>
                         {
@@ -165,6 +169,8 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         });
                         break;
                     case "date":
+                    case "datetime":
+                    case "smalldatetime":
                     case "datetime2":
                         columns.Add((reader, builder) =>
                         {
@@ -174,8 +180,20 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                                 return;
                             }
                             var dateTime = reader.GetDateTime(index);
-                            var unixTime = ((DateTimeOffset)dateTime).ToUnixTimeMilliseconds() * 1000;
-                            builder.Add(unixTime);
+                            var ms = dateTime.Subtract(DateTime.UnixEpoch).Ticks;
+                            builder.Add(ms);
+                        });
+                        break;
+                    case "time":
+                        columns.Add((reader, builder) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                builder.AddNull();
+                                return;
+                            }
+                            var time = reader.GetTimeSpan(index);
+                            builder.Add(time.Ticks);
                         });
                         break;
                     case "bit":
@@ -202,6 +220,18 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             builder.Add(reader.GetInt64(index));
                         });
                         break;
+                    case "real":
+                        columns.Add((reader, builder) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                builder.AddNull();
+                                return;
+                            }
+
+                            builder.Add(reader.GetFloat(index));
+                        });
+                        break;
                     case "float":
                         columns.Add((reader, builder) =>
                         {
@@ -226,6 +256,33 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             var guid = reader.GetGuid(index);
                             var bytes = guid.ToByteArray();
                             builder.Add(bytes);
+                        });
+                        break;
+                    case "binary":
+                    case "varbinary":
+                        columns.Add((reader, builder) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                builder.AddNull();
+                                return;
+                            }
+
+                            var binary = reader.GetSqlBinary(index);
+                            builder.Add(binary.Value);
+                        });
+                        break;
+                    case "image":
+                        columns.Add((reader, builder) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                builder.AddNull();
+                                return;
+                            }
+
+                            var binary = reader.GetSqlBinary(index);
+                            builder.Add(binary.Value);
                         });
                         break;
                     default:
@@ -507,7 +564,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             foreach (var column in columns)
             {
                 var columnType = column.DataTypeName;
-                if (columnType == "varchar" || columnType == "nvarchar" || columnType == "char")
+                if (columnType == "varchar" || columnType == "nvarchar" || columnType == "char" || columnType == "nchar" || columnType == "binary" || columnType == "varbinary")
                 {
                     if (column.ColumnSize > 8000)
                     {
@@ -518,10 +575,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         columnType = $"{columnType}({column.ColumnSize})";
                     }
                 }
-                if (columnType == "decimal")
+                else if (columnType == "decimal")
                 {
                     columnType = $"{columnType}({column.NumericPrecision}, {column.NumericScale})";
                 }
+
                 columnsData.Add($"{column.ColumnName} {columnType}");
             }
             stringBuilder.AppendLine("(");
@@ -704,10 +762,10 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     {
                         return null;
                     }
-                    return DateTimeOffset.FromUnixTimeMilliseconds(c.AsLong / 1000);
+                    return DateTimeOffset.UnixEpoch.AddTicks(c.AsLong).DateTime;
                 };
             }
-            if (t.Equals(typeof(DateTimeOffset)))
+            if (t.Equals(typeof(double))) // float
             {
                 return (e) =>
                 {
@@ -717,10 +775,10 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         return null;
                     }
 
-                    return DateTimeOffset.FromUnixTimeMilliseconds(c.AsLong / 1000);
+                    return c.AsDouble;
                 };
             }
-            if (t.Equals(typeof(double)))
+            if (t.Equals(typeof(float))) // real
             {
                 return (e) =>
                 {
@@ -814,7 +872,20 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     return new Guid(blob);
                 };
             }
-            if (t.Equals(typeof(byte[])))
+            if (t.Equals(typeof(byte))) // tiny int
+            {
+                return (e) =>
+                {
+                    var c = e.Vector.Get(index);
+                    if (c.IsNull)
+                    {
+                        return null;
+                    }
+
+                    return c.AsLong;
+                };
+            }
+            if (t.Equals(typeof(byte[]))) // binary
             {
                 return (e) =>
                 {
@@ -827,7 +898,20 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     return c.AsBlob.ToArray();
                 };
             }
+            if (t.Equals(typeof(TimeSpan))) // time(7)
+            {
+                return (e) =>
+                {
+                    var c = e.Vector.Get(index);
+                    if (c.IsNull)
+                    {
+                        return null;
+                    }
 
+                    return TimeSpan.FromTicks(c.AsLong);
+                };
+            }
+         
             throw new NotImplementedException();
         }
 
