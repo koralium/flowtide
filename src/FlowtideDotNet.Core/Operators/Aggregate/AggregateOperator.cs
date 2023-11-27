@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             // If no group expressions, then we are just doing a global aggregation, so we fetch the new value and compare it with the old
             if (groupExpressions == null || groupExpressions.Count == 0)
             {
-                var (found, val) = await _tree.GetValue(new RowEvent(0, 0, new CompactRowData(EmptyVector, FlxValue.FromMemory(EmptyVector).AsVector), null));
+                var (found, val) = await _tree.GetValue(new RowEvent(0, 0, new CompactRowData(EmptyVector, FlxValue.FromMemory(EmptyVector).AsVector)));
 
                 if (found)
                 {
@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                     var vectorStart = _flexBufferNewValue.StartVector();
                     for (int i = 0; i < val.MeasureStates.Length; i++)
                     {
-                        var measureResult = await _measures[i].GetValue(new RowEvent(0, 0, new CompactRowData(EmptyVector, FlxValue.FromMemory(EmptyVector).AsVector), null), val.MeasureStates[i]);
+                        var measureResult = await _measures[i].GetValue(new RowEvent(0, 0, new CompactRowData(EmptyVector, FlxValue.FromMemory(EmptyVector).AsVector)), val.MeasureStates[i]);
                         _flexBufferNewValue.Add(measureResult);
                     }
                     _flexBufferNewValue.EndVector(vectorStart, false, false);

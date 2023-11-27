@@ -26,19 +26,37 @@ namespace FlowtideDotNet.Core
         private readonly int _length;
         private readonly IRowData _left;
         private readonly IRowData _right;
+        private readonly IReadOnlyList<int>? _emitList;
 
-        public JoinedRowData(IRowData left, IRowData right)
+        public JoinedRowData(IRowData left, IRowData right, IReadOnlyList<int>? emitList)
         {
             _leftLength = left.Length;
             _length = left.Length + right.Length;
             _left = left;
             _right = right;
+            _emitList = emitList;
         }
 
-        public int Length => _length;
+        public int Length
+        {
+            get
+            {
+                if (_emitList != null)
+                {
+                    return _emitList.Count;
+                }
+                return _length;
+            }
+        }
+
+
 
         public FlxValue GetColumn(int index)
         {
+            if (_emitList != null)
+            {
+                index = _emitList[index];
+            }
             if (index < _leftLength)
             {
                 return _left.GetColumn(index);
@@ -48,11 +66,16 @@ namespace FlowtideDotNet.Core
 
         public FlxValueRef GetColumnRef(scoped in int index)
         {
-            if (index < _leftLength)
+            var mappedIndex = index;
+            if (_emitList != null)
             {
-                return _left.GetColumnRef(index);
+                mappedIndex = _emitList[index];
             }
-            int rightIndex = index - _leftLength;
+            if (mappedIndex < _leftLength)
+            {
+                return _left.GetColumnRef(mappedIndex);
+            }
+            int rightIndex = mappedIndex - _leftLength;
             return _right.GetColumnRef(rightIndex);
         }
     }

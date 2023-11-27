@@ -149,7 +149,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
                 }
                 v.Add(column);
             });
-            var row = new RowEvent((int)weight, 0, new CompactRowData(vector, FlxValue.FromMemory(vector).AsVector), null);
+            var row = new RowEvent((int)weight, 0, new CompactRowData(vector, FlxValue.FromMemory(vector).AsVector));
             await singleton.Tree.RMW(row, (int)weight, (input, current, exists) =>
             {
                 if (exists)
@@ -178,7 +178,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
                 }
                 v.AddNull();
             });
-            var row = new RowEvent(0, 0, new CompactRowData(vector, FlxValue.FromMemory(vector).AsVector), null);
+            var row = new RowEvent(0, 0, new CompactRowData(vector, FlxValue.FromMemory(vector).AsVector));
             var iterator = singleton.Tree.CreateIterator();
             await iterator.Seek(row);
 

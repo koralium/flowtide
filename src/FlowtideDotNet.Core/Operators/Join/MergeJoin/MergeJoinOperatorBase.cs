@@ -40,6 +40,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected readonly Func<JoinStreamEvent, JoinStreamEvent, bool> _postCondition;
 
         private FlexBuffers.FlexBuffer _flexBuffer;
+        private List<int> mappedEmit;
 
 #if DEBUG_WRITE
         // TODO: Tmp remove
@@ -51,7 +52,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public MergeJoinOperatorBase(MergeJoinRelation mergeJoinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
-            
             this.mergeJoinRelation = mergeJoinRelation;
 
             var compileResult = MergeJoinExpressionCompiler.Compile(mergeJoinRelation);
@@ -104,44 +104,44 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         protected RowEvent OnConditionSuccess(JoinStreamEvent left, JoinStreamEvent right, in int weight)
         {
-            _flexBuffer.NewObject();
-            var vectorStart = _flexBuffer.StartVector();
+            return new RowEvent(weight, 0, new JoinedRowData(left.RowData, right.RowData, mergeJoinRelation.Emit));
+            //_flexBuffer.NewObject();
+            //var vectorStart = _flexBuffer.StartVector();
+            //if (mergeJoinRelation.EmitSet)
+            //{
+            //    for (int i = 0; i < mergeJoinRelation.Emit.Count; i++)
+            //    {
+            //        var index = mergeJoinRelation.Emit[i];
 
-            if (mergeJoinRelation.EmitSet)
-            {
-                for (int i = 0; i < mergeJoinRelation.Emit.Count; i++)
-                {
-                    var index = mergeJoinRelation.Emit[i];
 
+            //        if (index < _leftSize)
+            //        {
+            //            _flexBuffer.Add(left.GetColumn(index));
+            //        }
+            //        else
+            //        {
+            //            _flexBuffer.Add(right.GetColumn(index - _leftSize));
+            //        }
+            //    }
+            //}
+            //else
+            //{
+            //    for (int i = 0; i < left.Length; i++)
+            //    {
+            //        _flexBuffer.Add(left.GetColumn(i));
+            //    }
+            //    for (int i = 0; i < right.Length; i++)
+            //    {
+            //        _flexBuffer.Add(right.GetColumn(i));
+            //    }
+            //}
 
-                    if (index < _leftSize)
-                    {
-                        _flexBuffer.Add(left.GetColumn(index));
-                    }
-                    else
-                    {
-                        _flexBuffer.Add(right.GetColumn(index - _leftSize));
-                    }
-                }
-            }
-            else
-            {
-                for (int i = 0; i < left.Length; i++)
-                {
-                    _flexBuffer.Add(left.GetColumn(i));
-                }
-                for (int i = 0; i < right.Length; i++)
-                {
-                    _flexBuffer.Add(right.GetColumn(i));
-                }
-            }
+            //_flexBuffer.EndVector(vectorStart, false, false);
+            //var bytes = _flexBuffer.Finish();
 
-            _flexBuffer.EndVector(vectorStart, false, false);
-            var bytes = _flexBuffer.Finish();
+            //var ev = new RowEvent(weight, 0, new CompactRowData(bytes));
 
-            var ev = new RowEvent(weight, 0, new CompactRowData(bytes));
-
-            return ev;
+            //return ev;
         }
 
         protected RowEvent CreateLeftWithNullRightEvent(int weight, JoinStreamEvent e)

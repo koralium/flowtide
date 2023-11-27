@@ -30,15 +30,6 @@ namespace FlowtideDotNet.Core
         private int _weight;
         private readonly uint _iteration;
         private readonly IRowData _rowData;
-        private readonly IReadOnlyList<int>? _emitList;
-
-        public RowEvent(int weight, uint iteration, IRowData rowData, IReadOnlyList<int>? emitList)
-        {
-            _weight = weight;
-            _iteration = iteration;
-            _rowData = rowData;
-            _emitList = emitList;
-        }
 
         public RowEvent(int weight, uint iteration, IRowData rowData)
         {
@@ -65,10 +56,6 @@ namespace FlowtideDotNet.Core
         {
             get
             {
-                if (_emitList != null)
-                {
-                    return _emitList.Count;
-                }
                 return _rowData.Length;
             }
         }
@@ -77,19 +64,11 @@ namespace FlowtideDotNet.Core
 
         public FlxValue GetColumn(int index)
         {
-            if (_emitList != null)
-            {
-                return _rowData.GetColumn(_emitList[index]);
-            }
             return _rowData.GetColumn(index);
         }
 
         public FlxValueRef GetColumnRef(in int index)
         {
-            if (_emitList != null)
-            {
-                return _rowData.GetColumnRef(_emitList[index]);
-            }
             return _rowData.GetColumnRef(index);
         }
 
@@ -107,17 +86,14 @@ namespace FlowtideDotNet.Core
             }
             flexBuffer.NewObject();
             var vectorStart = flexBuffer.StartVector();
-            
-            if (_emitList != null)
+
+            for (int i = 0; i < _rowData.Length; i++)
             {
-                for (int i = 0; i < _emitList.Count; i++)
-                {
-                    flexBuffer.Add(_rowData.GetColumn(_emitList[i]));
-                }
+                flexBuffer.Add(_rowData.GetColumn(i));
             }
             flexBuffer.EndVector(vectorStart, false, false);
             var mem = flexBuffer.Finish();
-            return new RowEvent(_weight, _iteration, new CompactRowData(mem, FlxValue.FromMemory(mem).AsVector), default);
+            return new RowEvent(_weight, _iteration, new CompactRowData(mem, FlxValue.FromMemory(mem).AsVector));
         }
 
         public static RowEvent Create(int weight, uint iteration, Action<IFlexBufferVectorBuilder> vector)
@@ -130,7 +106,7 @@ namespace FlowtideDotNet.Core
             buffer.EndVector(start, false, false);
             var fin = buffer.Finish();
             
-            return new RowEvent(weight, iteration, new CompactRowData(fin, FlxValue.FromMemory(fin).AsVector), null);
+            return new RowEvent(weight, iteration, new CompactRowData(fin, FlxValue.FromMemory(fin).AsVector));
         }
 
         public static int Compare(IRowEvent a, IRowEvent b)
