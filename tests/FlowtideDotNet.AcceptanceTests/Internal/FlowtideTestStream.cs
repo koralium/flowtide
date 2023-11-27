@@ -24,6 +24,7 @@ using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
+using System.Buffers;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
@@ -180,7 +181,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             var membersInOrder = typeof(T).GetProperties().Select(x => x.Name).ToList();
             var accessor = TypeAccessor.Create(typeof(T));
 
-            SortedDictionary<StreamEvent, int> dict = new SortedDictionary<StreamEvent, int>(new BPlusTreeStreamEventComparer());
+            SortedDictionary<RowEvent, int> dict = new SortedDictionary<RowEvent, int>(new BPlusTreeStreamEventComparer());
 
             foreach (var row in data)
             {
@@ -199,7 +200,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 List<byte[]> output = new List<byte[]>();
                 for (int i = 0; i < x.Value; i++)
                 {
-                    output.Add(x.Key.Memory.ToArray());
+                    var compactData = (CompactRowData)x.Key.Compact(new FlexBuffer(ArrayPool<byte>.Shared)).RowData;
+                    output.Add(compactData.Span.ToArray());
                 }
                 return output;
             }).ToList();

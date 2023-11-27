@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Operators.Write
     {
         private IBPlusTree<GroupedStreamEvent, int>? _tree;
         private Func<GroupedStreamEvent, GroupedStreamEvent, int>? _comparer;
-        private IComparer<StreamEvent>? _streamEventComparer;
+        private IComparer<RowEvent>? _streamEventComparer;
 
         public GroupedWriteBaseOperator(ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -38,17 +38,17 @@ namespace FlowtideDotNet.Core.Operators.Write
 
         protected abstract ValueTask<IReadOnlyList<int>> GetPrimaryKeyColumns();
 
-        protected IComparer<StreamEvent>? PrimaryKeyComparer => _streamEventComparer;
+        protected IComparer<RowEvent>? PrimaryKeyComparer => _streamEventComparer;
 
         public override Task Compact()
         {
             return Task.CompletedTask;
         }
 
-        protected async ValueTask Insert(StreamEvent streamEvent)
+        protected async ValueTask Insert(RowEvent streamEvent)
         {
             Debug.Assert(_tree != null, nameof(_tree));
-            var groupedEvent = new GroupedStreamEvent(streamEvent.Memory, 0, streamEvent.Vector);
+            var groupedEvent = new GroupedStreamEvent(0, streamEvent.RowData);
             await _tree.RMW(groupedEvent, streamEvent.Weight, (input, current, found) =>
             {
                 if (found)
@@ -65,13 +65,13 @@ namespace FlowtideDotNet.Core.Operators.Write
             });
         }
 
-        protected async ValueTask<(IReadOnlyList<StreamEvent> rows, bool isDeleted)> GetGroup(StreamEvent streamEvent)
+        protected async ValueTask<(IReadOnlyList<RowEvent> rows, bool isDeleted)> GetGroup(RowEvent streamEvent)
         {
             var iterator = _tree!.CreateIterator();
-            var seekEvent = new GroupedStreamEvent(streamEvent.Memory, 1, streamEvent.Vector);
+            var seekEvent = new GroupedStreamEvent(1, streamEvent.RowData);
             await iterator.Seek(seekEvent);
 
-            List<StreamEvent> events = new List<StreamEvent>();
+            List<RowEvent> events = new List<RowEvent>();
 
             bool breakAll = false;
             await foreach(var page in iterator)
@@ -85,7 +85,8 @@ namespace FlowtideDotNet.Core.Operators.Write
                     }
                     if (kv.Value > 0)
                     {
-                        var ev = new StreamEvent(kv.Value, 0, kv.Key.Memory, kv.Key.Vector);
+                        
+                        var ev = new RowEvent(kv.Value, 0, kv.Key.RowData);
                         events.Add(ev);
                     }
                 }
@@ -108,7 +109,7 @@ namespace FlowtideDotNet.Core.Operators.Write
         /// </summary>
         /// <param name="streamEvent"></param>
         /// <returns></returns>
-        protected async ValueTask<(IReadOnlyList<StreamEvent> rows, bool isDeleted)> InsertAndGetGroup(StreamEvent streamEvent)
+        protected async ValueTask<(IReadOnlyList<RowEvent> rows, bool isDeleted)> InsertAndGetGroup(RowEvent streamEvent)
         {
             await Insert(streamEvent);
             return await GetGroup(streamEvent);
@@ -118,7 +119,7 @@ namespace FlowtideDotNet.Core.Operators.Write
         {
             var primaryKeyColumns = await GetPrimaryKeyColumns();
 
-            _streamEventComparer = new StreamEventComparer(GroupIndexCreator.CreateComparer<StreamEvent>(primaryKeyColumns));
+            _streamEventComparer = new StreamEventComparer(GroupIndexCreator.CreateComparer<RowEvent>(primaryKeyColumns));
             _comparer = GroupIndexCreator.CreateComparer<GroupedStreamEvent>(primaryKeyColumns);
 
             _tree = await stateManagerClient.GetOrCreateTree("output", new BPlusTreeOptions<GroupedStreamEvent, int>() 

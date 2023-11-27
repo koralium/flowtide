@@ -50,12 +50,12 @@ namespace FlowtideDotNet.Core.Compute.Internal
             }
         }
 
-        public System.Linq.Expressions.Expression AccessRootVector(ParameterExpression p)
-        {
-            var props = inputType.GetProperties().FirstOrDefault(x => x.Name == "Vector");
-            var getMethod = props.GetMethod;
-            return System.Linq.Expressions.Expression.Property(p, getMethod);
-        }
+        //public System.Linq.Expressions.Expression AccessRootVector(ParameterExpression p)
+        //{
+        //    var props = inputType.GetProperties().FirstOrDefault(x => x.Name == "Vector");
+        //    var getMethod = props.GetMethod;
+        //    return System.Linq.Expressions.Expression.Property(p, getMethod);
+        //}
 
         public override System.Linq.Expressions.Expression? VisitDirectFieldReference(DirectFieldReference directFieldReference, ParametersInfo state)
         {
@@ -76,8 +76,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
                         parameterIndex = i;
                     }
                 }
-                var method = typeof(FlxVector).GetMethod("Get");
-                return System.Linq.Expressions.Expression.Call(AccessRootVector(state.Parameters[parameterIndex]), method, System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field - relativeIndex));
+                var method = inputType.GetMethod("GetColumn");
+                return System.Linq.Expressions.Expression.Call(state.Parameters[parameterIndex], method, System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field - relativeIndex));
             }
             return base.VisitDirectFieldReference(directFieldReference, state);
         }

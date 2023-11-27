@@ -11,52 +11,42 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Flexbuffer;
 
 namespace FlowtideDotNet.Core.Operators.Write
 {
-    internal struct GroupedStreamEvent
+    internal struct GroupedStreamEvent : IRowEvent
     {
-        private readonly Memory<byte> _data;
-
         /// <summary>
         /// Target id is used during comparisons to be able to compare different events to each other
         /// </summary>
         private readonly byte _targetId;
+        private readonly IRowData rowData;
 
-        private FlxVector _vector;
-
-        public GroupedStreamEvent(Memory<byte> data, byte targetId, FlxVector vector)
+        public GroupedStreamEvent(byte targetId, IRowData rowData)
         {
-            _data = data;
             _targetId = targetId;
-            _vector = vector;
+            this.rowData = rowData;
         }
-
-        /// <summary>
-        /// 4 is added to keep it aligned * 4.
-        /// </summary>
-        public int SerializedLength => _data.Length + 4;
-
-        public Span<byte> Span => _data.Span;
-
-        public Memory<byte> Memory => _data;
-
-        public FlxVector Vector => _vector;
 
         public byte TargetId => _targetId;
 
-        public void SerializeTo(Span<byte> dest)
+        public IRowData RowData => rowData;
+
+        public int Weight => 0;
+
+        public uint Iteration => 0;
+
+        public int Length => rowData.Length;
+
+        public FlxValue GetColumn(int index)
         {
-            dest[0] = _targetId;
-            _data.Span.CopyTo(dest.Slice(4));
+            return rowData.GetColumn(index);
         }
 
-        public static GroupedStreamEvent CreateFromMemory(Memory<byte> data)
+        public FlxValueRef GetColumnRef(in int index)
         {
-            var span = data.Span;
-            var targetId = span[0];
-            var vector = FlxValue.FromMemory(data.Slice(4)).AsVector;
-            return new GroupedStreamEvent(data.Slice(4), targetId, vector);
+            return rowData.GetColumnRef(index);
         }
     }
 }

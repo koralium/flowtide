@@ -10,27 +10,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlexBuffers;
 using FlowtideDotNet.Storage.Tree;
+using System.Buffers;
 
 namespace FlowtideDotNet.Core.Storage
 {
-    public class StreamEventBPlusTreeSerializer : IBplusTreeSerializer<StreamEvent>
+    public class StreamEventBPlusTreeSerializer : IBplusTreeSerializer<RowEvent>
     {
-        public StreamEvent Deserialize(in BinaryReader reader)
+        public RowEvent Deserialize(in BinaryReader reader)
         {
             var weight = reader.ReadInt32();
             var iteration = reader.ReadUInt32();
             var length = reader.ReadInt32();
             var bytes = reader.ReadBytes(length);
-            return new StreamEvent(weight, iteration, bytes);
+            return new RowEvent(weight, iteration, new CompactRowData(bytes));
         }
 
-        public void Serialize(in BinaryWriter writer, in StreamEvent value)
+        public void Serialize(in BinaryWriter writer, in RowEvent value)
         {
             writer.Write(value.Weight);
             writer.Write(value.Iteration);
-            writer.Write(value.Span.Length);
-            writer.Write(value.Span);
+
+            // TODO: Check if it already is a compact event with no emit, in that case this can be skipped
+            var flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
+            var compactRow = value.Compact(flexBuffer);
+            var compact = (CompactRowData)compactRow.RowData;
+
+            writer.Write(compact.Span.Length);
+            writer.Write(compact.Span);
         }
     }
 }

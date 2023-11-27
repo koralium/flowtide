@@ -27,7 +27,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
 {
-    internal class ListAggAggregationInsertComparer : IComparer<StreamEvent>
+    internal class ListAggAggregationInsertComparer : IComparer<RowEvent>
     {
         private readonly int length;
 
@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
         {
             this.length = length;
         }
-        public int Compare(StreamEvent x, StreamEvent y)
+        public int Compare(RowEvent x, RowEvent y)
         {
             for (int i = 0; i < length; i++)
             {
@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
     {
         private readonly int keyLength;
 
-        public ListAggAggregationSingleton(IBPlusTree<StreamEvent, int> tree, int keyLength)
+        public ListAggAggregationSingleton(IBPlusTree<RowEvent, int> tree, int keyLength)
         {
             Tree = tree;
             this.keyLength = keyLength;
@@ -61,8 +61,8 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
         }
         public FlexBuffer OutputBuilder { get; } 
         public int KeyLength => keyLength;
-        public IBPlusTree<StreamEvent, int> Tree { get; }
-        public bool AreKeyEqual(StreamEvent x, StreamEvent y)
+        public IBPlusTree<RowEvent, int> Tree { get; }
+        public bool AreKeyEqual(RowEvent x, RowEvent y)
         {
             for (int i = 0; i < keyLength; i++)
             {
@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             {
                 searchPrimaryKeys.Add(i);
             }
-            var tree = await stateManagerClient.GetOrCreateTree("listaggtree", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<StreamEvent, int>()
+            var tree = await stateManagerClient.GetOrCreateTree("listaggtree", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
             {
                 Comparer = new ListAggAggregationInsertComparer(groupingLength + 1),
                 KeySerializer = new StreamEventBPlusTreeSerializer(),
@@ -130,12 +130,12 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             return e;
         }
 
-        private static Expression<Func<FlxValue, byte[], long, ListAggAggregationSingleton, StreamEvent, ValueTask<byte[]>>> GetListAggBody()
+        private static Expression<Func<FlxValue, byte[], long, ListAggAggregationSingleton, RowEvent, ValueTask<byte[]>>> GetListAggBody()
         {
             return (ev, bytes, weight, singleton, groupingKey) => DoListAgg(ev, bytes, weight, singleton, groupingKey);
         }
 
-        private static async ValueTask<byte[]> DoListAgg(FlxValue column, byte[] currentState, long weight, ListAggAggregationSingleton singleton, StreamEvent groupingKey)
+        private static async ValueTask<byte[]> DoListAgg(FlxValue column, byte[] currentState, long weight, ListAggAggregationSingleton singleton, RowEvent groupingKey)
         {
             if (column.IsNull)
             {
@@ -149,7 +149,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
                 }
                 v.Add(column);
             });
-            var row = new StreamEvent((int)weight, 0, vector);
+            var row = new RowEvent((int)weight, 0, new CompactRowData(vector, FlxValue.FromMemory(vector).AsVector), null);
             await singleton.Tree.RMW(row, (int)weight, (input, current, exists) =>
             {
                 if (exists)
@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             return currentState;
         }
 
-        private static async ValueTask<FlxValue> ListAggGetValue(byte[] state, StreamEvent groupingKey, ListAggAggregationSingleton singleton)
+        private static async ValueTask<FlxValue> ListAggGetValue(byte[] state, RowEvent groupingKey, ListAggAggregationSingleton singleton)
         {
             var vector = FlexBufferBuilder.Vector(v =>
             {
@@ -178,7 +178,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
                 }
                 v.AddNull();
             });
-            var row = new StreamEvent(0, 0, vector);
+            var row = new RowEvent(0, 0, new CompactRowData(vector, FlxValue.FromMemory(vector).AsVector), null);
             var iterator = singleton.Tree.CreateIterator();
             await iterator.Seek(row);
 

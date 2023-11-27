@@ -11,8 +11,10 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,7 +27,7 @@ namespace FlowtideDotNet.Core
     /// </summary>
     public struct RowEvent : IRowEvent
     {
-        private readonly int _weight;
+        private int _weight;
         private readonly uint _iteration;
         private readonly IRowData _rowData;
         private readonly IReadOnlyList<int>? _emitList;
@@ -37,7 +39,25 @@ namespace FlowtideDotNet.Core
             _rowData = rowData;
             _emitList = emitList;
         }
-        public int Weight => _weight;
+
+        public RowEvent(int weight, uint iteration, IRowData rowData)
+        {
+            _weight = weight;
+            _iteration = iteration;
+            _rowData = rowData;
+        }
+
+        public int Weight
+        {
+            get
+            {
+                return _weight;
+            }
+            set
+            {
+                _weight = value;
+            }
+        }
 
         public uint Iteration => _iteration;
 
@@ -98,6 +118,32 @@ namespace FlowtideDotNet.Core
             flexBuffer.EndVector(vectorStart, false, false);
             var mem = flexBuffer.Finish();
             return new RowEvent(_weight, _iteration, new CompactRowData(mem, FlxValue.FromMemory(mem).AsVector), default);
+        }
+
+        public static RowEvent Create(int weight, uint iteration, Action<IFlexBufferVectorBuilder> vector)
+        {
+            var buffer = new FlexBuffer(ArrayPool<byte>.Shared);
+            buffer.NewObject();
+            var start = buffer.StartVector();
+            var builder = new FlexBufferVectorBuilder(buffer);
+            vector(builder);
+            buffer.EndVector(start, false, false);
+            var fin = buffer.Finish();
+            
+            return new RowEvent(weight, iteration, new CompactRowData(fin, FlxValue.FromMemory(fin).AsVector), null);
+        }
+
+        public static int Compare(IRowEvent a, IRowEvent b)
+        {
+            for (int i = 0; i < a.Length; i++)
+            {
+                int compareResult = FlxValueRefComparer.CompareTo(a.GetColumnRef(i), b.GetColumnRef(i));
+                if (compareResult != 0)
+                {
+                    return compareResult;
+                }
+            }
+            return 0;
         }
     }
 }

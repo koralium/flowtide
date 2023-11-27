@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 #endif
         private readonly NormalizationRelation normalizationRelation;
         private IBPlusTree<string, IngressData>? _tree;
-        private readonly Func<StreamEvent, bool>? _filter;
+        private readonly Func<RowEvent, bool>? _filter;
 
         private Counter<long>? _eventsCounter;
         
@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             this.normalizationRelation = normalizationRelation;
             if (normalizationRelation.Filter != null)
             {
-                _filter = BooleanCompiler.Compile<StreamEvent>(normalizationRelation.Filter, functionsRegister);
+                _filter = BooleanCompiler.Compile<RowEvent>(normalizationRelation.Filter, functionsRegister);
             }
         }
 
@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
-            List<StreamEvent> output = new List<StreamEvent>();
+            List<RowEvent> output = new List<RowEvent>();
             foreach(var e in msg.Events)
             {
                 if (e.Weight > 0)
@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             
         }
 
-        protected async Task Upsert(string ke, StreamEvent input, List<StreamEvent> output)
+        protected async Task Upsert(string ke, RowEvent input, List<RowEvent> output)
         {
             // Filter is applied on the actual input
             if (_filter != null)
@@ -140,7 +140,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             }
         }
 
-        private async Task Upsert_Internal(string ke, StreamEvent input, List<StreamEvent> output)
+        private async Task Upsert_Internal(string ke, RowEvent input, List<RowEvent> output)
         {
             Debug.Assert(_tree != null, nameof(_tree));
 
@@ -196,16 +196,16 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 {
                     throw new InvalidOperationException("Previous value was null, should not happen");
                 }
-                output.Add(new StreamEvent(1, 0, ingressInput.Memory));
-                output.Add(new StreamEvent(-1, 0, previousValue.Value));
+                output.Add(new RowEvent(1, 0, new CompactRowData(ingressInput.Memory)));
+                output.Add(new RowEvent(-1, 0, new CompactRowData(previousValue.Value)));
             }
             else if (added)
             {
-                output.Add(new StreamEvent(1, 0, ingressInput.Memory));
+                output.Add(new RowEvent(1, 0, new CompactRowData(ingressInput.Memory)));
             }
         }
 
-        protected async Task Delete(string ke, List<StreamEvent> output)
+        protected async Task Delete(string ke, List<RowEvent> output)
         {
             bool isFound = false;
             IngressData? data;
@@ -224,7 +224,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
             if (isFound)
             {
-                output.Add(new StreamEvent(-1, 0, val.Memory));
+                output.Add(new RowEvent(-1, 0, new CompactRowData(val.Memory)));
             }
         }
 

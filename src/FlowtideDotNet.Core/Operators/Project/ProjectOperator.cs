@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Core.Operators.Project
         private StreamWriter allInput;
 #endif
         private readonly ProjectRelation projectRelation;
-        private readonly Func<StreamEvent, FlxValue>[] _expressions;
+        private readonly Func<RowEvent, FlxValue>[] _expressions;
 
         private Counter<long>? _eventsCounter;
 
@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Core.Operators.Project
 
         public ProjectOperator(ProjectRelation projectRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
-            _expressions = new Func<StreamEvent, FlxValue>[projectRelation.Expressions.Count];
+            _expressions = new Func<RowEvent, FlxValue>[projectRelation.Expressions.Count];
             
             for (int i = 0; i < _expressions.Length; i++)
             {
@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Core.Operators.Project
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
-            List<StreamEvent> output = new List<StreamEvent>();
+            List<RowEvent> output = new List<RowEvent>();
 
             foreach (var e in msg.Events)
             {
@@ -80,7 +80,7 @@ namespace FlowtideDotNet.Core.Operators.Project
                 {
                     extraFelds[i] = _expressions[i](e);
                 }
-                var projectedEvent = StreamEvent.Create(e.Weight, 0, b =>
+                var projectedEvent = RowEvent.Create(e.Weight, 0, b =>
                 {
                     if (projectRelation.EmitSet)
                     {

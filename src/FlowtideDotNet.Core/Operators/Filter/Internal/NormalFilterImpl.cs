@@ -20,12 +20,12 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
 {
     internal class NormalFilterImpl : IFilterImplementation
     {
-        private readonly Func<StreamEvent, bool> _expression;
+        private readonly Func<RowEvent, bool> _expression;
         private readonly List<int>? _emitList;
         private FlexBuffer _flexBuffer;
         public NormalFilterImpl(FilterRelation filterRelation, FunctionsRegister functionsRegister)
         {
-            _expression = BooleanCompiler.Compile<StreamEvent>(filterRelation.Condition, functionsRegister);
+            _expression = BooleanCompiler.Compile<RowEvent>(filterRelation.Condition, functionsRegister);
             _emitList = filterRelation.Emit;
             _flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
         }
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
 
         public async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
-            List<StreamEvent> output = new List<StreamEvent>();
+            List<RowEvent> output = new List<RowEvent>();
 
             // If there is no emit list, we can just output the same data
             if (_emitList == null)
@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
 
                         _flexBuffer.EndVector(vectorStart, false, false);
                         var bytes = _flexBuffer.Finish();
-                        output.Add(new StreamEvent(e.Weight, e.Iteration, bytes));
+                        output.Add(new RowEvent(e.Weight, e.Iteration, new CompactRowData(bytes)));
                     }
                 }
             }

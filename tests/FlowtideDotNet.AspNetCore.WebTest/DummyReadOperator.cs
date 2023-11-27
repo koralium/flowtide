@@ -59,10 +59,10 @@ namespace FlowtideDotNet.AspNetCore.WebTest
             {
                 await output.EnterCheckpointLock();
 
-                List<StreamEvent> o = new List<StreamEvent>();
+                List<RowEvent> o = new List<RowEvent>();
                 for (int k = 0; k < 100; k++)
                 {
-                    o.Add(StreamEvent.Create(1, 0, b =>
+                    o.Add(RowEvent.Create(1, 0, b =>
                     {
                         for (int z = 0; z < 16; z++)
                         {

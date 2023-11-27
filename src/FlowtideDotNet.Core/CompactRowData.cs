@@ -32,6 +32,14 @@ namespace FlowtideDotNet.Core
             _vector = vector;
         }
 
+        public CompactRowData(Memory<byte> memory)
+        {
+            _memory = memory;
+            _vector = FlxValue.FromMemory(memory).AsVector;
+        }
+
+        public Span<byte> Span => _memory.Span;
+
         public int Length => _vector.Length;
 
         public FlxValue GetColumn(int index)

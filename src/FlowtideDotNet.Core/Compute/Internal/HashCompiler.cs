@@ -34,13 +34,13 @@ namespace FlowtideDotNet.Core.Compute.Internal
         /// </summary>
         /// <param name="expressions"></param>
         /// <returns></returns>
-        public static Func<StreamEvent, uint> CompileGetHashCode(List<Substrait.Expressions.Expression> expressions, FunctionsRegister functionsRegister)
+        public static Func<RowEvent, uint> CompileGetHashCode(List<Substrait.Expressions.Expression> expressions, FunctionsRegister functionsRegister)
         {
             // Each function is using its own xxHash32
             XxHash32 xxHash32 = new XxHash32();
             var hashConstant = System.Linq.Expressions.Expression.Constant(xxHash32);
-            FlowtideExpressionVisitor visitor = new FlowtideExpressionVisitor(functionsRegister, typeof(StreamEvent));
-            var eventParameter = System.Linq.Expressions.Expression.Parameter(typeof(StreamEvent), "event");
+            FlowtideExpressionVisitor visitor = new FlowtideExpressionVisitor(functionsRegister, typeof(RowEvent));
+            var eventParameter = System.Linq.Expressions.Expression.Parameter(typeof(RowEvent), "event");
 
             var parametersInfo = new ParametersInfo(new List<ParameterExpression>() { eventParameter }, new List<int>() { 0 });
 
@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             hashExpressions.Add(getFinalResultExpr);
 
             var blockExpr = System.Linq.Expressions.Expression.Block(typeof(uint), new List<ParameterExpression>() { spanVariable }, hashExpressions);
-            var lambda = System.Linq.Expressions.Expression.Lambda<Func<StreamEvent, uint>>(blockExpr, eventParameter);
+            var lambda = System.Linq.Expressions.Expression.Lambda<Func<RowEvent, uint>>(blockExpr, eventParameter);
             return lambda.Compile();
         }
 
@@ -112,12 +112,12 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return System.Linq.Expressions.Expression.Call(accessRef, addToHashMethod, xxHashConstant);
         }
 
-        private static System.Linq.Expressions.Expression AccessRootVector(ParameterExpression p)
-        {
-            var props = typeof(StreamEvent).GetProperties().FirstOrDefault(x => x.Name == "Vector");
-            var getMethod = props.GetMethod;
-            return System.Linq.Expressions.Expression.Property(p, getMethod);
-        }
+        //private static System.Linq.Expressions.Expression AccessRootVector(ParameterExpression p)
+        //{
+        //    var props = typeof(RowEvent).GetProperties().FirstOrDefault(x => x.Name == "Vector");
+        //    var getMethod = props.GetMethod;
+        //    return System.Linq.Expressions.Expression.Property(p, getMethod);
+        //}
 
 
         private static System.Linq.Expressions.Expression GetAccessFieldExpression(System.Linq.Expressions.ParameterExpression parameter, FieldReference fieldReference, int relativeIndex)
@@ -125,14 +125,14 @@ namespace FlowtideDotNet.Core.Compute.Internal
             if (fieldReference is DirectFieldReference directFieldReference &&
                     directFieldReference.ReferenceSegment is StructReferenceSegment referenceSegment)
             {
-                var method = typeof(FlxVector).GetMethod("GetRef");
+                var method = typeof(RowEvent).GetMethod("GetColumnRef");
 
                 if (method == null)
                 {
-                    throw new InvalidOperationException("Method GetRef could not be found");
+                    throw new InvalidOperationException("Method GetColumnRef could not be found");
                 }
 
-                return System.Linq.Expressions.Expression.Call(AccessRootVector(parameter), method, System.Linq.Expressions.Expression.Constant(referenceSegment.Field - relativeIndex));
+                return System.Linq.Expressions.Expression.Call(parameter, method, System.Linq.Expressions.Expression.Constant(referenceSegment.Field - relativeIndex));
             }
             throw new NotSupportedException("Only direct field references are supported in merge join keys");
         }

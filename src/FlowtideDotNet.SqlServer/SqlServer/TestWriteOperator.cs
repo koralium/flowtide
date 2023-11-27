@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.Tests.Acceptance
         private StreamWriter allInput;
 #endif
         private TestWriteState currentState;
-        private SortedSet<StreamEvent> modified;
+        private SortedSet<RowEvent> modified;
         List<int> primaryKeyIds;
         private readonly Func<IReadOnlyList<DataChange>, Task> onValueChange;
         private readonly WriteRelation writeRelation;
@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Core.Tests.Acceptance
             {
                 currentState = new TestWriteState();
             }
-            modified = new SortedSet<StreamEvent>(PrimaryKeyComparer);
+            modified = new SortedSet<RowEvent>(PrimaryKeyComparer);
             return Task.CompletedTask;
         }
 

@@ -66,11 +66,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public int CurrentOffset => _changes.Count;
 
-        public static StreamEvent ToStreamEvent(RowOperation rowOperation, List<string> columns)
+        public static RowEvent ToStreamEvent(RowOperation rowOperation, List<string> columns)
         {
             var typeAccessor = TypeAccessor.Create(rowOperation.Object.GetType());
 
-            return StreamEvent.Create(rowOperation.IsDelete ? -1 : 1, 0, (b) =>
+            return RowEvent.Create(rowOperation.IsDelete ? -1 : 1, 0, (b) =>
             {
                 foreach (var columnName in columns)
                 {

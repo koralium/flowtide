@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core
             }
         }
 
-        public void Write(in Stream stream, in StreamEvent streamEvent)
+        public void Write(in Stream stream, in RowEvent streamEvent)
         {
             var writer = new Utf8JsonWriter(stream);
             writer.WriteStartObject();

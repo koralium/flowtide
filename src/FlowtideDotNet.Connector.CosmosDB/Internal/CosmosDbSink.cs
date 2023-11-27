@@ -31,10 +31,10 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
     {
         private readonly FlowtideCosmosOptions cosmosOptions;
         private readonly WriteRelation writeRelation;
-        private IBPlusTree<StreamEvent, int>? m_modified;
+        private IBPlusTree<RowEvent, int>? m_modified;
         private bool m_hasModified;
         private Container? m_container;
-        private Func<StreamEvent, PartitionKey>? m_eventToPartitionKey;
+        private Func<RowEvent, PartitionKey>? m_eventToPartitionKey;
         private IReadOnlyList<int>? m_primaryKeys;
         private StreamEventToJsonCosmos? m_serializer;
         private int idIndex;
@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             Logger.LogInformation("CosmosDB update complete");
         }
 
-        private string GetIdValue(StreamEvent streamEvent)
+        private string GetIdValue(RowEvent streamEvent)
         {
             var idColumn = streamEvent.GetColumn(idIndex);
 
@@ -238,7 +238,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             return m_primaryKeys;
         }
 
-        private Func<StreamEvent, PartitionKey> CreatePartitionKeyExtractFunction(int index)
+        private Func<RowEvent, PartitionKey> CreatePartitionKeyExtractFunction(int index)
         {
             return (e) =>
             {
@@ -281,7 +281,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
                 await LoadMetadata();
             }
 
-            m_modified = await stateManagerClient.GetOrCreateTree<StreamEvent, int>("temporary", new Storage.Tree.BPlusTreeOptions<StreamEvent, int>()
+            m_modified = await stateManagerClient.GetOrCreateTree<RowEvent, int>("temporary", new Storage.Tree.BPlusTreeOptions<RowEvent, int>()
             {
                 Comparer = PrimaryKeyComparer,
                 ValueSerializer = new IntSerializer(),

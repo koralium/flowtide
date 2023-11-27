@@ -49,13 +49,13 @@ namespace FlowtideDotNet.Core.Operators.Write
 
     public readonly struct SimpleChangeEvent
     {
-        public SimpleChangeEvent(StreamEvent row, bool isDeleted)
+        public SimpleChangeEvent(RowEvent row, bool isDeleted)
         {
             Row = row;
             IsDeleted = isDeleted;
         }
 
-        public StreamEvent Row { get; }
+        public RowEvent Row { get; }
 
         public bool IsDeleted { get; }
     }
@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Core.Operators.Write
     public abstract class SimpleGroupedWriteOperator : GroupedWriteBaseOperator<SimpleWriteState>
     {
         private MetadataResult? m_metadataResult;
-        private IBPlusTree<StreamEvent, int>? m_modified;
+        private IBPlusTree<RowEvent, int>? m_modified;
         private bool m_hasModified;
         private readonly ExecutionMode m_executionMode;
 
@@ -150,7 +150,7 @@ namespace FlowtideDotNet.Core.Operators.Write
             {
                 m_metadataResult = await SetupAndLoadMetadataAsync();
             }
-            m_modified = await stateManagerClient.GetOrCreateTree("temporary", new BPlusTreeOptions<StreamEvent, int>()
+            m_modified = await stateManagerClient.GetOrCreateTree("temporary", new BPlusTreeOptions<RowEvent, int>()
             {
                 Comparer = PrimaryKeyComparer,
                 ValueSerializer = new IntSerializer(),

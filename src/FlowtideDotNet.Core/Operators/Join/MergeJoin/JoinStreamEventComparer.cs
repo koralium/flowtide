@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
     {
         public int Compare(JoinStreamEvent x, JoinStreamEvent y)
         {
-            return x.Span.SequenceCompareTo(y.Span);
+            return RowEvent.Compare(x, y);
         }
     }
 }

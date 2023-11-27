@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            List<StreamEvent> outputEvents = new List<StreamEvent>();
+            List<RowEvent> outputEvents = new List<RowEvent>();
             foreach(var row in virtualTableReadRelation.Values.JsonValues)
             {
                 // TODO: Take payload from row and fill in actual values
@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
                     // TODO: Implement
                 });
 
-                outputEvents.Add(new StreamEvent(1, 0, vectorPayload));
+                outputEvents.Add(new RowEvent(1, 0, new CompactRowData(vectorPayload)));
                 
             }
 
