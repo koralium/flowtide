@@ -111,7 +111,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .RuleFor(x => x.OrderKey, (f, u) => f.UniqueIndex)
                 .RuleFor(x => x.UserKey, (f, u) => f.PickRandom(Users).UserKey)
                 .RuleFor(x => x.Orderdate, (f, u) => f.Date.Between(DateTime.Parse("1980-01-01"), DateTime.Parse("2000-01-01")))
-                .RuleFor(x => x.GuidVal, (f, u) => Guid.NewGuid());
+                .RuleFor(x => x.GuidVal, (f, u) => Guid.NewGuid())
+                .RuleFor(x => x.Money, (f, u) => f.Finance.Amount());
 
             var newOrders = testOrders.Generate(count);
             Orders.AddRange(newOrders);

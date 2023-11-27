@@ -17,6 +17,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks.Sources;
 using Type = FlexBuffers.Type;
@@ -358,7 +359,20 @@ namespace FlowtideDotNet.Core.Flexbuffer
                 throw new Exception($"Type {_type} is not convertible to string");
             }
         }
-        
+
+        public decimal AsDecimal
+        {
+            get
+            {
+                if (_type == Type.Decimal)
+                {
+                    var indirectOffset = ComputeIndirectOffset(_buffer, _offset, _parentWidth);
+                    return new decimal(MemoryMarshal.Cast<byte, int>(_buffer.Slice(indirectOffset, 16)));
+                }
+                throw new Exception($"Type {_type} is not convertible to decimal");
+            }
+        }
+
         public FlxValueRef this[in int index] => AsVector[index];
 
         public FlxVectorRef AsVector

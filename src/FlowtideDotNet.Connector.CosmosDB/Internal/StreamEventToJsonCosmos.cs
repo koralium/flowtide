@@ -14,6 +14,7 @@ using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -58,6 +59,10 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
                 else if (idColumn.ValueType == FlexBuffers.Type.String)
                 {
                     writer.WriteStringValue(idColumn.AsString);
+                }
+                else if (idColumn.ValueType == FlexBuffers.Type.Decimal)
+                {
+                    writer.WriteStringValue(idColumn.AsDecimal.ToString(CultureInfo.InvariantCulture));
                 }
                 else
                 {

@@ -26,6 +26,23 @@ namespace FlowtideDotNet.Core.Compute
             return CompareTo(a, b) == 0;
         }
 
+        internal static int CompareDecimal(FlxValue dec, FlxValue b)
+        {
+            if (b.ValueType == FlexBuffers.Type.Decimal)
+            {
+                return dec.AsDecimal.CompareTo(b.AsDecimal);
+            }
+            if (b.ValueType == FlexBuffers.Type.Float)
+            {
+                return dec.AsDecimal.CompareTo((decimal)b.AsDouble);
+            }
+            if (b.ValueType == FlexBuffers.Type.Int) 
+            {
+                return dec.AsDecimal.CompareTo((decimal)b.AsDouble);
+            }
+            return dec.ValueType - b.ValueType;
+        }
+
         public static int CompareTo(FlxValue a, FlxValue b)
         {
             var tComp = a.ValueType.CompareTo(b.ValueType);
@@ -81,6 +98,14 @@ namespace FlowtideDotNet.Core.Compute
                 }
                 throw new NotImplementedException();
             }
+            if (a.ValueType == FlexBuffers.Type.Decimal)
+            {
+                return CompareDecimal(a, b);
+            }
+            if (b.ValueType == FlexBuffers.Type.Decimal)
+            {
+                return CompareDecimal(b, a) * -1;
+            }
             return tComp;
         }
     }
@@ -94,6 +119,23 @@ namespace FlowtideDotNet.Core.Compute
                 return a.AsString.Equals(b.AsString, StringComparison.OrdinalIgnoreCase);
             }
             return CompareTo(a, b) == 0;
+        }
+
+        internal static int CompareDecimal(scoped in FlxValueRef dec, scoped in FlxValueRef b)
+        {
+            if (b.ValueType == FlexBuffers.Type.Decimal)
+            {
+                return dec.AsDecimal.CompareTo(b.AsDecimal);
+            }
+            if (b.ValueType == FlexBuffers.Type.Float)
+            {
+                return dec.AsDecimal.CompareTo((decimal)b.AsDouble);
+            }
+            if (b.ValueType == FlexBuffers.Type.Int)
+            {
+                return dec.AsDecimal.CompareTo((decimal)b.AsDouble);
+            }
+            return dec.ValueType - b.ValueType;
         }
 
         public static int CompareTo(in FlxValueRef a, in FlxValueRef b)
@@ -188,7 +230,19 @@ namespace FlowtideDotNet.Core.Compute
                 }
                 throw new NotImplementedException();
             }
-            return a._type - b._type;
+            if (a.ValueType == FlexBuffers.Type.Decimal)
+            {
+                return CompareDecimal(a, b);
+            }
+            if (b.ValueType == FlexBuffers.Type.Decimal)
+            {
+                return CompareDecimal(b, a) * -1;
+            }
+            if (a._type < b._type)
+            {
+                return -1;
+            }
+            return 1;
         }
     }
 }

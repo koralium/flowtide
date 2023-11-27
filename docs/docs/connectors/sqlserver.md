@@ -10,6 +10,37 @@ The SQL Server connector has three different parts:
 * **Sink** - Writes results from a stream into a SQL Server table.
 * **Table Provider** - Provides table information to the SQL plan builder.
 
+## Supported Data Types
+
+The *SQL Server connector* supports reading and writing the following data types:
+
+* Int
+* BigInt
+* Binary
+* Bit
+* Char
+* Date
+* Datetime
+* Datetime2
+* Decimal
+* Float
+* Image
+* Money
+* Nchar
+* Ntext
+* Numeric
+* Nvarchar
+* Real
+* Smalldatetime
+* Smallint
+* Text
+* Time
+* Tinyint
+* Uniqueidentifier
+* Varbinary
+* Varchar
+* Xml
+
 ## Source
 
 The SQL Server Source allows Flowtide to fetch rows and updates from a SQL Server table.

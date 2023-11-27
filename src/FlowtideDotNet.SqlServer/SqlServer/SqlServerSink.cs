@@ -69,12 +69,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 await iterator.SeekFirst();
 
                 // Iterate over all the values
-                await foreach(var page in iterator)
+                await foreach (var page in iterator)
                 {
-                    foreach(var kv in page)
+                    foreach (var kv in page)
                     {
                         var (rows, isDeleted) = await this.GetGroup(kv.Key);
-                        
+
                         if (rows.Count > 1)
                         {
                             var lastRow = rows.Last();
@@ -97,7 +97,6 @@ namespace FlowtideDotNet.SqlServer.SqlServer
 
                         m_dataTable.Rows.Clear();
                     }
-                    
                 }
 
                 if (m_dataTable.Rows.Count > 0)
@@ -134,12 +133,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             var dbSchema = await SqlServerUtils.GetWriteTableSchema(connection, writeRelation);
 
             List<int> primaryKeyIndices = new List<int>();
-            foreach(var primaryKey in m_primaryKeyNames)
+            foreach (var primaryKey in m_primaryKeyNames)
             {
                 int index = -1;
                 for (int i = 0; i < dbSchema.Count; i++)
                 {
-                    if ( dbSchema[i].ColumnName.Equals(primaryKey, StringComparison.OrdinalIgnoreCase))
+                    if (dbSchema[i].ColumnName.Equals(primaryKey, StringComparison.OrdinalIgnoreCase))
                     {
                         index = i;
                     }
@@ -157,15 +156,28 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             m_dataTable.Columns.Add("md_operation");
             foreach (var column in dbSchema)
             {
-                if (column.DataType == typeof(Guid))
+                if (column.DataType == typeof(decimal))
+                {
+                    // explicit required for type "decimal", "money", and "numeric"
+                    m_dataTable.Columns.Add(column.ColumnName, typeof(decimal));
+                }
+                else if (column.DataType == typeof(byte[]))
+                {
+                    // required for type varbinary
+                    m_dataTable.Columns.Add(column.ColumnName, typeof(byte[]));
+                }
+                else if (column.DataType == typeof(Guid))
                 {
                     m_dataTable.Columns.Add(column.ColumnName, typeof(Guid));
+                }
+                else if (column.DataType == typeof(DateTime))
+                {
+                    m_dataTable.Columns.Add(column.ColumnName, typeof(DateTime));
                 }
                 else
                 {
                     m_dataTable.Columns.Add(column.ColumnName);
                 }
-                
             }
 
             m_mapRowFunc = SqlServerUtils.GetDataRowMapFunc(dbSchema, m_primaryKeys);
