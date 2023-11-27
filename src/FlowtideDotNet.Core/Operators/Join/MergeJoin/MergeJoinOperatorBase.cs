@@ -41,6 +41,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         private FlexBuffers.FlexBuffer _flexBuffer;
         private List<int> mappedEmit;
+        private IRowData _rightNullData;
 
 #if DEBUG_WRITE
         // TODO: Tmp remove
@@ -70,6 +71,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
             _leftSize = mergeJoinRelation.Left.OutputLength;
             _flexBuffer = new FlexBuffers.FlexBuffer(ArrayPool<byte>.Shared);
+
+            _rightNullData = RowEvent.Create(0, 0, v =>
+            {
+                for (int i = 0; i < mergeJoinRelation.Right.OutputLength; i++)
+                {
+                    v.AddNull();
+                }
+            }).RowData;
         }
 
         public override string DisplayName => "Merge Join";
@@ -105,82 +114,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected RowEvent OnConditionSuccess(JoinStreamEvent left, JoinStreamEvent right, in int weight)
         {
             return new RowEvent(weight, 0, new JoinedRowData(left.RowData, right.RowData, mergeJoinRelation.Emit));
-            //_flexBuffer.NewObject();
-            //var vectorStart = _flexBuffer.StartVector();
-            //if (mergeJoinRelation.EmitSet)
-            //{
-            //    for (int i = 0; i < mergeJoinRelation.Emit.Count; i++)
-            //    {
-            //        var index = mergeJoinRelation.Emit[i];
-
-
-            //        if (index < _leftSize)
-            //        {
-            //            _flexBuffer.Add(left.GetColumn(index));
-            //        }
-            //        else
-            //        {
-            //            _flexBuffer.Add(right.GetColumn(index - _leftSize));
-            //        }
-            //    }
-            //}
-            //else
-            //{
-            //    for (int i = 0; i < left.Length; i++)
-            //    {
-            //        _flexBuffer.Add(left.GetColumn(i));
-            //    }
-            //    for (int i = 0; i < right.Length; i++)
-            //    {
-            //        _flexBuffer.Add(right.GetColumn(i));
-            //    }
-            //}
-
-            //_flexBuffer.EndVector(vectorStart, false, false);
-            //var bytes = _flexBuffer.Finish();
-
-            //var ev = new RowEvent(weight, 0, new CompactRowData(bytes));
-
-            //return ev;
         }
 
         protected RowEvent CreateLeftWithNullRightEvent(int weight, JoinStreamEvent e)
         {
-            _flexBuffer.NewObject();
-            var vectorStart = _flexBuffer.StartVector();
+            return new RowEvent(weight, 0, new JoinedRowData(e.RowData, _rightNullData, mergeJoinRelation.Emit));
 
-            if (mergeJoinRelation.EmitSet)
-            {
-                for (int i = 0; i < mergeJoinRelation.Emit.Count; i++)
-                {
-                    var index = mergeJoinRelation.Emit[i];
-                    if (index < _leftSize)
-                    {
-                        _flexBuffer.Add(e.GetColumn(index));
-                    }
-                    else
-                    {
-                        _flexBuffer.AddNull();
-                    }
-                }
-            }
-            else
-            {
-                for (int i = 0; i < e.Length; i++)
-                {
-                    _flexBuffer.Add(e.GetColumn(i));
-                }
-                for (int i = 0; i < mergeJoinRelation.Right.OutputLength; i++)
-                {
-                    _flexBuffer.AddNull();
-                }
-            }
-            _flexBuffer.EndVector(vectorStart, false, false);
-            var bytes = _flexBuffer.Finish();
-
-            var o = new RowEvent(weight, 0, new CompactRowData(bytes));
-
-            return o;
         }
 
         protected async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)
@@ -265,7 +204,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         }
                         return (input, GenericWriteOperation.Upsert);
                     });
-                    //var weights = _leftTree.UpsertAndGetWeights(joinEvent, e.Weight, true);
                 }
                 else
                 {
