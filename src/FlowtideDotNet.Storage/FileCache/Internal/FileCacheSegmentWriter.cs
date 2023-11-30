@@ -35,7 +35,17 @@ namespace FlowtideDotNet.Storage.FileCache
             // Check if the file already exists, if so delete it
             if (File.Exists(fileName))
             {
-                File.Delete(fileName);
+                try
+                {
+                    // Try and delete the file
+                    File.Delete(fileName);
+                }
+                catch
+                {
+                    // Sometimes, the file has not been closed yet, so try again
+                    File.Delete(fileName);
+                }
+                
             }
 
             fileStream = new FileStream(fileName, FileMode.Create, FileAccess.ReadWrite, fileCacheOptions.FileShare, 512, FileOptions.DeleteOnClose | FileOptions.RandomAccess);

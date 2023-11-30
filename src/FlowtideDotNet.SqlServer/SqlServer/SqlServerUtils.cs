@@ -662,7 +662,15 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 row["md_operation"] = "I";
                 for (int i = 0; i < columnNames.Count; i++)
                 {
-                    row[columnNames[i]] = mapFuncs[i](e);
+                    var val = mapFuncs[i](e);
+                    if (val == null)
+                    {
+                        row[columnNames[i]] = DBNull.Value;
+                    }
+                    else
+                    {
+                        row[columnNames[i]] = val;
+                    }
                 }
                 table.Rows.Add(row);
             };

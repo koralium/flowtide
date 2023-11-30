@@ -87,6 +87,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                         // Remove a page from the new pages counter
                         Interlocked.Decrement(ref newPages);
+
+                        // Remove from file cache in case it has not been removed yet.
+                        m_fileCache.Free(kv.Key);
                         //stateManager.DeleteFromPersistentStore(kv.Key, session);
                         continue;
                     }
@@ -95,6 +98,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         var bytes = options.ValueSerializer.Serialize(val, stateManager.SerializeOptions);
                         // Write to persistence
                         session.Write(kv.Key, bytes);
+
+                        m_fileCache.Free(kv.Key);
                         //stateManager.WriteToPersistentStore(kv.Key, bytes, session);
                         continue;
                     }
@@ -221,6 +226,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             //{
             foreach (var value in valuesToEvict)
             {
+                //lock (m_lock)
+                //{
+                //    // If the value is not in the modified array, skip it.
+                //    if (!m_modified.TryGetValue(value.Item1.ValueRef.key, out var v))
+                //    {
+                //        continue;
+                //    }
+                //}
                 value.Item1.ValueRef.value.EnterWriteLock();
                 var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value, stateManager.SerializeOptions);
                 m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);
