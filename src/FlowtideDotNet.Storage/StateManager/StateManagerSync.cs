@@ -151,6 +151,12 @@ namespace FlowtideDotNet.Storage.StateManager
             m_lruTable.Delete(key);
         }
 
+        internal void ClearCache()
+        {
+            Debug.Assert(m_lruTable != null);
+            m_lruTable.Clear();
+        }
+
         internal bool TryGetValueFromCache<T>(in long key, out T? value)
             where T : ICacheObject
         {
