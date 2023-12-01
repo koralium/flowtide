@@ -24,12 +24,14 @@ namespace FlowtideDotNet.Core.Operators.Join
         private readonly byte _targetId;
         private readonly IRowData rowData;
         private readonly uint _iteration;
+        private readonly ulong _hash;
 
-        public JoinStreamEvent(uint iteration, byte targetId, IRowData rowData)
+        public JoinStreamEvent(uint iteration, byte targetId, ulong hash, IRowData rowData)
         {
             _targetId = targetId;
             this.rowData = rowData;
             _iteration = iteration;
+            _hash = hash;
         }
 
         public byte TargetId => _targetId;
@@ -41,6 +43,8 @@ namespace FlowtideDotNet.Core.Operators.Join
         public int Weight => 0;
 
         public int Length => rowData.Length;
+
+        public ulong Hash => _hash;
 
         public FlxValue GetColumn(int index)
         {

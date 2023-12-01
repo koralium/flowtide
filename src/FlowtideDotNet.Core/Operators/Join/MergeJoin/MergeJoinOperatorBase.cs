@@ -42,6 +42,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private FlexBuffers.FlexBuffer _flexBuffer;
         private List<int> mappedEmit;
         private IRowData _rightNullData;
+        private readonly RowDataHasher _dataHasher;
 
 #if DEBUG_WRITE
         // TODO: Tmp remove
@@ -54,7 +55,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         public MergeJoinOperatorBase(MergeJoinRelation mergeJoinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
             this.mergeJoinRelation = mergeJoinRelation;
-
+            _dataHasher = new RowDataHasher();
             var compileResult = MergeJoinExpressionCompiler.Compile(mergeJoinRelation);
 
             leftComparer = new JoinComparerLeft(compileResult.LeftCompare, compileResult.SeekCompare);
@@ -137,7 +138,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #if DEBUG_WRITE
                 leftInput.WriteLine($"{e.Weight} {e.Vector.ToJson}");
 #endif
-                var joinEventCheck = new JoinStreamEvent(0, 1, e.RowData);
+
+                var hash = _dataHasher.Hash(e.RowData);
+                var joinEventCheck = new JoinStreamEvent(0, 1, hash, e.RowData);
 
                 await it.Seek(joinEventCheck);
 
@@ -178,7 +181,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                 }
 
-                var joinEvent = new JoinStreamEvent(0, 0, e.RowData);
+                var hash2 = _dataHasher.Hash(e.RowData);
+                var joinEvent = new JoinStreamEvent(0, 0, hash2, e.RowData);
                 if (joinWeight == 0 && mergeJoinRelation.Type == JoinType.Left)
                 {
                     // Emit null if left join or full outer join
@@ -256,7 +260,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #if DEBUG_WRITE
                 rightInput.WriteLine($"{e.Weight} {e.Vector.ToJson}");
 #endif
-                var joinEventCheck = new JoinStreamEvent(0, 1, e.RowData);
+                var hash = _dataHasher.Hash(e.RowData);
+                var joinEventCheck = new JoinStreamEvent(0, 1, hash, e.RowData);
 
                 await it.Seek(joinEventCheck);
 
@@ -306,7 +311,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                 }
 
-                var joinEvent = new JoinStreamEvent(0, 0, e.RowData);
+                var joinEvent = new JoinStreamEvent(0, 0, hash, e.RowData);
                 await _rightTree.RMW(joinEvent, new JoinStorageValue() { Weight = e.Weight }, (input, current, found) =>
                 {
                     if (found)

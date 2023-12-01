@@ -87,7 +87,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
         private static readonly byte[] _nullBytes = { 0 };
         private static readonly byte[] _trueBytes = { 1 };
 
-        public void AddToHash(in XxHash32 xxHash)
+        public void AddToHash(in NonCryptographicHashAlgorithm xxHash)
         {
             if (_type == Type.Null)
             {
@@ -154,7 +154,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
             }
         }
 
-        private void HashString(in XxHash32 xxHash)
+        private void HashString(in NonCryptographicHashAlgorithm xxHash)
         {
             var indirectOffset = ComputeIndirectOffset(_buffer, _offset, _parentWidth);
             var size = (int)ReadULong(_buffer, indirectOffset - _byteWidth, _byteWidth);
@@ -166,6 +166,8 @@ namespace FlowtideDotNet.Core.Flexbuffer
             }
             xxHash.Append(_buffer.Slice(indirectOffset, size));
         }
+
+
 
         public long AsLong
         {

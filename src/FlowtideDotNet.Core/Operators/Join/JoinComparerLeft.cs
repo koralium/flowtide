@@ -32,7 +32,11 @@ namespace FlowtideDotNet.Core.Operators.Join
                 {
                     return comp;
                 }
-
+                comp = x.Hash.CompareTo(y.Hash);
+                if (comp != 0)
+                {
+                    return comp;
+                }
                 return RowEvent.Compare(x, y);
             }
             if (x.TargetId == 1)

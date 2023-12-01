@@ -14,7 +14,7 @@ namespace FlowtideDotNet.Storage.Tree
 {
     public class BPlusTreeOptions<K, V>
     {
-        public int BucketSize { get; set; } = 64;
+        public int BucketSize { get; set; } = 256;
 
         public required IComparer<K> Comparer { get; set; }
 

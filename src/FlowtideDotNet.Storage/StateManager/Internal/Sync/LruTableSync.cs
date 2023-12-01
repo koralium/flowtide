@@ -226,6 +226,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return;
                 }
             }
+
+            // Take cleanup count before increasing memory, to try and reduce semaphore locks
+            var toBeRemovedCount = currentCount - cleanupStartLocal;
             if (maxMemoryUsageInBytes > 0)
             {
                 _currentProcess.Refresh();
@@ -239,6 +242,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 else
                 {
                     Volatile.Write(ref maxSize, (int)Math.Floor(maxSize * 0.9));
+                    Volatile.Write(ref cleanupStart, (int)Math.Ceiling(maxSize * 0.7));
+                    // On reduction, remove more directly
+                    toBeRemovedCount = currentCount - cleanupStartLocal;
                 }
             }
            
@@ -247,7 +253,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 iteratorNode = m_nodes.First;
             }
-            var toBeRemovedCount = currentCount - cleanupStartLocal;
+            
             Dictionary<ILruEvictHandler, List<(LinkedListNode<LinkedListValue>, long)>> groupedValues = new Dictionary<ILruEvictHandler, List<(LinkedListNode<LinkedListValue>, long)>>();
             List<(LinkedListNode<LinkedListValue>, long)> toBeRemoved = new List<(LinkedListNode<LinkedListValue>, long)>();
             while (iteratorNode != null && (toBeRemoved.Count < toBeRemovedCount))

@@ -22,16 +22,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             var targetId = reader.ReadByte();
             var iteration = reader.ReadUInt32();
+            var hash = reader.ReadUInt64();
             var length = reader.ReadInt32();
             var bytes = reader.ReadBytes(length);
             var vector = FlxValue.FromMemory(bytes).AsVector;
-            return new JoinStreamEvent(iteration, targetId, new CompactRowData(bytes, vector));
+            return new JoinStreamEvent(iteration, targetId, hash, new CompactRowData(bytes, vector));
         }
 
         public void Serialize(in BinaryWriter writer, in JoinStreamEvent value)
         {
             writer.Write(value.TargetId);
             writer.Write(value.Iteration);
+            writer.Write(value.Hash);
 
             var rowEv = new RowEvent(0, 0, value.RowData);
             // TODO: This can be done much better
