@@ -171,7 +171,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 #if DEBUG_WRITE
             allInput = File.CreateText($"{Name}.all.txt");
 #endif
-            _eventsCounter = Metrics.CreateCounter<long>("events");
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            
             Logger.LogInformation("Initializing Sql Server Source for table {tableName}.", readRelation.NamedTable.DotSeperated);
             if (state == null)
             {
@@ -256,7 +260,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 {
                     try
                     {
-                        (cache, primaryKeyValues) = await SqlServerUtils.InitialSelect(readRelation, sqlConnection, primaryKeys, batchSize, primaryKeyValues, _streamEventCreator, filter);
+                        (cache, primaryKeyValues) = await SqlServerUtils.InitialSelect(readRelation, sqlConnection, primaryKeys, batchSize, primaryKeyValues, _streamEventCreator, filter, output.CancellationToken);
 
                         List<StreamEvent> outdata = new List<StreamEvent>();
 
@@ -286,7 +290,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
                         var waitTime = TimeSpan.FromSeconds(retryCount * 15);
                         Logger.LogInformation("Waiting for {time} seconds", waitTime.Seconds);
-                        await Task.Delay(waitTime);
+                        await Task.Delay(waitTime, output.CancellationToken);
 
                         retryCount++;
                         Logger.LogInformation("Retrying count: " + retryCount);
@@ -295,52 +299,14 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         
                         // Recreate the connection
                         sqlConnection = new SqlConnection(connectionStringFunc());
-                        await sqlConnection.OpenAsync();
+                        await sqlConnection.OpenAsync(output.CancellationToken);
+
                         if (retryCount == 5)
                         {
                             throw;
                         }
                     }
                 } while (cache.Count == batchSize);
-
-                // Read all 
-//                using var command = sqlConnection.CreateCommand();
-//                command.CommandText = SqlServerUtils.CreateInitialSelectStatement(readRelation, primaryKeys, 10000);
-//                using var reader = await command.ExecuteReaderAsync();
-
-//                List<int> primaryKeyOrdinals = new List<int>();
-//                foreach(var pk in primaryKeys)
-//                {
-//                    primaryKeyOrdinals.Add(reader.GetOrdinal(pk));
-//                }
-
-//                List<StreamEvent> outdata = new List<StreamEvent>();
-//                Dictionary<string, object> primaryKeyValues = new Dictionary<string, object>();
-//                while (await reader.ReadAsync())
-//                {
-//                    // Get out the values from the columns
-                    
-//                    var streamEvent = _streamEventCreator(reader);
-//                    outdata.Add(streamEvent);
-//#if DEBUG_WRITE
-//                    allInput.WriteLine($"{streamEvent.Weight} {streamEvent.Vector.ToJson}");
-//#endif
-//                    primaryKeyValues.Clear();
-//                    for (int i = 0; i < primaryKeyOrdinals.Count; i++)
-//                    {
-//                        primaryKeyValues.Add(primaryKeys[i], reader.GetValue(primaryKeyOrdinals[i]));
-//                    }
-//                    if (outdata.Count > 100)
-//                    {
-//                        await output.SendAsync(new StreamEventBatch(null, outdata));
-//                        outdata = new List<StreamEvent>();
-//                    }
-//                }
-//                reader.Close();
-//                if (outdata.Count > 0)
-//                {
-//                    await output.SendAsync(new StreamEventBatch(null, outdata));
-//                }
 #if DEBUG_WRITE
                 allInput.WriteLine($"Initial Done");
                 await allInput.FlushAsync();
@@ -352,6 +318,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 // Schedule a checkpoint after all the data has been sent
                 this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }
+
             await this.RegisterTrigger("change_tracking", TimeSpan.FromSeconds(1));
         }
     }

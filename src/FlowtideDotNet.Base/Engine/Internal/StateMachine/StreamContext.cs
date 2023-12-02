@@ -72,6 +72,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         /// Flag that tells if the stream has failed once
         /// </summary>
         private bool _hasFailed = false;
+        /// <summary>
+        /// Enables or disables trigger registration, used often during failures
+        /// </summary>
+        private bool _triggersEnabled = true;
 
         internal FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState> _stateManager;
         internal readonly ILogger<StreamContext> _logger;
@@ -368,6 +372,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             lock (_triggerLock)
             {
+                if (!_triggersEnabled)
+                {
+                    return Task.CompletedTask;
+                }
                 if (!_triggers.TryGetValue(triggerName, out var list))
                 {
                     list = new List<OperatorTrigger>();
@@ -384,6 +392,42 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
             }
             return Task.CompletedTask;
+        }
+
+        internal void CancelTriggerRegistration()
+        {
+            lock (_triggerLock)
+            {
+                _triggersEnabled = false;
+            }
+        }
+
+        internal void EnableTriggerRegistration()
+        {
+            lock (_triggerLock)
+            {
+                _triggersEnabled = true;
+            }
+        }
+
+        internal async Task ClearTriggers()
+        {
+            List<Task> removeTriggerTasks = new List<Task>();
+            lock (_triggerLock)
+            {
+                foreach(var trigger in _triggers)
+                {
+                    foreach(var val in trigger.Value)
+                    {
+                        if (val.Interval.HasValue)
+                        {
+                            removeTriggerTasks.Add(_streamScheduler.RemoveSchedule(trigger.Key, val.OperatorName));
+                        }
+                    }
+                }
+            }
+            await Task.WhenAll(removeTriggerTasks);
+            _triggers.Clear();
         }
 
         internal void EgressCheckpointDone(string name)

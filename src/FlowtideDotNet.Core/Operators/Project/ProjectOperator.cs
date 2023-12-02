@@ -130,7 +130,11 @@ namespace FlowtideDotNet.Core.Operators.Project
             allInput = File.CreateText($"{Name}.all.txt");
 #endif
             Logger.LogInformation("Initializing project operator.");
-            _eventsCounter = Metrics.CreateCounter<long>("events");
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            
             return Task.CompletedTask;
         }
     }

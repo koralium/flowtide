@@ -474,7 +474,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             outputWriter = File.CreateText($"{Name}.output.txt");
 #endif
             Logger.LogInformation("Initializing merge join operator.");
-            _eventsCounter = Metrics.CreateCounter<long>("events");
+            if(_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
 
             _flexBuffer.Clear();
             if (state == null)

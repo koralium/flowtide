@@ -683,7 +683,8 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             int batchSize,
             Dictionary<string, object> pkValues,
             Func<SqlDataReader, StreamEvent> transformFunction,
-            string? filter)
+            string? filter,
+            CancellationToken cancellationToken)
         {
             using var command = sqlConnection.CreateCommand();
 
@@ -700,7 +701,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 }
             }
 
-            using var reader = await command.ExecuteReaderAsync();
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
             List<int> primaryKeyOrdinals = new List<int>();
             foreach (var pk in primaryKeys)

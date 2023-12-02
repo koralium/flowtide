@@ -145,6 +145,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             lock (_stateLock)
             {
                 _ingressState._taskEnabled = false;
+                _ingressState._tokenSource.Cancel();
                 (_ingressState._block as IDataflowBlock).Fault(exception);
             }
         }
@@ -182,7 +183,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             Debug.Assert(_ingressState?._checkpointLock != null, nameof(_ingressState._checkpointLock));
 
             var lockingEvent = (ILockingEvent)state!;
-            await _ingressState._checkpointLock.WaitAsync();
+            await _ingressState._checkpointLock.WaitAsync(_ingressState._output.CancellationToken);
 
             if (lockingEvent is ICheckpointEvent checkpoint)
             {
@@ -242,7 +243,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 {
                     var taskState = (TaskState)state!;
                     return taskState.func(taskState.ingressOutput, taskState.state);
-                }, tState, default, taskCreationOptions, TaskScheduler.Default)
+                }, tState, _ingressState._output.CancellationToken, taskCreationOptions, TaskScheduler.Default)
                 .Unwrap();
                 t.ContinueWith((task, state) =>
                 {

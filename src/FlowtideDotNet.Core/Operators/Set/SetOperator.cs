@@ -163,13 +163,17 @@ namespace FlowtideDotNet.Core.Operators.Set
             allInput = File.CreateText($"{Name}.all.txt");
             outputWriter = File.CreateText($"{Name}.output.txt");
 #endif
-
-            _eventsCounter = Metrics.CreateCounter<long>("events");
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            
             await InitializeTrees(stateManagerClient);
         }
 
         private async Task InitializeTrees(IStateManagerClient stateManagerClient)
         {
+            _storages.Clear();
             for (int i = 0; i < setRelation.Inputs.Count; i++)
             {
                 _storages.Add(await stateManagerClient.GetOrCreateTree(i.ToString(), new BPlusTreeOptions<StreamEvent, int>()
