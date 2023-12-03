@@ -42,7 +42,7 @@ WHERE t.val = 123;
 var plan = sqlBuilder.GetPlan();
 ```
 
-Replace all values with that are between { } with your own table names in your SQL Server.
+Replace all values with that are between \{ \} with your own table names in your SQL Server.
 
 ## Setting up a read and write factory
 
