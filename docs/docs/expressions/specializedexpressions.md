@@ -4,6 +4,35 @@ sidebar_position: 3
 
 # Specialized Expressions
 
+## Nested Type Constructor Expressions
+
+### List
+
+Allows the creation of a list object.
+
+#### SQL Usage
+
+```sql
+SELECT list(col1, col2) FROM ...
+```
+
+### Map
+
+Allows the creation of a *map* object type. A map is a typical 'json' object with property names and values.
+The map function consists of a list of key value pairs.
+
+#### SQL Usage
+
+The SQL function expects an even number of arguments, the first argument is the key and the second the value for the first key value pair.
+The third argument is the second pairs key, etc.
+
+```sql
+SELECT map('keyvalue', col1) FROM ...
+SELECT map(col2, col1) FROM ...
+```
+
+The keys will be converted into string. A null value will result in 'null' as the key.
+
 ## If Expression
 
 [Substrait definition](https://substrait.io/expressions/specialized_record_expressions/#if-expression)

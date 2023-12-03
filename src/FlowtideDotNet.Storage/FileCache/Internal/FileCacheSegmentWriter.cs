@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Storage.FileCache
     /// <summary>
     /// Handles reading and writing to a single segment file
     /// </summary>
-    internal class FileCacheSegmentWriter : IDisposable
+    internal class FileCacheSegmentWriter : IFileCacheWriter
     {
         private FileStream fileStream;
         private bool disposedValue;
@@ -35,10 +35,17 @@ namespace FlowtideDotNet.Storage.FileCache
             // Check if the file already exists, if so delete it
             if (File.Exists(fileName))
             {
-                File.Delete(fileName);
+                try
+                {
+                    File.Delete(fileName);
+                }
+                catch
+                {
+                    File.Delete(fileName);
+                }
             }
 
-            fileStream = new FileStream(fileName, FileMode.Create, FileAccess.ReadWrite, fileCacheOptions.FileShare, 512, FileOptions.DeleteOnClose | FileOptions.WriteThrough);
+            fileStream = new FileStream(fileName, FileMode.Create, FileAccess.ReadWrite, fileCacheOptions.FileShare, 512, FileOptions.DeleteOnClose | FileOptions.RandomAccess);
         }
 
         public void Write(long position, byte[] data)
@@ -77,7 +84,9 @@ namespace FlowtideDotNet.Storage.FileCache
             {
                 if (disposing)
                 {
+                    semaphoreSlim.Wait();
                     fileStream.Dispose();
+                    semaphoreSlim.Release();
                 }
 
                 disposedValue = true;

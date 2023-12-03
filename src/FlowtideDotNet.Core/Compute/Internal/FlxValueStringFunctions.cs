@@ -64,6 +64,18 @@ namespace FlowtideDotNet.Core.Compute.Internal
             {
                 return value.AsBool.ToString();
             }
+            if (value.ValueType == FlexBuffers.Type.Key)
+            {
+                return value.AsString.ToString();
+            }
+            if (value.ValueType == FlexBuffers.Type.Vector)
+            {
+                return value.AsVector.ToJson;
+            }
+            if (value.ValueType == FlexBuffers.Type.Map)
+            {
+                return value.AsMap.ToJson;
+            }
             throw new NotImplementedException();
         }
     }

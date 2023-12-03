@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Ignore
         }
 
-        public override void Initialize()
+        public override void Initialize(StreamStateValue previousState)
         {
             lock (_lock)
             {
@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         // Wait a while before trying to delete again
                         await Task.Delay(TimeSpan.FromMilliseconds(500));
 
-                        Initialize();
+                        Initialize(StreamStateValue.Deleting);
                     }
                 });
             }

@@ -1,0 +1,24 @@
+﻿syntax = "proto3";
+
+package flowtide;
+
+import "substrait/algebra.proto";
+option csharp_namespace = "FlowtideDotNet.Substrait.CustomProtobuf";
+
+message IterationRelation {
+    string iterationName = 1;
+}
+
+message IterationReferenceReadRelation {
+    // Name of the iteration to get data from
+    string iterationName = 1;
+}
+
+message NormalizationRelation {
+    repeated int32 keyIndex = 1;
+    substrait.Expression filter = 2;
+}
+
+message ReferenceRelation {
+    int32 referenceId = 1;
+}

@@ -18,7 +18,7 @@ To configure your stream to use FasterKV storage, add the following to the build
 
 ```csharp
 builder
-.WithStateOptions(new StateManagerOptions()
+.WithStateOptions(() => new StateManagerOptions()
 {
     PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
     {
@@ -44,7 +44,7 @@ This is an example of a configuration to store to a disk.
 
 ```csharp
 var baseDirectory = "/persistence/"
-builder.WithStateOptions(new StateManagerOptions()
+builder.WithStateOptions(() => new StateManagerOptions()
 {
     // Set cache page count to reduce the memory usage
     CachePageCount = 10000,
@@ -80,7 +80,7 @@ var checkpointManager = new DeviceLogCommitCheckpointManager(
                 new AzureStorageNamedDeviceFactory(STORAGE_STRING),
                 new DefaultCheckpointNamingScheme($"{BASE_CONTAINER}/checkpoints/"));
 
-builder.WithStateOptions(new StateManagerOptions()
+builder.WithStateOptions(() => new StateManagerOptions()
 {
     // Set cache page count to reduce the memory usage
     CachePageCount = 10000,
@@ -112,7 +112,7 @@ To configure your stream to use this storage solution, add the following to the 
 
 ```csharp
 builder
-.WithStateOptions(new StateManagerOptions()
+.WithStateOptions(() => new StateManagerOptions()
 {
     // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage
     PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
@@ -148,4 +148,29 @@ A data page is fetched using the following logic:
     IsInModifiedCache -> FetchFromModifiedCache [label = "Yes"]
     IsInModifiedCache -> FetchFrompersistentStorage [label = "No"]
   }
+```
+
+## Compression
+
+It is possible to compress pages in the state.
+This is done by providing two functions to state serialize options, a compress function and a decompress function.
+
+Example using ZLib compression:
+
+```csharp
+builder.WithStateOptions(() => new StateManagerOptions()
+{
+    ...
+    SerializeOptions = new StateSerializeOptions()
+    {
+        CompressFunc = (stream) =>
+        {
+            return new System.IO.Compression.ZLibStream(stream, CompressionMode.Compress);
+        },
+        DecompressFunc = (stream) =>
+        {
+            return new System.IO.Compression.ZLibStream(stream, CompressionMode.Decompress);
+        }
+    }
+})
 ```

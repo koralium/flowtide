@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         private async Task SendAsync_Slow(T data)
         {
             await EnterCheckpointLock();
-            await _targetBlock.SendAsync(new StreamMessage<T>(data, _ingressState._currentTime));
+            await _targetBlock.SendAsync(new StreamMessage<T>(data, _ingressState._currentTime), CancellationToken);
             ExitCheckpointLock();
         }
 

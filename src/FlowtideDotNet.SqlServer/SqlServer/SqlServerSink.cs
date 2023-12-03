@@ -49,7 +49,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         {
             this.connectionStringFunc = connectionStringFunc;
             this.writeRelation = writeRelation;
-            tmpTableName = $"tmp_{Guid.NewGuid().ToString().Replace("-", "")}";
+            tmpTableName = GetTmpTableName();
+        }
+
+        internal string GetTmpTableName()
+        {
+            return $"#tmp_{Guid.NewGuid().ToString("N")}";
         }
 
         public override string DisplayName => "SQL Server Sink";
@@ -64,12 +69,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 await iterator.SeekFirst();
 
                 // Iterate over all the values
-                await foreach(var page in iterator)
+                await foreach (var page in iterator)
                 {
-                    foreach(var kv in page)
+                    foreach (var kv in page)
                     {
                         var (rows, isDeleted) = await this.GetGroup(kv.Key);
-                        
+
                         if (rows.Count > 1)
                         {
                             var lastRow = rows.Last();
@@ -92,7 +97,6 @@ namespace FlowtideDotNet.SqlServer.SqlServer
 
                         m_dataTable.Rows.Clear();
                     }
-                    
                 }
 
                 if (m_dataTable.Rows.Count > 0)
@@ -111,6 +115,33 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new SqlServerSinkState();
         }
 
+        private async Task LoadPrimaryKeys()
+        {
+            using var conn = new SqlConnection(connectionStringFunc());
+            await conn.OpenAsync();
+            m_primaryKeyNames = await SqlServerUtils.GetPrimaryKeys(conn, writeRelation.NamedObject.DotSeperated);
+            var dbSchema = await SqlServerUtils.GetWriteTableSchema(conn, writeRelation);
+
+            List<int> primaryKeyIndices = new List<int>();
+            foreach (var primaryKey in m_primaryKeyNames)
+            {
+                int index = -1;
+                for (int i = 0; i < dbSchema.Count; i++)
+                {
+                    if (dbSchema[i].ColumnName.Equals(primaryKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        index = i;
+                    }
+                }
+                if (index == -1)
+                {
+                    throw new InvalidOperationException("All primary keys of the sink table must be sent to the sink operator.");
+                }
+                primaryKeyIndices.Add(index);
+            }
+            m_primaryKeys = primaryKeyIndices;
+        }
+
         private async Task LoadMetadata()
         {
             if (connection == null)
@@ -118,7 +149,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 connection = new SqlConnection(connectionStringFunc());
                 await connection.OpenAsync();
             }
-            else if (connection.State != ConnectionState.Open)
+            else
             {
                 await connection.DisposeAsync();
                 connection = new SqlConnection(connectionStringFunc());
@@ -129,12 +160,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             var dbSchema = await SqlServerUtils.GetWriteTableSchema(connection, writeRelation);
 
             List<int> primaryKeyIndices = new List<int>();
-            foreach(var primaryKey in m_primaryKeyNames)
+            foreach (var primaryKey in m_primaryKeyNames)
             {
                 int index = -1;
                 for (int i = 0; i < dbSchema.Count; i++)
                 {
-                    if ( dbSchema[i].ColumnName.Equals(primaryKey, StringComparison.OrdinalIgnoreCase))
+                    if (dbSchema[i].ColumnName.Equals(primaryKey, StringComparison.OrdinalIgnoreCase))
                     {
                         index = i;
                     }
@@ -152,7 +183,28 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             m_dataTable.Columns.Add("md_operation");
             foreach (var column in dbSchema)
             {
-                m_dataTable.Columns.Add(column.ColumnName);
+                if (column.DataType == typeof(decimal))
+                {
+                    // explicit required for type "decimal", "money", and "numeric"
+                    m_dataTable.Columns.Add(column.ColumnName, typeof(decimal));
+                }
+                else if (column.DataType == typeof(byte[]))
+                {
+                    // required for type varbinary
+                    m_dataTable.Columns.Add(column.ColumnName, typeof(byte[]));
+                }
+                else if (column.DataType == typeof(Guid))
+                {
+                    m_dataTable.Columns.Add(column.ColumnName, typeof(Guid));
+                }
+                else if (column.DataType == typeof(DateTime))
+                {
+                    m_dataTable.Columns.Add(column.ColumnName, typeof(DateTime));
+                }
+                else
+                {
+                    m_dataTable.Columns.Add(column.ColumnName);
+                }
             }
 
             m_mapRowFunc = SqlServerUtils.GetDataRowMapFunc(dbSchema, m_primaryKeys);
@@ -169,17 +221,14 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         {
             if (m_primaryKeys == null)
             {
-                await LoadMetadata();
+                await LoadPrimaryKeys();
             }
             return m_primaryKeys!;
         }
 
         protected override async Task Initialize(long restoreTime, SqlServerSinkState? state, IStateManagerClient stateManagerClient)
         {
-            if (m_mapRowFunc == null || (connection != null && connection.State != ConnectionState.Open))
-            {
-                await LoadMetadata();
-            }
+            await LoadMetadata();
             // Create a tree for storing modified data.
             m_modified = await stateManagerClient.GetOrCreateTree<StreamEvent, int>("temporary", new Storage.Tree.BPlusTreeOptions<StreamEvent, int>()
             {

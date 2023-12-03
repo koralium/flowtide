@@ -12,6 +12,7 @@
 
 using FastMember;
 using FlowtideDotNet.Core;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -106,6 +107,54 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     else if (column.GetType().IsEnum)
                     {
                         b.Add((int)column);
+                    }
+                    else if (column is Guid guid)
+                    {
+                        var bytes = guid.ToByteArray();
+                        b.Add(bytes);
+                    }
+                    else if (column is List<int> listInt)
+                    {
+                        b.Vector(b =>
+                        {
+                            foreach (var item in listInt)
+                            {
+                                b.Add(item);
+                            }
+                        });
+                    }
+                    else if (column is List<KeyValuePair<string, int>> listKeyInt)
+                    {
+                        b.Vector(v =>
+                        {
+                            foreach (var item in listKeyInt)
+                            {
+                                v.Map(m =>
+                                {
+                                    m.Add(item.Key, item.Value);
+                                });
+                            }
+                        });
+                    }
+                    else if (column is List<List<int>> listListInt)
+                    {
+                        b.Vector(v =>
+                        {
+                            foreach (var item in listListInt)
+                            {
+                                v.Vector(m =>
+                                {
+                                    foreach(var inner in item)
+                                    {
+                                        m.Add(inner);
+                                    }
+                                });
+                            }
+                        });
+                    }
+                    else if (column is decimal dec)
+                    {
+                        b.Add(dec);
                     }
                     else
                     {

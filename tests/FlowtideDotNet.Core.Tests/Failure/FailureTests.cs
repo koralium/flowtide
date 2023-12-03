@@ -285,7 +285,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
             var tmpStorage = new InMemoryDeviceFactory();
             tmpStorage.Initialize("./data/tmp");
             FlowtideBuilder differentialComputeBuilder = new FlowtideBuilder("teststream")
-                .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
+                .WithStateOptions(() => new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                 {
                     CachePageCount = 100,
                     CheckpointDir = "./data",

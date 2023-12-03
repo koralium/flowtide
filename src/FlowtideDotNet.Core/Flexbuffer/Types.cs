@@ -20,7 +20,7 @@ namespace FlexBuffers
         VectorInt2, VectorUInt2, VectorFloat2,
         VectorInt3, VectorUInt3, VectorFloat3,
         VectorInt4, VectorUInt4, VectorFloat4,
-        Blob, Bool, VectorBool = 36
+        Blob, Bool, TimestampTz,Decimal, VectorBool = 36
     }
 
     public static class TypesUtil

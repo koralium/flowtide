@@ -12,6 +12,7 @@
 
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
@@ -30,24 +31,28 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private ConcurrentDictionary<long, LinkedListNode<LinkedListValue>> cache;
         private LinkedList<LinkedListValue> m_nodes;
         private Task? m_cleanupTask;
-        private readonly int maxSize;
+        private int maxSize;
         private readonly ILogger logger;
-        private readonly int cleanupStart;
+        private readonly long maxMemoryUsageInBytes;
+        private int cleanupStart;
         private readonly SemaphoreSlim _fullLock;
         private int m_count;
         private long m_cacheHits;
         private long m_lastSeenCacheHits;
         private int m_sameCaheHitsCount;
+        private readonly Process _currentProcess;
 
-        public LruTableSync(int maxSize, ILogger logger)
+        public LruTableSync(int maxSize, ILogger logger, long maxMemoryUsageInBytes = -1)
         {
             cache = new ConcurrentDictionary<long, LinkedListNode<LinkedListValue>>();
             m_nodes = new LinkedList<LinkedListValue>();
             this.maxSize = maxSize;
             this.logger = logger;
+            this.maxMemoryUsageInBytes = maxMemoryUsageInBytes;
             cleanupStart = (int)Math.Ceiling(maxSize * 0.7);
             _fullLock = new SemaphoreSlim(1);
             StartCleanupTask();
+            _currentProcess = Process.GetCurrentProcess();
         }
 
         public void Clear()
@@ -56,6 +61,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 cache.Clear();
                 m_nodes.Clear();
+                Volatile.Write(ref m_count, 0);
             }
         }
 
@@ -217,9 +223,26 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 else
                 {
                     m_lastSeenCacheHits = cacheHitsLocal;
+                    m_sameCaheHitsCount = 0;
                     return;
                 }
             }
+            if (maxMemoryUsageInBytes > 0)
+            {
+                _currentProcess.Refresh();
+                var percentage = (float)currentCount / maxSize;
+                if (_currentProcess.WorkingSet64 < (maxMemoryUsageInBytes * percentage))
+                {
+                    Volatile.Write(ref maxSize, (int)Math.Ceiling(maxSize * 1.1));
+                    Volatile.Write(ref cleanupStart, (int)Math.Ceiling(maxSize * 0.7));
+                    return;
+                }
+                else
+                {
+                    Volatile.Write(ref maxSize, (int)Math.Floor(maxSize * 0.9));
+                }
+            }
+           
             LinkedListNode<LinkedListValue>? iteratorNode;
             lock (m_nodes)
             {

@@ -26,6 +26,23 @@ namespace FlowtideDotNet.Core.Compute
             return CompareTo(a, b) == 0;
         }
 
+        internal static int CompareDecimal(FlxValue dec, FlxValue b)
+        {
+            if (b.ValueType == FlexBuffers.Type.Decimal)
+            {
+                return dec.AsDecimal.CompareTo(b.AsDecimal);
+            }
+            if (b.ValueType == FlexBuffers.Type.Float)
+            {
+                return dec.AsDecimal.CompareTo((decimal)b.AsDouble);
+            }
+            if (b.ValueType == FlexBuffers.Type.Int) 
+            {
+                return dec.AsDecimal.CompareTo((decimal)b.AsDouble);
+            }
+            return dec.ValueType - b.ValueType;
+        }
+
         public static int CompareTo(FlxValue a, FlxValue b)
         {
             var tComp = a.ValueType.CompareTo(b.ValueType);
@@ -73,7 +90,21 @@ namespace FlowtideDotNet.Core.Compute
                     }
                     return 0;
                 }
+                if (a.ValueType == FlexBuffers.Type.Blob)
+                {
+                    var ablob = a.AsBlob;
+                    var bblob = b.AsBlob;
+                    return ablob.SequenceCompareTo(bblob);
+                }
                 throw new NotImplementedException();
+            }
+            if (a.ValueType == FlexBuffers.Type.Decimal)
+            {
+                return CompareDecimal(a, b);
+            }
+            if (b.ValueType == FlexBuffers.Type.Decimal)
+            {
+                return CompareDecimal(b, a) * -1;
             }
             return tComp;
         }
@@ -88,6 +119,23 @@ namespace FlowtideDotNet.Core.Compute
                 return a.AsString.Equals(b.AsString, StringComparison.OrdinalIgnoreCase);
             }
             return CompareTo(a, b) == 0;
+        }
+
+        internal static int CompareDecimal(scoped in FlxValueRef dec, scoped in FlxValueRef b)
+        {
+            if (b.ValueType == FlexBuffers.Type.Decimal)
+            {
+                return dec.AsDecimal.CompareTo(b.AsDecimal);
+            }
+            if (b.ValueType == FlexBuffers.Type.Float)
+            {
+                return dec.AsDecimal.CompareTo((decimal)b.AsDouble);
+            }
+            if (b.ValueType == FlexBuffers.Type.Int)
+            {
+                return dec.AsDecimal.CompareTo((decimal)b.AsDouble);
+            }
+            return dec.ValueType - b.ValueType;
         }
 
         public static int CompareTo(in FlxValueRef a, in FlxValueRef b)
@@ -137,7 +185,58 @@ namespace FlowtideDotNet.Core.Compute
                     }
                     return 0;
                 }
+                if (a.ValueType == FlexBuffers.Type.Map)
+                {
+                    var amap = a.AsMap;
+                    var bmap = b.AsMap;
+
+                    // First just go after length of vector as a comparison
+                    var lengthCompare = amap.Length.CompareTo(bmap.Length);
+                    if (lengthCompare != 0)
+                    {
+                        return lengthCompare;
+                    }
+
+                    // Compare each key
+                    for (int i = 0; i < amap.Length; i++)
+                    {
+                        int keyCompare = CompareTo(amap.Keys[i], bmap.Keys[i]);
+                        if (keyCompare != 0)
+                        {
+                            return keyCompare;
+                        }
+                    }
+
+                    // Compare each element in order, if one doesnt match return the compare value
+                    for (int i = 0; i < amap.Length; i++)
+                    {
+                        int valCompare = CompareTo(amap.Values[i], bmap.Values[i]);
+                        if (valCompare != 0)
+                        {
+                            return valCompare;
+                        }
+                    }
+                    return 0;
+                }
+                if (a.ValueType == FlexBuffers.Type.Key)
+                {
+                    return string.Compare(a.AsString, b.AsString);
+                }
+                if (a.ValueType == FlexBuffers.Type.Blob)
+                {
+                    var ablob = a.AsBlob;
+                    var bblob = b.AsBlob;
+                    return ablob.SequenceCompareTo(bblob);
+                }
                 throw new NotImplementedException();
+            }
+            if (a.ValueType == FlexBuffers.Type.Decimal)
+            {
+                return CompareDecimal(a, b);
+            }
+            if (b.ValueType == FlexBuffers.Type.Decimal)
+            {
+                return CompareDecimal(b, a) * -1;
             }
             if (a._type < b._type)
             {

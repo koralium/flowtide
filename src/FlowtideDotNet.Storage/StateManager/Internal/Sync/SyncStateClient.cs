@@ -73,8 +73,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        public ValueTask Commit()
+        public async ValueTask Commit()
         {
+            List<Task> writeTasks = new List<Task>();
             lock (m_lock)
             {
                 
@@ -83,19 +84,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     if (kv.Value == -1)
                     {
                         // deleted
-                        session.Delete(kv.Key);
+                        writeTasks.Add(session.Delete(kv.Key));
 
                         // Remove a page from the new pages counter
                         Interlocked.Decrement(ref newPages);
-                        //stateManager.DeleteFromPersistentStore(kv.Key, session);
                         continue;
                     }
                     if (stateManager.TryGetValueFromCache<V>(kv.Key, out var val))
                     {
-                        var bytes = options.ValueSerializer.Serialize(val);
+                        var bytes = options.ValueSerializer.Serialize(val, stateManager.SerializeOptions);
                         // Write to persistence
-                        session.Write(kv.Key, bytes);
-                        //stateManager.WriteToPersistentStore(kv.Key, bytes, session);
+                        writeTasks.Add(session.Write(kv.Key, bytes));
                         continue;
                     }
                     {
@@ -107,11 +106,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         }
 
                         // Write to persistence
-                        session.Write(kv.Key, bytes);
+                        writeTasks.Add(session.Write(kv.Key, bytes));
 
                         // Free the data from temporary storage
                         m_fileCache.Free(kv.Key);
-                        //stateManager.WriteToPersistentStore(kv.Key, bytes, session);
                     }
                 }
                 var modifiedPagesCount = m_modified.Count;
@@ -124,11 +122,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_modified.Clear();
                 {
                     var bytes = StateClientMetadataSerializer.Instance.Serialize(metadata);
-                    session.Write(metadataId, bytes);
-                    //stateManager.WriteToPersistentStore(metadataId, bytes, session);
+                    writeTasks.Add(session.Write(metadataId, bytes));
                 }
             }
-            return ValueTask.CompletedTask;
+            await Task.WhenAll(writeTasks);
         }
 
         public void Delete(in long key)
@@ -160,18 +157,21 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 if (m_modified.ContainsKey(key))
                 {
                     var bytes = m_fileCache.Read(key);
-                    var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length);
+                    var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
                     stateManager.AddOrUpdate(key, value, this);
                     return ValueTask.FromResult<V?>(value);
                 }
                 // Read from persistent store
-                {
-                    var bytes = session.Read(key); //stateManager.ReadFromPersistentStore(key, session);
-                    var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length);
-                    stateManager.AddOrUpdate(key, value, this);
-                    return ValueTask.FromResult<V?>(value);
-                }
+                return GetValue_Persistent(key);
             }
+        }
+
+        private async ValueTask<V?> GetValue_Persistent(long key)
+        {
+            var bytes = await session.Read(key);
+            var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
+            stateManager.AddOrUpdate(key, value, this);
+            return value;
         }
 
         protected virtual void Dispose(bool disposing)
@@ -217,18 +217,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public void Evict(List<(LinkedListNode<LruTableSync.LinkedListValue>, long)> valuesToEvict)
         {
-            //lock (m_lock)
-            //{
             foreach (var value in valuesToEvict)
             {
                 value.Item1.ValueRef.value.EnterWriteLock();
-                var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value);
+                var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value, stateManager.SerializeOptions);
                 m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);
                 value.Item1.ValueRef.value.ExitWriteLock();
             }
             m_fileCache.Flush();
-            //}
-            
         }
     }
 }

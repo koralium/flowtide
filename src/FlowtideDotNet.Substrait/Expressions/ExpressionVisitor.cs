@@ -126,5 +126,30 @@ namespace FlowtideDotNet.Substrait.Expressions
             }
             return default;
         }
+
+        public virtual TOutput? VisitMapNestedExpression(MapNestedExpression mapNestedExpression, TState state)
+        {
+            if (mapNestedExpression.KeyValues != null)
+            {
+                foreach(var kv in mapNestedExpression.KeyValues)
+                {
+                    Visit(kv.Key, state);
+                    Visit(kv.Value, state);
+                }
+            }
+            return default;
+        }
+
+        public virtual TOutput? VisitListNestedExpression(ListNestedExpression listNestedExpression, TState state)
+        {
+            if (listNestedExpression.Values != null)
+            {
+                foreach(var val in listNestedExpression.Values)
+                {
+                    Visit(val, state);
+                }
+            }
+            return default;
+        }
     }
 }

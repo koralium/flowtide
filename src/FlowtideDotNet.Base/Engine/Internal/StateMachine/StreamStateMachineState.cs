@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _context = context;
         }
 
-        public abstract void Initialize();
+        public abstract void Initialize(StreamStateValue previousState);
 
         public abstract Task OnFailure();
 

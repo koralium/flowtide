@@ -19,5 +19,7 @@ namespace FlowtideDotNet.Storage
         public long SegmentSize { get; set; } = (long)1024 * 1024 * 1024 * 80;
 
         public FileShare FileShare { get; set; } = FileShare.None;
+
+        public bool UseDirectIOOnLinux { get; set; } = true;
     }
 }

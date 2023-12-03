@@ -72,6 +72,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         /// Flag that tells if the stream has failed once
         /// </summary>
         private bool _hasFailed = false;
+        /// <summary>
+        /// Enables or disables trigger registration, used often during failures
+        /// </summary>
+        private bool _triggersEnabled = true;
 
         internal FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState> _stateManager;
         internal readonly ILogger<StreamContext> _logger;
@@ -86,7 +90,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             StreamState? fromState,
             IStreamScheduler streamScheduler,
             IStreamNotificationReciever? notificationReciever,
-            StateManagerOptions stateManagerOptions,
+            Func<StateManagerOptions> stateManagerOptions,
             ILoggerFactory? loggerFactory,
             StreamVersionInformation? streamVersionInformation)
         {
@@ -158,7 +162,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _state.SetContext(this);
         }
 
-        private Task TransitionTo(StreamStateMachineState current, StreamStateMachineState state)
+        private Task TransitionTo(StreamStateMachineState current, StreamStateMachineState state, StreamStateValue previous)
         {
             lock(_contextLock)
             {
@@ -168,8 +172,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 this._state = state;
                 this._state.SetContext(this);
-                this._state.Initialize();
             }
+            this._state.Initialize(previous);
             return Task.CompletedTask;
         }
 
@@ -187,20 +191,21 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     // All errors are catched so notification reciever cant break the stream
                 }
             }
+            var oldState = currentState;
             currentState = newState;
             switch (newState)
             {
                 case StreamStateValue.Starting:
-                    return TransitionTo(current, new StartStreamState());
+                    return TransitionTo(current, new StartStreamState(), oldState);
                 case StreamStateValue.Failure:
                     _hasFailed = true;
-                    return TransitionTo(current, new FailureStreamState());
+                    return TransitionTo(current, new FailureStreamState(), oldState);
                 case StreamStateValue.Running:
-                    return TransitionTo(current, new RunningStreamState());
+                    return TransitionTo(current, new RunningStreamState(), oldState);
                 case StreamStateValue.Deleting:
-                    return TransitionTo(current, new DeletingStreamState());
+                    return TransitionTo(current, new DeletingStreamState(), oldState);
                 case StreamStateValue.Deleted:
-                    return TransitionTo(current, new DeletedStreamState());
+                    return TransitionTo(current, new DeletedStreamState(), oldState);
             }
             return Task.CompletedTask;
         }
@@ -367,6 +372,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             lock (_triggerLock)
             {
+                if (!_triggersEnabled)
+                {
+                    return Task.CompletedTask;
+                }
                 if (!_triggers.TryGetValue(triggerName, out var list))
                 {
                     list = new List<OperatorTrigger>();
@@ -383,6 +392,42 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
             }
             return Task.CompletedTask;
+        }
+
+        internal void CancelTriggerRegistration()
+        {
+            lock (_triggerLock)
+            {
+                _triggersEnabled = false;
+            }
+        }
+
+        internal void EnableTriggerRegistration()
+        {
+            lock (_triggerLock)
+            {
+                _triggersEnabled = true;
+            }
+        }
+
+        internal async Task ClearTriggers()
+        {
+            List<Task> removeTriggerTasks = new List<Task>();
+            lock (_triggerLock)
+            {
+                foreach(var trigger in _triggers)
+                {
+                    foreach(var val in trigger.Value)
+                    {
+                        if (val.Interval.HasValue)
+                        {
+                            removeTriggerTasks.Add(_streamScheduler.RemoveSchedule(trigger.Key, val.OperatorName));
+                        }
+                    }
+                }
+            }
+            await Task.WhenAll(removeTriggerTasks);
+            _triggers.Clear();
         }
 
         internal void EgressCheckpointDone(string name)
@@ -414,10 +459,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task StartAsync()
         {
-            lock(_contextLock)
-            {
-                return _state!.StartAsync();
-            }
+            return _state!.StartAsync();
         }
 
         internal Task DeleteAsync()
@@ -500,7 +542,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return StreamStatus.Starting;
                 case StreamStateValue.Running:
                     var graph = GetGraph();
-                    var hasDegradedNode = graph.Nodes.Any(x => x.Value.Gauges.Any(y => y.Name == "health" && y.Dimensions[""].Value != 1));
+                    var hasDegradedNode = graph.Nodes.Any(x => x.Value.Gauges.Any(y => y.Name == "health" && y.Dimensions.First().Value.Value != 1));
                     if (hasDegradedNode)
                     {
                         return StreamStatus.Degraded;

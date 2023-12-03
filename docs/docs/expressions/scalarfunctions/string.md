@@ -50,3 +50,39 @@ Returns the input string in all uppercase characters. If any other type than str
 ```sql
 SELECT upper(c1) FROM ... 
 ```
+
+## Trim
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#trim)
+
+Remove whitespaces from both sides of a string
+
+### SQL Usage
+
+```sql
+SELECT trim(c1) FROM ... 
+```
+
+## LTrim
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#ltrim)
+
+Remove whitespaces from the start of a string
+
+### SQL Usage
+
+```sql
+SELECT ltrim(c1) FROM ... 
+```
+
+## RTrim
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#rtrim)
+
+Remove whitespaces from the end of a string
+
+### SQL Usage
+
+```sql
+SELECT rtrim(c1) FROM ... 
+```

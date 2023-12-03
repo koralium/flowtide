@@ -365,6 +365,7 @@ message Rel {
     ExtensionMultiRel extension_multi = 10;
     ExtensionLeafRel extension_leaf = 11;
     CrossRel cross = 12;
+    WriteRel write = 15;
 
     //Physical relations
     HashJoinRel hash_join = 13;

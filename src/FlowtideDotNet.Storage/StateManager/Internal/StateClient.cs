@@ -191,7 +191,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
                 }
                 var (bytes, length) = await m_temporaryStorage.ReadAsync(storageLocation);
 
-                var deserialized = m_serializer.Deserialize(new ByteMemoryOwner(bytes), length);
+                var deserialized = m_serializer.Deserialize(new ByteMemoryOwner(bytes), length, new StateSerializeOptions());
                 await lruTable.Add(key, deserialized);
                 return deserialized;
             }
@@ -243,7 +243,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
                     // Store the modified data to disk in temporary storage
                     // must lock the data before writing since this call can come from another thread
                     val.Value.EnterWriteLock();
-                    m_modified[val.Key] = m_temporaryStorage.Enqueue(m_serializer.Serialize((V)val.Value!));
+                    m_modified[val.Key] = m_temporaryStorage.Enqueue(m_serializer.Serialize((V)val.Value!, new StateSerializeOptions()));
                     val.Value.ExitWriteLock();
                     enqueued = true;
                 }

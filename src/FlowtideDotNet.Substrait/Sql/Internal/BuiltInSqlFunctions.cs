@@ -263,6 +263,28 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
+            sqlFunctionRegister.RegisterScalarFunction("guid", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("guid must have exactly one argument");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var expr = visitor.Visit(funcExpr.Expression, emitData);
+                    return new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsGuid.Uri,
+                        ExtensionName = FunctionsGuid.ParseGuid,
+                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    };
+                }
+                else
+                {
+                    throw new NotImplementedException("guid does not support the input parameter");
+                }
+            });
+
             sqlFunctionRegister.RegisterScalarFunction("strftime", (f, visitor, emitData) =>
             {
                 if (f.Args == null || f.Args.Count != 2)
@@ -285,6 +307,63 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new NotImplementedException("stftime does not support the input parameter");
                 }
+            });
+
+            sqlFunctionRegister.RegisterScalarFunction("map", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count % 2 != 0)
+                {
+                    throw new InvalidOperationException("Map must have an even number of arguments, one for key and one for value.");
+                }
+                MapNestedExpression mapNestedExpression = new MapNestedExpression();
+                mapNestedExpression.KeyValues = new List<KeyValuePair<Expressions.Expression, Expressions.Expression>>();
+                for (int i = 0; i < f.Args.Count; i += 2)
+                {
+                    var keyArg = f.Args[i];
+                    var valArg = f.Args[i + 1];
+                    if (keyArg is FunctionArg.Unnamed keyunnamed && keyunnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression keyFuncExprUnnamed)
+                    {
+                        var keyExpr = visitor.Visit(keyFuncExprUnnamed.Expression, emitData);
+                        
+                        if (valArg is FunctionArg.Unnamed valunnamed && valunnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression valFuncExprUnnamed)
+                        {
+                            var valExpr = visitor.Visit(valFuncExprUnnamed.Expression, emitData);
+                            mapNestedExpression.KeyValues.Add(new KeyValuePair<Expressions.Expression, Expressions.Expression>(
+                                keyExpr.Expr,
+                                valExpr.Expr
+                                ));
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("map does not support the input parameter");
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("map does not support the input parameter");
+                    }
+                }
+                return mapNestedExpression;
+            });
+
+            sqlFunctionRegister.RegisterScalarFunction("list", (f, visitor, emitData) =>
+            {
+                ListNestedExpression mapNestedExpression = new ListNestedExpression();
+                mapNestedExpression.Values = new List<Expressions.Expression>();
+                for (int i = 0; i < f.Args.Count; i += 1)
+                {
+                    var arg = f.Args[i];
+                    if (arg is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExprUnnamed)
+                    {
+                        var expr = visitor.Visit(funcExprUnnamed.Expression, emitData);
+                        mapNestedExpression.Values.Add(expr.Expr);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("list does not support the input parameter");
+                    }
+                }
+                return mapNestedExpression;
             });
 
 
@@ -373,6 +452,29 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     };
                 }
                 throw new InvalidOperationException("min must have exactly one argument, and not be '*'");
+            });
+
+            sqlFunctionRegister.RegisterAggregateFunction("list_agg", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("list_agg must have exactly one argument, and not be '*'");
+                }
+                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException("list_agg must have exactly one argument, and not be '*'");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+                    return new AggregateFunction()
+                    {
+                        ExtensionUri = FunctionsList.Uri,
+                        ExtensionName = FunctionsList.ListAgg,
+                        Arguments = new List<Expressions.Expression>() { argExpr }
+                    };
+                }
+                throw new InvalidOperationException("list_agg must have exactly one argument, and not be '*'");
             });
         }
 

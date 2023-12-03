@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.Metrics;
@@ -20,7 +21,7 @@ namespace FlowtideDotNet.Base
     {
         string StreamName { get; }
 
-        Meter Metrics { get; }
+        IMeter Metrics { get; }
 
         IStateManagerClient StateClient { get; }
 

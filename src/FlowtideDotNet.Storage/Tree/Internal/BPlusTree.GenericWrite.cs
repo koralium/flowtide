@@ -568,7 +568,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var newSplitKey = DistributeBetweenNodesInternal(leftNode, internalNode);
 
                 parentNode.EnterWriteLock();
-                parentNode.keys[index] = newSplitKey;
+                parentNode.keys[index - 1] = newSplitKey;
                 parentNode.ExitWriteLock();
 
                 var upsertLeftNodeStatus = m_stateClient.AddOrUpdate(leftNode.Id, leftNode);

@@ -34,12 +34,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     internal class MockDataSink : WriteBaseOperator<MockDataSinkState>
     {
         private readonly Action<List<byte[]>> onDataChange;
+        private int crashOnCheckpointCount;
         private SortedDictionary<StreamEvent, int> currentData;
 
-        public MockDataSink(ExecutionDataflowBlockOptions executionDataflowBlockOptions, Action<List<byte[]>> onDataChange) : base(executionDataflowBlockOptions)
+        public MockDataSink(
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions, 
+            Action<List<byte[]>> onDataChange,
+            int crashOnCheckpointCount) : base(executionDataflowBlockOptions)
         {
             currentData = new SortedDictionary<StreamEvent, int>(new BPlusTreeStreamEventComparer());
             this.onDataChange = onDataChange;
+            this.crashOnCheckpointCount = crashOnCheckpointCount;
         }
 
         public override string DisplayName => "Mock Data Sink";
@@ -56,11 +61,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override Task InitializeOrRestore(long restoreTime, MockDataSinkState? state, IStateManagerClient stateManagerClient)
         {
+            
             return Task.CompletedTask;
         }
 
         protected override Task<MockDataSinkState> OnCheckpoint(long checkpointTime)
         {
+            if (crashOnCheckpointCount > 0)
+            {
+                crashOnCheckpointCount--;
+                throw new Exception("Crash on checkpoint");
+            }
             if (currentData.Any(x => x.Value < 0))
             {
                 Assert.Fail("Row exist in sink with negaive weight");

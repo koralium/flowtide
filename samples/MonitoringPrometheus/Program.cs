@@ -15,13 +15,6 @@ builder.Services.AddOpenTelemetry()
         {
             
         });
-        builder.AddView((instrument) =>
-        {
-            return new MetricStreamConfiguration()
-            {
-                Name = $"{instrument.Meter.Name}.{instrument.Name}"
-            };
-        });
         builder.AddMeter("flowtide.*");
     });
 
@@ -60,7 +53,7 @@ builder.Services.AddFlowtideStream(b =>
 {
     b.AddPlan(plan)
     .AddReadWriteFactory(factory)
-    .WithStateOptions(new StateManagerOptions()
+    .WithStateOptions(() => new StateManagerOptions()
     {
         // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage
         PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
