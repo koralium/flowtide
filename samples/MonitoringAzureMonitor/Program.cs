@@ -17,13 +17,6 @@ builder.Services.AddOpenTelemetry()
         {
             o.ConnectionString = "{your connection string}";
         });
-        builder.AddView((instrument) =>
-        {
-            return new MetricStreamConfiguration()
-            {
-                Name = $"{instrument.Meter.Name}.{instrument.Name}"
-            };
-        });
         builder.AddMeter("flowtide.*");
     });
 

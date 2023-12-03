@@ -263,6 +263,28 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
+            sqlFunctionRegister.RegisterScalarFunction("guid", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("guid must have exactly one argument");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var expr = visitor.Visit(funcExpr.Expression, emitData);
+                    return new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsGuid.Uri,
+                        ExtensionName = FunctionsGuid.ParseGuid,
+                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    };
+                }
+                else
+                {
+                    throw new NotImplementedException("guid does not support the input parameter");
+                }
+            });
+
             sqlFunctionRegister.RegisterScalarFunction("strftime", (f, visitor, emitData) =>
             {
                 if (f.Args == null || f.Args.Count != 2)
