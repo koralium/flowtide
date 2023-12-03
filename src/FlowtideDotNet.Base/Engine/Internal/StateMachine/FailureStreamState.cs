@@ -53,6 +53,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private async Task StopAndDispose()
         {
             Debug.Assert(_context != null, nameof(_context));
+            // Clear all triggers before cancelling and stop registering new triggers
+            _context.CancelTriggerRegistration();
+            await _context.ClearTriggers();
 
             lock (_context._checkpointLock)
             {
