@@ -11,12 +11,15 @@
 // limitations under the License.
 
 using DataflowStream.dataflow.Internal.Extensions;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Egress.Internal;
+using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 
@@ -33,7 +36,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         protected string StreamName { get; private set; }
 
-        protected Meter Metrics { get; private set; }
+        protected IMeter Metrics { get; private set; }
 
         public abstract string DisplayName { get; }
 
@@ -140,6 +143,15 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             Metrics.CreateObservableGauge("health", () =>
             {
                 return _isHealthy ? 1 : 0;
+            });
+            Metrics.CreateObservableGauge("metadata", () =>
+            {
+                TagList tags = new TagList
+                {
+                    { "displayName", DisplayName }
+                };
+                tags.Add("links", "[]");
+                return new Measurement<int>(1, tags);
             });
 
             return InitializeOrRestore(restoreTime, dState, vertexHandler.StateClient);
