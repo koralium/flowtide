@@ -70,7 +70,14 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             // Check if the file already exists, if so delete it
             if (File.Exists(fileName))
             {
-                File.Delete(fileName);
+                try
+                {
+                    File.Delete(fileName);
+                }
+                catch
+                {
+                    File.Delete(fileName);
+                }
             }
 
             this.fileDescriptor = open(fileName, O_RDWR | O_DIRECT | O_CREAT, S_IRUSR | S_IWUSR);

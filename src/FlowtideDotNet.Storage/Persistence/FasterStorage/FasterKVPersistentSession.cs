@@ -24,49 +24,34 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             this.session = session;
         }
 
-        public void Delete(long key)
+        public async Task Delete(long key)
         {
-            var status = session.Delete(key);
-            if (!status.IsCompleted || status.IsPending)
-            {
-                session.CompletePending(true);
-            }
+            var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var result = await session.DeleteAsync(key, token: tokenSource.Token);
+            _ = result.Complete();
         }
 
-        public byte[] Read(long key)
+        public async ValueTask<byte[]> Read(long key)
         {
-            var result = session.Read(key);
-            if (result.status.IsCompleted && !result.status.IsPending)
+            var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var input = new SpanByte();
+            var result = await session.ReadAsync(ref key, token: tokenSource.Token);
+            var (status, bytes) = result.Complete();
+            if (bytes == null)
             {
-                return result.output;
+                throw new InvalidOperationException("Could not read from persistent storage");
             }
-            if (session.CompletePendingWithOutputs(out var completedOutputs, true))
-            {
-                var hasNext = completedOutputs.Next();
-                var bytes = completedOutputs.Current.Output;
-                hasNext = completedOutputs.Next();
-                if (hasNext)
-                {
-                    throw new Exception();
-                }
-                return bytes;
-            }
-            else
-            {
-                throw new Exception();
-            }
+            return bytes;
         }
 
-        public void Write(long key, byte[] value)
+        public async Task Write(long key, byte[] value)
         {
             var mem = new Memory<byte>(value);
             var handle = mem.Pin();
             var spanByte = SpanByte.FromPinnedMemory(value);
-            var status = session.Upsert(key, spanByte);
-            if (!status.IsCompleted || status.IsPending)
-            {
-                session.CompletePending(true);
-            }
+            var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var result = await session.UpsertAsync(key, spanByte, token: tokenSource.Token);
+            var status = result.Complete();
             handle.Dispose();
         }
     }

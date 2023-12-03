@@ -10,14 +10,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Storage.Persistence
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Base.Metrics
 {
-    public interface IPersistentStorageSession
+    /// <summary>
+    /// Copy of System.Diagnostics.Metrics.ObservableCounter as an interface
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public interface IObservableCounter<T> where T : struct
     {
-        ValueTask<byte[]> Read(long key);
-
-        Task Write(long key, byte[] value);
-
-        Task Delete(long key);
     }
 }

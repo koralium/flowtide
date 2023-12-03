@@ -35,7 +35,14 @@ namespace FlowtideDotNet.Storage.FileCache
             // Check if the file already exists, if so delete it
             if (File.Exists(fileName))
             {
-                File.Delete(fileName);
+                try
+                {
+                    File.Delete(fileName);
+                }
+                catch
+                {
+                    File.Delete(fileName);
+                }
             }
 
             fileStream = new FileStream(fileName, FileMode.Create, FileAccess.ReadWrite, fileCacheOptions.FileShare, 512, FileOptions.DeleteOnClose | FileOptions.RandomAccess);
@@ -77,7 +84,9 @@ namespace FlowtideDotNet.Storage.FileCache
             {
                 if (disposing)
                 {
+                    semaphoreSlim.Wait();
                     fileStream.Dispose();
+                    semaphoreSlim.Release();
                 }
 
                 disposedValue = true;
