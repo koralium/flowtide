@@ -27,5 +27,9 @@ namespace FlowtideDotNet.AcceptanceTests.Entities
         public int UserKey { get; set; }
 
         public DateTime Orderdate { get; set; }
+
+        public Guid GuidVal { get; set; }
+
+        public Decimal? Money { get; set; }
     }
 }

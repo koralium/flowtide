@@ -136,6 +136,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
+            // Clear all triggers, they have to be readded by the stream
+            await _context.ClearTriggers();
+            // Enable trigger registration
+            _context.EnableTriggerRegistration();
+
+            // Initialize state
             await _context._stateManager.InitializeAsync();
             _context._lastState = _context._stateManager.Metadata;
             if (_context._lastState == null)
