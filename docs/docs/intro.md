@@ -10,7 +10,7 @@ to another connector as well.
 Create a minimal API AspNetCore application and install the following nuget package:
 
 * FlowtideDotNet.AspNetCore
-* FlowtideDotNet.SqlServer
+* FlowtideDotNet.Connector.SqlServer
 
 ## Creating a plan
 
