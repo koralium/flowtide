@@ -12,7 +12,9 @@
 
 using FlowtideDotNet.Base.Metrics.Counter;
 using FlowtideDotNet.Base.Metrics.Gauge;
+using FlowtideDotNet.Base.Metrics.Internal;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Base.Metrics
@@ -22,7 +24,7 @@ namespace FlowtideDotNet.Base.Metrics
         private readonly MeterListener _meterListener;
         private readonly ConcurrentDictionary<string, IMetricInstrument> _instruments = new ConcurrentDictionary<string, IMetricInstrument>();
         private readonly string _streamName;
-        private readonly Dictionary<string, Meter> _meters = new Dictionary<string, Meter>();
+        private readonly Dictionary<string, IMeter> _meters = new Dictionary<string, IMeter>();
         private bool disposedValue;
         private readonly Dictionary<string, VertexInstruments> _vertices = new Dictionary<string, VertexInstruments>();
         private readonly object _lock = new object();
@@ -184,11 +186,17 @@ namespace FlowtideDotNet.Base.Metrics
             }
         }
 
-        public Meter GetOrCreateVertexMeter(string operatorName)
+        public IMeter GetOrCreateVertexMeter(string operatorName)
         {
             if (!_meters.TryGetValue(operatorName, out var meter))
             {
-                meter = new Meter(GetVertexMeterName(operatorName));
+                var m = new Meter(GetVertexMeterName(operatorName));
+                var tagList = new TagList()
+                {
+                    { "operator", operatorName },
+                    { "stream", _streamName }
+                };
+                meter = new FlowtideMeter(m, tagList);
                 _meters.Add(operatorName, meter);
             }
             return meter;

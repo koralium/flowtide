@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Base.Metrics.Gauge
 
             foreach(var gauge in _gauges)
             {
-                dimensions.Add(gauge.Key, gauge.Value.GetSnapshot());
+                dimensions[""] = gauge.Value.GetSnapshot();
             }
 
             return new GaugeSnapshot(Name, Unit, Description, dimensions);

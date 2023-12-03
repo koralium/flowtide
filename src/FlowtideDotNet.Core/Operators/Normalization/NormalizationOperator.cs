@@ -23,6 +23,7 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Base.Metrics;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
@@ -38,7 +39,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         private IBPlusTree<string, IngressData>? _tree;
         private readonly Func<StreamEvent, bool>? _filter;
 
-        private Counter<long>? _eventsCounter;
+        private ICounter<long>? _eventsCounter;
         
         public override string DisplayName => "Normalize";
 

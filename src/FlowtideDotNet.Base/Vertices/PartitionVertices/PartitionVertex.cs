@@ -10,8 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.FixedPoint;
+using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using System;
@@ -37,12 +39,12 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         private string? _streamName;
         private long _currentTime;
         private ILogger? _logger;
-        private Meter? _metrics;
+        private IMeter? _metrics;
         private bool _isHealthy = true;
 
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
 
-        protected Meter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
+        protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
 
         public ISourceBlock<IStreamEvent>[] Sources => _sources;
 
@@ -176,6 +178,32 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             Metrics.CreateObservableGauge("health", () =>
             {
                 return _isHealthy ? 1 : 0;
+            });
+            Metrics.CreateObservableGauge("metadata", () =>
+            {
+                TagList tags = new TagList
+                {
+                    { "displayName", DisplayName }
+                };
+                var links = GetLinks();
+                StringBuilder outputLinks = new StringBuilder();
+                outputLinks.Append('[');
+                foreach (var link in links)
+                {
+                    if (link is IStreamVertex streamVertex)
+                    {
+                        outputLinks.Append(streamVertex.Name);
+                    }
+                    else if (link is MultipleInputTargetHolder target)
+                    {
+                        outputLinks.Append(target.OperatorName);
+                    }
+                    outputLinks.Append(',');
+                }
+                outputLinks.Remove(outputLinks.Length - 1, 1);
+                outputLinks.Append(']');
+                tags.Add("links", outputLinks.ToString());
+                return new Measurement<int>(1, tags);
             });
 
             return InitializeOrRestore(parsedState, vertexHandler.StateClient);
