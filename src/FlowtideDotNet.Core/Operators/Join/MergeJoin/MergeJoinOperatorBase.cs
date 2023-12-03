@@ -22,6 +22,7 @@ using System.Buffers;
 using System.Diagnostics;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Base.Metrics;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -34,7 +35,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected IBPlusTree<JoinStreamEvent, JoinStorageValue>? _rightTree;
         private readonly int _leftSize;
         private readonly Dictionary<JoinStreamEvent, int> leftJoinWeight = new Dictionary<JoinStreamEvent, int>();
-        private Counter<long>? _eventsCounter;
+        private ICounter<long>? _eventsCounter;
         
         protected readonly Func<JoinStreamEvent, JoinStreamEvent, bool> _keyCondition;
         protected readonly Func<JoinStreamEvent, JoinStreamEvent, bool> _postCondition;

@@ -20,6 +20,7 @@ using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 using System.Diagnostics.Metrics;
 using FlowtideDotNet.SqlServer.SqlServer;
+using FlowtideDotNet.Base.Metrics;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
@@ -41,7 +42,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         private Task _changesTask;
         private string _displayName;
         private List<string> primaryKeys;
-        private Counter<long> _eventsCounter;
+        private ICounter<long> _eventsCounter;
         private string? filter;
 
         public SqlServerDataSource(Func<string> connectionStringFunc, ReadRelation readRelation, DataflowBlockOptions options) : base(options)

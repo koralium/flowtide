@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
@@ -28,7 +29,7 @@ namespace FlowtideDotNet.Core.Operators.Set
         private readonly List<IBPlusTree<StreamEvent, int>> _storages;
         private readonly Func<int, StreamEventBatch, long, IAsyncEnumerable<StreamEventBatch>> _operation;
 
-        private Counter<long>? _eventsCounter;
+        private ICounter<long>? _eventsCounter;
 
 #if DEBUG_WRITE
         // TODO: Tmp remove

@@ -542,7 +542,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return StreamStatus.Starting;
                 case StreamStateValue.Running:
                     var graph = GetGraph();
-                    var hasDegradedNode = graph.Nodes.Any(x => x.Value.Gauges.Any(y => y.Name == "health" && y.Dimensions[""].Value != 1));
+                    var hasDegradedNode = graph.Nodes.Any(x => x.Value.Gauges.Any(y => y.Name == "health" && y.Dimensions.First().Value.Value != 1));
                     if (hasDegradedNode)
                     {
                         return StreamStatus.Degraded;
