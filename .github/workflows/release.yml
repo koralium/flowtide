@@ -41,7 +41,7 @@ jobs:
     - name: Package core
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Core/FlowtideDotNet.Core.csproj
     - name: Packages sql server
-      run: dotnet pack -c Release -o . src/FlowtideDotNet.SqlServer/FlowtideDotNet.SqlServer.csproj
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.SqlServer/FlowtideDotNet.Connector.SqlServer.csproj
     - name: Packages aspnetcore
       run: dotnet pack -c Release -o . src/FlowtideDotNet.AspNetCore/FlowtideDotNet.AspNetCore.csproj
     - name: Package cosmosdb

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\FlowtideDotNet.SqlServer\FlowtideDotNet.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\FlowtideDotNet.Connector.SqlServer\FlowtideDotNet.Connector.SqlServer.csproj" />
     <ProjectReference Include="..\FlowtideDotNet.Core.Tests\FlowtideDotNet.Core.Tests.csproj" />
   </ItemGroup>
 
