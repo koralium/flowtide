@@ -10,14 +10,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Storage.Persistence
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.Metrics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Base.Metrics.Internal
 {
-    public interface IPersistentStorageSession
+    internal class FlowtideObservableGauge<T> : IObservableGauge<T>
+        where T : struct
     {
-        ValueTask<byte[]> Read(long key);
+        private readonly ObservableGauge<T> m_gauge;
 
-        Task Write(long key, byte[] value);
-
-        Task Delete(long key);
+        public FlowtideObservableGauge(ObservableGauge<T> gauge)
+        {
+            this.m_gauge = gauge;
+        }
     }
 }

@@ -10,14 +10,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Storage.Persistence
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.Metrics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Base.Metrics.Internal
 {
-    public interface IPersistentStorageSession
+    internal class FlowtideObservableUpDownCounter<T> : IObservableUpDownCounter<T>
+        where T : struct
     {
-        ValueTask<byte[]> Read(long key);
+        private readonly ObservableUpDownCounter<T> m_counter;
 
-        Task Write(long key, byte[] value);
-
-        Task Delete(long key);
+        public FlowtideObservableUpDownCounter(ObservableUpDownCounter<T> counter)
+        {
+            this.m_counter = counter;
+        }
     }
 }
