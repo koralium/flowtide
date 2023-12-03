@@ -11,8 +11,10 @@
 // limitations under the License.
 
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace FlexBuffers
@@ -78,6 +80,14 @@ namespace FlexBuffers
         }
         
         public static byte[] SingleValue(long value)
+        {
+            var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 10);
+            buffer.NewObject();
+            buffer.Add(value);
+            return buffer.Finish();
+        }
+
+        public static byte[] SingleValue(decimal value)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 10);
             buffer.NewObject();
@@ -357,6 +367,23 @@ namespace FlexBuffers
             return Type.Bool;
         }
 
+        /// <summary>
+        /// Decimals are stored as indirect
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        internal Type Add(decimal value)
+        {
+            var newOffset = NewOffset(16);
+            var span = _bytes.AsSpan();
+            var decimalOffset = _offset;
+            // Write decimal
+            decimal.GetBits(value, MemoryMarshal.Cast<byte, int>(span.Slice((int)_offset, 16)));
+            _offset = newOffset;
+            _stack.Add(StackValue.Value(decimalOffset, BitWidth.Width8, Type.Decimal));
+            return Type.Decimal;
+        }
+
         internal Type Add(string value)
         {
 
@@ -454,6 +481,16 @@ namespace FlexBuffers
 
                         return Type.Map;
                     }
+                case Type.Blob:
+                    {
+                        var blob = flxValue.AsBlob;
+                        Add(blob);
+                        return Type.Blob;
+                    }
+                case Type.Decimal:
+                    {
+                        return Add(flxValue.AsDecimal);
+                    }
                 default:
                     throw new NotImplementedException();
             }
@@ -513,6 +550,21 @@ namespace FlexBuffers
             var newOffset = NewOffset(length);
             var blobOffset = _offset;
             Buffer.BlockCopy(value, 0, _bytes, (int)_offset, value.Length);
+            _offset = newOffset;
+            _stack.Add(StackValue.Value(blobOffset, bitWidth, Type.Blob));
+            return Type.Blob;
+        }
+
+        internal Type Add(Span<byte> value)
+        {
+            var length = (ulong)value.Length;
+            var bitWidth = BitWidthUtil.Width(length);
+            var byteWidth = Align(bitWidth);
+            Write(value.Length, byteWidth);
+
+            var newOffset = NewOffset(length);
+            var blobOffset = _offset;
+            value.CopyTo(_bytes.AsSpan().Slice((int)_offset, value.Length));
             _offset = newOffset;
             _stack.Add(StackValue.Value(blobOffset, bitWidth, Type.Blob));
             return Type.Blob;

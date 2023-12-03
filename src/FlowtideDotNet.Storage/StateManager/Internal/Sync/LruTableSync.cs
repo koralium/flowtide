@@ -61,6 +61,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 cache.Clear();
                 m_nodes.Clear();
+                Volatile.Write(ref m_count, 0);
             }
         }
 
@@ -222,6 +223,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 else
                 {
                     m_lastSeenCacheHits = cacheHitsLocal;
+                    m_sameCaheHitsCount = 0;
                     return;
                 }
             }

@@ -21,6 +21,8 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Base.Metrics;
+using System.Text;
 
 namespace FlowtideDotNet.Base.Vertices.MultipleInput
 {
@@ -53,8 +55,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         public abstract string DisplayName { get; }
 
-        private Meter? _metrics;
-        protected Meter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
+        private IMeter? _metrics;
+        protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
 
         private ILogger? _logger;
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
@@ -448,6 +450,32 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             Metrics.CreateObservableGauge("health", () =>
             {
                 return _isHealthy ? 1 : 0;
+            });
+            Metrics.CreateObservableGauge("metadata", () =>
+            {
+                TagList tags = new TagList
+                {
+                    { "displayName", DisplayName }
+                };
+                var links = GetLinks();
+                StringBuilder outputLinks = new StringBuilder();
+                outputLinks.Append('[');
+                foreach (var link in links)
+                {
+                    if (link is IStreamVertex streamVertex)
+                    {
+                        outputLinks.Append(streamVertex.Name);
+                    }
+                    else if (link is MultipleInputTargetHolder target)
+                    {
+                        outputLinks.Append(target.OperatorName);
+                    }
+                    outputLinks.Append(',');
+                }
+                outputLinks.Remove(outputLinks.Length - 1, 1);
+                outputLinks.Append(']');
+                tags.Add("links", outputLinks.ToString());
+                return new Measurement<int>(1, tags);
             });
 
             _currentTime = newTime;
