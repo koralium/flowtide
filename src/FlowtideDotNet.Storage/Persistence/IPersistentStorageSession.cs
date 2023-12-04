@@ -12,7 +12,7 @@
 
 namespace FlowtideDotNet.Storage.Persistence
 {
-    public interface IPersistentStorageSession
+    public interface IPersistentStorageSession : IDisposable
     {
         ValueTask<byte[]> Read(long key);
 

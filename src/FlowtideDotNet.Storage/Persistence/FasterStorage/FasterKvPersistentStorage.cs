@@ -80,8 +80,6 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
         public async ValueTask CompactAsync()
         {
             m_adminSession.Compact(m_persistentStorage.Log.SafeReadOnlyAddress, CompactionType.Lookup);
-            m_persistentStorage.Log.Truncate();
-            await m_persistentStorage.TakeFullCheckpointAsync(CheckpointType.Snapshot);
         }
 
         public ValueTask ResetAsync()

@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
-        public FlowtideBuilder WithStateOptions(Func<StateManagerOptions> stateManagerOptions)
+        public FlowtideBuilder WithStateOptions(StateManagerOptions stateManagerOptions)
         {
             dataflowStreamBuilder.WithStateOptions(stateManagerOptions);
             return this;
