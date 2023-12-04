@@ -14,6 +14,8 @@ using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FASTER.core;
+using FlowtideDotNet.Storage.Persistence.FasterStorage;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowtideDotNet.Storage.Tests
 {
@@ -23,10 +25,15 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task TestCheckpoint()
         {
             var device = Devices.CreateLogDevice("./data/tmp/persistent");
-            StateManager.StateManager stateManager = new StateManager.StateManager<object>(new StateManagerOptions()
-            {
-                LogDevice = device
-            });
+            StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
+                new StateManagerOptions()
+                {
+                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    {
+                        LogDevice = device,
+                        CheckpointDir = "./data/tmp/persistent"
+                    })
+                }, NullLogger.Instance);
 
             await stateManager.InitializeAsync();
 
@@ -60,7 +67,6 @@ namespace FlowtideDotNet.Storage.Tests
 
             // Commit data and take only checkpoint without metadata, this is to force written data
             await tree.Commit();
-            stateManager.Flush();
 
             await stateManager.InitializeAsync();
 
@@ -73,10 +79,15 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task TestFailureAfterNewRootInBPlusTree()
         {
             var device = Devices.CreateLogDevice("./data/tmp/persistentfail");
-            StateManager.StateManagerSimple stateManager = new StateManager.StateManagerSimple<object>(new StateManagerOptions()
-            {
-                LogDevice = device
-            });
+            StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
+                new StateManagerOptions()
+                {
+                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    {
+                        LogDevice = device,
+                        CheckpointDir = "./data/tmp/persistentfail"
+                    })
+                }, NullLogger.Instance);
 
             await stateManager.InitializeAsync();
 
@@ -125,6 +136,64 @@ namespace FlowtideDotNet.Storage.Tests
                 "https://kroki.io/graphviz/svg/eJw0TjEOwyAM3CPlDxZz1STtWOAjUQcSXEBCgAApQ9W_15B28Mnnu7OtnckqWTDwHoeSvAtYRMNxCFEjrMWqhCAgxIAXi87YKq7L83Hq99WrDT3pnFe1eYQtZo1ZsJnBjt7_6XLSktTugmmy5DVTaTnziZA6SDFXwV4UzfEgaxDsRr4uT919Jixtir9Yn0_9tpTtrc84fAEAAP__AwA_eUQ8",
                 afterRestoreUrl
                 );
+        }
+
+        [Fact]
+        public async Task TestCheckpointWithCompactionRestore()
+        {
+            var device = Devices.CreateLogDevice("./data/tmp/persistentcompact");
+            StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
+                new StateManagerOptions()
+                {
+                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    {
+                        LogDevice = device,
+                        CheckpointDir = "./data/tmp/persistentcompact"
+                    })
+                },  NullLogger.Instance);
+
+            await stateManager.InitializeAsync();
+
+            var nodeClient = stateManager.GetOrCreateClient("node1");
+            var tree = await nodeClient.GetOrCreateTree<long, string>("tree", new Tree.BPlusTreeOptions<long, string>()
+            {
+                BucketSize = 8,
+                Comparer = new LongComparer(),
+                KeySerializer = new LongSerializer(),
+                ValueSerializer = new StringSerializer()
+            });
+
+            await tree.Upsert(1, "hello");
+
+            await tree.Commit();
+
+            await stateManager.CheckpointAsync();
+
+            var (foundInitial, valInitial) = await tree.GetValue(1);
+            await stateManager.Compact();
+
+            await tree.Upsert(1, "helloOther");
+
+            var (found, val) = await tree.GetValue(1);
+            Assert.Equal("helloOther", val);
+
+            // Restore
+            await stateManager.InitializeAsync();
+            (found, val) = await tree.GetValue(1);
+
+            await tree.Upsert(1, "helloOther");
+            (found, val) = await tree.GetValue(1);
+            Assert.Equal("helloOther", val);
+
+            // Commit data and take only checkpoint without metadata, this is to force written data
+            await tree.Commit();
+
+            await stateManager.InitializeAsync();
+
+            (found, val) = await tree.GetValue(1);
+
+            Assert.Equal("hello", val);
+            ;
         }
     }
 }

@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Base.Engine
         private readonly string _streamName;
         private IStreamScheduler? _streamScheduler;
         private IStreamNotificationReciever? _streamNotificationReciever;
-        private Func<StateManagerOptions>? _stateManagerOptions;
+        private StateManagerOptions? _stateManagerOptions;
         private ILoggerFactory? _loggerFactory;
         private StreamVersionInformation? _streamVersionInformation;
 
@@ -78,7 +78,7 @@ namespace FlowtideDotNet.Base.Engine
             return this;
         }
 
-        public DataflowStreamBuilder WithStateOptions(Func<StateManagerOptions> stateManagerOptions)
+        public DataflowStreamBuilder WithStateOptions(StateManagerOptions stateManagerOptions)
         {
             _stateManagerOptions = stateManagerOptions;
             return this;

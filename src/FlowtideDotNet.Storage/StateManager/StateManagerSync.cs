@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Storage.StateManager
 {
     public class StateManagerSync<TMetadata> : StateManagerSync
     {
-        public StateManagerSync(Func<StateManagerOptions> getOptions, ILogger logger) : base(new StateManagerMetadataSerializer<TMetadata>(), getOptions, logger)
+        public StateManagerSync(StateManagerOptions options, ILogger logger) : base(new StateManagerMetadataSerializer<TMetadata>(), options, logger)
         {
         }
 
@@ -58,9 +58,8 @@ namespace FlowtideDotNet.Storage.StateManager
         private LruTableSync? m_lruTable;
         //private readonly FasterKV<long, SpanByte> m_persistentStorage;
         private readonly IStateSerializer<StateManagerMetadata> m_metadataSerializer;
-        private readonly Func<StateManagerOptions> getOptions;
+        private readonly StateManagerOptions options;
         private readonly ILogger logger;
-        private StateManagerOptions? options;
         private readonly object m_lock = new object();
         internal StateManagerMetadata? m_metadata;
         //private Functions m_functions;
@@ -84,16 +83,15 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public long PageCount => m_metadata != null ? Volatile.Read(ref m_metadata.PageCount) : throw new InvalidOperationException("Manager must be initialized before getting page count");
 
-        internal StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, Func<StateManagerOptions> getOptions, ILogger logger)
+        internal StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILogger logger)
         {
             this.m_metadataSerializer = metadataSerializer;
-            this.getOptions = getOptions;
+            this.options = options;
             this.logger = logger;
         }
 
         private void Setup()
         {
-            this.options = getOptions();
             if (m_lruTable == null)
             {
                 m_lruTable = new LruTableSync(options.CachePageCount, logger, options.MaxProcessMemory);
@@ -215,6 +213,10 @@ namespace FlowtideDotNet.Storage.StateManager
                     var metadata = StateClientMetadataSerializer.Instance.Deserialize<TMetadata>(new ByteMemoryOwner(bytes), bytes.Length);
                     var persistentSession = m_persistentStorage.CreateSession();
                     var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheOptions);
+                    lock (m_lock)
+                    {
+                        _stateClients.Add(client, stateClient);
+                    }
                     return stateClient;
                 }
                 else
