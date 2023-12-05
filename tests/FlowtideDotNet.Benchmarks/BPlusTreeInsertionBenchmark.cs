@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FASTER.core;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DifferntialCompute.Benchmarks
 {
@@ -32,13 +33,13 @@ namespace DifferntialCompute.Benchmarks
         {
             var localStorage = new LocalStorageNamedDeviceFactory(deleteOnClose: true);
             localStorage.Initialize("./data/temp");
-            StateManager stateManager = new StateManager<object>(new StateManagerOptions()
+            StateManagerSync stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = CachePageCount,
                 LogDevice = localStorage.Get(new FileDescriptor("persistent", "perstitent.log")),
                 CheckpointDir = "./data",
                 TemporaryStorageFactory = localStorage
-            });
+            }, NullLogger.Instance);
             
             stateManager.InitializeAsync().GetAwaiter().GetResult();
 
@@ -55,6 +56,7 @@ namespace DifferntialCompute.Benchmarks
                 KeySerializer = new LongSerializer(),
                 ValueSerializer = new StringSerializer()
             }).GetAwaiter().GetResult();
+            tree.Clear();
         }
 
         [Benchmark]
