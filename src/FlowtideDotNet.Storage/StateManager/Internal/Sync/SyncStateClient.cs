@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private bool disposedValue;
         private readonly StateManagerSync stateManager;
         private readonly long metadataId;
-        private readonly StateClientMetadata<TMetadata> metadata;
+        private StateClientMetadata<TMetadata> metadata;
         private readonly IPersistentStorageSession session;
         private readonly StateClientOptions<V> options;
         private Dictionary<long, int> m_modified;
@@ -197,7 +197,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             GC.SuppressFinalize(this);
         }
 
-        public override ValueTask Reset(bool clearMetadata)
+        public override async ValueTask Reset(bool clearMetadata)
         {
             lock (m_lock)
             {
@@ -207,12 +207,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     m_fileCache.Free(kv.Key);
                 }
                 m_modified.Clear();
-                if (clearMetadata)
-                {
-                    Metadata = default;
-                }
             }
-            return ValueTask.CompletedTask;
+            if (clearMetadata)
+            {
+                Metadata = default;
+            }
+            else
+            {
+                var bytes = await session.Read(metadataId);
+                metadata = StateClientMetadataSerializer.Instance.Deserialize<TMetadata>(new ByteMemoryOwner(bytes), bytes.Length);
+            }
         }
 
         public void Evict(List<(LinkedListNode<LruTableSync.LinkedListValue>, long)> valuesToEvict)
