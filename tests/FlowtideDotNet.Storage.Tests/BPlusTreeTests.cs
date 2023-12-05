@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Storage.Tests
         {
             var localStorage = new LocalStorageNamedDeviceFactory(deleteOnClose: true);
             localStorage.Initialize("./data/temp");
-            stateManager = new StateManager.StateManagerSync<object>(() => new StateManagerOptions()
+            stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = 10,
                 PersistentStorage = new FileCachePersistentStorage(new FileCacheOptions())

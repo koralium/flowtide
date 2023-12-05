@@ -96,7 +96,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .AddPlan(plan)
                 .SetParallelism(parallelism)
                 .AddReadWriteFactory(factory)
-                .WithStateOptions(() => new Storage.StateManager.StateManagerOptions()
+                .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _fileCachePersistence,

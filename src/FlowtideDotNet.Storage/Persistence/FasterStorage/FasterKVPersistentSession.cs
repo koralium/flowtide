@@ -31,6 +31,11 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             _ = result.Complete();
         }
 
+        public void Dispose()
+        {
+            session.Dispose();
+        }
+
         public async ValueTask<byte[]> Read(long key)
         {
             var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));

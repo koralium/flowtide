@@ -244,9 +244,8 @@ namespace FlowtideDotNet.Storage.Tests
         public async Task TestWriteFailure()
         {
             var nullFactory = new NullLoggerFactory();
-            var manager = new StateManagerSync<object>(() =>
-            {
-                return new StateManagerOptions()
+            var manager = new StateManagerSync<object>(
+                new StateManagerOptions()
                 {
                     PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
                     {
@@ -254,8 +253,7 @@ namespace FlowtideDotNet.Storage.Tests
                         MemorySize = 128,
                         PageSize = 128,
                         
-                    }),
-                };
+                    })
             }, nullFactory.CreateLogger("logger"));
             await manager.InitializeAsync();
             var client = manager.GetOrCreateClient("test");
@@ -296,9 +294,8 @@ namespace FlowtideDotNet.Storage.Tests
         {
             var logger = new LoggerFactory(new List<ILoggerProvider>() { new DebugLoggerProvider() }).CreateLogger("test");
             var device = new ReadFailureDevice(Devices.CreateLogDevice("test", deleteOnClose: true));
-            var manager = new StateManagerSync<object>(() =>
-            {
-                return new StateManagerOptions()
+            var manager = new StateManagerSync<object>(
+                new StateManagerOptions()
                 {
                     PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
                     {
@@ -306,8 +303,7 @@ namespace FlowtideDotNet.Storage.Tests
                         MemorySize = 512,
                         PageSize = 512,
 
-                    }),
-                };
+                    })
             }, logger);
             await manager.InitializeAsync();
             var client = manager.GetOrCreateClient("test");

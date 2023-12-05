@@ -27,6 +27,10 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             return Task.CompletedTask;
         }
 
+        public void Dispose()
+        {
+        }
+
         public ValueTask<byte[]> Read(long key)
         {
             return ValueTask.FromResult(fileCache.Read(key));
