@@ -122,7 +122,7 @@ namespace FlowtideDotNet.Core.Tests
             var stream = new FlowtideBuilder("test")
                     .AddPlan(plan)
                     .AddReadWriteFactory(factory)
-                    .WithStateOptions(() => new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
+                    .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                     {
                         PersistentStorage = cache
                     })
@@ -141,7 +141,7 @@ namespace FlowtideDotNet.Core.Tests
             var stream2 = new FlowtideBuilder("test")
                     .AddPlan(plan2)
                     .AddReadWriteFactory(factory)
-                    .WithStateOptions(() => new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
+                    .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                     {
                         PersistentStorage = cache
                     })

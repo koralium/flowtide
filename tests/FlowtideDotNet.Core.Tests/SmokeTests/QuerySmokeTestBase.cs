@@ -89,7 +89,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 .AddPlan(modifiedPlan, false)
                 .AddReadWriteFactory(readWriteFactory)
                 .WithScheduler(_streamScheduler)
-                .WithStateOptions(() => new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
+                .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                 {
                     CachePageCount = 100000,
                     LogDevice = logDevice,
