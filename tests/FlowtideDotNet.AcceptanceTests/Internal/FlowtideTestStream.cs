@@ -142,6 +142,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _egressCrashOnCheckpointCount = times;
         }
 
+        public async Task SchedulerTick()
+        {
+            var scheduler = _stream.Scheduler as DefaultStreamScheduler;
+            await scheduler!.Tick();
+        }
+
         public async Task WaitForUpdate()
         {
             Debug.Assert(_stream != null);

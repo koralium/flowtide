@@ -91,6 +91,8 @@ namespace FlowtideDotNet.Core.Operators.Write
             {
                 var rowIterator = GetChangedRows();
                 await UploadChanges(rowIterator);
+                await m_modified.Clear();
+                m_hasModified = false;
             }
         }
 

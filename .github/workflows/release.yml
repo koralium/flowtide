@@ -48,5 +48,7 @@ jobs:
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.CosmosDB/FlowtideDotNet.Connector.CosmosDB.csproj
     - name: Package elasticsearch
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.ElasticSearch/FlowtideDotNet.Connector.ElasticSearch.csproj
+    - name: Package mongodb
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.MongoDB/FlowtideDotNet.Connector.MongoDB.csproj
     - name: Publish
       run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_KEY }} -s https://api.nuget.org/v3/index.json
