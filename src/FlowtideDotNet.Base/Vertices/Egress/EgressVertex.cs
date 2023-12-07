@@ -31,6 +31,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private readonly ExecutionDataflowBlockOptions _executionDataflowBlockOptions;
         private IEgressImplementation? _targetBlock;
         private bool _isHealthy = true;
+        private CancellationTokenSource? _cancellationTokenSource;
 
         public string Name { get; private set; }
 
@@ -41,6 +42,8 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         public abstract string DisplayName { get; }
 
         public ILogger Logger { get; private set; }
+
+        protected CancellationToken CancellationToken => _cancellationTokenSource?.Token ?? throw new InvalidOperationException("Cancellation token can only be fetched after initialization.");
 
         protected EgressVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
@@ -112,12 +115,14 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         public void Fault(Exception exception)
         {
+            _cancellationTokenSource?.Cancel();
             Debug.Assert(_targetBlock != null, "CreateBlocks must be called before faulting");
             _targetBlock.Fault(exception);
         }
 
         public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
         {
+             _cancellationTokenSource = new CancellationTokenSource();
             Name = name;
             StreamName = vertexHandler.StreamName;
             Metrics = vertexHandler.Metrics;
