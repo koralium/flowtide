@@ -90,13 +90,13 @@ namespace FlowtideDotNet.Core.Operators.Write
             if (m_hasModified)
             {
                 var rowIterator = GetChangedRows();
-                await UploadChanges(rowIterator);
+                await UploadChanges(rowIterator, CancellationToken);
                 await m_modified.Clear();
                 m_hasModified = false;
             }
         }
 
-        protected abstract Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows);
+        protected abstract Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, CancellationToken cancellationToken);
 
         private async IAsyncEnumerable<SimpleChangeEvent> GetChangedRows()
         {

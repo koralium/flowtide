@@ -60,11 +60,12 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             return Task.FromResult(new MetadataResult(primaryKeys));
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows)
+        protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, CancellationToken cancellationToken)
         {
             List<WriteModel<BsonDocument>> writes = new List<WriteModel<BsonDocument>>();
             await foreach(var row in rows)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 FilterDefinition<BsonDocument>[] filters = new FilterDefinition<BsonDocument>[primaryKeys.Count];
                 for (int i = 0; i < primaryKeys.Count; i++)
                 {

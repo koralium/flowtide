@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             return new MetadataResult(m_primaryKeys);
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows)
+        protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, CancellationToken cancellationToken)
         {
             Debug.Assert(m_client != null);
             Debug.Assert(m_serializer != null);
@@ -80,6 +80,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             Utf8JsonWriter jsonWriter = new Utf8JsonWriter(memoryStream);
             await foreach (var row in rows)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (!row.IsDeleted)
                 {
                     m_serializer.WriteIndexUpsertMetadata(jsonWriter, row.Row);
