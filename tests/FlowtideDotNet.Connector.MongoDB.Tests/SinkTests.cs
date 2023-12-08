@@ -16,13 +16,14 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
         [Fact]
         public async Task TestInsert()
         {
+            var userCount = 1000;
             MongoDBTestStream testStream = new MongoDBTestStream(
                 mongoDBFixture,
                 "test",
                 "test",
                 new List<string>() { "UserKey" }, "test");
 
-            testStream.Generate();
+            testStream.Generate(userCount);
             await testStream.StartStream(@"
             INSERT INTO testindex
             SELECT 
@@ -35,12 +36,13 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
             var mongoClient = new MongoClient(mongoDBFixture.GetConnectionString());
             var database = mongoClient.GetDatabase("test");
             var collection = database.GetCollection<BsonDocument>("test");
+            collection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(Builders<BsonDocument>.IndexKeys.Ascending("UserKey")));
 
             
             while (true)
             {
                 var count = await collection.CountDocumentsAsync(new BsonDocument());
-                if (count == 1000)
+                if (count == userCount)
                 {
                     break;
                 }
