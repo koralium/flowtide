@@ -63,6 +63,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, CancellationToken cancellationToken)
         {
             List<WriteModel<BsonDocument>> writes = new List<WriteModel<BsonDocument>>();
+            List<Task> writeTasks = new List<Task>();
             await foreach(var row in rows)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -93,18 +94,32 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                     writes.Add(new ReplaceOneModel<BsonDocument>(filter, doc) { IsUpsert = true });
                 }
 
-                if (writes.Count >= 1000)
+                if (writes.Count >= 100)
                 {
-                    await collection.BulkWriteAsync(writes);
-                    writes.Clear();
+                    while (writeTasks.Count >= 100)
+                    {
+                        for(int i = 0; i < writeTasks.Count; i++)
+                        {
+                            if (writeTasks[i].IsCompleted)
+                            {
+                                writeTasks.RemoveAt(i);
+                            }
+                        }
+                        if (writeTasks.Count >= 100)
+                        {
+                            await Task.WhenAny(writeTasks);
+                        }
+                    }
+                    writeTasks.Add(collection.BulkWriteAsync(writes));
+                    writes = new List<WriteModel<BsonDocument>>();
                 }
             }
 
             if (writes.Count > 0)
             {
-                await collection.BulkWriteAsync(writes);
-                writes.Clear();
+                writeTasks.Add(collection.BulkWriteAsync(writes));
             }
+            await Task.WhenAll(writeTasks);
         }
     }
 }
