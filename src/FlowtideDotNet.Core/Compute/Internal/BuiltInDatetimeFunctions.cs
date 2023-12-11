@@ -50,9 +50,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
             {
                 return NullValue;
             }
-            var datetimeOffset = DateTimeOffset.FromUnixTimeMilliseconds(timestamp / 1000);
-
-            return FlxValue.FromMemory(FlexBuffer.SingleValue(Strftime.ToStrFTime(datetimeOffset.DateTime, format.AsString, CultureInfo.InvariantCulture)));
+            var dateTime = DateTimeOffset.UnixEpoch.AddTicks(timestamp).DateTime;
+            return FlxValue.FromMemory(FlexBuffer.SingleValue(Strftime.ToStrFTime(dateTime, format.AsString, CultureInfo.InvariantCulture)));
         }
     }
 }
