@@ -109,6 +109,21 @@ namespace FlowtideDotNet.Substrait
             }
             var modifierVisitor = new ModifierVisitor(subPlanNameToId);
 
+            for (int i = 0; i < newPlan.Relations.Count; i++)
+            {
+                var relation = newPlan.Relations[i];
+                if (relation is RootRelation rootRelation)
+                {
+                    var modified = modifierVisitor.Visit(rootRelation.Input, default);
+                    newPlan.Relations[i] = modified;
+                }
+                else
+                {
+                    var modified = modifierVisitor.Visit(relation, default);
+                    newPlan.Relations[i] = modified;
+                }
+            }
+
             var rootRelationId = -1;
             RootRelation? oldRootRel = null;
             for (int i = 0; i < _rootPlan.Relations.Count; i++)
