@@ -47,17 +47,17 @@ namespace FlowtideDotNet.Core.Engine
             throw new FlowtideException($"No read resolver matched the read relation for table: '{readRelation.NamedTable.DotSeperated}'.");
         }
 
-        public IStreamEgressVertex GetWriteOperator(WriteRelation readRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
+        public IStreamEgressVertex GetWriteOperator(WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
             foreach(var writefunc in _writeFuncs)
             {
-                var result = writefunc(readRelation, executionDataflowBlockOptions);
+                var result = writefunc(writeRelation, executionDataflowBlockOptions);
                 if (result != null)
                 {
                     return result;
                 }
             }
-            throw new FlowtideException("No write resolver matched the read relation.");
+            throw new FlowtideException($"No write resolver matched the write relation for table '{writeRelation.NamedObject.DotSeperated}'.");
         }
     }
 }

@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Core.Tests
                     .AddReadWriteFactory(factory)
                     .Build();
             });
-            Assert.Equal("No write resolver matched the read relation.", e.Message);
+            Assert.Equal("No write resolver matched the write relation for table 'test'.", e.Message);
         }
 
         [Fact]
