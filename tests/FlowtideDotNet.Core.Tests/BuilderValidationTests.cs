@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Core.Tests
                     .AddReadWriteFactory(factory)
                     .Build();
             });
-            Assert.Equal("No read resolver matched the read relation.", e.Message);
+            Assert.Equal("No read resolver matched the read relation for table: 'a'.", e.Message);
         }
 
         [Fact]

@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.Engine
                     return result;
                 }
             }
-            throw new FlowtideException("No read resolver matched the read relation.");
+            throw new FlowtideException($"No read resolver matched the read relation for table: '{readRelation.NamedTable.DotSeperated}'.");
         }
 
         public IStreamEgressVertex GetWriteOperator(WriteRelation readRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
