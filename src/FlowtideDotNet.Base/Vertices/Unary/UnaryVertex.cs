@@ -57,6 +57,11 @@ namespace FlowtideDotNet.Base.Vertices.Unary
             this.executionDataflowBlockOptions = executionDataflowBlockOptions;
         }
 
+        private bool ShouldWait()
+        {
+            return _transformBlock?.OutputCount >= executionDataflowBlockOptions.BoundedCapacity;
+        }
+
         [MemberNotNull(nameof(_transformBlock), nameof(_targetBlock), nameof(_sourceBlock))]
         private void InitializeBlocks()
         {
@@ -93,7 +98,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 }
                 if (streamEvent is Watermark watermark)
                 {
-                    return HandleWatermark(watermark);
+                    return new AsyncEnumerableWithWait<IStreamEvent, IStreamEvent>(HandleWatermark(watermark), (s) => s, ShouldWait);
                 }
 
                 throw new NotSupportedException();
