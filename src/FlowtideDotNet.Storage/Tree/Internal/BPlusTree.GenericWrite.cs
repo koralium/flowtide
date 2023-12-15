@@ -372,7 +372,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             Debug.Assert(m_stateClient.Metadata != null);
             if (rightNode.keys.Count >= m_stateClient.Metadata.BucketLength / 2)
             {
-                var newSplitKey = DistributeBetweenNodesInternal(internalNode, rightNode);
+                var parentKey = parentNode.keys[index];
+                var newSplitKey = DistributeBetweenNodesInternal(internalNode, rightNode, parentKey);
 
                 parentNode.EnterWriteLock();
                 parentNode.keys[index] = newSplitKey;
@@ -565,7 +566,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             if (leftNode.keys.Count >= m_stateClient.Metadata.BucketLength / 2)
             {
                 // Borrow
-                var newSplitKey = DistributeBetweenNodesInternal(leftNode, internalNode);
+                var parentKey = parentNode.keys[index - 1];
+                var newSplitKey = DistributeBetweenNodesInternal(leftNode, internalNode, parentKey);
 
                 parentNode.EnterWriteLock();
                 parentNode.keys[index - 1] = newSplitKey;
@@ -756,7 +758,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             leftNode.next = rightNode.next;
         }
 
-        internal K DistributeBetweenNodesInternal(InternalNode<K, V> leftNode, InternalNode<K, V> rightNode)
+        internal static K DistributeBetweenNodesInternal(InternalNode<K, V> leftNode, InternalNode<K, V> rightNode, K parentKey)
         {
             leftNode.EnterWriteLock();
             rightNode.EnterWriteLock();
@@ -764,10 +766,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             var half = totalCount / 2;
 
+            K? splitKey = default;
             if (leftNode.keys.Count < half)
             {
                 var remainder = half - leftNode.keys.Count;
-                leftNode.keys.AddRange(rightNode.keys.GetRange(0, remainder));
+                // Add a new key with the most right value on left side
+                leftNode.keys.Add(parentKey);
+                leftNode.keys.AddRange(rightNode.keys.GetRange(0, remainder - 1));
+
+                // Set the split key to the most right value
+                splitKey = rightNode.keys[remainder - 1];
                 leftNode.children.AddRange(rightNode.children.GetRange(0, remainder));
 
                 var rightNodeSize = rightNode.keys.Count - remainder;
@@ -786,6 +794,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 var remainder = half - rightNode.keys.Count;
 
+                
+                leftNode.keys.Add(parentKey);
                 // Copy values from left to right at the beginning
                 rightKeys.AddRange(leftNode.keys.GetRange(leftNode.keys.Count - remainder, remainder));
                 rightKeys.AddRange(rightNode.keys);
@@ -796,11 +806,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 leftNode.children.RemoveRange(leftNode.children.Count - remainder, remainder);
                 rightNode.keys = rightKeys;
                 rightNode.children = rightChildren;
+                splitKey = leftNode.keys[leftNode.keys.Count - 1];
+                leftNode.keys.RemoveAt(leftNode.keys.Count - 1);
             }
             rightNode.ExitWriteLock();
             leftNode.ExitWriteLock();
 
-            var splitKey = leftNode.keys[leftNode.keys.Count - 1];
             return splitKey;
         }
 
