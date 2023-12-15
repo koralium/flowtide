@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -43,8 +44,11 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         protected override Task<MetadataResult> SetupAndLoadMetadataAsync()
         {
-            var connection = new MongoUrl(options.ConnectionString);
+            var urlBuilder = new MongoUrlBuilder(options.ConnectionString);
+            var connection = urlBuilder.ToMongoUrl();
             var client = new MongoClient(connection);
+            
+            
             var database = client.GetDatabase(options.Database);
             collection = database.GetCollection<BsonDocument>(options.Collection);
             primaryKeys = new List<int>();
@@ -58,6 +62,46 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 primaryKeys.Add(index);
             } 
             return Task.FromResult(new MetadataResult(primaryKeys));
+        }
+
+        private Task WriteData(List<WriteModel<BsonDocument>> writes, CancellationToken cancellationToken)
+        {
+            if (writes.Count > 0)
+            {
+                return Task.Factory.StartNew((state) =>
+                {
+                    var w = state as List<WriteModel<BsonDocument>>;
+                    return WriteDataTask(w, cancellationToken);
+                }, writes)
+                    .Unwrap();
+            }
+            return Task.CompletedTask;
+        }
+
+        private async Task WriteDataTask(List<WriteModel<BsonDocument>> writes, CancellationToken cancellationToken)
+        {
+            if (writes.Count > 0)
+            {
+                int retryCount = 0;
+                while (retryCount < 10)
+                {
+                    try
+                    {
+                        await collection.BulkWriteAsync(writes);
+                        return;
+                    }
+                    catch (Exception e)
+                    {
+                        if (retryCount == 10)
+                        {
+                            throw;
+                        }
+                        Logger.LogWarning("Failed to write to mongoDB, will retry");
+                        retryCount++;
+                        await Task.Delay(TimeSpan.FromSeconds(5));
+                    }
+                }
+            }
         }
 
         protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, CancellationToken cancellationToken)
@@ -102,6 +146,18 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                         {
                             if (writeTasks[i].IsCompleted)
                             {
+                                if (writeTasks[i].IsFaulted)
+                                {
+                                    var exception = writeTasks[i].Exception;
+                                    if (exception != null)
+                                    {
+                                        throw exception;
+                                    }
+                                    else
+                                    {
+                                        throw new InvalidOperationException("MongoDB write failed without exception");
+                                    }
+                                }
                                 writeTasks.RemoveAt(i);
                             }
                         }
@@ -110,7 +166,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                             await Task.WhenAny(writeTasks);
                         }
                     }
-                    writeTasks.Add(collection.BulkWriteAsync(writes));
+
+                    writeTasks.Add(WriteData(writes, cancellationToken));
                     writes = new List<WriteModel<BsonDocument>>();
                 }
             }
