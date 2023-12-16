@@ -53,6 +53,10 @@ namespace FlexBuffers
 
         public void NewObject()
         {
+            if (_stack.Count > 0)
+            {
+                Clear();
+            }
             _bytes = pool.Rent((int)_size);
             Array.Clear(_bytes);
         }
