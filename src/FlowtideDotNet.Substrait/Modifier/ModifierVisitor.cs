@@ -100,5 +100,32 @@ namespace FlowtideDotNet.Substrait.Modifier
             aggregateRelation.Input = Visit(aggregateRelation.Input, state);
             return aggregateRelation;
         }
+
+        public override Relation VisitIterationRelation(IterationRelation iterationRelation, object state)
+        {
+            if (iterationRelation.Input != null)
+            {
+                iterationRelation.Input = Visit(iterationRelation.Input, state);
+            }
+            iterationRelation.LoopPlan = Visit(iterationRelation.LoopPlan, state);
+            
+            return iterationRelation;
+        }
+
+        public override Relation VisitIterationReferenceReadRelation(IterationReferenceReadRelation iterationReferenceReadRelation, object state)
+        {
+            return iterationReferenceReadRelation;
+        }
+
+        public override Relation VisitUnwrapRelation(UnwrapRelation unwrapRelation, object state)
+        {
+            unwrapRelation.Input = Visit(unwrapRelation.Input, state);
+            return unwrapRelation;
+        }
+
+        public override Relation VisitVirtualTableReadRelation(VirtualTableReadRelation virtualTableReadRelation, object state)
+        {
+            return virtualTableReadRelation;
+        }
     }
 }
