@@ -87,10 +87,11 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             return false;
         }
 
-        public void Write(long key, byte[] value)
+        public ValueTask Write(long key, byte[] value)
         {
             m_fileCache.WriteAsync(key, value);
             m_fileCache.Flush();
+            return ValueTask.CompletedTask;
         }
     }
 }

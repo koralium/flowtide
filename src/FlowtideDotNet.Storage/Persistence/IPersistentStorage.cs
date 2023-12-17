@@ -71,6 +71,6 @@ namespace FlowtideDotNet.Storage.Persistence
         /// </summary>
         /// <param name="key"></param>
         /// <param name="value"></param>
-        void Write(long key, byte[] value);
+        ValueTask Write(long key, byte[] value);
     }
 }
