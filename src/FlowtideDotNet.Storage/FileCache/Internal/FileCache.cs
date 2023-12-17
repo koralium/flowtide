@@ -407,6 +407,9 @@ namespace FlowtideDotNet.Storage.FileCache
                     // TODO: dispose managed state (managed objects)
                     lock (m_lock)
                     {
+                        allocatedPages.Clear();
+                        memoryNodes.Clear();
+                        _freePages.Clear();
                         foreach(var segment in segmentWriters)
                         {
                             segment.Value.Dispose();
