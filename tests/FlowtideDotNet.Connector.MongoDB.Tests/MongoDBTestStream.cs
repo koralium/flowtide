@@ -13,6 +13,8 @@
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.MongoDB.Extensions;
 using FlowtideDotNet.Core.Engine;
+using MongoDB.Bson;
+using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,13 +29,23 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
         private readonly string databaseName;
         private readonly string collection;
         private readonly List<string> primaryKeys;
+        private readonly Action<BsonDocument>? transform;
+        private readonly Func<IMongoCollection<BsonDocument>, Task>? onInitialDataSent;
 
-        public MongoDBTestStream(MongoDBFixture mongoDBFixture, string databaseName, string collection, List<string> primaryKeys, string testName) : base(testName)
+        public MongoDBTestStream(MongoDBFixture mongoDBFixture, 
+            string databaseName, 
+            string collection, 
+            List<string> primaryKeys, 
+            string testName,
+            Action<BsonDocument>? transform = null,
+            Func<IMongoCollection<BsonDocument>, Task>? onInitialDataSent = null) : base(testName)
         {
             this.mongoDBFixture = mongoDBFixture;
             this.databaseName = databaseName;
             this.collection = collection;
             this.primaryKeys = primaryKeys;
+            this.transform = transform;
+            this.onInitialDataSent = onInitialDataSent;
         }
 
         protected override void AddWriteResolvers(ReadWriteFactory factory)
@@ -43,7 +55,9 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
                 Collection = collection,
                 Database = databaseName,
                 ConnectionString = mongoDBFixture.GetConnectionString(),
-                PrimaryKeys = primaryKeys
+                PrimaryKeys = primaryKeys,
+                TransformDocument = transform,
+                OnInitialDataSent = onInitialDataSent
             });
         }
     }
