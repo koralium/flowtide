@@ -15,8 +15,9 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
-    internal abstract class StateClient
+    internal abstract class StateClient : IDisposable
     {
+        public abstract void Dispose();
         public abstract ValueTask Reset(bool clearMetadata);
     }
 }

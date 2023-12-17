@@ -310,6 +310,11 @@ namespace FlowtideDotNet.Storage.StateManager
                     {
                         m_persistentStorage.Dispose();
                     }
+
+                    foreach (var stateClient in _stateClients)
+                    {
+                        stateClient.Value.Dispose();
+                    }
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer

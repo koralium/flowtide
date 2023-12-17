@@ -63,6 +63,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
                 await testStream.SchedulerTick();
                 await Task.Delay(100);
             }
+            await testStream.DisposeAsync();
         }
 
         [Fact]
@@ -72,12 +73,12 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
 
             var mongoClient = new MongoClient(mongoDBFixture.GetConnectionString());
             var database = mongoClient.GetDatabase("test");
-            var collection = database.GetCollection<BsonDocument>("test");
+            var collection = database.GetCollection<BsonDocument>("test2");
 
             MongoDBTestStream testStream = new MongoDBTestStream(
                 mongoDBFixture,
                 "test",
-                "test",
+                "test2",
                 new List<string>() { "UserKey" }, "test",
                 (doc) =>
                 {
@@ -137,6 +138,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
 
             oldDataGet = collection.Find(Builders<BsonDocument>.Filter.Eq("UserKey", new BsonInt64(9999))).FirstOrDefault();
             Assert.Null(oldDataGet);
+            await testStream.DisposeAsync();
         }
     }
 }

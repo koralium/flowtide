@@ -98,6 +98,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .AddReadWriteFactory(factory)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
+                    CachePageCount = 1000000,
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _fileCachePersistence,
                     TemporaryStorageOptions = new Storage.FileCacheOptions()
