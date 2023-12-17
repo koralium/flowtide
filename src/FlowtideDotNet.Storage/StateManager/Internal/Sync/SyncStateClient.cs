@@ -15,7 +15,7 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
-    internal class SyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler, IDisposable
+    internal class SyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler
         where V : ICacheObject
     {
         private bool disposedValue;
@@ -190,7 +190,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
