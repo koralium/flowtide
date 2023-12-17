@@ -10,6 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
+using MongoDB.Bson;
+using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,5 +30,11 @@ namespace FlowtideDotNet.Connector.MongoDB
         public string Collection { get; set; }
 
         public List<string> PrimaryKeys { get; set; }
+
+        public Action<BsonDocument>? TransformDocument { get; set; }
+
+        public Func<IMongoCollection<BsonDocument>, Task>? OnInitialDataSent { get; set; }
+
+        public Func<Watermark, Task>? OnWatermarkUpdate { get; set; }
     }
 }

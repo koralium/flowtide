@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
@@ -41,6 +42,19 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         }
 
         public override string DisplayName => "MongoDB Sink";
+
+        protected override Task OnInitialDataSent()
+        {
+            if (options.OnInitialDataSent != null)
+            {
+                collection.DeleteManyAsync(Builders<BsonDocument>.Filter.Not(Builders<BsonDocument>.Filter.Eq("metadata", "123")));
+                return options.OnInitialDataSent(collection);
+            }
+            else
+            {
+                return Task.CompletedTask;
+            }
+        }
 
         protected override Task<MetadataResult> SetupAndLoadMetadataAsync()
         {
@@ -104,7 +118,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             }
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, CancellationToken cancellationToken)
+        protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
         {
             List<WriteModel<BsonDocument>> writes = new List<WriteModel<BsonDocument>>();
             List<Task> writeTasks = new List<Task>();
@@ -135,6 +149,10 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 else
                 {
                     var doc = streamEventToBson.ToBson(row.Row);
+                    if (options.TransformDocument != null)
+                    {
+                        options.TransformDocument(doc);
+                    }
                     writes.Add(new ReplaceOneModel<BsonDocument>(filter, doc) { IsUpsert = true });
                 }
 
@@ -176,7 +194,13 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             {
                 writeTasks.Add(collection.BulkWriteAsync(writes));
             }
+
             await Task.WhenAll(writeTasks);
+
+            if (options.OnWatermarkUpdate != null)
+            {
+                await options.OnWatermarkUpdate(watermark);
+            }
         }
     }
 }
