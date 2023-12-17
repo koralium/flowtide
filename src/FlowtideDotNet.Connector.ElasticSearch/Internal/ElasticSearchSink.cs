@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Elasticsearch.Net;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
@@ -70,7 +71,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             return new MetadataResult(m_primaryKeys);
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, CancellationToken cancellationToken)
+        protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
         {
             Debug.Assert(m_client != null);
             Debug.Assert(m_serializer != null);
