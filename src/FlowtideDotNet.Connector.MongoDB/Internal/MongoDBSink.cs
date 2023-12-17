@@ -47,7 +47,6 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         {
             if (options.OnInitialDataSent != null)
             {
-                collection.DeleteManyAsync(Builders<BsonDocument>.Filter.Not(Builders<BsonDocument>.Filter.Eq("metadata", "123")));
                 return options.OnInitialDataSent(collection);
             }
             else
