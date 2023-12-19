@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Core.Operators.Write;
@@ -20,6 +21,7 @@ using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -29,6 +31,7 @@ namespace FlowtideDotNet.Core.Operators.Buffer
 {
     internal class BufferOperator : UnaryVertex<StreamEventBatch, object?>
     {
+        private ICounter<long>? _eventsCounter;
         private IBPlusTree<StreamEvent, int>? _tree;
         public BufferOperator(ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -54,6 +57,7 @@ namespace FlowtideDotNet.Core.Operators.Buffer
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
         {
             Debug.Assert(_tree != null);
+            Debug.Assert(_eventsCounter != null);
 
             var it = _tree.CreateIterator();
             await it.SeekFirst();
@@ -67,12 +71,14 @@ namespace FlowtideDotNet.Core.Operators.Buffer
 
                 if (output.Count > 100)
                 {
+                    _eventsCounter.Add(output.Count);
                     yield return new StreamEventBatch(null, output);
                     output = new List<StreamEvent>();
                 }
             }
             if (output.Count > 0)
             {
+                _eventsCounter.Add(output.Count);
                 yield return new StreamEventBatch(null, output);
             }
             await _tree.Clear();
@@ -109,6 +115,11 @@ namespace FlowtideDotNet.Core.Operators.Buffer
 
         protected override async Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
         {
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            
             // Temporary tree for storing the input events
             _tree = await stateManagerClient.GetOrCreateTree("input", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<StreamEvent, int>()
             {

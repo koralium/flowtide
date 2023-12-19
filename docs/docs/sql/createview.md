@@ -28,6 +28,8 @@ This can reduce the output from the view in situations where data is updated reg
 One example is when a column value is based on *gettimestamp* such as *gettimestamp() > date* which will give the same output
 the majority of the time. The buffered view will then only give out the changed rows, and can reduce computational load in the result of the stream.
 
+It adds a [buffer operator](/docs/operators/buffer) at the end of the view.
+
 Example:
 
 ```sql
