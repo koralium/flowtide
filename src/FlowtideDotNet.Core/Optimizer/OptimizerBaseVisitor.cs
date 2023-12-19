@@ -117,5 +117,11 @@ namespace FlowtideDotNet.Core.Optimizer
         {
             return iterationReferenceReadRelation;
         }
+
+        public override Relation VisitBufferRelation(BufferRelation bufferRelation, object state)
+        {
+            bufferRelation.Input = Visit(bufferRelation.Input, state);
+            return bufferRelation;
+        }
     }
 }

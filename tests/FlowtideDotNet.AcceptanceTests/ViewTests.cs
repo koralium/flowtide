@@ -51,5 +51,26 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(Users.Select(u => new { u.UserKey, u.FirstName }).ToList());
         }
+
+        [Fact]
+        public async Task TestBufferedView()
+        {
+            GenerateData();
+
+            await StartStream(@"
+             CREATE VIEW test WITH (BUFFERED = true) AS
+                SELECT 
+                    userKey, 
+                    firstName
+                FROM users;
+
+            INSERT INTO output
+            SELECT userKey, firstName FROM test;
+            ");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(u => new { u.UserKey, u.FirstName }).ToList());
+        }
     }
 }

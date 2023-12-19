@@ -32,6 +32,7 @@ namespace FlowtideDotNet.Core.Engine
         private int _queueSize = 100;
         private FunctionsRegister _functionsRegister;
         private int _parallelism = 1;
+        private TimeSpan _getTimestampInterval = TimeSpan.FromHours(1);
 
         public FlowtideBuilder(string streamName)
         {
@@ -103,6 +104,12 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder SetGetTimestampUpdateInterval(TimeSpan interval)
+        {
+            _getTimestampInterval = interval;
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             using (SHA256 sha256 = SHA256.Create())
@@ -134,7 +141,15 @@ namespace FlowtideDotNet.Core.Engine
             var hash = ComputePlanHash();
             dataflowStreamBuilder.SetVersionInformation(1, hash);
 
-            SubstraitVisitor visitor = new SubstraitVisitor(_plan, dataflowStreamBuilder, _readWriteFactory, _queueSize, _functionsRegister, _parallelism);
+            SubstraitVisitor visitor = new SubstraitVisitor(
+                _plan, 
+                dataflowStreamBuilder, 
+                _readWriteFactory, 
+                _queueSize, 
+                _functionsRegister, 
+                _parallelism, 
+                _getTimestampInterval);
+
             visitor.BuildPlan();
 
             return dataflowStreamBuilder.Build();
