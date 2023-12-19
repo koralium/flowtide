@@ -218,6 +218,18 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
                 }
                 projectRelation.Emit = emitList;
             }
+            else
+            {
+                // If emit is set, we need to increase the emit index for all fields that are after the get_timestamp
+                var emit = projectRelation.Emit!;
+                for (int i = 0; i < emit.Count; i++)
+                {
+                    if (emit[i] >= tmpInput.OutputLength)
+                    {
+                        emit[i] += 1;
+                    }
+                }
+            }
 
             var crossJoin = new JoinRelation()
             {

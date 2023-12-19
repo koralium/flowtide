@@ -73,12 +73,18 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.AddOrUpdateUser(user);
         }
 
-        public async Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default)
+        public async Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default, TimeSpan? timestampInterval = default)
         {
             if (stateSerializeOptions == null)
             {
                 stateSerializeOptions = new StateSerializeOptions();
             }
+
+            if (timestampInterval == null)
+            {
+                timestampInterval = TimeSpan.FromSeconds(1);
+            }
+
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
 
@@ -96,6 +102,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .AddPlan(plan)
                 .SetParallelism(parallelism)
                 .AddReadWriteFactory(factory)
+                .SetGetTimestampUpdateInterval(timestampInterval.Value)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
                     CachePageCount = 1000000,

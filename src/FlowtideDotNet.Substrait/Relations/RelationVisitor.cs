@@ -98,5 +98,10 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             return default;
         }
+
+        public virtual TReturn VisitBufferRelation(BufferRelation bufferRelation, TState state)
+        {
+            return default;
+        }
     }
 }
