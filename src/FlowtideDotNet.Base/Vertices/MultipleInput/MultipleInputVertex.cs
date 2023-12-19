@@ -23,6 +23,7 @@ using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Base.Metrics;
 using System.Text;
+using System;
 
 namespace FlowtideDotNet.Base.Vertices.MultipleInput
 {
@@ -46,6 +47,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private readonly ExecutionDataflowBlockOptions executionDataflowBlockOptions;
         private readonly List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)> _links = new List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)>();
         private bool _isHealthy = true;
+        private CancellationTokenSource tokenSource;
 
         private string? _name;
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
@@ -78,6 +80,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         private void InitializeBlock()
         {
+            tokenSource = new CancellationTokenSource();
+            executionDataflowBlockOptions.CancellationToken = tokenSource.Token;
             _transformBlock = new TransformManyBlock<KeyValuePair<int, IStreamEvent>, IStreamEvent>((r) =>
             {
                 if (r.Value is ILockingEvent ev)
@@ -380,6 +384,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             {
                 target.Complete();
             }
+            tokenSource.Cancel();
+            _transformBlock.Complete();
         }
 
         public IStreamEvent? ConsumeMessage(DataflowMessageHeader messageHeader, ITargetBlock<IStreamEvent> target, out bool messageConsumed)
@@ -391,6 +397,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         public void Fault(Exception exception)
         {
             Debug.Assert(_transformBlock != null, nameof(_transformBlock));
+            tokenSource.Cancel();
             (_transformBlock as IDataflowBlock).Fault(exception);
         }
 

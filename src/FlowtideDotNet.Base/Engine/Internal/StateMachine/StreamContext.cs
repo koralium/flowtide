@@ -476,12 +476,22 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         /// <returns></returns>
         public async ValueTask DisposeAsync()
         {
+            CancelTriggerRegistration();
+            await ClearTriggers();
+
+            lock (_checkpointLock)
+            {
+                if (checkpointTask != null)
+                {
+                    checkpointTask.SetCanceled();
+                    checkpointTask = null;
+                }
+            }
+
             ForEachBlock((key, block) =>
             {
                 block.Complete();
             });
-
-            await Task.WhenAll(GetCompletionTasks()).ContinueWith(t => { });
 
             await ForEachBlockAsync(async (key, block) =>
             {

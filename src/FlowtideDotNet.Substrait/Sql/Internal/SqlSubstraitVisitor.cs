@@ -71,10 +71,38 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             var relationData = Visit(createView.Query, state);
             Debug.Assert(relationData != null);
 
+            bool isBuffered = false;
+            if (createView.WithOptions != null)
+            {
+                foreach(var opt in createView.WithOptions)
+                {
+                    var upperName = opt.Name.ToString().ToUpper();
+                    if (upperName == "BUFFERED")
+                    {
+                        var upperVal = opt.Value.ToSql().ToUpper();
+                        if (upperVal == "TRUE")
+                        {
+                            isBuffered = true;
+                        }
+                        
+                    }
+                }
+            }
+
+            var relation = relationData.Relation;
+
+            if (isBuffered)
+            {
+                relation = new BufferRelation()
+                {
+                    Input = relation
+                };
+            }
+
             var viewName = createView.Name.ToSql();
             sqlPlanBuilder._planModifier.AddPlanAsView(viewName, new FlowtideDotNet.Substrait.Plan()
             {
-                Relations = new List<Relation>() { relationData.Relation }
+                Relations = new List<Relation>() { relation }
             });
             tablesMetadata.AddTable(viewName, relationData.EmitData.GetNames());
             return default;
