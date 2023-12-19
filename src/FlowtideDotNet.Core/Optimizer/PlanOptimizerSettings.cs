@@ -15,5 +15,7 @@ namespace FlowtideDotNet.Core.Optimizer
     public class PlanOptimizerSettings
     {
         public bool NoMergeJoin { get; set; } = false;
+
+        public bool GetTimestampToJoin { get; set; } = true;
     }
 }

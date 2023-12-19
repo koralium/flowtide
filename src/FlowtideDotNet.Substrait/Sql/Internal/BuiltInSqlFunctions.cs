@@ -308,6 +308,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     throw new NotImplementedException("stftime does not support the input parameter");
                 }
             });
+            
+            sqlFunctionRegister.RegisterScalarFunction("gettimestamp", (f, visitor, emitData) =>
+            {
+                return new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsDatetime.Uri,
+                    ExtensionName = FunctionsDatetime.GetTimestamp,
+                    Arguments = new List<Expressions.Expression>()
+                };
+            });
 
             sqlFunctionRegister.RegisterScalarFunction("map", (f, visitor, emitData) =>
             {
