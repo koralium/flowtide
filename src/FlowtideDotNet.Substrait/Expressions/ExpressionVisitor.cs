@@ -20,6 +20,10 @@ namespace FlowtideDotNet.Substrait.Expressions
     {
         public virtual TOutput? Visit(Expression expression, TState state)
         {
+            if (expression == null)
+            {
+                return default;
+            }
             return expression.Accept(this, state);
         }
 

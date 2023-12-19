@@ -16,12 +16,28 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Substrait.FunctionExtensions
+namespace FlowtideDotNet.Substrait.Relations
 {
-    public static class FunctionsDatetime
+    public class BufferRelation : Relation
     {
-        public const string Uri = "/functions_datetime.yaml";
-        public const string Strftime = "strftime";
-        public const string GetTimestamp = "gettimestamp";
+        public override int OutputLength
+        {
+            get
+            {
+                if (EmitSet)
+                {
+                    return Emit!.Count;
+                }
+                // Expressions are appended, so if emit is not set it is input + extra columns
+                return Input.OutputLength;
+            }
+        }
+
+        public Relation Input { get; set; }
+
+        public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
+        {
+            return visitor.VisitBufferRelation(this, state);
+        }
     }
 }

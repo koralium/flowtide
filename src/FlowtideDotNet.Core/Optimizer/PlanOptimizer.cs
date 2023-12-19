@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Optimizer.FIlterPushdown;
+using FlowtideDotNet.Core.Optimizer.GetTimestamp;
 using FlowtideDotNet.Substrait;
 
 namespace FlowtideDotNet.Core.Optimizer
@@ -23,7 +24,14 @@ namespace FlowtideDotNet.Core.Optimizer
             {
                 settings = new PlanOptimizerSettings();
             }
-            for(int i = 0; i < plan.Relations.Count; i++)
+
+            // Start with timestamp to join since its actual logic and not only optimization
+            if (settings.GetTimestampToJoin)
+            {
+                plan = TimestampToJoin.Optimize(plan);
+            }
+
+            for (int i = 0; i < plan.Relations.Count; i++)
             {
                 var relation = plan.Relations[i];
 
