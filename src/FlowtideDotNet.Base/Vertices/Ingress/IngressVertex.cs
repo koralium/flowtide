@@ -131,6 +131,8 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
             lock (_stateLock)
             {
+                _ingressState._taskEnabled = false;
+                _ingressState._tokenSource.Cancel();
                 _ingressState._block.Complete();
             }
         }
@@ -248,6 +250,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                     return taskState.func(taskState.ingressOutput, taskState.state);
                 }, tState, _ingressState._output.CancellationToken, taskCreationOptions, TaskScheduler.Default)
                 .Unwrap();
+                _runningTasks.Add(t.Id, t);
                 t.ContinueWith((task, state) =>
                 {
                     var taskState = (TaskState)state!;
@@ -260,7 +263,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                         _runningTasks.Remove(task.Id);
                     }
                 }, tState, default, TaskContinuationOptions.None, TaskScheduler.Default);
-                _runningTasks.Add(t.Id, t);
+                
 
                 return t;
             }

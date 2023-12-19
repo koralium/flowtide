@@ -31,6 +31,7 @@ using FlowtideDotNet.Core.Operators.Partition;
 using FlowtideDotNet.Base.Vertices.PartitionVertices;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Core.Operators.TimestampProvider;
+using FlowtideDotNet.Core.Operators.Buffer;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -315,7 +316,10 @@ namespace FlowtideDotNet.Core.Engine
 
                 if (state != null)
                 {
-                    op.LinkTo(state);
+                    op.LinkTo(state, new DataflowLinkOptions()
+                    {
+                        PropagateCompletion = true
+                    });
                 }
 
                 joinRelation.Left.Accept(this, op.Targets[0]);
@@ -514,6 +518,19 @@ namespace FlowtideDotNet.Core.Engine
             {
                 op.LoopSource.LinkTo(state);
             }
+            return op;
+        }
+
+        public override IStreamVertex VisitBufferRelation(BufferRelation bufferRelation, ITargetBlock<IStreamEvent> state)
+        {
+            var id = _operatorId++;
+            var op = new BufferOperator(new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            if (state != null)
+            {
+                op.LinkTo(state);
+            }
+            bufferRelation.Input.Accept(this, op);
+            dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
             return op;
         }
     }

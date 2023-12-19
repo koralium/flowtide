@@ -35,6 +35,13 @@ Get timestamp is not yet supported inside of join conditions.
 
 :::
 
+:::info
+
+If you do comparisons with *gettimestamp* it may be benificial to use buffered views to only send out changed rows to the rest of the stream.
+Please see [Buffered view](/docs/sql/createview#buffered-view).
+
+:::
+
 Get the current timestamp (current datetime).
 
 This is a meta function that itself does no computation, but is instead replaced during the optimization step with

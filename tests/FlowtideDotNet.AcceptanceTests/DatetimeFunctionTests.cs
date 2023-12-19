@@ -97,5 +97,31 @@ namespace FlowtideDotNet.AcceptanceTests
                 })
                 );
         }
+
+        [Fact]
+        public async Task GetTimestampInBufferedView()
+        {
+            GenerateData();
+            await StartStream(@"
+
+            CREATE VIEW buffered WITH (BUFFERED = true) AS
+            SELECT
+                CASE WHEN orderdate < gettimestamp() THEN true ELSE false END as active
+            FROM orders;
+
+            INSERT INTO output
+            SELECT
+                active
+            FROM buffered
+            ");
+            await WaitForUpdate();
+
+            var rows = GetActualRows();
+
+            await WaitForUpdate();
+
+            var rows2 = GetActualRows();
+            // This test only validates that it can run for now
+        }
     }
 }
