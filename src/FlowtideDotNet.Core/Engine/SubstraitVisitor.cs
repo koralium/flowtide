@@ -30,6 +30,7 @@ using FlowtideDotNet.Core.Operators.Iteration;
 using FlowtideDotNet.Core.Operators.Partition;
 using FlowtideDotNet.Base.Vertices.PartitionVertices;
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Core.Operators.TimestampProvider;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -54,6 +55,7 @@ namespace FlowtideDotNet.Core.Engine
         private readonly int queueSize;
         private readonly FunctionsRegister functionsRegister;
         private readonly int parallelism;
+        private readonly TimeSpan getTimestampInterval;
         private int _operatorId = 0;
         private Dictionary<int, RelationTree> _doneRelations;
         private Dictionary<string, IterationOperator> _iterationOperators = new Dictionary<string, IterationOperator>();
@@ -98,7 +100,8 @@ namespace FlowtideDotNet.Core.Engine
             IReadWriteFactory readFactory, 
             int queueSize, 
             FunctionsRegister functionsRegister,
-            int parallelism)
+            int parallelism,
+            TimeSpan getTimestampInterval)
         {
             this.plan = plan;
             this.dataflowStreamBuilder = dataflowStreamBuilder;
@@ -106,6 +109,7 @@ namespace FlowtideDotNet.Core.Engine
             this.queueSize = queueSize;
             this.functionsRegister = functionsRegister;
             this.parallelism = parallelism;
+            this.getTimestampInterval = getTimestampInterval;
             _doneRelations = new Dictionary<int, RelationTree>();
         }
 
@@ -348,8 +352,32 @@ namespace FlowtideDotNet.Core.Engine
             return op;
         }
 
+        private IStreamVertex VisitGetTimestampTable(ITargetBlock<IStreamEvent>? state)
+        {
+            var id = _operatorId++;
+            var op = new TimestampProviderOperator(getTimestampInterval, new DataflowBlockOptions() { BoundedCapacity = queueSize });
+            if (op is ISourceBlock<IStreamEvent> sourceBlock)
+            {
+                if (state != null)
+                {
+                    sourceBlock.LinkTo(state);
+                }
+            }
+            else
+            {
+                throw new NotSupportedException("Read relation operator must implement ISourceBlock<IStreamEvent>");
+            }
+            dataflowStreamBuilder.AddIngressBlock(id.ToString(), op);
+            return op;
+        }
+
         public override IStreamVertex VisitReadRelation(ReadRelation readRelation, ITargetBlock<IStreamEvent>? state)
         {
+            if (readRelation.NamedTable.DotSeperated == "__gettimestamp")
+            {
+                return VisitGetTimestampTable(state);
+            }
+
             var info = readFactory.GetReadOperator(readRelation, new DataflowBlockOptions() { BoundedCapacity = queueSize });
 
             var previousState = state;

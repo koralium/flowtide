@@ -10,18 +10,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Optimizer.FIlterPushdown;
+using FlowtideDotNet.Substrait;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Substrait.FunctionExtensions
+namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
 {
-    public static class FunctionsDatetime
+    internal static class TimestampToJoin
     {
-        public const string Uri = "/functions_datetime.yaml";
-        public const string Strftime = "strftime";
-        public const string GetTimestamp = "gettimestamp";
+        private static readonly object _emptyObject = new object();
+
+        public static Plan Optimize(Plan plan)
+        {
+            var visitor = new GetTimestampVisitor(plan);
+            for (int i = 0; i < plan.Relations.Count; i++)
+            {
+                var relation = plan.Relations[i];
+                
+                relation = visitor.Visit(relation, _emptyObject);
+
+                plan.Relations[i] = relation;
+            }
+
+            return plan;
+        }
     }
 }

@@ -46,5 +46,56 @@ namespace FlowtideDotNet.AcceptanceTests
                 })
                 );
         }
+
+        [Fact]
+        public async Task GetTimestamp()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                gettimestamp() as CurrentTime
+            FROM Orders
+            ");
+            await WaitForUpdate();
+
+            // This test only validates that it can run for now
+        }
+
+        [Fact]
+        public async Task GetTimestampInAggregate()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                userkey, list_agg(map('time', gettimestamp())) as CurrentTimes
+            FROM Orders
+            GROUP BY userkey
+            ");
+            await WaitForUpdate();
+
+            // This test only validates that it can run for now
+        }
+
+        [Fact]
+        public async Task GetTimestampInFilter()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                orderkey
+            FROM Orders
+            where orderdate < gettimestamp()
+            ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                Orders.Where(x => x.Orderdate < DateTime.UtcNow).Select(o => new {
+                    o.OrderKey
+                })
+                );
+        }
     }
 }
