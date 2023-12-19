@@ -22,3 +22,7 @@ message NormalizationRelation {
 message ReferenceRelation {
     int32 referenceId = 1;
 }
+
+message BufferRelation {
+
+}
