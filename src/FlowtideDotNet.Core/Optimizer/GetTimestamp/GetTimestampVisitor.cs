@@ -143,7 +143,7 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
 
             if (!aggregateRelation.EmitSet)
             {
-                // Add all fields but before adding the join, to make sure that 
+                // Add all fields but before adding the join, so the get timestamp value is not included in the output
                 List<int> emitList = new List<int>();
                 for (int i = 0; i < aggregateRelation.OutputLength; i++)
                 {
