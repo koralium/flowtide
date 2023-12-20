@@ -44,12 +44,17 @@ namespace FlowtideDotNet.Core
             writer.WriteStartObject();
             for(int i = 0; i < streamEvent.Vector.Length; i++)
             {
-                WritePropertyName(writer, i);
-                WriteColumnValue(writer, streamEvent.Vector.GetRef(i), i);
+                if (ShouldWriteColumn(i))
+                {
+                    WritePropertyName(writer, i);
+                    WriteColumnValue(writer, streamEvent.Vector.GetRef(i), i);
+                }
             }
             writer.WriteEndObject();
             writer.Flush();
         }
+
+        protected virtual bool ShouldWriteColumn(int index) => true;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void WritePropertyName(in Utf8JsonWriter writer, in int index)

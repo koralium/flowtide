@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override RelationData? VisitCreateTable(Statement.CreateTable createTable, object? state)
         {
-            var tableName = createTable.Name.ToSql();
+            var tableName = string.Join(".", createTable.Name.Values.Select(x=> x.Value));
             var columnNames = createTable.Columns.Select(x => x.Name.Value).ToList();
             tablesMetadata.AddTable(tableName, columnNames);
             return null;

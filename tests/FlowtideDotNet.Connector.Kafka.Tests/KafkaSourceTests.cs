@@ -1,4 +1,5 @@
 using Confluent.Kafka;
+using Confluent.Kafka.Admin;
 
 namespace FlowtideDotNet.Connector.Kafka.Tests
 {
@@ -25,16 +26,21 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
                 }
             ";
 
-            var status = await producer.ProduceAsync(topic, new Message<string, string>()
+            await producer.ProduceAsync(topic, new Message<string, string>()
             {
                 Key = "key",
                 Value = jsonData
             });
 
+            // Create the output topic
+            await new AdminClientBuilder(new AdminClientConfig(kafkaFixture.GetConfig())).Build().CreateTopicsAsync(new List<TopicSpecification>() { new TopicSpecification() { Name = "output", NumPartitions = 1, ReplicationFactor = 1 } });
+
+            var consumer = new ConsumerBuilder<string, string>(kafkaFixture.GetConsumerConfig()).Build();
+
             KafkaTestStream kafkaTestStream = new KafkaTestStream(kafkaFixture, topic, "testkafka");
 
             await kafkaTestStream.StartStream(@"
-                CREATE TABLE kafkasource (
+                CREATE TABLE [test-topic] (
                     _key,
                     firstName,
                     lastName
@@ -45,12 +51,16 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
                     _key,
                     firstName,
                     lastName
-                FROM kafkasource
+                FROM [test-topic]
             ");
 
-            await kafkaTestStream.WaitForUpdate();
+            
+            consumer.Subscribe("output");
 
-            kafkaTestStream.AssertCurrentDataEqual(new[] { new { key = "key", firstName = "testFirst", lastName = "testLast" } });
+            var msg1 = consumer.Consume();
+
+            Assert.Equal("key", msg1.Message.Key);
+            Assert.Equal("{\"firstName\":\"testFirst\",\"lastName\":\"testLast\"}", msg1.Message.Value);
 
             var jsonData2 = @"
                 {
@@ -65,23 +75,20 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
                 Value = jsonData2
             });
 
-            await kafkaTestStream.WaitForUpdate();
+            var msg2 = consumer.Consume();
 
-            kafkaTestStream.AssertCurrentDataEqual(new[] { 
-                new { key = "key", firstName = "testFirst", lastName = "testLast" },
-                new { key = "key2", firstName = "testFirst2", lastName = "testLast2" },
-            });
+            Assert.Equal("key2", msg2.Message.Key);
+            Assert.Equal("{\"firstName\":\"testFirst2\",\"lastName\":\"testLast2\"}", msg2.Message.Value);
 
             await producer.ProduceAsync(topic, new Message<string, string>()
             {
                 Key = "key"
             });
 
-            await kafkaTestStream.WaitForUpdate();
-
-            kafkaTestStream.AssertCurrentDataEqual(new[] {
-                new { key = "key2", firstName = "testFirst2", lastName = "testLast2" },
-            });
+            var msg3 = consumer.Consume();
+            
+            Assert.Equal("key", msg3.Message.Key);
+            Assert.Null(msg3.Message.Value);
         }
     }
 }

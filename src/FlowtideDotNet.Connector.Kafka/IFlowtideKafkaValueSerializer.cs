@@ -10,7 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Confluent.Kafka;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Substrait.Relations;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,12 +20,10 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.Kafka
 {
-    public class FlowtideKafkaSourceOptions
+    public interface IFlowtideKafkaValueSerializer
     {
-        public ConsumerConfig? ConsumerConfig { get; set; }
+        byte[]? Serialize(StreamEvent streamEvent, bool isDeleted);
 
-        public required IFlowtideKafkaKeyDeserializer KeyDeserializer { get; set; }
-
-        public required IFlowtideKafkaDeserializer ValueDeserializer { get; set; }
+        Task Initialize(WriteRelation writeRelation);
     }
 }
