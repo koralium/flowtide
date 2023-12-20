@@ -173,10 +173,13 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
 
         public void ClearTemporaryAllocations()
         {
-            if (alignedBuffer != null)
+            lock (_lock)
             {
-                alignedBuffer.Dispose();
-                alignedBuffer = null;
+                if (alignedBuffer != null)
+                {
+                    alignedBuffer.Dispose();
+                    alignedBuffer = null;
+                }
             }
         }
     }

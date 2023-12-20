@@ -400,7 +400,13 @@ namespace FlowtideDotNet.Storage.FileCache
 
         public void ClearTemporaryAllocations()
         {
-
+            lock (m_lock)
+            {
+                foreach(var writer in segmentWriters)
+                {
+                    writer.Value.ClearTemporaryAllocations();
+                }
+            }
         }
 
         protected virtual void Dispose(bool disposing)
