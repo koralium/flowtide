@@ -1,9 +1,4 @@
 using Confluent.Kafka;
-using FlowtideDotNet.Connector.Kafka.Extensions;
-using FlowtideDotNet.Core.Engine;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
-using FlowtideDotNet.Substrait.Sql;
-using Xunit;
 
 namespace FlowtideDotNet.Connector.Kafka.Tests
 {
