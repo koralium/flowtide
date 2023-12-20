@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.Kafka;
 using FlowtideDotNet.Connector.Kafka.Internal;
+using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using System.Text.RegularExpressions;
@@ -65,6 +66,25 @@ namespace FlowtideDotNet.Core.Engine
                     KeyIndex = new List<int>() { keyIndex },
                     Emit = readRelation.Emit
                 });
+            });
+            return readWriteFactory;
+        }
+
+        public static ReadWriteFactory AddKafkaSink(this ReadWriteFactory readWriteFactory, string regexPattern, FlowtideKafkaSinkOptions options, ExecutionMode executionMode = ExecutionMode.OnCheckpoint)
+        {
+            if (regexPattern == "*")
+            {
+                regexPattern = ".*";
+            }
+
+            readWriteFactory.AddWriteResolver((writeRelation, opt) =>
+            {
+                var regexResult = Regex.Match(writeRelation.NamedObject.DotSeperated, regexPattern, RegexOptions.IgnoreCase);
+                if (!regexResult.Success)
+                {
+                    return null;
+                }
+                return new KafkaSink(writeRelation, options, executionMode, opt);
             });
             return readWriteFactory;
         }

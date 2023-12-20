@@ -10,21 +10,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Confluent.Kafka;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.Kafka
+namespace FlowtideDotNet.Connector.Kafka.Internal
 {
-    public class FlowtideKafkaSourceOptions
+    internal class StreamEventToJsonKafka : StreamEventToJson
     {
-        public ConsumerConfig? ConsumerConfig { get; set; }
+        private readonly int keyIndex;
 
-        public required IFlowtideKafkaKeyDeserializer KeyDeserializer { get; set; }
+        public StreamEventToJsonKafka(int keyIndex, List<string> names) : base(names)
+        {
+            this.keyIndex = keyIndex;
+        }
 
-        public required IFlowtideKafkaDeserializer ValueDeserializer { get; set; }
+        protected override bool ShouldWriteColumn(int index)
+        {
+            return index != keyIndex;
+        }
     }
 }

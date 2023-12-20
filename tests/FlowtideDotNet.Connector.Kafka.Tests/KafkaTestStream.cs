@@ -28,9 +28,8 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
 
         protected override void AddReadResolvers(ReadWriteFactory factory)
         {
-            factory.AddKafkaSource("kafkasource", new FlowtideKafkaSourceOptions()
+            factory.AddKafkaSource("*", new FlowtideKafkaSourceOptions()
             {
-                Topic = topic,
                 ConsumerConfig = kafkaFixture.GetConsumerConfig(),
                 KeyDeserializer = new FlowtidekafkaStringKeyDeserializer(),
                 ValueDeserializer = new FlowtideKafkaUpsertJsonDeserializer()
@@ -39,7 +38,12 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
 
         protected override void AddWriteResolvers(ReadWriteFactory factory)
         {
-            base.AddWriteResolvers(factory);
+            factory.AddKafkaSink("*", new FlowtideKafkaSinkOptions()
+            {
+                KeySerializer = new FlowtideKafkaStringKeySerializer(),
+                ProducerConfig = kafkaFixture.GetProducerConfig(),
+                ValueSerializer = new FlowtideKafkaUpsertJsonSerializer()
+            });
         }
     }
 }

@@ -46,9 +46,11 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
         private IFlowtideKafkaDeserializer _valueDeserializer;
         private readonly FlexBuffer _flexBuffer;
         private IFlowtideKafkaKeyDeserializer _keyDeserializer;
+        private readonly string topicName;
 
         public KafkaDataSource(ReadRelation readRelation, FlowtideKafkaSourceOptions flowtideKafkaOptions, DataflowBlockOptions options) : base(options)
         {
+            topicName = readRelation.NamedTable.DotSeperated;
             this.readRelation = readRelation;
             this.flowtideKafkaOptions = flowtideKafkaOptions;
             _valueDeserializer = flowtideKafkaOptions.ValueDeserializer;
@@ -92,14 +94,14 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             var adminConf = new AdminClientConfig(flowtideKafkaOptions.ConsumerConfig);
 
             var adminClient = new AdminClientBuilder(adminConf).Build();
-            var metadata = adminClient.GetMetadata(flowtideKafkaOptions.Topic, TimeSpan.FromSeconds(10));
+            var metadata = adminClient.GetMetadata(topicName, TimeSpan.FromSeconds(10));
             HashSet<string> watermarkNames = new HashSet<string>();
             var topic = metadata.Topics.First();
             var partitions = metadata.Topics.First().Partitions;
             List<TopicPartitionOffset> topicPartitionOffsets = new List<TopicPartitionOffset>();
             foreach(var partition in partitions)
             {
-                watermarkNames.Add(flowtideKafkaOptions.Topic + "_" + partition.PartitionId);
+                watermarkNames.Add(topicName + "_" + partition.PartitionId);
 
                 var topicPartition = new TopicPartition(topic.Topic, new Partition(partition.PartitionId));
                 _topicPartitions.Add(topicPartition);
@@ -191,7 +193,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             var watermark = new Dictionary<string, long>();
             foreach (var kv in _state.PartitionOffsets)
             {
-                watermark.Add(flowtideKafkaOptions.Topic + "_" + kv.Key, kv.Value);
+                watermark.Add(topicName + "_" + kv.Key, kv.Value);
             }
             await output.SendWatermark(new Base.Watermark(watermark.ToImmutableDictionary()));
         }
@@ -207,7 +209,18 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             foreach(var topicPartition in _topicPartitions)
             {
                 var offsets = _consumer.QueryWatermarkOffsets(topicPartition, TimeSpan.FromSeconds(10));
-                beforeStartOffsets.Add(topicPartition.Partition.Value, offsets.High.Value - 1);
+                var offset = offsets.High.Value - 1;
+                if (beforeStartOffsets.TryGetValue(topicPartition.Partition.Value, out var currentOffset))
+                {
+                    if (currentOffset < offset)
+                    {
+                        beforeStartOffsets[topicPartition.Partition.Value] = offset;
+                    }
+                }
+                else
+                {
+                    beforeStartOffsets.Add(topicPartition.Partition.Value, offset);
+                }
             }
 
             List<StreamEvent> rows = new List<StreamEvent>();
@@ -262,7 +275,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             await SendWatermark(output);
 
             output.ExitCheckpointLock();
-            ScheduleCheckpoint(TimeSpan.FromSeconds(1));
+            ScheduleCheckpoint(TimeSpan.FromMilliseconds(10));
             _ = RunTask(LoadChangesTask, taskCreationOptions: TaskCreationOptions.LongRunning);
         }
     }

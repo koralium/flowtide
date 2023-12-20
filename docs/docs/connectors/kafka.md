@@ -13,12 +13,13 @@ The source is added to the read write factory with the following line:
 ```csharp
 factory.AddKafkaSource("your regexp on table names",  new FlowtideKafkaSourceOptions()
     {
-        Topic = topic,
         ConsumerConfig = kafkaConsumerConfig,
         KeyDeserializer = keyDeserializer,
         ValueDeserializer = valueDeserializer
     });
 ```
+
+The table name in the read relation becomes the topic name the source will read from. 
 
 The following key deserializers exist:
 
@@ -34,7 +35,7 @@ The source has a special column name for the key, it is called *_key* which can 
 ### Usage in SQL
 
 ```sql
-CREATE TABLE kafkasource (
+CREATE TABLE my_kafka_topic (
     _key,
     firstName,
     lastName
@@ -42,5 +43,31 @@ CREATE TABLE kafkasource (
 
 INSERT INTO outputtable
 SELECT _key, firstName, lastName
-FROM kafkasource;
+FROM my_kafka_topic;
 ```
+
+## Sink
+
+The kafka sink allows a stream to write events to kafka.
+
+The sink is added to the read write factory with the following line:
+
+```csharp
+factory.AddKafkaSink("your regexp on table names",  new FlowtideKafkaSinkOptions()
+    {
+        KeySerializer = new FlowtideKafkaStringKeySerializer(),
+        ProducerConfig = config,
+        ValueSerializer = new FlowtideKafkaUpsertJsonSerializer()
+    });
+```
+
+Same as the source, it writes to the topic name that is entered in the write relation.
+
+Available key serializers:
+
+* **FlowtideKafkaJsonKeySerializer** - JSON serializes the key value
+* **FlowtideKafkaStringKeySerializer** - Outputs a string value, only works if the key is in a string type.
+
+Available value serializers:
+
+* **FlowtideKafkaUpsertJsonSerializer** - Outputs the value as json, if it is a delete, it outputs null as the value.

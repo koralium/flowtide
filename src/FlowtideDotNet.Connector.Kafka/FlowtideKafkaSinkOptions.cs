@@ -19,12 +19,12 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.Kafka
 {
-    public class FlowtideKafkaSourceOptions
+    public class FlowtideKafkaSinkOptions
     {
-        public ConsumerConfig? ConsumerConfig { get; set; }
+        public required ProducerConfig ProducerConfig { get; set; }
 
-        public required IFlowtideKafkaKeyDeserializer KeyDeserializer { get; set; }
+        public required IFlowtideKafkaKeySerializer KeySerializer { get; set; }
 
-        public required IFlowtideKafkaDeserializer ValueDeserializer { get; set; }
+        public required IFlowtideKafkaValueSerializer ValueSerializer { get; set; }
     }
 }

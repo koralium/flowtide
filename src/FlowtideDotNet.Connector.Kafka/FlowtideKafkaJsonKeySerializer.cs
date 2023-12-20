@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Confluent.Kafka;
+using FlexBuffers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,12 +19,11 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.Kafka
 {
-    public class FlowtideKafkaSourceOptions
+    public class FlowtideKafkaJsonKeySerializer : IFlowtideKafkaKeySerializer
     {
-        public ConsumerConfig? ConsumerConfig { get; set; }
-
-        public required IFlowtideKafkaKeyDeserializer KeyDeserializer { get; set; }
-
-        public required IFlowtideKafkaDeserializer ValueDeserializer { get; set; }
+        public byte[] Serialize(FlxValue key)
+        {
+            return Encoding.UTF8.GetBytes(key.ToJson);
+        }
     }
 }
