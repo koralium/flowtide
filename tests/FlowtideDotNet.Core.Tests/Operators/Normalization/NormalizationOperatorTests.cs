@@ -20,6 +20,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Core.Tests.Operators.Normalization
 {
@@ -66,7 +67,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Normalization
                 //LogDevice = Devices.CreateLogDevice("./data/persistent", recoverDevice: true),
                 //CheckpointDir = "./data",
                 //TemporaryStorageFactory = localStorage
-            }, new NullLogger<StateManagerSync<object>>());
+            }, new NullLogger<StateManagerSync<object>>(), new Meter($"storage"));
             await stateManager.InitializeAsync();
             var stateClient = stateManager.GetOrCreateClient("node");
 

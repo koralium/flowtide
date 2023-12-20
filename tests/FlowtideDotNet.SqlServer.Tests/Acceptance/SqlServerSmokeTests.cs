@@ -29,6 +29,7 @@ using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 {
@@ -202,7 +203,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             {
                 CachePageCount = 1000,
                 PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions())
-            }, new NullLogger<StateManagerSync<object>>());
+            }, new NullLogger<StateManagerSync<object>>(), new Meter($"storage"));
             await stateManager.InitializeAsync();
             var stateClient = stateManager.GetOrCreateClient("node");
 

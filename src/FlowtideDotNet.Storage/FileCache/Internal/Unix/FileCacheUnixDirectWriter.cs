@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
 
         private readonly int fileDescriptor;
         private readonly int alignment;
-        private AlignedBuffer alignedBuffer;
+        private AlignedBuffer? alignedBuffer;
         private readonly object _lock = new object();
 
         [DllImport("libc", SetLastError = true)]
@@ -87,7 +87,6 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
 
                 throw new InvalidOperationException($"Open failed with error code {errorCode}: {strerror(errorCode)}");
             }
-            alignedBuffer = new AlignedBuffer(sectorSize * 1024, sectorSize);
         }
 
         public void Write(long position, byte[] data)
@@ -95,6 +94,11 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             lock (_lock)
             {
                 var alignedLength = (data.Length + alignment - 1) / alignment * alignment;
+
+                if (alignedBuffer == null)
+                {
+                    alignedBuffer = new AlignedBuffer(alignedLength, alignment);
+                }
 
                 if (alignedLength > alignedBuffer.Size)
                 {
@@ -126,6 +130,11 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
                     throw new ArgumentException("Offset must be aligned to block size.");
                 }
                 var alignedLength = (length + alignment - 1) / alignment * alignment;
+
+                if (alignedBuffer == null)
+                {
+                    alignedBuffer = new AlignedBuffer(alignedLength, alignment);
+                }
 
                 if (alignedLength > alignedBuffer.Size)
                 {
@@ -160,6 +169,15 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
         public void Flush()
         {
             // Flush is not required in direct i/o
+        }
+
+        public void ClearTemporaryAllocations()
+        {
+            if (alignedBuffer != null)
+            {
+                alignedBuffer.Dispose();
+                alignedBuffer = null;
+            }
         }
     }
 }

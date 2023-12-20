@@ -14,6 +14,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
     internal interface ILruEvictHandler
     {
-        void Evict(List<(LinkedListNode<LruTableSync.LinkedListValue>, long)> valuesToEvict);
+        void Evict(List<(LinkedListNode<LruTableSync.LinkedListValue>, long)> valuesToEvict, bool isCleanup);
     }
 }

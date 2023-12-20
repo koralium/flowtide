@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FASTER.core;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.Tests
 {
@@ -33,7 +34,7 @@ namespace FlowtideDotNet.Storage.Tests
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistent"
                     })
-                }, NullLogger.Instance);
+                }, NullLogger.Instance, new Meter($"storage"));
 
             await stateManager.InitializeAsync();
 
@@ -87,7 +88,7 @@ namespace FlowtideDotNet.Storage.Tests
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistentfail"
                     })
-                }, NullLogger.Instance);
+                }, NullLogger.Instance, new Meter($"storage"));
 
             await stateManager.InitializeAsync();
 
@@ -150,7 +151,7 @@ namespace FlowtideDotNet.Storage.Tests
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistentcompact"
                     })
-                },  NullLogger.Instance);
+                },  NullLogger.Instance, new Meter($"storage"));
 
             await stateManager.InitializeAsync();
 

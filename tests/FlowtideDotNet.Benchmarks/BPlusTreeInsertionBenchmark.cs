@@ -39,7 +39,7 @@ namespace DifferntialCompute.Benchmarks
                 LogDevice = localStorage.Get(new FileDescriptor("persistent", "perstitent.log")),
                 CheckpointDir = "./data",
                 TemporaryStorageFactory = localStorage
-            }, NullLogger.Instance);
+            }, NullLogger.Instance, new System.Diagnostics.Metrics.Meter("storage"));
             
             stateManager.InitializeAsync().GetAwaiter().GetResult();
 

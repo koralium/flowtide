@@ -17,12 +17,13 @@ using System.Diagnostics;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.StateManager
 {
     public class StateManagerSync<TMetadata> : StateManagerSync
     {
-        public StateManagerSync(StateManagerOptions options, ILogger logger) : base(new StateManagerMetadataSerializer<TMetadata>(), options, logger)
+        public StateManagerSync(StateManagerOptions options, ILogger logger, Meter meter) : base(new StateManagerMetadataSerializer<TMetadata>(), options, logger, meter)
         {
         }
 
@@ -60,6 +61,7 @@ namespace FlowtideDotNet.Storage.StateManager
         private readonly IStateSerializer<StateManagerMetadata> m_metadataSerializer;
         private readonly StateManagerOptions options;
         private readonly ILogger logger;
+        private readonly Meter meter;
         private readonly object m_lock = new object();
         internal StateManagerMetadata? m_metadata;
         //private Functions m_functions;
@@ -83,18 +85,19 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public long PageCount => m_metadata != null ? Volatile.Read(ref m_metadata.PageCount) : throw new InvalidOperationException("Manager must be initialized before getting page count");
 
-        internal StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILogger logger)
+        internal StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILogger logger, Meter meter)
         {
             this.m_metadataSerializer = metadataSerializer;
             this.options = options;
             this.logger = logger;
+            this.meter = meter;
         }
 
         private void Setup()
         {
             if (m_lruTable == null)
             {
-                m_lruTable = new LruTableSync(options.CachePageCount, logger, options.MaxProcessMemory);
+                m_lruTable = new LruTableSync(options.CachePageCount, logger, meter, options.MaxProcessMemory);
             }
 
             if (m_persistentStorage != null)

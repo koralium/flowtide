@@ -18,6 +18,7 @@ using FASTER.core;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using Microsoft.Extensions.Logging.Abstractions;
 using FlowtideDotNet.Storage.Tree.Internal;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.Tests
 {
@@ -38,7 +39,7 @@ namespace FlowtideDotNet.Storage.Tests
             {
                 CachePageCount = 1000000,
                 PersistentStorage = new FileCachePersistentStorage(new FileCacheOptions())
-            }, new NullLogger<StateManagerSync>());
+            }, new NullLogger<StateManagerSync>(), new Meter($"storage"));
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");

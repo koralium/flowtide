@@ -398,6 +398,11 @@ namespace FlowtideDotNet.Storage.FileCache
             }
         }
 
+        public void ClearTemporaryAllocations()
+        {
+
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)
