@@ -219,7 +219,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        public void Evict(List<(LinkedListNode<LruTableSync.LinkedListValue>, long)> valuesToEvict)
+        public void Evict(List<(LinkedListNode<LruTableSync.LinkedListValue>, long)> valuesToEvict, bool isCleanup)
         {
             foreach (var value in valuesToEvict)
             {
@@ -229,6 +229,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 value.Item1.ValueRef.value.ExitWriteLock();
             }
             m_fileCache.Flush();
+
+            if (isCleanup)
+            {
+                m_fileCache.ClearTemporaryAllocations();
+            }
         }
     }
 }

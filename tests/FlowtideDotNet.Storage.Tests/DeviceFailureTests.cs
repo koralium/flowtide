@@ -23,6 +23,7 @@ using Microsoft.Win32.SafeHandles;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Metadata.Ecma335;
@@ -254,7 +255,7 @@ namespace FlowtideDotNet.Storage.Tests
                         PageSize = 128,
                         
                     })
-            }, nullFactory.CreateLogger("logger"));
+            }, nullFactory.CreateLogger("logger"), new Meter($"storage"));
             await manager.InitializeAsync();
             var client = manager.GetOrCreateClient("test");
             var tree = await client.GetOrCreateTree<long, string>("tree", new Tree.BPlusTreeOptions<long, string>()
@@ -304,7 +305,7 @@ namespace FlowtideDotNet.Storage.Tests
                         PageSize = 512,
 
                     })
-            }, logger);
+            }, logger, new Meter($"storage"));
             await manager.InitializeAsync();
             var client = manager.GetOrCreateClient("test");
             var tree = await client.GetOrCreateTree<long, string>("tree", new Tree.BPlusTreeOptions<long, string>()

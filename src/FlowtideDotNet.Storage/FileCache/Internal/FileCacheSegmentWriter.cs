@@ -109,5 +109,10 @@ namespace FlowtideDotNet.Storage.FileCache
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+
+        public void ClearTemporaryAllocations()
+        {
+            // No extra cleanup required
+        }
     }
 }
