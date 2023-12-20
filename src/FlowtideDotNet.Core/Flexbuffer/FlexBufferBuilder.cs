@@ -57,6 +57,7 @@ namespace FlexBuffers
         void Add(string key, bool value);
         void Add(string key, string value);
         void Add(string key, byte[] value);
+        void Add(string key, FlxValue value);
         void Map(string key, Action<IFlexBufferMapBuilder> map);
         void Vector(string key, Action<IFlexBufferVectorBuilder> vector);
     }
@@ -264,6 +265,12 @@ namespace FlexBuffers
             var builder = new FlexBufferVectorBuilder(_buffer);
             vector(builder);
             _buffer.EndVector(start, false, false);
+        }
+
+        public void Add(string key, FlxValue value)
+        {
+            _buffer.AddKey(key);
+            _buffer.Add(value);
         }
     }
 
