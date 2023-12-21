@@ -68,7 +68,17 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public ValueTask SavePage()
         {
-            return tree.m_stateClient.AddOrUpdate(leaf.Id, leaf);
+            var isFull = tree.m_stateClient.AddOrUpdate(leaf.Id, leaf);
+            if (isFull)
+            {
+                return WaitForNotFull();
+            }
+            return ValueTask.CompletedTask;
+        }
+
+        private async ValueTask WaitForNotFull()
+        {
+            await tree.m_stateClient.WaitForNotFullAsync();
         }
 
         public IEnumerator<KeyValuePair<K, V>> GetEnumerator()
