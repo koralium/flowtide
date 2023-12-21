@@ -167,6 +167,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             if (Volatile.Read(ref m_count) > maxSize)
             {
+                logger.LogWarning("LRU Table is full, waiting for cleanup to finish.");
                 _fullLock.Wait();
                 _fullLock.Release();
             }
