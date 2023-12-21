@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     BucketLength = m_options.BucketSize,
                     Left = rootId
                 };
-                await m_stateClient.AddOrUpdate(rootId, root);
+                m_stateClient.AddOrUpdate(rootId, root);
             }
         }
 
@@ -165,7 +165,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 BucketLength = m_options.BucketSize,
                 Left = rootId
             };
-            await m_stateClient.AddOrUpdate(rootId, root);
+            m_stateClient.AddOrUpdate(rootId, root);
         }
     }
 }

@@ -64,14 +64,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        public ValueTask AddOrUpdate(in long key, in V value)
+        public bool AddOrUpdate(in long key, in V value)
         {
             lock (m_lock)
             {
                 m_modified[key] = 0;
-                stateManager.AddOrUpdate(key, value, this);
-                return ValueTask.CompletedTask;
+                return stateManager.AddOrUpdate(key, value, this);
             }
+        }
+
+        public Task WaitForNotFullAsync()
+        {
+            return stateManager.WaitForNotFullAsync();
         }
 
         public async ValueTask Commit()

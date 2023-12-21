@@ -163,13 +163,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return false;
         }
 
-        public void Add(long key, ICacheObject value, ILruEvictHandler evictHandler)
+        public async Task Wait()
         {
+            logger.LogWarning("LRU Table is full, waiting for cleanup to finish.");
+            await _fullLock.WaitAsync().ConfigureAwait(false);
+            _fullLock.Release();
+            logger.LogInformation("LRU Table is no longer full.");
+        }
+
+        public bool Add(long key, ICacheObject value, ILruEvictHandler evictHandler)
+        {
+            bool full = false;
             if (Volatile.Read(ref m_count) > maxSize)
             {
-                logger.LogWarning("LRU Table is full, waiting for cleanup to finish.");
-                _fullLock.Wait();
-                _fullLock.Release();
+                full = true;
             }
             cache.AddOrUpdate(key, (key) =>
             {
@@ -205,6 +212,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                 }
             });
+
+            return full;
         }
 
         private async Task Cleanup()

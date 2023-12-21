@@ -139,11 +139,17 @@ namespace FlowtideDotNet.Storage.StateManager
             return id;
         }
 
-        internal void AddOrUpdate<V>(in long key, in V value, in ILruEvictHandler evictHandler)
+        internal bool AddOrUpdate<V>(in long key, in V value, in ILruEvictHandler evictHandler)
             where V : ICacheObject
         {
             Debug.Assert(m_lruTable != null);
-            m_lruTable.Add(key, value, evictHandler);
+            return m_lruTable.Add(key, value, evictHandler);
+        }
+
+        internal Task WaitForNotFullAsync()
+        {
+            Debug.Assert(m_lruTable != null);
+            return m_lruTable.Wait();
         }
 
         internal void DeleteFromCache(in long key)
