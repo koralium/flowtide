@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             _currentProcess = Process.GetCurrentProcess();
 
             meter.CreateObservableGauge("lru_table_size", () => Volatile.Read(ref m_count));
-            meter.CreateObservableGauge("lru_table_max_size", () => maxSize);
+            meter.CreateObservableGauge("lru_table_max_size", () => this.maxSize);
             meter.CreateObservableGauge("lru_table_cleanup_start", () => cleanupStart);
         }
 
@@ -211,7 +211,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             var currentCount = Volatile.Read(ref m_count);
             int cleanupStartLocal = cleanupStart;
             bool isCleanup = false;
-            if (currentCount < cleanupStartLocal)
+            if (currentCount <= cleanupStartLocal)
             {
                 var cacheHitsLocal = Volatile.Read(ref m_cacheHits);
                 if (m_lastSeenCacheHits == cacheHitsLocal)

@@ -217,6 +217,18 @@ namespace FlowtideDotNet.Storage.FileCache
             }
         }
 
+        public void FreeAll()
+        {
+            lock (m_lock)
+            {
+                var keys = allocatedPages.Keys.ToList();
+                foreach (var key in keys)
+                {
+                    Free_NoLock(key);
+                }
+            }
+        }
+
         public void Allocate(long pageKey, int size)
         {
             lock (m_lock)
