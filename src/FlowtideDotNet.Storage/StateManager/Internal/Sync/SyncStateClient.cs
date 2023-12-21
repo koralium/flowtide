@@ -76,62 +76,56 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public async ValueTask Commit()
         {
-            List<Task> writeTasks = new List<Task>();
-            lock (m_lock)
+            foreach (var kv in m_modified)
             {
-                
-                foreach(var kv in m_modified)
+                if (kv.Value == -1)
                 {
-                    if (kv.Value == -1)
-                    {
-                        // deleted
-                        writeTasks.Add(session.Delete(kv.Key));
+                    // deleted
+                    await session.Delete(kv.Key);
 
-                        // Remove a page from the new pages counter
-                        Interlocked.Decrement(ref newPages);
+                    // Remove a page from the new pages counter
+                    Interlocked.Decrement(ref newPages);
 
-                        m_fileCache.Free(kv.Key);
-                        continue;
-                    }
-                    if (stateManager.TryGetValueFromCache<V>(kv.Key, out var val))
-                    {
-                        var bytes = options.ValueSerializer.Serialize(val, stateManager.SerializeOptions);
-                        // Write to persistence
-                        writeTasks.Add(session.Write(kv.Key, bytes));
-                        m_fileCache.Free(kv.Key);
-                        continue;
-                    }
-                    {
-                        var bytes = m_fileCache.Read(kv.Key);
-
-                        if (bytes == null)
-                        {
-                            throw new Exception();
-                        }
-
-                        // Write to persistence
-                        writeTasks.Add(session.Write(kv.Key, bytes));
-
-                        // Free the data from temporary storage
-                        m_fileCache.Free(kv.Key);
-                    }
+                    m_fileCache.Free(kv.Key);
+                    continue;
                 }
-                var modifiedPagesCount = m_modified.Count;
-                Debug.Assert(stateManager.m_metadata != null);
-                // Add modified page count to the page commits counter
-                Interlocked.Add(ref stateManager.m_metadata.PageCommits, (ulong)modifiedPagesCount);
-                // Modify active pages
-                Interlocked.Add(ref stateManager.m_metadata.PageCount, newPages);
-                newPages = 0;
-                m_modified.Clear();
-                m_fileCache.FreeAll();
-
+                if (stateManager.TryGetValueFromCache<V>(kv.Key, out var val))
                 {
-                    var bytes = StateClientMetadataSerializer.Instance.Serialize(metadata);
-                    writeTasks.Add(session.Write(metadataId, bytes));
+                    var bytes = options.ValueSerializer.Serialize(val, stateManager.SerializeOptions);
+                    // Write to persistence
+                    await session.Write(kv.Key, bytes);
+                    m_fileCache.Free(kv.Key);
+                    continue;
+                }
+                {
+                    var bytes = m_fileCache.Read(kv.Key);
+
+                    if (bytes == null)
+                    {
+                        throw new Exception();
+                    }
+
+                    // Write to persistence
+                    await session.Write(kv.Key, bytes);
+
+                    // Free the data from temporary storage
+                    m_fileCache.Free(kv.Key);
                 }
             }
-            await Task.WhenAll(writeTasks);
+            var modifiedPagesCount = m_modified.Count;
+            Debug.Assert(stateManager.m_metadata != null);
+            // Add modified page count to the page commits counter
+            Interlocked.Add(ref stateManager.m_metadata.PageCommits, (ulong)modifiedPagesCount);
+            // Modify active pages
+            Interlocked.Add(ref stateManager.m_metadata.PageCount, newPages);
+            newPages = 0;
+            m_modified.Clear();
+            m_fileCache.FreeAll();
+
+            {
+                var bytes = StateClientMetadataSerializer.Instance.Serialize(metadata);
+                await session.Write(metadataId, bytes);
+            }
         }
 
         public void Delete(in long key)
