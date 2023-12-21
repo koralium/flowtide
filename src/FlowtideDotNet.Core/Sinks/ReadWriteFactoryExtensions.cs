@@ -33,5 +33,25 @@ namespace FlowtideDotNet.Core.Engine
 
             return readWriteFactory;
         }
+
+        public static ReadWriteFactory AddBlackholeSink(this ReadWriteFactory readWriteFactory, string regexPattern)
+        {
+            if (regexPattern == "*")
+            {
+                regexPattern = ".*";
+            }
+            readWriteFactory.AddWriteResolver((relation, opt) =>
+            {
+                var regexResult = Regex.Match(relation.NamedObject.DotSeperated, regexPattern, RegexOptions.IgnoreCase);
+                if (!regexResult.Success)
+                {
+                    return null;
+                }
+
+                return new BlackholeSink(opt);
+            });
+
+            return readWriteFactory;
+        }
     }
 }

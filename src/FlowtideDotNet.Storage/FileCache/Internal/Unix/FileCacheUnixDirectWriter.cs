@@ -158,7 +158,10 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
         {
             lock (_lock)
             {
-                alignedBuffer.Dispose();
+                if (alignedBuffer != null)
+                {
+                    alignedBuffer.Dispose();
+                }
                 if (fileDescriptor != -1)
                 {
                     close(fileDescriptor);

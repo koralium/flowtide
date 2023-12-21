@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Persistence;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
@@ -24,7 +25,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private StateClientMetadata<TMetadata> metadata;
         private readonly IPersistentStorageSession session;
         private readonly StateClientOptions<V> options;
-        private Dictionary<long, int> m_modified;
+        private ConcurrentDictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
 
@@ -48,7 +49,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.session = session;
             this.options = options;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name);
-            m_modified = new Dictionary<long, int>();
+            m_modified = new ConcurrentDictionary<long, int>();
         }
 
         public TMetadata? Metadata
@@ -88,6 +89,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                         // Remove a page from the new pages counter
                         Interlocked.Decrement(ref newPages);
+
+                        m_fileCache.Free(kv.Key);
                         continue;
                     }
                     if (stateManager.TryGetValueFromCache<V>(kv.Key, out var val))
@@ -95,6 +98,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         var bytes = options.ValueSerializer.Serialize(val, stateManager.SerializeOptions);
                         // Write to persistence
                         writeTasks.Add(session.Write(kv.Key, bytes));
+                        m_fileCache.Free(kv.Key);
                         continue;
                     }
                     {
@@ -120,6 +124,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 Interlocked.Add(ref stateManager.m_metadata.PageCount, newPages);
                 newPages = 0;
                 m_modified.Clear();
+                m_fileCache.FreeAll();
+
                 {
                     var bytes = StateClientMetadataSerializer.Instance.Serialize(metadata);
                     writeTasks.Add(session.Write(metadataId, bytes));
@@ -207,6 +213,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     m_fileCache.Free(kv.Key);
                 }
                 m_modified.Clear();
+                m_fileCache.FreeAll();
             }
             if (clearMetadata)
             {
@@ -223,6 +230,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             foreach (var value in valuesToEvict)
             {
+                if (m_modified.TryGetValue(value.Item1.ValueRef.key, out var val) == false || val == -1)
+                {
+                    continue;
+                }
                 value.Item1.ValueRef.value.EnterWriteLock();
                 var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value, stateManager.SerializeOptions);
                 m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);

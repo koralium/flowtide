@@ -105,7 +105,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .SetGetTimestampUpdateInterval(timestampInterval.Value)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
-                    CachePageCount = 1000000,
+                    CachePageCount = 1000,
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _fileCachePersistence,
                     TemporaryStorageOptions = new Storage.FileCacheOptions()
