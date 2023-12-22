@@ -27,5 +27,6 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Trim = "trim";
         public const string LTrim = "ltrim";
         public const string RTrim = "rtrim";
+        public const string To_String = "to_string";
     }
 }
