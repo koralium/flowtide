@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
     {
         TMetadata? Metadata { get; set; }
         long GetNewPageId();
-        bool AddOrUpdate(in long key, in V value);
+        bool AddOrUpdate(in long key, V value);
         Task WaitForNotFullAsync();
         ValueTask<V?> GetValue(in long key, string from);
         ValueTask Commit();
