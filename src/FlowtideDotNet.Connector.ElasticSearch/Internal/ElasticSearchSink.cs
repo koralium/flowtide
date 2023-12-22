@@ -67,7 +67,6 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             var m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
 
             var existingIndex = m_client.Indices.Get(writeRelation.NamedObject.DotSeperated);
-            m_client.RequestResponseSerializer.SerializeToString
             IndexState? indexState = default;
             IProperties? properties = null;
             if (existingIndex != null && existingIndex.IsValid && existingIndex.Indices.TryGetValue(writeRelation.NamedObject.DotSeperated, out indexState))
@@ -107,44 +106,6 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         protected override async Task<MetadataResult> SetupAndLoadMetadataAsync()
         {
             m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
-
-            var existingIndex = await m_client.Indices.GetAsync(writeRelation.NamedObject.DotSeperated);
-
-            IndexState? indexState = default;
-            IProperties? properties = null;
-            if (existingIndex != null && existingIndex.IsValid && existingIndex.Indices.TryGetValue(writeRelation.NamedObject.DotSeperated, out indexState))
-            {
-                properties = indexState.Mappings.Properties ?? new Properties();
-            }
-            else
-            {
-                properties = new Properties();
-            }
-
-            if (m_elasticsearchOptions.CustomMappings != null)
-            {
-                m_elasticsearchOptions.CustomMappings(properties);
-            }
-
-            if (indexState == null)
-            {
-                var response = await m_client.Indices.CreateAsync(writeRelation.NamedObject.DotSeperated);
-                if (!response.IsValid)
-                {
-                    throw new InvalidOperationException(response.ServerError.Error.Reason);
-                }
-            }
-
-            var mapResponse = await m_client.MapAsync(new PutMappingRequest(writeRelation.NamedObject.DotSeperated)
-            {
-                Properties = properties
-            });
-
-            if (!mapResponse.IsValid)
-            {
-                throw new InvalidOperationException(mapResponse.ServerError.Error.Reason);
-            }
-
             return new MetadataResult(m_primaryKeys);
         }
 
