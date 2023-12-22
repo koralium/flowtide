@@ -50,6 +50,16 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Trim, (x) => TrimImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.LTrim, (x) => LTrimImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.RTrim, (x) => RTrimImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.To_String, (x) => ToStringImplementation(x));
+        }
+
+        private static FlxValue ToStringImplementation(in FlxValue val)
+        {
+            if (val.IsNull)
+            {
+                return NullValue;
+            }
+            return FlxValue.FromBytes(FlexBuffer.SingleValue(FlxValueStringFunctions.ToString(val)));
         }
 
         private static FlxValue LowerImplementation(in FlxValue val)

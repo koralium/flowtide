@@ -123,5 +123,23 @@ namespace FlowtideDotNet.AcceptanceTests
             var rows2 = GetActualRows();
             // This test only validates that it can run for now
         }
+
+        [Fact]
+        public async Task ToStringTest()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                to_string(orderkey) as orderkey
+            FROM Orders
+            ");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(
+                Orders.Select(o => new {
+                    OrderKey = o.OrderKey.ToString()
+                })
+                );
+        }
     }
 }
