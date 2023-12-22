@@ -62,17 +62,17 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
         public override string DisplayName => m_displayName;
 
-        protected override async Task<MetadataResult> SetupAndLoadMetadataAsync()
+        internal void CreateIndexAndMappings()
         {
-            m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
+            var m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
 
-            var existingIndex = await m_client.Indices.GetAsync(writeRelation.NamedObject.DotSeperated);
-
+            var existingIndex = m_client.Indices.Get(writeRelation.NamedObject.DotSeperated);
+            m_client.RequestResponseSerializer.SerializeToString
             IndexState? indexState = default;
             IProperties? properties = null;
             if (existingIndex != null && existingIndex.IsValid && existingIndex.Indices.TryGetValue(writeRelation.NamedObject.DotSeperated, out indexState))
             {
-                properties = indexState.Mappings.Properties;
+                properties = indexState.Mappings.Properties ?? new Properties();
             }
             else
             {
@@ -84,24 +84,65 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                 m_elasticsearchOptions.CustomMappings(properties);
             }
 
-            if (indexState != null)
+            if (indexState == null)
             {
-                m_client.Map(new PutMappingRequest(writeRelation.NamedObject.DotSeperated)
+                var response = m_client.Indices.Create(writeRelation.NamedObject.DotSeperated);
+                if (!response.IsValid)
                 {
-                    Properties = properties
-                });
+                    throw new InvalidOperationException(response.ServerError.Error.Reason);
+                }
+            }
+
+            var mapResponse = m_client.Map(new PutMappingRequest(writeRelation.NamedObject.DotSeperated)
+            {
+                Properties = properties
+            });
+
+            if (!mapResponse.IsValid)
+            {
+                throw new InvalidOperationException(mapResponse.ServerError.Error.Reason);
+            }
+        }
+
+        protected override async Task<MetadataResult> SetupAndLoadMetadataAsync()
+        {
+            m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
+
+            var existingIndex = await m_client.Indices.GetAsync(writeRelation.NamedObject.DotSeperated);
+
+            IndexState? indexState = default;
+            IProperties? properties = null;
+            if (existingIndex != null && existingIndex.IsValid && existingIndex.Indices.TryGetValue(writeRelation.NamedObject.DotSeperated, out indexState))
+            {
+                properties = indexState.Mappings.Properties ?? new Properties();
             }
             else
+            {
+                properties = new Properties();
+            }
+
+            if (m_elasticsearchOptions.CustomMappings != null)
+            {
+                m_elasticsearchOptions.CustomMappings(properties);
+            }
+
+            if (indexState == null)
             {
                 var response = await m_client.Indices.CreateAsync(writeRelation.NamedObject.DotSeperated);
                 if (!response.IsValid)
                 {
                     throw new InvalidOperationException(response.ServerError.Error.Reason);
                 }
-                m_client.Map(new PutMappingRequest(writeRelation.NamedObject.DotSeperated)
-                {
-                    Properties = properties
-                });
+            }
+
+            var mapResponse = await m_client.MapAsync(new PutMappingRequest(writeRelation.NamedObject.DotSeperated)
+            {
+                Properties = properties
+            });
+
+            if (!mapResponse.IsValid)
+            {
+                throw new InvalidOperationException(mapResponse.ServerError.Error.Reason);
             }
 
             return new MetadataResult(m_primaryKeys);

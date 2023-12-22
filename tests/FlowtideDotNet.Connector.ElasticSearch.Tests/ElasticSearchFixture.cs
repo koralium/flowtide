@@ -29,7 +29,11 @@ namespace FlowtideDotNet.Connector.CosmosDB.Tests
         private IContainer? container;
         public async Task DisposeAsync()
         {
-            await container.DisposeAsync();
+            if (container != null)
+            {
+                await container.DisposeAsync();
+            }
+            
         }
 
         private sealed class WaitUntil : IWaitUntil

@@ -51,7 +51,9 @@ namespace FlowtideDotNet.Core.Engine
                     CustomMappings = customMappings
                 };
 
-                return new ElasticSearchSink(writeRel, flowtideElasticsearchOptions, Operators.Write.ExecutionMode.OnCheckpoint, opt);
+                var sink = new ElasticSearchSink(writeRel, flowtideElasticsearchOptions, Operators.Write.ExecutionMode.OnCheckpoint, opt);
+                sink.CreateIndexAndMappings();
+                return sink;
             });
             return factory;
         }
