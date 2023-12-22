@@ -13,6 +13,7 @@
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.CosmosDB.Tests;
 using FlowtideDotNet.Core.Engine;
+using Nest;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,15 +25,17 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
     internal class ElasticsearchTestStream : FlowtideTestStream
     {
         private readonly ElasticSearchFixture elasticSearchFixture;
+        private readonly Action<IProperties>? customMapping;
 
-        public ElasticsearchTestStream(ElasticSearchFixture elasticSearchFixture, string testName) : base(testName)
+        public ElasticsearchTestStream(ElasticSearchFixture elasticSearchFixture, string testName, Action<IProperties>? customMapping = null) : base(testName)
         {
             this.elasticSearchFixture = elasticSearchFixture;
+            this.customMapping = customMapping;
         }
 
         protected override void AddWriteResolvers(ReadWriteFactory factory)
         {
-            factory.AddElasticsearchSink("*", elasticSearchFixture.GetConnectionSettings());
+            factory.AddElasticsearchSink("*", elasticSearchFixture.GetConnectionSettings(), customMappings: customMapping);
         }
     }
 }

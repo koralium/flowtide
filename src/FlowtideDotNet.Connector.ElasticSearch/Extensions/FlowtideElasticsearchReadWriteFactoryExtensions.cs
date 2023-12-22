@@ -25,7 +25,12 @@ namespace FlowtideDotNet.Core.Engine
 {
     public static class FlowtideElasticsearchReadWriteFactoryExtensions
     {
-        public static ReadWriteFactory AddElasticsearchSink(this ReadWriteFactory factory, string regexPattern, ConnectionSettings options, Action<WriteRelation>? transform = null)
+        public static ReadWriteFactory AddElasticsearchSink(
+            this ReadWriteFactory factory, 
+            string regexPattern, 
+            ConnectionSettings options, 
+            Action<IProperties>? customMappings = null, 
+            Action<WriteRelation>? transform = null)
         {
             if (regexPattern == "*")
             {
@@ -42,10 +47,13 @@ namespace FlowtideDotNet.Core.Engine
 
                 FlowtideElasticsearchOptions flowtideElasticsearchOptions = new FlowtideElasticsearchOptions()
                 {
-                    ConnectionSettings = options
+                    ConnectionSettings = options,
+                    CustomMappings = customMappings
                 };
 
-                return new ElasticSearchSink(writeRel, flowtideElasticsearchOptions, Operators.Write.ExecutionMode.OnCheckpoint, opt);
+                var sink = new ElasticSearchSink(writeRel, flowtideElasticsearchOptions, Operators.Write.ExecutionMode.OnCheckpoint, opt);
+                sink.CreateIndexAndMappings();
+                return sink;
             });
             return factory;
         }
