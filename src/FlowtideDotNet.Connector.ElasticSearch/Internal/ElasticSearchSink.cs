@@ -65,8 +65,44 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         protected override async Task<MetadataResult> SetupAndLoadMetadataAsync()
         {
             m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
+
             var existingIndex = await m_client.Indices.GetAsync(writeRelation.NamedObject.DotSeperated);
-            existingIndex.Indices.TryGetValue(writeRelation.NamedObject.DotSeperated, out var index);
+
+            IndexState? indexState = default;
+            IProperties? properties = null;
+            if (existingIndex != null && existingIndex.IsValid && existingIndex.Indices.TryGetValue(writeRelation.NamedObject.DotSeperated, out indexState))
+            {
+                properties = indexState.Mappings.Properties;
+            }
+            else
+            {
+                properties = new Properties();
+            }
+
+            if (m_elasticsearchOptions.CustomMappings != null)
+            {
+                m_elasticsearchOptions.CustomMappings(properties);
+            }
+
+            if (indexState != null)
+            {
+                m_client.Map(new PutMappingRequest(writeRelation.NamedObject.DotSeperated)
+                {
+                    Properties = properties
+                });
+            }
+            else
+            {
+                var response = await m_client.Indices.CreateAsync(writeRelation.NamedObject.DotSeperated);
+                if (!response.IsValid)
+                {
+                    throw new InvalidOperationException(response.ServerError.Error.Reason);
+                }
+                m_client.Map(new PutMappingRequest(writeRelation.NamedObject.DotSeperated)
+                {
+                    Properties = properties
+                });
+            }
 
             return new MetadataResult(m_primaryKeys);
         }
