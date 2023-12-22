@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private ConcurrentDictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
+        private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
 
         /// <summary>
         /// Value of how many pages have changed since last commit.
@@ -50,6 +51,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.options = options;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name);
             m_modified = new ConcurrentDictionary<long, int>();
+            m_fileCacheVersion = new ConcurrentDictionary<long, int>();
         }
 
         public TMetadata? Metadata
@@ -64,12 +66,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        public bool AddOrUpdate(in long key, in V value)
+        public bool AddOrUpdate(in long key, V value)
         {
             lock (m_lock)
             {
-                m_modified[key] = 0;
-                return stateManager.AddOrUpdate(key, value, this);
+                bool isFull = false;
+                m_modified.AddOrUpdate(key, (key) =>
+                {
+                    isFull = stateManager.AddOrUpdate(key, value, this);
+                    return 0;
+                },
+                (key, old) =>
+                {
+                    isFull = stateManager.AddOrUpdate(key, value, this);
+                    return old + 1;
+                });
+                return isFull;
             }
         }
 
@@ -123,9 +135,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             // Modify active pages
             Interlocked.Add(ref stateManager.m_metadata.PageCount, newPages);
             newPages = 0;
+            
             m_modified.Clear();
             m_fileCache.FreeAll();
-
+            m_fileCacheVersion.Clear();
             {
                 var bytes = StateClientMetadataSerializer.Instance.Serialize(metadata);
                 await session.Write(metadataId, bytes);
@@ -137,6 +150,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             lock (m_lock)
             {
                 m_modified[key] = -1;
+                m_fileCacheVersion.Remove(key, out _);
                 m_fileCache.Free(key);
                 stateManager.DeleteFromCache(key);
             }
@@ -212,6 +226,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 m_modified.Clear();
                 m_fileCache.FreeAll();
+                m_fileCacheVersion.Clear();
             }
             if (clearMetadata)
             {
@@ -232,10 +247,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     continue;
                 }
+                if (m_fileCacheVersion.TryGetValue(value.Item1.ValueRef.key, out var storedVersion) && storedVersion == val)
+                {
+                    continue;
+                }
                 value.Item1.ValueRef.value.EnterWriteLock();
                 var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value, stateManager.SerializeOptions);
                 m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);
                 value.Item1.ValueRef.value.ExitWriteLock();
+                m_fileCacheVersion[value.Item1.ValueRef.key] = val;
             }
             m_fileCache.Flush();
 
