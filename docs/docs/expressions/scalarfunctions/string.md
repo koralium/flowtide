@@ -86,3 +86,24 @@ Remove whitespaces from the end of a string
 ```sql
 SELECT rtrim(c1) FROM ... 
 ```
+
+## To String
+
+*No substrait definition exists for this function*
+
+Converts different types to a string type.
+
+Example output:
+
+| Input     | Type      | Output    |
+| --------- | --------- | --------- |
+| 'hello'   | String    | 'hello'   |
+| 13        | Int       | '13'      |
+| 13.4      | Float     | '13.4'    |
+| true      | Bool      | 'true'    |
+
+### SQL Usage
+
+```sql
+SELECT to_string(c1) FROM ... 
+```
