@@ -36,16 +36,26 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         private StreamEventToJsonElastic? m_serializer;
         private IReadOnlyList<int> m_primaryKeys;
         private readonly string m_displayName;
+        private string m_indexName;
 
         public ElasticSearchSink(WriteRelation writeRelation, FlowtideElasticsearchOptions elasticsearchOptions, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(executionMode, executionDataflowBlockOptions)
         {
             this.writeRelation = writeRelation;
+            if (elasticsearchOptions.GetIndexNameFunc == null)
+            {
+                m_indexName = writeRelation.NamedObject.DotSeperated;
+            }
+            else
+            {
+                m_indexName = elasticsearchOptions.GetIndexNameFunc(writeRelation);
+            }
+            
             this.m_elasticsearchOptions = elasticsearchOptions;
-            m_displayName = $"ElasticSearchSink-{writeRelation.NamedObject.DotSeperated}";
+            m_displayName = $"ElasticSearchSink-{m_indexName}";
             var idFieldIndex = FindUnderscoreIdField(writeRelation);
             m_primaryKeys = new List<int>() { idFieldIndex };
-            m_serializer = new StreamEventToJsonElastic(idFieldIndex, writeRelation.NamedObject.DotSeperated, writeRelation.TableSchema.Names);
+            m_serializer = new StreamEventToJsonElastic(idFieldIndex, m_indexName, writeRelation.TableSchema.Names);
         }
 
         private int FindUnderscoreIdField(WriteRelation writeRelation)
@@ -66,10 +76,10 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         {
             var m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
 
-            var existingIndex = m_client.Indices.Get(writeRelation.NamedObject.DotSeperated);
+            var existingIndex = m_client.Indices.Get(m_indexName);
             IndexState? indexState = default;
             IProperties? properties = null;
-            if (existingIndex != null && existingIndex.IsValid && existingIndex.Indices.TryGetValue(writeRelation.NamedObject.DotSeperated, out indexState))
+            if (existingIndex != null && existingIndex.IsValid && existingIndex.Indices.TryGetValue(m_indexName, out indexState))
             {
                 properties = indexState.Mappings.Properties ?? new Properties();
             }
@@ -85,14 +95,14 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
             if (indexState == null)
             {
-                var response = m_client.Indices.Create(writeRelation.NamedObject.DotSeperated);
+                var response = m_client.Indices.Create(m_indexName);
                 if (!response.IsValid)
                 {
                     throw new InvalidOperationException(response.ServerError.Error.Reason);
                 }
             }
 
-            var mapResponse = m_client.Map(new PutMappingRequest(writeRelation.NamedObject.DotSeperated)
+            var mapResponse = m_client.Map(new PutMappingRequest(m_indexName)
             {
                 Properties = properties
             });
@@ -107,6 +117,15 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         {
             m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
             return new MetadataResult(m_primaryKeys);
+        }
+
+        protected override Task OnInitialDataSent()
+        {
+            if (m_elasticsearchOptions.OnInitialDataSent != null)
+            {
+                return m_elasticsearchOptions.OnInitialDataSent(m_client!, writeRelation, m_indexName);
+            }
+            return base.OnInitialDataSent();
         }
 
         protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)

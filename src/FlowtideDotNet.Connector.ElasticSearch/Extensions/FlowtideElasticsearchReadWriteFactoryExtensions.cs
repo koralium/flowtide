@@ -28,8 +28,7 @@ namespace FlowtideDotNet.Core.Engine
         public static ReadWriteFactory AddElasticsearchSink(
             this ReadWriteFactory factory, 
             string regexPattern, 
-            ConnectionSettings options, 
-            Action<IProperties>? customMappings = null, 
+            FlowtideElasticsearchOptions options, 
             Action<WriteRelation>? transform = null)
         {
             if (regexPattern == "*")
@@ -45,13 +44,7 @@ namespace FlowtideDotNet.Core.Engine
                 }
                 transform?.Invoke(writeRel);
 
-                FlowtideElasticsearchOptions flowtideElasticsearchOptions = new FlowtideElasticsearchOptions()
-                {
-                    ConnectionSettings = options,
-                    CustomMappings = customMappings
-                };
-
-                var sink = new ElasticSearchSink(writeRel, flowtideElasticsearchOptions, Operators.Write.ExecutionMode.OnCheckpoint, opt);
+                var sink = new ElasticSearchSink(writeRel, options, Operators.Write.ExecutionMode.OnCheckpoint, opt);
                 sink.CreateIndexAndMappings();
                 return sink;
             });

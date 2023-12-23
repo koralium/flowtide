@@ -35,7 +35,11 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
 
         protected override void AddWriteResolvers(ReadWriteFactory factory)
         {
-            factory.AddElasticsearchSink("*", elasticSearchFixture.GetConnectionSettings(), customMappings: customMapping);
+            factory.AddElasticsearchSink("*", new FlowtideElasticsearchOptions()
+            {
+                ConnectionSettings = elasticSearchFixture.GetConnectionSettings(),
+                CustomMappings = customMapping
+            });
         }
     }
 }
