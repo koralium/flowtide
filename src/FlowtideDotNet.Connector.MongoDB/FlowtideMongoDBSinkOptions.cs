@@ -36,5 +36,15 @@ namespace FlowtideDotNet.Connector.MongoDB
         public Func<IMongoCollection<BsonDocument>, Task>? OnInitialDataSent { get; set; }
 
         public Func<Watermark, Task>? OnWatermarkUpdate { get; set; }
+
+        /// <summary>
+        /// Set the amount of documents that will be sent per batch to mongodb.
+        /// </summary>
+        public int DocumentsPerBatch { get; set; } = 100;
+
+        /// <summary>
+        /// Set the amount of batches that will be sent in parallel to mongodb.
+        /// </summary>
+        public int ParallelBatches { get; set; } = 10;
     }
 }
