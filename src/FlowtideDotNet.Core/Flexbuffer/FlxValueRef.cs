@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
     // when allot of string operations are performed.
     public ref struct FlxValueRef
     {
-        private readonly Span<byte> _buffer;
+        internal readonly Span<byte> _buffer;
         internal readonly int _offset;
         internal readonly byte _parentWidth;
         internal readonly byte _byteWidth;

@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Core
         {
             for (int i = 0; i < a.Length; i++)
             {
-                int compareResult = FlxValueRefComparer.CompareTo(a.GetColumnRef(i), b.GetColumnRef(i));
+                int compareResult = StrictFlxValueRefComparer.CompareTo(a.GetColumnRef(i), b.GetColumnRef(i));
                 if (compareResult != 0)
                 {
                     return compareResult;
