@@ -115,13 +115,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         protected RowEvent OnConditionSuccess(JoinStreamEvent left, JoinStreamEvent right, in int weight)
         {
-            return new RowEvent(weight, 0, new JoinedRowData(left.RowData, right.RowData, mergeJoinRelation.Emit));
+            return new RowEvent(weight, 0, JoinedRowData.Create(left.RowData, right.RowData, mergeJoinRelation.Emit));
         }
 
         protected RowEvent CreateLeftWithNullRightEvent(int weight, JoinStreamEvent e)
         {
-            return new RowEvent(weight, 0, new JoinedRowData(e.RowData, _rightNullData, mergeJoinRelation.Emit));
-
+            return new RowEvent(weight, 0, JoinedRowData.Create(e.RowData, _rightNullData, mergeJoinRelation.Emit));
         }
 
         protected async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)

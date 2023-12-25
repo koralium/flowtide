@@ -22,30 +22,54 @@ namespace FlowtideDotNet.Core
 {
     public struct JoinedRowData : IRowData
     {
-        private readonly int _leftLength;
-        private readonly int _length;
-        private readonly IRowData _left;
-        private readonly IRowData _right;
-        private readonly IReadOnlyList<int>? _emitList;
+        private readonly FlxValue[] valueArray;
 
-        public JoinedRowData(IRowData left, IRowData right, IReadOnlyList<int>? emitList)
+        public JoinedRowData(FlxValue[] valueArray)
         {
-            _leftLength = left.Length;
-            _length = left.Length + right.Length;
-            _left = left;
-            _right = right;
-            _emitList = emitList;
+            this.valueArray = valueArray;
+        }
+
+        public static JoinedRowData Create(IRowData left, IRowData right, IReadOnlyList<int>? emitList)
+        {
+            var leftLength = left.Length;
+            FlxValue[]? arr = null;
+            if (emitList != null)
+            {
+                arr = new FlxValue[emitList.Count];
+                for (int i = 0; i < emitList.Count; i++)
+                {
+                    var index= emitList[i];
+
+                    if (index < leftLength)
+                    {
+                        arr[i] = left.GetColumn(index);
+                    }
+                    else
+                    {
+                        arr[i] = right.GetColumn(index - leftLength);
+                    }
+                }
+            }
+            else
+            {
+                arr = new FlxValue[left.Length + right.Length];
+                for (int i = 0; i < left.Length; i++)
+                {
+                    arr[i] = left.GetColumn(i);
+                }
+                for (int i = 0; i < right.Length; i++)
+                {
+                    arr[i + left.Length] = right.GetColumn(i);
+                }
+            }
+            return new JoinedRowData(arr);
         }
 
         public int Length
         {
             get
             {
-                if (_emitList != null)
-                {
-                    return _emitList.Count;
-                }
-                return _length;
+                return valueArray.Length;
             }
         }
 
@@ -53,30 +77,32 @@ namespace FlowtideDotNet.Core
 
         public FlxValue GetColumn(int index)
         {
-            if (_emitList != null)
-            {
-                index = _emitList[index];
-            }
-            if (index < _leftLength)
-            {
-                return _left.GetColumn(index);
-            }
-            return _right.GetColumn(index - _leftLength);
+            return valueArray[index];
+            //if (_emitList != null)
+            //{
+            //    index = _emitList[index];
+            //}
+            //if (index < _leftLength)
+            //{
+            //    return _left.GetColumn(index);
+            //}
+            //return _right.GetColumn(index - _leftLength);
         }
 
         public FlxValueRef GetColumnRef(scoped in int index)
         {
-            var mappedIndex = index;
-            if (_emitList != null)
-            {
-                mappedIndex = _emitList[index];
-            }
-            if (mappedIndex < _leftLength)
-            {
-                return _left.GetColumnRef(mappedIndex);
-            }
-            int rightIndex = mappedIndex - _leftLength;
-            return _right.GetColumnRef(rightIndex);
+            return valueArray[index].GetRef();
+            //var mappedIndex = index;
+            //if (_emitList != null)
+            //{
+            //    mappedIndex = _emitList[index];
+            //}
+            //if (mappedIndex < _leftLength)
+            //{
+            //    return _left.GetColumnRef(mappedIndex);
+            //}
+            //int rightIndex = mappedIndex - _leftLength;
+            //return _right.GetColumnRef(rightIndex);
         }
     }
 }

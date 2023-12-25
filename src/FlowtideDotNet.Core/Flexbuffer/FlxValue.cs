@@ -83,6 +83,11 @@ namespace FlexBuffers
         private static readonly byte[] _nullBytes = { 0 };
         private static readonly byte[] _trueBytes = { 1 };
 
+        public FlxValueRef GetRef()
+        {
+            return new FlxValueRef(_buffer.Span, _offset, _parentWidth, _byteWidth, _type);
+        }
+
         public void AddToHash(in XxHash32 xxHash)
         {
             if (_type == Type.Null)

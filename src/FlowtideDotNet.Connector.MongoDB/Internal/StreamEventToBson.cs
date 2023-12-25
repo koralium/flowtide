@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             this.names = names;
         }
 
-        public BsonDocument ToBson(in StreamEvent streamEvent)
+        public BsonDocument ToBson(in RowEvent streamEvent)
         {
             var doc = new BsonDocument();
             

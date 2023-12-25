@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Connector.Kafka
 {
     public interface IFlowtideKafkaValueSerializer
     {
-        byte[]? Serialize(StreamEvent streamEvent, bool isDeleted);
+        byte[]? Serialize(RowEvent streamEvent, bool isDeleted);
 
         Task Initialize(WriteRelation writeRelation);
     }

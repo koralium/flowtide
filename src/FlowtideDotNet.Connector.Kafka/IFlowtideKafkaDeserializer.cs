@@ -38,6 +38,6 @@ namespace FlowtideDotNet.Connector.Kafka
         /// <param name="valueBytes"></param>
         /// <param name="keyBytes"></param>
         /// <returns></returns>
-        StreamEvent Deserialize(IFlowtideKafkaKeyDeserializer keyDeserializer, byte[]? valueBytes, byte[]? keyBytes);
+        RowEvent Deserialize(IFlowtideKafkaKeyDeserializer keyDeserializer, byte[]? valueBytes, byte[]? keyBytes);
     }
 }

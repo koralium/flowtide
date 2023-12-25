@@ -59,6 +59,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Ka
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Kafka.Tests", "tests\FlowtideDotNet.Connector.Kafka.Tests\FlowtideDotNet.Connector.Kafka.Tests.csproj", "{A33C7FAA-EADB-48D5-A62E-958B6BE8AE8D}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProjectDataService", "..\..\dev\AppDev-ProjData\AppDev-ProjectDataService\ProjectDataService\ProjectDataService.csproj", "{817C01AC-4088-4413-A545-B2C98789766F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -165,6 +167,10 @@ Global
 		{A33C7FAA-EADB-48D5-A62E-958B6BE8AE8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A33C7FAA-EADB-48D5-A62E-958B6BE8AE8D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A33C7FAA-EADB-48D5-A62E-958B6BE8AE8D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{817C01AC-4088-4413-A545-B2C98789766F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{817C01AC-4088-4413-A545-B2C98789766F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{817C01AC-4088-4413-A545-B2C98789766F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{817C01AC-4088-4413-A545-B2C98789766F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

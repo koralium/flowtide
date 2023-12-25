@@ -15,6 +15,7 @@ using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Core.Operators.Write;
+using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -32,7 +33,7 @@ namespace FlowtideDotNet.Core.Operators.Buffer
     internal class BufferOperator : UnaryVertex<StreamEventBatch, object?>
     {
         private ICounter<long>? _eventsCounter;
-        private IBPlusTree<StreamEvent, int>? _tree;
+        private IBPlusTree<RowEvent, int>? _tree;
         public BufferOperator(ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
         }
@@ -61,19 +62,19 @@ namespace FlowtideDotNet.Core.Operators.Buffer
 
             var it = _tree.CreateIterator();
             await it.SeekFirst();
-            List<StreamEvent> output = new List<StreamEvent>();
+            List<RowEvent> output = new List<RowEvent>();
             await foreach(var page in it)
             {
                 foreach(var kv in page)
                 {
-                    output.Add(new StreamEvent(kv.Value, 0, kv.Key.Memory));
+                    output.Add(new RowEvent(kv.Value, 0, kv.Key.RowData));
                 }
 
                 if (output.Count > 100)
                 {
                     _eventsCounter.Add(output.Count);
                     yield return new StreamEventBatch(null, output);
-                    output = new List<StreamEvent>();
+                    output = new List<RowEvent>();
                 }
             }
             if (output.Count > 0)
@@ -121,10 +122,10 @@ namespace FlowtideDotNet.Core.Operators.Buffer
             }
             
             // Temporary tree for storing the input events
-            _tree = await stateManagerClient.GetOrCreateTree("input", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<StreamEvent, int>()
+            _tree = await stateManagerClient.GetOrCreateTree("input", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
             {
                 Comparer = new BPlusTreeStreamEventComparer(),
-                KeySerializer = new BPlusTreeStreamEventSerializer(),
+                KeySerializer = new StreamEventBPlusTreeSerializer(),
                 ValueSerializer = new IntSerializer()
             });
         }
