@@ -707,9 +707,34 @@ namespace FlowtideDotNet.Substrait
                         Value = refRel.ToByteString()
                     }
                 };
+
                 return new Rel()
                 {
                     ExtensionLeaf = rel
+                };
+            }
+
+            public override Rel VisitBufferRelation(BufferRelation bufferRelation, SerializerVisitorState state)
+            {
+                var rel = new Protobuf.ExtensionSingleRel();
+                var bufRel = new CustomProtobuf.BufferRelation();
+                rel.Detail = new Google.Protobuf.WellKnownTypes.Any()
+                {
+                    TypeUrl = "flowtide/flowtide.BufferRelation",
+                    Value = bufRel.ToByteString()
+                };
+
+                if (bufferRelation.EmitSet)
+                {
+                    rel.Common = new Protobuf.RelCommon();
+                    rel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    rel.Common.Emit.OutputMapping.AddRange(bufferRelation.Emit);
+                }
+                rel.Input = Visit(bufferRelation.Input, state);
+
+                return new Protobuf.Rel()
+                {
+                    ExtensionSingle = rel
                 };
             }
 

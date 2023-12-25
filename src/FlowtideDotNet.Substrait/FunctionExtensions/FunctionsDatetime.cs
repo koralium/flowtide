@@ -22,5 +22,6 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
     {
         public const string Uri = "/functions_datetime.yaml";
         public const string Strftime = "strftime";
+        public const string GetTimestamp = "gettimestamp";
     }
 }

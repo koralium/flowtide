@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.Compute
                 // Check for string comparison
                 if (a.ValueType == FlexBuffers.Type.String)
                 {
-                    return string.Compare(a.AsString, b.AsString);
+                    return FlxString.Compare(a.AsFlxString, b.AsFlxString);
                 }
                 if (a.ValueType == FlexBuffers.Type.Int)
                 {

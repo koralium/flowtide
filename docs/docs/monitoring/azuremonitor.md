@@ -34,7 +34,7 @@ builder.Services.AddOpenTelemetry()
     });
 ```
 
-Replace *{your connection string}* with your application insights connection string. This will then start uploading custom metrics to your Application Insights in Azure Monitor.
+Replace *\{your connection string\}* with your application insights connection string. This will then start uploading custom metrics to your Application Insights in Azure Monitor.
 
 ## Health check export
 
@@ -50,7 +50,7 @@ builder.Services.AddHealthChecks()
     .AddApplicationInsightsPublisher("{your connection string}");
 ```
 
-Replace *{your connection string}* with your application insights connection string. You should now see custom events being published to Application Insights
+Replace *\{your connection string\}* with your application insights connection string. You should now see custom events being published to Application Insights
 with health check information.
 
 ## Sample

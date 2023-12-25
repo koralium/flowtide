@@ -21,20 +21,26 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             this.fileCache = fileCache;
         }
 
-        public void Delete(long key)
+        public Task Delete(long key)
         {
             fileCache.Free(key);
+            return Task.CompletedTask;
         }
 
-        public byte[] Read(long key)
+        public void Dispose()
         {
-            return fileCache.Read(key);
         }
 
-        public void Write(long key, byte[] value)
+        public ValueTask<byte[]> Read(long key)
+        {
+            return ValueTask.FromResult(fileCache.Read(key));
+        }
+
+        public Task Write(long key, byte[] value)
         {
             fileCache.WriteAsync(key, value);
             fileCache.Flush();
+            return Task.CompletedTask;
         }
     }
 }

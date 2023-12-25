@@ -7,7 +7,7 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 
 async function createConfig() {
   const { remarkKroki } = await import('remark-kroki');
-  const remarkGridTables = require('remark-grid-tables')
+  //const remarkGridTables = require('remark-grid-tables')
 
 
   /** @type {import('@docusaurus/types').Config} */
@@ -50,9 +50,10 @@ async function createConfig() {
           docs: {
             sidebarPath: require.resolve('./sidebars.js'),
             remarkPlugins: [
-              [remarkKroki, { server: 'https://kroki.io', alias: ['blockdiag', 'kroki' ]}]
+              [remarkKroki, { server: 'https://kroki.io', alias: ['blockdiag', 'kroki' ]}],
+              // [remarkGridTables, {}]
             ],
-            rehypePlugins: [remarkGridTables],
+            //rehypePlugins: [remarkGridTables],
             // Please change this to your repo.
             // Remove this to remove the "edit this page" links.
             editUrl:

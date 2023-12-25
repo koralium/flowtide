@@ -18,12 +18,13 @@ namespace FlowtideDotNet.Substrait
 {
     public class PlanModifier
     {
-        private Plan? _rootPlan;
+        private List<Plan> _rootPlans;
         private Dictionary<string, Plan> _subplans;
         private List<string> _writeToTables;
 
         public PlanModifier()
         {
+            _rootPlans = new List<Plan>();
             _subplans = new Dictionary<string, Plan>();
             _writeToTables = new List<string>();
         }
@@ -44,14 +45,11 @@ namespace FlowtideDotNet.Substrait
 
         public PlanModifier AddRootPlan(Plan plan)
         {
-            if (_rootPlan != null)
-            {
-                throw new InvalidOperationException("A root plan has already been added.");
-            }
-            _rootPlan = plan;
+            _rootPlans.Add(plan);
             return this;
         }
 
+        [Obsolete("Use inserts with SQL instead")]
         public PlanModifier WriteToTable(string tableName) 
         {
             _writeToTables.Add(tableName);
@@ -60,7 +58,7 @@ namespace FlowtideDotNet.Substrait
 
         public Plan Modify()
         {
-            if (_rootPlan == null)
+            if (_rootPlans.Count == 0)
             {
                 throw new InvalidOperationException("No root plan has been added.");
             }
@@ -109,27 +107,48 @@ namespace FlowtideDotNet.Substrait
             }
             var modifierVisitor = new ModifierVisitor(subPlanNameToId);
 
-            var rootRelationId = -1;
-            RootRelation? oldRootRel = null;
-            for (int i = 0; i < _rootPlan.Relations.Count; i++)
+            for (int i = 0; i < newPlan.Relations.Count; i++)
             {
-                var relation = _rootPlan.Relations[i];
+                var relation = newPlan.Relations[i];
                 if (relation is RootRelation rootRelation)
                 {
-                    oldRootRel = rootRelation;
                     var modified = modifierVisitor.Visit(rootRelation.Input, default);
-                    //var modified = rootRelation.Input;
-                    rootRelationId = newPlan.Relations.Count;
-                    newPlan.Relations.Add(modified);
+                    newPlan.Relations[i] = modified;
                 }
                 else
                 {
                     var modified = modifierVisitor.Visit(relation, default);
-                    newPlan.Relations.Add(modified);
+                    newPlan.Relations[i] = modified;
                 }
             }
 
-            foreach(var write in _writeToTables)
+
+            var rootRelationId = -1;
+            RootRelation? oldRootRel = null;
+            foreach (var rootPlan in _rootPlans)
+            {
+                
+                for (int i = 0; i < rootPlan.Relations.Count; i++)
+                {
+                    var relation = rootPlan.Relations[i];
+                    if (relation is RootRelation rootRelation)
+                    {
+                        oldRootRel = rootRelation;
+                        var modified = modifierVisitor.Visit(rootRelation.Input, default);
+                        //var modified = rootRelation.Input;
+                        rootRelationId = newPlan.Relations.Count;
+                        newPlan.Relations.Add(modified);
+                    }
+                    else
+                    {
+                        var modified = modifierVisitor.Visit(relation, default);
+                        newPlan.Relations.Add(modified);
+                    }
+                }
+            }
+
+
+            foreach (var write in _writeToTables)
             {
                 newPlan.Relations.Add(new RootRelation()
                 {
@@ -165,7 +184,7 @@ namespace FlowtideDotNet.Substrait
                     }
                 });
             }
-            
+
             return newPlan;
         }
     }

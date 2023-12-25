@@ -1267,5 +1267,24 @@ namespace FlowtideDotNet.Substrait.Tests
                     }
                 }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
         }
+
+        [Fact]
+        public void TestMultipleInserts()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                INSERT INTO output
+                SELECT c1 FROM testtable;
+
+                INSERT INTO output
+                SELECT c1 FROM testtable;
+            ");
+
+            var plan = builder.GetPlan();
+        }
     }
 }

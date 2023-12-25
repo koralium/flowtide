@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
 
         private readonly int fileDescriptor;
         private readonly int alignment;
-        private AlignedBuffer alignedBuffer;
+        private AlignedBuffer? alignedBuffer;
         private readonly object _lock = new object();
 
         [DllImport("libc", SetLastError = true)]
@@ -70,7 +70,14 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             // Check if the file already exists, if so delete it
             if (File.Exists(fileName))
             {
-                File.Delete(fileName);
+                try
+                {
+                    File.Delete(fileName);
+                }
+                catch
+                {
+                    File.Delete(fileName);
+                }
             }
 
             this.fileDescriptor = open(fileName, O_RDWR | O_DIRECT | O_CREAT, S_IRUSR | S_IWUSR);
@@ -80,7 +87,6 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
 
                 throw new InvalidOperationException($"Open failed with error code {errorCode}: {strerror(errorCode)}");
             }
-            alignedBuffer = new AlignedBuffer(sectorSize * 1024, sectorSize);
         }
 
         public void Write(long position, byte[] data)
@@ -88,6 +94,11 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             lock (_lock)
             {
                 var alignedLength = (data.Length + alignment - 1) / alignment * alignment;
+
+                if (alignedBuffer == null)
+                {
+                    alignedBuffer = new AlignedBuffer(alignedLength, alignment);
+                }
 
                 if (alignedLength > alignedBuffer.Size)
                 {
@@ -120,6 +131,11 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
                 }
                 var alignedLength = (length + alignment - 1) / alignment * alignment;
 
+                if (alignedBuffer == null)
+                {
+                    alignedBuffer = new AlignedBuffer(alignedLength, alignment);
+                }
+
                 if (alignedLength > alignedBuffer.Size)
                 {
                     alignedBuffer.Dispose();
@@ -142,7 +158,10 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
         {
             lock (_lock)
             {
-                alignedBuffer.Dispose();
+                if (alignedBuffer != null)
+                {
+                    alignedBuffer.Dispose();
+                }
                 if (fileDescriptor != -1)
                 {
                     close(fileDescriptor);
@@ -153,6 +172,18 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
         public void Flush()
         {
             // Flush is not required in direct i/o
+        }
+
+        public void ClearTemporaryAllocations()
+        {
+            lock (_lock)
+            {
+                if (alignedBuffer != null)
+                {
+                    alignedBuffer.Dispose();
+                    alignedBuffer = null;
+                }
+            }
         }
     }
 }

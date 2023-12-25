@@ -35,13 +35,11 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         public async ValueTask CheckpointAsync(byte[] metadata)
         {
+            var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             Memory<byte> memory = metadata.AsMemory();
             var handle = memory.Pin();
-            var status = m_adminSession.Upsert(1, SpanByte.FromPinnedMemory(memory));
-            if (status.IsCompleted || status.IsPending)
-            {
-                m_adminSession.CompletePending(true);
-            }
+            var result = await m_adminSession.UpsertAsync(1, SpanByte.FromPinnedMemory(memory), token: tokenSource.Token);
+            var status = result.Complete();
             handle.Dispose();
             
             await TakeCheckpointAsync();
@@ -51,9 +49,19 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
         {
             bool success = false;
             Guid token;
+            int retryCount = 0;
             do
             {
-                (success, token) = await m_persistentStorage.TakeHybridLogCheckpointAsync(CheckpointType.FoldOver).ConfigureAwait(false);
+                var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                (success, token) = await m_persistentStorage.TakeHybridLogCheckpointAsync(CheckpointType.FoldOver, cancellationToken: tokenSource.Token).ConfigureAwait(false);
+                if (!success) 
+                { 
+                    retryCount++; 
+                    if (retryCount > 10)
+                    {
+                        throw new InvalidOperationException("Failed to take checkpoint"); 
+                    }
+                }
             } while (!success);
             return token;
         }
@@ -80,8 +88,6 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
         public async ValueTask CompactAsync()
         {
             m_adminSession.Compact(m_persistentStorage.Log.SafeReadOnlyAddress, CompactionType.Lookup);
-            m_persistentStorage.Log.Truncate();
-            await m_persistentStorage.TakeFullCheckpointAsync(CheckpointType.Snapshot);
         }
 
         public ValueTask ResetAsync()
@@ -128,16 +134,14 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             return false;
         }
 
-        public void Write(long key, byte[] value)
+        public async ValueTask Write(long key, byte[] value)
         {
+            var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var mem = new Memory<byte>(value);
             var handle = mem.Pin();
             var spanByte = SpanByte.FromPinnedMemory(mem);
-            var status = m_adminSession.Upsert(key, spanByte);
-            if (!status.IsCompleted || status.IsPending)
-            {
-                m_adminSession.CompletePending(true);
-            }
+            var result = await m_adminSession.UpsertAsync(key, spanByte, token: tokenSource.Token);
+            var status = result.Complete();
             handle.Dispose();
         }
 

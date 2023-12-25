@@ -29,6 +29,7 @@ using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 {
@@ -154,7 +155,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                 var stream = new FlowtideBuilder("stream")
                 .AddPlan(plan)
                 .AddReadWriteFactory(readWriteFactory)
-                .WithStateOptions(() => new Storage.StateManager.StateManagerOptions()
+                .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
                     PersistentStorage = new FileCachePersistentStorage(new Storage.FileCacheOptions())
                 })
@@ -198,11 +199,11 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                 }
             };
 
-            var stateManager = new StateManagerSync<object>(() => new StateManagerOptions()
+            var stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = 1000,
                 PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions())
-            }, new NullLogger<StateManagerSync<object>>());
+            }, new NullLogger<StateManagerSync<object>>(), new Meter($"storage"));
             await stateManager.InitializeAsync();
             var stateClient = stateManager.GetOrCreateClient("node");
 

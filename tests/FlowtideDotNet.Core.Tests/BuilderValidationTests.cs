@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Core.Tests
                     .AddReadWriteFactory(factory)
                     .Build();
             });
-            Assert.Equal("No read resolver matched the read relation.", e.Message);
+            Assert.Equal("No read resolver matched the read relation for table: 'a'.", e.Message);
         }
 
         [Fact]
@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Core.Tests
                     .AddReadWriteFactory(factory)
                     .Build();
             });
-            Assert.Equal("No write resolver matched the read relation.", e.Message);
+            Assert.Equal("No write resolver matched the write relation for table 'test'.", e.Message);
         }
 
         [Fact]
@@ -122,7 +122,7 @@ namespace FlowtideDotNet.Core.Tests
             var stream = new FlowtideBuilder("test")
                     .AddPlan(plan)
                     .AddReadWriteFactory(factory)
-                    .WithStateOptions(() => new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
+                    .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                     {
                         PersistentStorage = cache
                     })
@@ -141,7 +141,7 @@ namespace FlowtideDotNet.Core.Tests
             var stream2 = new FlowtideBuilder("test")
                     .AddPlan(plan2)
                     .AddReadWriteFactory(factory)
-                    .WithStateOptions(() => new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
+                    .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                     {
                         PersistentStorage = cache
                     })

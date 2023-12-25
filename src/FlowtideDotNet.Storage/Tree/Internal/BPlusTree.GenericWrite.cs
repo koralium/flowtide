@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
@@ -83,24 +84,23 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                     var (newNode, _) = SplitLeafNode(newParentNode, 0, leafNode);
 
-                    var upsertNewParentStatus = m_stateClient.AddOrUpdate(newParentNode.Id, newParentNode);
-                    var upsertLeafNodeStatus = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
-                    var upsertNewNodeStatus = m_stateClient.AddOrUpdate(newNode.Id, newNode);
+                    var isFull = false;
+                    isFull |= m_stateClient.AddOrUpdate(newParentNode.Id, newParentNode);
+                    isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
+                    isFull |= m_stateClient.AddOrUpdate(newNode.Id, newNode);
 
-                    if (!upsertNewParentStatus.IsCompletedSuccessfully ||
-                        !upsertLeafNodeStatus.IsCompletedSuccessfully ||
-                        !upsertNewNodeStatus.IsCompletedSuccessfully)
+                    if (isFull)
                     {
-                        return GenericWrite_SlowUpsert(result, upsertNewNodeStatus, upsertLeafNodeStatus, upsertNewNodeStatus);
+                        return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                     }
                 }
                 else
                 {
-                    var upsertLeafStatus = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
+                    var isFull = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
 
-                    if (!upsertLeafStatus.IsCompletedSuccessfully)
+                    if (isFull)
                     {
-                        return GenericWrite_SlowUpsert(result, upsertLeafStatus);
+                        return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                     }
                 }
                 return ValueTask.FromResult(result);
@@ -143,15 +143,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 var (newNode, _) = SplitInternalNode(newParentNode, 0, internalNode);
 
-                var upsertNewNodeStatus = m_stateClient.AddOrUpdate(newNode.Id, newNode);
-                var upsertParentNodeStatus = m_stateClient.AddOrUpdate(newParentNode.Id, newParentNode);
-                var upsertInternalNodeStatus = m_stateClient.AddOrUpdate(internalNode.Id, internalNode);
+                var isFull = false;
+                isFull |= m_stateClient.AddOrUpdate(newNode.Id, newNode);
+                isFull |= m_stateClient.AddOrUpdate(newParentNode.Id, newParentNode);
+                isFull |= m_stateClient.AddOrUpdate(internalNode.Id, internalNode);
 
-                if (!upsertNewNodeStatus.IsCompletedSuccessfully ||
-                    !upsertParentNodeStatus.IsCompletedSuccessfully ||
-                    !upsertInternalNodeStatus.IsCompletedSuccessfully)
+                if (isFull)
                 {
-                    return GenericWrite_SlowUpsert(result, upsertNewNodeStatus, upsertParentNodeStatus, upsertInternalNodeStatus);
+                    return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
             if (internalNode.children.Count == 1)
@@ -219,15 +218,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
                     var (newNode, _) = SplitLeafNode(parentNode, index, leafNode);
                     // Save all the nodes that was changed
-                    var upsertNewNodeStatus = m_stateClient.AddOrUpdate(newNode.Id, newNode);
-                    var upsertLeafNodeStatus = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
-                    var upsertParentNodeStatus = m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
+                    var isFull = false;
+                    isFull |= m_stateClient.AddOrUpdate(newNode.Id, newNode);
+                    isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
+                    isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
 
-                    if (!upsertNewNodeStatus.IsCompletedSuccessfully ||
-                        !upsertLeafNodeStatus.IsCompletedSuccessfully ||
-                        !upsertParentNodeStatus.IsCompletedSuccessfully)
+                    if (isFull)
                     {
-                        return GenericWrite_SlowUpsert(result, upsertNewNodeStatus, upsertLeafNodeStatus, upsertParentNodeStatus);
+                        return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                     }
                 }
                 // Check if the node is too small
@@ -262,11 +260,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 else
                 {
-                    var leafUpsertStatus = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
+                    var isFull = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
 
-                    if (!leafUpsertStatus.IsCompletedSuccessfully)
+                    if (isFull)
                     {
-                        return GenericWrite_SlowUpsert(result, leafUpsertStatus);
+                        return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                     }
                 }
                 return ValueTask.FromResult(result);
@@ -308,15 +306,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 var (newNode, splitKey) = SplitInternalNode(parentNode, index, internalNode);
 
-                var upsertNewNodeStatus = m_stateClient.AddOrUpdate(newNode.Id, newNode);
-                var upsertParentNodeStatus = m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
-                var upsertInternalNodeStatus = m_stateClient.AddOrUpdate(internalNode.Id, internalNode);
+                var isFull = false;
+                isFull |= m_stateClient.AddOrUpdate(newNode.Id, newNode);
+                isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
+                isFull |= m_stateClient.AddOrUpdate(internalNode.Id, internalNode);
 
-                if (!upsertNewNodeStatus.IsCompletedSuccessfully ||
-                    !upsertParentNodeStatus.IsCompletedSuccessfully ||
-                    !upsertInternalNodeStatus.IsCompletedSuccessfully)
+                if (isFull)
                 {
-                    return GenericWrite_SlowUpsert(result, upsertNewNodeStatus, upsertParentNodeStatus, upsertInternalNodeStatus);
+                    return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
             // Check if the node is too small
@@ -372,21 +369,21 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             Debug.Assert(m_stateClient.Metadata != null);
             if (rightNode.keys.Count >= m_stateClient.Metadata.BucketLength / 2)
             {
-                var newSplitKey = DistributeBetweenNodesInternal(internalNode, rightNode);
+                var parentKey = parentNode.keys[index];
+                var newSplitKey = DistributeBetweenNodesInternal(internalNode, rightNode, parentKey);
 
                 parentNode.EnterWriteLock();
                 parentNode.keys[index] = newSplitKey;
                 parentNode.ExitWriteLock();
 
-                var upsertRightNodeStatus = m_stateClient.AddOrUpdate(rightNode.Id, rightNode);
-                var upsertInternalNodeStatus = m_stateClient.AddOrUpdate(internalNode.Id, internalNode);
-                var upsertParentNodeStatus = m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
+                var isFull = false;
+                isFull |= m_stateClient.AddOrUpdate(rightNode.Id, rightNode);
+                isFull |= m_stateClient.AddOrUpdate(internalNode.Id, internalNode);
+                isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
 
-                if (!upsertRightNodeStatus.IsCompletedSuccessfully ||
-                    !upsertInternalNodeStatus.IsCompletedSuccessfully ||
-                    !upsertParentNodeStatus.IsCompletedSuccessfully)
+                if (isFull)
                 {
-                    return GenericWrite_SlowUpsert(result, upsertRightNodeStatus, upsertInternalNodeStatus, upsertParentNodeStatus);
+                    return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
             else
@@ -400,13 +397,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 parentNode.ExitWriteLock();
 
                 m_stateClient.Delete(rightNode.Id);
-                var upsertParentNodeStatus = m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
-                var upsertInternalNodeStatus = m_stateClient.AddOrUpdate(internalNode.Id, internalNode);
+                var isFull = false;
+                isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
+                isFull |= m_stateClient.AddOrUpdate(internalNode.Id, internalNode);
 
-                if (!upsertParentNodeStatus.IsCompletedSuccessfully ||
-                    !upsertInternalNodeStatus.IsCompletedSuccessfully)
+                if (isFull)
                 {
-                    return GenericWrite_SlowUpsert(result, upsertParentNodeStatus, upsertInternalNodeStatus);
+                    return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
             return ValueTask.FromResult(result);
@@ -442,15 +439,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 parentNode.ExitWriteLock();
 
                 // Save all changes
-                var upsertLeafNodeStatus = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
-                var upsertRightNodeStatus = m_stateClient.AddOrUpdate(rightNode.Id, rightNode);
-                var upsertParentNodeStatus = m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
+                var isFull = false;
+                isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
+                isFull |= m_stateClient.AddOrUpdate(rightNode.Id, rightNode);
+                isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
 
-                if (!upsertLeafNodeStatus.IsCompletedSuccessfully ||
-                    !upsertRightNodeStatus.IsCompletedSuccessfully ||
-                    !upsertParentNodeStatus.IsCompletedSuccessfully)
+                if (isFull)
                 {
-                    return GenericWrite_SlowUpsert(result, upsertLeafNodeStatus, upsertRightNodeStatus, upsertParentNodeStatus);
+                    return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
             else
@@ -463,13 +459,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 parentNode.ExitWriteLock();
 
                 m_stateClient.Delete(rightNode.Id);
-                var upsertParentNodeStatus = m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
-                var upsertLeafNodeStatus = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
+                var isFull = false;
+                isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
+                isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
 
-                if (!upsertParentNodeStatus.IsCompletedSuccessfully ||
-                    !upsertLeafNodeStatus.IsCompletedSuccessfully)
+                if (isFull)
                 {
-                    return GenericWrite_SlowUpsert(result, upsertParentNodeStatus, upsertLeafNodeStatus);
+                    return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
             return ValueTask.FromResult(result);
@@ -507,15 +503,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 parentNode.ExitWriteLock();
 
                 // Save all changes
-                var upsertLeafNodeStatus = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
-                var upsertLeftNodeStatus = m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
-                var upsertParentNodeStatus = m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
+                var isFull = false;
+                isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
+                isFull |= m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
+                isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
 
-                if (!upsertLeafNodeStatus.IsCompletedSuccessfully ||
-                    !upsertLeftNodeStatus.IsCompletedSuccessfully ||
-                    !upsertParentNodeStatus.IsCompletedSuccessfully)
+                if (isFull)
                 {
-                    return GenericWrite_SlowUpsert(result, upsertLeafNodeStatus, upsertLeftNodeStatus, upsertParentNodeStatus);
+                    return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
             else
@@ -529,13 +524,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 // Save all changes
                 m_stateClient.Delete(leafNode.Id);
-                var upsertParentNodeStatus = m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
-                var upsertLeftNodeStatus = m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
+                var isFull = false;
+                isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
+                isFull |= m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
 
-                if (!upsertParentNodeStatus.IsCompletedSuccessfully ||
-                    !upsertLeftNodeStatus.IsCompletedSuccessfully)
+                if (isFull)
                 {
-                    return GenericWrite_SlowUpsert(result, upsertParentNodeStatus, upsertLeftNodeStatus);
+                    return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
             return ValueTask.FromResult(result);
@@ -565,21 +560,21 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             if (leftNode.keys.Count >= m_stateClient.Metadata.BucketLength / 2)
             {
                 // Borrow
-                var newSplitKey = DistributeBetweenNodesInternal(leftNode, internalNode);
+                var parentKey = parentNode.keys[index - 1];
+                var newSplitKey = DistributeBetweenNodesInternal(leftNode, internalNode, parentKey);
 
                 parentNode.EnterWriteLock();
                 parentNode.keys[index - 1] = newSplitKey;
                 parentNode.ExitWriteLock();
 
-                var upsertLeftNodeStatus = m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
-                var upsertInternalNodeStatus = m_stateClient.AddOrUpdate(internalNode.Id, internalNode);
-                var upsertParentNodeStatus = m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
+                var isFull = false;
+                isFull |= m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
+                isFull |= m_stateClient.AddOrUpdate(internalNode.Id, internalNode);
+                isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
 
-                if (!upsertLeftNodeStatus.IsCompletedSuccessfully ||
-                    !upsertInternalNodeStatus.IsCompletedSuccessfully ||
-                    !upsertParentNodeStatus.IsCompletedSuccessfully)
+                if (isFull)
                 {
-                    return GenericWrite_SlowUpsert(result, upsertLeftNodeStatus, upsertInternalNodeStatus, upsertParentNodeStatus);
+                    return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
             else
@@ -594,13 +589,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 // Save all changes
                 m_stateClient.Delete(internalNode.Id);
-                var upsertParentNodeStatus = m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
-                var upsertLeftNodeStatus = m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
 
-                if (!upsertParentNodeStatus.IsCompletedSuccessfully ||
-                    !upsertLeftNodeStatus.IsCompletedSuccessfully)
+                var isFull = false;
+                isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
+                isFull |= m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
+
+                if (isFull)
                 {
-                    return GenericWrite_SlowUpsert(result, upsertParentNodeStatus, upsertLeftNodeStatus);
+                    return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
             return ValueTask.FromResult(result);
@@ -690,13 +686,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         private async ValueTask<GenericWriteOperation> GenericWrite_SlowUpsert(
             GenericWriteOperation result,
-            params ValueTask[] tasks
+            Task task
             )
         {
-            foreach (var task in tasks)
-            {
-                await task;
-            }
+            await task;
             return result;
         }
 
@@ -756,7 +749,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             leftNode.next = rightNode.next;
         }
 
-        internal K DistributeBetweenNodesInternal(InternalNode<K, V> leftNode, InternalNode<K, V> rightNode)
+        internal static K DistributeBetweenNodesInternal(InternalNode<K, V> leftNode, InternalNode<K, V> rightNode, K parentKey)
         {
             leftNode.EnterWriteLock();
             rightNode.EnterWriteLock();
@@ -764,10 +757,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             var half = totalCount / 2;
 
+            K? splitKey = default;
             if (leftNode.keys.Count < half)
             {
                 var remainder = half - leftNode.keys.Count;
-                leftNode.keys.AddRange(rightNode.keys.GetRange(0, remainder));
+                // Add a new key with the most right value on left side
+                leftNode.keys.Add(parentKey);
+                leftNode.keys.AddRange(rightNode.keys.GetRange(0, remainder - 1));
+
+                // Set the split key to the most right value
+                splitKey = rightNode.keys[remainder - 1];
                 leftNode.children.AddRange(rightNode.children.GetRange(0, remainder));
 
                 var rightNodeSize = rightNode.keys.Count - remainder;
@@ -786,6 +785,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 var remainder = half - rightNode.keys.Count;
 
+                
+                leftNode.keys.Add(parentKey);
                 // Copy values from left to right at the beginning
                 rightKeys.AddRange(leftNode.keys.GetRange(leftNode.keys.Count - remainder, remainder));
                 rightKeys.AddRange(rightNode.keys);
@@ -796,11 +797,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 leftNode.children.RemoveRange(leftNode.children.Count - remainder, remainder);
                 rightNode.keys = rightKeys;
                 rightNode.children = rightChildren;
+                splitKey = leftNode.keys[leftNode.keys.Count - 1];
+                leftNode.keys.RemoveAt(leftNode.keys.Count - 1);
             }
             rightNode.ExitWriteLock();
             leftNode.ExitWriteLock();
 
-            var splitKey = leftNode.keys[leftNode.keys.Count - 1];
             return splitKey;
         }
 

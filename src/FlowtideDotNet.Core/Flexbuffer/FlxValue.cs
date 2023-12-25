@@ -297,7 +297,38 @@ namespace FlexBuffers
                 throw new Exception($"Type {_type} is not convertible to bool");
             }
         }
-        
+
+        public FlxString AsFlxString
+        {
+            get
+            {
+                var span = _buffer.Span;
+                if (_type == Type.String)
+                {
+                    var indirectOffset = ComputeIndirectOffset(span, _offset, _parentWidth);
+                    var size = (int)ReadULong(span, indirectOffset - _byteWidth, _byteWidth);
+                    var sizeWidth = (int)_byteWidth;
+                    while (span[indirectOffset + size] != 0)
+                    {
+                        sizeWidth <<= 1;
+                        size = (int)ReadULong(span, indirectOffset - sizeWidth, (byte)sizeWidth);
+                    }
+                    return new FlxString(span.Slice(indirectOffset, size));
+                }
+                if (_type == Type.Key)
+                {
+                    var indirectOffset = ComputeIndirectOffset(span, _offset, _parentWidth);
+                    var size = 0;
+                    while (indirectOffset + size < _buffer.Length && span[indirectOffset + size] != 0)
+                    {
+                        size++;
+                    }
+                    return new FlxString(span.Slice(indirectOffset, size));
+                }
+                throw new InvalidOperationException("Can only be used on strings");
+            }
+        }
+
         public string AsString
         {
             get

@@ -102,7 +102,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     }
                     else if (column is DateTime dateTime)
                     {
-                        b.Add(new DateTimeOffset(dateTime).ToUnixTimeMilliseconds() * 1000);
+                        var ticks = new DateTimeOffset(dateTime).Subtract(DateTimeOffset.UnixEpoch).Ticks;
+                        b.Add(ticks);
                     }
                     else if (column.GetType().IsEnum)
                     {

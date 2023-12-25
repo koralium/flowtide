@@ -10,7 +10,7 @@ to another connector as well.
 Create a minimal API AspNetCore application and install the following nuget package:
 
 * FlowtideDotNet.AspNetCore
-* FlowtideDotNet.SqlServer
+* FlowtideDotNet.Connector.SqlServer
 
 ## Creating a plan
 
@@ -42,7 +42,7 @@ WHERE t.val = 123;
 var plan = sqlBuilder.GetPlan();
 ```
 
-Replace all values with that are between { } with your own table names in your SQL Server.
+Replace all values with that are between \{ \} with your own table names in your SQL Server.
 
 ## Setting up a read and write factory
 
@@ -73,7 +73,7 @@ builder.Services.AddFlowtideStream(b =>
 {
     b.AddPlan(plan)
     .AddReadWriteFactory(factory)
-    .WithStateOptions(() => new StateManagerOptions()
+    .WithStateOptions(new StateManagerOptions()
     {
         // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage
         PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
@@ -146,7 +146,7 @@ builder.Services.AddFlowtideStream(b =>
 {
     b.AddPlan(plan)
     .AddReadWriteFactory(factory)
-    .WithStateOptions(() => new StateManagerOptions()
+    .WithStateOptions(new StateManagerOptions()
     {
         // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage
         PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()

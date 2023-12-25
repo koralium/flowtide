@@ -17,6 +17,8 @@ using FlowtideDotNet.Storage.Tree;
 using FASTER.core;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using Microsoft.Extensions.Logging.Abstractions;
+using FlowtideDotNet.Storage.Tree.Internal;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.Tests
 {
@@ -33,11 +35,11 @@ namespace FlowtideDotNet.Storage.Tests
         {
             var localStorage = new LocalStorageNamedDeviceFactory(deleteOnClose: true);
             localStorage.Initialize("./data/temp");
-            stateManager = new StateManager.StateManagerSync<object>(() => new StateManagerOptions()
+            stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
             {
-                CachePageCount = 10,
+                CachePageCount = 1000000,
                 PersistentStorage = new FileCachePersistentStorage(new FileCacheOptions())
-            }, new NullLogger<StateManagerSync>());
+            }, new NullLogger<StateManagerSync>(), new Meter($"storage"));
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
@@ -126,6 +128,8 @@ namespace FlowtideDotNet.Storage.Tests
             {
                 foreach (var kv in page)
                 {
+                    var v = await _tree.GetValue(kv.Key);
+                    Assert.Equal($"{kv.Key}", v.value);
                     Assert.Equal(count, kv.Key);
                     count++;
                 }
@@ -154,6 +158,8 @@ namespace FlowtideDotNet.Storage.Tests
             {
                 foreach (var kv in page)
                 {
+                    var v = await _tree.GetValue(kv.Key);
+                    Assert.Equal($"{kv.Key}", v.value);
                     Assert.Equal(count, kv.Key);
                     count++;
                 }
@@ -182,6 +188,8 @@ namespace FlowtideDotNet.Storage.Tests
             {
                 foreach (var kv in page)
                 {
+                    var v = await _tree.GetValue(kv.Key);
+                    Assert.Equal($"{kv.Key}", v.value);
                     Assert.Equal(count, kv.Key);
                     count++;
                 }
@@ -194,6 +202,213 @@ namespace FlowtideDotNet.Storage.Tests
             if (stateManager != null)
             {
                 stateManager.Dispose();
+            }
+        }
+
+
+        [Fact]
+        public async Task TestDistributeInternalNodes_LeftIsSmaller()
+        {
+            Random r = new Random(1023);
+
+            HashSet<int> values = new HashSet<int>();
+            for (int i = 0; i < 100; i++)
+            {
+                var val = r.Next();
+                var op = r.Next();
+
+                if (op % 8 == 0)
+                {
+                    if (values.Count > 0)
+                    {
+                        var e = values.ElementAt(r.Next(values.Count));
+                        await _tree.Delete(e);
+                        values.Remove(e);
+                    }
+
+                }
+                else
+                {
+                    await _tree.Upsert(val, val.ToString());
+                    values.Add(val);
+                }
+            }
+
+            var printedTree = await _tree.Print();
+
+            var sortedOrder = values.OrderBy(x => x).ToList();
+
+            int count = 0;
+            var it = _tree.CreateIterator();
+            await it.SeekFirst();
+            await foreach (var page in it)
+            {
+                foreach (var kv in page)
+                {
+                    var v = await _tree.GetValue(kv.Key);
+                    Assert.Equal($"{kv.Key}", v.value);
+
+                    var ex = sortedOrder[count];
+                    Assert.Equal(ex, kv.Key);
+                    count++;
+                }
+            }
+        }
+
+        [Fact]
+        public async Task TestDistributeInternalNodes_RightIsSmaller()
+        {
+            Random r = new Random(35385);
+
+            HashSet<int> values = new HashSet<int>();
+            for (int i = 0; i < 100; i++)
+            {
+                var val = r.Next();
+                var op = r.Next();
+
+                if (op % 4 == 0)
+                {
+                    if (values.Count > 0)
+                    {
+                        var e = values.ElementAt(r.Next(values.Count));
+                        await _tree.Delete(e);
+                        values.Remove(e);
+                    }
+
+                }
+                else
+                {
+                    await _tree.Upsert(val, val.ToString());
+                    values.Add(val);
+                }
+            }
+
+            var printedTree = await _tree.Print();
+
+            var sortedOrder = values.OrderBy(x => x).ToList();
+
+            int count = 0;
+            var it = _tree.CreateIterator();
+            await it.SeekFirst();
+            await foreach (var page in it)
+            {
+                foreach (var kv in page)
+                {
+                    var v = await _tree.GetValue(kv.Key);
+                    Assert.Equal($"{kv.Key}", v.value);
+
+                    var ex = sortedOrder[count];
+                    if (ex != kv.Key)
+                    {
+                        v = await _tree.GetValue(sortedOrder[count]);
+                    }
+                    Assert.Equal(ex, kv.Key);
+                    count++;
+                }
+            }
+        }
+
+        [Fact]
+        public async Task TestDistributeInternalNodes_RightIsSmallerMoveMultipleLeafs()
+        {
+            Random r = new Random(19145);
+
+            HashSet<int> values = new HashSet<int>();
+            for (int i = 0; i < 200; i++)
+            {
+                var val = r.Next();
+                var op = r.Next();
+
+                if (op % 4 == 0)
+                {
+                    if (values.Count > 0)
+                    {
+                        var e = values.ElementAt(r.Next(values.Count));
+                        await _tree.Delete(e);
+                        values.Remove(e);
+                    }
+
+                }
+                else
+                {
+                    await _tree.Upsert(val, val.ToString());
+                    values.Add(val);
+                }
+            }
+
+            var printedTree = await _tree.Print();
+
+            var sortedOrder = values.OrderBy(x => x).ToList();
+
+            int count = 0;
+            var it = _tree.CreateIterator();
+            await it.SeekFirst();
+            await foreach (var page in it)
+            {
+                foreach (var kv in page)
+                {
+                    var v = await _tree.GetValue(kv.Key);
+                    Assert.Equal($"{kv.Key}", v.value);
+
+                    var ex = sortedOrder[count];
+                    if (ex != kv.Key)
+                    {
+                        v = await _tree.GetValue(sortedOrder[count]);
+                    }
+                    Assert.Equal(ex, kv.Key);
+                    count++;
+                }
+            }
+        }
+
+        [Fact]
+        public async Task TestDistributeInternalWithInternalChildren()
+        {
+            Random r = new Random(176080);
+
+            HashSet<int> values = new HashSet<int>();
+            for (int i = 0; i < 400; i++)
+            {
+                var val = r.Next();
+
+
+                var op = r.Next();
+                if (op % 4 == 0)
+                {
+                    if (values.Count > 0)
+                    {
+                        var e = values.ElementAt(r.Next(values.Count));
+                        await _tree.Delete(e);
+                        values.Remove(e);
+                        var v = await _tree.GetValue(746493011);
+                    }
+                }
+                else
+                {
+                    await _tree.Upsert(val, val.ToString());
+                    values.Add(val);
+                }
+                var printedTree = await _tree.Print();
+                var sortedOrder = values.OrderBy(x => x).ToList();
+                var it = _tree.CreateIterator();
+                await it.SeekFirst();
+                int count = 0;
+                await foreach (var page in it)
+                {
+                    foreach (var kv in page)
+                    {
+                        var v = await _tree.GetValue(kv.Key);
+                        Assert.Equal($"{kv.Key}", v.value);
+
+                        var ex = sortedOrder[count];
+                        if (ex != kv.Key)
+                        {
+                            v = await _tree.GetValue(sortedOrder[count]);
+                        }
+                        Assert.Equal(ex, kv.Key);
+                        count++;
+                    }
+                }
             }
         }
     }

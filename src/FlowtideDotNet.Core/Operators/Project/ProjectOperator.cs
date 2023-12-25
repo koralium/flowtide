@@ -20,6 +20,7 @@ using System.Threading.Tasks.Dataflow;
 using System.Diagnostics;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Base.Metrics;
 
 namespace FlowtideDotNet.Core.Operators.Project
 {
@@ -34,7 +35,7 @@ namespace FlowtideDotNet.Core.Operators.Project
         private readonly ProjectRelation projectRelation;
         private readonly Func<RowEvent, FlxValue>[] _expressions;
 
-        private Counter<long>? _eventsCounter;
+        private ICounter<long>? _eventsCounter;
 
         public override string DisplayName => "Projection";
 
@@ -129,7 +130,11 @@ namespace FlowtideDotNet.Core.Operators.Project
             allInput = File.CreateText($"{Name}.all.txt");
 #endif
             Logger.LogInformation("Initializing project operator.");
-            _eventsCounter = Metrics.CreateCounter<long>("events");
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            
             return Task.CompletedTask;
         }
     }

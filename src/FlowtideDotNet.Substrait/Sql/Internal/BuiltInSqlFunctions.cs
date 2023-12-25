@@ -263,6 +263,28 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
+            sqlFunctionRegister.RegisterScalarFunction("to_string", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("to_string must have exactly one argument");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var expr = visitor.Visit(funcExpr.Expression, emitData);
+                    return new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsString.Uri,
+                        ExtensionName = FunctionsString.To_String,
+                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    };
+                }
+                else
+                {
+                    throw new NotImplementedException("to_string does not support the input parameter");
+                }
+            });
+
             sqlFunctionRegister.RegisterScalarFunction("guid", (f, visitor, emitData) =>
             {
                 if (f.Args == null || f.Args.Count != 1)
@@ -307,6 +329,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new NotImplementedException("stftime does not support the input parameter");
                 }
+            });
+            
+            sqlFunctionRegister.RegisterScalarFunction("gettimestamp", (f, visitor, emitData) =>
+            {
+                return new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsDatetime.Uri,
+                    ExtensionName = FunctionsDatetime.GetTimestamp,
+                    Arguments = new List<Expressions.Expression>()
+                };
             });
 
             sqlFunctionRegister.RegisterScalarFunction("map", (f, visitor, emitData) =>

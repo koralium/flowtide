@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.Metrics;
@@ -27,7 +28,7 @@ namespace FlowtideDotNet.Base.Engine.Internal
             string operatorName, 
             Action<TimeSpan> checkpointFunc, 
             Func<string, string, TimeSpan?, Task> registerTrigger, 
-            Meter metrics, 
+            IMeter metrics, 
             IStateManagerClient stateClient,
             ILoggerFactory loggerFactory)
         {
@@ -42,7 +43,7 @@ namespace FlowtideDotNet.Base.Engine.Internal
 
         public string StreamName { get; }
 
-        public Meter Metrics { get; }
+        public IMeter Metrics { get; }
 
         public IStateManagerClient StateClient { get; }
 

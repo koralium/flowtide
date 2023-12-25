@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Serializers;
@@ -29,7 +30,7 @@ namespace FlowtideDotNet.Core.Operators.Set
         private readonly List<IBPlusTree<RowEvent, int>> _storages;
         private readonly Func<int, StreamEventBatch, long, IAsyncEnumerable<StreamEventBatch>> _operation;
 
-        private Counter<long>? _eventsCounter;
+        private ICounter<long>? _eventsCounter;
 
 #if DEBUG_WRITE
         // TODO: Tmp remove
@@ -164,13 +165,17 @@ namespace FlowtideDotNet.Core.Operators.Set
             allInput = File.CreateText($"{Name}.all.txt");
             outputWriter = File.CreateText($"{Name}.output.txt");
 #endif
-
-            _eventsCounter = Metrics.CreateCounter<long>("events");
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            
             await InitializeTrees(stateManagerClient);
         }
 
         private async Task InitializeTrees(IStateManagerClient stateManagerClient)
         {
+            _storages.Clear();
             for (int i = 0; i < setRelation.Inputs.Count; i++)
             {
                 _storages.Add(await stateManagerClient.GetOrCreateTree(i.ToString(), new BPlusTreeOptions<RowEvent, int>()

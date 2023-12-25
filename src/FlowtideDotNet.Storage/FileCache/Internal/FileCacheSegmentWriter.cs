@@ -37,15 +37,12 @@ namespace FlowtideDotNet.Storage.FileCache
             {
                 try
                 {
-                    // Try and delete the file
                     File.Delete(fileName);
                 }
                 catch
                 {
-                    // Sometimes, the file has not been closed yet, so try again
                     File.Delete(fileName);
                 }
-                
             }
 
             fileStream = new FileStream(fileName, FileMode.Create, FileAccess.ReadWrite, fileCacheOptions.FileShare, 512, FileOptions.DeleteOnClose | FileOptions.RandomAccess);
@@ -87,7 +84,9 @@ namespace FlowtideDotNet.Storage.FileCache
             {
                 if (disposing)
                 {
+                    semaphoreSlim.Wait();
                     fileStream.Dispose();
+                    semaphoreSlim.Release();
                 }
 
                 disposedValue = true;
@@ -109,6 +108,11 @@ namespace FlowtideDotNet.Storage.FileCache
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public void ClearTemporaryAllocations()
+        {
+            // No extra cleanup required
         }
     }
 }

@@ -217,6 +217,18 @@ namespace FlowtideDotNet.Storage.FileCache
             }
         }
 
+        public void FreeAll()
+        {
+            lock (m_lock)
+            {
+                var keys = allocatedPages.Keys.ToList();
+                foreach (var key in keys)
+                {
+                    Free_NoLock(key);
+                }
+            }
+        }
+
         public void Allocate(long pageKey, int size)
         {
             lock (m_lock)
@@ -398,6 +410,17 @@ namespace FlowtideDotNet.Storage.FileCache
             }
         }
 
+        public void ClearTemporaryAllocations()
+        {
+            lock (m_lock)
+            {
+                foreach(var writer in segmentWriters)
+                {
+                    writer.Value.ClearTemporaryAllocations();
+                }
+            }
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)
@@ -407,6 +430,9 @@ namespace FlowtideDotNet.Storage.FileCache
                     // TODO: dispose managed state (managed objects)
                     lock (m_lock)
                     {
+                        allocatedPages.Clear();
+                        memoryNodes.Clear();
+                        _freePages.Clear();
                         foreach(var segment in segmentWriters)
                         {
                             segment.Value.Dispose();

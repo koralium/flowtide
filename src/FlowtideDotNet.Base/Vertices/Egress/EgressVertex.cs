@@ -11,12 +11,15 @@
 // limitations under the License.
 
 using DataflowStream.dataflow.Internal.Extensions;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Egress.Internal;
+using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 
@@ -28,16 +31,19 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private readonly ExecutionDataflowBlockOptions _executionDataflowBlockOptions;
         private IEgressImplementation? _targetBlock;
         private bool _isHealthy = true;
+        private CancellationTokenSource? _cancellationTokenSource;
 
         public string Name { get; private set; }
 
         protected string StreamName { get; private set; }
 
-        protected Meter Metrics { get; private set; }
+        protected IMeter Metrics { get; private set; }
 
         public abstract string DisplayName { get; }
 
         public ILogger Logger { get; private set; }
+
+        protected CancellationToken CancellationToken => _cancellationTokenSource?.Token ?? throw new InvalidOperationException("Cancellation token can only be fetched after initialization.");
 
         protected EgressVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
@@ -109,12 +115,14 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         public void Fault(Exception exception)
         {
+            _cancellationTokenSource?.Cancel();
             Debug.Assert(_targetBlock != null, "CreateBlocks must be called before faulting");
             _targetBlock.Fault(exception);
         }
 
         public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
         {
+             _cancellationTokenSource = new CancellationTokenSource();
             Name = name;
             StreamName = vertexHandler.StreamName;
             Metrics = vertexHandler.Metrics;
@@ -140,6 +148,15 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             Metrics.CreateObservableGauge("health", () =>
             {
                 return _isHealthy ? 1 : 0;
+            });
+            Metrics.CreateObservableGauge("metadata", () =>
+            {
+                TagList tags = new TagList
+                {
+                    { "displayName", DisplayName }
+                };
+                tags.Add("links", "[]");
+                return new Measurement<int>(1, tags);
             });
 
             return InitializeOrRestore(restoreTime, dState, vertexHandler.StateClient);

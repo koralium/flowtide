@@ -13,6 +13,7 @@
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
@@ -33,6 +34,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private Task? m_cleanupTask;
         private int maxSize;
         private readonly ILogger logger;
+        private readonly Meter meter;
         private readonly long maxMemoryUsageInBytes;
         private int cleanupStart;
         private readonly SemaphoreSlim _fullLock;
@@ -42,17 +44,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private int m_sameCaheHitsCount;
         private readonly Process _currentProcess;
 
-        public LruTableSync(int maxSize, ILogger logger, long maxMemoryUsageInBytes = -1)
+        public LruTableSync(int maxSize, ILogger logger, Meter meter, long maxMemoryUsageInBytes = -1)
         {
             cache = new ConcurrentDictionary<long, LinkedListNode<LinkedListValue>>();
             m_nodes = new LinkedList<LinkedListValue>();
             this.maxSize = maxSize;
             this.logger = logger;
+            this.meter = meter;
             this.maxMemoryUsageInBytes = maxMemoryUsageInBytes;
             cleanupStart = (int)Math.Ceiling(maxSize * 0.7);
             _fullLock = new SemaphoreSlim(1);
             StartCleanupTask();
             _currentProcess = Process.GetCurrentProcess();
+
+            meter.CreateObservableGauge("lru_table_size", () => Volatile.Read(ref m_count));
+            meter.CreateObservableGauge("lru_table_max_size", () => this.maxSize);
+            meter.CreateObservableGauge("lru_table_cleanup_start", () => cleanupStart);
         }
 
         public void Clear()
@@ -61,6 +68,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 cache.Clear();
                 m_nodes.Clear();
+                Volatile.Write(ref m_count, 0);
             }
         }
 
@@ -155,12 +163,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return false;
         }
 
-        public void Add(long key, ICacheObject value, ILruEvictHandler evictHandler)
+        public async Task Wait()
         {
+            logger.LogWarning("LRU Table is full, waiting for cleanup to finish.");
+            await _fullLock.WaitAsync().ConfigureAwait(false);
+            _fullLock.Release();
+            logger.LogInformation("LRU Table is no longer full.");
+        }
+
+        public bool Add(long key, ICacheObject value, ILruEvictHandler evictHandler)
+        {
+            bool full = false;
             if (Volatile.Read(ref m_count) > maxSize)
             {
-                _fullLock.Wait();
-                _fullLock.Release();
+                full = true;
             }
             cache.AddOrUpdate(key, (key) =>
             {
@@ -196,13 +212,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                 }
             });
+
+            return full;
         }
 
         private async Task Cleanup()
         {
             var currentCount = Volatile.Read(ref m_count);
             int cleanupStartLocal = cleanupStart;
-            if (currentCount < cleanupStartLocal)
+            bool isCleanup = false;
+            if (currentCount <= cleanupStartLocal)
             {
                 var cacheHitsLocal = Volatile.Read(ref m_cacheHits);
                 if (m_lastSeenCacheHits == cacheHitsLocal)
@@ -211,6 +230,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     if (m_sameCaheHitsCount >= 1000 && currentCount > 0)
                     {
                         // No cache hits during a long time, clear the entire cache
+                        isCleanup = true;
                         cleanupStartLocal = 0;
                         m_sameCaheHitsCount = 0;
                     }
@@ -299,7 +319,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 evictTasks.Add(Task.Factory.StartNew(() =>
                 {
-                    group.Key.Evict(group.Value);
+                    group.Key.Evict(group.Value, isCleanup);
                 }));
             }
 

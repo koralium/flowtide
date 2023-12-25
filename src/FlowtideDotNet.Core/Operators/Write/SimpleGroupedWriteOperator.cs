@@ -29,6 +29,7 @@ namespace FlowtideDotNet.Core.Operators.Write
     public class SimpleWriteState : IStatefulWriteState
     {
         public long StorageSegmentId { get; set; }
+        public bool SentInitialData { get; set; }
     }
 
     public class MetadataResult
@@ -69,6 +70,8 @@ namespace FlowtideDotNet.Core.Operators.Write
         private IBPlusTree<RowEvent, int>? m_modified;
         private bool m_hasModified;
         private readonly ExecutionMode m_executionMode;
+        private SimpleWriteState? _state;
+        private Watermark _latestWatermark;
 
         protected SimpleGroupedWriteOperator(ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -90,11 +93,23 @@ namespace FlowtideDotNet.Core.Operators.Write
             if (m_hasModified)
             {
                 var rowIterator = GetChangedRows();
-                await UploadChanges(rowIterator);
+                await UploadChanges(rowIterator, _latestWatermark, CancellationToken);
+                await m_modified.Clear();
+                m_hasModified = false;
+            }
+            if (_state!.SentInitialData == false)
+            {
+                await OnInitialDataSent();
+                _state.SentInitialData = true;
             }
         }
 
-        protected abstract Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows);
+        protected virtual Task OnInitialDataSent()
+        {
+            return Task.CompletedTask;
+        }
+
+        protected abstract Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken);
 
         private async IAsyncEnumerable<SimpleChangeEvent> GetChangedRows()
         {
@@ -126,6 +141,7 @@ namespace FlowtideDotNet.Core.Operators.Write
 
         protected override Task OnWatermark(Watermark watermark)
         {
+            _latestWatermark = watermark;
             if (m_executionMode == ExecutionMode.OnWatermark)
             {
                 return SendData();
@@ -149,6 +165,17 @@ namespace FlowtideDotNet.Core.Operators.Write
             if (m_metadataResult == null)
             {
                 m_metadataResult = await SetupAndLoadMetadataAsync();
+            }
+            if (state != null)
+            {
+                _state = state;
+            }
+            else
+            {
+                _state = new SimpleWriteState()
+                {
+                    SentInitialData = false
+                };
             }
             m_modified = await stateManagerClient.GetOrCreateTree("temporary", new BPlusTreeOptions<RowEvent, int>()
             {

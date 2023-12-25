@@ -23,5 +23,6 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
         void Write(long position, byte[] data);
         byte[] Read(long position, int length);
         void Flush();
+        void ClearTemporaryAllocations();
     }
 }

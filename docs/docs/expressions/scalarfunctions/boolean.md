@@ -13,6 +13,7 @@ An argument into the *Or* function that is not a boolean will be the same as the
 
 Implements Kleene logic with the following truth table:
 
+```
 +------+-------+-----+-----+-----+
 |              |     **B**       |
 +  **A OR B**  +-----+-----+-----+
@@ -24,7 +25,7 @@ Implements Kleene logic with the following truth table:
 +      +-------+-----+-----+-----+
 |      | **T** |  T  |  T  |  T  |
 +------+-------+-----+-----+-----+
-
+```
 F = False, T = True, N = Null
 
 ### SQL Usage
@@ -42,6 +43,7 @@ An argument into the *And* function that is not a boolean will be the same as th
 
 Implements Kleene logic with the following truth table:
 
+```
 +------+-------+-----+-----+-----+
 |              |     **B**       |
 +  **A AND B** +-----+-----+-----+
@@ -53,6 +55,7 @@ Implements Kleene logic with the following truth table:
 +      +-------+-----+-----+-----+
 |      | **T** |  F  |  N  |  T  |
 +------+-------+-----+-----+-----+
+```
 
 F = False, T = True, N = Null
 

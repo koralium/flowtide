@@ -74,12 +74,18 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.AddOrUpdateUser(user);
         }
 
-        public async Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default)
+        public async Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default, TimeSpan? timestampInterval = default)
         {
             if (stateSerializeOptions == null)
             {
                 stateSerializeOptions = new StateSerializeOptions();
             }
+
+            if (timestampInterval == null)
+            {
+                timestampInterval = TimeSpan.FromSeconds(1);
+            }
+
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
 
@@ -97,8 +103,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .AddPlan(plan)
                 .SetParallelism(parallelism)
                 .AddReadWriteFactory(factory)
-                .WithStateOptions(() => new Storage.StateManager.StateManagerOptions()
+                .SetGetTimestampUpdateInterval(timestampInterval.Value)
+                .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
+                    CachePageCount = 1000,
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _fileCachePersistence,
                     TemporaryStorageOptions = new Storage.FileCacheOptions()
@@ -141,6 +149,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public void EgressCrashOnCheckpoint(int times)
         {
             _egressCrashOnCheckpointCount = times;
+        }
+
+        public async Task SchedulerTick()
+        {
+            var scheduler = _stream.Scheduler as DefaultStreamScheduler;
+            await scheduler!.Tick();
         }
 
         public async Task WaitForUpdate()

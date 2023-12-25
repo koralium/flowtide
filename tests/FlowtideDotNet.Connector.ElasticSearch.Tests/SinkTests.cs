@@ -39,5 +39,122 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             } while (!success);
             
         }
+
+        [Fact]
+        public async Task TestInsertWithCustomMappingIndexDoesNotExist()
+        {
+            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsert", (properties) =>
+            {
+                properties["FirstName"] = new KeywordProperty();
+            });
+            stream.Generate();
+            await stream.StartStream(@"
+            INSERT INTO testindex
+            SELECT 
+                UserKey as _id,
+                FirstName,
+                LastName,
+                UserKey as pk
+            FROM users
+            ");
+
+            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
+
+            bool success = false;
+            do
+            {
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "5");
+                success = resp.ApiCall.HttpStatusCode == 200;
+                await Task.Delay(10);
+            } while (!success);
+
+        }
+
+        [Fact]
+        public async Task TestInsertWithCustomMappingIndexExistsWithNoMappings()
+        {
+            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
+            elasticClient.Indices.Create("testindex");
+            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsert", (properties) =>
+            {
+                properties["FirstName"] = new KeywordProperty();
+            });
+            stream.Generate();
+            await stream.StartStream(@"
+            INSERT INTO testindex
+            SELECT 
+                UserKey as _id,
+                FirstName,
+                LastName,
+                UserKey as pk
+            FROM users
+            ");
+
+            bool success = false;
+            do
+            {
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "5");
+                success = resp.ApiCall.HttpStatusCode == 200;
+                await Task.Delay(10);
+            } while (!success);
+        }
+
+        [Fact]
+        public async Task TestInsertWithCustomMappingIndexExistsWithMappings()
+        {
+            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
+            elasticClient.Indices.Create("testindex", c => c.Map(m => m.Properties(p => p.Keyword(k => k.Name("FirstName")))));
+            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsert", (properties) =>
+            {
+                properties["FirstName"] = new KeywordProperty();
+            });
+            stream.Generate();
+            await stream.StartStream(@"
+            INSERT INTO testindex
+            SELECT 
+                UserKey as _id,
+                FirstName,
+                LastName,
+                UserKey as pk
+            FROM users
+            ");
+
+            bool success = false;
+            do
+            {
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "5");
+                success = resp.ApiCall.HttpStatusCode == 200;
+                await Task.Delay(10);
+            } while (!success);
+
+        }
+
+        [Fact]
+        public async Task TestInsertWithCustomMappingIndexExistsWithMappingsCollision()
+        {
+            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
+            elasticClient.Indices.Delete("testindex");
+            elasticClient.Indices.Create("testindex", c => c.Map(m => m.Properties(p => p.Text(k => k.Name("FirstName")))));
+            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsert", (properties) =>
+            {
+                properties["FirstName"] = new KeywordProperty();
+            });
+            stream.Generate();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await stream.StartStream(@"
+                    INSERT INTO testindex
+                    SELECT 
+                        UserKey as _id,
+                        FirstName,
+                        LastName,
+                        UserKey as pk
+                    FROM users
+                    ");
+            });
+
+            Assert.Equal("mapper [FirstName] cannot be changed from type [text] to [keyword]", ex.Message);
+        }
     }
 }

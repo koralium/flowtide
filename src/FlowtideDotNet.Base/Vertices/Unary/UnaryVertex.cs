@@ -20,6 +20,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Base.Metrics;
+using System.Text;
+using FlowtideDotNet.Base.Vertices.MultipleInput;
 
 namespace FlowtideDotNet.Base.Vertices.Unary
 {
@@ -44,7 +47,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
 
         public abstract string DisplayName { get; }
 
-        protected Meter Metrics => _vertexHandler?.Metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
+        protected IMeter Metrics => _vertexHandler?.Metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
 
         private ILogger? _logger;
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
@@ -52,6 +55,11 @@ namespace FlowtideDotNet.Base.Vertices.Unary
         protected UnaryVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
             this.executionDataflowBlockOptions = executionDataflowBlockOptions;
+        }
+
+        private bool ShouldWait()
+        {
+            return _transformBlock?.OutputCount >= executionDataflowBlockOptions.BoundedCapacity;
         }
 
         [MemberNotNull(nameof(_transformBlock), nameof(_targetBlock), nameof(_sourceBlock))]
@@ -90,7 +98,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 }
                 if (streamEvent is Watermark watermark)
                 {
-                    return HandleWatermark(watermark);
+                    return new AsyncEnumerableWithWait<IStreamEvent, IStreamEvent>(HandleWatermark(watermark), (s) => s, ShouldWait);
                 }
 
                 throw new NotSupportedException();
@@ -168,6 +176,32 @@ namespace FlowtideDotNet.Base.Vertices.Unary
             Metrics.CreateObservableGauge("health", () =>
             {
                 return _isHealthy ? 1 : 0;
+            });
+            Metrics.CreateObservableGauge("metadata", () =>
+            {
+                TagList tags = new TagList
+                {
+                    { "displayName", DisplayName }
+                };
+                var links = GetLinks();
+                StringBuilder outputLinks = new StringBuilder();
+                outputLinks.Append('[');
+                foreach (var link in links)
+                {
+                    if (link is IStreamVertex streamVertex)
+                    {
+                        outputLinks.Append(streamVertex.Name);
+                    }
+                    else if (link is MultipleInputTargetHolder target)
+                    {
+                        outputLinks.Append(target.OperatorName);
+                    }
+                    outputLinks.Append(',');
+                }
+                outputLinks.Remove(outputLinks.Length - 1, 1);
+                outputLinks.Append(']');
+                tags.Add("links", outputLinks.ToString());
+                return new Measurement<int>(1, tags);
             });
 
             _currentTime = newTime;

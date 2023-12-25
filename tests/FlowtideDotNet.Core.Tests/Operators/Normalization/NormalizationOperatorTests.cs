@@ -20,6 +20,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Core.Tests.Operators.Normalization
 {
