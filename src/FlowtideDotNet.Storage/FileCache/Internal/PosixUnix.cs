@@ -36,8 +36,20 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 var interopClass = typeof(int).Assembly.GetTypes().FirstOrDefault(x => x.Name == "Interop");
+                if (interopClass == null)
+                {
+                    throw new InvalidOperationException("Interop class not found");
+                }
                 var sysClass = interopClass.GetNestedTypes(BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public | BindingFlags.Instance).FirstOrDefault(x => x.Name == "Sys");
+                if (sysClass == null)
+                {
+                    throw new InvalidOperationException("Sys class not found");
+                }
                 var method = sysClass.GetMethods(BindingFlags.Static | BindingFlags.NonPublic).FirstOrDefault(x => x.Name == "PosixFAdvise");
+                if (method == null)
+                {
+                    throw new InvalidOperationException("PosixFAdvise method not found");
+                }
                 func = method.CreateDelegate<AdviceDelegate>();
             }
         }
@@ -49,15 +61,6 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
                 return func(fd, offset, length, advice);
             }
             return -1;
-            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            //{
-            //    var interopClass = typeof(int).Assembly.GetTypes().FirstOrDefault(x => x.Name == "Interop");
-            //    var sysClass = interopClass.GetNestedTypes(BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Public | BindingFlags.Instance).FirstOrDefault(x => x.Name == "Sys");
-            //    var method = sysClass.GetMethods(BindingFlags.Static | BindingFlags.NonPublic).FirstOrDefault(x => x.Name == "PosixFAdvise");
-
-            //    method.Invoke(null, new object[] { fd, offset, length, advice });
-            //    func = method.CreateDelegate<AdviceDelegate>();
-            //}
                 
         }
     }

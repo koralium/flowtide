@@ -150,6 +150,10 @@ namespace FlowtideDotNet.Substrait
 
             foreach (var write in _writeToTables)
             {
+                if (oldRootRel == null)
+                {
+                    throw new InvalidOperationException("No root relation found");
+                }
                 newPlan.Relations.Add(new RootRelation()
                 {
                     Names = oldRootRel.Names,
