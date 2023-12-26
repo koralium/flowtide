@@ -29,8 +29,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             public bool removed;
         }
 
-        private ConcurrentDictionary<long, LinkedListNode<LinkedListValue>> cache;
-        private LinkedList<LinkedListValue> m_nodes;
+        private readonly ConcurrentDictionary<long, LinkedListNode<LinkedListValue>> cache;
+        private readonly LinkedList<LinkedListValue> m_nodes;
         private Task? m_cleanupTask;
         private int maxSize;
         private readonly ILogger logger;
