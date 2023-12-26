@@ -16,9 +16,9 @@ namespace FlowtideDotNet.Substrait.Relations
     {
         public override int OutputLength => Input.OutputLength;
 
-        public Relation Input { get; set; }
+        public required Relation Input { get; set; }
 
-        public List<string> Names { get; set; }
+        public required List<string> Names { get; set; }
 
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {

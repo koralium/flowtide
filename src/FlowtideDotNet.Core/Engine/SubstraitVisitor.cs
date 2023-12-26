@@ -430,7 +430,7 @@ namespace FlowtideDotNet.Core.Engine
             }
             
             dataflowStreamBuilder.AddEgressBlock(id.ToString(), op);
-            return base.VisitWriteRelation(writeRelation, state);
+            return op;
         }
 
         /// <summary>

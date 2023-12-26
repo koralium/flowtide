@@ -371,8 +371,11 @@ namespace FlowtideDotNet.Substrait
 
             private Relation VisitSet(Protobuf.SetRel setRel)
             {
-                var set = new SetRelation();
-                set.Inputs = new List<Relation>();
+                var set = new SetRelation()
+                {
+                    Inputs = new List<Relation>()
+                };
+                
                 for (int i = 0; i < setRel.Inputs.Count; i++)
                 {
                     set.Inputs.Add(VisitRel(setRel.Inputs[i]));
