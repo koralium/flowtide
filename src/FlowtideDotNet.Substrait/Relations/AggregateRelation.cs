@@ -21,23 +21,23 @@ namespace FlowtideDotNet.Substrait.Relations
 {
     public class AggregateGrouping
     {
-        public List<Expression> GroupingExpressions { get; set; }
+        public required List<Expression> GroupingExpressions { get; set; }
     }
 
     public class AggregateMeasure
     {
-        public AggregateFunction Measure { get; set; }
+        public required AggregateFunction Measure { get; set; }
 
-        public Expression Filter { get; set; }
+        public Expression? Filter { get; set; }
     }
 
     public class AggregateRelation : Relation
     {
-        public Relation Input { get; set; }
+        public required Relation Input { get; set; }
 
-        public List<AggregateGrouping> Groupings { get; set; }
+        public List<AggregateGrouping>? Groupings { get; set; }
 
-        public List<AggregateMeasure> Measures { get; set; }
+        public List<AggregateMeasure>? Measures { get; set; }
 
         public override int OutputLength => CalculateOutputLength();
 

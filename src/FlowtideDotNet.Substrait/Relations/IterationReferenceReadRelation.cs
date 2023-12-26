@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public int ReferenceOutputLength { get; set; }
 
-        public string IterationName { get; set; }
+        public required string IterationName { get; set; }
 
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {

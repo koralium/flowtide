@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Substrait.Relations
             }
         }
 
-        public Relation Input { get; set; }
+        public required Relation Input { get; set; }
 
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
