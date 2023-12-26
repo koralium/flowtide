@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.Compute
 
         private static CompareFlex[] CreateCompareFunctions()
         {
-            CompareFlex[] functions = new CompareFlex[256];
+            CompareFlex[] functions = new CompareFlex[32];
 
             functions[(int)FlexBuffers.Type.Null] = CompareNull;
             functions[(int)FlexBuffers.Type.Bool] = CompareBool;

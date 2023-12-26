@@ -20,16 +20,16 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core
 {
-    public struct JoinedRowData : IRowData
+    public struct ArrayRowData : IRowData
     {
         private readonly FlxValue[] valueArray;
 
-        public JoinedRowData(FlxValue[] valueArray)
+        public ArrayRowData(FlxValue[] valueArray)
         {
             this.valueArray = valueArray;
         }
 
-        public static JoinedRowData Create(IRowData left, IRowData right, IReadOnlyList<int>? emitList)
+        public static ArrayRowData Create(IRowData left, IRowData right, IReadOnlyList<int>? emitList)
         {
             var leftLength = left.Length;
             FlxValue[]? arr = null;
@@ -62,7 +62,7 @@ namespace FlowtideDotNet.Core
                     arr[i + left.Length] = right.GetColumn(i);
                 }
             }
-            return new JoinedRowData(arr);
+            return new ArrayRowData(arr);
         }
 
         public int Length
@@ -78,31 +78,11 @@ namespace FlowtideDotNet.Core
         public FlxValue GetColumn(int index)
         {
             return valueArray[index];
-            //if (_emitList != null)
-            //{
-            //    index = _emitList[index];
-            //}
-            //if (index < _leftLength)
-            //{
-            //    return _left.GetColumn(index);
-            //}
-            //return _right.GetColumn(index - _leftLength);
         }
 
         public FlxValueRef GetColumnRef(scoped in int index)
         {
             return valueArray[index].GetRef();
-            //var mappedIndex = index;
-            //if (_emitList != null)
-            //{
-            //    mappedIndex = _emitList[index];
-            //}
-            //if (mappedIndex < _leftLength)
-            //{
-            //    return _left.GetColumnRef(mappedIndex);
-            //}
-            //int rightIndex = mappedIndex - _leftLength;
-            //return _right.GetColumnRef(rightIndex);
         }
     }
 }

@@ -81,36 +81,37 @@ namespace FlowtideDotNet.Core.Operators.Project
                 {
                     extraFelds[i] = _expressions[i](e);
                 }
-                var projectedEvent = RowEvent.Create(e.Weight, 0, b =>
+
+                if (projectRelation.EmitSet)
                 {
-                    if (projectRelation.EmitSet)
+                    FlxValue[] newVector = new FlxValue[projectRelation.Emit.Count];
+                    for (int i = 0; i < projectRelation.Emit.Count; i++)
                     {
-                        for (int i = 0; i < projectRelation.Emit!.Count; i++)
+                        var index = projectRelation.Emit[i];
+                        if (index >= e.Length)
                         {
-                            var index = projectRelation.Emit[i];
-                            if (index >= e.Length)
-                            {
-                                b.Add(extraFelds[index - e.Length]);
-                            }
-                            else
-                            {
-                                b.Add(e.GetColumn(index));
-                            }
+                            newVector[i] = extraFelds[index - e.Length];
+                        }
+                        else
+                        {
+                            newVector[i] = e.GetColumn(index);
                         }
                     }
-                    else
+                    output.Add(new RowEvent(e.Weight, 0, new ArrayRowData(newVector)));
+                }
+                else
+                {
+                    FlxValue[] newVector = new FlxValue[e.Length + extraFelds.Length];
+                    for (int i = 0; i < e.Length; i++)
                     {
-                        for(int i = 0; i < e.Length; i++)
-                        {
-                            b.Add(e.GetColumn(i));
-                        }
-                        for (int i = 0; i < extraFelds.Length; i++)
-                        {
-                            b.Add(extraFelds[i]);
-                        }
+                        newVector[i] = e.GetColumn(i);
                     }
-                });
-                output.Add(projectedEvent);
+                    for (int i = 0; i < extraFelds.Length; i++)
+                    {
+                        newVector[i + e.Length] = extraFelds[i];
+                    }
+                    output.Add(new RowEvent(e.Weight, 0, new ArrayRowData(newVector)));
+                }
             }
 
 #if DEBUG_WRITE
