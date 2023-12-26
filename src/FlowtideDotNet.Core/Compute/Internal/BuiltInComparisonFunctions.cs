@@ -264,7 +264,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 }
                 else
                 {
-                    return TrueVal;
+                    return FalseVal;
                 }
             }
             else if (x.ValueType == FlexBuffers.Type.Int)
