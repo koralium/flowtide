@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             _flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
             if (joinRelation.Expression == null)
             {
-                throw new System.Exception("Join relation must have an expression");
+                throw new InvalidOperationException("Join relation must have an expression");
             }
             _condition = BooleanCompiler.Compile<RowEvent>(joinRelation.Expression, functionsRegister, joinRelation.Left.OutputLength);
             this.joinRelation = joinRelation;
