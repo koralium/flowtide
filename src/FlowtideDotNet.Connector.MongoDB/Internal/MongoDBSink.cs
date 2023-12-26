@@ -155,9 +155,9 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                     writes.Add(new ReplaceOneModel<BsonDocument>(filter, doc) { IsUpsert = true });
                 }
 
-                if (writes.Count >= 100)
+                if (writes.Count >= options.DocumentsPerBatch)
                 {
-                    while (writeTasks.Count >= 100)
+                    while (writeTasks.Count >= options.ParallelBatches)
                     {
                         for(int i = 0; i < writeTasks.Count; i++)
                         {
@@ -178,7 +178,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                                 writeTasks.RemoveAt(i);
                             }
                         }
-                        if (writeTasks.Count >= 100)
+                        if (writeTasks.Count >= options.ParallelBatches)
                         {
                             await Task.WhenAny(writeTasks);
                         }
