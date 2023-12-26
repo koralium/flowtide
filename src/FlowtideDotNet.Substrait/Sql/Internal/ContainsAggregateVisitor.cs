@@ -50,12 +50,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return false;
         }
 
-        protected override bool VisitBinaryOperation(Expression.BinaryOp binaryOp, object state)
+        protected override bool VisitBinaryOperation(Expression.BinaryOp binaryOp, object? state)
         {
             return  Visit(binaryOp.Left, state) | Visit(binaryOp.Right, state);
         }
 
-        protected override bool VisitCaseExpression(Expression.Case caseExpression, object state)
+        protected override bool VisitCaseExpression(Expression.Case caseExpression, object? state)
         {
             var containsAggregate = false;
             foreach(var cond in caseExpression.Conditions)
@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return containsAggregate;
         }
 
-        protected override bool VisitFunction(Expression.Function function, object state)
+        protected override bool VisitFunction(Expression.Function function, object? state)
         {
             var funcType = sqlFunctionRegister.GetFunctionType(function.Name);
             bool containsAggregate = false;
@@ -100,37 +100,37 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return containsAggregate;
         }
 
-        protected override bool VisitIsNotNull(Expression.IsNotNull isNotNull, object state)
+        protected override bool VisitIsNotNull(Expression.IsNotNull isNotNull, object? state)
         {
             return Visit(isNotNull.Expression, state);
         }
 
-        protected override bool VisitCompoundIdentifier(Expression.CompoundIdentifier compoundIdentifier, object state)
+        protected override bool VisitCompoundIdentifier(Expression.CompoundIdentifier compoundIdentifier, object? state)
         {
             return false;
         }
 
-        protected override bool VisitLiteralValue(Expression.LiteralValue literalValue, object state)
+        protected override bool VisitLiteralValue(Expression.LiteralValue literalValue, object? state)
         {
             return false;
         }
 
-        protected override bool VisitFloor(Expression.Floor floor, object state)
+        protected override bool VisitFloor(Expression.Floor floor, object? state)
         {
             return Visit(floor.Expression, state);
         }
 
-        protected override bool VisitCeil(Expression.Ceil ceil, object state)
+        protected override bool VisitCeil(Expression.Ceil ceil, object? state)
         {
             return Visit(ceil.Expression, state);
         }
 
-        protected override bool VisitUnaryOperation(Expression.UnaryOp unaryOp, object state)
+        protected override bool VisitUnaryOperation(Expression.UnaryOp unaryOp, object? state)
         {
             return Visit(unaryOp.Expression, state);
         }
 
-        protected override bool VisitBetween(Expression.Between between, object state)
+        protected override bool VisitBetween(Expression.Between between, object? state)
         {
             bool containsAggregate = false;
             containsAggregate |= Visit(between.Expression, state);
@@ -139,12 +139,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return containsAggregate;
         }
 
-        protected override bool VisitIsNull(Expression.IsNull isNull, object state)
+        protected override bool VisitIsNull(Expression.IsNull isNull, object? state)
         {
             return Visit(isNull.Expression, state);
         }
 
-        protected override bool VisitInList(Expression.InList inList, object state)
+        protected override bool VisitInList(Expression.InList inList, object? state)
         {
             bool containsAggregate = false;
             containsAggregate |= Visit(inList.Expression, state);
@@ -155,7 +155,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return containsAggregate;
         }
 
-        protected override bool VisitTrim(Expression.Trim trim, object state)
+        protected override bool VisitTrim(Expression.Trim trim, object? state)
         {
             return Visit(trim.Expression, state);
         }
