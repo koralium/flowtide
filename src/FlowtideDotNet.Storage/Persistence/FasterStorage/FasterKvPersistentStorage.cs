@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         public async ValueTask CheckpointAsync(byte[] metadata)
         {
-            var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             Memory<byte> memory = metadata.AsMemory();
             var handle = memory.Pin();
             var result = await m_adminSession.UpsertAsync(1, SpanByte.FromPinnedMemory(memory), token: tokenSource.Token);
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             int retryCount = 0;
             do
             {
-                var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                 (success, token) = await m_persistentStorage.TakeHybridLogCheckpointAsync(CheckpointType.FoldOver, cancellationToken: tokenSource.Token).ConfigureAwait(false);
                 if (!success) 
                 { 
@@ -136,7 +136,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         public async ValueTask Write(long key, byte[] value)
         {
-            var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var mem = new Memory<byte>(value);
             var handle = mem.Pin();
             var spanByte = SpanByte.FromPinnedMemory(mem);
