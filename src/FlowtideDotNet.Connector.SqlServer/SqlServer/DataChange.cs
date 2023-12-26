@@ -21,6 +21,6 @@ namespace FlowtideDotNet.SqlServer
 
         public bool IsDeleted { get; set; }
 
-        public IReadOnlyList<StreamEvent>? Rows { get; set; }
+        public IReadOnlyList<RowEvent>? Rows { get; set; }
     }
 }

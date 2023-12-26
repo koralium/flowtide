@@ -23,8 +23,8 @@ namespace FlowtideDotNet.Core.Operators.Unwrap
     internal class UnwrapOperator : UnaryVertex<StreamEventBatch, object?>
     {
         private readonly UnwrapRelation unwrapRelation;
-        private readonly Func<StreamEvent, bool>? _filter;
-        private readonly Func<StreamEvent, FlexBuffers.FlxValue> _fieldProjectFunc;
+        private readonly Func<RowEvent, bool>? _filter;
+        private readonly Func<RowEvent, FlexBuffers.FlxValue> _fieldProjectFunc;
         private readonly Func<FlexBuffers.FlxValue, IReadOnlyList<IReadOnlyList<FlexBuffers.FlxValue>>> _unwrapFunc;
 
         public override string DisplayName => "Unwrap";
@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Core.Operators.Unwrap
 
             if (unwrapRelation.Filter != null)
             {
-                _filter = BooleanCompiler.Compile<StreamEvent>(unwrapRelation.Filter, functionsRegister);
+                _filter = BooleanCompiler.Compile<RowEvent>(unwrapRelation.Filter, functionsRegister);
             }
             _fieldProjectFunc = ProjectCompiler.Compile(unwrapRelation.Field, functionsRegister);
             _unwrapFunc = UnwrapCompiler.CompileUnwrap(unwrapRelation.BaseSchema.Names);
@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Core.Operators.Unwrap
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
-            List<StreamEvent> output = new List<StreamEvent>();
+            List<RowEvent> output = new List<RowEvent>();
             foreach(var e in msg.Events)
             {
                 var valueToUnwrap = _fieldProjectFunc(e);
@@ -68,39 +68,39 @@ namespace FlowtideDotNet.Core.Operators.Unwrap
 
                 foreach(var unwrapRow in unwrapRows)
                 {
-                    var filterEvent = StreamEvent.Create(e.Weight, 0, b =>
+                    var filterEvent = RowEvent.Create(e.Weight, 0, b =>
                     {
-                        for (int i = 0; i < e.Vector.Length; i++)
+                        for (int i = 0; i < e.Length; i++)
                         {
-                            b.Add(e.Vector[i]);
+                            b.Add(e.GetColumn(i));
                         }
                         for (int i = 0; i < unwrapRow.Count; i++)
                         {
                             b.Add(unwrapRow[i]);
                         }
                     });
-                    var projectedEvent = StreamEvent.Create(e.Weight, 0, b =>
+                    var projectedEvent = RowEvent.Create(e.Weight, 0, b =>
                     {
                         if (unwrapRelation.EmitSet)
                         {
                             for (int i = 0; i < unwrapRelation.Emit!.Count; i++)
                             {
                                 var index = unwrapRelation.Emit[i];
-                                if (index >= e.Vector.Length)
+                                if (index >= e.Length)
                                 {
-                                    b.Add(unwrapRow[index - e.Vector.Length]);
+                                    b.Add(unwrapRow[index - e.Length]);
                                 }
                                 else
                                 {
-                                    b.Add(e.Vector[index]);
+                                    b.Add(e.GetColumn(index));
                                 }
                             }
                         }
                         else
                         {
-                            for (int i = 0; i < e.Vector.Length; i++)
+                            for (int i = 0; i < e.Length; i++)
                             {
-                                b.Add(e.Vector[i]);
+                                b.Add(e.GetColumn(i));
                             }
                             for (int i = 0; i < unwrapRow.Count; i++)
                             {

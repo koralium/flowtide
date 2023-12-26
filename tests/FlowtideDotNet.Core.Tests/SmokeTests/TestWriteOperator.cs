@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
     internal class TestWriteOperator<T> : GroupedWriteBaseOperator<TestWriteState>
     {
         private TestWriteState currentState;
-        private SortedSet<StreamEvent> modified;
+        private SortedSet<RowEvent> modified;
         List<int> primaryKeyIds;
         private readonly Func<List<T>, Task> onValueChange;
         private readonly WriteRelation writeRelation;
@@ -59,17 +59,17 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             return currentState;
         }
 
-        private T Deserialize(StreamEvent ev)
+        private T Deserialize(RowEvent ev)
         {
             StringBuilder jsonBuilder = new StringBuilder();
             jsonBuilder.AppendLine("{");
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-            for (int i = 0; i < ev.Vector.Length; i++)
+            for (int i = 0; i < ev.Length; i++)
             {
                 var propName = writeRelation.TableSchema.Names[i];
                 jsonBuilder.Append($"\"{propName}\": ");
                 jsonBuilder.Append(ev.GetColumn(i).ToJson);
-                if ((i + 1) < ev.Vector.Length)
+                if ((i + 1) < ev.Length)
                 {
                     jsonBuilder.AppendLine(",");
                 }
@@ -100,12 +100,12 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 for (int i = 0; i < primaryKeyIds.Count; i++)
                 {
                     var primaryKeyIndex = primaryKeyIds[i];
-                    keyBuilder.Append(m.Vector[primaryKeyIndex].ToJson);
+                    keyBuilder.Append(m.GetColumn(primaryKeyIndex).ToJson);
                     if ((i+ 1) < primaryKeyIds.Count)
                     {
                         keyBuilder.Append("|");
                     }
-                    key.Add(writeRelation.TableSchema.Names[primaryKeyIndex], m.Vector[primaryKeyIndex]);
+                    key.Add(writeRelation.TableSchema.Names[primaryKeyIndex], m.GetColumn(primaryKeyIndex));
                 }
                 var (rows, isDeleted) = await this.GetGroup(m);
 
@@ -141,7 +141,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 currentState = new TestWriteState();
             }
-            modified = new SortedSet<StreamEvent>(PrimaryKeyComparer);
+            modified = new SortedSet<RowEvent>(PrimaryKeyComparer);
             return Task.CompletedTask;
         }
 

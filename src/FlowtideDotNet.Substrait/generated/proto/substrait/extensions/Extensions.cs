@@ -61,6 +61,7 @@ namespace Substrait.Protobuf {
 
   }
   #region Messages
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class SimpleExtensionURI : pb::IMessage<SimpleExtensionURI>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -299,6 +300,7 @@ namespace Substrait.Protobuf {
   /// Describes a mapping between a specific extension entity and the uri where
   /// that extension can be found.
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class SimpleExtensionDeclaration : pb::IMessage<SimpleExtensionDeclaration>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -643,6 +645,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// Describes a Type
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class ExtensionType : pb::IMessage<ExtensionType>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -916,6 +919,7 @@ namespace Substrait.Protobuf {
 
       }
 
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class ExtensionTypeVariation : pb::IMessage<ExtensionTypeVariation>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -1189,6 +1193,7 @@ namespace Substrait.Protobuf {
 
       }
 
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class ExtensionFunction : pb::IMessage<ExtensionFunction>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -1473,6 +1478,7 @@ namespace Substrait.Protobuf {
   /// A generic object that can be used to embed additional extension information
   /// into the serialized substrait plan.
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class AdvancedExtension : pb::IMessage<AdvancedExtension>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage

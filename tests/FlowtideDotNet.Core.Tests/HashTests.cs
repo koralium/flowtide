@@ -28,13 +28,13 @@ namespace FlowtideDotNet.Core.Tests
         [Fact]
         public void TestCompileHashFunction()
         {
-            var testEvent = StreamEvent.Create(1, 0, b =>
+            var testEvent = RowEvent.Create(1, 0, b =>
             {
                 b.Add("testval");
             });
 
             XxHash32 xxhash = new XxHash32();
-            testEvent.Vector.GetRef(0).AddToHash(xxhash);
+            testEvent.GetColumnRef(0).AddToHash(xxhash);
             var dest = new byte[4];
             xxhash.GetHashAndReset(dest);
             var expected = BinaryPrimitives.ReadUInt32BigEndian(dest);

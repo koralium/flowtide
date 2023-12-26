@@ -25,7 +25,76 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
     internal static class SqlServerUtils
     {
-        public static Func<SqlDataReader, StreamEvent> GetStreamEventCreator(ReadOnlyCollection<DbColumn> dbColumns)
+        public static Func<SqlDataReader, RowEvent> GetStreamEventCreator(ReadRelation readRelation)
+        {
+            List<Action<SqlDataReader, IFlexBufferVectorBuilder>> columns = new List<Action<SqlDataReader, IFlexBufferVectorBuilder>>();
+            for (int i = 0; i < readRelation.BaseSchema.Struct.Types.Count; i++)
+            {
+                var type = readRelation.BaseSchema.Struct.Types[i];
+
+                int index = i;
+                switch (type.Type)
+                {
+                    case Type.SubstraitType.String:
+                        columns.Add((reader, builder) =>
+                        {
+                            builder.Add(reader.GetString(index));
+                        });
+                        break;
+                    case Type.SubstraitType.Int32:
+                        columns.Add((reader, builder) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                builder.AddNull();
+                                return;
+                            }
+
+                            builder.Add(reader.GetInt32(index));
+                        });
+                        break;
+                    case Type.SubstraitType.Int64:
+                        columns.Add((reader, builder) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                builder.AddNull();
+                                return;
+                            }
+
+                            builder.Add(reader.GetInt64(index));
+                        });
+                        break;
+                    case Type.SubstraitType.Date:
+                        columns.Add((reader, builder) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                builder.AddNull();
+                                return;
+                            }
+                            var dateTime = reader.GetDateTime(index);
+                            var unixTime = ((DateTimeOffset)dateTime).ToUnixTimeMilliseconds() * 1000;
+                            builder.Add(unixTime);
+                        });
+                        break;
+                    default:
+                        throw new NotImplementedException($"{type.Type}");
+                }
+            }
+            return (reader) =>
+            {
+                return RowEvent.Create(1, 0, builder =>
+                {
+                    for (int i = 0; i < columns.Count; i++)
+                    {
+                        columns[i](reader, builder);
+                    }
+                });
+            };
+        }
+
+        public static Func<SqlDataReader, RowEvent> GetStreamEventCreator(ReadOnlyCollection<DbColumn> dbColumns)
         {
             List<Action<SqlDataReader, IFlexBufferVectorBuilder>> columns = new List<Action<SqlDataReader, IFlexBufferVectorBuilder>>();
             for (int i = 0; i < dbColumns.Count; i++)
@@ -222,7 +291,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             }
             return (reader) =>
             {
-                return StreamEvent.Create(1, 0, builder =>
+                return RowEvent.Create(1, 0, builder =>
                 {
                     for (int i = 0; i < columns.Count; i++)
                     {
@@ -562,7 +631,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return output;
         }
 
-        public static Action<DataTable, bool, StreamEvent> GetDataRowMapFunc(IReadOnlyCollection<DbColumn> columns, IReadOnlyList<int> primaryKeys)
+        public static Action<DataTable, bool, RowEvent> GetDataRowMapFunc(IReadOnlyCollection<DbColumn> columns, IReadOnlyList<int> primaryKeys)
         {
             var columnList = columns.ToList();
             var mapFuncs = GetDataTableValueMaps(columnList);
@@ -607,13 +676,13 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             };
         }
 
-        public static async Task<(List<StreamEvent>, Dictionary<string, object>)> InitialSelect(
+        public static async Task<(List<RowEvent>, Dictionary<string, object>)> InitialSelect(
             ReadRelation readRelation,
             SqlConnection sqlConnection,
             List<string> primaryKeys,
             int batchSize,
             Dictionary<string, object> pkValues,
-            Func<SqlDataReader, StreamEvent> transformFunction,
+            Func<SqlDataReader, RowEvent> transformFunction,
             string? filter,
             CancellationToken cancellationToken)
         {
@@ -639,7 +708,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 primaryKeyOrdinals.Add(reader.GetOrdinal(pk));
             }
-            List<StreamEvent> outdata = new List<StreamEvent>();
+            List<RowEvent> outdata = new List<RowEvent>();
             while (await reader.ReadAsync())
             {
                 outdata.Add(transformFunction(reader));
@@ -654,9 +723,9 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return (outdata, pkValues);
         }
 
-        public static List<Func<StreamEvent, object>> GetDataTableValueMaps(List<DbColumn> columns)
+        public static List<Func<RowEvent, object>> GetDataTableValueMaps(List<DbColumn> columns)
         {
-            List<Func<StreamEvent, object>> output = new List<Func<StreamEvent, object>>();
+            List<Func<RowEvent, object>> output = new List<Func<RowEvent, object>>();
 
             for (int i = 0; i < columns.Count; i++)
             {
@@ -665,7 +734,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return output;
         }
 
-        public static Func<StreamEvent, object?> GetDataTableValueMap(DbColumn dbColumn, int index)
+        public static Func<RowEvent, object?> GetDataTableValueMap(DbColumn dbColumn, int index)
         {
             var t = dbColumn.DataType;
 
@@ -673,7 +742,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -685,7 +754,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -697,7 +766,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -709,7 +778,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -722,7 +791,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -735,7 +804,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -747,7 +816,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -779,7 +848,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -791,7 +860,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -803,7 +872,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -816,7 +885,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -829,7 +898,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;
@@ -842,7 +911,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 return (e) =>
                 {
-                    var c = e.Vector.Get(index);
+                    var c = e.GetColumn(index);
                     if (c.IsNull)
                     {
                         return null;

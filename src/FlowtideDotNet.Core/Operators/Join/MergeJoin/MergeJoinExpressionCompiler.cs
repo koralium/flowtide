@@ -29,27 +29,19 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             return System.Linq.Expressions.Expression.Call(compareMethod, a, b);
         }
 
-        private static System.Linq.Expressions.Expression AccessRootVector(ParameterExpression p)
-        {
-            var props = typeof(JoinStreamEvent).GetProperties().FirstOrDefault(x => x.Name == "Vector");
-            var getMethod = props.GetMethod;
-            return System.Linq.Expressions.Expression.Property(p, getMethod);
-        }
-
-
         private static System.Linq.Expressions.Expression GetAccessFieldExpression(System.Linq.Expressions.ParameterExpression parameter, FieldReference fieldReference, int relativeIndex)
         {
             if (fieldReference is DirectFieldReference directFieldReference &&
                     directFieldReference.ReferenceSegment is StructReferenceSegment referenceSegment)
             {
-                var method = typeof(FlxVector).GetMethod("GetRef");
+                var method = typeof(JoinStreamEvent).GetMethod("GetColumnRef");
 
                 if (method == null)
                 {
                     throw new InvalidOperationException("Method GetRef could not be found");
                 }
 
-                return System.Linq.Expressions.Expression.Call(AccessRootVector(parameter), method, System.Linq.Expressions.Expression.Constant(referenceSegment.Field - relativeIndex));
+                return System.Linq.Expressions.Expression.Call(parameter, method, System.Linq.Expressions.Expression.Constant(referenceSegment.Field - relativeIndex));
             }
             throw new NotSupportedException("Only direct field references are supported in merge join keys");
         }

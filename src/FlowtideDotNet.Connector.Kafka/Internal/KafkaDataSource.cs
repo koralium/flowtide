@@ -134,7 +134,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             Debug.Assert(_state?.PartitionOffsets != null);
             Debug.Assert(_consumer != null);
 
-            List<StreamEvent> rows = new List<StreamEvent>();
+            List<RowEvent> rows = new List<RowEvent>();
             int waitTimeMs = 100;
 
             bool inLock = false;
@@ -158,7 +158,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                     if (rows.Count > 100)
                     {
                         await output.SendAsync(new StreamEventBatch(null, rows));
-                        rows = new List<StreamEvent>();
+                        rows = new List<RowEvent>();
                         await SendWatermark(output);
                     }
                 }
@@ -167,7 +167,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                     if (rows.Count > 0)
                     {
                         await output.SendAsync(new StreamEventBatch(null, rows));
-                        rows = new List<StreamEvent>();
+                        rows = new List<RowEvent>();
                         await SendWatermark(output);
                     }
                     if (inLock)
@@ -223,7 +223,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 }
             }
 
-            List<StreamEvent> rows = new List<StreamEvent>();
+            List<RowEvent> rows = new List<RowEvent>();
             while (true)
             {
                 output.CancellationToken.ThrowIfCancellationRequested();
@@ -241,7 +241,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 if (result == null || rows.Count >= 100)
                 {
                     await output.SendAsync(new StreamEventBatch(null, rows));
-                    rows = new List<StreamEvent>();
+                    rows = new List<RowEvent>();
                     // Check offsets
                     bool offsetsReached = true;
                     foreach(var kv in beforeStartOffsets)

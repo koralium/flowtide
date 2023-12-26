@@ -19,14 +19,14 @@ namespace FlowtideDotNet.Core.Operators.Map
     public class MapOperator : UnaryVertex<StreamEventBatch, object?>
     {
         private readonly Schema outputSchema;
-        private readonly Func<StreamEvent, StreamEvent> mapFunction;
+        private readonly Func<RowEvent, RowEvent> mapFunction;
         private int count;
 
         public override string DisplayName => "Map";
 
         public MapOperator(
             Schema outputSchema,
-            Func<StreamEvent, StreamEvent> mapFunction, 
+            Func<RowEvent, RowEvent> mapFunction, 
             ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this.outputSchema = outputSchema;
@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Operators.Map
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
-            List<StreamEvent> events = new List<StreamEvent>();
+            List<RowEvent> events = new List<RowEvent>();
             
             foreach (var b in msg.Events)
             {

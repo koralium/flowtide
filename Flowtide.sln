@@ -57,7 +57,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Mo
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Kafka", "src\FlowtideDotNet.Connector.Kafka\FlowtideDotNet.Connector.Kafka.csproj", "{75D8B6D8-6CC0-4FF7-8619-C9171B29A7C8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Kafka.Tests", "tests\FlowtideDotNet.Connector.Kafka.Tests\FlowtideDotNet.Connector.Kafka.Tests.csproj", "{A33C7FAA-EADB-48D5-A62E-958B6BE8AE8D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Kafka.Tests", "tests\FlowtideDotNet.Connector.Kafka.Tests\FlowtideDotNet.Connector.Kafka.Tests.csproj", "{A33C7FAA-EADB-48D5-A62E-958B6BE8AE8D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Connector.Kafka
             return Task.CompletedTask;
         }
 
-        public byte[]? Serialize(StreamEvent streamEvent, bool isDeleted)
+        public byte[]? Serialize(RowEvent streamEvent, bool isDeleted)
         {
             if (isDeleted)
             {

@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Core.Operators.Project
         private StreamWriter allInput;
 #endif
         private readonly ProjectRelation projectRelation;
-        private readonly Func<StreamEvent, FlxValue>[] _expressions;
+        private readonly Func<RowEvent, FlxValue>[] _expressions;
 
         private ICounter<long>? _eventsCounter;
 
@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Core.Operators.Project
 
         public ProjectOperator(ProjectRelation projectRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
-            _expressions = new Func<StreamEvent, FlxValue>[projectRelation.Expressions.Count];
+            _expressions = new Func<RowEvent, FlxValue>[projectRelation.Expressions.Count];
             
             for (int i = 0; i < _expressions.Length; i++)
             {
@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Core.Operators.Project
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
-            List<StreamEvent> output = new List<StreamEvent>();
+            List<RowEvent> output = new List<RowEvent>();
 
             foreach (var e in msg.Events)
             {
@@ -81,37 +81,37 @@ namespace FlowtideDotNet.Core.Operators.Project
                 {
                     extraFelds[i] = _expressions[i](e);
                 }
-                var projectedEvent = StreamEvent.Create(e.Weight, 0, b =>
+
+                if (projectRelation.EmitSet)
                 {
-                    var vectorSpan = e.Vector.Span;
-                    if (projectRelation.EmitSet)
+                    FlxValue[] newVector = new FlxValue[projectRelation.Emit.Count];
+                    for (int i = 0; i < projectRelation.Emit.Count; i++)
                     {
-                        for (int i = 0; i < projectRelation.Emit!.Count; i++)
+                        var index = projectRelation.Emit[i];
+                        if (index >= e.Length)
                         {
-                            var index = projectRelation.Emit[i];
-                            if (index >= e.Vector.Length)
-                            {
-                                b.Add(extraFelds[index - e.Vector.Length]);
-                            }
-                            else
-                            {
-                                b.Add(e.Vector.GetWithSpan(index, vectorSpan));
-                            }
+                            newVector[i] = extraFelds[index - e.Length];
+                        }
+                        else
+                        {
+                            newVector[i] = e.GetColumn(index);
                         }
                     }
-                    else
+                    output.Add(new RowEvent(e.Weight, 0, new ArrayRowData(newVector)));
+                }
+                else
+                {
+                    FlxValue[] newVector = new FlxValue[e.Length + extraFelds.Length];
+                    for (int i = 0; i < e.Length; i++)
                     {
-                        for(int i = 0; i < e.Vector.Length; i++)
-                        {
-                            b.Add(e.Vector.GetWithSpan(i, vectorSpan));
-                        }
-                        for (int i = 0; i < extraFelds.Length; i++)
-                        {
-                            b.Add(extraFelds[i]);
-                        }
+                        newVector[i] = e.GetColumn(i);
                     }
-                });
-                output.Add(projectedEvent);
+                    for (int i = 0; i < extraFelds.Length; i++)
+                    {
+                        newVector[i + e.Length] = extraFelds[i];
+                    }
+                    output.Add(new RowEvent(e.Weight, 0, new ArrayRowData(newVector)));
+                }
             }
 
 #if DEBUG_WRITE

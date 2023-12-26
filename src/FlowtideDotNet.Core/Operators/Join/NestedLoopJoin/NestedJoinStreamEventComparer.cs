@@ -12,11 +12,11 @@
 
 namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 {
-    internal class NestedJoinStreamEventComparer : IComparer<StreamEvent>
+    internal class NestedJoinStreamEventComparer : IComparer<RowEvent>
     {
-        public int Compare(StreamEvent x, StreamEvent y)
+        public int Compare(RowEvent x, RowEvent y)
         {
-            return x.Span.SequenceCompareTo(y.Span);
+            return RowEvent.Compare(x, y);
         }
     }
 }

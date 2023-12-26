@@ -60,7 +60,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await output.EnterCheckpointLock();
             var (operations, fetchedOffset) = _table.GetOperations(_lastestOffset);
             bool sentData = false;
-            List<StreamEvent> o = new List<StreamEvent>();
+            List<RowEvent> o = new List<RowEvent>();
             foreach (var operation in operations)
             {
                 o.Add(MockTable.ToStreamEvent(operation, readRelation.BaseSchema.Names));
@@ -69,7 +69,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 {
                     sentData = true;
                     await output.SendAsync(new StreamEventBatch(null, o));
-                    o = new List<StreamEvent>();
+                    o = new List<RowEvent>();
                 }
             }
 
@@ -127,7 +127,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await output.EnterCheckpointLock();
             var (operations, fetchedOffset) = _table.GetOperations(_lastestOffset);
 
-            List<StreamEvent> o = new List<StreamEvent>();
+            List<RowEvent> o = new List<RowEvent>();
             foreach(var operation in operations)
             {
                 o.Add(MockTable.ToStreamEvent(operation, readRelation.BaseSchema.Names));
@@ -136,7 +136,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 if (o.Count > 100)
                 {
                     await output.SendAsync(new StreamEventBatch(null, o));
-                    o = new List<StreamEvent>();
+                    o = new List<RowEvent>();
                 }
             }
 

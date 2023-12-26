@@ -592,6 +592,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// Common fields for all relational operators
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class RelCommon : pb::IMessage<RelCommon>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -981,6 +982,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// Direct indicates no change on presence and ordering of fields in the output
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class Direct : pb::IMessage<Direct>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -1136,6 +1138,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// Remap which fields are output and in which order
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class Emit : pb::IMessage<Emit>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -1320,6 +1323,7 @@ namespace Substrait.Protobuf {
       /// Changes to the operation that can influence efficiency/performance but
       /// should not impact correctness.
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class Hint : pb::IMessage<Hint>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -1616,6 +1620,7 @@ namespace Substrait.Protobuf {
           /// <summary>
           /// The statistics related to a hint (physical properties of records)
           /// </summary>
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class Stats : pb::IMessage<Stats>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -1891,6 +1896,7 @@ namespace Substrait.Protobuf {
           /// <summary>
           /// TODO: nodes, cpu threads/%, memory, iops, etc.
           /// </summary>
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class RuntimeConstraint : pb::IMessage<RuntimeConstraint>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -2102,6 +2108,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// The scan operator of base data (physical or virtual), including filtering and projection.
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class ReadRel : pb::IMessage<ReadRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -2776,6 +2783,7 @@ namespace Substrait.Protobuf {
       /// A base table. The list of string is used to represent namespacing (e.g., mydb.mytable).
       /// This assumes shared catalog between systems exchanging a message.
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class NamedTable : pb::IMessage<NamedTable>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -3003,6 +3011,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// A table composed of literals.
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class VirtualTable : pb::IMessage<VirtualTable>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -3185,6 +3194,7 @@ namespace Substrait.Protobuf {
       /// A stub type that can be used to extend/introduce new table types outside
       /// the specification.
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class ExtensionTable : pb::IMessage<ExtensionTable>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -3386,6 +3396,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// Represents a list of files in input of a scan operation
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class LocalFiles : pb::IMessage<LocalFiles>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -3620,6 +3631,7 @@ namespace Substrait.Protobuf {
           /// include the chunk in (e.g. include it in the slice that contains
           /// the midpoint of the chunk)
           /// </summary>
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class FileOrFiles : pb::IMessage<FileOrFiles>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -4445,6 +4457,7 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public static partial class Types {
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
               public sealed partial class ParquetReadOptions : pb::IMessage<ParquetReadOptions>
               #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                   , pb::IBufferMessage
@@ -4597,6 +4610,7 @@ namespace Substrait.Protobuf {
 
               }
 
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
               public sealed partial class ArrowReadOptions : pb::IMessage<ArrowReadOptions>
               #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                   , pb::IBufferMessage
@@ -4749,6 +4763,7 @@ namespace Substrait.Protobuf {
 
               }
 
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
               public sealed partial class OrcReadOptions : pb::IMessage<OrcReadOptions>
               #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                   , pb::IBufferMessage
@@ -4901,6 +4916,7 @@ namespace Substrait.Protobuf {
 
               }
 
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
               public sealed partial class DwrfReadOptions : pb::IMessage<DwrfReadOptions>
               #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                   , pb::IBufferMessage
@@ -5071,6 +5087,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// This operator allows to represent calculated expressions of fields (e.g., a+b). Direct/Emit are used to represent classical relational projections
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class ProjectRel : pb::IMessage<ProjectRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -5390,6 +5407,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// The binary JOIN relational operator left-join-right, including various join types, a join condition and post_join_filter expression
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class JoinRel : pb::IMessage<JoinRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -5881,6 +5899,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// Cartesian product relational operator of two tables (left and right)
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class CrossRel : pb::IMessage<CrossRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -6220,6 +6239,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// The relational operator representing LIMIT/OFFSET or TOP type semantics.
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class FetchRel : pb::IMessage<FetchRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -6593,6 +6613,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// The relational operator representing a GROUP BY Aggregate
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class AggregateRel : pb::IMessage<AggregateRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -6947,6 +6968,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static partial class Types {
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class Grouping : pb::IMessage<Grouping>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -7125,6 +7147,7 @@ namespace Substrait.Protobuf {
 
       }
 
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class Measure : pb::IMessage<Measure>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -7383,6 +7406,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// The ORDERY BY (or sorting) relational operator. Beside describing a base relation, it includes a list of fields to sort on
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class SortRel : pb::IMessage<SortRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -7702,6 +7726,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// The relational operator capturing simple FILTERs (as in the WHERE clause of SQL)
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class FilterRel : pb::IMessage<FilterRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -8041,6 +8066,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// The relational set operators (intersection/union/etc..)
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class SetRel : pb::IMessage<SetRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -8373,6 +8399,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// Stub to support extension with a single input
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class ExtensionSingleRel : pb::IMessage<ExtensionSingleRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -8666,6 +8693,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// Stub to support extension with a zero inputs
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class ExtensionLeafRel : pb::IMessage<ExtensionLeafRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -8913,6 +8941,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// Stub to support extension with multiple inputs
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class ExtensionMultiRel : pb::IMessage<ExtensionMultiRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -9186,6 +9215,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// A redistribution operation
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class ExchangeRel : pb::IMessage<ExchangeRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -9834,6 +9864,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static partial class Types {
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class ScatterFields : pb::IMessage<ScatterFields>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -10015,6 +10046,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// Returns a single bucket number per record.
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class SingleBucketExpression : pb::IMessage<SingleBucketExpression>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -10216,6 +10248,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// Returns zero or more bucket numbers per record
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class MultiBucketExpression : pb::IMessage<MultiBucketExpression>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -10454,6 +10487,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// Send all data to every target.
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class Broadcast : pb::IMessage<Broadcast>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -10609,6 +10643,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// Route approximately
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class RoundRobin : pb::IMessage<RoundRobin>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -10805,6 +10840,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// The message to describe partition targets of an exchange
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class ExchangeTarget : pb::IMessage<ExchangeTarget>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -11133,6 +11169,7 @@ namespace Substrait.Protobuf {
   ///
   /// This is for use at the root of a `Rel` tree.
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class RelRoot : pb::IMessage<RelRoot>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -11366,6 +11403,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// A relation (used internally in a plan)
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class Rel : pb::IMessage<Rel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -12346,6 +12384,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// A base object for writing (e.g., a table or a view).
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class NamedObjectWrite : pb::IMessage<NamedObjectWrite>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -12578,6 +12617,7 @@ namespace Substrait.Protobuf {
   /// A stub type that can be used to extend/introduce new table types outside
   /// the specification.
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class ExtensionObject : pb::IMessage<ExtensionObject>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -12776,6 +12816,7 @@ namespace Substrait.Protobuf {
 
   }
 
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class DdlRel : pb::IMessage<DdlRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -13339,6 +13380,7 @@ namespace Substrait.Protobuf {
   /// The operator that modifies the content of a database (operates on 1 table at a time, but tuple-selection/source can be
   /// based on joining of multiple tables).
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class WriteRel : pb::IMessage<WriteRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -13853,6 +13895,7 @@ namespace Substrait.Protobuf {
   /// The hash equijoin join operator will build a hash table out of the right input based on a set of join keys.
   /// It will then probe that hash table for incoming inputs, finding matches.
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class HashJoinRel : pb::IMessage<HashJoinRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -14348,6 +14391,7 @@ namespace Substrait.Protobuf {
   /// The merge equijoin does a join by taking advantage of two sets that are sorted on the join keys.
   /// This allows the join operation to be done in a streaming fashion.
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class MergeJoinRel : pb::IMessage<MergeJoinRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -14842,6 +14886,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// The argument of a function
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class FunctionArgument : pb::IMessage<FunctionArgument>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -15185,6 +15230,7 @@ namespace Substrait.Protobuf {
   /// An optional function argument.  Typically used for specifying behavior in
   /// invalid or corner cases.
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class FunctionOption : pb::IMessage<FunctionOption>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -15413,6 +15459,7 @@ namespace Substrait.Protobuf {
 
   }
 
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class Expression : pb::IMessage<Expression>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -16238,6 +16285,7 @@ namespace Substrait.Protobuf {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static partial class Types {
       [global::System.ObsoleteAttribute]
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class Enum : pb::IMessage<Enum>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -16529,6 +16577,7 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static partial class Types {
           [global::System.ObsoleteAttribute]
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class Empty : pb::IMessage<Empty>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -16686,6 +16735,7 @@ namespace Substrait.Protobuf {
 
       }
 
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class Literal : pb::IMessage<Literal>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -18414,6 +18464,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static partial class Types {
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class VarChar : pb::IMessage<VarChar>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -18640,6 +18691,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class Decimal : pb::IMessage<Decimal>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -18914,6 +18966,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class Map : pb::IMessage<Map>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -19095,6 +19148,7 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public static partial class Types {
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
               public sealed partial class KeyValue : pb::IMessage<KeyValue>
               #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                   , pb::IBufferMessage
@@ -19344,6 +19398,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class IntervalYearToMonth : pb::IMessage<IntervalYearToMonth>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -19570,6 +19625,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class IntervalDayToSecond : pb::IMessage<IntervalDayToSecond>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -19833,6 +19889,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class Struct : pb::IMessage<Struct>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -20014,6 +20071,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class List : pb::IMessage<List>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -20195,6 +20253,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class UserDefined : pb::IMessage<UserDefined>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -20475,6 +20534,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// Expression to dynamically construct nested types.
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class Nested : pb::IMessage<Nested>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -20897,6 +20957,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static partial class Types {
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class Map : pb::IMessage<Map>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -21082,6 +21143,7 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public static partial class Types {
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
               public sealed partial class KeyValue : pb::IMessage<KeyValue>
               #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                   , pb::IBufferMessage
@@ -21334,6 +21396,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class Struct : pb::IMessage<Struct>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -21516,6 +21579,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class List : pb::IMessage<List>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -21707,6 +21771,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// A scalar function call.
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class ScalarFunction : pb::IMessage<ScalarFunction>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -22054,6 +22119,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// A window function call.
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class WindowFunction : pb::IMessage<WindowFunction>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -22661,6 +22727,7 @@ namespace Substrait.Protobuf {
           /// <summary>
           /// Defines one of the two boundaries for the window of a window function.
           /// </summary>
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class Bound : pb::IMessage<Bound>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -23073,6 +23140,7 @@ namespace Substrait.Protobuf {
               /// <summary>
               /// Defines that the bound extends this far back from the current record.
               /// </summary>
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
               public sealed partial class Preceding : pb::IMessage<Preceding>
               #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                   , pb::IBufferMessage
@@ -23270,6 +23338,7 @@ namespace Substrait.Protobuf {
               /// <summary>
               /// Defines that the bound extends this far ahead of the current record.
               /// </summary>
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
               public sealed partial class Following : pb::IMessage<Following>
               #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                   , pb::IBufferMessage
@@ -23467,6 +23536,7 @@ namespace Substrait.Protobuf {
               /// <summary>
               /// Defines that the bound extends to or from the current record.
               /// </summary>
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
               public sealed partial class CurrentRow : pb::IMessage<CurrentRow>
               #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                   , pb::IBufferMessage
@@ -23624,6 +23694,7 @@ namespace Substrait.Protobuf {
               /// of the partition, and for upper bounds this means the end of the
               /// partition.
               /// </summary>
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
               public sealed partial class Unbounded : pb::IMessage<Unbounded>
               #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                   , pb::IBufferMessage
@@ -23786,6 +23857,7 @@ namespace Substrait.Protobuf {
 
       }
 
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class IfThen : pb::IMessage<IfThen>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -24013,6 +24085,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static partial class Types {
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class IfClause : pb::IMessage<IfClause>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -24262,6 +24335,7 @@ namespace Substrait.Protobuf {
 
       }
 
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class Cast : pb::IMessage<Cast>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -24557,6 +24631,7 @@ namespace Substrait.Protobuf {
 
       }
 
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class SwitchExpression : pb::IMessage<SwitchExpression>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -24830,6 +24905,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static partial class Types {
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class IfValue : pb::IMessage<IfValue>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -25079,6 +25155,7 @@ namespace Substrait.Protobuf {
 
       }
 
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class SingularOrList : pb::IMessage<SingularOrList>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -25303,6 +25380,7 @@ namespace Substrait.Protobuf {
 
       }
 
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class MultiOrList : pb::IMessage<MultiOrList>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -25510,6 +25588,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static partial class Types {
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class Record : pb::IMessage<Record>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -25693,6 +25772,7 @@ namespace Substrait.Protobuf {
 
       }
 
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class EmbeddedFunction : pb::IMessage<EmbeddedFunction>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -26053,6 +26133,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static partial class Types {
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class PythonPickleFunction : pb::IMessage<PythonPickleFunction>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -26268,6 +26349,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class WebAssemblyFunction : pb::IMessage<WebAssemblyFunction>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -26497,6 +26579,7 @@ namespace Substrait.Protobuf {
       /// (ordinalized in the internal representation here), [2] is a list offset
       /// and ['my_map_key'] is a reference into a map field.
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class ReferenceSegment : pb::IMessage<ReferenceSegment>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -26838,6 +26921,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static partial class Types {
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class MapKey : pb::IMessage<MapKey>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -27088,6 +27172,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class StructField : pb::IMessage<StructField>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -27329,6 +27414,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class ListElement : pb::IMessage<ListElement>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -27586,6 +27672,7 @@ namespace Substrait.Protobuf {
       /// Note that this does not fundamentally alter the structure of data beyond
       /// the elimination of unecessary elements.
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class MaskExpression : pb::IMessage<MaskExpression>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -27824,6 +27911,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static partial class Types {
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class Select : pb::IMessage<Select>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -28162,6 +28250,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class StructSelect : pb::IMessage<StructSelect>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -28340,6 +28429,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class StructItem : pb::IMessage<StructItem>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -28575,6 +28665,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class ListSelect : pb::IMessage<ListSelect>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -28802,6 +28893,7 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public static partial class Types {
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
               public sealed partial class ListSelectItem : pb::IMessage<ListSelectItem>
               #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                   , pb::IBufferMessage
@@ -29090,6 +29182,7 @@ namespace Substrait.Protobuf {
                 [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
                 [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
                 public static partial class Types {
+                  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
                   public sealed partial class ListElement : pb::IMessage<ListElement>
                   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                       , pb::IBufferMessage
@@ -29279,6 +29372,7 @@ namespace Substrait.Protobuf {
 
                   }
 
+                  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
                   public sealed partial class ListSlice : pb::IMessage<ListSlice>
                   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                       , pb::IBufferMessage
@@ -29515,6 +29609,7 @@ namespace Substrait.Protobuf {
 
           }
 
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class MapSelect : pb::IMessage<MapSelect>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -29849,6 +29944,7 @@ namespace Substrait.Protobuf {
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public static partial class Types {
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
               public sealed partial class MapKey : pb::IMessage<MapKey>
               #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                   , pb::IBufferMessage
@@ -30038,6 +30134,7 @@ namespace Substrait.Protobuf {
 
               }
 
+              [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
               public sealed partial class MapKeyExpression : pb::IMessage<MapKeyExpression>
               #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
                   , pb::IBufferMessage
@@ -30241,6 +30338,7 @@ namespace Substrait.Protobuf {
       /// A reference to an inner part of a complex object. Can reference reference a
       /// single element or a masked version of elements
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class FieldReference : pb::IMessage<FieldReference>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -30719,6 +30817,7 @@ namespace Substrait.Protobuf {
           /// Singleton that expresses this FieldReference is rooted off the root
           /// incoming record type
           /// </summary>
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class RootReference : pb::IMessage<RootReference>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -30874,6 +30973,7 @@ namespace Substrait.Protobuf {
           /// <summary>
           /// A root reference for the outer relation's subquery
           /// </summary>
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class OuterReference : pb::IMessage<OuterReference>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -31076,6 +31176,7 @@ namespace Substrait.Protobuf {
       /// <summary>
       /// Subquery relation expression
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class Subquery : pb::IMessage<Subquery>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage
@@ -31486,6 +31587,7 @@ namespace Substrait.Protobuf {
           /// A subquery with one row and one column. This is often an aggregate
           /// though not required to be.
           /// </summary>
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class Scalar : pb::IMessage<Scalar>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -31693,6 +31795,7 @@ namespace Substrait.Protobuf {
           /// x IN (SELECT * FROM t)
           /// (x, y) IN (SELECT a, b FROM t)
           /// </summary>
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class InPredicate : pb::IMessage<InPredicate>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -31921,6 +32024,7 @@ namespace Substrait.Protobuf {
           /// A predicate over a set of rows in the form of a subquery
           /// EXISTS and UNIQUE are common SQL forms of this operation.
           /// </summary>
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class SetPredicate : pb::IMessage<SetPredicate>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -32181,6 +32285,7 @@ namespace Substrait.Protobuf {
           /// FROM t1
           /// WHERE x &lt; ANY(SELECT y from t2)
           /// </summary>
+          [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
           public sealed partial class SetComparison : pb::IMessage<SetComparison>
           #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
               , pb::IBufferMessage
@@ -32548,6 +32653,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// The description of a field to sort on (including the direction of sorting and null semantics)
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class SortField : pb::IMessage<SortField>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -32903,6 +33009,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// An aggregate function.
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class AggregateFunction : pb::IMessage<AggregateFunction>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -33391,6 +33498,7 @@ namespace Substrait.Protobuf {
       /// This rel is used  to create references,
       /// in case we refer to a RelRoot field names will be ignored
       /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class ReferenceRel : pb::IMessage<ReferenceRel>
       #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           , pb::IBufferMessage

@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Operators.Write
                 {
                     return comp;
                 }
-                return x.Span.SequenceCompareTo(y.Span);
+                return RowEvent.Compare(x, y);
             }
             if (x.TargetId == 1)
             {

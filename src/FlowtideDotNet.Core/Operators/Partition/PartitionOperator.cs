@@ -22,14 +22,14 @@ namespace FlowtideDotNet.Core.Operators.Partition
     internal class PartitionOperator : PartitionVertex<StreamEventBatch, object>
     {
         private readonly int targetNumber;
-        private readonly Func<StreamEvent, uint> _partitionFunction;
-        private List<StreamEvent>?[] outputs;
+        private readonly Func<RowEvent, uint> _partitionFunction;
+        private List<RowEvent>?[] outputs;
 
         public PartitionOperator(PartitionOperatorOptions options, FunctionsRegister functionsRegister, int targetNumber, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(targetNumber, executionDataflowBlockOptions)
         {
             this.targetNumber = targetNumber;
             _partitionFunction = HashCompiler.CompileGetHashCode(options.Expressions, functionsRegister);
-            outputs = new List<StreamEvent>[targetNumber];
+            outputs = new List<RowEvent>[targetNumber];
         }
 
         public override string DisplayName => "Partition";
@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Core.Operators.Partition
                 var partitionId = hash % targetNumber;
                 if (outputs[partitionId] == null)
                 {
-                    outputs[partitionId] = new List<StreamEvent>();
+                    outputs[partitionId] = new List<RowEvent>();
                 }
                 outputs[partitionId]!.Add(e);
             }

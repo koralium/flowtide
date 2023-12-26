@@ -26,11 +26,11 @@ namespace FlowtideDotNet.Connector.Kafka
     {
         private List<string>? _names;
 
-        public StreamEvent Deserialize(IFlowtideKafkaKeyDeserializer keyDeserializer, byte[]? valueBytes, byte[]? keyBytes)
+        public RowEvent Deserialize(IFlowtideKafkaKeyDeserializer keyDeserializer, byte[]? valueBytes, byte[]? keyBytes)
         {
             if (valueBytes == null)
             {
-                return StreamEvent.Create(-1, 0, b =>
+                return RowEvent.Create(-1, 0, b =>
                 {
                     for (int i = 0; i < _names.Count; i++)
                     {
@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Connector.Kafka
             else
             {
                 var jsonDocument = JsonSerializer.Deserialize<JsonElement>(valueBytes);
-                return StreamEvent.Create(1, 0, b =>
+                return RowEvent.Create(1, 0, b =>
                 {
                     for (int i = 0; i < _names.Count; i++)
                     {

@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
     internal class TestWriteOperator : GroupedWriteBaseOperator<TestWriteState>
     {
         private TestWriteState currentState;
-        private SortedSet<StreamEvent> modified;
+        private SortedSet<RowEvent> modified;
         List<int> primaryKeyIds;
         private readonly Func<IReadOnlyList<DataChange>, Task> onValueChange;
         private readonly WriteRelation writeRelation;
@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
                 for (int i = 0; i < primaryKeyIds.Count; i++)
                 {
                     var primaryKeyIndex = primaryKeyIds[i];
-                    key.Add(writeRelation.TableSchema.Names[primaryKeyIndex], m.Vector[primaryKeyIndex]);
+                    key.Add(writeRelation.TableSchema.Names[primaryKeyIndex], m.GetColumn(primaryKeyIndex));
                 }
                 var (rows, isDeleted) = await this.GetGroup(m);
                 output.Add(new DataChange()
@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
             {
                 currentState = new TestWriteState();
             }
-            modified = new SortedSet<StreamEvent>(PrimaryKeyComparer);
+            modified = new SortedSet<RowEvent>(PrimaryKeyComparer);
             return Task.CompletedTask;
         }
 

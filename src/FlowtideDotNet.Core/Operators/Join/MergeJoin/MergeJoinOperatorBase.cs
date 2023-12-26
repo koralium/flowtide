@@ -41,6 +41,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected readonly Func<JoinStreamEvent, JoinStreamEvent, bool> _postCondition;
 
         private FlexBuffers.FlexBuffer _flexBuffer;
+        private List<int> mappedEmit;
+        private IRowData _rightNullData;
 
 #if DEBUG_WRITE
         // TODO: Tmp remove
@@ -52,9 +54,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public MergeJoinOperatorBase(MergeJoinRelation mergeJoinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
-            
             this.mergeJoinRelation = mergeJoinRelation;
-
             var compileResult = MergeJoinExpressionCompiler.Compile(mergeJoinRelation);
 
             leftComparer = new JoinComparerLeft(compileResult.LeftCompare, compileResult.SeekCompare);
@@ -71,6 +71,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
             _leftSize = mergeJoinRelation.Left.OutputLength;
             _flexBuffer = new FlexBuffers.FlexBuffer(ArrayPool<byte>.Shared);
+
+            _rightNullData = RowEvent.Create(0, 0, v =>
+            {
+                for (int i = 0; i < mergeJoinRelation.Right.OutputLength; i++)
+                {
+                    v.AddNull();
+                }
+            }).RowData;
         }
 
         public override string DisplayName => "Merge Join";
@@ -103,88 +111,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             return new JoinState();
         }
 
-        protected StreamEvent OnConditionSuccess(JoinStreamEvent left, JoinStreamEvent right, in int weight)
+        protected RowEvent OnConditionSuccess(JoinStreamEvent left, JoinStreamEvent right, in int weight)
         {
-            _flexBuffer.NewObject();
-            var vectorStart = _flexBuffer.StartVector();
-            var leftSpan = left.Vector.Span;
-            var rightSpan = right.Vector.Span;
-
-            if (mergeJoinRelation.EmitSet)
-            {
-                for (int i = 0; i < mergeJoinRelation.Emit.Count; i++)
-                {
-                    var index = mergeJoinRelation.Emit[i];
-
-
-                    if (index < _leftSize)
-                    {
-                        _flexBuffer.Add(left.Vector.GetWithSpan(index, leftSpan));
-                    }
-                    else
-                    {
-                        _flexBuffer.Add(right.Vector.GetWithSpan(index - _leftSize, rightSpan));
-                    }
-                }
-            }
-            else
-            {
-                for (int i = 0; i < left.Vector.Length; i++)
-                {
-                    _flexBuffer.Add(left.Vector.GetWithSpan(i, leftSpan));
-                }
-                for (int i = 0; i < right.Vector.Length; i++)
-                {
-                    _flexBuffer.Add(right.Vector.GetWithSpan(i, rightSpan));
-                }
-            }
-
-            _flexBuffer.EndVector(vectorStart, false, false);
-            var bytes = _flexBuffer.Finish();
-
-            var ev = new StreamEvent(weight, 0, bytes);
-
-            return ev;
+            return new RowEvent(weight, 0, ArrayRowData.Create(left.RowData, right.RowData, mergeJoinRelation.Emit));
         }
 
-        protected StreamEvent CreateLeftWithNullRightEvent(int weight, JoinStreamEvent e)
+        protected RowEvent CreateLeftWithNullRightEvent(int weight, JoinStreamEvent e)
         {
-            _flexBuffer.NewObject();
-            var vectorStart = _flexBuffer.StartVector();
-            var exitingSpan = e.Vector.Span;
-
-            if (mergeJoinRelation.EmitSet)
-            {
-                for (int i = 0; i < mergeJoinRelation.Emit.Count; i++)
-                {
-                    var index = mergeJoinRelation.Emit[i];
-                    if (index < _leftSize)
-                    {
-                        _flexBuffer.Add(e.Vector.GetWithSpan(index, exitingSpan));
-                    }
-                    else
-                    {
-                        _flexBuffer.AddNull();
-                    }
-                }
-            }
-            else
-            {
-                for (int i = 0; i < e.Vector.Length; i++)
-                {
-                    _flexBuffer.Add(e.Vector.GetWithSpan(i, exitingSpan));
-                }
-                for (int i = 0; i < mergeJoinRelation.Right.OutputLength; i++)
-                {
-                    _flexBuffer.AddNull();
-                }
-            }
-            _flexBuffer.EndVector(vectorStart, false, false);
-            var bytes = _flexBuffer.Finish();
-
-            var o = new StreamEvent(weight, 0, bytes);
-
-            return o;
+            return new RowEvent(weight, 0, ArrayRowData.Create(e.RowData, _rightNullData, mergeJoinRelation.Emit));
         }
 
         protected async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)
@@ -193,7 +127,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             Debug.Assert(_rightTree != null, nameof(_rightTree));
             Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
 
-            List<StreamEvent> output = new List<StreamEvent>();
+            List<RowEvent> output = new List<RowEvent>();
             var it = _rightTree.CreateIterator();
             //using var it = _rightTree.CreateIterator();
 
@@ -202,7 +136,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #if DEBUG_WRITE
                 leftInput.WriteLine($"{e.Weight} {e.Vector.ToJson}");
 #endif
-                var joinEventCheck = new JoinStreamEvent(e.Memory, 0, 1, e.Vector);
+
+                var joinEventCheck = new JoinStreamEvent(0, 1, e.RowData);
 
                 await it.Seek(joinEventCheck);
 
@@ -226,7 +161,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 {
                                     _eventsCounter.Add(output.Count);
                                     yield return new StreamEventBatch(null, output);
-                                    output = new List<StreamEvent>();
+                                    output = new List<RowEvent>();
                                 }
                                 
                             }
@@ -243,7 +178,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                 }
 
-                var joinEvent = new JoinStreamEvent(e.Memory, 0, 0, e.Vector);
+                var joinEvent = new JoinStreamEvent(0, 0, e.RowData);
                 if (joinWeight == 0 && mergeJoinRelation.Type == JoinType.Left)
                 {
                     // Emit null if left join or full outer join
@@ -252,7 +187,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     {
                         _eventsCounter.Add(output.Count);
                         yield return new StreamEventBatch(null, output);
-                        output = new List<StreamEvent>();
+                        output = new List<RowEvent>();
                     }
                     
                     await _leftTree.RMW(joinEvent, new JoinStorageValue() { Weight = e.Weight, JoinWeight = joinWeight }, (input, current, found) =>
@@ -269,7 +204,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         }
                         return (input, GenericWriteOperation.Upsert);
                     });
-                    //var weights = _leftTree.UpsertAndGetWeights(joinEvent, e.Weight, true);
                 }
                 else
                 {
@@ -313,7 +247,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             Debug.Assert(_rightTree != null, nameof(_rightTree));
             Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
 
-            List<StreamEvent> output = new List<StreamEvent>();
+            List<RowEvent> output = new List<RowEvent>();
 
             var it = _leftTree.CreateIterator();
 
@@ -322,7 +256,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #if DEBUG_WRITE
                 rightInput.WriteLine($"{e.Weight} {e.Vector.ToJson}");
 #endif
-                var joinEventCheck = new JoinStreamEvent(e.Memory, 0, 1, e.Vector);
+                var joinEventCheck = new JoinStreamEvent(0, 1, e.RowData);
 
                 await it.Seek(joinEventCheck);
 
@@ -355,7 +289,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 {
                                     _eventsCounter.Add(output.Count);
                                     yield return new StreamEventBatch(null, output);
-                                    output = new List<StreamEvent>();
+                                    output = new List<RowEvent>();
                                 }
                                 
                             }
@@ -372,7 +306,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                 }
 
-                var joinEvent = new JoinStreamEvent(e.Memory, 0, 0, e.Vector);
+                var joinEvent = new JoinStreamEvent(0, 0, e.RowData);
                 await _rightTree.RMW(joinEvent, new JoinStorageValue() { Weight = e.Weight }, (input, current, found) =>
                 {
                     if (found)
@@ -421,7 +355,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     {
                         _eventsCounter.Add(output.Count);
                         yield return new StreamEventBatch(null, output);
-                        output = new List<StreamEvent>();
+                        output = new List<RowEvent>();
                     }
                     
                 }

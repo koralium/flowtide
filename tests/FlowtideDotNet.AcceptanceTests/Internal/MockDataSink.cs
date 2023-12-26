@@ -17,6 +17,7 @@ using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.StateManager;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -35,14 +36,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     {
         private readonly Action<List<byte[]>> onDataChange;
         private int crashOnCheckpointCount;
-        private SortedDictionary<StreamEvent, int> currentData;
+        private SortedDictionary<RowEvent, int> currentData;
 
         public MockDataSink(
             ExecutionDataflowBlockOptions executionDataflowBlockOptions, 
             Action<List<byte[]>> onDataChange,
             int crashOnCheckpointCount) : base(executionDataflowBlockOptions)
         {
-            currentData = new SortedDictionary<StreamEvent, int>(new BPlusTreeStreamEventComparer());
+            currentData = new SortedDictionary<RowEvent, int>(new BPlusTreeStreamEventComparer());
             this.onDataChange = onDataChange;
             this.crashOnCheckpointCount = crashOnCheckpointCount;
         }
@@ -83,7 +84,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 for (int i = 0; i < row.Value; i++)
                 {
-                    output.Add(row.Key.Memory.ToArray());
+                    var compactData = (CompactRowData)row.Key.Compact(new FlexBuffer(ArrayPool<byte>.Shared)).RowData;
+                    output.Add(compactData.Span.ToArray());
                 }
             }
 
