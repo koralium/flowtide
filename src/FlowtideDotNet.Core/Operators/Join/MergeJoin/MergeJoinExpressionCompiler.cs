@@ -29,14 +29,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             return System.Linq.Expressions.Expression.Call(compareMethod, a, b);
         }
 
-        //private static System.Linq.Expressions.Expression AccessRootVector(ParameterExpression p)
-        //{
-        //    var props = typeof(JoinStreamEvent).GetProperties().FirstOrDefault(x => x.Name == "Vector");
-        //    var getMethod = props.GetMethod;
-        //    return System.Linq.Expressions.Expression.Property(p, getMethod);
-        //}
-
-
         private static System.Linq.Expressions.Expression GetAccessFieldExpression(System.Linq.Expressions.ParameterExpression parameter, FieldReference fieldReference, int relativeIndex)
         {
             if (fieldReference is DirectFieldReference directFieldReference &&

@@ -18,13 +18,6 @@ namespace FlowtideDotNet.Core.Compute.Group
 {
     internal static class GroupIndexCreator
     {
-        //private static System.Linq.Expressions.Expression AccessRootVector<T>(ParameterExpression p)
-        //{
-        //    var props = typeof(T).GetProperties().FirstOrDefault(x => x.Name == "Vector");
-        //    var getMethod = props.GetMethod;
-        //    return System.Linq.Expressions.Expression.Property(p, getMethod);
-        //}
-
         private static System.Linq.Expressions.MethodCallExpression Compare(System.Linq.Expressions.Expression a, System.Linq.Expressions.Expression b)
         {
             MethodInfo compareMethod = typeof(FlxValueComparer).GetMethod("CompareTo", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);

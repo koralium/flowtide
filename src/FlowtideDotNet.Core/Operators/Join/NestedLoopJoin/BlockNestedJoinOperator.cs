@@ -81,8 +81,6 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
         {
             _flexBuffer.NewObject();
             var vectorStart = _flexBuffer.StartVector();
-            //var leftSpan = left.Vector.Span;
-            //var rightSpan = right.Vector.Span;
 
             if (joinRelation.EmitSet)
             {

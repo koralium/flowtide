@@ -112,14 +112,6 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return System.Linq.Expressions.Expression.Call(accessRef, addToHashMethod, xxHashConstant);
         }
 
-        //private static System.Linq.Expressions.Expression AccessRootVector(ParameterExpression p)
-        //{
-        //    var props = typeof(RowEvent).GetProperties().FirstOrDefault(x => x.Name == "Vector");
-        //    var getMethod = props.GetMethod;
-        //    return System.Linq.Expressions.Expression.Property(p, getMethod);
-        //}
-
-
         private static System.Linq.Expressions.Expression GetAccessFieldExpression(System.Linq.Expressions.ParameterExpression parameter, FieldReference fieldReference, int relativeIndex)
         {
             if (fieldReference is DirectFieldReference directFieldReference &&

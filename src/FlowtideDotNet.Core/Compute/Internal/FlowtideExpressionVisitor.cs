@@ -50,13 +50,6 @@ namespace FlowtideDotNet.Core.Compute.Internal
             }
         }
 
-        //public System.Linq.Expressions.Expression AccessRootVector(ParameterExpression p)
-        //{
-        //    var props = inputType.GetProperties().FirstOrDefault(x => x.Name == "Vector");
-        //    var getMethod = props.GetMethod;
-        //    return System.Linq.Expressions.Expression.Property(p, getMethod);
-        //}
-
         public override System.Linq.Expressions.Expression? VisitDirectFieldReference(DirectFieldReference directFieldReference, ParametersInfo state)
         {
             if (directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
