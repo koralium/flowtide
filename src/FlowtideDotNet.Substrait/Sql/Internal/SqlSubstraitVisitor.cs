@@ -39,13 +39,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             Debug.Assert(source != null);
 
-            var writeRelation = new WriteRelation();
-            writeRelation.Input = source.Relation;
-            writeRelation.NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.Name.Values.Select(x => x.Value).ToList() };
+            var writeRelation = new WriteRelation()
+            {
+                Input = source.Relation,
+                NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.Name.Values.Select(x => x.Value).ToList() },
+                TableSchema = new NamedStruct()
+            };
 
             if (insert.Columns != null && insert.Columns.Count > 0)
             {
-                writeRelation.TableSchema = new FlowtideDotNet.Substrait.Type.NamedStruct();
                 writeRelation.TableSchema.Names = insert.Columns.Select(x => x.Value).ToList();
                 writeRelation.TableSchema.Struct = new FlowtideDotNet.Substrait.Type.Struct()
                 {

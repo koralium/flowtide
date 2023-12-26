@@ -182,6 +182,10 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             {
                 Input = new ReadRelation()
                 {
+                    NamedTable = new Substrait.Type.NamedTable()
+                    {
+                        Names = new List<string>() { "table1" }
+                    },
                     BaseSchema = new NamedStruct()
                     {
                         Names = new List<string>() { "id" },

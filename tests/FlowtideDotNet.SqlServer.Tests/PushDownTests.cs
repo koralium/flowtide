@@ -43,6 +43,10 @@ namespace FlowtideDotNet.SqlServer.Tests
             };
             var visitor = new SqlServerFilterVisitor(new Substrait.Relations.ReadRelation()
             {
+                NamedTable = new Substrait.Type.NamedTable()
+                {
+                    Names = new List<string>() { "table1" }
+                },
                 BaseSchema = new Substrait.Type.NamedStruct()
                 {
                     Names = new List<string>() { "c1" }

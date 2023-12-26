@@ -17,9 +17,9 @@ namespace FlowtideDotNet.Substrait.Relations
 {
     public class ReadRelation : Relation
     {
-        public NamedStruct BaseSchema { get; set; }
+        public required NamedStruct BaseSchema { get; set; }
 
-        public NamedTable NamedTable { get; set; }
+        public required NamedTable NamedTable { get; set; }
 
         public Expression? Filter { get; set; }
 
