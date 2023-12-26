@@ -33,6 +33,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 {
                     new ProjectRelation()
                     {
+                        Expressions = new List<Expression>(),
                         Emit = new List<int>(){0, 1, 3, 5},
                         Input = new ReadRelation()
                         {
@@ -68,6 +69,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                     {
                         new ProjectRelation()
                         {
+                            Expressions = new List<Expression>(),
                             Emit = new List<int>(){0, 1, 2, 3},
                             Input = new ReadRelation()
                             {
@@ -103,6 +105,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 {
                     new ProjectRelation()
                     {
+                        Expressions = new List<Expression>(),
                         Emit = new List<int>(){0, 1, 3, 5},
                         Input = new ReadRelation()
                         {
@@ -154,6 +157,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                     {
                         new ProjectRelation()
                         {
+                            Expressions = new List<Expression>(),
                             Emit = new List<int>(){0, 1, 2, 3},
                             Input = new ReadRelation()
                             {
@@ -205,6 +209,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 {
                     new ProjectRelation()
                     {
+                        Expressions = new List<Expression>(),
                         Emit = new List<int>(){0, 1, 3, 5},
                         Input = new ReadRelation()
                         {
@@ -256,6 +261,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                     {
                         new ProjectRelation()
                         {
+                            Expressions = new List<Expression>(),
                             Emit = new List<int>(){0, 1, 2, 3},
                             Input = new ReadRelation()
                             {

@@ -49,6 +49,10 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
         public BlockNestedJoinOperator(JoinRelation joinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
             _flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
+            if (joinRelation.Expression == null)
+            {
+                throw new System.Exception("Join relation must have an expression");
+            }
             _condition = BooleanCompiler.Compile<RowEvent>(joinRelation.Expression, functionsRegister, joinRelation.Left.OutputLength);
             this.joinRelation = joinRelation;
             _leftSize = joinRelation.Left.OutputLength;
