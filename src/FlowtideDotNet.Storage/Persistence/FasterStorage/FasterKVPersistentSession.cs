@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         public async Task Delete(long key)
         {
-            var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var result = await session.DeleteAsync(key, token: tokenSource.Token);
             _ = result.Complete();
         }
@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         public async ValueTask<byte[]> Read(long key)
         {
-            var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var input = new SpanByte();
             var result = await session.ReadAsync(ref key, token: tokenSource.Token);
             var (status, bytes) = result.Complete();
@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             var mem = new Memory<byte>(value);
             var handle = mem.Pin();
             var spanByte = SpanByte.FromPinnedMemory(value);
-            var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var result = await session.UpsertAsync(key, spanByte, token: tokenSource.Token);
             var status = result.Complete();
             handle.Dispose();
