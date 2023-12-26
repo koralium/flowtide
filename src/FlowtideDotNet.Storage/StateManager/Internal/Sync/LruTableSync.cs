@@ -17,7 +17,7 @@ using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
-    internal class LruTableSync
+    internal class LruTableSync : IDisposable
     {
         internal struct LinkedListValue
         {
@@ -42,7 +42,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_cacheHits;
         private long m_lastSeenCacheHits;
         private int m_sameCaheHitsCount;
+        private bool m_disposedValue;
         private readonly Process _currentProcess;
+        private readonly CancellationTokenSource m_cleanupTokenSource;
 
         public LruTableSync(int maxSize, ILogger logger, Meter meter, long maxMemoryUsageInBytes = -1)
         {
@@ -54,6 +56,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.maxMemoryUsageInBytes = maxMemoryUsageInBytes;
             cleanupStart = (int)Math.Ceiling(maxSize * 0.7);
             _fullLock = new SemaphoreSlim(1);
+            m_cleanupTokenSource = new CancellationTokenSource();
             StartCleanupTask();
             _currentProcess = Process.GetCurrentProcess();
 
@@ -109,6 +112,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 .Unwrap()
                 .ContinueWith((task) =>
                 {
+                    if (m_cleanupTokenSource.IsCancellationRequested)
+                    {
+                        // Do not start a new task if we are cancelled
+                        return;
+                    }
                     if (task.IsFaulted)
                     {
                         this.logger.LogError(task.Exception, "Exception in LRU Table cleanup");
@@ -128,6 +136,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             while (true)
             {
+                m_cleanupTokenSource.Token.ThrowIfCancellationRequested();
                 await Task.Delay(10);
                 try
                 {
@@ -299,12 +308,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 lock (m_nodes)
                 {
-                    // Move node here to not be in iteratorNode lock while moving to the end.
-                    //if (moveToEnd)
-                    //{
-                    //    m_nodes.Remove(iteratorNode);
-                    //    m_nodes.AddLast(iteratorNode);
-                    //}
                     iteratorNode = iteratorNode.Next;
 
                     if (iteratorNode == null)
@@ -359,6 +362,34 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                 }
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!m_disposedValue)
+            {
+                if (disposing)
+                {
+                    m_cleanupTokenSource.Cancel();
+
+                    if (m_cleanupTask != null)
+                    {
+                        m_cleanupTask.Wait();
+                        m_cleanupTask.Dispose();
+                    }
+                    m_cleanupTokenSource.Dispose();
+                    meter.Dispose();
+                    _fullLock.Dispose();
+                }
+                m_disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
