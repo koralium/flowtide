@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Tree;
 using FlexBuffers;
+using System.Buffers;
 
 namespace FlowtideDotNet.Core.Operators.Write
 {
@@ -23,14 +24,18 @@ namespace FlowtideDotNet.Core.Operators.Write
             var length = reader.ReadInt32();
             var bytes = reader.ReadBytes(length);
             var vector = FlxValue.FromMemory(bytes).AsVector;
-            return new GroupedStreamEvent(bytes, targetId, vector);
+            return new GroupedStreamEvent(targetId, new CompactRowData(bytes, vector));
         }
 
         public void Serialize(in BinaryWriter writer, in GroupedStreamEvent value)
         {
             writer.Write(value.TargetId);
-            writer.Write(value.Span.Length);
-            writer.Write(value.Span);
+
+            // TODO: Can be improved
+            var compactData = (CompactRowData)new RowEvent(0,0, value.RowData).Compact(new FlexBuffer(ArrayPool<byte>.Shared)).RowData;
+
+            writer.Write(compactData.Span.Length);
+            writer.Write(compactData.Span);
         }
     }
 }

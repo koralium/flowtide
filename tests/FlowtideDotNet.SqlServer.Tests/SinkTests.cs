@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.SqlServer.SqlServer;
+using FlowtideDotNet.Substrait.Relations;
 using Org.BouncyCastle.Crypto.Prng;
 using System;
 using System.Collections.Generic;
@@ -28,7 +29,22 @@ namespace FlowtideDotNet.SqlServer.Tests
         [Fact]
         public void TempTableIsTemporary()
         {
-            var sink = new SqlServerSink(() => "", new Substrait.Relations.WriteRelation(), new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
+            var sink = new SqlServerSink(() => "", new Substrait.Relations.WriteRelation()
+            {
+                Input = new ReadRelation()
+                {
+                    NamedTable = new Substrait.Type.NamedTable()
+                    {
+                        Names = new List<string>() { "table1" }
+                    },
+                    BaseSchema = new Substrait.Type.NamedStruct()
+                    {
+                        Names = new List<string>() { "c1" }
+                    }
+                },
+                NamedObject = new Substrait.Type.NamedTable(),
+                TableSchema = new Substrait.Type.NamedStruct()
+            }, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
             var tableName = sink.GetTmpTableName();
             Assert.StartsWith("#", tableName);
         }

@@ -31,12 +31,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
         {
             if (functionsRegister.TryGetAggregateFunction(aggregateFunction.ExtensionUri, aggregateFunction.ExtensionName, out var definition))
             {
-                var param = System.Linq.Expressions.Expression.Parameter(typeof(StreamEvent));
+                var param = System.Linq.Expressions.Expression.Parameter(typeof(RowEvent));
                 var stateParam = System.Linq.Expressions.Expression.Parameter(typeof(byte[]));
                 var weightParam = System.Linq.Expressions.Expression.Parameter(typeof(long));
-                var groupingKeyParameter = System.Linq.Expressions.Expression.Parameter(typeof(StreamEvent));
+                var groupingKeyParameter = System.Linq.Expressions.Expression.Parameter(typeof(RowEvent));
                 var parametersInfo = new ParametersInfo(new List<ParameterExpression>() { param }, new List<int> { 0 });
-                var expressionVisitor = new FlowtideExpressionVisitor(functionsRegister, typeof(StreamEvent));
+                var expressionVisitor = new FlowtideExpressionVisitor(functionsRegister, typeof(RowEvent));
                 var container =  definition.CreateContainer(
                     groupingLength,
                     stateManagerClient,

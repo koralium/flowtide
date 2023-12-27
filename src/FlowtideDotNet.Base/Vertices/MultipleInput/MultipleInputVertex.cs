@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private readonly ExecutionDataflowBlockOptions executionDataflowBlockOptions;
         private readonly List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)> _links = new List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)>();
         private bool _isHealthy = true;
-        private CancellationTokenSource tokenSource;
+        private CancellationTokenSource? tokenSource;
 
         private string? _name;
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
@@ -384,7 +384,11 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             {
                 target.Complete();
             }
-            tokenSource.Cancel();
+            if (tokenSource != null)
+            {
+                tokenSource.Cancel();
+            }
+            
             _transformBlock.Complete();
         }
 
@@ -397,7 +401,11 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         public void Fault(Exception exception)
         {
             Debug.Assert(_transformBlock != null, nameof(_transformBlock));
-            tokenSource.Cancel();
+            if (tokenSource != null)
+            {
+                tokenSource.Cancel();
+            }
+            
             (_transformBlock as IDataflowBlock).Fault(exception);
         }
 
@@ -507,6 +515,11 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         public virtual ValueTask DisposeAsync()
         {
+            if (tokenSource != null)
+            {
+                tokenSource.Dispose();
+                tokenSource = null;
+            }
             return ValueTask.CompletedTask;
         }
 

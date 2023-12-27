@@ -36,9 +36,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
         private static byte[] EmptyVector = FlexBufferBuilder.Vector(b => { });
         private readonly AggregateRelation aggregateRelation;
         private readonly FunctionsRegister functionsRegister;
-        private List<Func<StreamEvent, FlxValue>>? groupExpressions;
-        private IBPlusTree<StreamEvent, AggregateRowState> _tree;
-        private IBPlusTree<StreamEvent, int> _temporaryTree;
+        private List<Func<RowEvent, FlxValue>>? groupExpressions;
+        private IBPlusTree<RowEvent, AggregateRowState> _tree;
+        private IBPlusTree<RowEvent, int> _temporaryTree;
         private FlexBuffer _flexBufferNewValue;
         private FlexBuffer _flexBufferOldValue;
         private List<IAggregateContainer> _measures;
@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
         /// <summary>
         /// All the mapping functions for the measures.
         /// </summary>
-        private List<Func<StreamEvent, byte[]?, int, (FlxValue? oldValue, FlxValue newValue, byte[] newState)>> mappingFunctions;
+        private List<Func<RowEvent, byte[]?, int, (FlxValue? oldValue, FlxValue newValue, byte[] newState)>> mappingFunctions;
         public AggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             _measures = new List<IAggregateContainer>();
@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
                 var grouping = aggregateRelation.Groupings[0];
 
-                groupExpressions = new List<Func<StreamEvent, FlxValue>>();
+                groupExpressions = new List<Func<RowEvent, FlxValue>>();
                 foreach (var expr in grouping.GroupingExpressions)
                 {
                     groupExpressions.Add(ProjectCompiler.Compile(expr, functionsRegister));
@@ -98,11 +98,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
         {
-            List<StreamEvent> outputs = new List<StreamEvent>();
+            List<RowEvent> outputs = new List<RowEvent>();
             // If no group expressions, then we are just doing a global aggregation, so we fetch the new value and compare it with the old
             if (groupExpressions == null || groupExpressions.Count == 0)
             {
-                var (found, val) = await _tree.GetValue(new StreamEvent(0, 0, EmptyVector));
+                var (found, val) = await _tree.GetValue(new RowEvent(0, 0, new CompactRowData(EmptyVector, FlxValue.FromMemory(EmptyVector).AsVector)));
 
                 if (found)
                 {
@@ -110,18 +110,18 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                     var vectorStart = _flexBufferNewValue.StartVector();
                     for (int i = 0; i < val.MeasureStates.Length; i++)
                     {
-                        var measureResult = await _measures[i].GetValue(new StreamEvent(0, 0, EmptyVector), val.MeasureStates[i]);
+                        var measureResult = await _measures[i].GetValue(new RowEvent(0, 0, new CompactRowData(EmptyVector, FlxValue.FromMemory(EmptyVector).AsVector)), val.MeasureStates[i]);
                         _flexBufferNewValue.Add(measureResult);
                     }
                     _flexBufferNewValue.EndVector(vectorStart, false, false);
                     var outputData = _flexBufferNewValue.Finish();
-                    var outputEvent = new StreamEvent(1, 0, outputData);
+                    var outputEvent = new RowEvent(1, 0, new CompactRowData(outputData));
                     if (val.PreviousValue != null)
                     {
                         // If the row has changed from previous
                         if (!val.PreviousValue.SequenceEqual(outputData))
                         {
-                            var oldEvent = new StreamEvent(-1, 0, val.PreviousValue);
+                            var oldEvent = new RowEvent(-1, 0, new CompactRowData(val.PreviousValue));
                             outputs.Add(outputEvent);
                             outputs.Add(oldEvent);
                         }
@@ -133,8 +133,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
                     if (outputs.Count > 100)
                     {
-                        yield return new StreamEventBatch(null, outputs);
-                        outputs = new List<StreamEvent>();
+                        yield return new StreamEventBatch(outputs);
+                        outputs = new List<RowEvent>();
                     }
                     
                     // Replace the previous value with the new value
@@ -150,22 +150,22 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                     var vectorStart = _flexBufferNewValue.StartVector();
                     for (int i = 0; i < val.MeasureStates.Length; i++)
                     {
-                        var measureResult = await _measures[i].GetValue(new StreamEvent(0, 0, EmptyVector), val.MeasureStates[i]);
+                        var measureResult = await _measures[i].GetValue(new RowEvent(0, 0, new CompactRowData(EmptyVector)), val.MeasureStates[i]);
                         _flexBufferNewValue.Add(measureResult);
                     }
                     _flexBufferNewValue.EndVector(vectorStart, false, false);
                     var outputData = _flexBufferNewValue.Finish();
                     val.PreviousValue = outputData;
-                    outputs.Add(new StreamEvent(1, 0, outputData));
+                    outputs.Add(new RowEvent(1, 0, new CompactRowData(outputData)));
 
                     if (outputs.Count > 100)
                     {
-                        yield return new StreamEventBatch(null, outputs);
-                        outputs = new List<StreamEvent>();
+                        yield return new StreamEventBatch(outputs);
+                        outputs = new List<RowEvent>();
                     }
                     
                 }
-                await _tree.Upsert(new StreamEvent(0, 0, EmptyVector), val);
+                await _tree.Upsert(new RowEvent(0, 0, new CompactRowData(EmptyVector)), val);
             }
             else
             {
@@ -190,7 +190,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                             if (val.PreviousValue != null)
                             {
                                 // Negate that row on the stream
-                                outputs.Add(new StreamEvent(-1, 0, val.PreviousValue));
+                                outputs.Add(new RowEvent(-1, 0, new CompactRowData(val.PreviousValue)));
                             }
                             await _tree.Delete(kv.Key);
                         }
@@ -198,7 +198,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                         var vectorStart = _flexBufferNewValue.StartVector();
                         for (int i = 0; i < groupExpressions.Count; i++)
                         {
-                            _flexBufferNewValue.Add(kv.Key.Vector[i]);
+                            _flexBufferNewValue.Add(kv.Key.GetColumn(i));
                         }
                         for (int i = 0; i < val.MeasureStates.Length; i++)
                         {
@@ -212,9 +212,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                             // If the row has changed from previous
                             if (!val.PreviousValue.SequenceEqual(newObjectValue))
                             {
-                                var oldEvent = new StreamEvent(-1, 0, val.PreviousValue);
+                                var oldEvent = new RowEvent(-1, 0, new CompactRowData(val.PreviousValue));
                                 outputs.Add(oldEvent);
-                                outputs.Add(new StreamEvent(1, 0, newObjectValue));
+                                outputs.Add(new RowEvent(1, 0, new CompactRowData(newObjectValue)));
                             }
                             else
                             {
@@ -223,13 +223,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                         }
                         else
                         {
-                            outputs.Add(new StreamEvent(1, 0, newObjectValue));
+                            outputs.Add(new RowEvent(1, 0, new CompactRowData(newObjectValue)));
                         }
 
                         if (outputs.Count > 100)
                         {
-                            yield return new StreamEventBatch(null, outputs);
-                            outputs = new List<StreamEvent>();
+                            yield return new StreamEventBatch(outputs);
+                            outputs = new List<RowEvent>();
                         }
                         
 
@@ -241,8 +241,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 // Output only 100 rows per batch to reduce memory consumption
                 if (outputs.Count > 100)
                 {
-                    yield return new StreamEventBatch(null, outputs);
-                    outputs = new List<StreamEvent>();
+                    yield return new StreamEventBatch(outputs);
+                    outputs = new List<RowEvent>();
                 }
 
                 await _temporaryTree.Clear();
@@ -250,7 +250,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
             if (outputs.Count > 0)
             {
-                yield return new StreamEventBatch(null, outputs);
+                yield return new StreamEventBatch(outputs);
             }
         }
 
@@ -259,7 +259,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             foreach(var e in msg.Events)
             {
                 // Create the key
-                StreamEvent? key = default;
+                RowEvent? key = default;
                 if (groupExpressions != null)
                 {
                     _flexBufferNewValue.NewObject();
@@ -271,7 +271,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                     }
                     _flexBufferNewValue.EndVector(vectorStart, false, false);
                     var keyBytes = _flexBufferNewValue.Finish();
-                    key = new StreamEvent(e.Weight, 0, keyBytes);
+                    key = new RowEvent(e.Weight, 0, new CompactRowData(keyBytes));
 
                     // Store the key in the temporary tree
                     await _temporaryTree.RMW(key.Value, default, (_, current, exist) =>
@@ -289,7 +289,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 }
                 else
                 {
-                    key = new StreamEvent(e.Weight, 0, EmptyVector);
+                    key = new RowEvent(e.Weight, 0, new CompactRowData(EmptyVector));
                 }
 
                 var (found, val) = await _tree.GetValue(key.Value);
@@ -349,13 +349,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 }
             }
 
-            _tree = await stateManagerClient.GetOrCreateTree<StreamEvent, AggregateRowState>("grouping_set_1_v1", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<StreamEvent, AggregateRowState>()
+            _tree = await stateManagerClient.GetOrCreateTree<RowEvent, AggregateRowState>("grouping_set_1_v1", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, AggregateRowState>()
             {
                 KeySerializer = new StreamEventBPlusTreeSerializer(),
                 ValueSerializer = new AggregateRowStateSerializer(),
                 Comparer = new BPlusTreeStreamEventComparer()
             });
-            _temporaryTree = await stateManagerClient.GetOrCreateTree<StreamEvent, int>("grouping_set_1_v1_temp", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<StreamEvent, int>()
+            _temporaryTree = await stateManagerClient.GetOrCreateTree<RowEvent, int>("grouping_set_1_v1_temp", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
             {
                 KeySerializer = new StreamEventBPlusTreeSerializer(),
                 ValueSerializer = new IntSerializer(),

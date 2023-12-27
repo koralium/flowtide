@@ -60,7 +60,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await output.EnterCheckpointLock();
             var (operations, fetchedOffset) = _table.GetOperations(_lastestOffset);
             bool sentData = false;
-            List<StreamEvent> o = new List<StreamEvent>();
+            List<RowEvent> o = new List<RowEvent>();
             foreach (var operation in operations)
             {
                 o.Add(MockTable.ToStreamEvent(operation, readRelation.BaseSchema.Names));
@@ -68,15 +68,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 if (o.Count > 100)
                 {
                     sentData = true;
-                    await output.SendAsync(new StreamEventBatch(null, o));
-                    o = new List<StreamEvent>();
+                    await output.SendAsync(new StreamEventBatch(o));
+                    o = new List<RowEvent>();
                 }
             }
 
             if (o.Count > 0)
             {
                 sentData = true;
-                await output.SendAsync(new StreamEventBatch(null, o));
+                await output.SendAsync(new StreamEventBatch(o));
             }
             _lastestOffset = fetchedOffset;
 
@@ -127,7 +127,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await output.EnterCheckpointLock();
             var (operations, fetchedOffset) = _table.GetOperations(_lastestOffset);
 
-            List<StreamEvent> o = new List<StreamEvent>();
+            List<RowEvent> o = new List<RowEvent>();
             foreach(var operation in operations)
             {
                 o.Add(MockTable.ToStreamEvent(operation, readRelation.BaseSchema.Names));
@@ -135,20 +135,20 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
                 if (o.Count > 100)
                 {
-                    await output.SendAsync(new StreamEventBatch(null, o));
-                    o = new List<StreamEvent>();
+                    await output.SendAsync(new StreamEventBatch(o));
+                    o = new List<RowEvent>();
                 }
             }
 
             if (o.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(null, o));
+                await output.SendAsync(new StreamEventBatch(o));
             }
             _lastestOffset = fetchedOffset;
             await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));
             output.ExitCheckpointLock();
             await this.RegisterTrigger("changes", TimeSpan.FromMilliseconds(50));
-            this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+            this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(100));
         }
     }
 }

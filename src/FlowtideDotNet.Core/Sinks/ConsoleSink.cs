@@ -57,9 +57,9 @@ namespace FlowtideDotNet.Core.Sinks
                 var vals = new object[writeRelation.TableSchema.Names.Count + 1];
                 vals[0] = e.Weight;
 
-                for (int i = 0; i < e.Vector.Length; i++)
+                for (int i = 0; i < e.Length; i++)
                 {
-                    vals[i + 1] = e.Vector[i].ToJson;
+                    vals[i + 1] = e.GetColumn(i).ToJson;
                 }
 
                 consoleTable.AddRow(vals);

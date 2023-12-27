@@ -19,13 +19,10 @@ namespace FlowtideDotNet.Core
     /// </summary>
     public class StreamEventBatch
     {
-        public Schema Schema { get; }
+        public IReadOnlyList<RowEvent> Events { get; }
 
-        public IReadOnlyList<StreamEvent> Events { get; }
-
-        public StreamEventBatch(Schema schema, IReadOnlyList<StreamEvent> events)
+        public StreamEventBatch(IReadOnlyList<RowEvent> events)
         {
-            Schema = schema;
             Events = events;
         }
     }

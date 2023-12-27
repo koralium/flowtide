@@ -42,18 +42,18 @@ namespace FlowtideDotNet.Core.Operators.Iteration
         protected override async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> OnFeedbackRecieve(StreamEventBatch data, long time)
         {
             // At this time, send data to egress and to loop after each feedback.
-            List<StreamEvent> loopOutput = new List<StreamEvent>();
-            List<StreamEvent> egressOutput = new List<StreamEvent>();
+            List<RowEvent> loopOutput = new List<RowEvent>();
+            List<RowEvent> egressOutput = new List<RowEvent>();
             foreach (var streamEvent in data.Events)
             {
                 // Increase iteration counter for the loop output.
-                loopOutput.Add(new StreamEvent(streamEvent.Weight, streamEvent.Iteration + 1, streamEvent.Memory));
+                loopOutput.Add(new RowEvent(streamEvent.Weight, streamEvent.Iteration + 1, streamEvent.RowData));
                 // Reset iteration counter for the egress output.
-                egressOutput.Add(new StreamEvent(streamEvent.Weight, 0, streamEvent.Memory));
+                egressOutput.Add(new RowEvent(streamEvent.Weight, 0, streamEvent.RowData));
             }
 
-            yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(0, new StreamMessage<StreamEventBatch>(new StreamEventBatch(null, egressOutput), time));
-            yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(1, new StreamMessage<StreamEventBatch>(new StreamEventBatch(null, loopOutput), time));
+            yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(0, new StreamMessage<StreamEventBatch>(new StreamEventBatch(egressOutput), time));
+            yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(1, new StreamMessage<StreamEventBatch>(new StreamEventBatch(loopOutput), time));
         }
 
         protected override async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> OnIngressRecieve(StreamEventBatch data, long time)

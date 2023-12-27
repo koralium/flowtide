@@ -10,20 +10,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core;
-using FlowtideDotNet.Substrait.Relations;
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.Kafka
+namespace FlowtideDotNet.Core.Operators.Join
 {
-    public interface IFlowtideKafkaValueSerializer
+    internal class RowDataHasher
     {
-        byte[]? Serialize(RowEvent streamEvent, bool isDeleted);
+        private XxHash64 xxHash;
+        private byte[] _destination;
+        public RowDataHasher()
+        {
+            xxHash = new XxHash64();
+            _destination = new byte[8];
+        }
 
-        Task Initialize(WriteRelation writeRelation);
+        public ulong Hash(IRowData data)
+        {
+            for (int i = 0; i < data.Length; i++)
+            {
+                data.GetColumnRef(i).AddToHash(xxHash);
+            }
+            xxHash.GetHashAndReset(_destination);
+            return BinaryPrimitives.ReadUInt64BigEndian(_destination);
+        }
     }
 }

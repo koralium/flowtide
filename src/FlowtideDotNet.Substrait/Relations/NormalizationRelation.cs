@@ -21,11 +21,11 @@ namespace FlowtideDotNet.Substrait.Relations
     /// </summary>
     public class NormalizationRelation : Relation
     {
-        public List<int> KeyIndex { get; set; }
+        public required List<int> KeyIndex { get; set; }
 
         public Expression? Filter { get; set; }
 
-        public Relation Input { get; set; }
+        public required Relation Input { get; set; }
 
         public override int OutputLength
         {

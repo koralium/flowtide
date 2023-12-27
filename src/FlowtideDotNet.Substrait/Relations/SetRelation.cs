@@ -14,7 +14,7 @@ namespace FlowtideDotNet.Substrait.Relations
 {
     public class SetRelation : Relation
     {
-        public List<Relation> Inputs { get; set; }
+        public required List<Relation> Inputs { get; set; }
 
         public SetOperation Operation { get; set; }
 
@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             get
             {
-                return Inputs.First().OutputLength;
+                return Inputs[0].OutputLength;
             }
         }
 

@@ -19,10 +19,10 @@ namespace FlowtideDotNet.Core.Compute.Internal
 {
     internal class StreamingAggregateContainer : IAggregateContainer
     {
-        private readonly Func<StreamEvent, byte[], long, byte[]> mapFunc;
+        private readonly Func<RowEvent, byte[], long, byte[]> mapFunc;
         private readonly Func<byte[], FlxValue> stateToValueFunc;
 
-        public StreamingAggregateContainer(Func<StreamEvent, byte[], long, byte[]> mapFunc, Func<byte[], FlxValue> stateToValueFunc)
+        public StreamingAggregateContainer(Func<RowEvent, byte[], long, byte[]> mapFunc, Func<byte[], FlxValue> stateToValueFunc)
         {
             this.mapFunc = mapFunc;
             this.stateToValueFunc = stateToValueFunc;
@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return Task.CompletedTask;
         }
 
-        public ValueTask<byte[]> Compute(StreamEvent key, StreamEvent row, byte[] state, long weight)
+        public ValueTask<byte[]> Compute(RowEvent key, RowEvent row, byte[] state, long weight)
         {
             return ValueTask.FromResult(mapFunc(row, state, weight));
         }
@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
         {
         }
 
-        public ValueTask<FlxValue> GetValue(StreamEvent key, byte[] state)
+        public ValueTask<FlxValue> GetValue(RowEvent key, byte[] state)
         {
             return ValueTask.FromResult(stateToValueFunc(state));
         }
@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             ParameterExpression groupingKeyParameter)
         {
             var mapFunc = UpdateStateFunc(aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter);
-            var lambda = System.Linq.Expressions.Expression.Lambda<Func<StreamEvent, byte[], long, byte[]>>(mapFunc, eventParameter, stateParameter, weightParameter);
+            var lambda = System.Linq.Expressions.Expression.Lambda<Func<RowEvent, byte[], long, byte[]>>(mapFunc, eventParameter, stateParameter, weightParameter);
             var compiled = lambda.Compile();
             return Task.FromResult<IAggregateContainer>(new StreamingAggregateContainer(compiled, StateToValueFunc));
         }

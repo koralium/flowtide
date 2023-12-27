@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using Google.Protobuf.WellKnownTypes;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -25,36 +26,32 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
     {
         internal static System.Linq.Expressions.MethodCallExpression CompareRef(System.Linq.Expressions.Expression a, System.Linq.Expressions.Expression b)
         {
-            MethodInfo compareMethod = typeof(FlxValueRefComparer).GetMethod("CompareTo", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            MethodInfo? compareMethod = typeof(FlxValueRefComparer).GetMethod("CompareTo", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            Debug.Assert(compareMethod != null);
             return System.Linq.Expressions.Expression.Call(compareMethod, a, b);
         }
-
-        private static System.Linq.Expressions.Expression AccessRootVector(ParameterExpression p)
-        {
-            var props = typeof(JoinStreamEvent).GetProperties().FirstOrDefault(x => x.Name == "Vector");
-            var getMethod = props.GetMethod;
-            return System.Linq.Expressions.Expression.Property(p, getMethod);
-        }
-
 
         private static System.Linq.Expressions.Expression GetAccessFieldExpression(System.Linq.Expressions.ParameterExpression parameter, FieldReference fieldReference, int relativeIndex)
         {
             if (fieldReference is DirectFieldReference directFieldReference &&
                     directFieldReference.ReferenceSegment is StructReferenceSegment referenceSegment)
             {
-                var method = typeof(FlxVector).GetMethod("GetRef");
+                var method = typeof(JoinStreamEvent).GetMethod("GetColumnRef");
 
                 if (method == null)
                 {
                     throw new InvalidOperationException("Method GetRef could not be found");
                 }
 
-                return System.Linq.Expressions.Expression.Call(AccessRootVector(parameter), method, System.Linq.Expressions.Expression.Constant(referenceSegment.Field - relativeIndex));
+                return System.Linq.Expressions.Expression.Call(parameter, method, System.Linq.Expressions.Expression.Constant(referenceSegment.Field - relativeIndex));
             }
             throw new NotSupportedException("Only direct field references are supported in merge join keys");
         }
 
+        // Used in reflection
+#pragma warning disable IDE0051 // Remove unused private members
         private static bool EqualImplementation(in FlxValueRef x, in FlxValueRef y)
+#pragma warning restore IDE0051 // Remove unused private members
         {
             // If either is null, return null
             if (x.IsNull || y.IsNull)
@@ -73,7 +70,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         internal static System.Linq.Expressions.MethodCallExpression EqualRef(System.Linq.Expressions.Expression a, System.Linq.Expressions.Expression b)
         {
-            MethodInfo compareMethod = typeof(MergeJoinExpressionCompiler).GetMethod("EqualImplementation", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            MethodInfo? compareMethod = typeof(MergeJoinExpressionCompiler).GetMethod("EqualImplementation", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            Debug.Assert(compareMethod != null);
             return System.Linq.Expressions.Expression.Call(compareMethod, a, b);
         }
 
@@ -135,7 +133,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             // Create each index compare function that returns if a value is lesser or greater than the other value
             // These functions are used during insertion
             var tmpVar = System.Linq.Expressions.Expression.Variable(typeof(int));
-            var leftCompare = leftIndexExpressions.Last();
+            var leftCompare = leftIndexExpressions[leftIndexExpressions.Count - 1];
             for (int i = leftIndexExpressions.Count - 2; i >= 0; i--)
             {
                 var res = leftIndexExpressions[i];
@@ -182,7 +180,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             System.Linq.Expressions.Expression? keyEqualsExpression;
 
-            var firstEqual = fieldEqualExpressions.First();
+            var firstEqual = fieldEqualExpressions[0];
             keyEqualsExpression = firstEqual;
             for (int i = 1; i < fieldEqualExpressions.Count; i++)
             {
