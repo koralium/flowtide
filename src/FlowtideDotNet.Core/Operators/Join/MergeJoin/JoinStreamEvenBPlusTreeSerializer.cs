@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Tree;
 using FlexBuffers;
+using System.Buffers;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -24,15 +25,20 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             var length = reader.ReadInt32();
             var bytes = reader.ReadBytes(length);
             var vector = FlxValue.FromMemory(bytes).AsVector;
-            return new JoinStreamEvent(bytes, iteration, targetId, vector);
+            return new JoinStreamEvent(iteration, targetId, new CompactRowData(bytes, vector));
         }
 
         public void Serialize(in BinaryWriter writer, in JoinStreamEvent value)
         {
             writer.Write(value.TargetId);
             writer.Write(value.Iteration);
-            writer.Write(value.Span.Length);
-            writer.Write(value.Span);
+
+            var rowEv = new RowEvent(0, 0, value.RowData);
+            // TODO: This can be done much better
+            var compactEvent = rowEv.Compact(new FlexBuffer(ArrayPool<byte>.Shared));
+            var compactRowData = (CompactRowData)compactEvent.RowData;
+            writer.Write(compactRowData.Span.Length);
+            writer.Write(compactRowData.Span);
         }
     }
 }

@@ -10,20 +10,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core;
-using FlowtideDotNet.Substrait.Relations;
+using FlexBuffers;
+using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.Kafka
+namespace FlowtideDotNet.Core
 {
-    public interface IFlowtideKafkaValueSerializer
+    public interface IRowEvent
     {
-        byte[]? Serialize(RowEvent streamEvent, bool isDeleted);
+        FlxValue GetColumn(int index);
 
-        Task Initialize(WriteRelation writeRelation);
+        FlxValueRef GetColumnRef(in int index);
+
+        IRowData RowData { get; }
+
+        int Weight { get; }
+
+        uint Iteration { get; }
+
+        int Length { get; }
     }
 }

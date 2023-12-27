@@ -24,6 +24,7 @@ using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
+using System.Buffers;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
@@ -54,11 +55,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public FlowtideTestStream(string testName)
         {
+            var streamName = testName.Replace("/", "_");
             _db = new Internal.MockDatabase();
             generator = new DatasetGenerator(_db);
             sqlPlanBuilder = new SqlPlanBuilder();
             sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
-            flowtideBuilder = new FlowtideBuilder("stream")
+            flowtideBuilder = new FlowtideBuilder(streamName)
                 .WithLoggerFactory(new LoggerFactory(new List<ILoggerProvider>() { new DebugLoggerProvider() }));
             this.testName = testName;
         }
@@ -71,6 +73,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public void AddOrUpdateUser(User user)
         {
             generator.AddOrUpdateUser(user);
+        }
+
+        public void DeleteUser(User user)
+        {
+            generator.DeleteUser(user);
         }
 
         public async Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default, TimeSpan? timestampInterval = default)
@@ -194,7 +201,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             var membersInOrder = typeof(T).GetProperties().Select(x => x.Name).ToList();
             var accessor = TypeAccessor.Create(typeof(T));
 
-            SortedDictionary<StreamEvent, int> dict = new SortedDictionary<StreamEvent, int>(new BPlusTreeStreamEventComparer());
+            SortedDictionary<RowEvent, int> dict = new SortedDictionary<RowEvent, int>(new BPlusTreeStreamEventComparer());
 
             foreach (var row in data)
             {
@@ -213,7 +220,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 List<byte[]> output = new List<byte[]>();
                 for (int i = 0; i < x.Value; i++)
                 {
-                    output.Add(x.Key.Memory.ToArray());
+                    var compactData = (CompactRowData)x.Key.Compact(new FlexBuffer(ArrayPool<byte>.Shared)).RowData;
+                    output.Add(compactData.Span.ToArray());
                 }
                 return output;
             }).ToList();

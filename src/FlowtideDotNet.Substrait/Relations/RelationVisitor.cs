@@ -21,87 +21,87 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public virtual TReturn VisitReadRelation(ReadRelation readRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Read relation is not implemented");
         }
 
         public virtual TReturn VisitFilterRelation(FilterRelation filterRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Filter relation is not implemented");
         }
 
         public virtual TReturn VisitJoinRelation(JoinRelation joinRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Join relation is not implemented");
         }
 
         public virtual TReturn VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Merge join relation is not implemented");
         }
 
         public virtual TReturn VisitPlanRelation(PlanRelation planRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Plan relation is not implemented");
         }
 
         public virtual TReturn VisitProjectRelation(ProjectRelation projectRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Project relation is not implemented");
         }
 
         public virtual TReturn VisitRootRelation(RootRelation rootRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Root relation is not implemented");
         }
 
         public virtual TReturn VisitSetRelation(SetRelation setRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Set relation is not implemented");
         }
 
         public virtual TReturn VisitWriteRelation(WriteRelation writeRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Write relation is not implemented");
         }
 
         public virtual TReturn VisitReferenceRelation(ReferenceRelation referenceRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Reference relation is not implemented");
         }
 
         public virtual TReturn VisitNormalizationRelation(NormalizationRelation normalizationRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Normalization relation is not implemented");
         }
 
         public virtual TReturn VisitUnwrapRelation(UnwrapRelation unwrapRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Unwrap relation is not implemented");
         }
 
         public virtual TReturn VisitVirtualTableReadRelation(VirtualTableReadRelation virtualTableReadRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Virtual table read relation is not implemented");
         }
 
         public virtual TReturn VisitAggregateRelation(AggregateRelation aggregateRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Aggregate relation is not implemented");
         }
         
         public virtual TReturn VisitIterationRelation(IterationRelation iterationRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Iteration relation is not implemented");
         }
 
         public virtual TReturn VisitIterationReferenceReadRelation(IterationReferenceReadRelation iterationReferenceReadRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Iteration reference read relation is not implemented");
         }
 
         public virtual TReturn VisitBufferRelation(BufferRelation bufferRelation, TState state)
         {
-            return default;
+            throw new NotImplementedException("Buffer relation is not implemented");
         }
     }
 }

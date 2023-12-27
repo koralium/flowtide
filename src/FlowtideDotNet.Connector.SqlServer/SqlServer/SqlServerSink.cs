@@ -34,13 +34,13 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         private string tmpTableName;
         private readonly Func<string> connectionStringFunc;
         private readonly WriteRelation writeRelation;
-        private IBPlusTree<StreamEvent, int> m_modified;
+        private IBPlusTree<RowEvent, int> m_modified;
         private bool m_hasModified;
         private SqlConnection connection;
         private List<string> m_primaryKeyNames;
         private IReadOnlyList<int>? m_primaryKeys;
         private DataTable m_dataTable;
-        private Action<DataTable, bool, StreamEvent> m_mapRowFunc;
+        private Action<DataTable, bool, RowEvent> m_mapRowFunc;
         private string mergeIntoStatement;
         private SqlBulkCopy m_sqlBulkCopy;
         private SqlCommand m_mergeIntoCommand;
@@ -230,7 +230,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         {
             await LoadMetadata();
             // Create a tree for storing modified data.
-            m_modified = await stateManagerClient.GetOrCreateTree<StreamEvent, int>("temporary", new Storage.Tree.BPlusTreeOptions<StreamEvent, int>()
+            m_modified = await stateManagerClient.GetOrCreateTree<RowEvent, int>("temporary", new Storage.Tree.BPlusTreeOptions<RowEvent, int>()
             {
                 Comparer = PrimaryKeyComparer,
                 ValueSerializer = new IntSerializer(),

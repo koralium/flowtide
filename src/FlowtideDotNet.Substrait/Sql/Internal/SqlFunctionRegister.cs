@@ -13,6 +13,7 @@
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -28,8 +29,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
     internal class SqlFunctionRegister : ISqlFunctionRegister
     {
-        private Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression>> _scalarFunctions;
-        private Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction>> _aggregateFunctions;
+        private readonly Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression>> _scalarFunctions;
+        private readonly Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction>> _aggregateFunctions;
 
         public SqlFunctionRegister()
         {

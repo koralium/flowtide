@@ -38,16 +38,16 @@ namespace FlowtideDotNet.Core
             }
         }
 
-        public void Write(in Stream stream, in StreamEvent streamEvent)
+        public void Write(in Stream stream, in RowEvent streamEvent)
         {
             var writer = new Utf8JsonWriter(stream);
             writer.WriteStartObject();
-            for(int i = 0; i < streamEvent.Vector.Length; i++)
+            for(int i = 0; i < streamEvent.Length; i++)
             {
                 if (ShouldWriteColumn(i))
                 {
                     WritePropertyName(writer, i);
-                    WriteColumnValue(writer, streamEvent.Vector.GetRef(i), i);
+                    WriteColumnValue(writer, streamEvent.GetColumnRef(i), i);
                 }
             }
             writer.WriteEndObject();

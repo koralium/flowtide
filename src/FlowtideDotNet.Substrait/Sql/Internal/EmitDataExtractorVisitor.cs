@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
     /// <summary>
     /// Visitor that tries to identify what data will be returned by a query.
     /// </summary>
-    internal class EmitDataExtractorVisitor : SqlBaseVisitor<EmitData?, object>
+    internal class EmitDataExtractorVisitor : SqlBaseVisitor<EmitData?, object?>
     {
         private readonly TablesMetadata tablesMetadata;
         private readonly SqlFunctionRegister sqlFunctionRegister;
@@ -37,12 +37,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             this.sqlFunctionRegister = sqlFunctionRegister;
         }
 
-        protected override EmitData? VisitQuery(Query query, object state)
+        protected override EmitData? VisitQuery(Query query, object? state)
         {
             return Visit(query.Body, state);
         }
 
-        protected override EmitData? VisitSetOperation(SetExpression.SetOperation setOperation, object state)
+        protected override EmitData? VisitSetOperation(SetExpression.SetOperation setOperation, object? state)
         {
             var left = Visit(setOperation.Left, state);
             var right = Visit(setOperation.Right, state);
@@ -55,11 +55,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 for (int i = 0; i < leftNames.Count; i++)
                 {
                     var alias = default(string);
-                    if (!leftNames[i].StartsWith("$"))
+                    if (!leftNames[i].StartsWith('$'))
                     {
                         alias = leftNames[i];
                     }
-                    else if (!rightNames[i].StartsWith("$"))
+                    else if (!rightNames[i].StartsWith('$'))
                     {
                         alias = rightNames[i];
                     }
@@ -85,7 +85,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
         }
 
-        protected override EmitData VisitSelect(Select select, object state)
+        protected override EmitData VisitSelect(Select select, object? state)
         {
             EmitData? parent = default;
             if (select.From != null)
@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("Only a single table in the FROM statement is supported");
                 }
-                var fromTable = select.From.First();
+                var fromTable = select.From[0];
 
                 parent = Visit(fromTable, state);
             }
@@ -103,6 +103,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 parent = VisitProjection(select.Projection, parent);
             }
+
+            if (parent == null)
+            {
+                throw new InvalidOperationException("Could not extract emit data from query");
+            }
+
             return parent;
         }
 
@@ -135,7 +141,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return projectEmitData;
         }
 
-        protected override EmitData? VisitTable(TableFactor.Table table, object state)
+        protected override EmitData? VisitTable(TableFactor.Table table, object? state)
         {
             var tableName = string.Join('.', table.Name.Values.Select(x => x.Value));
 
@@ -161,7 +167,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return null;
         }
 
-        protected override EmitData? VisitTableWithJoins(TableWithJoins tableWithJoins, object state)
+        protected override EmitData? VisitTableWithJoins(TableWithJoins tableWithJoins, object? state)
         {
             var parent = Visit(tableWithJoins.Relation!, state);
             if (tableWithJoins.Joins != null)
@@ -191,7 +197,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return joinEmitData;
         }
 
-        protected override EmitData? VisitCreateTable(Statement.CreateTable createTable, object state)
+        protected override EmitData? VisitCreateTable(Statement.CreateTable createTable, object? state)
         {
             return null;
         }

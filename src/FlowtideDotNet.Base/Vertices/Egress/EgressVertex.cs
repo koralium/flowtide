@@ -190,6 +190,12 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         public virtual ValueTask DisposeAsync()
         {
+            if (_cancellationTokenSource != null)
+            {
+                _cancellationTokenSource.Dispose();
+                _cancellationTokenSource = null;
+            }
+            
             return ValueTask.CompletedTask;
         }
 

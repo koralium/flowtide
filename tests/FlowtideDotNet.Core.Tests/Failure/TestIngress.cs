@@ -58,13 +58,13 @@ namespace FlowtideDotNet.Core.Tests.Failure
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
             await output.EnterCheckpointLock();
-            var streamEvent = StreamEvent.Create(1, 0, b =>
+            var streamEvent = RowEvent.Create(1, 0, b =>
             {
                 b.Add("namn1");
                 b.Add("namn2");
                 b.Add(90210);
             });
-            await output.SendAsync(new StreamEventBatch(null, new List<StreamEvent>()
+            await output.SendAsync(new StreamEventBatch(new List<RowEvent>()
             {
                 streamEvent
             }));

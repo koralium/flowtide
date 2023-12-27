@@ -31,12 +31,12 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public Relation? Input { get; set; }
 
-        public string IterationName { get; set; }
+        public required string IterationName { get; set; }
 
         /// <summary>
         /// The loop plan
         /// </summary>
-        public Relation LoopPlan { get; set; }
+        public required Relation LoopPlan { get; set; }
 
         public Expression? ShouldIterateCondition { get; set; }
 

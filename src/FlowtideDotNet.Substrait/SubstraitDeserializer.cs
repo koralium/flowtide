@@ -311,10 +311,10 @@ namespace FlowtideDotNet.Substrait
             {
                 var relation = new AggregateRelation()
                 {
+                    Input = VisitRel(aggregateRel.Input),
                     Groupings = new List<AggregateGrouping>(),
                     Measures = new List<AggregateMeasure>()
                 };
-                relation.Input = VisitRel(aggregateRel.Input);
                 
                 if (aggregateRel.Groupings.Count > 0)
                 {
@@ -371,8 +371,11 @@ namespace FlowtideDotNet.Substrait
 
             private Relation VisitSet(Protobuf.SetRel setRel)
             {
-                var set = new SetRelation();
-                set.Inputs = new List<Relation>();
+                var set = new SetRelation()
+                {
+                    Inputs = new List<Relation>()
+                };
+                
                 for (int i = 0; i < setRel.Inputs.Count; i++)
                 {
                     set.Inputs.Add(VisitRel(setRel.Inputs[i]));
@@ -490,15 +493,18 @@ namespace FlowtideDotNet.Substrait
             {
                 var input = VisitRel(filterRel.Input);
 
+                if (filterRel.Condition == null)
+                {
+                    throw new InvalidOperationException("Filter must have a condition");
+                }
+
                 var filter = new FilterRelation()
                 {
                     Input = input,
+                    Condition = expressionDeserializer.VisitExpression(filterRel.Condition),
                     Emit = GetEmit(filterRel.Common)
                 };
-                if (filterRel.Condition != null)
-                {
-                    filter.Condition = expressionDeserializer.VisitExpression(filterRel.Condition);
-                }
+                
                 return filter;
             }
 

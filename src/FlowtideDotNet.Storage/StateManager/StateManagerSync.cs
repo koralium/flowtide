@@ -314,7 +314,6 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 if (disposing)
                 {
-                    // TODO: dispose managed state (managed objects)
                     if (m_persistentStorage != null)
                     {
                         m_persistentStorage.Dispose();
@@ -324,20 +323,16 @@ namespace FlowtideDotNet.Storage.StateManager
                     {
                         stateClient.Value.Dispose();
                     }
+
+                    if (m_lruTable != null)
+                    {
+                        m_lruTable.Dispose();
+                    }
                 }
 
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
                 disposedValue = true;
             }
         }
-
-        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-        // ~StateManagerSync()
-        // {
-        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        //     Dispose(disposing: false);
-        // }
 
         public void Dispose()
         {

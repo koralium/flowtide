@@ -18,11 +18,11 @@ namespace FlowtideDotNet.Substrait.Relations
     {
         public override int OutputLength => Input.OutputLength;
 
-        public Relation Input { get; set; }
+        public required Relation Input { get; set; }
 
-        public NamedStruct TableSchema { get; set; }
+        public required NamedStruct TableSchema { get; set; }
 
-        public NamedTable NamedObject { get; set; }
+        public required NamedTable NamedObject { get; set; }
 
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {

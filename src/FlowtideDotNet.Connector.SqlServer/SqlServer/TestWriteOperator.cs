@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.Tests.Acceptance
         private StreamWriter allInput;
 #endif
         private TestWriteState currentState;
-        private SortedSet<StreamEvent> modified;
+        private SortedSet<RowEvent> modified;
         List<int> primaryKeyIds;
         private readonly Func<IReadOnlyList<DataChange>, Task> onValueChange;
         private readonly WriteRelation writeRelation;
@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Core.Tests.Acceptance
                 for (int i = 0; i < primaryKeyIds.Count; i++)
                 {
                     var primaryKeyIndex = primaryKeyIds[i];
-                    key.Add(writeRelation.TableSchema.Names[primaryKeyIndex], m.Vector[primaryKeyIndex]);
+                    key.Add(writeRelation.TableSchema.Names[primaryKeyIndex], m.GetColumn(primaryKeyIndex));
                 }
                 if (m.GetColumn(0).AsString.Equals("PILAN\\JENU"))
                 {
@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Core.Tests.Acceptance
             {
                 currentState = new TestWriteState();
             }
-            modified = new SortedSet<StreamEvent>(PrimaryKeyComparer);
+            modified = new SortedSet<RowEvent>(PrimaryKeyComparer);
             return Task.CompletedTask;
         }
 

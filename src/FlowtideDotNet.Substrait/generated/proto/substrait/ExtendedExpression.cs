@@ -53,6 +53,7 @@ namespace Substrait.Protobuf {
 
   }
   #region Messages
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class ExpressionReference : pb::IMessage<ExpressionReference>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -371,6 +372,7 @@ namespace Substrait.Protobuf {
   /// Describe a set of operations to complete.
   /// For compactness sake, identifiers are normalized at the plan level.
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class ExtendedExpression : pb::IMessage<ExtendedExpression>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage

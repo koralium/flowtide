@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         /// </summary>
         /// <param name="writer"></param>
         /// <param name="ev"></param>
-        public void WriteIndexUpsertMetadata(in Utf8JsonWriter writer, in StreamEvent ev)
+        public void WriteIndexUpsertMetadata(in Utf8JsonWriter writer, in RowEvent ev)
         {
             writer.WriteStartObject();
             writer.WritePropertyName(indexOperationPropertyName);
@@ -65,7 +65,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         /// </summary>
         /// <param name="writer"></param>
         /// <param name="ev"></param>
-        public void WriteIndexDeleteMetadata(in Utf8JsonWriter writer, in StreamEvent ev)
+        public void WriteIndexDeleteMetadata(in Utf8JsonWriter writer, in RowEvent ev)
         {
             writer.WriteStartObject();
             writer.WritePropertyName(deleteOperationPropertyName);
@@ -79,10 +79,10 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             writer.Flush();
         }
 
-        public void WriteObject(in Utf8JsonWriter writer, in StreamEvent ev)
+        public void WriteObject(in Utf8JsonWriter writer, in RowEvent ev)
         {
             writer.WriteStartObject();
-            for (int i = 0; i < ev.Vector.Length; i++)
+            for (int i = 0; i < ev.Length; i++)
             {
                 // Skip the _id field
                 if (i == m_idIndex)
@@ -90,15 +90,15 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                     continue;
                 }
                 WritePropertyName(writer, i);
-                WriteColumnValue(writer, ev.Vector.GetRef(i), i);
+                WriteColumnValue(writer, ev.GetColumnRef(i), i);
             }
             writer.WriteEndObject();
             writer.Flush();
         }
 
-        private void WriteIdField(in Utf8JsonWriter writer, in StreamEvent ev)
+        private void WriteIdField(in Utf8JsonWriter writer, in RowEvent ev)
         {
-            var idColumn = ev.Vector.GetRef(m_idIndex);
+            var idColumn = ev.GetColumnRef(m_idIndex);
             if (idColumn.ValueType == FlexBuffers.Type.Null)
             {
                 writer.WriteNullValue();

@@ -57,10 +57,10 @@ namespace MonitoringPrometheus
             {
                 await output.EnterCheckpointLock();
 
-                List<StreamEvent> o = new List<StreamEvent>();
+                List<RowEvent> o = new List<RowEvent>();
                 for (int k = 0; k < 100; k++)
                 {
-                    o.Add(StreamEvent.Create(1, 0, b =>
+                    o.Add(RowEvent.Create(1, 0, b =>
                     {
                         for (int z = 0; z < 16; z++)
                         {
@@ -68,7 +68,7 @@ namespace MonitoringPrometheus
                         }
                     }));
                 }
-                await output.SendAsync(new StreamEventBatch(null, o));
+                await output.SendAsync(new StreamEventBatch(o));
                 output.ExitCheckpointLock();
                 ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }

@@ -16,12 +16,12 @@ namespace FlowtideDotNet.Core.Compute.Internal
 {
     internal interface IAggregateContainer
     {
-        ValueTask<byte[]> Compute(StreamEvent key, StreamEvent row, byte[] state, long weight);
+        ValueTask<byte[]> Compute(RowEvent key, RowEvent row, byte[] state, long weight);
 
         void Disponse();
 
         Task Commit();
 
-        ValueTask<FlxValue> GetValue(StreamEvent key, byte[] state);
+        ValueTask<FlxValue> GetValue(RowEvent key, byte[] state);
     }
 }

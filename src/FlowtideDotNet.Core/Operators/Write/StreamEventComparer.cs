@@ -12,16 +12,16 @@
 
 namespace FlowtideDotNet.Core.Operators.Write
 {
-    internal class StreamEventComparer : IComparer<StreamEvent>
+    internal class StreamEventComparer : IComparer<RowEvent>
     {
-        private readonly Func<StreamEvent, StreamEvent, int> compareFunc;
+        private readonly Func<RowEvent, RowEvent, int> compareFunc;
 
-        public StreamEventComparer(Func<StreamEvent, StreamEvent, int> compareFunc)
+        public StreamEventComparer(Func<RowEvent, RowEvent, int> compareFunc)
         {
             this.compareFunc = compareFunc;
         }
 
-        public int Compare(StreamEvent x, StreamEvent y)
+        public int Compare(RowEvent x, RowEvent y)
         {
             return compareFunc(x, y);
         }
