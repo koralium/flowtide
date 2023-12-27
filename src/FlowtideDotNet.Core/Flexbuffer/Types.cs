@@ -12,7 +12,7 @@
 
 namespace FlexBuffers
 {
-    public enum Type: byte
+    public enum Type: sbyte
     {
         Null, Int, Uint, Float,
         Key, String, IndirectInt, IndirectUInt, IndirectFloat,

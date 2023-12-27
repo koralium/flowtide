@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         private readonly HashSet<string> _watermarks;
         private SqlConnection sqlConnection;
         private SqlServerState _state;
-        private Func<SqlDataReader, StreamEvent> _streamEventCreator;
+        private Func<SqlDataReader, RowEvent> _streamEventCreator;
         private Task _changesTask;
         private string _displayName;
         private List<string> primaryKeys;
@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         {
             await output.EnterCheckpointLock();
 
-            List<StreamEvent> result = new List<StreamEvent>();
+            List<RowEvent> result = new List<RowEvent>();
             var previousChangeVersion = _state.ChangeTrackingVersion;
             try
             {
@@ -154,7 +154,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 _eventsCounter.Add(result.Count);
                 Logger.LogInformation("{changeCount} Changes found from table, {tableName}", result.Count, readRelation.NamedTable.DotSeperated);
-                await output.SendAsync(new StreamEventBatch(null, result));
+                await output.SendAsync(new StreamEventBatch(result));
                 await output.SendWatermark(new FlowtideDotNet.Base.Watermark(readRelation.NamedTable.DotSeperated, _state.ChangeTrackingVersion));
                 this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }
@@ -255,7 +255,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 Dictionary<string, object> primaryKeyValues = new Dictionary<string, object>();
 
                 int batchSize = 10000;
-                List<StreamEvent> cache = new List<StreamEvent>();
+                List<RowEvent> cache = new List<RowEvent>();
                 int retryCount = 0;
                 do
                 {
@@ -263,7 +263,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     {
                         (cache, primaryKeyValues) = await SqlServerUtils.InitialSelect(readRelation, sqlConnection, primaryKeys, batchSize, primaryKeyValues, _streamEventCreator, filter, output.CancellationToken);
 
-                        List<StreamEvent> outdata = new List<StreamEvent>();
+                        List<RowEvent> outdata = new List<RowEvent>();
 
                         foreach (var ev in cache)
                         {
@@ -272,14 +272,14 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             if (outdata.Count >= 100)
                             {
                                 _eventsCounter.Add(outdata.Count);
-                                await output.SendAsync(new StreamEventBatch(null, outdata));
-                                outdata = new List<StreamEvent>();
+                                await output.SendAsync(new StreamEventBatch(outdata));
+                                outdata = new List<RowEvent>();
                             }
                         }
                         if (outdata.Count > 0)
                         {
                             _eventsCounter.Add(outdata.Count);
-                            await output.SendAsync(new StreamEventBatch(null, outdata));
+                            await output.SendAsync(new StreamEventBatch(outdata));
                         }
                         retryCount = 0;
                         SetHealth(true);

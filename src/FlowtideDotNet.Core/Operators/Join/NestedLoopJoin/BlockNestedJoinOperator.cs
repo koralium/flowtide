@@ -34,13 +34,13 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
     internal class BlockNestedJoinOperator : MultipleInputVertex<StreamEventBatch, JoinState>
     {
         // Persisted trees
-        protected IBPlusTree<StreamEvent, JoinStorageValue>? _leftTree;
-        protected IBPlusTree<StreamEvent, JoinStorageValue>? _rightTree;
+        protected IBPlusTree<RowEvent, JoinStorageValue>? _leftTree;
+        protected IBPlusTree<RowEvent, JoinStorageValue>? _rightTree;
 
         // Temporary trees
-        protected IBPlusTree<StreamEvent, JoinStorageValue>? _leftTemporary;
-        protected IBPlusTree<StreamEvent, JoinStorageValue>? _rightTemporary;
-        protected readonly Func<StreamEvent, StreamEvent, bool> _condition;
+        protected IBPlusTree<RowEvent, JoinStorageValue>? _leftTemporary;
+        protected IBPlusTree<RowEvent, JoinStorageValue>? _rightTemporary;
+        protected readonly Func<RowEvent, RowEvent, bool> _condition;
         private readonly JoinRelation joinRelation;
         private readonly FlexBuffer _flexBuffer;
 
@@ -49,7 +49,11 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
         public BlockNestedJoinOperator(JoinRelation joinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
             _flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
-            _condition = BooleanCompiler.Compile<StreamEvent>(joinRelation.Expression, functionsRegister, joinRelation.Left.OutputLength);
+            if (joinRelation.Expression == null)
+            {
+                throw new InvalidOperationException("Join relation must have an expression");
+            }
+            _condition = BooleanCompiler.Compile<RowEvent>(joinRelation.Expression, functionsRegister, joinRelation.Left.OutputLength);
             this.joinRelation = joinRelation;
             _leftSize = joinRelation.Left.OutputLength;
         }
@@ -77,12 +81,10 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             return new JoinState();
         }
 
-        protected StreamEvent OnConditionSuccess(StreamEvent left, StreamEvent right, in int weight)
+        protected RowEvent OnConditionSuccess(RowEvent left, RowEvent right, in int weight)
         {
             _flexBuffer.NewObject();
             var vectorStart = _flexBuffer.StartVector();
-            var leftSpan = left.Vector.Span;
-            var rightSpan = right.Vector.Span;
 
             if (joinRelation.EmitSet)
             {
@@ -92,39 +94,39 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 
                     if (index < _leftSize)
                     {
-                        _flexBuffer.Add(left.Vector.GetWithSpan(index, leftSpan));
+                        _flexBuffer.Add(left.GetColumn(index));
                     }
                     else
                     {
-                        _flexBuffer.Add(right.Vector.GetWithSpan(index - _leftSize, rightSpan));
+                        _flexBuffer.Add(right.GetColumn(index - _leftSize));
                     }
                 }
             }
             else
             {
-                for (int i = 0; i < left.Vector.Length; i++)
+                for (int i = 0; i < left.Length; i++)
                 {
-                    _flexBuffer.Add(left.Vector.GetWithSpan(i, leftSpan));
+                    _flexBuffer.Add(left.GetColumn(i));
                 }
-                for (int i = 0; i < right.Vector.Length; i++)
+                for (int i = 0; i < right.Length; i++)
                 {
-                    _flexBuffer.Add(right.Vector.GetWithSpan(i, rightSpan));
+                    _flexBuffer.Add(right.GetColumn(i));
                 }
             }
 
             _flexBuffer.EndVector(vectorStart, false, false);
             var bytes = _flexBuffer.Finish();
 
-            var ev = new StreamEvent(weight, 0, bytes);
+            var ev = new RowEvent(weight, 0, new CompactRowData(bytes));
 
             return ev;
         }
 
-        protected StreamEvent CreateLeftWithNullRightEvent(int weight, StreamEvent e)
+        protected RowEvent CreateLeftWithNullRightEvent(int weight, RowEvent e)
         {
             _flexBuffer.NewObject();
             var vectorStart = _flexBuffer.StartVector();
-            var exitingSpan = e.Vector.Span;
+            //var exitingSpan = e.Vector.Span;
 
             if (joinRelation.EmitSet)
             {
@@ -133,7 +135,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
                     var index = joinRelation.Emit[i];
                     if (index < _leftSize)
                     {
-                        _flexBuffer.Add(e.Vector.GetWithSpan(index, exitingSpan));
+                        _flexBuffer.Add(e.GetColumn(index));
                     }
                     else
                     {
@@ -143,9 +145,9 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             }
             else
             {
-                for (int i = 0; i < e.Vector.Length; i++)
+                for (int i = 0; i < e.Length; i++)
                 {
-                    _flexBuffer.Add(e.Vector.GetWithSpan(i, exitingSpan));
+                    _flexBuffer.Add(e.GetColumn(i));
                 }
                 for (int i = 0; i < joinRelation.Right.OutputLength; i++)
                 {
@@ -155,7 +157,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             _flexBuffer.EndVector(vectorStart, false, false);
             var bytes = _flexBuffer.Finish();
 
-            var o = new StreamEvent(weight, 0, bytes);
+            var o = new RowEvent(weight, 0, new CompactRowData(bytes));
             return o;
         }
 
@@ -171,7 +173,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             var leftPersistentIterator = _leftTree.CreateIterator();
             await leftPersistentIterator.SeekFirst();
 
-            List<StreamEvent> output = new List<StreamEvent>();
+            List<RowEvent> output = new List<RowEvent>();
 
             // Do the block nested loop join for the values on the right
             await foreach (var leftPage in leftPersistentIterator)
@@ -330,7 +332,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 
             await _leftTemporary.Clear();
 
-            yield return new StreamEventBatch(null, output);
+            yield return new StreamEventBatch(output);
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
@@ -387,27 +389,27 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
         protected override async Task InitializeOrRestore(JoinState? state, IStateManagerClient stateManagerClient)
         {
             Logger.LogWarning("Block nested loop join in use, it will severely impact performance of the stream.");
-            _leftTree = await stateManagerClient.GetOrCreateTree("left", new BPlusTreeOptions<StreamEvent, JoinStorageValue>()
+            _leftTree = await stateManagerClient.GetOrCreateTree("left", new BPlusTreeOptions<RowEvent, JoinStorageValue>()
             {
                 Comparer = new NestedJoinStreamEventComparer(),
                 KeySerializer = new StreamEventBPlusTreeSerializer(),
                 ValueSerializer = new JoinStorageValueBPlusTreeSerializer()
             });
-            _rightTree = await stateManagerClient.GetOrCreateTree("right", new BPlusTreeOptions<StreamEvent, JoinStorageValue>()
-            {
-                Comparer = new NestedJoinStreamEventComparer(),
-                KeySerializer = new StreamEventBPlusTreeSerializer(),
-                ValueSerializer = new JoinStorageValueBPlusTreeSerializer()
-            });
-
-            _leftTemporary = await stateManagerClient.GetOrCreateTree("left_tmp", new BPlusTreeOptions<StreamEvent, JoinStorageValue>()
+            _rightTree = await stateManagerClient.GetOrCreateTree("right", new BPlusTreeOptions<RowEvent, JoinStorageValue>()
             {
                 Comparer = new NestedJoinStreamEventComparer(),
                 KeySerializer = new StreamEventBPlusTreeSerializer(),
                 ValueSerializer = new JoinStorageValueBPlusTreeSerializer()
             });
 
-            _rightTemporary = await stateManagerClient.GetOrCreateTree("right_tmp", new BPlusTreeOptions<StreamEvent, JoinStorageValue>()
+            _leftTemporary = await stateManagerClient.GetOrCreateTree("left_tmp", new BPlusTreeOptions<RowEvent, JoinStorageValue>()
+            {
+                Comparer = new NestedJoinStreamEventComparer(),
+                KeySerializer = new StreamEventBPlusTreeSerializer(),
+                ValueSerializer = new JoinStorageValueBPlusTreeSerializer()
+            });
+
+            _rightTemporary = await stateManagerClient.GetOrCreateTree("right_tmp", new BPlusTreeOptions<RowEvent, JoinStorageValue>()
             {
                 Comparer = new NestedJoinStreamEventComparer(),
                 KeySerializer = new StreamEventBPlusTreeSerializer(),

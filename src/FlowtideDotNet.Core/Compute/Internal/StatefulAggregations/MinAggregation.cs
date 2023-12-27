@@ -25,7 +25,7 @@ using static SqlParser.Ast.WildcardExpression;
 
 namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
 {
-    internal class MinAggregationInsertComparer : IComparer<StreamEvent>
+    internal class MinAggregationInsertComparer : IComparer<RowEvent>
     {
         private readonly int length;
 
@@ -33,11 +33,11 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
         {
             this.length = length;
         }
-        public int Compare(StreamEvent x, StreamEvent y)
+        public int Compare(RowEvent x, RowEvent y)
         {
             for (int i = 0; i < length; i++)
             {
-                var c = FlxValueRefComparer.CompareTo(x.Vector.GetRef(i), y.Vector.GetRef(i));
+                var c = FlxValueRefComparer.CompareTo(x.GetColumnRef(i), y.GetColumnRef(i));
                 if (c != 0)
                 {
                     return c;
@@ -51,19 +51,19 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
     {
         private readonly int keyLength;
 
-        public MinAggregationSingleton(IBPlusTree<StreamEvent, int> tree, int keyLength)
+        public MinAggregationSingleton(IBPlusTree<RowEvent, int> tree, int keyLength)
         {
             Tree = tree;
             this.keyLength = keyLength;
         }
 
         public int KeyLength => keyLength;
-        public IBPlusTree<StreamEvent, int> Tree { get; }
-        public bool AreKeyEqual(StreamEvent x, StreamEvent y)
+        public IBPlusTree<RowEvent, int> Tree { get; }
+        public bool AreKeyEqual(RowEvent x, RowEvent y)
         {
             for (int i = 0; i < keyLength; i++)
             {
-                var c = FlxValueRefComparer.CompareTo(x.Vector.GetRef(i), y.Vector.GetRef(i));
+                var c = FlxValueRefComparer.CompareTo(x.GetColumnRef(i), y.GetColumnRef(i));
                 if (c != 0)
                 {
                     return false;
@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             {
                 searchPrimaryKeys.Add(i);
             }
-            var tree = await stateManagerClient.GetOrCreateTree("mintree", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<StreamEvent, int>()
+            var tree = await stateManagerClient.GetOrCreateTree("mintree", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
             {
                 Comparer = new MinAggregationInsertComparer(groupingLength + 1),
                 KeySerializer = new StreamEventBPlusTreeSerializer(),
@@ -129,17 +129,17 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             return e;
         }
 
-        private static async ValueTask<FlxValue> MinGetValue(byte[] state, StreamEvent groupingKey, MinAggregationSingleton singleton)
+        private static async ValueTask<FlxValue> MinGetValue(byte[] state, RowEvent groupingKey, MinAggregationSingleton singleton)
         {
             var vector = FlexBufferBuilder.Vector(v =>
             {
-                for (int i = 0; i < groupingKey.Vector.Length; i++)
+                for (int i = 0; i < groupingKey.Length; i++)
                 {
                     v.Add(groupingKey.GetColumn(i));
                 }
                 v.AddNull();
             });
-            var row = new StreamEvent(0, 0, vector);
+            var row = new RowEvent(0, 0, new CompactRowData(vector, FlxValue.FromMemory(vector).AsVector));
             var iterator = singleton.Tree.CreateIterator();
             await iterator.Seek(row);
             
@@ -160,12 +160,12 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             return NullValue;
         }
 
-        private static Expression<Func<FlxValue, byte[], long, MinAggregationSingleton, StreamEvent, ValueTask<byte[]>>> GetMinBody()
+        private static Expression<Func<FlxValue, byte[], long, MinAggregationSingleton, RowEvent, ValueTask<byte[]>>> GetMinBody()
         {
             return (ev, bytes, weight, singleton, groupingKey) => DoMin(ev, bytes, weight, singleton, groupingKey);
         }
 
-        private static async ValueTask<byte[]> DoMin(FlxValue column, byte[] currentState, long weight, MinAggregationSingleton singleton, StreamEvent groupingKey)
+        private static async ValueTask<byte[]> DoMin(FlxValue column, byte[] currentState, long weight, MinAggregationSingleton singleton, RowEvent groupingKey)
         {
             if (column.IsNull)
             {
@@ -173,13 +173,13 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             }
             var vector = FlexBufferBuilder.Vector(v =>
             {
-                for (int i = 0; i < groupingKey.Vector.Length; i++)
+                for (int i = 0; i < groupingKey.Length; i++)
                 {
                     v.Add(groupingKey.GetColumn(i));
                 }
                 v.Add(column);
             });
-            var row = new StreamEvent((int)weight, 0, vector);
+            var row = new RowEvent((int)weight, 0, new CompactRowData(vector, FlxValue.FromMemory(vector).AsVector));
             await singleton.Tree.RMW(row, (int)weight, (input, current, exists) =>
             {
                 if (exists)

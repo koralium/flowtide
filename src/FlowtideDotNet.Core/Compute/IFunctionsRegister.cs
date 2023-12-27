@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Core.Compute
             ParameterExpression singletonAccess,
             ParameterExpression groupingKeyParameter);
 
-        delegate ValueTask<FlxValue> AggregateStateToValueFunction<T>(byte[] state, StreamEvent groupingKey, T singleton);
+        delegate ValueTask<FlxValue> AggregateStateToValueFunction<T>(byte[] state, RowEvent groupingKey, T singleton);
 
         /// <summary>
         /// Register a stateful aggregate function.

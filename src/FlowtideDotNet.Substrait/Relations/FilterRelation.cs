@@ -28,9 +28,9 @@ namespace FlowtideDotNet.Substrait.Relations
             }
         }
 
-        public Expression Condition { get; set; }
+        public required Expression Condition { get; set; }
 
-        public Relation Input { get; set; }
+        public required Relation Input { get; set; }
 
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {

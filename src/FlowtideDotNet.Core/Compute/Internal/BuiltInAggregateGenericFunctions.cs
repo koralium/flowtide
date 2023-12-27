@@ -59,12 +59,12 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return FlxValue.FromBytes(FlexBuffer.SingleValue(count));
         }
 
-        private static Expression<Func<StreamEvent, byte[], long, byte[]>> GetCountBody()
+        private static Expression<Func<RowEvent, byte[], long, byte[]>> GetCountBody()
         {
             return (ev, bytes, weight) => DoCount(ev, bytes, weight);
         }
 
-        private static byte[] DoCount(StreamEvent streamEvent, byte[] currentState, long weight)
+        private static byte[] DoCount(RowEvent streamEvent, byte[] currentState, long weight)
         {
             if (currentState == null)
             {

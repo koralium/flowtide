@@ -182,6 +182,10 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             {
                 Input = new ReadRelation()
                 {
+                    NamedTable = new Substrait.Type.NamedTable()
+                    {
+                        Names = new List<string>() { "table1" }
+                    },
                     BaseSchema = new NamedStruct()
                     {
                         Names = new List<string>() { "id" },
@@ -226,9 +230,9 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             
             await sink.Initialize("1", 0, 0, null, vertexHandler);
 
-            await sink.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(null, new List<StreamEvent>()
+            await sink.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(new List<RowEvent>()
             {
-                StreamEvent.Create(1, 0, (b) =>
+                RowEvent.Create(1, 0, (b) =>
                 {
                     b.Add(1);
                 })

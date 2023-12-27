@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Substrait.Relations
     {
         public override int OutputLength => Root.OutputLength;
 
-        public RootRelation Root { get; set; }
+        public required RootRelation Root { get; set; }
 
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {

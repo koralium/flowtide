@@ -39,13 +39,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             Debug.Assert(source != null);
 
-            var writeRelation = new WriteRelation();
-            writeRelation.Input = source.Relation;
-            writeRelation.NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.Name.Values.Select(x => x.Value).ToList() };
+            var writeRelation = new WriteRelation()
+            {
+                Input = source.Relation,
+                NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.Name.Values.Select(x => x.Value).ToList() },
+                TableSchema = new NamedStruct()
+            };
 
             if (insert.Columns != null && insert.Columns.Count > 0)
             {
-                writeRelation.TableSchema = new FlowtideDotNet.Substrait.Type.NamedStruct();
                 writeRelation.TableSchema.Names = insert.Columns.Select(x => x.Value).ToList();
                 writeRelation.TableSchema.Struct = new FlowtideDotNet.Substrait.Type.Struct()
                 {
@@ -280,11 +282,6 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         private RelationData? VisitProjection(SqlParser.Sequence<SelectItem> selects, RelationData parent)
         {
-            var projectRel = new ProjectRelation()
-            {
-                Input = parent.Relation
-            };
-
             EmitData projectEmitData = new EmitData();
             List<FlowtideDotNet.Substrait.Expressions.Expression> expressions = new List<FlowtideDotNet.Substrait.Expressions.Expression>();
             List<int> emitList = new List<int>();
@@ -310,8 +307,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 emitList.Add(emitCounter);
                 emitCounter++;
             }
-            projectRel.Expressions = expressions;
-            projectRel.Emit = emitList;
+            var projectRel = new ProjectRelation()
+            {
+                Input = parent.Relation,
+                Expressions = expressions,
+                Emit = emitList
+            };
             return new RelationData(projectRel, projectEmitData);
         }
 

@@ -228,6 +228,14 @@ namespace FlowtideDotNet.Core.Compute
                     var bblob = b.AsBlob;
                     return ablob.SequenceCompareTo(bblob);
                 }
+                if (a.ValueType == FlexBuffers.Type.Decimal)
+                {
+                    return decimal.Compare(a.AsDecimal, b.AsDecimal);
+                }
+                if (a.ValueType == FlexBuffers.Type.Float)
+                {
+                    return a.AsDouble.CompareTo(b.AsDouble);
+                }
                 throw new NotImplementedException();
             }
             if (a.ValueType == FlexBuffers.Type.Decimal)

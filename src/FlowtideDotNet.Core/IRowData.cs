@@ -10,21 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Substrait.Relations
+using FlexBuffers;
+using FlowtideDotNet.Core.Flexbuffer;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Core
 {
     /// <summary>
-    /// An extension relation that is used to do a filter based on the current time.
-    /// This is a seperate relation to enable an implementation that 
+    /// Contains the data of a row
     /// </summary>
-    public class DateTimeFilterRelation : Relation
+    public interface IRowData
     {
-        public Relation Input { get; set; }
+        FlxValue GetColumn(int index);
 
-        public override int OutputLength => Input.OutputLength;
+        FlxValueRef GetColumnRef(scoped in int index);
 
-        public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
-        {
-            throw new NotImplementedException();
-        }
+        int Length { get; }
     }
 }

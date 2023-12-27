@@ -14,6 +14,7 @@ using FlexBuffers;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -30,13 +31,15 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         private static System.Linq.Expressions.MethodCallExpression Compare(System.Linq.Expressions.Expression a, System.Linq.Expressions.Expression b)
         {
-            MethodInfo compareMethod = typeof(FlxValueComparer).GetMethod("CompareTo", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            MethodInfo? compareMethod = typeof(FlxValueComparer).GetMethod("CompareTo", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            Debug.Assert(compareMethod != null);
             return System.Linq.Expressions.Expression.Call(compareMethod, a, b);
         }
 
         private static System.Linq.Expressions.Expression AccessIsNullProperty(System.Linq.Expressions.Expression p)
         {
             var props = typeof(FlxValue).GetProperties().FirstOrDefault(x => x.Name == "IsNull");
+            Debug.Assert(props != null);
             var getMethod = props.GetMethod;
             return System.Linq.Expressions.Expression.Property(p, getMethod);
         }
@@ -58,10 +61,19 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     // Start from bottom and build up
                     var lastArg = visitor.Visit(scalarFunction.Arguments[scalarFunction.Arguments.Count - 1], parametersInfo);
 
+                    if (lastArg == null)
+                    {
+                        throw new InvalidOperationException("Could not compile coalesce function");
+                    }
+
                     var expr = lastArg;
                     for (int i = scalarFunction.Arguments.Count - 2; i >= 0; i--)
                     {
                         var newArg = visitor.Visit(scalarFunction.Arguments[i], parametersInfo);
+                        if (newArg == null) 
+                        {                             
+                            throw new InvalidOperationException("Could not compile coalesce function");
+                        }
                         var condition = System.Linq.Expressions.Expression.Not(AccessIsNullProperty(newArg));
                         expr = System.Linq.Expressions.Expression.Condition(condition, newArg, expr);
                     }
@@ -209,7 +221,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             if (x.ValueType == FlexBuffers.Type.Float)
             {
                 var val = x.AsDouble;
-                if (val == double.PositiveInfinity || val == double.NegativeInfinity || val == double.NaN)
+                if (val == double.PositiveInfinity || val == double.NegativeInfinity || double.IsNaN(val))
                 {
                     return FalseVal;
                 }
@@ -246,13 +258,13 @@ namespace FlowtideDotNet.Core.Compute.Internal
             if (x.ValueType == FlexBuffers.Type.Float)
             {
                 var val = x.AsDouble;
-                if (val == double.NaN)
+                if (double.IsNaN(val))
                 {
                     return TrueVal;
                 }
                 else
                 {
-                    return TrueVal;
+                    return FalseVal;
                 }
             }
             else if (x.ValueType == FlexBuffers.Type.Int)

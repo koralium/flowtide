@@ -18,13 +18,6 @@ namespace FlowtideDotNet.Core.Compute.Group
 {
     internal static class GroupIndexCreator
     {
-        private static System.Linq.Expressions.Expression AccessRootVector<T>(ParameterExpression p)
-        {
-            var props = typeof(T).GetProperties().FirstOrDefault(x => x.Name == "Vector");
-            var getMethod = props.GetMethod;
-            return System.Linq.Expressions.Expression.Property(p, getMethod);
-        }
-
         private static System.Linq.Expressions.MethodCallExpression Compare(System.Linq.Expressions.Expression a, System.Linq.Expressions.Expression b)
         {
             MethodInfo compareMethod = typeof(FlxValueComparer).GetMethod("CompareTo", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
@@ -35,15 +28,15 @@ namespace FlowtideDotNet.Core.Compute.Group
         {
             ParameterExpression left = Expression.Parameter(typeof(T));
             ParameterExpression right = Expression.Parameter(typeof(T));
-            var method = typeof(FlxVector).GetMethod("Get");
+            var method = typeof(T).GetMethod("GetColumn");
 
             List<Expression> comparisons = new List<Expression>();
             for (int i = 0; i < primaryKeys.Count; i++)
             {
                 var keyLocation = primaryKeys[i];
                 // Access the key property in both left and right
-                var propertyAccessorLeft = System.Linq.Expressions.Expression.Call(AccessRootVector<T>(left), method, System.Linq.Expressions.Expression.Constant(keyLocation));
-                var propertyAccessorRight = System.Linq.Expressions.Expression.Call(AccessRootVector<T>(right), method, System.Linq.Expressions.Expression.Constant(keyLocation));
+                var propertyAccessorLeft = System.Linq.Expressions.Expression.Call(left, method, System.Linq.Expressions.Expression.Constant(keyLocation));
+                var propertyAccessorRight = System.Linq.Expressions.Expression.Call(right, method, System.Linq.Expressions.Expression.Constant(keyLocation));
                 var comparison = Compare(propertyAccessorLeft, propertyAccessorRight);
                 comparisons.Add(comparison);
             }

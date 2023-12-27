@@ -15,23 +15,15 @@ using System.Buffers.Binary;
 
 namespace FlowtideDotNet.Core
 {
-    public struct TargetedStreamEvent : ILogEnqueueEntry
+    public struct TargetedStreamEvent
     {
-        internal TargetedStreamEvent(short targetId, StreamEvent streamEvent)
+        internal TargetedStreamEvent(short targetId, RowEvent streamEvent)
         {
             TargetId = targetId;
             StreamEvent = streamEvent;
         }
 
         public short TargetId { get; }
-        public StreamEvent StreamEvent { get; }
-
-        public int SerializedLength => StreamEvent.SerializedLength + 2;
-
-        public void SerializeTo(Span<byte> dest)
-        {
-            BinaryPrimitives.WriteInt16LittleEndian(dest, TargetId);
-            StreamEvent.SerializeTo(dest.Slice(2));
-        }
+        public RowEvent StreamEvent { get; }
     }
 }

@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -26,7 +27,7 @@ namespace FlowtideDotNet.Core.Operators.Set
     {
         private readonly SetRelation setRelation;
         
-        private readonly List<IBPlusTree<StreamEvent, int>> _storages;
+        private readonly List<IBPlusTree<RowEvent, int>> _storages;
         private readonly Func<int, StreamEventBatch, long, IAsyncEnumerable<StreamEventBatch>> _operation;
 
         private ICounter<long>? _eventsCounter;
@@ -42,7 +43,7 @@ namespace FlowtideDotNet.Core.Operators.Set
         public SetOperator(SetRelation setRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(setRelation.Inputs.Count, executionDataflowBlockOptions)
         {
             this.setRelation = setRelation;
-            _storages = new List<IBPlusTree<StreamEvent, int>>();
+            _storages = new List<IBPlusTree<RowEvent, int>>();
 
             if (setRelation.Operation == SetOperation.UnionAll)
             {
@@ -62,7 +63,7 @@ namespace FlowtideDotNet.Core.Operators.Set
         private async IAsyncEnumerable<StreamEventBatch> UnionAll(int targetId, StreamEventBatch msg, long time)
         {
             var storage = _storages[targetId];
-            List<StreamEvent> output = new List<StreamEvent>();
+            List<RowEvent> output = new List<RowEvent>();
 
             foreach (var e in msg.Events)
             {
@@ -106,7 +107,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                 // Check if there is a difference in weight
                 if (newWeight != previousWeight)
                 {
-                    output.Add(new StreamEvent(newWeight - previousWeight, 0, e.Memory));
+                    output.Add(new RowEvent(newWeight - previousWeight, 0, e.RowData));
                 }
             }
 
@@ -120,7 +121,7 @@ namespace FlowtideDotNet.Core.Operators.Set
 #endif
                 Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
                 _eventsCounter.Add(output.Count);
-                yield return new StreamEventBatch(null, output);
+                yield return new StreamEventBatch(output);
             }
 #if DEBUG_WRITE
             await outputWriter.FlushAsync();
@@ -177,10 +178,10 @@ namespace FlowtideDotNet.Core.Operators.Set
             _storages.Clear();
             for (int i = 0; i < setRelation.Inputs.Count; i++)
             {
-                _storages.Add(await stateManagerClient.GetOrCreateTree(i.ToString(), new BPlusTreeOptions<StreamEvent, int>()
+                _storages.Add(await stateManagerClient.GetOrCreateTree(i.ToString(), new BPlusTreeOptions<RowEvent, int>()
                 {
                     Comparer = new BPlusTreeStreamEventComparer(),
-                    KeySerializer = new BPlusTreeStreamEventSerializer(),
+                    KeySerializer = new StreamEventBPlusTreeSerializer(),
                     ValueSerializer = new IntSerializer()
                 }));
                 

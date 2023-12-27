@@ -58,6 +58,7 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// Either a relation or root relation
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class PlanRel : pb::IMessage<PlanRel>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -353,6 +354,7 @@ namespace Substrait.Protobuf {
   /// Describe a set of operations to complete.
   /// For compactness sake, identifiers are normalized at the plan level.
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class Plan : pb::IMessage<Plan>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -731,6 +733,7 @@ namespace Substrait.Protobuf {
   /// the Substrait version used to deserialize it, such that a consumer can emit
   /// a more helpful error message in this case.
   /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class PlanVersion : pb::IMessage<PlanVersion>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
@@ -929,6 +932,7 @@ namespace Substrait.Protobuf {
 
   }
 
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class Version : pb::IMessage<Version>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage

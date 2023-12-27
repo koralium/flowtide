@@ -18,15 +18,15 @@ namespace FlowtideDotNet.Substrait.Relations
     {
         public JoinType Type { get; set; }
 
-        public Relation Left { get; set; }
+        public required Relation Left { get; set; }
 
-        public Relation Right { get; set; }
+        public required Relation Right { get; set; }
 
-        public List<FieldReference> LeftKeys { get; set; }
+        public required List<FieldReference> LeftKeys { get; set; }
 
-        public List<FieldReference> RightKeys { get; set; }
+        public required List<FieldReference> RightKeys { get; set; }
 
-        public Expression PostJoinFilter { get; set; }
+        public Expression? PostJoinFilter { get; set; }
 
         public override int OutputLength
         {

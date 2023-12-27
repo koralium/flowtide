@@ -18,13 +18,13 @@ namespace FlowtideDotNet.Substrait.Relations
     {
         public JoinType Type { get; set; }
 
-        public Relation Left { get; set; }
+        public required Relation Left { get; set; }
 
-        public Relation Right { get; set; }
+        public required Relation Right { get; set; }
 
-        public Expression Expression { get; set; }
+        public Expression? Expression { get; set; }
 
-        public Expression PostJoinFilter { get; set; }
+        public Expression? PostJoinFilter { get; set; }
 
         public override int OutputLength
         {

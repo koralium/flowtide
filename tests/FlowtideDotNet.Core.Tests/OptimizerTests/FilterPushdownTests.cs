@@ -83,6 +83,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Left = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -90,6 +94,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Right = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -154,6 +162,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Input = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -162,6 +174,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         },
                         Right = new ReadRelation()
                         {
+                            NamedTable = new Substrait.Type.NamedTable()
+                            {
+                                Names = new List<string>(){ "table2" }
+                            },
                             BaseSchema = new Substrait.Type.NamedStruct()
                             {
                                 Names = new List<string>(){ "c1", "c2"}
@@ -230,6 +246,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Left = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -237,6 +257,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Right = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -301,6 +325,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Input = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -309,6 +337,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         },
                         Left = new ReadRelation()
                         {
+                            NamedTable = new Substrait.Type.NamedTable()
+                            {
+                                Names = new List<string>(){ "table1" }
+                            },
                             BaseSchema = new Substrait.Type.NamedStruct()
                             {
                                 Names = new List<string>(){ "c1", "c2"}
@@ -378,6 +410,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Left = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -385,6 +421,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Right = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -450,6 +490,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Input = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -458,6 +502,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         },
                         Left = new ReadRelation()
                         {
+                            NamedTable = new Substrait.Type.NamedTable()
+                            {
+                                Names = new List<string>(){ "table1" }
+                            },
                             BaseSchema = new Substrait.Type.NamedStruct()
                             {
                                 Names = new List<string>(){ "c1", "c2"}
@@ -526,6 +574,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Left = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -533,6 +585,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Right = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -597,6 +653,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Input = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -605,6 +665,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         },
                         Right = new ReadRelation()
                         {
+                            NamedTable = new Substrait.Type.NamedTable()
+                            {
+                                Names = new List<string>(){ "table2" }
+                            },
                             BaseSchema = new Substrait.Type.NamedStruct()
                             {
                                 Names = new List<string>(){ "c1", "c2"}
@@ -674,6 +738,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Left = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -681,6 +749,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Right = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -745,6 +817,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Left = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -752,6 +828,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Right = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -848,6 +928,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Left = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -855,6 +939,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Right = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -919,6 +1007,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Input = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -948,6 +1040,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Input = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -1045,6 +1141,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Left = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -1052,6 +1152,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Right = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}
@@ -1137,6 +1241,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                                 },
                                 Input = new ReadRelation()
                                 {
+                                    NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
                                     BaseSchema = new Substrait.Type.NamedStruct()
                                     {
                                         Names = new List<string>(){ "c1", "c2"}
@@ -1145,6 +1253,10 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Right = new ReadRelation()
                             {
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
                                     Names = new List<string>(){ "c1", "c2"}

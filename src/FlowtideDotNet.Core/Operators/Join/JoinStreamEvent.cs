@@ -11,43 +11,45 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Flexbuffer;
 
 namespace FlowtideDotNet.Core.Operators.Join
 {
 
-    public struct JoinStreamEvent
+    public struct JoinStreamEvent : IRowEvent
     {
-        private readonly Memory<byte> _data;
-        
         /// <summary>
         /// Target id is used during comparisons to be able to compare different events to each other
         /// </summary>
         private readonly byte _targetId;
+        private readonly IRowData rowData;
         private readonly uint _iteration;
 
-        private FlxVector _vector;
-
-        public JoinStreamEvent(Memory<byte> data, uint iteration, byte targetId, FlxVector vector)
+        public JoinStreamEvent(uint iteration, byte targetId, IRowData rowData)
         {
-            _data = data;
             _targetId = targetId;
-            _vector = vector;
+            this.rowData = rowData;
             _iteration = iteration;
         }
-
-        /// <summary>
-        /// 4 is added to keep it aligned * 4.
-        /// </summary>
-        public int SerializedLength => _data.Length + 4;
-
-        public Span<byte> Span => _data.Span;
-
-        public Memory<byte> Memory => _data;
-
-        public FlxVector Vector => _vector;
 
         public byte TargetId => _targetId;
 
         public uint Iteration => _iteration;
+
+        public IRowData RowData => rowData;
+
+        public int Weight => 0;
+
+        public int Length => rowData.Length;
+
+        public FlxValue GetColumn(int index)
+        {
+            return rowData.GetColumn(index);
+        }
+
+        public FlxValueRef GetColumnRef(in int index)
+        {
+            return rowData.GetColumnRef(index);
+        }
     }
 }
