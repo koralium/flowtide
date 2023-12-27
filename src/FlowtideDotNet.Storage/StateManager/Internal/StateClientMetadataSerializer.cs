@@ -15,11 +15,9 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
-    internal class StateClientMetadataSerializer
+    internal static class StateClientMetadataSerializer
     {
-        public static StateClientMetadataSerializer Instance { get; } = new StateClientMetadataSerializer();
-
-        public StateClientMetadata<T> Deserialize<T>(IMemoryOwner<byte> bytes, int length)
+        public static StateClientMetadata<T> Deserialize<T>(IMemoryOwner<byte> bytes, int length)
         {
             var slice = bytes.Memory.Span.Slice(0, length);
             var reader = new Utf8JsonReader(slice);
@@ -28,7 +26,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             return deserializedValue;
         }
 
-        public byte[] Serialize<T>(in StateClientMetadata<T> value)
+        public static byte[] Serialize<T>(in StateClientMetadata<T> value)
         {
             using MemoryStream memoryStream = new MemoryStream();
             JsonSerializer.Serialize(memoryStream, value);
