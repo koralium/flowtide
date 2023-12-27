@@ -218,7 +218,7 @@ namespace ConsoleTables
             var results = Rows.Select((row, i) => string.Format(Formats[i + 1].TrimStart(), row)).ToList();
 
             // create the divider
-            var divider = Regex.Replace(columnHeaders, "[^|]", "-");
+            var divider = Regex.Replace(columnHeaders, "[^|]", "-", RegexOptions.None, TimeSpan.FromSeconds(5));
 
             builder.AppendLine(columnHeaders);
             builder.AppendLine(divider);
@@ -243,7 +243,7 @@ namespace ConsoleTables
             var results = Rows.Select((row, i) => string.Format(Formats[i + 1].TrimStart(), row)).ToList();
 
             // create the divider
-            var divider = Regex.Replace(columnHeaders, @"[^|]", "-");
+            var divider = Regex.Replace(columnHeaders, @"[^|]", "-", RegexOptions.None, TimeSpan.FromSeconds(5));
             var dividerPlus = divider.Replace("|", "+");
 
             builder.AppendLine(dividerPlus);
