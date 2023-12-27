@@ -42,6 +42,11 @@ namespace FlowtideDotNet.Core
 
         public int Length => _vector.Length;
 
+        internal string ToJson()
+        {
+            return _vector.ToJson;
+        }
+
         public FlxValue GetColumn(int index)
         {
             return _vector.Get(index);

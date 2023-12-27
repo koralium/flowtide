@@ -55,11 +55,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public FlowtideTestStream(string testName)
         {
+            var streamName = testName.Replace("/", "_");
             _db = new Internal.MockDatabase();
             generator = new DatasetGenerator(_db);
             sqlPlanBuilder = new SqlPlanBuilder();
             sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
-            flowtideBuilder = new FlowtideBuilder("stream")
+            flowtideBuilder = new FlowtideBuilder(streamName)
                 .WithLoggerFactory(new LoggerFactory(new List<ILoggerProvider>() { new DebugLoggerProvider() }));
             this.testName = testName;
         }
@@ -72,6 +73,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public void AddOrUpdateUser(User user)
         {
             generator.AddOrUpdateUser(user);
+        }
+
+        public void DeleteUser(User user)
+        {
+            generator.DeleteUser(user);
         }
 
         public async Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default, TimeSpan? timestampInterval = default)

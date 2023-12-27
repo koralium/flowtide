@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Core.Operators.Write;
@@ -37,7 +38,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly Action<List<byte[]>> onDataChange;
         private int crashOnCheckpointCount;
         private SortedDictionary<RowEvent, int> currentData;
-
+        private bool watermarkRecieved = false;
         public MockDataSink(
             ExecutionDataflowBlockOptions executionDataflowBlockOptions, 
             Action<List<byte[]>> onDataChange,
@@ -66,6 +67,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return Task.CompletedTask;
         }
 
+        protected override Task OnWatermark(Watermark watermark)
+        {
+            watermarkRecieved = true;
+            return base.OnWatermark(watermark);
+        }
+
         protected override Task<MockDataSinkState> OnCheckpoint(long checkpointTime)
         {
             if (crashOnCheckpointCount > 0)
@@ -90,7 +97,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
 
             //var actualData = currentData.Where(x => x.Value > 0).Select(x => x.Key.Memory.ToArray()).ToList();
-            onDataChange(output);
+            if (watermarkRecieved)
+            {
+                onDataChange(output);
+                watermarkRecieved = false;
+            }
+            
             return Task.FromResult(new MockDataSinkState());
         }
 

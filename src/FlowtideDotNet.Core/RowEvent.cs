@@ -72,6 +72,17 @@ namespace FlowtideDotNet.Core
             return _rowData.GetColumnRef(index);
         }
 
+        internal string ToJson()
+        {
+            var c = Compact(new FlexBuffer(ArrayPool<byte>.Shared));
+
+            if (c._rowData is CompactRowData cc)
+            {
+                return cc.ToJson();
+            }
+            return string.Empty;
+        }
+
         /// <summary>
         /// Returns a compact row event, is useful after many joins to reduce the recursive depth
         /// to locate values

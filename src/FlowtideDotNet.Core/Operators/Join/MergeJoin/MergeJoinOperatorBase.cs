@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected readonly MergeJoinRelation mergeJoinRelation;
         protected IBPlusTree<JoinStreamEvent, JoinStorageValue>? _leftTree;
         protected IBPlusTree<JoinStreamEvent, JoinStorageValue>? _rightTree;
-        private readonly Dictionary<JoinStreamEvent, int> leftJoinWeight = new Dictionary<JoinStreamEvent, int>();
+        private readonly List<KeyValuePair<JoinStreamEvent, int>> leftJoinWeight = new List<KeyValuePair<JoinStreamEvent, int>>();
         private ICounter<long>? _eventsCounter;
         
         protected readonly Func<JoinStreamEvent, JoinStreamEvent, bool> _keyCondition;
@@ -126,7 +126,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             foreach (var e in msg.Events)
             {
 #if DEBUG_WRITE
-                leftInput.WriteLine($"{e.Weight} {e.Vector.ToJson}");
+                leftInput.WriteLine($"{e.Weight} {e.ToJson()}");
 #endif
 
                 var joinEventCheck = new JoinStreamEvent(0, 1, e.RowData);
@@ -222,7 +222,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #if DEBUG_WRITE
                 foreach(var o in output)
                 {
-                    outputWriter.WriteLine($"{o.Weight} {o.Vector.ToJson}");
+                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
 #endif
                 yield return new StreamEventBatch(output);
@@ -246,7 +246,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             foreach (var e in msg.Events)
             {
 #if DEBUG_WRITE
-                rightInput.WriteLine($"{e.Weight} {e.Vector.ToJson}");
+                rightInput.WriteLine($"{e.Weight} {e.ToJson()}");
 #endif
                 var joinEventCheck = new JoinStreamEvent(0, 1, e.RowData);
 
@@ -266,15 +266,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                                 if (mergeJoinRelation.Type == JoinType.Left)
                                 {
-                                    // If it is a left join, we need to always check the new weight of a row
-                                    if (leftJoinWeight.TryGetValue(kv.Key, out var currentWeight))
-                                    {
-                                        leftJoinWeight[kv.Key] = currentWeight + outputWeight;
-                                    }
-                                    else
-                                    {
-                                        leftJoinWeight.Add(kv.Key, outputWeight);
-                                    }
+                                    leftJoinWeight.Add(new KeyValuePair<JoinStreamEvent, int>(kv.Key, outputWeight));
                                 }
 
                                 if (output.Count > 100)
@@ -360,7 +352,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #if DEBUG_WRITE
                 foreach (var o in output)
                 {
-                    outputWriter.WriteLine($"{o.Weight} {o.Vector.ToJson}");
+                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
 #endif
                 yield return new StreamEventBatch(output);
@@ -377,7 +369,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             allInput.WriteLine("New batch");
             foreach (var e in msg.Events)
             {
-                allInput.WriteLine($"{targetId}, {e.Weight} {e.Vector.ToJson}");
+                allInput.WriteLine($"{targetId}, {e.Weight} {e.ToJson()}");
             }
             allInput.Flush();
 #endif
@@ -395,17 +387,24 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected override async Task InitializeOrRestore(JoinState? state, IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
-            allInput = File.CreateText($"{Name}.all.txt");
-            leftInput = File.CreateText($"{Name}.left.txt");
-            rightInput = File.CreateText($"{Name}.right.txt");
-            outputWriter = File.CreateText($"{Name}.output.txt");
+            if (allInput != null)
+            {
+                allInput.WriteLine("Restart");
+            }
+            else
+            {
+                allInput = File.CreateText($"{StreamName}-{Name}.all.txt");
+                leftInput = File.CreateText($"{StreamName}-{Name}.left.txt");
+                rightInput = File.CreateText($"{StreamName}-{Name}.right.txt");
+                outputWriter = File.CreateText($"{StreamName}-{Name}.output.txt");
+            }
 #endif
             Logger.LogInformation("Initializing merge join operator.");
             if(_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
             }
-
+            leftJoinWeight.Clear();
             _flexBuffer.Clear();
             if (state == null)
             {
