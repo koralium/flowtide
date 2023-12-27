@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager.Internal;
+using System.Diagnostics;
 using System.Text;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
@@ -30,7 +31,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             this.m_keyComparer = options.Comparer;
         }
 
-        public async Task InitializeAsync()
+        public Task InitializeAsync()
         {
             if (m_stateClient.Metadata == null)
             {
@@ -44,17 +45,19 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 };
                 m_stateClient.AddOrUpdate(rootId, root);
             }
+            return Task.CompletedTask;
         }
 
         public async Task<string> Print()
         {
-            var root = (BaseNode<K>)await m_stateClient.GetValue(m_stateClient.Metadata.Root, "PrintRoot");
+            Debug.Assert(m_stateClient.Metadata != null);
+            var root = (BaseNode<K>)(await m_stateClient.GetValue(m_stateClient.Metadata.Root, "PrintRoot"))!;
 
             var builder = new StringBuilder();
             builder.AppendLine("digraph g {");
             builder.AppendLine("splines=line");
             builder.AppendLine("node [shape = none,height=.1];");
-            await root.Print(builder, async (id) => (BaseNode<K>)await m_stateClient.GetValue(id, "GetPrint"));
+            await root.Print(builder, async (id) => (BaseNode<K>)(await m_stateClient.GetValue(id, "GetPrint"))!);
             builder.AppendLine("}");
             return builder.ToString();
         }
@@ -132,7 +135,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return RMW_Slow(key, value, function);
         }
 
-        private class RMWContainer
+        private sealed class RMWContainer
         {
             public V? Value { get; set; }
         }

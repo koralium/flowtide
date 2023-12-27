@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Diagnostics;
+
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
     internal class BPlusTreeIterator<K, V> : IBPlusTreeIterator<K, V>
@@ -20,18 +22,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             private LeafNode<K, V>? leafNode;
             private int index;
             private bool started;
-            //private ValueTask<IBPlusTreeNode?>? getNextNodeTask;
 
             public Enumerator(in BPlusTree<K, V> tree)
             {
                 this.tree = tree;
             }
 
-            public void Reset(LeafNode<K, V> leafNode, int index)
+            public void Reset(LeafNode<K, V>? leafNode, int index)
             {
                 this.leafNode = leafNode;
                 this.index = index;
-                //getNextNodeTask = null;
                 this.started = false;
             }
 
@@ -53,24 +53,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     started = true;
                     return ValueTask.FromResult(true);
                 }
-                //if (getNextNodeTask.HasValue)
-                //{
-                //    if (!getNextNodeTask.Value.IsCompleted)
-                //    {
-                //        return MoveNextAsync_Slow(getNextNodeTask.Value);
-                //    }
-                //    leafNode = (getNextNodeTask.Value.Result as LeafNode<K, V>)!;
-                //    index = 0;
-                //    if (leafNode.next > 0)
-                //    {
-                //        getNextNodeTask = tree.m_stateClient.GetValue(leafNode.next, "MoveNextAsync1");
-                //    }
-                //    else
-                //    {
-                //        getNextNodeTask = default;
-                //    }
-                //    return ValueTask.FromResult(true);
-                //}
                 if (leafNode.next == 0)
                 {
                     return ValueTask.FromResult(false);
@@ -83,10 +65,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 leafNode = (getNextPageTask.Result as LeafNode<K, V>)!;
                 index = 0;
-                //if (leafNode.next > 0)
-                //{
-                //    getNextNodeTask = tree.m_stateClient.GetValue(leafNode.next, "MoveNextAsync3");
-                //}
                 return ValueTask.FromResult(true);
             }
 
@@ -95,19 +73,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var page = await getPageTask;
                 leafNode = (page as LeafNode<K, V>)!;
                 index = 0;
-                //if (leafNode.next > 0)
-                //{
-                //    getNextNodeTask = tree.m_stateClient.GetValue(leafNode.next, "MoveNextAsync_Slow");
-                //}
-                //else
-                //{
-                //    getNextNodeTask = default;
-                //}
                 return true;
             }
         }
 
-        private LeafNode<K, V> leafNode;
+        private LeafNode<K, V>? leafNode;
         private readonly BPlusTree<K, V> tree;
         private int index;
         private readonly Enumerator enumerator;
@@ -144,6 +114,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         private void AfterSeek(in K key, IComparer<K> searchComparer)
         {
+            Debug.Assert(leafNode != null);
             var i = leafNode.keys.BinarySearch(key, searchComparer);
             if (i < 0)
             {
