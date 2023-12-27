@@ -84,12 +84,12 @@ namespace FlowtideDotNet.Base.Vertices.Egress.Internal
             _checkpointDone();
         }
 
-        private IAsyncEnumerable<IStreamEvent> Passthrough(IStreamEvent streamEvent)
+        private static IAsyncEnumerable<IStreamEvent> Passthrough(IStreamEvent streamEvent)
         {
             return new SingleAsyncEnumerable<IStreamEvent>(streamEvent);
         }
 
-        private IAsyncEnumerable<IStreamEvent> Empty()
+        private static IAsyncEnumerable<IStreamEvent> Empty()
         {
             return EmptyAsyncEnumerable<IStreamEvent>.Instance;
         }
