@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Unary;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
@@ -83,14 +84,14 @@ namespace FlowtideDotNet.Base.Vertices.Egress.Internal
             _checkpointDone();
         }
 
-        private async IAsyncEnumerable<IStreamEvent> Passthrough(IStreamEvent streamEvent)
+        private IAsyncEnumerable<IStreamEvent> Passthrough(IStreamEvent streamEvent)
         {
-            yield return streamEvent;
+            return new SingleAsyncEnumerable<IStreamEvent>(streamEvent);
         }
 
-        private async IAsyncEnumerable<IStreamEvent> Empty()
+        private IAsyncEnumerable<IStreamEvent> Empty()
         {
-            yield break;
+            return EmptyAsyncEnumerable<IStreamEvent>.Instance;
         }
 
         public Task Completion => _transformBlock?.Completion ?? throw new NotSupportedException("Must be initialized first");
