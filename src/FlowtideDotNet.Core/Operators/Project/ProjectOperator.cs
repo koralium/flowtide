@@ -121,7 +121,7 @@ namespace FlowtideDotNet.Core.Operators.Project
             {
                 Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
                 _eventsCounter.Add(output.Count);
-                yield return new StreamEventBatch(null, output);
+                yield return new StreamEventBatch(output);
             }
         }
 

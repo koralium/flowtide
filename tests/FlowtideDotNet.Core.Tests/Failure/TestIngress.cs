@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
                 b.Add("namn2");
                 b.Add(90210);
             });
-            await output.SendAsync(new StreamEventBatch(null, new List<RowEvent>()
+            await output.SendAsync(new StreamEventBatch(new List<RowEvent>()
             {
                 streamEvent
             }));

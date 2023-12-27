@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             {
                 Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
                 _eventsCounter.Add(output.Count);
-                yield return new StreamEventBatch(null, output);
+                yield return new StreamEventBatch(output);
             }
             
         }

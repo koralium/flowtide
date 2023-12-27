@@ -154,7 +154,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 _eventsCounter.Add(result.Count);
                 Logger.LogInformation("{changeCount} Changes found from table, {tableName}", result.Count, readRelation.NamedTable.DotSeperated);
-                await output.SendAsync(new StreamEventBatch(null, result));
+                await output.SendAsync(new StreamEventBatch(result));
                 await output.SendWatermark(new FlowtideDotNet.Base.Watermark(readRelation.NamedTable.DotSeperated, _state.ChangeTrackingVersion));
                 this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }
@@ -272,14 +272,14 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             if (outdata.Count >= 100)
                             {
                                 _eventsCounter.Add(outdata.Count);
-                                await output.SendAsync(new StreamEventBatch(null, outdata));
+                                await output.SendAsync(new StreamEventBatch(outdata));
                                 outdata = new List<RowEvent>();
                             }
                         }
                         if (outdata.Count > 0)
                         {
                             _eventsCounter.Add(outdata.Count);
-                            await output.SendAsync(new StreamEventBatch(null, outdata));
+                            await output.SendAsync(new StreamEventBatch(outdata));
                         }
                         retryCount = 0;
                         SetHealth(true);

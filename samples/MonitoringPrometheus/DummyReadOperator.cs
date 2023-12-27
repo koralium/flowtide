@@ -68,7 +68,7 @@ namespace MonitoringPrometheus
                         }
                     }));
                 }
-                await output.SendAsync(new StreamEventBatch(null, o));
+                await output.SendAsync(new StreamEventBatch(o));
                 output.ExitCheckpointLock();
                 ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }

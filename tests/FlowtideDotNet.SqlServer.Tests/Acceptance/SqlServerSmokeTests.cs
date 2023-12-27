@@ -230,7 +230,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             
             await sink.Initialize("1", 0, 0, null, vertexHandler);
 
-            await sink.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(null, new List<RowEvent>()
+            await sink.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(new List<RowEvent>()
             {
                 RowEvent.Create(1, 0, (b) =>
                 {

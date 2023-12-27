@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
 
             if (output.Count > 0)
             {
-                yield return new StreamEventBatch(null, output);
+                yield return new StreamEventBatch(output);
             }
         }
 

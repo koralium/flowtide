@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
                 
             }
 
-            await output.SendAsync(new StreamEventBatch(null, outputEvents));
+            await output.SendAsync(new StreamEventBatch(outputEvents));
             await output.SendWatermark(new Base.Watermark(Name, 1));
         }
     }

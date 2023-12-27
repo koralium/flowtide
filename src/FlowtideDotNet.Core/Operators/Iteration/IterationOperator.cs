@@ -52,8 +52,8 @@ namespace FlowtideDotNet.Core.Operators.Iteration
                 egressOutput.Add(new RowEvent(streamEvent.Weight, 0, streamEvent.RowData));
             }
 
-            yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(0, new StreamMessage<StreamEventBatch>(new StreamEventBatch(null, egressOutput), time));
-            yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(1, new StreamMessage<StreamEventBatch>(new StreamEventBatch(null, loopOutput), time));
+            yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(0, new StreamMessage<StreamEventBatch>(new StreamEventBatch(egressOutput), time));
+            yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(1, new StreamMessage<StreamEventBatch>(new StreamEventBatch(loopOutput), time));
         }
 
         protected override async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> OnIngressRecieve(StreamEventBatch data, long time)

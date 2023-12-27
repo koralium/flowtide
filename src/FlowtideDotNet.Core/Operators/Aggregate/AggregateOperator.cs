@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
                     if (outputs.Count > 100)
                     {
-                        yield return new StreamEventBatch(null, outputs);
+                        yield return new StreamEventBatch(outputs);
                         outputs = new List<RowEvent>();
                     }
                     
@@ -160,7 +160,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
                     if (outputs.Count > 100)
                     {
-                        yield return new StreamEventBatch(null, outputs);
+                        yield return new StreamEventBatch(outputs);
                         outputs = new List<RowEvent>();
                     }
                     
@@ -228,7 +228,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
                         if (outputs.Count > 100)
                         {
-                            yield return new StreamEventBatch(null, outputs);
+                            yield return new StreamEventBatch(outputs);
                             outputs = new List<RowEvent>();
                         }
                         
@@ -241,7 +241,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 // Output only 100 rows per batch to reduce memory consumption
                 if (outputs.Count > 100)
                 {
-                    yield return new StreamEventBatch(null, outputs);
+                    yield return new StreamEventBatch(outputs);
                     outputs = new List<RowEvent>();
                 }
 
@@ -250,7 +250,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
             if (outputs.Count > 0)
             {
-                yield return new StreamEventBatch(null, outputs);
+                yield return new StreamEventBatch(outputs);
             }
         }
 
