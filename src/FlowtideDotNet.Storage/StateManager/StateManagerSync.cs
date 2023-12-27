@@ -18,6 +18,7 @@ using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.Metrics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Storage.StateManager
 {
@@ -164,7 +165,7 @@ namespace FlowtideDotNet.Storage.StateManager
             m_lruTable.Clear();
         }
 
-        internal bool TryGetValueFromCache<T>(in long key, out T? value)
+        internal bool TryGetValueFromCache<T>(in long key, [NotNullWhen(true)] out T? value)
             where T : ICacheObject
         {
             Debug.Assert(m_lruTable != null);
@@ -219,7 +220,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 Monitor.Exit(m_lock);
                 if (m_persistentStorage.TryGetValue(location, out var bytes))
                 {
-                    var metadata = StateClientMetadataSerializer.Instance.Deserialize<TMetadata>(new ByteMemoryOwner(bytes), bytes.Length);
+                    var metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(new ByteMemoryOwner(bytes), bytes.Length);
                     var persistentSession = m_persistentStorage.CreateSession();
                     var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheOptions);
                     lock (m_lock)
@@ -241,7 +242,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 m_metadata.ClientMetadataLocations.Add(client, clientMetadataPageId);
                 Monitor.Exit(m_lock);
 
-                m_persistentStorage.Write(clientMetadataPageId, StateClientMetadataSerializer.Instance.Serialize(clientMetadata));
+                await m_persistentStorage.Write(clientMetadataPageId, StateClientMetadataSerializer.Serialize(clientMetadata));
                 lock (m_lock)
                 {
                     var session = m_persistentStorage.CreateSession();

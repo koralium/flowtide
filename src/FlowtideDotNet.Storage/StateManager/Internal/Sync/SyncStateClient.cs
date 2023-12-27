@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private StateClientMetadata<TMetadata> metadata;
         private readonly IPersistentStorageSession session;
         private readonly StateClientOptions<V> options;
-        private ConcurrentDictionary<long, int> m_modified;
+        private readonly ConcurrentDictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
         private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
@@ -92,6 +92,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public async ValueTask Commit()
         {
+            Debug.Assert(options.ValueSerializer != null);
+
             foreach (var kv in m_modified)
             {
                 if (kv.Value == -1)
@@ -118,7 +120,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                     if (bytes == null)
                     {
-                        throw new Exception();
+                        throw new InvalidOperationException("Data could not be found in temporary cache.");
                     }
 
                     // Write to persistence
@@ -140,7 +142,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             m_fileCache.FreeAll();
             m_fileCacheVersion.Clear();
             {
-                var bytes = StateClientMetadataSerializer.Instance.Serialize(metadata);
+                var bytes = StateClientMetadataSerializer.Serialize(metadata);
                 await session.Write(metadataId, bytes);
             }
         }
@@ -165,11 +167,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public ValueTask<V?> GetValue(in long key, string from)
         {
+            Debug.Assert(options.ValueSerializer != null);
             lock (m_lock)
             {
                 if (stateManager.TryGetValueFromCache<V>(key, out var val))
                 {
-                    return ValueTask.FromResult(val);
+                    return ValueTask.FromResult<V?>(val);
                 }
                 // Read from temporary file storage
                 if (m_modified.ContainsKey(key))
@@ -186,6 +189,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private async ValueTask<V?> GetValue_Persistent(long key)
         {
+            Debug.Assert(options.ValueSerializer != null);
             var bytes = await session.Read(key);
             var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
             stateManager.AddOrUpdate(key, value, this);
@@ -198,12 +202,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 if (disposing)
                 {
-                    // TODO: dispose managed state (managed objects)x
                     m_fileCache.Dispose();
                 }
 
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
                 disposedValue = true;
             }
         }
@@ -235,12 +236,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             else
             {
                 var bytes = await session.Read(metadataId);
-                metadata = StateClientMetadataSerializer.Instance.Deserialize<TMetadata>(new ByteMemoryOwner(bytes), bytes.Length);
+                metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(new ByteMemoryOwner(bytes), bytes.Length);
             }
         }
 
         public void Evict(List<(LinkedListNode<LruTableSync.LinkedListValue>, long)> valuesToEvict, bool isCleanup)
         {
+            Debug.Assert(options.ValueSerializer != null);
             foreach (var value in valuesToEvict)
             {
                 if (m_modified.TryGetValue(value.Item1.ValueRef.key, out var val) == false || val == -1)

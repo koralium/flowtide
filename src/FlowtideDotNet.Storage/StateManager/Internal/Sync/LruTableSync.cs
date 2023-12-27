@@ -86,18 +86,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         Interlocked.Decrement(ref m_count);
                     }
-                    try
+                    lock (m_nodes)
                     {
-                        lock (m_nodes)
-                        {
-                            m_nodes.Remove(node);
-                        }
+                        m_nodes.Remove(node);
                     }
-                    catch(Exception e)
-                    {
-                        throw;
-                    }
-                    
                 }
                 
             }
@@ -217,7 +209,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     else
                     {
-                        throw new Exception();
+                        throw new InvalidOperationException("Cannot add a new value to the cache with the same key.");
                     }
                 }
             });
@@ -287,7 +279,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             List<(LinkedListNode<LinkedListValue>, long)> toBeRemoved = new List<(LinkedListNode<LinkedListValue>, long)>();
             while (iteratorNode != null && (toBeRemoved.Count < toBeRemovedCount))
             {
-                bool moveToEnd = false;
                 lock (iteratorNode)
                 {
                     if (iteratorNode.ValueRef.useCount == 0)
@@ -303,7 +294,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     else
                     {
                         iteratorNode.ValueRef.useCount = iteratorNode.ValueRef.useCount - 1;
-                        moveToEnd = true;
                     }
                 }
                 lock (m_nodes)
@@ -347,16 +337,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                                 Interlocked.Decrement(ref m_count);
                             }
 
-                            try
+                            lock (m_nodes)
                             {
-                                lock (m_nodes)
-                                {
-                                    m_nodes.Remove(val.Item1);
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                throw;
+                                m_nodes.Remove(val.Item1);
                             }
                         }
                     }
