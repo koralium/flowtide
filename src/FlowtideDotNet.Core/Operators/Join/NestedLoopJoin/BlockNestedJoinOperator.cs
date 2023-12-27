@@ -332,7 +332,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 
             await _leftTemporary.Clear();
 
-            yield return new StreamEventBatch(null, output);
+            yield return new StreamEventBatch(output);
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)

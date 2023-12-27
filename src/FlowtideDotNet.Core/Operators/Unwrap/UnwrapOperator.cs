@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Core.Operators.Unwrap
 
             if (output.Count > 0)
             {
-                yield return new StreamEventBatch(null, output);
+                yield return new StreamEventBatch(output);
             }
             
         }

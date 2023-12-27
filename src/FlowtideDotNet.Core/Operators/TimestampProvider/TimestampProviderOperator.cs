@@ -83,7 +83,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
             var currentTimestamp = DateTime.UtcNow.Subtract(DateTime.UnixEpoch).Ticks;
             if (!_state.LastSentTimestamp.HasValue)
             {
-                await output.SendAsync(new StreamEventBatch(null, new List<RowEvent>()
+                await output.SendAsync(new StreamEventBatch(new List<RowEvent>()
                 {
                     RowEvent.Create(1, 0, b =>
                     {
@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
             }
             else
             {
-                await output.SendAsync(new StreamEventBatch(null, new List<RowEvent>()
+                await output.SendAsync(new StreamEventBatch(new List<RowEvent>()
                 {
                     RowEvent.Create(1, 0, b =>
                     {
@@ -101,7 +101,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
                     })
                 }));
                 // Remove the previous row
-                await output.SendAsync(new StreamEventBatch(null, new List<RowEvent>()
+                await output.SendAsync(new StreamEventBatch(new List<RowEvent>()
                 {
                     RowEvent.Create(-1, 0, b =>
                     {

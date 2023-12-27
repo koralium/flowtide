@@ -157,7 +157,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                     waitTimeMs = 1;
                     if (rows.Count > 100)
                     {
-                        await output.SendAsync(new StreamEventBatch(null, rows));
+                        await output.SendAsync(new StreamEventBatch(rows));
                         rows = new List<RowEvent>();
                         await SendWatermark(output);
                     }
@@ -166,7 +166,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 {
                     if (rows.Count > 0)
                     {
-                        await output.SendAsync(new StreamEventBatch(null, rows));
+                        await output.SendAsync(new StreamEventBatch(rows));
                         rows = new List<RowEvent>();
                         await SendWatermark(output);
                     }
@@ -240,7 +240,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 
                 if (result == null || rows.Count >= 100)
                 {
-                    await output.SendAsync(new StreamEventBatch(null, rows));
+                    await output.SendAsync(new StreamEventBatch(rows));
                     rows = new List<RowEvent>();
                     // Check offsets
                     bool offsetsReached = true;
@@ -268,7 +268,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
             if (rows.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(null, rows));
+                await output.SendAsync(new StreamEventBatch(rows));
             }
 
             // Send watermark

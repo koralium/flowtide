@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.Operators.Partition
             {
                 if (outputs[i] != null)
                 {
-                    yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(i, new StreamMessage<StreamEventBatch>(new StreamEventBatch(null, outputs[i]!), time));
+                    yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(i, new StreamMessage<StreamEventBatch>(new StreamEventBatch(outputs[i]!), time));
                     outputs[i] = null;
                 }
             }
