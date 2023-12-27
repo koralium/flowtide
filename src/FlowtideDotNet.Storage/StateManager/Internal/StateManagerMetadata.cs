@@ -21,15 +21,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
     {
         public StateManagerMetadata()
         {
-            //Checkpoints = new List<long>();
             PageCounter = 2;
             ClientMetadataLocations = new Dictionary<string, long>();
         }
-
-        /// <summary>
-        /// Contains a list of checkpoints
-        /// </summary>
-        //public List<long> Checkpoints { get; set; }
 
         public long CheckpointVersion { get; set; }
 
