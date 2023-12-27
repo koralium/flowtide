@@ -33,7 +33,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected readonly MergeJoinRelation mergeJoinRelation;
         protected IBPlusTree<JoinStreamEvent, JoinStorageValue>? _leftTree;
         protected IBPlusTree<JoinStreamEvent, JoinStorageValue>? _rightTree;
-        private readonly List<KeyValuePair<JoinStreamEvent, int>> leftJoinWeight = new List<KeyValuePair<JoinStreamEvent, int>>();
         private ICounter<long>? _eventsCounter;
         
         protected readonly Func<JoinStreamEvent, JoinStreamEvent, bool> _keyCondition;
@@ -255,6 +254,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 bool shouldBreak = false;
                 await foreach(var page in it)
                 {
+                    bool pageUpdated = false;
                     foreach(var kv in page)
                     {
                         if (_keyCondition(kv.Key, joinEventCheck))
@@ -264,9 +264,23 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 int outputWeight = e.Weight * kv.Value.Weight;
                                 output.Add(OnConditionSuccess(kv.Key, joinEventCheck, outputWeight));
 
+                                
+
                                 if (mergeJoinRelation.Type == JoinType.Left)
                                 {
-                                    leftJoinWeight.Add(new KeyValuePair<JoinStreamEvent, int>(kv.Key, outputWeight));
+                                    pageUpdated = true;
+                                    if (kv.Value.JoinWeight == 0)
+                                    {
+                                        // If it was zero before, we must emit a left with right null to negate previous value
+                                        output.Add(CreateLeftWithNullRightEvent(-kv.Value.Weight, kv.Key));
+                                    }
+
+                                    kv.Value.JoinWeight += outputWeight;
+
+                                    if (kv.Value.JoinWeight == 0)
+                                    {
+                                        output.Add(CreateLeftWithNullRightEvent(kv.Value.Weight, kv.Key));
+                                    }
                                 }
 
                                 if (output.Count > 100)
@@ -283,6 +297,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             shouldBreak = true;
                             break;
                         }
+                    }
+                    if (pageUpdated)
+                    {
+                        await page.SavePage();
                     }
                     if (shouldBreak)
                     {
@@ -304,46 +322,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                     return (input, GenericWriteOperation.Upsert);
                 });
-            }
-
-            if (leftJoinWeight.Count > 0)
-            {
-                foreach(var kv in leftJoinWeight)
-                {
-                    bool zeroJoinWeight = false;
-                    var (op, val) = await _leftTree.RMW(kv.Key, new JoinStorageValue() { JoinWeight = kv.Value}, (input, current, found) =>
-                    {
-                        if (found)
-                        {
-                            if (current!.JoinWeight == 0)
-                            {
-                                zeroJoinWeight = true;
-                            }
-                            current.JoinWeight += input!.JoinWeight;
-                            return (current, GenericWriteOperation.Upsert);
-                        }
-                        return (default, GenericWriteOperation.None);
-                    });
-
-                    if (zeroJoinWeight)
-                    {
-                        // If it was zero before, we must emit a left with right null to negate previous value
-                        output.Add(CreateLeftWithNullRightEvent(-val!.Weight, kv.Key));
-                    }
-                    if (val!.JoinWeight == 0)
-                    {
-                        output.Add(CreateLeftWithNullRightEvent(val.Weight, kv.Key));
-                    }
-
-                    if (output.Count > 100)
-                    {
-                        _eventsCounter.Add(output.Count);
-                        yield return new StreamEventBatch(output);
-                        output = new List<RowEvent>();
-                    }
-                    
-                }
-                leftJoinWeight.Clear();
             }
 
             if (output.Count > 0)
@@ -404,7 +382,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
             }
-            leftJoinWeight.Clear();
+
             _flexBuffer.Clear();
             if (state == null)
             {

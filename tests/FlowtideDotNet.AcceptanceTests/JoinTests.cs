@@ -122,6 +122,24 @@ namespace FlowtideDotNet.AcceptanceTests
                     subuser?.FirstName,
                     subuser?.LastName
                 });
+
+            // Create a crash to check that the update is persisted
+            await Crash();
+
+            AddOrUpdateUser(firstUser);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from order in Orders
+                join user in Users on order.UserKey equals user.UserKey into gj
+                from subuser in gj.DefaultIfEmpty()
+                select new
+                {
+                    order.OrderKey,
+                    subuser?.FirstName,
+                    subuser?.LastName
+                });
         }
 
         [Fact]
