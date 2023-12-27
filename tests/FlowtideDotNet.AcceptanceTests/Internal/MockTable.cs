@@ -53,6 +53,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
+        public void Delete<T>(IEnumerable<T> rows)
+        {
+            foreach(var row in rows)
+            {
+                _changes.Add(new RowOperation(row, true));
+            }
+        }
+
         //public void AddOrUpdate(IEnumerable<byte[]> rows)
         //{
         //    lock (_lock)

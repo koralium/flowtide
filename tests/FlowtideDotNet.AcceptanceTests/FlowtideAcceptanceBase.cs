@@ -71,6 +71,11 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.AddOrUpdateUser(user);
         }
 
+        public void DeleteUser(User user)
+        {
+            flowtideTestStream.DeleteUser(user);
+        }
+
         public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper)
         {
             var baseType = this.GetType();

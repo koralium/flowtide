@@ -83,6 +83,48 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task LeftJoinMergeJoinWithUpdate()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM orders o
+                LEFT JOIN users u
+                ON o.userkey = u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from order in Orders
+                join user in Users on order.UserKey equals user.UserKey into gj
+                from subuser in gj.DefaultIfEmpty()
+                select new
+                {
+                    order.OrderKey,
+                    subuser.FirstName,
+                    subuser.LastName
+                });
+
+            var uKey = Orders.First().UserKey;
+            var firstUser = Users.First(x => x.UserKey == uKey);
+            DeleteUser(firstUser);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from order in Orders
+                join user in Users on order.UserKey equals user.UserKey into gj
+                from subuser in gj.DefaultIfEmpty()
+                select new
+                {
+                    order.OrderKey,
+                    subuser?.FirstName,
+                    subuser?.LastName
+                });
+        }
+
+        [Fact]
         public async Task LeftJoinMergeJoinNullCondition()
         {
             GenerateData(100);
