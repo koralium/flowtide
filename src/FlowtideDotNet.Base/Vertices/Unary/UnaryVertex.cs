@@ -263,14 +263,14 @@ namespace FlowtideDotNet.Base.Vertices.Unary
             return Empty();
         }
 
-        private async IAsyncEnumerable<T> Empty()
+        private IAsyncEnumerable<T> Empty()
         {
-            yield break;
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
-        private async IAsyncEnumerable<IStreamEvent> Passthrough(IStreamEvent streamEvent)
+        private IAsyncEnumerable<IStreamEvent> Passthrough(IStreamEvent streamEvent)
         {
-            yield return streamEvent;
+            return new SingleAsyncEnumerable<IStreamEvent>(streamEvent);
         }
 
         public Task Completion => _transformBlock?.Completion ?? throw new InvalidOperationException("Completion can only be fetched after CreateBlocks.");

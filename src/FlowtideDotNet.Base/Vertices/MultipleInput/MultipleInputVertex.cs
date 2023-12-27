@@ -316,14 +316,14 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }
         }
 
-        private async IAsyncEnumerable<IStreamEvent> Passthrough(IStreamEvent streamEvent)
+        private IAsyncEnumerable<IStreamEvent> Passthrough(IStreamEvent streamEvent)
         {
-            yield return streamEvent;
+            return new SingleAsyncEnumerable<IStreamEvent>(streamEvent);
         }
 
-        private async IAsyncEnumerable<IStreamEvent> Empty()
+        private IAsyncEnumerable<IStreamEvent> Empty()
         {
-            yield break;
+            return EmptyAsyncEnumerable<IStreamEvent>.Instance;
         }
 
         public virtual async IAsyncEnumerable<T> OnTrigger(string name, object? state)
