@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Core.Engine
 
             readWriteFactory.AddReadResolver((readRelation, opt) =>
             {
-                var regexResult = Regex.Match(readRelation.NamedTable.DotSeperated, regexPattern, RegexOptions.IgnoreCase);
+                var regexResult = Regex.Match(readRelation.NamedTable.DotSeperated, regexPattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
                 if (!regexResult.Success)
                 {
                     return null;
@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Core.Engine
 
             readWriteFactory.AddWriteResolver((writeRelation, opt) =>
             {
-                var regexResult = Regex.Match(writeRelation.NamedObject.DotSeperated, regexPattern, RegexOptions.IgnoreCase);
+                var regexResult = Regex.Match(writeRelation.NamedObject.DotSeperated, regexPattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
                 if (!regexResult.Success)
                 {
                     return null;

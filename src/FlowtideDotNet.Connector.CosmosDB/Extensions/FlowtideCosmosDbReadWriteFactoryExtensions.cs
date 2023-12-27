@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core.Engine
             }
             readWriteFactory.AddWriteResolver((writeRel, opt) =>
             {
-                var regexResult = Regex.Match(writeRel.NamedObject.DotSeperated, regexPattern, RegexOptions.IgnoreCase);
+                var regexResult = Regex.Match(writeRel.NamedObject.DotSeperated, regexPattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
                 if (!regexResult.Success)
                 {
                     return null;
