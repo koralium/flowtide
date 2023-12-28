@@ -22,6 +22,7 @@ using FlowtideDotNet.Substrait.Tests.SqlServer;
 using System.Data;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.SqlServer.SqlServer
 {
@@ -31,19 +32,19 @@ namespace FlowtideDotNet.SqlServer.SqlServer
     }
     public class SqlServerSink : GroupedWriteBaseOperator<SqlServerSinkState>
     {
-        private string tmpTableName;
+        private readonly string tmpTableName;
         private readonly Func<string> connectionStringFunc;
         private readonly WriteRelation writeRelation;
-        private IBPlusTree<RowEvent, int> m_modified;
+        private IBPlusTree<RowEvent, int>? m_modified;
         private bool m_hasModified;
-        private SqlConnection connection;
-        private List<string> m_primaryKeyNames;
+        private SqlConnection? connection;
+        private List<string>? m_primaryKeyNames;
         private IReadOnlyList<int>? m_primaryKeys;
-        private DataTable m_dataTable;
-        private Action<DataTable, bool, RowEvent> m_mapRowFunc;
-        private string mergeIntoStatement;
-        private SqlBulkCopy m_sqlBulkCopy;
-        private SqlCommand m_mergeIntoCommand;
+        private DataTable? m_dataTable;
+        private Action<DataTable, bool, RowEvent>? m_mapRowFunc;
+        private string? mergeIntoStatement;
+        private SqlBulkCopy? m_sqlBulkCopy;
+        private SqlCommand? m_mergeIntoCommand;
 
         public SqlServerSink(Func<string> connectionStringFunc, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -61,6 +62,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
 
         protected override async Task<SqlServerSinkState> Checkpoint(long checkpointTime)
         {
+            Debug.Assert(m_modified != null);
+            Debug.Assert(m_dataTable != null);
+            Debug.Assert(m_mapRowFunc != null);
+            Debug.Assert(m_sqlBulkCopy != null);
+            Debug.Assert(m_mergeIntoCommand != null);
+
             if (m_hasModified)
             {
                 Logger.LogInformation("Starting database update");
@@ -229,6 +236,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         protected override async Task Initialize(long restoreTime, SqlServerSinkState? state, IStateManagerClient stateManagerClient)
         {
             await LoadMetadata();
+            Debug.Assert(PrimaryKeyComparer != null);
             // Create a tree for storing modified data.
             m_modified = await stateManagerClient.GetOrCreateTree<RowEvent, int>("temporary", new Storage.Tree.BPlusTreeOptions<RowEvent, int>()
             {
@@ -242,6 +250,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
+            Debug.Assert(m_modified != null);
             foreach (var e in msg.Events)
             {
                 // Add the row to permanent storage

@@ -21,6 +21,7 @@ using System.Threading.Tasks.Dataflow;
 using System.Diagnostics.Metrics;
 using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Base.Metrics;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
@@ -36,13 +37,13 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         private readonly Func<string> connectionStringFunc;
         private readonly ReadRelation readRelation;
         private readonly HashSet<string> _watermarks;
-        private SqlConnection sqlConnection;
-        private SqlServerState _state;
-        private Func<SqlDataReader, RowEvent> _streamEventCreator;
-        private Task _changesTask;
+        private SqlConnection? sqlConnection;
+        private SqlServerState? _state;
+        private Func<SqlDataReader, RowEvent>? _streamEventCreator;
+        private Task? _changesTask;
         private string _displayName;
-        private List<string> primaryKeys;
-        private ICounter<long> _eventsCounter;
+        private List<string>? primaryKeys;
+        private ICounter<long>? _eventsCounter;
         private string? filter;
 
         public SqlServerDataSource(Func<string> connectionStringFunc, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
@@ -93,6 +94,12 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
         private async Task FetchChanges(IngressOutput<StreamEventBatch> output, object? state)
         {
+            Debug.Assert(_state != null);
+            Debug.Assert(sqlConnection != null);
+            Debug.Assert(_streamEventCreator != null);
+            Debug.Assert(primaryKeys != null);
+            Debug.Assert(_eventsCounter != null);
+
             await output.EnterCheckpointLock();
 
             List<RowEvent> result = new List<RowEvent>();
@@ -193,6 +200,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
         private async Task GetColumnTypes()
         {
+            Debug.Assert(sqlConnection != null);
             using var command = sqlConnection.CreateCommand();
             command.CommandText = SqlServerUtils.CreateSelectStatementTop1(readRelation);
             using (var reader = await command.ExecuteReaderAsync())
@@ -234,6 +242,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             allInput.WriteLine("Checkpoint");
             allInput.Flush();
 #endif
+            Debug.Assert(_state != null);
             return Task.FromResult(_state);
         }
 
@@ -242,6 +251,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 #if DEBUG_WRITE
             allInput.WriteLine($"Initial");
 #endif
+            Debug.Assert(_state != null);
+            Debug.Assert(sqlConnection != null);
+            Debug.Assert(_streamEventCreator != null);
+            Debug.Assert(primaryKeys != null);
+            Debug.Assert(_eventsCounter != null);
             
             // Check if we have never read the initial data before
             if (_state.ChangeTrackingVersion < 0)
