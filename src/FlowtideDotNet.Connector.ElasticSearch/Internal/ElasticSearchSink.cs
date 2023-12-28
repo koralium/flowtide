@@ -33,10 +33,10 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         private readonly WriteRelation writeRelation;
         private readonly FlowtideElasticsearchOptions m_elasticsearchOptions;
         private ElasticClient? m_client;
-        private StreamEventToJsonElastic? m_serializer;
-        private IReadOnlyList<int> m_primaryKeys;
+        private readonly StreamEventToJsonElastic m_serializer;
+        private readonly IReadOnlyList<int> m_primaryKeys;
         private readonly string m_displayName;
-        private string m_indexName;
+        private readonly string m_indexName;
 
         public ElasticSearchSink(WriteRelation writeRelation, FlowtideElasticsearchOptions elasticsearchOptions, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(executionMode, executionDataflowBlockOptions)
@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             m_serializer = new StreamEventToJsonElastic(idFieldIndex, m_indexName, writeRelation.TableSchema.Names);
         }
 
-        private int FindUnderscoreIdField(WriteRelation writeRelation)
+        private static int FindUnderscoreIdField(WriteRelation writeRelation)
         {
             for (int i = 0; i < writeRelation.TableSchema.Names.Count; i++)
             {
@@ -74,9 +74,9 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
         internal void CreateIndexAndMappings()
         {
-            var m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
+            var client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
 
-            var existingIndex = m_client.Indices.Get(m_indexName);
+            var existingIndex = client.Indices.Get(m_indexName);
             IndexState? indexState = default;
             IProperties? properties = null;
             if (existingIndex != null && existingIndex.IsValid && existingIndex.Indices.TryGetValue(m_indexName, out indexState))
@@ -95,14 +95,14 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
             if (indexState == null)
             {
-                var response = m_client.Indices.Create(m_indexName);
+                var response = client.Indices.Create(m_indexName);
                 if (!response.IsValid)
                 {
                     throw new InvalidOperationException(response.ServerError.Error.Reason);
                 }
             }
 
-            var mapResponse = m_client.Map(new PutMappingRequest(m_indexName)
+            var mapResponse = client.Map(new PutMappingRequest(m_indexName)
             {
                 Properties = properties
             });
@@ -113,10 +113,10 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             }
         }
 
-        protected override async Task<MetadataResult> SetupAndLoadMetadataAsync()
+        protected override Task<MetadataResult> SetupAndLoadMetadataAsync()
         {
             m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
-            return new MetadataResult(m_primaryKeys);
+            return Task.FromResult(new MetadataResult(m_primaryKeys));
         }
 
         protected override Task OnInitialDataSent()
@@ -158,13 +158,13 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                 if (batchCount >= 1000)
                 {
                     
-                    var response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()));
+                    var response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
 
                     if (response.Errors)
                     {
                         foreach(var itemWithError in response.ItemsWithErrors)
                         {
-                            Logger.LogError(itemWithError.Error.ToString());
+                            Logger.LogError(message: itemWithError.Error.ToString());
                         }
                         throw new InvalidOperationException("Error in elasticsearch sink");
                     }
@@ -186,7 +186,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
             if (batchCount > 0)
             {
-                var response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()));
+                var response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
 
                 if (response.Errors)
                 {
