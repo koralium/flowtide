@@ -76,8 +76,8 @@ namespace FlowtideDotNet.Core.Compute
                 var p1 = expressionVisitor.Visit(scalarFunction.Arguments[0], parametersInfo);
                 var p2 = expressionVisitor.Visit(scalarFunction.Arguments[1], parametersInfo);
 
-                if (p1 == null) { throw new ArgumentNullException(nameof(p1)); }
-                if (p2 == null) { throw new ArgumentNullException(nameof(p2)); }
+                if (p1 == null) { throw new InvalidOperationException("First parameter could not be compiled"); }
+                if (p2 == null) { throw new InvalidOperationException("Second parameter could not be compiled"); }
 
                 var expressionBody = expression.Body;
                 // TODO: Replace parameter with p1
@@ -101,9 +101,9 @@ namespace FlowtideDotNet.Core.Compute
                 var p3 = expressionVisitor.Visit(scalarFunction.Arguments[2], parametersInfo);
                 var expressionBody = expression.Body;
 
-                if (p1 == null) { throw new ArgumentNullException(nameof(p1)); }
-                if (p2 == null) { throw new ArgumentNullException(nameof(p2)); }
-                if (p3 == null) { throw new ArgumentNullException(nameof(p3)); }
+                if (p1 == null) { throw new InvalidOperationException("First parameter could not be compiled"); }
+                if (p2 == null) { throw new InvalidOperationException("Second parameter could not be compiled"); }
+                if (p3 == null) { throw new InvalidOperationException("Third parameter could not be compiled"); }
                 // TODO: Replace parameter with p1
                 expressionBody = new ParameterReplacerVisitor(expression.Parameters[0], p1).Visit(expressionBody);
                 expressionBody = new ParameterReplacerVisitor(expression.Parameters[1], p2).Visit(expressionBody);
