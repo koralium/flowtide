@@ -22,6 +22,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
 using System.Buffers;
+using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 using static Substrait.Protobuf.AggregateRel.Types;
 
@@ -37,21 +38,16 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
         private readonly AggregateRelation aggregateRelation;
         private readonly FunctionsRegister functionsRegister;
         private List<Func<RowEvent, FlxValue>>? groupExpressions;
-        private IBPlusTree<RowEvent, AggregateRowState> _tree;
-        private IBPlusTree<RowEvent, int> _temporaryTree;
+        private IBPlusTree<RowEvent, AggregateRowState>? _tree;
+        private IBPlusTree<RowEvent, int>? _temporaryTree;
         private FlexBuffer _flexBufferNewValue;
-        private FlexBuffer _flexBufferOldValue;
         private List<IAggregateContainer> _measures;
 
-        /// <summary>
-        /// All the mapping functions for the measures.
-        /// </summary>
-        private List<Func<RowEvent, byte[]?, int, (FlxValue? oldValue, FlxValue newValue, byte[] newState)>> mappingFunctions;
         public AggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             _measures = new List<IAggregateContainer>();
             _flexBufferNewValue = new FlexBuffer(ArrayPool<byte>.Shared);
-            _flexBufferOldValue = new FlexBuffer(ArrayPool<byte>.Shared);
+
             if (aggregateRelation.Groupings != null && aggregateRelation.Groupings.Count > 0)
             {
                 if (aggregateRelation.Groupings.Count > 1)
@@ -86,6 +82,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
         public override async Task<AggregateOperatorState> OnCheckpoint()
         {
+            Debug.Assert(_tree != null, "Tree should not be null");
             await _tree.Commit();
 
             // Commit each measure
@@ -98,6 +95,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
         {
+            Debug.Assert(_tree != null, "Tree should not be null");
+            Debug.Assert(_temporaryTree != null, "Temporary tree should not be null");
+
             List<RowEvent> outputs = new List<RowEvent>();
             // If no group expressions, then we are just doing a global aggregation, so we fetch the new value and compare it with the old
             if (groupExpressions == null || groupExpressions.Count == 0)
@@ -106,6 +106,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
                 if (found)
                 {
+                    Debug.Assert(val != null, "Value should not be null");
+                    Debug.Assert(val.MeasureStates != null, "Measure states should not be null");
                     _flexBufferNewValue.NewObject();
                     var vectorStart = _flexBufferNewValue.StartVector();
                     for (int i = 0; i < val.MeasureStates.Length; i++)
@@ -200,6 +202,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                         {
                             _flexBufferNewValue.Add(kv.Key.GetColumn(i));
                         }
+                        Debug.Assert(val.MeasureStates != null, "Measure states should not be null");
                         for (int i = 0; i < val.MeasureStates.Length; i++)
                         {
                             var measureResult = await _measures[i].GetValue(kv.Key, val.MeasureStates[i]);
@@ -256,6 +259,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
+            Debug.Assert(_tree != null, "Tree should not be null");
+            Debug.Assert(_temporaryTree != null, "Temporary tree should not be null");
+
             foreach(var e in msg.Events)
             {
                 // Create the key
@@ -298,6 +304,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 {
                     if (found)
                     {
+                        Debug.Assert(val != null, "Value should not be null");
+                        Debug.Assert(val.MeasureStates != null, "Measure states should not be null");
                         for (int i = 0; i < _measures.Count; i++)
                         {
                             val!.MeasureStates[i] = await _measures[i].Compute(key.Value, e, val!.MeasureStates[i], e.Weight);

@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
         {
         }
 
-        public ValueTask<FlxValue> GetValue(RowEvent key, byte[] state)
+        public ValueTask<FlxValue> GetValue(RowEvent key, byte[]? state)
         {
             return ValueTask.FromResult(stateToValueFunc(state));
         }

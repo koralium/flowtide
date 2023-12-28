@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             return currentState;
         }
 
-        private static async ValueTask<FlxValue> ListAggGetValue(byte[] state, RowEvent groupingKey, ListAggAggregationSingleton singleton)
+        private static async ValueTask<FlxValue> ListAggGetValue(byte[]? state, RowEvent groupingKey, ListAggAggregationSingleton singleton)
         {
             var vector = FlexBufferBuilder.Vector(v =>
             {
