@@ -30,7 +30,6 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
     internal class MongoDBSink : SimpleGroupedWriteOperator
     {
         private readonly FlowtideMongoDBSinkOptions options;
-        private readonly WriteRelation writeRelation;
         private readonly StreamEventToBson streamEventToBson;
         private IMongoCollection<BsonDocument>? collection;
         private readonly List<int> primaryKeys;
