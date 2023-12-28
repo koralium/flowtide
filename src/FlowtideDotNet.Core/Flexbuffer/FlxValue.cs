@@ -52,7 +52,7 @@ namespace FlexBuffers
         {
             if (bytes.Length < 3)
             {
-                throw new Exception($"Invalid buffer {bytes}");
+                throw new InvalidOperationException($"Invalid buffer {bytes}");
             }
 
             var byteWidth = bytes[bytes.Length - 1];
@@ -65,7 +65,7 @@ namespace FlexBuffers
         {
             if (memory.Length < 3)
             {
-                throw new Exception($"Invalid buffer {memory}");
+                throw new InvalidOperationException($"Invalid buffer {memory}");
             }
             var span = memory.Span;
             var byteWidth = span[span.Length - 1];
@@ -206,7 +206,7 @@ namespace FlexBuffers
                         return (long) value;
                     }
                 }
-                throw new Exception($"Type {_type} is not convertible to long");
+                throw new InvalidOperationException($"Type {_type} is not convertible to long");
             }
         }
         
@@ -243,7 +243,7 @@ namespace FlexBuffers
                         return (ulong) value;
                     }
                 }
-                throw new Exception($"Type {_type} is not convertible to ulong");
+                throw new InvalidOperationException($"Type {_type} is not convertible to ulong");
             }
         }
         
@@ -279,7 +279,7 @@ namespace FlexBuffers
                     var indirectOffset = ComputeIndirectOffset(span, _offset, _parentWidth);
                     return ReadLong(span, indirectOffset, _byteWidth);
                 }
-                throw new Exception($"Type {_type} is not convertible to double");
+                throw new InvalidOperationException($"Type {_type} is not convertible to double");
             }
         }
         
@@ -299,7 +299,7 @@ namespace FlexBuffers
                 {
                     return ReadULong(_buffer.Span, _offset, _parentWidth) != 0;    
                 }
-                throw new Exception($"Type {_type} is not convertible to bool");
+                throw new InvalidOperationException($"Type {_type} is not convertible to bool");
             }
         }
 
@@ -364,7 +364,7 @@ namespace FlexBuffers
                     return Encoding.UTF8.GetString(span.Slice(indirectOffset, size));
                 }
                 
-                throw new Exception($"Type {_type} is not convertible to string");
+                throw new InvalidOperationException($"Type {_type} is not convertible to string");
             }
         }
 
@@ -378,7 +378,7 @@ namespace FlexBuffers
                     var indirectOffset = ComputeIndirectOffset(span, _offset, _parentWidth);
                     return new decimal(MemoryMarshal.Cast<byte, int>(span.Slice(indirectOffset, 16)));
                 }
-                throw new Exception($"Type {_type} is not convertible to decimal");
+                throw new InvalidOperationException($"Type {_type} is not convertible to decimal");
             }
         }
         
@@ -392,7 +392,7 @@ namespace FlexBuffers
             {
                 if (TypesUtil.IsAVector(_type) == false)
                 {
-                    throw new Exception($"Type {_type} is not a vector.");
+                    throw new InvalidOperationException($"Type {_type} is not a vector.");
                 }
                 var span = _buffer.Span;
                 var indirectOffset = ComputeIndirectOffset(span, _offset, _parentWidth);
@@ -409,7 +409,7 @@ namespace FlexBuffers
             {
                 if (_type != Type.Map)
                 {
-                    throw new Exception($"Type {_type} is not a map.");
+                    throw new InvalidOperationException($"Type {_type} is not a map.");
                 }
                 var span = _buffer.Span;
                 var indirectOffset = ComputeIndirectOffset(span, _offset, _parentWidth);
@@ -424,16 +424,13 @@ namespace FlexBuffers
             {
                 if (_type != Type.Blob)
                 {
-                    throw new Exception($"Type {_type} is not a blob.");
+                    throw new InvalidOperationException($"Type {_type} is not a blob.");
                 }
                 var span = _buffer.Span;
                 var indirectOffset = ComputeIndirectOffset(span, _offset, _parentWidth);
                 var size = ReadULong(span, indirectOffset - _byteWidth, _byteWidth);
 
                 return span.Slice(indirectOffset, (int)size);
-                //var blob = new byte[size];
-                //System.Buffer.BlockCopy(span, indirectOffset, blob, 0, (int)size);
-                //return blob;
             }
         }
 
@@ -495,7 +492,7 @@ namespace FlexBuffers
                     return AsDecimal.ToString(CultureInfo.CurrentCulture);
                 }
                 
-                throw new Exception($"Unexpected type {_type}");
+                throw new InvalidOperationException($"Unexpected type {_type}");
             }
         }
 
@@ -522,7 +519,7 @@ namespace FlexBuffers
         {
             if (offset < 0 || bytes.Length <= (offset + width) || (offset & (width - 1)) != 0)
             {
-                throw new Exception("Bad offset");
+                throw new InvalidOperationException("Bad offset");
             }
 
             if (width == 1)
@@ -548,7 +545,7 @@ namespace FlexBuffers
             //Debug.Assert(!(offset < 0 || bytes.Length <= (offset + width) || (offset & (width - 1)) != 0), "Bad offset");
             if (offset < 0 || bytes.Length <= (offset + width) || (offset & (width - 1)) != 0)
             {
-                throw new Exception("Bad offset");
+                throw new InvalidOperationException("Bad offset");
             }
 
             if (width == 1)
@@ -573,12 +570,12 @@ namespace FlexBuffers
         {
             if (offset < 0 || bytes.Length <= (offset + width) || (offset & (width - 1)) != 0)
             {
-                throw new Exception("Bad offset");
+                throw new InvalidOperationException("Bad offset");
             }
 
             if (width != 4 && width != 8)
             {
-                throw new Exception($"Bad width {width}");
+                throw new InvalidOperationException($"Bad width {width}");
             }
 
             if (width == 4)
@@ -647,7 +644,7 @@ namespace FlexBuffers
             //Debug.Assert(index < 0 || index >= _length, $"Bad index {index}, should be 0...{_length}");
             if (index < 0 || index >= _length)
             {
-                throw new Exception($"Bad index {index}, should be 0...{_length}");
+                throw new InvalidOperationException($"Bad index {index}, should be 0...{_length}");
             }
 
             if (_type == Type.Vector)
@@ -670,7 +667,7 @@ namespace FlexBuffers
             }
 
             
-            throw new Exception($"Bad index {index}, should be 0...{_length}");
+            throw new InvalidOperationException($"Bad index {index}, should be 0...{_length}");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -679,7 +676,7 @@ namespace FlexBuffers
             //Debug.Assert(index < 0 || index >= _length, $"Bad index {index}, should be 0...{_length}");
             if (index < 0 || index >= _length)
             {
-                throw new Exception($"Bad index {index}, should be 0...{_length}");
+                throw new InvalidOperationException($"Bad index {index}, should be 0...{_length}");
             }
 
             if (_type == Type.Vector)
@@ -812,7 +809,7 @@ namespace FlexBuffers
                 var index = KeyIndex(key);
                 if (index < 0)
                 {
-                    throw new Exception($"No key '{key}' could be found");
+                    throw new InvalidOperationException($"No key '{key}' could be found");
                 }
                 return Values[index];
             }
@@ -822,7 +819,7 @@ namespace FlexBuffers
         {
             if (keyIndex < 0 || keyIndex >= Length)
             {
-                throw new Exception($"Bad Key index {keyIndex}");
+                throw new InvalidOperationException($"Bad Key index {keyIndex}");
             }
 
             return Values[keyIndex];
