@@ -463,7 +463,7 @@ namespace FlexBuffers
                     }
                     else
                     {
-                        return AddFlxValueString(flxValue); //Add(flxValue.AsString);
+                        return AddFlxValueString(flxValue);
                     }
                 case Type.Null:
                     return AddNull();
