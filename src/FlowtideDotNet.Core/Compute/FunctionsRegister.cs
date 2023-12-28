@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.Compute
                 }
 
                 var p1 = expressionVisitor.Visit(scalarFunction.Arguments[0], parametersInfo);
-                if (p1 == null) { throw new ArgumentNullException(nameof(p1)); }
+                if (p1 == null) { throw new InvalidOperationException("First parameter could not be compiled"); }
 
                 var expressionBody = expression.Body;
                 // TODO: Replace parameter with p1
