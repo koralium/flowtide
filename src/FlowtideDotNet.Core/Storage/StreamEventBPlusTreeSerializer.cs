@@ -18,7 +18,7 @@ namespace FlowtideDotNet.Core.Storage
 {
     public class StreamEventBPlusTreeSerializer : IBplusTreeSerializer<RowEvent>
     {
-        public RowEvent Deserialize(in BinaryReader reader)
+        private static RowEvent Deserialize(in BinaryReader reader)
         {
             var weight = reader.ReadInt32();
             var iteration = reader.ReadUInt32();
@@ -27,7 +27,16 @@ namespace FlowtideDotNet.Core.Storage
             return new RowEvent(weight, iteration, new CompactRowData(bytes));
         }
 
-        public void Serialize(in BinaryWriter writer, in RowEvent value)
+        public void Deserialize(in BinaryReader reader, in List<RowEvent> values)
+        {
+            var count = reader.ReadInt32();
+            for (var i = 0; i < count; i++)
+            {
+                values.Add(Deserialize(reader));
+            }
+        }
+
+        private static void Serialize(in BinaryWriter writer, in RowEvent value)
         {
             writer.Write(value.Weight);
             writer.Write(value.Iteration);
@@ -39,6 +48,15 @@ namespace FlowtideDotNet.Core.Storage
 
             writer.Write(compact.Span.Length);
             writer.Write(compact.Span);
+        }
+
+        public void Serialize(in BinaryWriter writer, in List<RowEvent> values)
+        {
+            writer.Write(values.Count);
+            foreach (var value in values)
+            {
+                Serialize(writer, value);
+            }
         }
     }
 }

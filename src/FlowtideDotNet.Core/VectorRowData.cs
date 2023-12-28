@@ -11,31 +11,34 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Operators.Aggregate
+namespace FlowtideDotNet.Core
 {
-    internal class AggregateRowState
+    internal struct VectorRowData : IRowData
     {
-        /// <summary>
-        /// State for each measure
-        /// </summary>
-        public byte[]?[] MeasureStates { get; set; }
+        private readonly FlxVector m_vector;
 
-        /// <summary>
-        /// Total weight of all input events.
-        /// If this goes to 0, all rows with these aggregates should be removed.
-        /// </summary>
-        public long Weight { get; set; }
+        public VectorRowData(FlxVector vector)
+        {
+            this.m_vector = vector;
+        }
 
-        /// <summary>
-        /// The previous value of the aggregate.
-        /// Used when doing negation on updates to remove previous value from the stream.
-        /// </summary>
-        public byte[]? PreviousValue { get; set; }
+        public int Length => m_vector.Length;
+
+        public FlxValue GetColumn(int index)
+        {
+            return m_vector.Get(index);
+        }
+
+        public FlxValueRef GetColumnRef(scoped in int index)
+        {
+            return m_vector.GetRef(index);
+        }
     }
 }

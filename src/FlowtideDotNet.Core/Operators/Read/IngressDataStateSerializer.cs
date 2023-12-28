@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Core.Operators.Read
 {
     internal class IngressDataStateSerializer : IBplusTreeSerializer<IngressData>
     {
-        public IngressData Deserialize(in BinaryReader reader)
+        private static IngressData Deserialize(in BinaryReader reader)
         {
             var isDeleted = reader.ReadBoolean();
             var length = reader.ReadInt32();
@@ -24,11 +24,29 @@ namespace FlowtideDotNet.Core.Operators.Read
             return new IngressData(bytes, isDeleted);
         }
 
-        public void Serialize(in BinaryWriter writer, in IngressData value)
+        public void Deserialize(in BinaryReader reader, in List<IngressData> values)
+        {
+            var count = reader.ReadInt32();
+            for (var i = 0; i < count; i++)
+            {
+                values.Add(Deserialize(reader));
+            }
+        }
+
+        private static void Serialize(in BinaryWriter writer, in IngressData value)
         {
             writer.Write(value.IsDeleted);
             writer.Write(value.Span.Length);
             writer.Write(value.Span);
+        }
+
+        public void Serialize(in BinaryWriter writer, in List<IngressData> values)
+        {
+            writer.Write(values.Count);
+            foreach (var value in values)
+            {
+                Serialize(writer, value);
+            }
         }
     }
 }

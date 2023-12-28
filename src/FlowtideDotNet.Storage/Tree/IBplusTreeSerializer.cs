@@ -14,8 +14,8 @@ namespace FlowtideDotNet.Storage.Tree
 {
     public interface IBplusTreeSerializer<T>
     {
-        T Deserialize(in BinaryReader reader);
+        void Deserialize(in BinaryReader reader, in List<T> values);
 
-        void Serialize(in BinaryWriter writer, in T value);
+        void Serialize(in BinaryWriter writer, in List<T> values);
     }
 }

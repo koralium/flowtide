@@ -457,7 +457,14 @@ namespace FlexBuffers
                     _stack.Add(StackValue.Value(flxValue.AsDouble));
                     return Type.Float;
                 case Type.String:
-                    return AddFlxValueString(flxValue); //Add(flxValue.AsString);
+                    if (_options.HasFlag(Options.ShareStrings))
+                    {
+                        return Add(flxValue.AsString);
+                    }
+                    else
+                    {
+                        return AddFlxValueString(flxValue);
+                    }
                 case Type.Null:
                     return AddNull();
                 case Type.Vector:

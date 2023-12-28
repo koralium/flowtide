@@ -16,14 +16,22 @@ namespace FlowtideDotNet.Storage.Serializers
 {
     public class IntSerializer : IBplusTreeSerializer<int>
     {
-        public int Deserialize(in BinaryReader reader)
+        public void Deserialize(in BinaryReader reader, in List<int> values)
         {
-            return reader.ReadInt32();
+            var count = reader.ReadInt32();
+            for (var i = 0; i < count; i++)
+            {
+                values.Add(reader.ReadInt32());
+            }
         }
 
-        public void Serialize(in BinaryWriter writer, in int value)
+        public void Serialize(in BinaryWriter writer, in List<int> value)
         {
-            writer.Write(value);
+            writer.Write(value.Count);
+            foreach (var item in value)
+            {
+                writer.Write(item);
+            }
         }
     }
 }
