@@ -23,13 +23,13 @@ namespace FlowtideDotNet.Connector.MongoDB
 {
     public class FlowtideMongoDBSinkOptions
     {
-        public string ConnectionString { get; set; }
+        public required string ConnectionString { get; set; }
 
-        public string Database { get; set; }
+        public required string Database { get; set; }
 
-        public string Collection { get; set; }
+        public required string Collection { get; set; }
 
-        public List<string> PrimaryKeys { get; set; }
+        public required List<string> PrimaryKeys { get; set; }
 
         public Action<BsonDocument>? TransformDocument { get; set; }
 

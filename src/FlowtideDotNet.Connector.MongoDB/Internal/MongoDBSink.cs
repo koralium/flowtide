@@ -19,6 +19,7 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -31,20 +32,31 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         private readonly FlowtideMongoDBSinkOptions options;
         private readonly WriteRelation writeRelation;
         private readonly StreamEventToBson streamEventToBson;
-        private IMongoCollection<BsonDocument> collection;
-        List<int> primaryKeys;
+        private IMongoCollection<BsonDocument>? collection;
+        private readonly List<int> primaryKeys;
 
         public MongoDBSink(FlowtideMongoDBSinkOptions options, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
         {
             this.options = options;
             this.writeRelation = writeRelation;
             streamEventToBson = new StreamEventToBson(writeRelation.TableSchema.Names);
+            primaryKeys = new List<int>();
+            foreach (var primaryKey in options.PrimaryKeys)
+            {
+                var index = writeRelation.TableSchema.Names.FindIndex(x => x.Equals(primaryKey, StringComparison.OrdinalIgnoreCase));
+                if (index < 0)
+                {
+                    throw new InvalidOperationException($"Primary key '{primaryKey}' not found in table schema");
+                }
+                primaryKeys.Add(index);
+            }
         }
 
         public override string DisplayName => "MongoDB Sink";
 
         protected override Task OnInitialDataSent()
         {
+            Debug.Assert(collection != null);
             if (options.OnInitialDataSent != null)
             {
                 return options.OnInitialDataSent(collection);
@@ -64,16 +76,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             
             var database = client.GetDatabase(options.Database);
             collection = database.GetCollection<BsonDocument>(options.Collection);
-            primaryKeys = new List<int>();
-            foreach (var primaryKey in options.PrimaryKeys) 
-            {
-                var index = writeRelation.TableSchema.Names.FindIndex(x => x.Equals(primaryKey, StringComparison.OrdinalIgnoreCase));
-                if (index < 0) 
-                {
-                    throw new InvalidOperationException($"Primary key '{primaryKey}' not found in table schema");
-                }
-                primaryKeys.Add(index);
-            } 
+            
             return Task.FromResult(new MetadataResult(primaryKeys));
         }
 
@@ -83,7 +86,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             {
                 return Task.Factory.StartNew((state) =>
                 {
-                    var w = state as List<WriteModel<BsonDocument>>;
+                    var w = (state as List<WriteModel<BsonDocument>>)!;
                     return WriteDataTask(w, cancellationToken);
                 }, writes)
                     .Unwrap();
@@ -93,6 +96,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         private async Task WriteDataTask(List<WriteModel<BsonDocument>> writes, CancellationToken cancellationToken)
         {
+            Debug.Assert(collection != null);
             if (writes.Count > 0)
             {
                 int retryCount = 0;
@@ -100,7 +104,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 {
                     try
                     {
-                        await collection.BulkWriteAsync(writes);
+                        await collection.BulkWriteAsync(writes, cancellationToken: cancellationToken);
                         return;
                     }
                     catch (Exception e)
@@ -109,9 +113,9 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                         {
                             throw;
                         }
-                        Logger.LogWarning("Failed to write to mongoDB, will retry");
+                        Logger.LogWarning(e, "Failed to write to mongoDB, will retry");
                         retryCount++;
-                        await Task.Delay(TimeSpan.FromSeconds(5));
+                        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
                     }
                 }
             }
@@ -119,6 +123,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
         {
+            Debug.Assert(collection != null);
+
             List<WriteModel<BsonDocument>> writes = new List<WriteModel<BsonDocument>>();
             List<Task> writeTasks = new List<Task>();
             await foreach(var row in rows)
@@ -191,7 +197,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
             if (writes.Count > 0)
             {
-                writeTasks.Add(collection.BulkWriteAsync(writes));
+                writeTasks.Add(collection.BulkWriteAsync(writes, cancellationToken: cancellationToken));
             }
 
             await Task.WhenAll(writeTasks);
