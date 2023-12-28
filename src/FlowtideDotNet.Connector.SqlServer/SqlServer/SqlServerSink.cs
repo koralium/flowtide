@@ -38,11 +38,9 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         private IBPlusTree<RowEvent, int>? m_modified;
         private bool m_hasModified;
         private SqlConnection? connection;
-        private List<string>? m_primaryKeyNames;
         private IReadOnlyList<int>? m_primaryKeys;
         private DataTable? m_dataTable;
         private Action<DataTable, bool, RowEvent>? m_mapRowFunc;
-        private string? mergeIntoStatement;
         private SqlBulkCopy? m_sqlBulkCopy;
         private SqlCommand? m_mergeIntoCommand;
 
@@ -126,7 +124,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         {
             using var conn = new SqlConnection(connectionStringFunc());
             await conn.OpenAsync();
-            m_primaryKeyNames = await SqlServerUtils.GetPrimaryKeys(conn, writeRelation.NamedObject.DotSeperated);
+            var m_primaryKeyNames = await SqlServerUtils.GetPrimaryKeys(conn, writeRelation.NamedObject.DotSeperated);
             var dbSchema = await SqlServerUtils.GetWriteTableSchema(conn, writeRelation);
 
             List<int> primaryKeyIndices = new List<int>();
@@ -163,7 +161,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 await connection.OpenAsync();
             }
 
-            m_primaryKeyNames = await SqlServerUtils.GetPrimaryKeys(connection, writeRelation.NamedObject.DotSeperated);
+            var m_primaryKeyNames = await SqlServerUtils.GetPrimaryKeys(connection, writeRelation.NamedObject.DotSeperated);
             var dbSchema = await SqlServerUtils.GetWriteTableSchema(connection, writeRelation);
 
             List<int> primaryKeyIndices = new List<int>();
@@ -215,7 +213,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             }
 
             m_mapRowFunc = SqlServerUtils.GetDataRowMapFunc(dbSchema, m_primaryKeys);
-            mergeIntoStatement = SqlServerUtils.CreateMergeIntoProcedure(tmpTableName, writeRelation.NamedObject.DotSeperated, m_primaryKeyNames.ToHashSet(), m_dataTable);
+            var mergeIntoStatement = SqlServerUtils.CreateMergeIntoProcedure(tmpTableName, writeRelation.NamedObject.DotSeperated, m_primaryKeyNames.ToHashSet(), m_dataTable);
             m_sqlBulkCopy = new SqlBulkCopy(connection);
             m_sqlBulkCopy.DestinationTableName = tmpTableName;
 
