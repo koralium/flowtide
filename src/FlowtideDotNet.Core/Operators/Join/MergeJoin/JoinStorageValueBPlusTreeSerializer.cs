@@ -18,23 +18,34 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
     internal class JoinStorageValueBPlusTreeSerializer : IBplusTreeSerializer<JoinStorageValue>
     {
-        public JoinStorageValue Deserialize(in BinaryReader reader)
+        public void Deserialize(in BinaryReader reader, in List<JoinStorageValue> values)
         {
-            var bytes = reader.ReadBytes(8);
-            var weight = BinaryPrimitives.ReadInt32LittleEndian(bytes);
-            var joinWeight = BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan().Slice(4));
-            return new JoinStorageValue()
+            var length = reader.ReadInt32();
+
+            var bytes = reader.ReadBytes(8 * length);
+            var span = bytes.AsSpan();
+            for (int i = 0; i < length; i++)
             {
-                Weight = weight,
-                JoinWeight = joinWeight
-            };
+                var weight = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(i * 8));
+                var joinWeight = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(i * 8 + 4));
+                values.Add(new JoinStorageValue()
+                {
+                    Weight = weight,
+                    JoinWeight = joinWeight
+                });
+            }
         }
 
-        public void Serialize(in BinaryWriter writer, in JoinStorageValue value)
+        public void Serialize(in BinaryWriter writer, in List<JoinStorageValue> values)
         {
-            var bytes = new byte[8];
-            BinaryPrimitives.WriteInt32LittleEndian(bytes, value.Weight);
-            BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan().Slice(4), value.JoinWeight);
+            writer.Write(values.Count);
+            var bytes = new byte[8 * values.Count];
+            var span = bytes.AsSpan();
+            for (int i = 0; i < values.Count;i++)
+            {
+                BinaryPrimitives.WriteInt32LittleEndian(span.Slice(i * 8), values[i].Weight);
+                BinaryPrimitives.WriteInt32LittleEndian(span.Slice(i * 8 + 4), values[i].JoinWeight);
+            }
             writer.Write(bytes);
         }
     }

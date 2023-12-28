@@ -21,7 +21,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 {
     internal class AggregateRowStateSerializer : IBplusTreeSerializer<AggregateRowState>
     {
-        public AggregateRowState Deserialize(in BinaryReader reader)
+
+        private AggregateRowState Deserialize(in BinaryReader reader)
         {
             var measureLength = reader.ReadInt32();
             var measureStates = new byte[measureLength][];
@@ -75,6 +76,24 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             {
                 writer.Write(value.PreviousValue.Length);
                 writer.Write(value.PreviousValue);
+            }
+        }
+
+        public void Deserialize(in BinaryReader reader, in List<AggregateRowState> values)
+        {
+            var count = reader.ReadInt32();
+            for (int i = 0; i < count; i++)
+            {
+                values.Add(Deserialize(reader));
+            }
+        }
+
+        public void Serialize(in BinaryWriter writer, in List<AggregateRowState> values)
+        {
+            writer.Write(values.Count);
+            foreach (var value in values)
+            {
+                Serialize(writer, value);
             }
         }
     }

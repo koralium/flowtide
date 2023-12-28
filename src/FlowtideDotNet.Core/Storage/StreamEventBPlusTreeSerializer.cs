@@ -27,6 +27,15 @@ namespace FlowtideDotNet.Core.Storage
             return new RowEvent(weight, iteration, new CompactRowData(bytes));
         }
 
+        public void Deserialize(in BinaryReader reader, in List<RowEvent> values)
+        {
+            var count = reader.ReadInt32();
+            for (var i = 0; i < count; i++)
+            {
+                values.Add(Deserialize(reader));
+            }
+        }
+
         public void Serialize(in BinaryWriter writer, in RowEvent value)
         {
             writer.Write(value.Weight);
@@ -39,6 +48,15 @@ namespace FlowtideDotNet.Core.Storage
 
             writer.Write(compact.Span.Length);
             writer.Write(compact.Span);
+        }
+
+        public void Serialize(in BinaryWriter writer, in List<RowEvent> values)
+        {
+            writer.Write(values.Count);
+            foreach (var value in values)
+            {
+                Serialize(writer, value);
+            }
         }
     }
 }
