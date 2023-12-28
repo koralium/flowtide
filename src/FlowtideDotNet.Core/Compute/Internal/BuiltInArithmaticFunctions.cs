@@ -213,7 +213,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return NullValue;
         }
 
-        private static FlxValue GetSumValue(byte[] state)
+        private static FlxValue GetSumValue(byte[]? state)
         {
             if (state == null)
             {
@@ -223,7 +223,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return FlxValue.FromBytes(FlexBuffer.SingleValue(sum));
         }
 
-        private static FlxValue GetSum0Value(byte[] state)
+        private static FlxValue GetSum0Value(byte[]? state)
         {
             if (state == null)
             {

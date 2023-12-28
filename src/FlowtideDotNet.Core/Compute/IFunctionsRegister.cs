@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Compute
             string uri, 
             string name,
             Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
-            Func<byte[], FlxValue> stateToValueFunc);
+            Func<byte[]?, FlxValue> stateToValueFunc);
 
 
         delegate Task<T> AggregateInitializeFunction<T>(int groupingLength, IStateManagerClient stateManagerClient);

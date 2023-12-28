@@ -19,10 +19,10 @@ namespace FlowtideDotNet.Core.Compute.Internal
 {
     internal class StreamingAggregateContainer : IAggregateContainer
     {
-        private readonly Func<RowEvent, byte[], long, byte[]> mapFunc;
-        private readonly Func<byte[], FlxValue> stateToValueFunc;
+        private readonly Func<RowEvent, byte[]?, long, byte[]> mapFunc;
+        private readonly Func<byte[]?, FlxValue> stateToValueFunc;
 
-        public StreamingAggregateContainer(Func<RowEvent, byte[], long, byte[]> mapFunc, Func<byte[], FlxValue> stateToValueFunc)
+        public StreamingAggregateContainer(Func<RowEvent, byte[]?, long, byte[]> mapFunc, Func<byte[]?, FlxValue> stateToValueFunc)
         {
             this.mapFunc = mapFunc;
             this.stateToValueFunc = stateToValueFunc;
@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return Task.CompletedTask;
         }
 
-        public ValueTask<byte[]> Compute(RowEvent key, RowEvent row, byte[] state, long weight)
+        public ValueTask<byte[]> Compute(RowEvent key, RowEvent row, byte[]? state, long weight)
         {
             return ValueTask.FromResult(mapFunc(row, state, weight));
         }
@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             string uri,
             string name,
             Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> updateStateFunc,
-            Func<byte[], FlxValue> stateToValueFunc)
+            Func<byte[]?, FlxValue> stateToValueFunc)
         {
             Uri = uri;
             Name = name;
@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         public string Name { get; }
 
-        public Func<byte[], FlxValue> StateToValueFunc { get; }
+        public Func<byte[]?, FlxValue> StateToValueFunc { get; }
 
         /// <summary>
         /// Function that updates the state of the aggregate function
@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             ParameterExpression groupingKeyParameter)
         {
             var mapFunc = UpdateStateFunc(aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter);
-            var lambda = System.Linq.Expressions.Expression.Lambda<Func<RowEvent, byte[], long, byte[]>>(mapFunc, eventParameter, stateParameter, weightParameter);
+            var lambda = System.Linq.Expressions.Expression.Lambda<Func<RowEvent, byte[]?, long, byte[]>>(mapFunc, eventParameter, stateParameter, weightParameter);
             var compiled = lambda.Compile();
             return Task.FromResult<IAggregateContainer>(new StreamingAggregateContainer(compiled, StateToValueFunc));
         }
