@@ -33,7 +33,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         public bool IsBoolean { get; }
     }
 
-    internal class SqlServerFilterVisitor : ExpressionVisitor<FilterResult, object>
+    internal class SqlServerFilterVisitor : ExpressionVisitor<FilterResult, object?>
     {
         private readonly ReadRelation readRelation;
 
@@ -44,7 +44,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             this.readRelation = readRelation;
         }
 
-        public override FilterResult? VisitScalarFunction(ScalarFunction scalarFunction, object state)
+        public override FilterResult? VisitScalarFunction(ScalarFunction scalarFunction, object? state)
         {
             if (scalarFunction.ExtensionUri == FunctionsComparison.Uri)
             {
@@ -91,7 +91,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return base.VisitScalarFunction(scalarFunction, state);
         }
 
-        public override FilterResult? VisitSingularOrList(SingularOrListExpression singularOrList, object state)
+        public override FilterResult? VisitSingularOrList(SingularOrListExpression singularOrList, object? state)
         {
             var columnExpr = Visit(singularOrList.Value, state);
             if (columnExpr == null)
@@ -111,7 +111,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new FilterResult($"{columnExpr.Content} IN ({string.Join(", ", values)})", true);
         }
 
-        private FilterResult? VisitLowerFunction(ScalarFunction scalarFunction, object state)
+        private FilterResult? VisitLowerFunction(ScalarFunction scalarFunction, object? state)
         {
             var input = Visit(scalarFunction.Arguments[0], state);
 
@@ -123,7 +123,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new FilterResult($"LOWER({input.Content})", false);
         }
 
-        private FilterResult? VisitBooleanComparison(ScalarFunction scalarFunction, string op, object state)
+        private FilterResult? VisitBooleanComparison(ScalarFunction scalarFunction, string op, object? state)
         {
             Debug.Assert(scalarFunction.Arguments.Count == 2);
             var left = Visit(scalarFunction.Arguments[0], state);
@@ -136,7 +136,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new FilterResult($"{left.Content} {op} {right.Content}", true);
         }
 
-        private FilterResult? VisitAndFunction(ScalarFunction andFunction, object state)
+        private FilterResult? VisitAndFunction(ScalarFunction andFunction, object? state)
         {
             List<string> resolved = new List<string>();
             foreach(var expr in andFunction.Arguments)
@@ -159,7 +159,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new (string.Join(" AND ", resolved), true);
         }
 
-        public override FilterResult? VisitBoolLiteral(BoolLiteral boolLiteral, object state)
+        public override FilterResult? VisitBoolLiteral(BoolLiteral boolLiteral, object? state)
         {
             if (boolLiteral.Value)
             {
@@ -168,12 +168,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new FilterResult("0", false);
         }
 
-        public override FilterResult? VisitStringLiteral(StringLiteral stringLiteral, object state)
+        public override FilterResult? VisitStringLiteral(StringLiteral stringLiteral, object? state)
         {
             return new FilterResult($"'{stringLiteral.Value}'", false);
         }
 
-        private FilterResult? VisitConcatFunction(ScalarFunction concatFunction, object state)
+        private FilterResult? VisitConcatFunction(ScalarFunction concatFunction, object? state)
         {
             List<string> resolved = new List<string>();
             foreach (var expr in concatFunction.Arguments)
@@ -188,7 +188,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new FilterResult($"concat({string.Join(", ", resolved)})", false);
         }
 
-        public override FilterResult? VisitDirectFieldReference(DirectFieldReference directFieldReference, object state)
+        public override FilterResult? VisitDirectFieldReference(DirectFieldReference directFieldReference, object? state)
         {
             if (directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
@@ -197,12 +197,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return null;
         }
 
-        public override FilterResult? VisitNumericLiteral(NumericLiteral numericLiteral, object state)
+        public override FilterResult? VisitNumericLiteral(NumericLiteral numericLiteral, object? state)
         {
             return new(numericLiteral.Value.ToString(), false);
         }
 
-        private FilterResult? VisitOrFunction(ScalarFunction orFunction, object state)
+        private FilterResult? VisitOrFunction(ScalarFunction orFunction, object? state)
         {
             List<string> resolved = new List<string>();
             foreach (var expr in orFunction.Arguments)
@@ -225,12 +225,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new (string.Join(" OR ", resolved), true);
         }
 
-        public override FilterResult? VisitNullLiteral(NullLiteral nullLiteral, object state)
+        public override FilterResult? VisitNullLiteral(NullLiteral nullLiteral, object? state)
         {
             return new FilterResult("null", false);
         }
 
-        public override FilterResult? VisitIfThen(IfThenExpression ifThenExpression, object state)
+        public override FilterResult? VisitIfThen(IfThenExpression ifThenExpression, object? state)
         {
             List<string> resolved = new List<string>();
             foreach(var ifThenStatement in ifThenExpression.Ifs)
@@ -280,7 +280,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new FilterResult(stringBuilder.ToString(), false);
         }
 
-        private FilterResult? VisitIsNotNull(ScalarFunction isNotNullFunction, object state)
+        private FilterResult? VisitIsNotNull(ScalarFunction isNotNullFunction, object? state)
         {
             Debug.Assert(isNotNullFunction.Arguments.Count == 1);
             var result = Visit(isNotNullFunction.Arguments[0], state);
