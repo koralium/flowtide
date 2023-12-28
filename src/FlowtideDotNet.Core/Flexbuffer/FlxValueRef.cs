@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
         {
             if (span.Length < 3)
             {
-                throw new Exception($"Invalid buffer");
+                throw new InvalidOperationException($"Invalid buffer");
             }
 
             var byteWidth = span[span.Length - 1];
@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
         {
             if (memory.Length < 3)
             {
-                throw new Exception($"Invalid buffer {memory}");
+                throw new InvalidOperationException($"Invalid buffer {memory}");
             }
             var span = memory.Span;
             var byteWidth = span[span.Length - 1];
@@ -201,7 +201,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
                         return (long)value;
                     }
                 }
-                throw new Exception($"Type {_type} is not convertible to long");
+                throw new InvalidOperationException($"Type {_type} is not convertible to long");
             }
         }
 
@@ -238,7 +238,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
                         return (ulong)value;
                     }
                 }
-                throw new Exception($"Type {_type} is not convertible to ulong");
+                throw new InvalidOperationException($"Type {_type} is not convertible to ulong");
             }
         }
 
@@ -274,7 +274,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
                     var indirectOffset = ComputeIndirectOffset(span, _offset, _parentWidth);
                     return ReadLong(span, indirectOffset, _byteWidth);
                 }
-                throw new Exception($"Type {_type} is not convertible to double");
+                throw new InvalidOperationException($"Type {_type} is not convertible to double");
             }
         }
 
@@ -294,7 +294,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
                 {
                     return ReadULong(_buffer, _offset, _parentWidth) != 0;
                 }
-                throw new Exception($"Type {_type} is not convertible to bool");
+                throw new InvalidOperationException($"Type {_type} is not convertible to bool");
             }
         }
 
@@ -358,7 +358,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
                     return Encoding.UTF8.GetString(span.Slice(indirectOffset, size));
                 }
 
-                throw new Exception($"Type {_type} is not convertible to string");
+                throw new InvalidOperationException($"Type {_type} is not convertible to string");
             }
         }
 
@@ -371,7 +371,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
                     var indirectOffset = ComputeIndirectOffset(_buffer, _offset, _parentWidth);
                     return new decimal(MemoryMarshal.Cast<byte, int>(_buffer.Slice(indirectOffset, 16)));
                 }
-                throw new Exception($"Type {_type} is not convertible to decimal");
+                throw new InvalidOperationException($"Type {_type} is not convertible to decimal");
             }
         }
 
@@ -383,7 +383,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
             {
                 if (TypesUtil.IsAVector(_type) == false)
                 {
-                    throw new Exception($"Type {_type} is not a vector.");
+                    throw new InvalidOperationException($"Type {_type} is not a vector.");
                 }
                 var span = _buffer;
                 var indirectOffset = ComputeIndirectOffset(span, _offset, _parentWidth);
@@ -400,7 +400,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
             {
                 if (_type != Type.Map)
                 {
-                    throw new Exception($"Type {_type} is not a map.");
+                    throw new InvalidOperationException($"Type {_type} is not a map.");
                 }
                 var indirectOffset = ComputeIndirectOffset(_buffer, _offset, _parentWidth);
                 var size = ReadULong(_buffer, indirectOffset - _byteWidth, _byteWidth);
@@ -414,7 +414,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
             {
                 if (_type != Type.Blob)
                 {
-                    throw new Exception($"Type {_type} is not a blob.");
+                    throw new InvalidOperationException($"Type {_type} is not a blob.");
                 }
                 var indirectOffset = ComputeIndirectOffset(_buffer, _offset, _parentWidth);
                 var size = ReadULong(_buffer, indirectOffset - _byteWidth, _byteWidth);
@@ -480,7 +480,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
                     return $"\"{Convert.ToBase64String(AsBlob)}\"";
                 }
 
-                throw new Exception($"Unexpected type {_type}");
+                throw new InvalidOperationException($"Unexpected type {_type}");
             }
         }
 
@@ -507,7 +507,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
         {
             if (offset < 0 || bytes.Length <= (offset + width) || (offset & (width - 1)) != 0)
             {
-                throw new Exception("Bad offset");
+                throw new InvalidOperationException("Bad offset");
             }
 
             if (width == 1)
@@ -531,10 +531,6 @@ namespace FlowtideDotNet.Core.Flexbuffer
         internal static ulong ReadULong(in Span<byte> bytes, in int offset, in byte width)
         {
             Debug.Assert(!(offset < 0 || bytes.Length <= (offset + width) || (offset & (width - 1)) != 0), "Bad offset");
-            //if (offset < 0 || bytes.Length <= (offset + width) || (offset & (width - 1)) != 0)
-            //{
-            //    throw new Exception("Bad offset");
-            //}
 
             if (width == 1)
             {
@@ -558,12 +554,12 @@ namespace FlowtideDotNet.Core.Flexbuffer
         {
             if (offset < 0 || bytes.Length <= (offset + width) || (offset & (width - 1)) != 0)
             {
-                throw new Exception("Bad offset");
+                throw new InvalidOperationException("Bad offset");
             }
 
             if (width != 4 && width != 8)
             {
-                throw new Exception($"Bad width {width}");
+                throw new InvalidOperationException($"Bad width {width}");
             }
 
             if (width == 4)
@@ -621,7 +617,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
             //Debug.Assert(index < 0 || index >= _length, $"Bad index {index}, should be 0...{_length}");
             if (index < 0 || index >= _length)
             {
-                throw new Exception($"Bad index {index}, should be 0...{_length}");
+                throw new InvalidOperationException($"Bad index {index}, should be 0...{_length}");
             }
 
             if (_type == Type.Vector)
@@ -731,19 +727,6 @@ namespace FlowtideDotNet.Core.Flexbuffer
         }
 
         public FlxVectorRef Values => new FlxVectorRef(_buffer, _offset, _byteWidth, Type.Vector, _length);
-
-        //public FlxValueRef this[in string key]
-        //{
-        //    get
-        //    {
-        //        var index = KeyIndex(key);
-        //        if (index < 0)
-        //        {
-        //            throw new Exception($"No key '{key}' could be found");
-        //        }
-        //        return Values.Get(index);
-        //    }
-        //}
 
         public FlxValueRef ValueByIndex(in int keyIndex)
         {
