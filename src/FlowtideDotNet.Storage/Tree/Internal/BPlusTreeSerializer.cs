@@ -51,22 +51,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 _keySerializer.Deserialize(reader, leaf.keys);
                 _valueSerializer.Deserialize(reader, leaf.values);
-                //var keyLength = reader.ReadInt32();
-
-                
-                //for (int i = 0; i < keyLength; i++)
-                //{
-                //    var key = _keySerializer.Deserialize(reader);
-                //    leaf.keys.Add(key);
-                //}
-
-                //var valueLength = reader.ReadInt32();
-
-                //for (int i = 0; i < valueLength; i++)
-                //{
-                //    var value = _valueSerializer.Deserialize(reader);
-                //    leaf.values.Add(value);
-                //}
                 return leaf;
             }
             if (typeId == 3)
@@ -113,18 +97,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 _keySerializer.Serialize(writer, leaf.keys);
                 _valueSerializer.Serialize(writer, leaf.values);
-                //writer.Write(leaf.keys.Count);
-
-                //for (int i = 0; i < leaf.keys.Count; i++)
-                //{
-                //    _keySerializer.Serialize(writer, leaf.keys[i]);
-                //}
-                //writer.Write(leaf.values.Count);
-
-                //for (int i = 0; i < leaf.values.Count; i++)
-                //{
-                //    _valueSerializer.Serialize(writer, leaf.values[i]);
-                //}
 
                 writer.Flush();
                 writeMemStream.Close();
@@ -136,11 +108,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 writer.Write(parent.Id);
 
                 _keySerializer.Serialize(writer, parent.keys);
-                //writer.Write(parent.keys.Count);
-                //for (int i = 0; i < parent.keys.Count; i++)
-                //{
-                //    _keySerializer.Serialize(writer, parent.keys[i]);
-                //}
 
                 writer.Write(parent.children.Count);
                 for (int i = 0; i < parent.children.Count; i++)

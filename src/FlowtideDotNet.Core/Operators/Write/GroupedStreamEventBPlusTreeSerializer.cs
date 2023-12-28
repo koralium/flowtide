@@ -18,7 +18,7 @@ namespace FlowtideDotNet.Core.Operators.Write
 {
     internal class GroupedStreamEventBPlusTreeSerializer : IBplusTreeSerializer<GroupedStreamEvent>
     {
-        public GroupedStreamEvent Deserialize(in BinaryReader reader)
+        private static GroupedStreamEvent Deserialize(in BinaryReader reader)
         {
             var targetId = reader.ReadByte();
             var length = reader.ReadInt32();
@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Core.Operators.Write
             }
         }
 
-        public void Serialize(in BinaryWriter writer, in GroupedStreamEvent value)
+        private static void Serialize(in BinaryWriter writer, in GroupedStreamEvent value)
         {
             writer.Write(value.TargetId);
 
