@@ -37,7 +37,6 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         public MongoDBSink(FlowtideMongoDBSinkOptions options, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
         {
             this.options = options;
-            this.writeRelation = writeRelation;
             streamEventToBson = new StreamEventToBson(writeRelation.TableSchema.Names);
             primaryKeys = new List<int>();
             foreach (var primaryKey in options.PrimaryKeys)
