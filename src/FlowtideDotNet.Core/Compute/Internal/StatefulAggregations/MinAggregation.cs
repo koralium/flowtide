@@ -129,7 +129,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             return e;
         }
 
-        private static async ValueTask<FlxValue> MinGetValue(byte[] state, RowEvent groupingKey, MinAggregationSingleton singleton)
+        private static async ValueTask<FlxValue> MinGetValue(byte[]? state, RowEvent groupingKey, MinAggregationSingleton singleton)
         {
             var vector = FlexBufferBuilder.Vector(v =>
             {

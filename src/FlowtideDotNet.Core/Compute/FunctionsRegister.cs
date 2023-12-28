@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Core.Compute
             _aggregateFunctions = new Dictionary<string, AggregateFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
         }
 
-        public bool TryGetScalarFunction(string uri, string name, out FunctionDefinition functionDefinition)
+        public bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition)
         {
             return _scalarFunctions.TryGetValue($"{uri}:{name}", out functionDefinition);
         }
@@ -55,6 +55,8 @@ namespace FlowtideDotNet.Core.Compute
                 }
 
                 var p1 = expressionVisitor.Visit(scalarFunction.Arguments[0], parametersInfo);
+                if (p1 == null) { throw new InvalidOperationException("First parameter could not be compiled"); }
+
                 var expressionBody = expression.Body;
                 // TODO: Replace parameter with p1
                 var expressionBodyWithParameter = new ParameterReplacerVisitor(expression.Parameters[0], p1).Visit(expressionBody);
@@ -73,6 +75,10 @@ namespace FlowtideDotNet.Core.Compute
 
                 var p1 = expressionVisitor.Visit(scalarFunction.Arguments[0], parametersInfo);
                 var p2 = expressionVisitor.Visit(scalarFunction.Arguments[1], parametersInfo);
+
+                if (p1 == null) { throw new InvalidOperationException("First parameter could not be compiled"); }
+                if (p2 == null) { throw new InvalidOperationException("Second parameter could not be compiled"); }
+
                 var expressionBody = expression.Body;
                 // TODO: Replace parameter with p1
                 expressionBody = new ParameterReplacerVisitor(expression.Parameters[0], p1).Visit(expressionBody);
@@ -94,6 +100,10 @@ namespace FlowtideDotNet.Core.Compute
                 var p2 = expressionVisitor.Visit(scalarFunction.Arguments[1], parametersInfo);
                 var p3 = expressionVisitor.Visit(scalarFunction.Arguments[2], parametersInfo);
                 var expressionBody = expression.Body;
+
+                if (p1 == null) { throw new InvalidOperationException("First parameter could not be compiled"); }
+                if (p2 == null) { throw new InvalidOperationException("Second parameter could not be compiled"); }
+                if (p3 == null) { throw new InvalidOperationException("Third parameter could not be compiled"); }
                 // TODO: Replace parameter with p1
                 expressionBody = new ParameterReplacerVisitor(expression.Parameters[0], p1).Visit(expressionBody);
                 expressionBody = new ParameterReplacerVisitor(expression.Parameters[1], p2).Visit(expressionBody);
@@ -106,7 +116,7 @@ namespace FlowtideDotNet.Core.Compute
             string uri, 
             string name, 
             Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
-            Func<byte[], FlxValue> stateToValueFunc)
+            Func<byte[]?, FlxValue> stateToValueFunc)
         {
             _aggregateFunctions.Add($"{uri}:{name}", new StreamingAggregateFunctionDefinition(uri, name, mapFunc, stateToValueFunc));
         }

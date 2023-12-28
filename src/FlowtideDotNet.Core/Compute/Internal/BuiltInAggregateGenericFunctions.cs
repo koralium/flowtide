@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 );
         }
 
-        private static FlxValue GetCountValue(byte[] state)
+        private static FlxValue GetCountValue(byte[]? state)
         {
             if (state == null)
             {

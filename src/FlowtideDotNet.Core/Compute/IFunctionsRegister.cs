@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Compute
             string uri, 
             string name,
             Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
-            Func<byte[], FlxValue> stateToValueFunc);
+            Func<byte[]?, FlxValue> stateToValueFunc);
 
 
         delegate Task<T> AggregateInitializeFunction<T>(int groupingLength, IStateManagerClient stateManagerClient);
@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Core.Compute
             ParameterExpression singletonAccess,
             ParameterExpression groupingKeyParameter);
 
-        delegate ValueTask<FlxValue> AggregateStateToValueFunction<T>(byte[] state, RowEvent groupingKey, T singleton);
+        delegate ValueTask<FlxValue> AggregateStateToValueFunction<T>(byte[]? state, RowEvent groupingKey, T singleton);
 
         /// <summary>
         /// Register a stateful aggregate function.

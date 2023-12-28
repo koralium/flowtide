@@ -14,6 +14,7 @@ using FlexBuffers;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -27,7 +28,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         private static System.Linq.Expressions.MethodCallExpression ConcatExpr(System.Linq.Expressions.Expression array)
         {
-            MethodInfo toStringMethod = typeof(FlxValueStringFunctions).GetMethod("Concat", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            MethodInfo? toStringMethod = typeof(FlxValueStringFunctions).GetMethod("Concat", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            Debug.Assert(toStringMethod != null);
             return System.Linq.Expressions.Expression.Call(toStringMethod, array);
         }
 

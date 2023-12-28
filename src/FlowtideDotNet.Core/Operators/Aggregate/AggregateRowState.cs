@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
         /// <summary>
         /// State for each measure
         /// </summary>
-        public byte[]?[] MeasureStates { get; set; }
+        public byte[]?[]? MeasureStates { get; set; }
 
         /// <summary>
         /// Total weight of all input events.

@@ -21,9 +21,9 @@ namespace FlowtideDotNet.Core.Compute.Internal
     internal abstract class StatefulAggregateContainer : IAggregateContainer
     {
         public abstract Task Commit();
-        public abstract ValueTask<byte[]> Compute(RowEvent key, RowEvent row, byte[] state, long weight);
+        public abstract ValueTask<byte[]> Compute(RowEvent key, RowEvent row, byte[]? state, long weight);
         public abstract void Disponse();
-        public abstract ValueTask<FlxValue> GetValue(RowEvent key, byte[] state);
+        public abstract ValueTask<FlxValue> GetValue(RowEvent key, byte[]? state);
     }
 
     internal class StatefulAggregateContainer<T> : StatefulAggregateContainer
@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         public StatefulAggregateContainer(
             T singleton,
-            Func<RowEvent, byte[], long, T, RowEvent, ValueTask<byte[]>> mapFunction,
+            Func<RowEvent, byte[]?, long, T, RowEvent, ValueTask<byte[]>> mapFunction,
             Action<T> disposeFunction,
             Func<T, Task> commitFunction,
             AggregateStateToValueFunction<T> stateToValueFunc)
@@ -47,14 +47,14 @@ namespace FlowtideDotNet.Core.Compute.Internal
         }
 
         public T Singleton { get; }
-        public Func<RowEvent, byte[], long, T, RowEvent, ValueTask<byte[]>> MapFunction { get; }
+        public Func<RowEvent, byte[]?, long, T, RowEvent, ValueTask<byte[]>> MapFunction { get; }
 
         public override Task Commit()
         {
             return commitFunction(Singleton);
         }
 
-        public override ValueTask<byte[]> Compute(RowEvent key, RowEvent row, byte[] state, long weight)
+        public override ValueTask<byte[]> Compute(RowEvent key, RowEvent row, byte[]? state, long weight)
         {
             return MapFunction(row, state, weight, Singleton, key);
         }
@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             disposeFunction(Singleton);
         }
 
-        public override ValueTask<FlxValue> GetValue(RowEvent key, byte[] state)
+        public override ValueTask<FlxValue> GetValue(RowEvent key, byte[]? state)
         {
             return stateToValueFunc(state, key, Singleton);
         }
@@ -109,7 +109,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             
             var singletonParameter = System.Linq.Expressions.Expression.Parameter(typeof(T));
             var mapResult = MapFunc(aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter, singletonParameter, groupingKeyParameter);
-            var lambda = System.Linq.Expressions.Expression.Lambda<Func<RowEvent, byte[], long, T, RowEvent, ValueTask<byte[]>>>(mapResult, eventParameter, stateParameter, weightParameter, singletonParameter, groupingKeyParameter);
+            var lambda = System.Linq.Expressions.Expression.Lambda<Func<RowEvent, byte[]?, long, T, RowEvent, ValueTask<byte[]>>>(mapResult, eventParameter, stateParameter, weightParameter, singletonParameter, groupingKeyParameter);
             var compiled = lambda.Compile();
 
             var container = new StatefulAggregateContainer<T>(singleton, compiled, DisposeFunction, CommitFunction, StateToValueFunc);

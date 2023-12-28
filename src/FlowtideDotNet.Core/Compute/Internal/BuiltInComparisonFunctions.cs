@@ -41,6 +41,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             var props = typeof(FlxValue).GetProperties().FirstOrDefault(x => x.Name == "IsNull");
             Debug.Assert(props != null);
             var getMethod = props.GetMethod;
+            Debug.Assert(getMethod != null);
             return System.Linq.Expressions.Expression.Property(p, getMethod);
         }
 
