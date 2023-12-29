@@ -29,13 +29,13 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
         }
 
         internal delegate int AdviceDelegate(SafeFileHandle fd, long offset, long length, FileAdvice advice);
-        private static AdviceDelegate? func;
+        private static AdviceDelegate? func = GetAdviceDelegate();
 
-        static PosixUnix()
+        private static AdviceDelegate? GetAdviceDelegate()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                var interopClass = typeof(int).Assembly.GetTypes().FirstOrDefault(x => x.Name == "Interop");
+                var interopClass = Array.Find(typeof(int).Assembly.GetTypes(), x => x.Name == "Interop");
                 if (interopClass == null)
                 {
                     throw new InvalidOperationException("Interop class not found");
@@ -45,13 +45,14 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
                 {
                     throw new InvalidOperationException("Sys class not found");
                 }
-                var method = sysClass.GetMethods(BindingFlags.Static | BindingFlags.NonPublic).FirstOrDefault(x => x.Name == "PosixFAdvise");
+                var method = Array.Find(sysClass.GetMethods(BindingFlags.Static | BindingFlags.NonPublic), x => x.Name == "PosixFAdvise");
                 if (method == null)
                 {
                     throw new InvalidOperationException("PosixFAdvise method not found");
                 }
-                func = method.CreateDelegate<AdviceDelegate>();
+                return method.CreateDelegate<AdviceDelegate>();
             }
+            return null;
         }
 
         public static int SetAdvice(SafeFileHandle fd, long offset, long length, FileAdvice advice)
