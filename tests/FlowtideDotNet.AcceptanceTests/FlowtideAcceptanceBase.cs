@@ -19,6 +19,7 @@ using FlowtideDotNet.Substrait.Sql;
 using Microsoft.VisualStudio.TestPlatform.Utilities;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -87,9 +88,10 @@ namespace FlowtideDotNet.AcceptanceTests
         {
             var type = output.GetType();
             var testMember = type.GetField("test", BindingFlags.Instance | BindingFlags.NonPublic);
-            var test = (ITest)testMember.GetValue(output);
+            Debug.Assert(testMember != null, "testMember != null");
+            var test = (ITest?)testMember.GetValue(output);
+            Debug.Assert(test != null, "test != null");
             return test.TestCase.TestMethod.Method.Name;
-            //return ((ITest)testMember.GetValue(helper)).TestCase.TestMethod.TestClass.Class.Name;
         }
 
         public async Task DisposeAsync()

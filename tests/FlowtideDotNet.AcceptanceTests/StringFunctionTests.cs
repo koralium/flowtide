@@ -49,7 +49,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT lower(firstName) as Name FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { Name = x.FirstName.ToLower() }));
+            AssertCurrentDataEqual(Users.Select(x => new { Name = x.FirstName?.ToLower() }));
         }
 
         [Fact]
@@ -58,7 +58,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT upper(firstName) as Name FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { Name = x.FirstName.ToUpper() }));
+            AssertCurrentDataEqual(Users.Select(x => new { Name = x.FirstName?.ToUpper() }));
         }
 
         [Fact]

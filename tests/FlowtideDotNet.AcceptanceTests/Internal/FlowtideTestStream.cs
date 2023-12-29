@@ -41,7 +41,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         int updateCounter = 0;
         FlowtideBuilder flowtideBuilder;
         private int _egressCrashOnCheckpointCount;
-        private FileCachePersistentStorage _fileCachePersistence;
+        private FileCachePersistentStorage? _fileCachePersistence;
 
         public IReadOnlyList<User> Users  => generator.Users;
 
@@ -159,6 +159,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public async Task SchedulerTick()
         {
+            if (_stream == null)
+            {
+                throw new InvalidOperationException("Stream must be started first.");
+            }
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
             await scheduler!.Tick();
         }
@@ -174,10 +178,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
             while (updateCounter == currentCounter)
             {
-                //if (_stream.Status == StreamStatus.Failing)
-                //{
-                //    throw new InvalidOperationException("Stream failed");
-                //}
                 await scheduler!.Tick();
                 await Task.Delay(10);
             }
@@ -205,6 +205,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             foreach (var row in data)
             {
+                Assert.NotNull(row);
                 var e = MockTable.ToStreamEvent(new RowOperation(row, false), membersInOrder);
                 if (dict.TryGetValue(e, out var weight))
                 {
@@ -268,6 +269,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public List<FlxVector> GetActualRowsAsVectors()
         {
+            Assert.NotNull(_actualData);
             List<FlxVector> output = new List<FlxVector>();
             for(int i = 0; i < _actualData.Count; i++)
             {

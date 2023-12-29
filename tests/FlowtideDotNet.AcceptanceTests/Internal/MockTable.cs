@@ -49,6 +49,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             foreach(var row in rows)
             {
+                if (row == null)
+                {
+                    throw new InvalidOperationException("Cannot add null row");
+                }
                 _changes.Add(new RowOperation(row, false));
             }
         }
@@ -57,20 +61,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             foreach(var row in rows)
             {
+                if (row == null)
+                {
+                    throw new InvalidOperationException("Cannot delete null row");
+                }
                 _changes.Add(new RowOperation(row, true));
             }
         }
-
-        //public void AddOrUpdate(IEnumerable<byte[]> rows)
-        //{
-        //    lock (_lock)
-        //    {
-        //        foreach (var row in rows)
-        //        {
-        //            _changes.Add(new RowOperation(row, false));
-        //        }
-        //    }
-        //}
 
         public int CurrentOffset => _changes.Count;
 
