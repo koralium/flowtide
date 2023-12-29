@@ -22,8 +22,8 @@ namespace FlowtideDotNet.AcceptanceTests.Entities
     public class Company
     {
         [Key]
-        public string CompanyId { get; set; }
+        public string? CompanyId { get; set; }
 
-        public string Name { get; set; }
+        public string? Name { get; set; }
     }
 }

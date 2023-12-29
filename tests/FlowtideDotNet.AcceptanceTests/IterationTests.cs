@@ -133,10 +133,10 @@ namespace FlowtideDotNet.AcceptanceTests
         private class UserIteration
         {
             public int UserKey { get; set; }
-            public string FirstName { get; set; }
-            public string LastName { get; set; }
+            public string? FirstName { get; set; }
+            public string? LastName { get; set; }
             public int? ManagerKey { get; set; }
-            public string ManagerFirstName { get; set; }
+            public string? ManagerFirstName { get; set; }
             public int Level { get; set; }
         }
 

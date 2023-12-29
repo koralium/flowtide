@@ -30,7 +30,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task TestGuid()
         {
             GenerateData();
-            var order = Orders.First();
+            var order = Orders[0];
             await StartStream(@"
             INSERT INTO output
             SELECT
@@ -47,7 +47,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task TestDecimal()
         {
             GenerateData();
-            var order = Orders.First();
+            var order = Orders[0];
             await StartStream(@"
             INSERT INTO output
             SELECT

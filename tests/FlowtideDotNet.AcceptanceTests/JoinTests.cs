@@ -106,7 +106,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     subuser.LastName
                 });
 
-            var uKey = Orders.First().UserKey;
+            var uKey = Orders[0].UserKey;
             var firstUser = Users.First(x => x.UserKey == uKey);
             DeleteUser(firstUser);
 
