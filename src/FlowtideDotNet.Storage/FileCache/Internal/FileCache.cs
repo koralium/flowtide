@@ -13,6 +13,7 @@
 using FlowtideDotNet.Storage.FileCache.Internal;
 using FlowtideDotNet.Storage.FileCache.Internal.Unix;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 
@@ -48,6 +49,56 @@ namespace FlowtideDotNet.Storage.FileCache
                 }
                 return Node.ValueRef.position.CompareTo(other.Node.ValueRef.position);
             }
+
+            public override bool Equals([NotNullWhen(true)] object? obj)
+            {
+                if (obj is FreePage page)
+                {
+                    return this.CompareTo(page) == 0;
+                }
+
+                return false;
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(Size, Node?.ValueRef.position);
+            }
+
+            public static bool operator ==(FreePage left, FreePage right)
+            {
+                return left.Equals(right);
+            }
+
+            public static bool operator !=(FreePage left, FreePage right)
+            {
+                return !(left == right);
+            }
+
+            public static bool operator <(FreePage left, FreePage right)
+            {
+                return left.CompareTo(right) < 0;
+            }
+
+            public static bool operator <=(FreePage left, FreePage right)
+            {
+                return left.CompareTo(right) <= 0;
+            }
+
+            public static bool operator >(FreePage left, FreePage right)
+            {
+                return left.CompareTo(right) > 0;
+            }
+
+            public static bool operator >=(FreePage left, FreePage right)
+            {
+                return left.CompareTo(right) >= 0;
+            }
+
+            public override string ToString()
+            {
+                return $"Size: {Size}, Node: {Node?.ValueRef.position}";
+            }
         }
 
         private readonly long cacheSegmentSize;
@@ -55,13 +106,13 @@ namespace FlowtideDotNet.Storage.FileCache
         private readonly FileCacheOptions fileCacheOptions;
         private readonly string fileName;
         private readonly int m_sectorSize;
-        Dictionary<long, LinkedListNode<Allocation>> allocatedPages = new Dictionary<long, LinkedListNode<Allocation>>();
-        LinkedList<Allocation> memoryNodes = new LinkedList<Allocation>();
-        SortedSet<FreePage> _freePages = new SortedSet<FreePage>();
+        private readonly Dictionary<long, LinkedListNode<Allocation>> allocatedPages = new Dictionary<long, LinkedListNode<Allocation>>();
+        private readonly LinkedList<Allocation> memoryNodes = new LinkedList<Allocation>();
+        private readonly SortedSet<FreePage> _freePages = new SortedSet<FreePage>();
 
-        private Dictionary<int, IFileCacheWriter> segmentWriters = new Dictionary<int, IFileCacheWriter>();
+        private readonly Dictionary<int, IFileCacheWriter> segmentWriters = new Dictionary<int, IFileCacheWriter>();
+        private readonly Func<int, IFileCacheWriter> createWriterFunc;
         private bool disposedValue;
-        private Func<int, IFileCacheWriter> createWriterFunc;
 
         public FileCache(FileCacheOptions fileCacheOptions, string fileName)
         {
@@ -130,7 +181,7 @@ namespace FlowtideDotNet.Storage.FileCache
                 }
                 else
                 {
-                    throw new Exception();
+                    throw new InvalidOperationException("Segment not found");
                 }
             }
         }
@@ -198,7 +249,7 @@ namespace FlowtideDotNet.Storage.FileCache
                     }
                     else
                     {
-                        throw new Exception();
+                        throw new InvalidOperationException("Segment not found");
                     }
                 }
                 // Check if there is a free node after this node
@@ -342,7 +393,7 @@ namespace FlowtideDotNet.Storage.FileCache
 
             if (segmentWriter == null)
             {
-                throw new Exception();
+                throw new InvalidOperationException("Segment not found");
             }
 
             segmentWriter.Write(position, data);
@@ -363,14 +414,12 @@ namespace FlowtideDotNet.Storage.FileCache
             int size = 0;
             lock (m_lock)
             {
-                if (allocatedPages.TryGetValue(pageKey, out var node))
+                if (allocatedPages.TryGetValue(pageKey, out var node) &&
+                    segmentWriters.TryGetValue(node.ValueRef.fileNumber, out var segment))
                 {
-                    if (segmentWriters.TryGetValue(node.ValueRef.fileNumber, out var segment))
-                    {
-                        position = node.ValueRef.position;
-                        size = node.ValueRef.size;
-                        segmentWriter = segment;
-                    }
+                    position = node.ValueRef.position;
+                    size = node.ValueRef.size;
+                    segmentWriter = segment;
                 }
             }
 
@@ -378,7 +427,7 @@ namespace FlowtideDotNet.Storage.FileCache
             {
                 return segmentWriter.Read(position, size);
             }
-            throw new Exception();
+            throw new InvalidOperationException("Segment not found");
         }
 
         private int UpperPowerOfTwo(int v)
@@ -427,7 +476,6 @@ namespace FlowtideDotNet.Storage.FileCache
             {
                 if (disposing)
                 {
-                    // TODO: dispose managed state (managed objects)
                     lock (m_lock)
                     {
                         allocatedPages.Clear();
@@ -440,19 +488,9 @@ namespace FlowtideDotNet.Storage.FileCache
                         segmentWriters.Clear();
                     }
                 }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
                 disposedValue = true;
             }
         }
-
-        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-        // ~Malloc()
-        // {
-        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        //     Dispose(disposing: false);
-        // }
 
         public void Dispose()
         {
