@@ -15,7 +15,6 @@ using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Substrait.Relations;
 using System.Text;
 using System.Threading.Tasks.Dataflow;
-using System.Diagnostics.Metrics;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Serializers;

@@ -12,10 +12,7 @@
 
 using FlowtideDotNet.Core.Optimizer.EmitPushdown;
 using FlowtideDotNet.Substrait.Expressions;
-using FlowtideDotNet.Substrait.Expressions.Literals;
-using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
-using SqlParser;
 
 namespace FlowtideDotNet.Core.Optimizer.JoinProjectionPushdown
 {

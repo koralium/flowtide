@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Substrait.Sql.Internal;
 using SqlParser;
-using SqlParser.Dialects;
 
 namespace FlowtideDotNet.Substrait.Sql
 {

@@ -23,7 +23,6 @@ using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Base.Metrics;
 using System.Text;
-using System;
 
 namespace FlowtideDotNet.Base.Vertices.MultipleInput
 {

@@ -13,13 +13,8 @@
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
 using System.IO.Hashing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests
 {

@@ -23,7 +23,6 @@ using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using System.Buffers;
 using System.Diagnostics;
 

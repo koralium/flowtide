@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using SqlParser.Ast;
-using static SqlParser.Ast.Expression;
 
 namespace FlowtideDotNet.Substrait.Sql
 {

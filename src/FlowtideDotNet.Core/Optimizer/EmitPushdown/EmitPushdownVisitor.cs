@@ -11,8 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Relations;
-using System.ComponentModel.DataAnnotations;
-using static SqlParser.Ast.DataType;
 
 namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 {

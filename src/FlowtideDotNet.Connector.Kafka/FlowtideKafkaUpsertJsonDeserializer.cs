@@ -13,12 +13,7 @@
 using FlexBuffers;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.Kafka
 {

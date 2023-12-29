@@ -14,13 +14,6 @@ using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using Nest;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Testcontainers.Elasticsearch;
 
 namespace FlowtideDotNet.Connector.CosmosDB.Tests
 {

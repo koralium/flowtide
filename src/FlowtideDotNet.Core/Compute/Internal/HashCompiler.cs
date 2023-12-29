@@ -12,18 +12,11 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.Flexbuffer;
-using FlowtideDotNet.Core.Operators.Join;
-using FlowtideDotNet.Core.Optimizer.EmitPushdown;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Hashing;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Internal
 {

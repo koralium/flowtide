@@ -16,14 +16,8 @@ using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Substrait.Sql;
-using Microsoft.VisualStudio.TestPlatform.Utilities;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests

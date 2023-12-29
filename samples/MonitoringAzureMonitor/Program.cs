@@ -3,7 +3,6 @@ using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
-using OpenTelemetry.Metrics;
 using MonitoringAzureMonitor;
 using Azure.Monitor.OpenTelemetry.Exporter;
 

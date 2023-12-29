@@ -24,7 +24,6 @@ using FlowtideDotNet.Substrait.Relations;
 using System.Buffers;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
-using static Substrait.Protobuf.AggregateRel.Types;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate
 {

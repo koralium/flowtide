@@ -10,18 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base;
-using FlowtideDotNet.Base.Engine.Internal;
-using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Core.Operators.Normalization;
-using FlowtideDotNet.Storage.StateManager;
-using FASTER.core;
-using Microsoft.Extensions.Logging.Abstractions;
-using FlowtideDotNet.Substrait.Relations;
-using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
-using System.Diagnostics.Metrics;
-
 namespace FlowtideDotNet.Core.Tests.Operators.Normalization
 {
     // TODO: Enable these tests again
@@ -116,7 +104,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Normalization
     //        }), 0));
 
     //        var msg1 = await recieveBuffer.ReceiveAsync();
-            
+
     //        if (msg1 is StreamMessage<StreamEventBatch> msg)
     //        {
     //            Assert.Equal(1, msg.Data.Events[0].Weight);
@@ -130,7 +118,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Normalization
     //        {
     //            Assert.Fail("Wrong return type");
     //        }
-            
+
     //    }
 
     //    [Fact]

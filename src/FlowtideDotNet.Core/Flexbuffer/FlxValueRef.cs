@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlexBuffers;
-using System;
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Globalization;
@@ -19,7 +18,6 @@ using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks.Sources;
 using Type = FlexBuffers.Type;
 
 namespace FlowtideDotNet.Core.Flexbuffer

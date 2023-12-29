@@ -15,7 +15,6 @@ using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using FlowtideDotNet.Substrait;
 using System.Security.Cryptography;
-using System.Text.Json;
 using System.Text;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;

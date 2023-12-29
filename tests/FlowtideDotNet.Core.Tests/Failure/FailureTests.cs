@@ -16,7 +16,6 @@ using FlowtideDotNet.Storage.DeviceFactories;
 using FlowtideDotNet.Substrait.Conversion;
 using FlowtideDotNet.Substrait;
 using FASTER.core;
-using Microsoft.Extensions.Logging;
 
 namespace FlowtideDotNet.Core.Tests.Failure
 {

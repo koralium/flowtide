@@ -13,11 +13,6 @@
 using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.Literals;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.SqlServer.Tests
 {

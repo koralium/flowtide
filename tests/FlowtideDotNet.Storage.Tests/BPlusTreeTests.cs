@@ -17,7 +17,6 @@ using FlowtideDotNet.Storage.Tree;
 using FASTER.core;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using Microsoft.Extensions.Logging.Abstractions;
-using FlowtideDotNet.Storage.Tree.Internal;
 using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.Tests

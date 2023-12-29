@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Flexbuffer;
-using SqlParser.Ast;
 using System.Buffers.Binary;
 using System.Collections;
 using System.Globalization;

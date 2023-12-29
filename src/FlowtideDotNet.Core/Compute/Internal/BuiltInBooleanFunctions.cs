@@ -13,15 +13,7 @@
 using FlexBuffers;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using SqlParser;
-using SqlParser.Ast;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Internal
 {

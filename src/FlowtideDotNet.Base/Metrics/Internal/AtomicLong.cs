@@ -3,8 +3,6 @@
 // Copyright (c) App Metrics Contributors. All rights reserved.
 // </copyright>
 #pragma warning restore IDE0073 // The file header does not match the required text
-using System.Threading;
-
 
 /// <summary>
 /// Class is from https://github.com/AppMetrics/AppMetrics/blob/features/4.4.0/src/Concurrency/src/App.Metrics.Concurrency/AtomicDouble.cs

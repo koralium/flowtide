@@ -13,7 +13,6 @@
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Base.Engine.Internal
 {

@@ -11,11 +11,6 @@
 // limitations under the License.
 
 using FASTER.core;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.DeviceFactories
 {

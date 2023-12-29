@@ -12,23 +12,13 @@
 
 using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
-using FlowtideDotNet.Storage.FileCache.Internal;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Debug;
-using Microsoft.Win32.SafeHandles;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics.Metrics;
-using System.Linq;
-using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tests
 {

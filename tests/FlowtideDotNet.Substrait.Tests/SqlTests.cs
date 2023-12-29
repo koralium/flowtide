@@ -16,10 +16,8 @@ using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
-using FlowtideDotNet.Substrait.Sql.Internal;
 using FlowtideDotNet.Substrait.Type;
 using FluentAssertions;
-using SqlParser;
 
 namespace FlowtideDotNet.Substrait.Tests
 {

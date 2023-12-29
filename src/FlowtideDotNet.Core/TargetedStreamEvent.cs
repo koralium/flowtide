@@ -10,9 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
-using System.Buffers.Binary;
-
 namespace FlowtideDotNet.Core
 {
     public struct TargetedStreamEvent

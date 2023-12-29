@@ -11,8 +11,6 @@
 // limitations under the License.
 
 using FlexBuffers;
-using FlowtideDotNet.Core.Compute.Group;
-using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
@@ -20,8 +18,6 @@ using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Linq.Expressions;
-using static SqlParser.Ast.ConflictTarget;
-using static SqlParser.Ast.WildcardExpression;
 
 namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
 {

@@ -1,6 +1,5 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
-using System.IO;
 
 namespace FlowtideDotNet.Connector.MongoDB.Tests
 {

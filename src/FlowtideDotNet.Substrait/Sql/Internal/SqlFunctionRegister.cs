@@ -11,12 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Expressions;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {

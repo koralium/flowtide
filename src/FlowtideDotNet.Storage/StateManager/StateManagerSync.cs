@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Storage.StateManager.Internal;
 using FlowtideDotNet.Storage.StateManager.Internal.Sync;
-using FASTER.core;
 using System.Diagnostics;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;

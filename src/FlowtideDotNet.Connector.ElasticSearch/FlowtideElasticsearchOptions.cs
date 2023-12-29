@@ -1,6 +1,5 @@
 ﻿using FlowtideDotNet.Substrait.Relations;
 using Nest;
-using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.ElasticSearch
 {

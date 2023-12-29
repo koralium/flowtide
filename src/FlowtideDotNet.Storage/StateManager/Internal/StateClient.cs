@@ -9,10 +9,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-using FASTER.core;
-using System.Collections.Concurrent;
-using System.Diagnostics;
-
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
     internal abstract class StateClient : IDisposable

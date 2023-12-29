@@ -14,11 +14,6 @@ using SqlParser;
 using SqlParser.Ast;
 using SqlParser.Dialects;
 using SqlParser.Tokens;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static SqlParser.Ast.Statement;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
