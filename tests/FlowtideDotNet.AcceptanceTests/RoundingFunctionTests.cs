@@ -14,6 +14,7 @@ using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
 {
+    [Collection("Acceptance tests")]
     public class RoundingFunctionTests : FlowtideAcceptanceBase
     {
         public RoundingFunctionTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
