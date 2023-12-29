@@ -14,6 +14,7 @@ using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
 {
+    [Collection("Acceptance tests")]
     public class ComparisonFunctionTests : FlowtideAcceptanceBase
     {
         public ComparisonFunctionTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)

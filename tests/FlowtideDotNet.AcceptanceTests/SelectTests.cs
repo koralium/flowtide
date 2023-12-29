@@ -2,6 +2,7 @@ using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
 {
+    [Collection("Acceptance tests")]
     public class SelectTests : FlowtideAcceptanceBase
     {
         public SelectTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
