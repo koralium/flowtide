@@ -25,6 +25,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
         private readonly int fileDescriptor;
         private readonly int alignment;
         private AlignedBuffer? alignedBuffer;
+        private bool disposedValue;
         private readonly object _lock = new object();
 
         [DllImport("libc", SetLastError = true)]
@@ -145,21 +146,6 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             }
         }
 
-        public void Dispose()
-        {
-            lock (_lock)
-            {
-                if (alignedBuffer != null)
-                {
-                    alignedBuffer.Dispose();
-                }
-                if (fileDescriptor != -1)
-                {
-                    close(fileDescriptor);
-                }
-            }
-        }
-
         public void Flush()
         {
             // Flush is not required in direct i/o
@@ -175,6 +161,38 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
                     alignedBuffer = null;
                 }
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                lock (_lock)
+                {
+                    if (alignedBuffer != null)
+                    {
+                        alignedBuffer.Dispose();
+                        alignedBuffer = null;
+                    }
+                    if (fileDescriptor != -1)
+                    {
+                        close(fileDescriptor);
+                    }
+                }
+                disposedValue = true;
+            }
+        }
+        ~FileCacheUnixDirectWriter()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
