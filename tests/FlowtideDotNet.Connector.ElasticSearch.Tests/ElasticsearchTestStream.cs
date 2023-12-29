@@ -14,11 +14,6 @@ using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.CosmosDB.Tests;
 using FlowtideDotNet.Core.Engine;
 using Nest;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.ElasticSearch.Tests
 {

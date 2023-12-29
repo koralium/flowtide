@@ -1,6 +1,3 @@
-using FlowtideDotNet.AcceptanceTests.Internal;
-using Microsoft.Azure.Cosmos;
-
 namespace FlowtideDotNet.Connector.CosmosDB.Tests
 {
     public class UnitTest1

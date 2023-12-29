@@ -16,7 +16,7 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Core.Optimizer.EmitPushdown;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 
-namespace FlowtideDotNet.Core.Optimizer.FIlterPushdown
+namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
 {
     /// <summary>
     /// Checks if an expression can be pushed down from the join condition.

@@ -13,12 +13,7 @@
 using FlowtideDotNet.Connector.MongoDB.Internal;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.MongoDB.Extensions
 {

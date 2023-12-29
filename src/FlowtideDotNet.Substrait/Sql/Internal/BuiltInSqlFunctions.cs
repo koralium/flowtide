@@ -11,16 +11,9 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Expressions;
-using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using SqlParser.Ast;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.WildcardExpression;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {

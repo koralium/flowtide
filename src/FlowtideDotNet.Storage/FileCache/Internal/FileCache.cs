@@ -14,7 +14,6 @@ using FlowtideDotNet.Storage.FileCache.Internal;
 using FlowtideDotNet.Storage.FileCache.Internal.Unix;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Runtime.Serialization;
 
 namespace FlowtideDotNet.Storage.FileCache
 {

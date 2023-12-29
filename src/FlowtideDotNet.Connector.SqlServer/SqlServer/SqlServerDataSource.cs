@@ -18,7 +18,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
-using System.Diagnostics.Metrics;
 using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Base.Metrics;
 using System.Diagnostics;

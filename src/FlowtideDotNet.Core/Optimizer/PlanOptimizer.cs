@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Optimizer.FIlterPushdown;
+using FlowtideDotNet.Core.Optimizer.FilterPushdown;
 using FlowtideDotNet.Core.Optimizer.GetTimestamp;
 using FlowtideDotNet.Substrait;
 

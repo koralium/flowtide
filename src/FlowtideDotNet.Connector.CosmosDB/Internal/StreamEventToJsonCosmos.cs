@@ -12,13 +12,8 @@
 
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Flexbuffer;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.CosmosDB.Internal
 {

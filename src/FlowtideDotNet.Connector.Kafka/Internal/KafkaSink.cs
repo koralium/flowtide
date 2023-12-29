@@ -14,14 +14,7 @@ using Confluent.Kafka;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static Confluent.Kafka.ConfigPropertyNames;
 
 namespace FlowtideDotNet.Connector.Kafka.Internal
 {

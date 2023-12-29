@@ -10,16 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Optimizer.EmitPushdown;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Optimizer.FIlterPushdown
+namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
 {
     internal static class FilterPushdown
     {

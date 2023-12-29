@@ -17,15 +17,9 @@ using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Data;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.Kafka.Internal

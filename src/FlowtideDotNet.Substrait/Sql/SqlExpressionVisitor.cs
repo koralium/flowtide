@@ -17,8 +17,6 @@ using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Sql.Internal;
 using SqlParser;
 using SqlParser.Ast;
-using System.Diagnostics;
-using System.Runtime;
 using static SqlParser.Ast.Expression;
 
 namespace FlowtideDotNet.Substrait.Sql

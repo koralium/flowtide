@@ -18,8 +18,6 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Text;
-using Microsoft.VisualBasic;
-using System.Buffers.Binary;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {

@@ -13,7 +13,6 @@
 using FlowtideDotNet.Core.Tests.SmokeTests;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using System.Data.Common;
 using Testcontainers.MsSql;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance

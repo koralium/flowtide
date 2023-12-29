@@ -13,12 +13,7 @@
 using FlowtideDotNet.Connector.Kafka.Internal;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.Kafka
 {

@@ -12,7 +12,6 @@
 
 using FastMember;
 using FlowtideDotNet.Core;
-using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {

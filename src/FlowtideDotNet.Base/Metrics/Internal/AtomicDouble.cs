@@ -4,9 +4,6 @@
 // </copyright>
 #pragma warning restore IDE0073 // The file header does not match the required text
 
-using System;
-using System.Threading;
-
 namespace FlowtideDotNet.Base.Metrics.Internal
 {
     /// <summary>

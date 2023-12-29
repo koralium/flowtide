@@ -13,14 +13,6 @@
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core.Engine;
 using Microsoft.Azure.Cosmos;
-using Substrait.Protobuf;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using Testcontainers.CosmosDb;
 
 namespace FlowtideDotNet.Connector.CosmosDB.Tests
 {

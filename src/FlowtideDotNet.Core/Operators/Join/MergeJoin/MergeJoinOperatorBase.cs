@@ -17,7 +17,6 @@ using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics.Metrics;
 using System.Buffers;
 using System.Diagnostics;
 using FlowtideDotNet.Core.Compute.Internal;

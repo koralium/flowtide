@@ -15,7 +15,6 @@ using FlowtideDotNet.Storage.StateManager;
 using FlexBuffers;
 using Microsoft.Extensions.Logging;
 using FlowtideDotNet.Substrait.Relations;
-using System.Diagnostics.Metrics;
 using System.Threading.Tasks.Dataflow;
 using System.Diagnostics;
 using FlowtideDotNet.Core.Compute;

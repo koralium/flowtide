@@ -12,12 +12,7 @@
 
 using FlowtideDotNet.Connector.CosmosDB;
 using FlowtideDotNet.Connector.CosmosDB.Internal;
-using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace FlowtideDotNet.Core.Engine

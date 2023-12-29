@@ -10,12 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
-using Google.Protobuf.WellKnownTypes;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
