@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
         [Fact]
         public async Task TestInsertWithCustomMappingIndexDoesNotExist()
         {
-            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsert", (properties) =>
+            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsertWithCustomMappingIndexDoesNotExist", (properties) =>
             {
                 properties["FirstName"] = new KeywordProperty();
             });
@@ -75,7 +75,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
         {
             ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
             elasticClient.Indices.Create("testindex");
-            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsert", (properties) =>
+            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsertWithCustomMappingIndexExistsWithNoMappings", (properties) =>
             {
                 properties["FirstName"] = new KeywordProperty();
             });
@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
         {
             ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
             elasticClient.Indices.Create("testindex", c => c.Map(m => m.Properties(p => p.Keyword(k => k.Name("FirstName")))));
-            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsert", (properties) =>
+            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsertWithCustomMappingIndexExistsWithMappings", (properties) =>
             {
                 properties["FirstName"] = new KeywordProperty();
             });
@@ -135,7 +135,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
             elasticClient.Indices.Delete("testindex");
             elasticClient.Indices.Create("testindex", c => c.Map(m => m.Properties(p => p.Text(k => k.Name("FirstName")))));
-            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsert", (properties) =>
+            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsertWithCustomMappingIndexExistsWithMappingsCollision", (properties) =>
             {
                 properties["FirstName"] = new KeywordProperty();
             });
