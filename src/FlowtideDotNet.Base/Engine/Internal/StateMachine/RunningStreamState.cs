@@ -105,6 +105,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                      }
                      // Finish the checkpoint
                      @this.CheckpointCompleted();
+                     _context._logger.LogInformation("Checkpoint done.");
                      return Task.CompletedTask;
                  }, this)
                  .Unwrap();
@@ -118,7 +119,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (_context.checkpointTask != null)
                 {
-                    _context._logger.LogInformation("Checkpoint done.");
                     _context._scheduleCheckpointTask = null;
                     _context.checkpointTask.SetResult();
                     _context.checkpointTask = null;
@@ -156,13 +156,21 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return;
                 }
 
+                if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
+                {
+                    // Set the checkpoint task to stop any other checkpoint from happening
+                    _context.checkpointTask = new TaskCompletionSource();
+                }
+
                 _initialBatchTask = Task.Factory.StartNew(async () =>
                 {
+                    List<Task> tasks = new List<Task>();
                     foreach (var block in _context.ingressBlocks)
                     {
                         // Signal to ingress blocks that all has been initialized and it can now start accepting data
-                        await block.Value.InitializationCompleted();
+                        tasks.Add(block.Value.InitializationCompleted());
                     }
+                    await Task.WhenAll(tasks);
                 })
                     .Unwrap()
                     .ContinueWith((t) =>
@@ -175,6 +183,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         {
 
                             return _context.OnFailure(t.Exception);
+                        }
+                        if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
+                        {
+                            CheckpointCompleted();
                         }
                         
                         return Task.CompletedTask;

@@ -52,6 +52,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly IStreamScheduler _streamScheduler;
         private readonly object _contextLock = new object();
         internal readonly StreamVersionInformation? _streamVersionInformation;
+        internal readonly DataflowStreamOptions _dataflowStreamOptions;
         private readonly Meter _contextMeter;
 
         internal StreamState? _lastState;
@@ -92,7 +93,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             IStreamNotificationReciever? notificationReciever,
             StateManagerOptions stateManagerOptions,
             ILoggerFactory? loggerFactory,
-            StreamVersionInformation? streamVersionInformation)
+            StreamVersionInformation? streamVersionInformation,
+            DataflowStreamOptions dataflowStreamOptions)
         {
             this.streamName = streamName;
             this.propagatorBlocks = propagatorBlocks;
@@ -104,7 +106,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _streamMetrics = new StreamMetrics(streamName);
             _notificationReciever = notificationReciever;
             _streamVersionInformation = streamVersionInformation;
-
+            this._dataflowStreamOptions = dataflowStreamOptions;
             _contextMeter = new Meter($"flowtide.{streamName}");
             _contextMeter.CreateObservableGauge<float>("health", () =>
             {
