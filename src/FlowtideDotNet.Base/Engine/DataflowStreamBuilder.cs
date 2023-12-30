@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Base.Engine
         private StateManagerOptions? _stateManagerOptions;
         private ILoggerFactory? _loggerFactory;
         private StreamVersionInformation? _streamVersionInformation;
-        private DataflowStreamOptions _dataflowStreamOptions;
+        private readonly DataflowStreamOptions _dataflowStreamOptions;
 
         public DataflowStreamBuilder(string streamName)
         {
