@@ -271,12 +271,11 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         public Task InitializationCompleted()
         {
-            RunTask(async (output, state) =>
+            return RunTask(async (output, state) =>
             {
                 await SendInitial(output);
                 // Send event here that initial is completed
             }, taskCreationOptions: TaskCreationOptions.LongRunning);
-            return Task.CompletedTask;
         }
 
         public async Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
