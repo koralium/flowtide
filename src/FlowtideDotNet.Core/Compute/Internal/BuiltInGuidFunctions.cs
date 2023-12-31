@@ -33,12 +33,10 @@ namespace FlowtideDotNet.Core.Compute.Internal
             {
                 return value;
             }
-            if (value.ValueType == FlexBuffers.Type.String)
+            if (value.ValueType == FlexBuffers.Type.String &&
+                Guid.TryParse(value.AsString, out var result))
             {
-                if (Guid.TryParse(value.AsString, out var result))
-                {
-                    return FlxValue.FromMemory(FlexBuffer.SingleValue(result.ToByteArray()));
-                }
+                return FlxValue.FromMemory(FlexBuffer.SingleValue(result.ToByteArray()));
             }
             return NullValue;
         }

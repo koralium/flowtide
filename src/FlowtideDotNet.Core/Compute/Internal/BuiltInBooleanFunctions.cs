@@ -52,7 +52,12 @@ namespace FlowtideDotNet.Core.Compute.Internal
             ScalarFunction scalarFunction,
             Expression<Func<bool?, bool?, bool?>> condition)
         {
-            var expr = visitor.Visit(scalarFunction.Arguments.First(), parametersInfo);
+            var expr = visitor.Visit(scalarFunction.Arguments[0], parametersInfo);
+
+            if (expr == null)
+            {
+                throw new InvalidOperationException("Expression cannot be null");
+            }
 
             var getBoolValueBody = getBoolValueExpr.Body;
             expr = new ParameterReplacerVisitor(getBoolValueExpr.Parameters[0], expr).Visit(getBoolValueBody);
@@ -61,12 +66,14 @@ namespace FlowtideDotNet.Core.Compute.Internal
             {
                 var resolved = visitor.Visit(scalarFunction.Arguments[i], parametersInfo);
 
-                getBoolValueBody = getBoolValueExpr.Body;
-                getBoolValueBody = new ParameterReplacerVisitor(getBoolValueExpr.Parameters[0], resolved).Visit(getBoolValueBody);
                 if (resolved == null)
                 {
-                    throw new Exception();
+                    throw new InvalidOperationException("Expression cannot be null");
                 }
+
+                getBoolValueBody = getBoolValueExpr.Body;
+                getBoolValueBody = new ParameterReplacerVisitor(getBoolValueExpr.Parameters[0], resolved).Visit(getBoolValueBody);
+                
 
                 var conditionBody = condition.Body;
 
@@ -83,12 +90,31 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         private static bool? GetBoolValue(FlxValue x)
         {
-            return x.IsNull ? default(bool?) : x.ValueType == FlexBuffers.Type.Bool ? x.AsBool : false;
+            if (x.IsNull)
+            {
+                return default;
+            }
+            if (x.ValueType == FlexBuffers.Type.Bool)
+            {
+                return x.AsBool;
+            }
+            return false;
         }
 
         private static FlxValue GetFlxValue(bool? x)
         {
-            return x.HasValue ? (x.Value ? TrueVal : FalseVal) : NullValue;
+            if (x.HasValue)
+            {
+                if (x.Value)
+                {
+                    return TrueVal;
+                }
+                else
+                {
+                    return FalseVal;
+                }
+            }
+            return NullValue;
         }
     }
 }
