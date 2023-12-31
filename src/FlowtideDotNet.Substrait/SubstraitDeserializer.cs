@@ -161,7 +161,7 @@ namespace FlowtideDotNet.Substrait
                 }
             }
 
-            private DirectFieldReference VisitDirectReference(Protobuf.Expression.Types.ReferenceSegment referenceSegment)
+            private static DirectFieldReference VisitDirectReference(Protobuf.Expression.Types.ReferenceSegment referenceSegment)
             {
                 switch (referenceSegment.ReferenceTypeCase)
                 {
@@ -395,7 +395,7 @@ namespace FlowtideDotNet.Substrait
                 return project;
             }
 
-            private Relation VisitRead(Protobuf.ReadRel readRel)
+            private static Relation VisitRead(Protobuf.ReadRel readRel)
             {
                 List<string> names = new List<string>();
                 names.AddRange(readRel.BaseSchema.Names);

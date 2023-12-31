@@ -879,7 +879,7 @@ namespace FlowtideDotNet.Substrait
             return rootPlan;
         }
 
-        public string SerializeToJson(Plan plan)
+        public static string SerializeToJson(Plan plan)
         {
             var protoPlan = Serialize(plan);
             var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
