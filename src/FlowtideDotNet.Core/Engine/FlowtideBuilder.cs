@@ -18,6 +18,7 @@ using System.Security.Cryptography;
 using System.Text;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -111,12 +112,13 @@ namespace FlowtideDotNet.Core.Engine
 
         private string ComputePlanHash()
         {
+            Debug.Assert(_plan != null, "Plan should not be null.");
             using (SHA256 sha256 = SHA256.Create())
             {
                 string json = "";
                 try
                 {
-                    json = new SubstraitSerializer().SerializeToJson(_plan);
+                    json = SubstraitSerializer.SerializeToJson(_plan);
                 }
                 catch
                 {
