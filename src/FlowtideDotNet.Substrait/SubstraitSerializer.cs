@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Substrait
 {
     internal class SubstraitSerializer
     {
-        private class SerializerVisitorState
+        private sealed class SerializerVisitorState
         {
             public int uriCounter = 0;
             public int extensionCounter = 0;
@@ -61,18 +61,13 @@ namespace FlowtideDotNet.Substrait
                 return functionAnchor;
             }
 
-            public Protobuf.Rel? Previous { get; }
             public Protobuf.Plan Root { get; }
         }
 
-        private class SerializerExpressionVisitor : Substrait.Expressions.ExpressionVisitor<Protobuf.Expression, SerializerVisitorState>
+        private sealed class SerializerExpressionVisitor : Substrait.Expressions.ExpressionVisitor<Protobuf.Expression, SerializerVisitorState>
         {
-
-            
-
             public override Protobuf.Expression? VisitScalarFunction(ScalarFunction scalarFunction, SerializerVisitorState state)
             {
-                var functionName = $"{scalarFunction.ExtensionUri}:{scalarFunction.ExtensionName}";
                 var anchor = state.GetFunctionExtensionAnchor(scalarFunction.ExtensionUri, scalarFunction.ExtensionName);
 
                 var scalar = new Protobuf.Expression.Types.ScalarFunction()
@@ -176,6 +171,10 @@ namespace FlowtideDotNet.Substrait
                 foreach(var item in arrayLiteral.Expressions)
                 {
                     var itemExpr = Visit(item, state);
+                    if (itemExpr == null)
+                    {
+                        throw new InvalidOperationException("Array literal contained expression that could not be parsed.");
+                    }
                     if (itemExpr.Literal != null)
                     {
                         list.Values.Add(itemExpr.Literal);
@@ -261,22 +260,10 @@ namespace FlowtideDotNet.Substrait
             }
         }
 
-        private class SerializerVisitor : RelationVisitor<Protobuf.Rel, SerializerVisitorState>
+        private sealed class SerializerVisitor : RelationVisitor<Protobuf.Rel, SerializerVisitorState>
         {
-            
-
             public SerializerVisitor()
             {
-            }
-
-            public override Protobuf.Rel VisitPlanRelation(PlanRelation planRelation, SerializerVisitorState state)
-            {
-                return base.VisitPlanRelation(planRelation, state);
-            }
-
-            public override Protobuf.Rel VisitRootRelation(RootRelation rootRelation, SerializerVisitorState state)
-            {
-                return base.VisitRootRelation(rootRelation, state);
             }
 
             public override Protobuf.Rel VisitReadRelation(ReadRelation readRelation, SerializerVisitorState state)
@@ -617,10 +604,8 @@ namespace FlowtideDotNet.Substrait
                 {
                     case JoinType.Anti:
                         throw new NotSupportedException("Anti not supported in merge join");
-                        break;
                     case JoinType.Semi:
                         throw new NotSupportedException("Semi not supported in merge join");
-                        break;
                     case JoinType.Inner:
                         rel.Type = Protobuf.MergeJoinRel.Types.JoinType.Inner;
                         break;
@@ -638,7 +623,6 @@ namespace FlowtideDotNet.Substrait
                         break;
                     case JoinType.Single:
                         throw new NotSupportedException("Single not supported in merge join");
-                        break;
                 }
 
                 if (mergeJoinRelation.EmitSet)
@@ -815,7 +799,7 @@ namespace FlowtideDotNet.Substrait
                 throw new NotImplementedException("Unwrap cant be serialized yet");
             }
 
-            private uint GetAnyTypeId(SerializerVisitorState state)
+            private static uint GetAnyTypeId(SerializerVisitorState state)
             {
                 if (!state._typeExtensions.TryGetValue("any", out var id))
                 {
@@ -880,7 +864,7 @@ namespace FlowtideDotNet.Substrait
             }
         }
 
-        public Protobuf.Plan Serialize(Plan plan)
+        public static Protobuf.Plan Serialize(Plan plan)
         {
             var rootPlan = new Protobuf.Plan();
 

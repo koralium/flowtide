@@ -30,8 +30,7 @@ namespace FlowtideDotNet.Substrait.Tests
             ");
             var plan = sqlPlanBuilder.GetPlan();
 
-            var protoPlan = new SubstraitSerializer().Serialize(plan);
-
+            var protoPlan = SubstraitSerializer.Serialize(plan);
             
             var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
                 CustomProtobuf.IterationReferenceReadRelation.Descriptor,
