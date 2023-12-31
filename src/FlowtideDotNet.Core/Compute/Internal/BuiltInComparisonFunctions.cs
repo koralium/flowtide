@@ -23,16 +23,9 @@ namespace FlowtideDotNet.Core.Compute.Internal
         private static readonly FlxValue TrueVal = FlxValue.FromBytes(FlexBuffer.SingleValue(true));
         private static readonly FlxValue FalseVal = FlxValue.FromBytes(FlexBuffer.SingleValue(false));
 
-        private static System.Linq.Expressions.MethodCallExpression Compare(System.Linq.Expressions.Expression a, System.Linq.Expressions.Expression b)
-        {
-            MethodInfo? compareMethod = typeof(FlxValueComparer).GetMethod("CompareTo", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
-            Debug.Assert(compareMethod != null);
-            return System.Linq.Expressions.Expression.Call(compareMethod, a, b);
-        }
-
         private static System.Linq.Expressions.Expression AccessIsNullProperty(System.Linq.Expressions.Expression p)
         {
-            var props = typeof(FlxValue).GetProperties().FirstOrDefault(x => x.Name == "IsNull");
+            var props = Array.Find(typeof(FlxValue).GetProperties(), x => x.Name == "IsNull");
             Debug.Assert(props != null);
             var getMethod = props.GetMethod;
             Debug.Assert(getMethod != null);
