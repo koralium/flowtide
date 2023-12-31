@@ -150,7 +150,7 @@ namespace FlowtideDotNet.Substrait
                 }
             }
 
-            private FieldReference VisitFieldReferencce(Protobuf.Expression.Types.FieldReference fieldReference)
+            private static FieldReference VisitFieldReferencce(Protobuf.Expression.Types.FieldReference fieldReference)
             {
                 switch (fieldReference.ReferenceTypeCase)
                 {
