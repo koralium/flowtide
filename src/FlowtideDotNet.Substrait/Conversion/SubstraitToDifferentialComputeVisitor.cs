@@ -107,6 +107,10 @@ namespace FlowtideDotNet.Substrait.Conversion
         public override Relation VisitReadRelation(ReadRelation readRelation, object state)
         {
             int keyIndex = -1;
+            if (readRelation.BaseSchema.Struct == null)
+            {
+                throw new NotSupportedException("Struct must be defined with types");
+            }
             for (int i = 0; i < readRelation.BaseSchema.Struct.Types.Count; i++)
             {
                 var type = readRelation.BaseSchema.Struct.Types[i];
