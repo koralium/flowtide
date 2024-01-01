@@ -14,7 +14,7 @@ namespace FlowtideDotNet.Substrait.Expressions
 {
     public class DirectFieldReference : FieldReference
     {
-        public ReferenceSegment ReferenceSegment { get; set; }
+        public required ReferenceSegment ReferenceSegment { get; set; }
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {

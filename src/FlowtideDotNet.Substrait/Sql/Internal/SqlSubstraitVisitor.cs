@@ -39,31 +39,38 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             Debug.Assert(source != null);
 
-            var writeRelation = new WriteRelation()
-            {
-                Input = source.Relation,
-                NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.Name.Values.Select(x => x.Value).ToList() },
-                TableSchema = new NamedStruct()
-            };
+            NamedStruct? tableSchema = null;
 
             if (insert.Columns != null && insert.Columns.Count > 0)
             {
-                writeRelation.TableSchema.Names = insert.Columns.Select(x => x.Value).ToList();
-                writeRelation.TableSchema.Struct = new FlowtideDotNet.Substrait.Type.Struct()
+                tableSchema = new NamedStruct()
                 {
-                    Types = insert.Columns.Select(x => new AnyType() { Nullable = true } as SubstraitBaseType).ToList()
+                    Names = insert.Columns.Select(x => x.Value).ToList(),
+                    Struct = new FlowtideDotNet.Substrait.Type.Struct()
+                    {
+                        Types = insert.Columns.Select(x => new AnyType() { Nullable = true } as SubstraitBaseType).ToList()
+                    }
                 };
             }
             else
             {
                 var names = source.EmitData.GetNames();
-                writeRelation.TableSchema = new FlowtideDotNet.Substrait.Type.NamedStruct();
-                writeRelation.TableSchema.Names = names.ToList();
-                writeRelation.TableSchema.Struct = new FlowtideDotNet.Substrait.Type.Struct()
+                tableSchema = new NamedStruct()
                 {
-                    Types = names.Select(x => new AnyType() { Nullable = true } as SubstraitBaseType).ToList()
+                    Names = names.ToList(),
+                    Struct = new FlowtideDotNet.Substrait.Type.Struct()
+                    {
+                        Types = names.Select(x => new AnyType() { Nullable = true } as SubstraitBaseType).ToList()
+                    }
                 };
             }
+
+            var writeRelation = new WriteRelation()
+            {
+                Input = source.Relation,
+                NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.Name.Values.Select(x => x.Value).ToList() },
+                TableSchema = tableSchema
+            };
 
             return new RelationData(writeRelation, source.EmitData);
         }
@@ -325,6 +332,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 foreach (var join in tableWithJoins.Joins)
                 {
                     parent = VisitJoin(join, parent, state);
+                    Debug.Assert(parent != null);
                 }
             }
             return parent;

@@ -19,9 +19,9 @@ namespace FlowtideDotNet.Substrait.Conversion
     {
         private readonly bool addWrite;
         private readonly string tableName;
-        private readonly List<string>? primaryKeys;
+        private readonly List<string> primaryKeys;
 
-        public SubstraitToDifferentialComputeVisitor(bool addWrite, string tableName, List<string>? primaryKeys)
+        public SubstraitToDifferentialComputeVisitor(bool addWrite, string tableName, List<string> primaryKeys)
         {
             this.addWrite = addWrite;
             this.tableName = tableName;

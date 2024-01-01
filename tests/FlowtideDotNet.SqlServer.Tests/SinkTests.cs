@@ -36,8 +36,14 @@ namespace FlowtideDotNet.SqlServer.Tests
                         Names = new List<string>() { "c1" }
                     }
                 },
-                NamedObject = new Substrait.Type.NamedTable(),
+                NamedObject = new Substrait.Type.NamedTable()
+                {
+                    Names = new List<string>() { "table2" }
+                },
                 TableSchema = new Substrait.Type.NamedStruct()
+                {
+                    Names = new List<string>() { "c1" }
+                }
             }, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
             var tableName = sink.GetTmpTableName();
             Assert.StartsWith("#", tableName);

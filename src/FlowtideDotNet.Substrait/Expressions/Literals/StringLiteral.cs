@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
     {
         public override LiteralType Type => LiteralType.String;
 
-        public string Value { get; set; }
+        public required string Value { get; set; }
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
