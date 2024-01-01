@@ -63,8 +63,10 @@ namespace FlowtideDotNet.Substrait
                 throw new InvalidOperationException("No root plan has been added.");
             }
             // Convert here.
-            Plan newPlan = new Plan();
-            newPlan.Relations = new List<FlowtideDotNet.Substrait.Relations.Relation>();
+            Plan newPlan = new Plan
+            {
+                Relations = new List<FlowtideDotNet.Substrait.Relations.Relation>()
+            };
             Dictionary<string, ReferenceInfo> subPlanNameToId = new Dictionary<string, ReferenceInfo>(StringComparer.OrdinalIgnoreCase);
             foreach(var subplan in _subplans)
             {

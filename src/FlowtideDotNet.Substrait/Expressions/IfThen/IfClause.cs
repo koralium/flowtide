@@ -14,8 +14,8 @@ namespace FlowtideDotNet.Substrait.Expressions.IfThen
 {
     public class IfClause
     {
-        public Expression If { get; set; }
+        public required Expression If { get; set; }
 
-        public Expression Then { get; set; }
+        public required Expression Then { get; set; }
     }
 }

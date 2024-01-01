@@ -14,6 +14,6 @@ namespace FlowtideDotNet.Substrait.Expressions
 {
     public abstract class ReferenceSegment
     {
-        public ReferenceSegment Child { get; set; }
+        public ReferenceSegment? Child { get; set; }
     }
 }

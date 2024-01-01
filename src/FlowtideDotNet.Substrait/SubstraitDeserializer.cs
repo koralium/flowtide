@@ -243,8 +243,10 @@ namespace FlowtideDotNet.Substrait
 
             private Plan VisitPlan(Protobuf.Plan plan)
             {
-                var output = new Plan();
-                output.Relations = new List<Relation>();
+                var output = new Plan
+                {
+                    Relations = new List<Relation>()
+                };
                 foreach (var relation in plan.Relations)
                 {
                     output.Relations.Add(VisitPlanRel(relation));
@@ -400,16 +402,14 @@ namespace FlowtideDotNet.Substrait
                 List<string> names = new List<string>();
                 names.AddRange(readRel.BaseSchema.Names);
 
-                var namedStruct = new Type.NamedStruct()
-                {
-                    Names = names,
-                };
+                
                 List<string> namedTable = new List<string>();
                 if (readRel.NamedTable != null)
                 {
                     namedTable.AddRange(readRel.NamedTable.Names);
                 }
 
+                Struct? schema = default;
                 if (readRel.BaseSchema.Struct != null)
                 {
                     var st = new Type.Struct();
@@ -465,9 +465,14 @@ namespace FlowtideDotNet.Substrait
                                 throw new NotImplementedException($"Type is not yet implemented {type.KindCase}");
                         }
                     }
-                    namedStruct.Struct = st;
+                    schema = st;
                 }
 
+                var namedStruct = new Type.NamedStruct()
+                {
+                    Names = names,
+                    Struct = schema
+                };
                 return new ReadRelation()
                 {
                     BaseSchema = namedStruct,

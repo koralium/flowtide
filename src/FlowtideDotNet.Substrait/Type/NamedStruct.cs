@@ -14,8 +14,8 @@ namespace FlowtideDotNet.Substrait.Type
 {
     public class NamedStruct
     {
-        public List<string> Names { get; set; }
+        public required List<string> Names { get; set; }
 
-        public Struct Struct { get; set; }
+        public Struct? Struct { get; set; }
     }
 }

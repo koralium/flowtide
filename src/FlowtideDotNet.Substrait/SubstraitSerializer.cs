@@ -394,7 +394,6 @@ namespace FlowtideDotNet.Substrait
                         }
                         if (measure.Measure != null)
                         {
-                            var functionAnchor = (measure.Measure.ExtensionUri, measure.Measure.ExtensionName, state);
                             m.Measure_ = new Protobuf.AggregateFunction()
                             {
                                 FunctionReference = state.GetFunctionExtensionAnchor(measure.Measure.ExtensionUri, measure.Measure.ExtensionName)

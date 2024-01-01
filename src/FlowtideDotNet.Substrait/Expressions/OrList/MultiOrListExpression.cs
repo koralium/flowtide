@@ -14,9 +14,9 @@ namespace FlowtideDotNet.Substrait.Expressions
 {
     public class MultiOrListExpression : Expression
     {
-        public List<Expression> Value { get; set; }
+        public required List<Expression> Value { get; set; }
 
-        public List<OrListRecord> Options { get; set; }
+        public required List<OrListRecord> Options { get; set; }
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {

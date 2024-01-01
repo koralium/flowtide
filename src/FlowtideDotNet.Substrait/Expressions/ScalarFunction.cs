@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         public required string ExtensionUri { get; set; }
         public required string ExtensionName { get; set; }
 
-        public List<Expression> Arguments { get; set; }
+        public required List<Expression> Arguments { get; set; }
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
