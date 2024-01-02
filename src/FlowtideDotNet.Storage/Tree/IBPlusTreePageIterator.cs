@@ -19,5 +19,9 @@ namespace FlowtideDotNet.Storage.Tree
         /// </summary>
         /// <returns></returns>
         ValueTask SavePage();
+
+        IReadOnlyList<K> Keys { get; }
+
+        IReadOnlyList<V> Values { get; }
     }
 }

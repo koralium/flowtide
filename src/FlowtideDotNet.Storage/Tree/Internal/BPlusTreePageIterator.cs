@@ -66,6 +66,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             this.tree = tree;
         }
 
+        public IReadOnlyList<K> Keys => leaf.keys;
+
+        public IReadOnlyList<V> Values => leaf.values;
+
         public ValueTask SavePage()
         {
             var isFull = tree.m_stateClient.AddOrUpdate(leaf.Id, leaf);
