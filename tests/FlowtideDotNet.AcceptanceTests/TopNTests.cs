@@ -26,7 +26,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task TestTop1()
+        public async Task TestTop1Asc()
         {
             GenerateData();
             await StartStream(@"
@@ -53,6 +53,66 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             AssertCurrentDataEqual(Users.OrderByDescending(x => x.UserKey).Take(1).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task TestTop10Asc()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output 
+            SELECT TOP 10 userkey 
+            FROM users
+            ORDER BY userkey");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.OrderBy(x => x.UserKey).Take(10).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task TestTop10Desc()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output 
+            SELECT TOP 63 userkey 
+            FROM users
+            ORDER BY userkey DESC");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.OrderByDescending(x => x.UserKey).Take(63).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task TestTop63Desc()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output 
+            SELECT TOP 63 userkey 
+            FROM users
+            ORDER BY userkey DESC");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.OrderByDescending(x => x.UserKey).Take(63).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task TestTop63Asc()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output 
+            SELECT TOP 63 userkey 
+            FROM users
+            ORDER BY userkey");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.OrderBy(x => x.UserKey).Take(63).Select(x => new { x.UserKey }));
         }
     }
 }
