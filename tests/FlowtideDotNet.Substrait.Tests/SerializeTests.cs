@@ -42,5 +42,34 @@ namespace FlowtideDotNet.Substrait.Tests
             var formatter = new Google.Protobuf.JsonFormatter(settings);
             var json = formatter.Format(protoPlan);
         }
+
+        [Fact]
+        public void SerializeTopNRelation()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any);
+                
+                insert into out
+                select TOP (1) a FROM table1 t1 ORDER BY a
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+
+            var ex = Record.Exception(() =>
+            {
+                var protoPlan = SubstraitSerializer.Serialize(plan);
+
+                var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
+                    CustomProtobuf.IterationReferenceReadRelation.Descriptor,
+                    CustomProtobuf.IterationRelation.Descriptor,
+                    CustomProtobuf.NormalizationRelation.Descriptor,
+                    CustomProtobuf.ReferenceRelation.Descriptor);
+                var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
+                    .WithIndentation();
+                var formatter = new Google.Protobuf.JsonFormatter(settings);
+                var json = formatter.Format(protoPlan);
+            });
+            Assert.Null(ex);
+        }
     }
 }

@@ -169,7 +169,107 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     tablesMetadata.AddTable(alias, cteEmitData.GetNames());
                 }
             }
-            return Visit(query.Body, state);
+            var node = Visit(query.Body, state);
+
+            if (node == null)
+            {
+                throw new InvalidOperationException("Could not create a plan from the query");
+            }
+            if (query.OrderBy != null)
+            {
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                List<Expressions.SortField> sortFields = new List<Expressions.SortField>();
+                foreach (var o in query.OrderBy)
+                {
+                    var expr = exprVisitor.Visit(o.Expression, node.EmitData);
+                    var sortDirection = GetSortDirection(o);
+
+                    sortFields.Add(new Expressions.SortField()
+                    {
+                        Expression = expr.Expr,
+                        SortDirection = sortDirection
+                    });
+                }
+
+                if (node.Relation is FetchRelation fetch)
+                {
+                    var rel = new TopNRelation()
+                    {
+                        Input = fetch.Input,
+                        Sorts = sortFields,
+                        Count = fetch.Count,
+                        Offset = fetch.Offset
+                    };
+                    // Add the order by before the fetch, since the fetch can come from the TOP N in the select.
+                    node = new RelationData(rel, node.EmitData);
+                }
+            }
+            return node;
+        }
+
+        private static Expressions.SortDirection GetSortDirection(OrderByExpression o)
+        {
+            Expressions.SortDirection sortDirection;
+
+            // Find the sort direction of this field
+            if (o.Asc != null)
+            {
+                if (o.Asc.Value)
+                {
+                    if (o.NullsFirst != null)
+                    {
+                        if (o.NullsFirst.Value)
+                        {
+                            sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
+                        }
+                        else
+                        {
+                            sortDirection = Expressions.SortDirection.SortDirectionAscNullsLast;
+                        }
+                    }
+                    else
+                    {
+                        sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
+                    }
+                }
+                else
+                {
+                    if (o.NullsFirst != null)
+                    {
+                        if (o.NullsFirst.Value)
+                        {
+                            sortDirection = Expressions.SortDirection.SortDirectionDescNullsFirst;
+                        }
+                        else
+                        {
+                            sortDirection = Expressions.SortDirection.SortDirectionDescNullsLast;
+                        }
+                    }
+                    else
+                    {
+                        sortDirection = Expressions.SortDirection.SortDirectionDescNullsLast;
+                    }
+                }
+            }
+            else
+            {
+                if (o.NullsFirst != null)
+                {
+                    if (o.NullsFirst.Value)
+                    {
+                        sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
+                    }
+                    else
+                    {
+                        sortDirection = Expressions.SortDirection.SortDirectionAscNullsLast;
+                    }
+                }
+                else
+                {
+                    sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
+                }
+            }   
+            return sortDirection;
         }
 
         protected override RelationData? VisitSelect(Select select, object? state)
@@ -226,6 +326,24 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             if (select.Projection != null)
             {
                 outNode = VisitProjection(select.Projection, outNode);
+            }
+
+            if (select.Top != null)
+            {
+                if (outNode == null)
+                {
+                    throw new InvalidOperationException("TOP statement is not supported without a FROM statement");
+                }
+                var literal = select.Top.Quantity?.AsLiteral()?.Value?.AsNumber();
+                if (literal == null)
+                {
+                    throw new NotSupportedException("Only numeric literal values are supported in the TOP statement");
+                }
+                outNode = new RelationData(new FetchRelation()
+                {
+                    Input = outNode.Relation,
+                    Count = int.Parse(literal.Value)
+                }, outNode.EmitData);
             }
 
             return outNode;

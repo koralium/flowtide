@@ -861,6 +861,69 @@ namespace FlowtideDotNet.Substrait
                     Write = writeRel
                 };
             }
+
+            public override Rel VisitTopNRelation(TopNRelation topNRelation, SerializerVisitorState state)
+            {
+                var rel = new Protobuf.ExtensionSingleRel();
+                var topRel = new CustomProtobuf.TopNRelation();
+                topRel.Offset = topNRelation.Offset;
+                topRel.Count = topNRelation.Count;
+
+                var exprVisitor = new SerializerExpressionVisitor();
+
+                foreach (var sortField in topNRelation.Sorts)
+                {
+                    Protobuf.SortField.Types.SortDirection sortDir;
+                    switch (sortField.SortDirection)
+                    {
+                        case SortDirection.SortDirectionUnspecified:
+                            sortDir = Protobuf.SortField.Types.SortDirection.Unspecified;
+                            break;
+                        case SortDirection.SortDirectionAscNullsFirst:
+                            sortDir = Protobuf.SortField.Types.SortDirection.AscNullsFirst;
+                            break;
+                        case SortDirection.SortDirectionAscNullsLast:
+                            sortDir = Protobuf.SortField.Types.SortDirection.AscNullsLast;
+                            break;
+                        case SortDirection.SortDirectionDescNullsFirst:
+                            sortDir = Protobuf.SortField.Types.SortDirection.DescNullsFirst;
+                            break;
+                        case SortDirection.SortDirectionDescNullsLast:
+                            sortDir = Protobuf.SortField.Types.SortDirection.DescNullsLast;
+                            break;
+                        case SortDirection.SortDirectionClustered:
+                            sortDir = Protobuf.SortField.Types.SortDirection.Clustered;
+                            break;
+                        default:
+                            throw new NotImplementedException();
+                    }
+
+                    topRel.Sorts.Add(new Protobuf.SortField()
+                    {
+                        Direction = sortDir,
+                        Expr = exprVisitor.Visit(sortField.Expression, state)
+                    });
+                }
+
+                rel.Detail = new Google.Protobuf.WellKnownTypes.Any()
+                {
+                    TypeUrl = "flowtide/flowtide.TopNRelation",
+                    Value = topRel.ToByteString()
+                };
+
+                if (topNRelation.EmitSet)
+                {
+                    rel.Common = new Protobuf.RelCommon();
+                    rel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    rel.Common.Emit.OutputMapping.AddRange(topNRelation.Emit);
+                }
+                rel.Input = Visit(topNRelation.Input, state);
+
+                return new Protobuf.Rel()
+                {
+                    ExtensionSingle = rel
+                };
+            }
         }
 
         public static Protobuf.Plan Serialize(Plan plan)
@@ -885,7 +948,8 @@ namespace FlowtideDotNet.Substrait
                 CustomProtobuf.IterationReferenceReadRelation.Descriptor,
                 CustomProtobuf.IterationRelation.Descriptor,
                 CustomProtobuf.NormalizationRelation.Descriptor,
-                CustomProtobuf.ReferenceRelation.Descriptor);
+                CustomProtobuf.ReferenceRelation.Descriptor,
+                CustomProtobuf.TopNRelation.Descriptor);
             var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
                 .WithIndentation();
             var formatter = new Google.Protobuf.JsonFormatter(settings);
