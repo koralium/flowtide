@@ -66,12 +66,10 @@ namespace FlowtideDotNet.Core.Operators.TopN
             foreach(var e in msg.Events)
             {
                 // Insert the value into the tree
-                bool valueExists = false;
                 var (op, _) = await _tree.RMW(e, e.Weight, (input, current, exists) =>
                 {
                     if (exists)
                     {
-                        valueExists = exists;
                         var newWeight = current + input;
                         if (newWeight == 0)
                         {
@@ -86,7 +84,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
                 });
 
                 // Iterate over the tree, find the Nth value, check if this value is greater or smaller than that
-                await GetOutputValues(e, output, iterator, op, valueExists);
+                await GetOutputValues(e, output, iterator, op);
             }
 
             if (output.Count > 0)
@@ -97,7 +95,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
             }
         }
 
-        private async Task GetOutputValues(RowEvent ev, List<RowEvent> output, IBPlusTreeIterator<RowEvent, int> iterator, GenericWriteOperation op, bool valueExists)
+        private async Task GetOutputValues(RowEvent ev, List<RowEvent> output, IBPlusTreeIterator<RowEvent, int> iterator, GenericWriteOperation op)
         {
             await iterator.SeekFirst();
             int count = 0;
