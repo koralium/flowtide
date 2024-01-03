@@ -142,7 +142,6 @@ namespace FlowtideDotNet.Core.Operators.TopN
                 // If it is an upsert, output the event
                 if (op == GenericWriteOperation.Upsert)
                 {
-
                     if (index >= 0)
                     {
                         // Check if this value already outputs enough rows to satisfy the count
@@ -174,7 +173,6 @@ namespace FlowtideDotNet.Core.Operators.TopN
                     throw new NotSupportedException();
                 }
             }
-
             
             if (bumpCount > 0)
             {

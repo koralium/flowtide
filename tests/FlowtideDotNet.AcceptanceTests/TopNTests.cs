@@ -26,6 +26,21 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task TestTopWithoutOrderBy()
+        {
+            GenerateData();
+            var ex = await Assert.ThrowsAsync<NotSupportedException>(async () =>
+            {
+                await StartStream(@"
+                INSERT INTO output 
+                SELECT TOP 1 userkey 
+                FROM users");
+            });
+            
+            Assert.Equal("Fetch operation (top or limit) is not supported without an order by", ex.Message);
+        }
+
+        [Fact]
         public async Task TestTop1Asc()
         {
             GenerateData();

@@ -547,5 +547,10 @@ namespace FlowtideDotNet.Core.Engine
             dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
             return op;
         }
+
+        public override IStreamVertex VisitFetchRelation(FetchRelation fetchRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            throw new NotSupportedException("Fetch operation (top or limit) is not supported without an order by");
+        }
     }
 }
