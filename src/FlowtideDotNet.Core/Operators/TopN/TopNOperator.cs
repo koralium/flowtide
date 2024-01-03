@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
             {
                 // Insert the value into the tree
                 bool valueExists = false;
-                var (op, val) = await _tree.RMW(e, e.Weight, (input, current, exists) =>
+                var (op, _) = await _tree.RMW(e, e.Weight, (input, current, exists) =>
                 {
                     if (exists)
                     {

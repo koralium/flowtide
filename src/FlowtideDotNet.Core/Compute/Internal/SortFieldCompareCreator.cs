@@ -27,8 +27,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
     {
 
         // These methods are collected through reflection 
-#pragma warning disable IDE0051 // Remove unused private members
-        private static int CompareAscendingNullsFirstImplementation(FlxValue a, FlxValue b)
+        internal static int CompareAscendingNullsFirstImplementation(FlxValue a, FlxValue b)
         {
             if (a.IsNull)
             {
@@ -48,7 +47,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return FlxValueComparer.CompareTo(a, b);
         }
 
-        private static int CompareAscendingNullsLastImplementation(FlxValue a, FlxValue b)
+        internal static int CompareAscendingNullsLastImplementation(FlxValue a, FlxValue b)
         {
             if (a.IsNull)
             {
@@ -68,7 +67,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return FlxValueComparer.CompareTo(a, b);
         }
 
-        private static int CompareDescendingNullsFirstImplementation(FlxValue a, FlxValue b)
+        internal static int CompareDescendingNullsFirstImplementation(FlxValue a, FlxValue b)
         {
             if (a.IsNull)
             {
@@ -88,7 +87,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return FlxValueComparer.CompareTo(b, a);
         }
 
-        private static int CompareDescendingNullsLastImplementation(FlxValue a, FlxValue b)
+        internal static int CompareDescendingNullsLastImplementation(FlxValue a, FlxValue b)
         {
             if (a.IsNull)
             {
@@ -107,8 +106,6 @@ namespace FlowtideDotNet.Core.Compute.Internal
             }
             return FlxValueComparer.CompareTo(b, a);
         }
-
-#pragma warning restore IDE0051 // Remove unused private members
 
         private static System.Linq.Expressions.MethodCallExpression CompareAscendingNullsFirst(System.Linq.Expressions.Expression a, System.Linq.Expressions.Expression b)
         {
@@ -188,13 +185,13 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
             if (comparisons.Count == 1)
             {
-                var lambda = System.Linq.Expressions.Expression.Lambda<Func<T, T, int>>(comparisons.FirstOrDefault(), left, right);
+                var lambda = System.Linq.Expressions.Expression.Lambda<Func<T, T, int>>(comparisons[0], left, right);
                 return lambda.Compile();
             }
             else if (comparisons.Count > 1)
             {
                 var tmpVar = System.Linq.Expressions.Expression.Variable(typeof(int));
-                var compare = comparisons.Last();
+                var compare = comparisons[comparisons.Count - 1];
                 for (int i = comparisons.Count - 2; i >= 0; i--)
                 {
                     var res = comparisons[i];

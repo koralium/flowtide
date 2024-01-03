@@ -535,7 +535,7 @@ namespace FlowtideDotNet.Core.Engine
             return op;
         }
 
-        public override IStreamVertex VisitTopNRelation(TopNRelation topNRelation, ITargetBlock<IStreamEvent> state)
+        public override IStreamVertex VisitTopNRelation(TopNRelation topNRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
             var op = new TopNOperator(topNRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });

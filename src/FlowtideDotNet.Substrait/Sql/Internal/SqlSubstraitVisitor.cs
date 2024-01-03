@@ -182,66 +182,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 foreach (var o in query.OrderBy)
                 {
                     var expr = exprVisitor.Visit(o.Expression, node.EmitData);
-                    Expressions.SortDirection sortDirection = Expressions.SortDirection.SortDirectionUnspecified;
-
-                    // Find the sort direction of this field
-                    if (o.Asc != null)
-                    {
-                        if (o.Asc.Value)
-                        {
-                            if (o.NullsFirst != null)
-                            {
-                                if (o.NullsFirst.Value)
-                                {
-                                    sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
-                                }
-                                else
-                                {
-                                    sortDirection = Expressions.SortDirection.SortDirectionAscNullsLast;
-                                }
-                            }
-                            else
-                            {
-                                sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
-                            }
-                        }
-                        else
-                        {
-                            if (o.NullsFirst != null)
-                            {
-                                if (o.NullsFirst.Value)
-                                {
-                                    sortDirection = Expressions.SortDirection.SortDirectionDescNullsFirst;
-                                }
-                                else
-                                {
-                                    sortDirection = Expressions.SortDirection.SortDirectionDescNullsLast;
-                                }
-                            }
-                            else
-                            {
-                                sortDirection = Expressions.SortDirection.SortDirectionDescNullsLast;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (o.NullsFirst != null)
-                        {
-                            if (o.NullsFirst.Value)
-                            {
-                                sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
-                            }
-                            else
-                            {
-                                sortDirection = Expressions.SortDirection.SortDirectionAscNullsLast;
-                            }
-                        }
-                        else
-                        {
-                            sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
-                        }
-                    }
+                    var sortDirection = GetSortDirection(o);
 
                     sortFields.Add(new Expressions.SortField()
                     {
@@ -264,6 +205,71 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             }
             return node;
+        }
+
+        private Expressions.SortDirection GetSortDirection(OrderByExpression o)
+        {
+            Expressions.SortDirection sortDirection;
+
+            // Find the sort direction of this field
+            if (o.Asc != null)
+            {
+                if (o.Asc.Value)
+                {
+                    if (o.NullsFirst != null)
+                    {
+                        if (o.NullsFirst.Value)
+                        {
+                            sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
+                        }
+                        else
+                        {
+                            sortDirection = Expressions.SortDirection.SortDirectionAscNullsLast;
+                        }
+                    }
+                    else
+                    {
+                        sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
+                    }
+                }
+                else
+                {
+                    if (o.NullsFirst != null)
+                    {
+                        if (o.NullsFirst.Value)
+                        {
+                            sortDirection = Expressions.SortDirection.SortDirectionDescNullsFirst;
+                        }
+                        else
+                        {
+                            sortDirection = Expressions.SortDirection.SortDirectionDescNullsLast;
+                        }
+                    }
+                    else
+                    {
+                        sortDirection = Expressions.SortDirection.SortDirectionDescNullsLast;
+                    }
+                }
+            }
+            else
+            {
+                if (o.NullsFirst != null)
+                {
+                    if (o.NullsFirst.Value)
+                    {
+                        sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
+                    }
+                    else
+                    {
+                        sortDirection = Expressions.SortDirection.SortDirectionAscNullsLast;
+                    }
+                }
+                else
+                {
+                    sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
+                }
+            }   
+            return sortDirection;
         }
 
         protected override RelationData? VisitSelect(Select select, object? state)
