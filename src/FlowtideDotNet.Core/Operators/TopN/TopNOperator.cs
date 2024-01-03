@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
@@ -19,6 +20,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.TopN
@@ -28,6 +30,8 @@ namespace FlowtideDotNet.Core.Operators.TopN
         private readonly TopNComparer _comparer;
         private readonly TopNRelation relation;
         private IBPlusTree<RowEvent, int>? _tree;
+        private ICounter<long>? _eventsOutCounter;
+
         public TopNOperator(TopNRelation relation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             var compareFunc = SortFieldCompareCreator.CreateComparer<RowEvent>(relation.Sorts, functionsRegister);
@@ -85,7 +89,12 @@ namespace FlowtideDotNet.Core.Operators.TopN
                 await GetOutputValues(e, output, iterator, op, valueExists);
             }
 
-            yield return new StreamEventBatch(output);
+            if (output.Count > 0)
+            {
+                Debug.Assert(_eventsOutCounter != null, nameof(_eventsOutCounter));
+                _eventsOutCounter.Add(output.Count);
+                yield return new StreamEventBatch(output);
+            }
         }
 
         private async Task GetOutputValues(RowEvent ev, List<RowEvent> output, IBPlusTreeIterator<RowEvent, int> iterator, GenericWriteOperation op, bool valueExists)
@@ -167,6 +176,10 @@ namespace FlowtideDotNet.Core.Operators.TopN
 
         protected override async Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
         {
+            if (_eventsOutCounter == null)
+            {
+                _eventsOutCounter = Metrics.CreateCounter<long>("events");
+            }
             // Create tree that will hold all rows
             _tree = await stateManagerClient.GetOrCreateTree("topn", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
             {
