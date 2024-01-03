@@ -207,7 +207,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return node;
         }
 
-        private Expressions.SortDirection GetSortDirection(OrderByExpression o)
+        private static Expressions.SortDirection GetSortDirection(OrderByExpression o)
         {
             Expressions.SortDirection sortDirection;
 
@@ -330,6 +330,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             if (select.Top != null)
             {
+                if (outNode == null)
+                {
+                    throw new InvalidOperationException("TOP statement is not supported without a FROM statement");
+                }
                 var literal = select.Top.Quantity?.AsLiteral()?.Value?.AsNumber();
                 if (literal == null)
                 {
