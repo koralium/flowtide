@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
             this.relation = relation;
         }
 
-        public override string DisplayName => "TopN";
+        public override string DisplayName => $"Top ({relation.Count})";
 
         public override Task Compact()
         {
@@ -102,73 +102,140 @@ namespace FlowtideDotNet.Core.Operators.TopN
             await iterator.SeekFirst();
             int count = 0;
             var enumerator = iterator.GetAsyncEnumerator();
-            bool findBumpedValue = false;
+            int bumpCount = -1;
             int bumpWeightModifier = -1;
+            int pageIndex = -1;
             while (await enumerator.MoveNextAsync())
             {
                 var page = enumerator.Current;
-                count += page.Keys.Count;
+                var index = page.Keys.BinarySearch(ev, _comparer);
+                var loopEndIndex = index;
+                if (loopEndIndex < 0)
+                {
+                    loopEndIndex = ~loopEndIndex;
+                }
+                // Loop through all elements to get the count
+                for (int i = 0; i < loopEndIndex; i++)
+                {
+                    // Count all the weights in the page, since one row could have many duplicates
+                    count += page.Values[i];
+                    if (count >= relation.Count)
+                    {
+                        break;
+                    }
+                }
+                // Check if all N rows have already been accounted, then no output will be given.
                 if (count >= relation.Count)
                 {
-                    var index = page.Keys.Count - (count - relation.Count) - 1;
-                    var key = page.Keys[index];
-                    var compareVal = _comparer.Compare(ev, key);
-                    if (compareVal <= 0)
-                    {
-                        if (op == GenericWriteOperation.Upsert)
-                        {
-                            if (valueExists)
-                            {
-                                // Value already exists, no value will be bumped out
-                                output.Add(ev);
-                                break;
-                            }
-                            else
-                            {
-                                output.Add(ev);
-                                // Need to check if any value need to be removed from the output.
-                                findBumpedValue = true;
-                                bumpWeightModifier = -1;
-                                break;
-                            }
-                        }
-                        else if (op == GenericWriteOperation.Delete)
-                        {
-                            output.Add(ev);
-                            findBumpedValue = true;
-                            bumpWeightModifier = 1;
-                        }
-                        else
-                        {
-                            throw new NotSupportedException();
-                        }
-                    }
-                    // If it is above the Nth value, then we do nothing
                     break;
                 }
-            }
-
-            // Could not find the Nth value, the current output count is smaller than the limit
-            // Add the value to the output
-            if (count < relation.Count)
-            {
-                output.Add(ev);
-            }
-            if (findBumpedValue)
-            {
-                // Check if the bumped value already is in the loaded page
-                if (count > relation.Count)
+                // Check if we did not find the row we inserted, if so, continue to the next page
+                if (index < 0 && loopEndIndex == page.Values.Count)
                 {
-                    var index = enumerator.Current.Keys.Count - (count - relation.Count);
-                    output.Add(new RowEvent(enumerator.Current.Values[index] * bumpWeightModifier, 0, enumerator.Current.Keys[index].RowData));
+                    continue;
+                }
+
+                // If we reached here, the row was found and it should output values.
+
+                // Set the index where the element is
+                pageIndex = loopEndIndex;
+                // If it is an upsert, output the event
+                if (op == GenericWriteOperation.Upsert)
+                {
+
+                    if (index >= 0)
+                    {
+                        // Check if this value already outputs enough rows to satisfy the count
+                        if ((count + page.Values[index] - ev.Weight) >= relation.Count)
+                        {
+                            // Break and do nothing, the count is already satisfied.
+                            break;
+                        }
+                        var outputWeight = Math.Min(relation.Count - count, ev.Weight);
+                        output.Add(new RowEvent(outputWeight, 0, ev.RowData));
+                        bumpCount = outputWeight;
+                        bumpWeightModifier = -1;
+                        break;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Got an upsert for a value that does not exist in the tree");
+                    }
+                }
+                else if (op == GenericWriteOperation.Delete)
+                {
+                    output.Add(ev);
+                    bumpCount = ev.Weight * -1;
+                    bumpWeightModifier = 1;
+                    break;
                 }
                 else
                 {
-                    // Need to load the next page
-                    if (await enumerator.MoveNextAsync())
+                    throw new NotSupportedException();
+                }
+            }
+
+            
+            if (bumpCount > 0)
+            {
+                var stopCount = relation.Count - bumpCount;
+                if (bumpWeightModifier < 0)
+                {
+                    // if we should remove elements, we look at an element infront of the count.
+                    // If it is a delete, the element has already been removed from the tree, so we should not add with 1.
+                    stopCount += 1;
+                }
+                // Iterate until the stop count where we should start adding or removing events from the output.
+                int bumpStartIndex = -1;
+                do
+                {
+                    var page = enumerator.Current;
+                    for (int i = pageIndex; i < page.Values.Count; i++)
                     {
-                        var index = 0;
-                        output.Add(new RowEvent(enumerator.Current.Values[index] * bumpWeightModifier, 0, enumerator.Current.Keys[index].RowData));
+                        count += page.Values[i];
+                        if (count > stopCount)
+                        {
+                            bumpStartIndex = i;
+                            break;
+                        }
+                    }
+                    if (count > stopCount)
+                    {
+                        break;
+                    }
+                    pageIndex = 0;
+                } while (await enumerator.MoveNextAsync());
+                
+                // Check if we have an index where we should start bumping from
+                if (bumpStartIndex >= 0)
+                {
+                    var page = enumerator.Current;
+                    while (bumpCount > 0)
+                    {
+                        for (int i = bumpStartIndex; i < page.Values.Count; i++)
+                        {
+                            // Take the min value of the bump count and the weight of the row
+                            var weightToRemove = Math.Min(bumpCount, page.Values[i]);
+                            output.Add(new RowEvent(weightToRemove * bumpWeightModifier, 0, page.Keys[i].RowData));
+                            bumpCount -= weightToRemove;
+                            if (bumpCount == 0)
+                            {
+                                break;
+                            }
+                        }
+                        if (bumpCount == 0)
+                        {
+                            break;
+                        }
+                        if (await enumerator.MoveNextAsync())
+                        {
+                            page = enumerator.Current;
+                            bumpStartIndex = 0;
+                        }
+                        else
+                        {
+                            break;
+                        }
                     }
                 }
             }

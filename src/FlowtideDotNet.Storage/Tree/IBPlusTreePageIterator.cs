@@ -20,8 +20,8 @@ namespace FlowtideDotNet.Storage.Tree
         /// <returns></returns>
         ValueTask SavePage();
 
-        IReadOnlyList<K> Keys { get; }
+        List<K> Keys { get; }
 
-        IReadOnlyList<V> Values { get; }
+        List<V> Values { get; }
     }
 }

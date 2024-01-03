@@ -66,9 +66,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             this.tree = tree;
         }
 
-        public IReadOnlyList<K> Keys => leaf.keys;
+        public List<K> Keys => leaf.keys;
 
-        public IReadOnlyList<V> Values => leaf.values;
+        public List<V> Values => leaf.values;
 
         public ValueTask SavePage()
         {
