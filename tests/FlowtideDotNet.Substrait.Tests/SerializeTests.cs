@@ -55,17 +55,21 @@ namespace FlowtideDotNet.Substrait.Tests
             ");
             var plan = sqlPlanBuilder.GetPlan();
 
-            var protoPlan = SubstraitSerializer.Serialize(plan);
+            var ex = Record.Exception(() =>
+            {
+                var protoPlan = SubstraitSerializer.Serialize(plan);
 
-            var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
-                CustomProtobuf.IterationReferenceReadRelation.Descriptor,
-                CustomProtobuf.IterationRelation.Descriptor,
-                CustomProtobuf.NormalizationRelation.Descriptor,
-                CustomProtobuf.ReferenceRelation.Descriptor);
-            var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
-                .WithIndentation();
-            var formatter = new Google.Protobuf.JsonFormatter(settings);
-            var json = formatter.Format(protoPlan);
+                var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
+                    CustomProtobuf.IterationReferenceReadRelation.Descriptor,
+                    CustomProtobuf.IterationRelation.Descriptor,
+                    CustomProtobuf.NormalizationRelation.Descriptor,
+                    CustomProtobuf.ReferenceRelation.Descriptor);
+                var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
+                    .WithIndentation();
+                var formatter = new Google.Protobuf.JsonFormatter(settings);
+                var json = formatter.Format(protoPlan);
+            });
+            Assert.Null(ex);
         }
     }
 }
