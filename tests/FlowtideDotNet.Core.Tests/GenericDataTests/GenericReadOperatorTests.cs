@@ -24,29 +24,47 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
 {
     internal class GenericDataTestStream : FlowtideTestStream
     {
-        public GenericDataTestStream(string testName) : base(testName)
+        private readonly TestDataSource testDataSource;
+
+        public GenericDataTestStream(TestDataSource testDataSource, string testName) : base(testName)
         {
+            this.testDataSource = testDataSource;
         }
 
         protected override void AddReadResolvers(ReadWriteFactory factory)
         {
-            factory.AddGenericDataSource("*", new TestDataSource());
+            factory.AddGenericDataSource("*", testDataSource);
         }
     }
 
     internal class TestDataSource : GenericDataSource<User>
     {
+        private readonly List<FlowtideGenericObject<User>> _changes = new List<FlowtideGenericObject<User>>();
+        private int _index = 0;
+        public void AddChange(FlowtideGenericObject<User> change)
+        {
+            _changes.Add(change);
+        }
         public override TimeSpan? DeltaLoadInterval => TimeSpan.FromSeconds(1);
 
         public override async IAsyncEnumerable<FlowtideGenericObject<User>> DeltaLoadAsync(long lastWatermark)
         {
-            yield return new FlowtideGenericObject<User>("2", new User { UserKey = 2, FirstName = "Test 2" }, 1, false);
-            yield break;
+            for (; _index < _changes.Count; _index++)
+            {
+                if (_changes[_index].Watermark > lastWatermark)
+                {
+                    yield return _changes[_index];
+                }
+            }
         }
 
         public override async IAsyncEnumerable<FlowtideGenericObject<User>> FullLoadAsync()
         {
-            yield return new FlowtideGenericObject<User>("1", new User { UserKey = 1, FirstName = "Test" }, 1, false);
+            _index = 0;
+            for (; _index < _changes.Count; _index++)
+            {
+                yield return _changes[_index];
+            }
         }
     }
 
@@ -55,8 +73,13 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
         [Fact]
         public async Task TestGenericDataSource()
         {
-            var stream = new GenericDataTestStream("TestGenericDataSource");
+            var source = new TestDataSource();
+            source.AddChange(new FlowtideGenericObject<User>("1", new User { UserKey = 1, FirstName = "Test" }, 1, false));
+
+            var stream = new GenericDataTestStream(source, "TestGenericDataSource");
             stream.Generate();
+
+            
             await stream.StartStream(@"
                 INSERT INTO output
                 SELECT 
@@ -65,7 +88,21 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
                 FROM users
             ");
             await stream.WaitForUpdate();
-            var rows = stream.GetActualRowsAsVectors();
+
+            stream.AssertCurrentDataEqual(new List<User>() { new User { UserKey = 1, FirstName = "Test" } }.Select(x => new {x.UserKey, x.FirstName}));
+
+            // Update user 1
+            source.AddChange(new FlowtideGenericObject<User>("1", new User { UserKey = 1, FirstName = "Test2" }, 2, false));
+            source.AddChange(new FlowtideGenericObject<User>("2", new User { UserKey = 2, FirstName = "Test3" }, 3, false));
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual(new List<User>() { new User { UserKey = 1, FirstName = "Test2" }, new User { UserKey = 2, FirstName = "Test3" } }.Select(x => new { x.UserKey, x.FirstName }));
+
+            // Delete
+            source.AddChange(new FlowtideGenericObject<User>("1", null, 4, true));
+            await stream.WaitForUpdate();
+            stream.AssertCurrentDataEqual(new List<User>() { new User { UserKey = 2, FirstName = "Test3" } }.Select(x => new { x.UserKey, x.FirstName }));
+
         }
     }
 }

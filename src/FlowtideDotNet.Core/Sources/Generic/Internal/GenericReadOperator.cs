@@ -20,13 +20,11 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
     internal class GenericReadOperator<T> : BatchableReadBaseOperator
         where T : class
     {
-        private readonly ReadRelation readRelation;
         private readonly GenericDataSource<T> genericDataSource;
         private readonly ObjectToRowEvent objectToRowEvent;
 
         public GenericReadOperator(ReadRelation readRelation, GenericDataSource<T> genericDataSource, DataflowBlockOptions options) : base(readRelation, options)
         {
-            this.readRelation = readRelation;
             this.genericDataSource = genericDataSource;
             objectToRowEvent = new ObjectToRowEvent(readRelation);
         }
