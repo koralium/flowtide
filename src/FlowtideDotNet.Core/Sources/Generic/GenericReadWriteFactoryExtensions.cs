@@ -12,13 +12,14 @@
 
 using FlowtideDotNet.Core.Sources.Generic;
 using FlowtideDotNet.Core.Sources.Generic.Internal;
+using FlowtideDotNet.Substrait.Relations;
 using System.Text.RegularExpressions;
 
 namespace FlowtideDotNet.Core.Engine
 {
     public static class GenericReadWriteFactoryExtensions
     {
-        public static ReadWriteFactory AddGenericDataSource<T>(this ReadWriteFactory readWriteFactory, string regexPattern, GenericDataSourceAsync<T> dataSource)
+        public static ReadWriteFactory AddGenericDataSource<T>(this ReadWriteFactory readWriteFactory, string regexPattern, Func<ReadRelation, GenericDataSourceAsync<T>> dataSource)
             where T: class
         {
             if (regexPattern == "*")
@@ -34,7 +35,7 @@ namespace FlowtideDotNet.Core.Engine
                     return null;
                 }
 
-                return new ReadOperatorInfo(new GenericReadOperator<T>(readRelation, dataSource, opt));
+                return new ReadOperatorInfo(new GenericReadOperator<T>(readRelation, dataSource(readRelation), opt));
             });
 
             return readWriteFactory;

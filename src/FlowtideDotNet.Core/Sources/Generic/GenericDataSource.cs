@@ -42,6 +42,7 @@ namespace FlowtideDotNet.Core.Sources.Generic
         /// </summary>
         public virtual TimeSpan? FullLoadInterval => default;
     }
+
     public abstract class GenericDataSource<T> : GenericDataSourceAsync<T> where T : class
     {
         public override IAsyncEnumerable<FlowtideGenericObject<T>> FullLoadAsync()

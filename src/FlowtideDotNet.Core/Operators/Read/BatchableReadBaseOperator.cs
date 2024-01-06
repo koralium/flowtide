@@ -72,6 +72,16 @@ namespace FlowtideDotNet.Core.Operators.Read
                     return RunTask(FullLoadTrigger);
                 case "delta_load":
                     return RunTask(DeltaLoadTrigger);
+                default:
+                    if (triggerName.Equals($"delta_load_{_watermarkName}"))
+                    {
+                        return RunTask(DeltaLoadTrigger);
+                    }
+                    else if (triggerName.Equals($"full_load_{_watermarkName}"))
+                    {
+                        return RunTask(FullLoadTrigger);
+                    }
+                    break;
             }
             return Task.CompletedTask;
         }
@@ -367,6 +377,8 @@ namespace FlowtideDotNet.Core.Operators.Read
             await RegisterTrigger("full_load", GetFullLoadSchedule());
             // Register delta load trigger if the user wants to call it or schedule it
             await RegisterTrigger("delta_load", GetDeltaLoadTimeSpan());
+            await RegisterTrigger($"delta_load_{_watermarkName}");
+            await RegisterTrigger($"full_load_{_watermarkName}");
         }
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
