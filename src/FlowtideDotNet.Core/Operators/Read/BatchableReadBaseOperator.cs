@@ -125,21 +125,6 @@ namespace FlowtideDotNet.Core.Operators.Read
             await _deletionsTree.Clear();
         }
 
-
-
-       //protected abstract IReadOnlyList<int> GetKeyIndices();
-
-        //private string GetKey(RowEvent rowEvent)
-        //{
-        //    var sb = new StringBuilder();
-        //    foreach (var i in GetKeyIndices())
-        //    {
-        //        sb.Append(rowEvent.GetColumn(i).ToJson);
-        //        sb.Append('|');
-        //    }
-        //    return sb.ToString();
-        //}
-
         private async IAsyncEnumerable<KeyValuePair<string, RowEvent>> IteratePerRow(IBPlusTreeIterator<string, RowEvent> iterator)
         {
             await foreach (var page in iterator)

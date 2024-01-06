@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             }
             var document = JsonSerializer.SerializeToDocument(obj);
             var root = document.RootElement;
-            return RowEvent.Create(isDelete ? -1 : 1, 0, b =>
+            return RowEvent.Create(1, 0, b =>
             {
                 for (int i = 0; i < _names.Count; i++)
                 {
