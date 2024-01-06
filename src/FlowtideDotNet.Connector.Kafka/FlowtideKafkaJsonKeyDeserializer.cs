@@ -23,6 +23,11 @@ namespace FlowtideDotNet.Connector.Kafka
 
             var jsonDocument = JsonSerializer.Deserialize<JsonDocument>(bytes);
 
+            if (jsonDocument == null)
+            {
+                return FlxValue.FromBytes(FlexBuffer.Null());
+            }
+
             return JsonSerializerUtils.JsonElementToValue(jsonDocument.RootElement);
         }
     }
