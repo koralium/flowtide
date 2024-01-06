@@ -42,7 +42,15 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
             {
                 KeySerializer = new FlowtideKafkaStringKeySerializer(),
                 ProducerConfig = kafkaFixture.GetProducerConfig(),
-                ValueSerializer = new FlowtideKafkaUpsertJsonSerializer()
+                ValueSerializer = new FlowtideKafkaUpsertJsonSerializer(),
+                EventProcessor = (events) =>
+                {
+                    return Task.CompletedTask;
+                },
+                OnInitialDataSent = (producer, writeRel, topicName) =>
+                {
+                    return Task.CompletedTask;
+                }
             });
         }
     }

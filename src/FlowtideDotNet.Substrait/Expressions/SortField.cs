@@ -10,10 +10,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public abstract class ReferenceSegment
+    public enum SortDirection
     {
-        public ReferenceSegment? Child { get; set; }
+        SortDirectionUnspecified = 0,
+        SortDirectionAscNullsFirst = 1,
+        SortDirectionAscNullsLast = 2,
+        SortDirectionDescNullsFirst = 3,
+        SortDirectionDescNullsLast = 4,
+        SortDirectionClustered = 5
+    }
+
+    public class SortField
+    {
+        public required Expression Expression { get; set; }
+
+        public SortDirection SortDirection { get; set; }
     }
 }

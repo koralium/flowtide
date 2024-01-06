@@ -340,8 +340,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("Map must have an even number of arguments, one for key and one for value.");
                 }
-                MapNestedExpression mapNestedExpression = new MapNestedExpression();
-                mapNestedExpression.KeyValues = new List<KeyValuePair<Expressions.Expression, Expressions.Expression>>();
+                MapNestedExpression mapNestedExpression = new MapNestedExpression
+                {
+                    KeyValues = new List<KeyValuePair<Expressions.Expression, Expressions.Expression>>()
+                };
                 for (int i = 0; i < f.Args.Count; i += 2)
                 {
                     var keyArg = f.Args[i];
@@ -373,8 +375,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("list", (f, visitor, emitData) =>
             {
-                ListNestedExpression mapNestedExpression = new ListNestedExpression();
-                mapNestedExpression.Values = new List<Expressions.Expression>();
+                if (f.Args == null)
+                {
+                    throw new InvalidOperationException("List must have an argument list.");
+                }
+                ListNestedExpression mapNestedExpression = new ListNestedExpression
+                {
+                    Values = new List<Expressions.Expression>()
+                };
                 for (int i = 0; i < f.Args.Count; i += 1)
                 {
                     var arg = f.Args[i];

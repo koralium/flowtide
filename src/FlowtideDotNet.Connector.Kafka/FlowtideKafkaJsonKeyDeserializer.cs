@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Flexbuffer;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.Kafka
@@ -22,7 +23,12 @@ namespace FlowtideDotNet.Connector.Kafka
 
             var jsonDocument = JsonSerializer.Deserialize<JsonDocument>(bytes);
 
-            return FlowtideKafkaUpsertJsonDeserializer.JsonElementToValue(jsonDocument.RootElement);
+            if (jsonDocument == null)
+            {
+                return FlxValue.FromBytes(FlexBuffer.Null());
+            }
+
+            return JsonSerializerUtils.JsonElementToValue(jsonDocument.RootElement);
         }
     }
 }
