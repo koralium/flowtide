@@ -14,6 +14,7 @@ using Confluent.Kafka;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.Kafka.Internal
@@ -22,7 +23,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
     {
         private readonly WriteRelation _writeRelation;
         private readonly FlowtideKafkaSinkOptions flowtideKafkaSinkOptions;
-        private IProducer<byte[], byte[]> _producer;
+        private IProducer<byte[], byte[]?>? _producer;
         private readonly IReadOnlyList<int> _primaryKeys;
         private readonly int _primaryKeyIndex;
         private readonly string topicName;
@@ -54,16 +55,26 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
         protected override async Task<MetadataResult> SetupAndLoadMetadataAsync()
         {
             await flowtideKafkaSinkOptions.ValueSerializer.Initialize(_writeRelation);
-            _producer = new ProducerBuilder<byte[], byte[]>(flowtideKafkaSinkOptions.ProducerConfig).Build();
+            _producer = new ProducerBuilder<byte[], byte[]?>(flowtideKafkaSinkOptions.ProducerConfig).Build();
             return new MetadataResult(_primaryKeys);
+        }
+
+        protected override async Task OnInitialDataSent()
+        {
+            Debug.Assert(_producer != null);
+            if (flowtideKafkaSinkOptions.OnInitialDataSent != null)
+            {
+                await flowtideKafkaSinkOptions.OnInitialDataSent(_producer, _writeRelation, topicName);
+            }
         }
 
         protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
         {
+            Debug.Assert(_producer != null);
             var errorsReceived = 0;
             Error? lastSeentError = default;
 
-            void DeliveryHandler(DeliveryReport<byte[], byte[]> report)
+            void DeliveryHandler(DeliveryReport<byte[], byte[]?> report)
             {
                 if (report.Error.IsError)
                 {
@@ -72,6 +83,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 }
             }
 
+            List<KeyValuePair<byte[], byte[]?>> output = new List<KeyValuePair<byte[], byte[]?>>();
             await foreach(var row in rows)
             {
                 var key = flowtideKafkaSinkOptions.KeySerializer.Serialize(row.Row.GetColumn(_primaryKeyIndex));
@@ -82,14 +94,44 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                     throw new InvalidOperationException($"Error when inserting to kafka with error: {lastSeentError!.Reason}");
                 }
 
-                _producer.Produce(topicName, new Message<byte[], byte[]>()
-                {
-                    Key = key,
-                    Value = val
-                }, DeliveryHandler);
-            }
-            int queue = 0;
+                output.Add(new KeyValuePair<byte[], byte[]?>(key, val));
 
+                if (output.Count > 100)
+                {
+                    if (flowtideKafkaSinkOptions.EventProcessor != null)
+                    {
+                        await flowtideKafkaSinkOptions.EventProcessor(output);
+                    }
+                    foreach (var kvp in output)
+                    {
+                        _producer.Produce(topicName, new Message<byte[], byte[]?>()
+                        {
+                            Key = kvp.Key,
+                            Value = kvp.Value
+                        }, DeliveryHandler);
+                    }
+                    output.Clear();
+                }
+            }
+
+            if (output.Count > 0)
+            {
+                if (flowtideKafkaSinkOptions.EventProcessor != null)
+                {
+                    await flowtideKafkaSinkOptions.EventProcessor(output);
+                }
+                foreach (var kvp in output)
+                {
+                    _producer.Produce(topicName, new Message<byte[], byte[]?>()
+                    {
+                        Key = kvp.Key,
+                        Value = kvp.Value
+                    }, DeliveryHandler);
+                }
+                output.Clear();
+            }
+
+            int queue = 0;
             do
             {
                 if (Volatile.Read(ref errorsReceived) > 0)

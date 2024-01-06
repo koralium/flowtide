@@ -367,16 +367,14 @@ namespace FlowtideDotNet.Substrait.Sql
 
         protected override ExpressionData VisitCaseExpression(SqlParser.Ast.Expression.Case caseExpression, EmitData state)
         {
-            var ifThen = new IfThenExpression()
-            {
-                Ifs = new List<IfClause>()
-            };
+            var ifs = new List<IfClause>();
+            Expressions.Expression? elseExpr = null;
 
             for (int i = 0; i < caseExpression.Conditions.Count; i++)
             {
                 var condition = Visit(caseExpression.Conditions[i], state);
                 var result = Visit(caseExpression.Results[i], state);
-                ifThen.Ifs.Add(new IfClause()
+                ifs.Add(new IfClause()
                 {
                     If = condition.Expr,
                     Then = result.Expr
@@ -385,8 +383,14 @@ namespace FlowtideDotNet.Substrait.Sql
             if (caseExpression.ElseResult != null)
             {
                 var elseResult = Visit(caseExpression.ElseResult, state);
-                ifThen.Else = elseResult.Expr;
+                elseExpr = elseResult.Expr;
             }
+
+            var ifThen = new IfThenExpression()
+            {
+                Ifs = ifs,
+                Else = elseExpr
+            };
             return new ExpressionData(ifThen, "$case");
         }
 

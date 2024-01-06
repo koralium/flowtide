@@ -17,12 +17,12 @@ namespace FlowtideDotNet.Substrait.Expressions.IfThen
         /// <summary>
         /// Contains all the if clauses, evaulated top to bottom.
         /// </summary>
-        public List<IfClause> Ifs { get; set; }
+        public required List<IfClause> Ifs { get; set; }
 
         /// <summary>
         /// The else clause if no if clauses match
         /// </summary>
-        public Expression Else { get; set; }
+        public Expression? Else { get; set; }
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {

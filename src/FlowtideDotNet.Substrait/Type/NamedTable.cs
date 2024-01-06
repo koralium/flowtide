@@ -14,7 +14,7 @@ namespace FlowtideDotNet.Substrait.Type
 {
     public class NamedTable
     {
-        public List<string> Names { get; set; }
+        public required List<string> Names { get; set; }
 
         public string DotSeperated
         {

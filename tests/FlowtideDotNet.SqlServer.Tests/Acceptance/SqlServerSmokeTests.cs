@@ -217,9 +217,9 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             var vertexHandler = new VertexHandler("mergejoinstream", "op", (time) =>
             {
 
-            }, async (v1, v2, time) =>
+            }, (v1, v2, time) =>
             {
-
+                return Task.CompletedTask;
             }, nodeMetrics, stateClient, new NullLoggerFactory());
             var sink = new SqlServerSink(() => sqlServerFixture.ConnectionString, writeRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
 

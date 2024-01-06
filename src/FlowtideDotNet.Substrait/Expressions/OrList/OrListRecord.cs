@@ -14,6 +14,6 @@ namespace FlowtideDotNet.Substrait.Expressions
 {
     public class OrListRecord
     {
-        public List<Expression> Fields { get; set; }
+        public required List<Expression> Fields { get; set; }
     }
 }
