@@ -61,7 +61,7 @@ public class ExampleDataSource : GenericDataSourceAsync<User>
         }
     }
 
-    protected override IEnumerable<FlowtideGenericObject<User>> DeltaLoadAsync()
+    protected override IEnumerable<FlowtideGenericObject<User>> FullLoadAsync()
     {
         var data = _userRepository.GetAllDataAsync(lastWatermark);
         
