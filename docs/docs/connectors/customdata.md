@@ -98,3 +98,13 @@ await stream.CallTrigger("delta_load", default);
 ```
 
 Calling the triggers programatically can be useful if having an interval would cause too much latency for the data.
+
+### SQL Table Provider
+
+There is a table provider as well for the generic data source, that can be used to easily import table metadata from a class.
+
+Example:
+
+```csharp
+sqlPlanBuilder.AddGenericDataTable<User>("users");
+```
