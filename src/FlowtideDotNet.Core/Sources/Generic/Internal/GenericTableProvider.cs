@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 
         public GenericTableProvider(string name)
         {
-            _tableMetadata = new TableMetadata(name, typeof(T).GetProperties().ToList().Select(x =>
+            _tableMetadata = new TableMetadata(name, typeof(T).GetProperties().Select(x =>
             {
                 return x.Name;
             }).ToList());
