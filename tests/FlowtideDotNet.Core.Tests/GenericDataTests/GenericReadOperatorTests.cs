@@ -49,8 +49,6 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
         }
         public override TimeSpan? DeltaLoadInterval => deltaTime;
 
-        public override TimeSpan? FullLoadInterval => TimeSpan.FromHours(1);
-
         protected override IEnumerable<FlowtideGenericObject<User>> DeltaLoad(long lastWatermark)
         {
             for (; _index < _changes.Count; _index++)
