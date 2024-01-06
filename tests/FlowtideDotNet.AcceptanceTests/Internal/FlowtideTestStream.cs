@@ -288,5 +288,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 _fileCachePersistence.ForceDispose();
             }
         }
+
+        public async Task Trigger(string triggerName)
+        {
+            await _stream!.CallTrigger(triggerName, default);
+        }
     }
 }
