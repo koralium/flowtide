@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Sources.Generic
 {
-    public abstract class GenericDataSource<T> where T : class
+    public abstract class GenericDataSourceAsync<T> where T : class
     {
         /// <summary>
         /// Fetches all objects from the data source
@@ -41,5 +41,21 @@ namespace FlowtideDotNet.Core.Sources.Generic
         /// Interval between full loads, set to null to disable, defaults to null
         /// </summary>
         public virtual TimeSpan? FullLoadInterval => default;
+    }
+    public abstract class GenericDataSource<T> : GenericDataSourceAsync<T> where T : class
+    {
+        public override IAsyncEnumerable<FlowtideGenericObject<T>> FullLoadAsync()
+        {
+            return FullLoad().ToAsyncEnumerable();
+        }
+
+        public override IAsyncEnumerable<FlowtideGenericObject<T>> DeltaLoadAsync(long lastWatermark)
+        {
+            return DeltaLoad(lastWatermark).ToAsyncEnumerable();
+        }
+
+        protected abstract IEnumerable<FlowtideGenericObject<T>> FullLoad();
+
+        protected abstract IEnumerable<FlowtideGenericObject<T>> DeltaLoad(long lastWatermark);
     }
 }

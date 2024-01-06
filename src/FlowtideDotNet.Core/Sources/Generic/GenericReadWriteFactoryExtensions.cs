@@ -18,7 +18,7 @@ namespace FlowtideDotNet.Core.Engine
 {
     public static class GenericReadWriteFactoryExtensions
     {
-        public static ReadWriteFactory AddGenericDataSource<T>(this ReadWriteFactory readWriteFactory, string regexPattern, GenericDataSource<T> dataSource)
+        public static ReadWriteFactory AddGenericDataSource<T>(this ReadWriteFactory readWriteFactory, string regexPattern, GenericDataSourceAsync<T> dataSource)
             where T: class
         {
             if (regexPattern == "*")

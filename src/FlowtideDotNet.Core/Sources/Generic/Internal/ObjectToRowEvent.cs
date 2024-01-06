@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 {
     internal class ObjectToRowEvent
     {
-        private List<string> _names;
+        private readonly List<string> _names;
         private RowEvent _deleteEvent;
 
         public ObjectToRowEvent(ReadRelation readRelation)
@@ -92,7 +92,12 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             }
             if (jsonElement.ValueKind == JsonValueKind.String)
             {
-                return FlxValue.FromBytes(FlexBuffer.SingleValue(jsonElement.GetString()));
+                var str = jsonElement.GetString();
+                if (str == null)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.Null());
+                }
+                return FlxValue.FromBytes(FlexBuffer.SingleValue(str));
             }
             if (jsonElement.ValueKind == JsonValueKind.Array)
             {

@@ -14,11 +14,6 @@ using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Sources.Generic;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.GenericDataTests
 {
@@ -45,9 +40,9 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
         {
             _changes.Add(change);
         }
-        public override TimeSpan? DeltaLoadInterval => TimeSpan.FromSeconds(1);
+        public override TimeSpan? DeltaLoadInterval => TimeSpan.FromMilliseconds(1);
 
-        public override async IAsyncEnumerable<FlowtideGenericObject<User>> DeltaLoadAsync(long lastWatermark)
+        protected override IEnumerable<FlowtideGenericObject<User>> DeltaLoad(long lastWatermark)
         {
             for (; _index < _changes.Count; _index++)
             {
@@ -58,7 +53,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             }
         }
 
-        public override async IAsyncEnumerable<FlowtideGenericObject<User>> FullLoadAsync()
+        protected override IEnumerable<FlowtideGenericObject<User>> FullLoad()
         {
             _index = 0;
             for (; _index < _changes.Count; _index++)

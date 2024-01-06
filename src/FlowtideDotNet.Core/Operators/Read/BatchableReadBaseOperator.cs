@@ -50,10 +50,9 @@ namespace FlowtideDotNet.Core.Operators.Read
         /// Tree used to store the deletions for the data in full load
         /// </summary>
         private IBPlusTree<string, int>? _deletionsTree;
-        //private List<int> keyIndices;
         private BatchableReadOperatorState? _state;
-        private string _watermarkName;
-        public BatchableReadBaseOperator(ReadRelation readRelation, DataflowBlockOptions options) : base(options)
+        private readonly string _watermarkName;
+        protected BatchableReadBaseOperator(ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
             _watermarkName = readRelation.NamedTable.DotSeperated;
         }
@@ -125,7 +124,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             await _deletionsTree.Clear();
         }
 
-        private async IAsyncEnumerable<KeyValuePair<string, RowEvent>> IteratePerRow(IBPlusTreeIterator<string, RowEvent> iterator)
+        private static async IAsyncEnumerable<KeyValuePair<string, RowEvent>> IteratePerRow(IBPlusTreeIterator<string, RowEvent> iterator)
         {
             await foreach (var page in iterator)
             {
@@ -218,7 +217,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                 }
                 var key = e.Key;
                 await _fullLoadTempTree.Upsert(key, e.RowEvent);
-                var (op, oldData) = await _persistentTree.RMW(key, e.RowEvent, (input, current, exist) =>
+                await _persistentTree.RMW(key, e.RowEvent, (input, current, exist) =>
                 {
                     if (exist)
                     {
