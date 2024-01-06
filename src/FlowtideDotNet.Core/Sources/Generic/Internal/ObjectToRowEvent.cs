@@ -11,13 +11,9 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Sources.Generic.Internal
 {
@@ -51,7 +47,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                 {
                     if (root.TryGetProperty(_names[i], out var property))
                     {
-                        b.Add(JsonElementToValue(property));
+                        b.Add(JsonSerializerUtils.JsonElementToValue(property));
                     }
                     else
                     {
@@ -59,69 +55,6 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                     }
                 }
             });
-        }
-
-        private static FlxValue JsonElementToValue(JsonElement jsonElement)
-        {
-            if (jsonElement.ValueKind == JsonValueKind.Null)
-            {
-                return FlxValue.FromBytes(FlexBuffer.Null());
-            }
-            if (jsonElement.ValueKind == JsonValueKind.True)
-            {
-                return FlxValue.FromBytes(FlexBuffer.SingleValue(true));
-            }
-            if (jsonElement.ValueKind == JsonValueKind.False)
-            {
-                return FlxValue.FromBytes(FlexBuffer.SingleValue(false));
-            }
-            if (jsonElement.ValueKind == JsonValueKind.Number)
-            {
-                if (jsonElement.TryGetInt64(out var value))
-                {
-                    return FlxValue.FromBytes(FlexBuffer.SingleValue(value));
-                }
-                else if (jsonElement.TryGetDouble(out var doubleValue))
-                {
-                    return FlxValue.FromBytes(FlexBuffer.SingleValue(doubleValue));
-                }
-                else
-                {
-                    throw new NotImplementedException();
-                }
-            }
-            if (jsonElement.ValueKind == JsonValueKind.String)
-            {
-                var str = jsonElement.GetString();
-                if (str == null)
-                {
-                    return FlxValue.FromBytes(FlexBuffer.Null());
-                }
-                return FlxValue.FromBytes(FlexBuffer.SingleValue(str));
-            }
-            if (jsonElement.ValueKind == JsonValueKind.Array)
-            {
-                var bytes = FlexBufferBuilder.Vector(v =>
-                {
-                    foreach (var item in jsonElement.EnumerateArray())
-                    {
-                        v.Add(JsonElementToValue(item));
-                    }
-                });
-                return FlxValue.FromBytes(bytes);
-            }
-            if (jsonElement.ValueKind == JsonValueKind.Object)
-            {
-                var bytes = FlexBufferBuilder.Map(m =>
-                {
-                    foreach (var item in jsonElement.EnumerateObject())
-                    {
-                        m.Add(item.Name, JsonElementToValue(item.Value));
-                    }
-                });
-                return FlxValue.FromBytes(bytes);
-            }
-            throw new NotImplementedException();
         }
     }
 }
