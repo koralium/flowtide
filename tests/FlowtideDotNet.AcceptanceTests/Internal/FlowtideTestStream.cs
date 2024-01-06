@@ -64,6 +64,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             this.testName = testName;
         }
 
+        public virtual void RegisterTableProviders(Action<SqlPlanBuilder> action)
+        {
+            action(sqlPlanBuilder);
+        }
+
         public void Generate(int count = 1000)
         {
             generator.Generate(count);

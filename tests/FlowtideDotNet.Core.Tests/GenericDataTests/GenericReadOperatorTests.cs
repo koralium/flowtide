@@ -14,6 +14,7 @@ using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Sources.Generic;
+using FlowtideDotNet.Substrait.Sql;
 
 namespace FlowtideDotNet.Core.Tests.GenericDataTests
 {
@@ -79,8 +80,10 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             source.AddChange(new FlowtideGenericObject<User>("1", new User { UserKey = 1, FirstName = "Test" }, 1, false));
 
             var stream = new GenericDataTestStream(source, "TestGenericDataSource");
-            stream.Generate();
-
+            stream.RegisterTableProviders(builder =>
+            {
+                builder.AddGenericDataTable<User>("users");
+            });
             
             await stream.StartStream(@"
                 INSERT INTO output
@@ -114,7 +117,10 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             source.AddChange(new FlowtideGenericObject<User>("1", new User { UserKey = 1, FirstName = "Test" }, 1, false));
 
             var stream = new GenericDataTestStream(source, "TestDeltaTrigger");
-            stream.Generate();
+            stream.RegisterTableProviders(builder =>
+            {
+                builder.AddGenericDataTable<User>("users");
+            });
 
             await stream.StartStream(@"
                 INSERT INTO output
