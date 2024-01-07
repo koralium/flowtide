@@ -1,3 +1,4 @@
+import React from "react"
 import { StreamGraphNode } from "./streamgraph/streamgraph"
 
 export interface NodeTableProps {

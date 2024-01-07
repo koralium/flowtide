@@ -1,9 +1,10 @@
 import React from 'react';
 import 'reactflow/dist/style.css';
 import useSWR from 'swr';
-import { StreamGraph, StreamGraphEdge, StreamGraphNode } from './streamgraph/streamgraph';
-import { Card } from './card';
-import { NodeTable } from './nodetable';
+import { StreamGraph, StreamGraphEdge, StreamGraphNode } from '../components/streamgraph/streamgraph';
+import { Card } from '../components/card';
+import { NodeTable } from '../components/nodetable';
+import Header from '../components/header';
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -58,24 +59,20 @@ function App() {
 
     graph = <StreamGraph nodes={arr} edges={edges} />
   }
-  
-  
-  
-  
+
   return (
     <div className="App">
-      <div className="grid grid-cols-5 gap-4">
-        <div className="col-span-1"></div>
-        <div className="col-span-3">
+       <Header />
+        <div className="mx-auto max-w-7xl pt-6 sm:px-6 lg:px-8">
           <Card>
             {graph}
           </Card>
+        </div>
+        <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
           <Card>
             <NodeTable nodes={arr} />
           </Card>
         </div>
-        <div className="col-span-1"></div>
-      </div>
     </div>
   );
 }

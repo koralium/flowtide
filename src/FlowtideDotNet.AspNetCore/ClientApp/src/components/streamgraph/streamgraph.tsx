@@ -7,6 +7,7 @@ import dagre from '@dagrejs/dagre';
 
 import 'reactflow/dist/style.css';
 import { GraphNodeRender } from './noderender';
+import React from 'react';
 
 export interface StreamGraphNode {
     id: string,
@@ -35,35 +36,12 @@ export const StreamGraph: React.FunctionComponent<StreamGraphProps> = (props: St
     const [edges, setEdges] = useState<Edge<any>[]>([])
     
     useEffect(() => {
-        // const elk = new ELK();
-        // const elkOptions = {
-        //     'elk.algorithm': 'layered',
-        //     'elk.layered.spacing.nodeNodeBetweenLayers': '100',
-        //     'elk.spacing.nodeNode': '80',
-        //   };
-        //   elk.layout({
-        //     id: 'root',
-        //     children: props.nodes.map<ElkNode>(x => {
-        //         return {
-        //             id: x.id,
-        //             height: 70,
-        //             width: 300
-        //         }
-        //     }),
-        //     edges: props.edges.map<ElkExtendedEdge>(x => {
-        //         return {
-        //             id: `${x.source}-${x.target}`,
-        //             sources: [x.source],
-        //             targets: [x.target]
-        //         }
-        //     })
-        //   })
 
         const dagreGraph = new dagre.graphlib.Graph();
         dagreGraph.setDefaultEdgeLabel(() => ({}));
 
         const nodeWidth = 500;
-        const nodeHeight = 70;
+        const nodeHeight = 100;
         
         dagreGraph.setGraph({ rankdir: "LR" });
 
@@ -135,21 +113,6 @@ export const StreamGraph: React.FunctionComponent<StreamGraphProps> = (props: St
         setNodes(outputNodes)
         setEdges(outputEdges)
     }, [props.nodes, props.edges])
-
-    console.log(edges)
-    // const nodes2 = [
-    //     {
-    //       id: '1',
-    //       data: { label: 'Hello' },
-    //       position: { x: 0, y: 0 },
-    //       type: 'input',
-    //     },
-    //     {
-    //       id: '2',
-    //       data: { label: 'World' },
-    //       position: { x: 100, y: 100 },
-    //     },
-    //   ];
 
     const proOptions = { hideAttribution: false };
 
