@@ -60,9 +60,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             StartCleanupTask();
             _currentProcess = Process.GetCurrentProcess();
 
-            meter.CreateObservableGauge("lru_table_size", () => Volatile.Read(ref m_count));
-            meter.CreateObservableGauge("lru_table_max_size", () => this.maxSize);
-            meter.CreateObservableGauge("lru_table_cleanup_start", () => cleanupStart);
+            meter.CreateObservableGauge("flowtide_lru_table_size", () => Volatile.Read(ref m_count));
+            meter.CreateObservableGauge("flowtide_lru_table_max_size", () => this.maxSize);
+            meter.CreateObservableGauge("flowtide_lru_table_cleanup_start", () => cleanupStart);
         }
 
         public void Clear()
