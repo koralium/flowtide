@@ -62,8 +62,19 @@ builder.Services.AddFlowtideStream(b =>
     });
 });
 
+builder.Services.AddCors(o =>
+{
+    o.AddPolicy("AllowAll", builder =>
+    {
+        builder.AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
+
 var app = builder.Build();
 
+app.UseCors("AllowAll");
 // Configure the HTTP request pipeline.
 app.UseOpenTelemetryPrometheusScrapingEndpoint();
 app.UseFlowtideUI("/stream");
