@@ -50,9 +50,9 @@ namespace FlowtideDotNet.AspNetCore
             _pathCache = new Dictionary<string, PageCache>();
         }
 
-        private string TranslatePath(string path)
+        private static string TranslatePath(string path)
         {
-            int secondLastDotIndex = -1;
+            int secondLastDotIndex;
             if (path.EndsWith(".map"))
             {
                 secondLastDotIndex = path.LastIndexOf('.', path.LastIndexOf('.', path.LastIndexOf('.') - 1) - 1);
@@ -69,7 +69,7 @@ namespace FlowtideDotNet.AspNetCore
                 string startPart = path.Substring(0, secondLastDotIndex).Replace('-', '_');
 
                 // Concatenate the unchanged part of the string
-                string result = startPart + path.Substring(secondLastDotIndex);
+                string result = string.Concat(startPart, path.AsSpan(secondLastDotIndex));
 
                 return result;
             }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {ReactFlow, Node, Position, Edge, Background, Controls} from 'reactflow';
 import dagre from '@dagrejs/dagre';
 
@@ -7,7 +7,6 @@ import dagre from '@dagrejs/dagre';
 
 import 'reactflow/dist/style.css';
 import { GraphNodeRender } from './noderender';
-import React from 'react';
 
 export interface StreamGraphNode {
     id: string,
