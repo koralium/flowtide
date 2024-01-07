@@ -202,6 +202,33 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 return new Measurement<int>(1, tags);
             });
 
+            Metrics.CreateObservableGauge("link", () =>
+            {
+                var links = GetLinks();
+
+                List<Measurement<int>> measurements = new List<Measurement<int>>();
+
+                foreach (var link in links)
+                {
+                    TagList tags = new TagList
+                    {
+                        { "source", Name }
+                    };
+                    if (link is IStreamVertex streamVertex)
+                    {
+                        tags.Add("target", streamVertex.Name);
+                        tags.Add("id", streamVertex.Name + "-" + Name);
+                    }
+                    else if (link is MultipleInputTargetHolder target)
+                    {
+                        tags.Add("target", target.OperatorName);
+                        tags.Add("id", target.OperatorName + "-" + Name);
+                    }
+                    measurements.Add(new Measurement<int>(1, tags));
+                }
+                return measurements;
+            });
+
             return InitializeOrRestore(parsedState, vertexHandler.StateClient);
         }
 
