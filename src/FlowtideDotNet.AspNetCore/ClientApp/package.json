@@ -7,23 +7,31 @@
   "keywords": [
     "gatsby"
   ],
-    "scripts": {
-        "develop": "gatsby develop",
-        "start": "gatsby develop",
-        "build": "gatsby build --prefix-paths",
-        "serve": "gatsby serve",
-        "clean": "gatsby clean",
-        "typecheck": "tsc --noEmit"
-    },
+  "scripts": {
+    "develop": "gatsby develop",
+    "start": "gatsby develop",
+    "build": "gatsby build --prefix-paths",
+    "serve": "gatsby serve",
+    "clean": "gatsby clean",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
+    "@babel/traverse": "7.23.2",
     "@dagrejs/dagre": "^1.0.4",
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.1.1",
+    "ansi-regex": "6.0.1",
+    "axios": "1.6.4",
+    "decode-uri-component": "0.2.2",
     "gatsby": "^5.13.1",
+    "graphql": "16.8.1",
+    "json5": "2.2.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "reactflow": "^11.10.1",
-    "swr": "^2.2.4"
+    "semver": "7.5.2",
+    "swr": "^2.2.4",
+    "yaml": "2.2.2"
   },
   "devDependencies": {
     "@types/node": "^20.3.3",
