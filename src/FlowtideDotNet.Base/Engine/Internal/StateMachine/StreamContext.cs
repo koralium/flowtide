@@ -108,7 +108,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _streamVersionInformation = streamVersionInformation;
             this._dataflowStreamOptions = dataflowStreamOptions;
             _contextMeter = new Meter($"flowtide.{streamName}");
-            _contextMeter.CreateObservableGauge<float>("health", () =>
+            _contextMeter.CreateObservableGauge<float>("flowtide_health", () =>
             {
                 var currentStatus = GetStatus();
                 switch (currentStatus)

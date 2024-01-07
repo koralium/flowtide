@@ -64,17 +64,17 @@ export const StreamGraph: React.FunctionComponent<StreamGraphProps> = (props: St
             }
 
             if (node.counters) {
-                const eventcounter = node.counters.find(x => x.name === "events")
+                const eventcounter = node.counters.find(x => x.name === "flowtide_events")
                 if(eventcounter) {
                     data.rateLastMinute = eventcounter.total.rateLastMinute
                 }
             }
             if (node.gauges){
-                const busy = node.gauges.find(x => x.name === "busy")
+                const busy = node.gauges.find(x => x.name === "flowtide_busy")
                 if (busy) {
                     data.busy = busy.value;
                 }
-                const backpressure = node.gauges.find(x => x.name === "backpressure")
+                const backpressure = node.gauges.find(x => x.name === "flowtide_backpressure")
                 if (backpressure){
                     data.backpressure = backpressure.value;
                 }
