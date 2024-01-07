@@ -30,19 +30,24 @@ namespace FlowtideDotNet.Base.Metrics.Internal
 
         public string? Version => meter.Version;
 
+        private static string GetMeasurementName(string name)
+        {
+            return $"flowtide_{name}";
+        }
+
         public ICounter<T> CreateCounter<T>(string name, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideCounter<T>(meter.CreateCounter<T>(name, unit, description), tagList);
+            return new FlowtideCounter<T>(meter.CreateCounter<T>(GetMeasurementName(name), unit, description), tagList);
         }
 
         public IHistogram<T> CreateHistogram<T>(string name, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideHistogram<T>(meter.CreateHistogram<T>(name, unit, description), tagList);
+            return new FlowtideHistogram<T>(meter.CreateHistogram<T>(GetMeasurementName(name), unit, description), tagList);
         }
 
         public IObservableCounter<T> CreateObservableCounter<T>(string name, Func<T> observeValue, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideObservableCounter<T>(meter.CreateObservableCounter<T>(name, () =>
+            return new FlowtideObservableCounter<T>(meter.CreateObservableCounter<T>(GetMeasurementName(name), () =>
             {
                 return new Measurement<T>(observeValue(), tagList);
             }, unit, description));
@@ -50,7 +55,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
 
         public IObservableCounter<T> CreateObservableCounter<T>(string name, Func<Measurement<T>> observeValue, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideObservableCounter<T>(meter.CreateObservableCounter<T>(name, () =>
+            return new FlowtideObservableCounter<T>(meter.CreateObservableCounter<T>(GetMeasurementName(name), () =>
             {
                 var m = observeValue();
                 TagList outputTags = new TagList();
@@ -68,7 +73,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
 
         public IObservableCounter<T> CreateObservableCounter<T>(string name, Func<IEnumerable<Measurement<T>>> observeValues, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideObservableCounter<T>(meter.CreateObservableCounter<T>(name, () =>
+            return new FlowtideObservableCounter<T>(meter.CreateObservableCounter<T>(GetMeasurementName(name), () =>
             {
                 List<Measurement<T>> output = new List<Measurement<T>>();
                 var values = observeValues();
@@ -91,7 +96,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
 
         public IObservableGauge<T> CreateObservableGauge<T>(string name, Func<T> observeValue, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideObservableGauge<T>(meter.CreateObservableGauge<T>(name, () =>
+            return new FlowtideObservableGauge<T>(meter.CreateObservableGauge<T>(GetMeasurementName(name), () =>
             {
                 return new Measurement<T>(observeValue(), tagList);
             }, unit, description));
@@ -99,7 +104,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
 
         public IObservableGauge<T> CreateObservableGauge<T>(string name, Func<Measurement<T>> observeValue, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideObservableGauge<T>(meter.CreateObservableGauge<T>(name, () =>
+            return new FlowtideObservableGauge<T>(meter.CreateObservableGauge<T>(GetMeasurementName(name), () =>
             {
                 var m = observeValue();
                 TagList outputTags = new TagList();
@@ -117,7 +122,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
 
         public IObservableGauge<T> CreateObservableGauge<T>(string name, Func<IEnumerable<Measurement<T>>> observeValues, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideObservableGauge<T>(meter.CreateObservableGauge<T>(name, () =>
+            return new FlowtideObservableGauge<T>(meter.CreateObservableGauge<T>(GetMeasurementName(name), () =>
             {
                 List<Measurement<T>> output = new List<Measurement<T>>();
                 var values = observeValues();
@@ -140,7 +145,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
 
         public IObservableUpDownCounter<T> CreateObservableUpDownCounter<T>(string name, Func<T> observeValue, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideObservableUpDownCounter<T>(meter.CreateObservableUpDownCounter<T>(name, () =>
+            return new FlowtideObservableUpDownCounter<T>(meter.CreateObservableUpDownCounter<T>(GetMeasurementName(name), () =>
             {
                 return new Measurement<T>(observeValue(), tagList);
             }, unit, description));
@@ -148,7 +153,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
 
         public IObservableUpDownCounter<T> CreateObservableUpDownCounter<T>(string name, Func<Measurement<T>> observeValue, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideObservableUpDownCounter<T>(meter.CreateObservableUpDownCounter<T>(name, () =>
+            return new FlowtideObservableUpDownCounter<T>(meter.CreateObservableUpDownCounter<T>(GetMeasurementName(name), () =>
             {
                 var m = observeValue();
                 TagList outputTags = new TagList();
@@ -166,7 +171,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
 
         public IObservableUpDownCounter<T> CreateObservableUpDownCounter<T>(string name, Func<IEnumerable<Measurement<T>>> observeValues, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideObservableUpDownCounter<T>(meter.CreateObservableUpDownCounter<T>(name, () =>
+            return new FlowtideObservableUpDownCounter<T>(meter.CreateObservableUpDownCounter<T>(GetMeasurementName(name), () =>
             {
                 List<Measurement<T>> output = new List<Measurement<T>>();
                 var values = observeValues();
@@ -189,7 +194,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
 
         public IUpDownCounter<T> CreateUpDownCounter<T>(string name, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideUpDownCounter<T>(meter.CreateUpDownCounter<T>(name, unit, description), tagList);
+            return new FlowtideUpDownCounter<T>(meter.CreateUpDownCounter<T>(GetMeasurementName(name), unit, description), tagList);
         }
 
         public void Dispose()

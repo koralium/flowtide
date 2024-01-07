@@ -9,7 +9,7 @@ export interface NodeTableProps {
 export const NodeTable = (props: NodeTableProps) => {
 
     const rows = props.nodes.map(x => {
-        const eventcounter = x.counters?.find(y => y.name === "events")
+        const eventcounter = x.counters?.find(y => y.name === "flowtide_events")
 
         let events = 0;
         if (eventcounter) {
@@ -18,11 +18,11 @@ export const NodeTable = (props: NodeTableProps) => {
 
         let busyValue = 0
         let backpressureValue = 0
-        const busy = x.gauges?.find(y => y.name === "busy")
+        const busy = x.gauges?.find(y => y.name === "flowtide_busy")
         if (busy) {
             busyValue = busy.value;
         }
-        const backpressure = x.gauges?.find(y => y.name === "backpressure")
+        const backpressure = x.gauges?.find(y => y.name === "flowtide_backpressure")
         if (backpressure){
             backpressureValue = backpressure.value;
         }
