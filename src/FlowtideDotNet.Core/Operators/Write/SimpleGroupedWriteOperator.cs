@@ -74,11 +74,12 @@ namespace FlowtideDotNet.Core.Operators.Write
 
         protected override async Task<SimpleWriteState> Checkpoint(long checkpointTime)
         {
+            Debug.Assert(_state != null);
             if (m_executionMode == ExecutionMode.OnCheckpoint)
             {
                 await SendData();
             }
-            return new SimpleWriteState();
+            return _state;
         }
 
         private async Task SendData()
