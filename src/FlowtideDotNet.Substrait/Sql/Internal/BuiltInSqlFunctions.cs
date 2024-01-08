@@ -509,6 +509,35 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 throw new InvalidOperationException("list_agg must have exactly one argument, and not be '*'");
             });
+
+            sqlFunctionRegister.RegisterAggregateFunction("string_agg", (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 2)
+                {
+                    throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
+                }
+                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
+                }
+                if ((f.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
+                f.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+                    var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData).Expr;
+                    return new AggregateFunction()
+                    {
+                        ExtensionUri = FunctionsString.Uri,
+                        ExtensionName = FunctionsString.StringAgg,
+                        Arguments = new List<Expressions.Expression>() { argExpr, argExpr2 }
+                    };
+                }
+                throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
+            });
         }
 
         private static ExpressionData VisitCoalesce(SqlParser.Ast.Expression.Function function, SqlExpressionVisitor visitor, EmitData state)

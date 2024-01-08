@@ -83,5 +83,25 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { Name = x.TrimmableNullableString?.TrimEnd() }));
         }
+
+        [Fact]
+        public async Task StringAgg()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT string_agg(firstName, ',') as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Name = string.Join(",", Users.Select(y => y.FirstName).OrderBy(x => x)) } });
+        }
+
+        [Fact]
+        public async Task StringAggWithUpdate()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT string_agg(firstName, ',') as Name FROM users");
+            await WaitForUpdate();
+            DeleteUser(Users[0]);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Name = string.Join(",", Users.Select(y => y.FirstName).OrderBy(x => x)) } });
+        }
     }
 }
