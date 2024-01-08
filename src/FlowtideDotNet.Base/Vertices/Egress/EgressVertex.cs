@@ -149,10 +149,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             });
             Metrics.CreateObservableGauge("metadata", () =>
             {
-                TagList tags = new TagList
-                {
-                    { "displayName", DisplayName }
-                };
+                TagList tags = new TagList();
                 tags.Add("links", "[]");
                 return new Measurement<int>(1, tags);
             });
