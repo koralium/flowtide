@@ -212,7 +212,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             var stateClient = stateManager.GetOrCreateClient("node");
 
             StreamMetrics streamMetrics = new StreamMetrics("stream");
-            var nodeMetrics = streamMetrics.GetOrCreateVertexMeter("node1");
+            var nodeMetrics = streamMetrics.GetOrCreateVertexMeter("node1", () => "node1");
 
             var vertexHandler = new VertexHandler("mergejoinstream", "op", (time) =>
             {

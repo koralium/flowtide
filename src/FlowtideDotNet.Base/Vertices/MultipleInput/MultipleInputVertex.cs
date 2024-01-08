@@ -467,10 +467,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             });
             Metrics.CreateObservableGauge("metadata", () =>
             {
-                TagList tags = new TagList
-                {
-                    { "displayName", DisplayName }
-                };
+                TagList tags = new TagList();
                 var links = GetLinks();
                 StringBuilder outputLinks = new StringBuilder();
                 outputLinks.Append('[');

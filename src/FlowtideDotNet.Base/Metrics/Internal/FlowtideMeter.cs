@@ -18,12 +18,14 @@ namespace FlowtideDotNet.Base.Metrics.Internal
     internal class FlowtideMeter : IMeter
     {
         private readonly Meter meter;
-        private readonly TagList tagList;
+        private readonly TagList predefinedTagList;
+        private readonly Func<string> displayName;
 
-        public FlowtideMeter(Meter meter, TagList tagList)
+        public FlowtideMeter(Meter meter, TagList tagList, Func<string> displayName)
         {
             this.meter = meter;
-            this.tagList = tagList;
+            this.predefinedTagList = tagList;
+            this.displayName = displayName;
         }
 
         public string Name => meter.Name;
@@ -35,21 +37,28 @@ namespace FlowtideDotNet.Base.Metrics.Internal
             return $"flowtide_{name}";
         }
 
+        private TagList GetTagList()
+        {
+            var l = predefinedTagList;
+            l.Add("title", displayName());
+            return l;
+        }
+
         public ICounter<T> CreateCounter<T>(string name, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideCounter<T>(meter.CreateCounter<T>(GetMeasurementName(name), unit, description), tagList);
+            return new FlowtideCounter<T>(meter.CreateCounter<T>(GetMeasurementName(name), unit, description), GetTagList());
         }
 
         public IHistogram<T> CreateHistogram<T>(string name, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideHistogram<T>(meter.CreateHistogram<T>(GetMeasurementName(name), unit, description), tagList);
+            return new FlowtideHistogram<T>(meter.CreateHistogram<T>(GetMeasurementName(name), unit, description), GetTagList());
         }
 
         public IObservableCounter<T> CreateObservableCounter<T>(string name, Func<T> observeValue, string? unit = null, string? description = null) where T : struct
         {
             return new FlowtideObservableCounter<T>(meter.CreateObservableCounter<T>(GetMeasurementName(name), () =>
             {
-                return new Measurement<T>(observeValue(), tagList);
+                return new Measurement<T>(observeValue(), GetTagList());
             }, unit, description));
         }
 
@@ -63,7 +72,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
                 {
                     outputTags.Add(t);
                 }
-                foreach (var t in tagList)
+                foreach (var t in GetTagList())
                 {
                     outputTags.Add(t);
                 }
@@ -84,7 +93,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
                     {
                         outputTags.Add(t);
                     }
-                    foreach (var t in tagList)
+                    foreach (var t in GetTagList())
                     {
                         outputTags.Add(t);
                     }
@@ -98,7 +107,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
         {
             return new FlowtideObservableGauge<T>(meter.CreateObservableGauge<T>(GetMeasurementName(name), () =>
             {
-                return new Measurement<T>(observeValue(), tagList);
+                return new Measurement<T>(observeValue(), GetTagList());
             }, unit, description));
         }
 
@@ -112,7 +121,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
                 {
                     outputTags.Add(t);
                 }
-                foreach (var t in tagList)
+                foreach (var t in GetTagList())
                 {
                     outputTags.Add(t);
                 }
@@ -133,7 +142,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
                     {
                         outputTags.Add(t);
                     }
-                    foreach (var t in tagList)
+                    foreach (var t in GetTagList())
                     {
                         outputTags.Add(t);
                     }
@@ -147,7 +156,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
         {
             return new FlowtideObservableUpDownCounter<T>(meter.CreateObservableUpDownCounter<T>(GetMeasurementName(name), () =>
             {
-                return new Measurement<T>(observeValue(), tagList);
+                return new Measurement<T>(observeValue(), GetTagList());
             }, unit, description));
         }
 
@@ -161,7 +170,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
                 {
                     outputTags.Add(t);
                 }
-                foreach (var t in tagList)
+                foreach (var t in GetTagList())
                 {
                     outputTags.Add(t);
                 }
@@ -182,7 +191,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
                     {
                         outputTags.Add(t);
                     }
-                    foreach (var t in tagList)
+                    foreach (var t in GetTagList())
                     {
                         outputTags.Add(t);
                     }
@@ -194,7 +203,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
 
         public IUpDownCounter<T> CreateUpDownCounter<T>(string name, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideUpDownCounter<T>(meter.CreateUpDownCounter<T>(GetMeasurementName(name), unit, description), tagList);
+            return new FlowtideUpDownCounter<T>(meter.CreateUpDownCounter<T>(GetMeasurementName(name), unit, description), GetTagList());
         }
 
         public void Dispose()
