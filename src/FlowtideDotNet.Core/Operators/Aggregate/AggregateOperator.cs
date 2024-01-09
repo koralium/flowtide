@@ -201,12 +201,16 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                         {
                             _flexBufferNewValue.Add(kv.Key.GetColumn(i));
                         }
-                        Debug.Assert(val.MeasureStates != null, "Measure states should not be null");
-                        for (int i = 0; i < val.MeasureStates.Length; i++)
+                        if (aggregateRelation.Measures != null && aggregateRelation.Measures.Count > 0)
                         {
-                            var measureResult = await _measures[i].GetValue(kv.Key, val.MeasureStates[i]);
-                            _flexBufferNewValue.Add(measureResult);
+                            Debug.Assert(val.MeasureStates != null, "Measure states should not be null");
+                            for (int i = 0; i < val.MeasureStates.Length; i++)
+                            {
+                                var measureResult = await _measures[i].GetValue(kv.Key, val.MeasureStates[i]);
+                                _flexBufferNewValue.Add(measureResult);
+                            }
                         }
+                        
                         _flexBufferNewValue.EndVector(vectorStart, false, false);
                         var newObjectValue = _flexBufferNewValue.Finish();
                         if (val.PreviousValue != null)
