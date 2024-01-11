@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Core.Optimizer
             // Start with timestamp to join since its actual logic and not only optimization
             if (settings.GetTimestampToJoin)
             {
-                plan = TimestampToJoin.Optimize(plan);
+                plan = TimestampToJoin.Optimize(plan, settings);
             }
 
             for (int i = 0; i < plan.Relations.Count; i++)

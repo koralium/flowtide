@@ -525,7 +525,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitBufferRelation(BufferRelation bufferRelation, ITargetBlock<IStreamEvent> state)
         {
             var id = _operatorId++;
-            var op = new BufferOperator(new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            var op = new BufferOperator(bufferRelation, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
             if (state != null)
             {
                 op.LinkTo(state);

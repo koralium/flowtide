@@ -23,11 +23,13 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
     internal class GetTimestampVisitor : OptimizerBaseVisitor
     {
         private readonly Plan plan;
+        private readonly PlanOptimizerSettings planOptimizerSettings;
         private int? referenceIndex;
 
-        public GetTimestampVisitor(Plan plan)
+        public GetTimestampVisitor(Plan plan, PlanOptimizerSettings planOptimizerSettings)
         {
             this.plan = plan;
+            this.planOptimizerSettings = planOptimizerSettings;
         }
 
         private int GetReferenceIndex()
@@ -105,6 +107,16 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
                 Type = JoinType.Inner
             };
 
+            if (planOptimizerSettings.AddBufferBlockOnGetTimestamp)
+            {
+                // Add a buffer block to make sure that the timestamp is not sent out before the join is done
+                var bufferBlock = new BufferRelation()
+                {
+                    Input = join
+                };
+                return bufferBlock;
+            }
+
             return join;
         }
 
@@ -166,6 +178,15 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
 
             aggregateRelation.Input = crossJoin;
 
+            if (planOptimizerSettings.AddBufferBlockOnGetTimestamp)
+            {
+                // Add a buffer block to make sure that the timestamp is not sent out before the join is done
+                var bufferBlock = new BufferRelation()
+                {
+                    Input = aggregateRelation
+                };
+                return bufferBlock;
+            }
             return aggregateRelation;
         }
 
@@ -244,6 +265,16 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
             };
 
             projectRelation.Input = crossJoin;
+
+            if (planOptimizerSettings.AddBufferBlockOnGetTimestamp)
+            {
+                // Add a buffer block to make sure that the timestamp is not sent out before the join is done
+                var bufferBlock = new BufferRelation()
+                {
+                    Input = projectRelation
+                };
+                return bufferBlock;
+            }
 
             return projectRelation;
         }
