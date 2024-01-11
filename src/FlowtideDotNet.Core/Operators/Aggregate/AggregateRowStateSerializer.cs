@@ -31,8 +31,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 else
                 {
                     measureStates[i] = reader.ReadBytes(length);
-                }
-                
+                }   
             }
             var weight = reader.ReadInt64();
             var previousLength = reader.ReadInt32();
@@ -51,17 +50,25 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
         private static void Serialize(in BinaryWriter writer, in AggregateRowState value)
         {
-            writer.Write(value.MeasureStates.Length);
-            foreach (var measureState in value.MeasureStates)
+            if (value.MeasureStates == null)
             {
-                if (measureState == null)
-                {
-                    writer.Write(0);
-                    continue;
-                }
-                writer.Write(measureState.Length);
-                writer.Write(measureState);
+                writer.Write(0);
             }
+            else
+            {
+                writer.Write(value.MeasureStates.Length);
+                foreach (var measureState in value.MeasureStates)
+                {
+                    if (measureState == null)
+                    {
+                        writer.Write(0);
+                        continue;
+                    }
+                    writer.Write(measureState.Length);
+                    writer.Write(measureState);
+                }
+            }
+            
             writer.Write(value.Weight);
             if (value.PreviousValue == null)
             {
