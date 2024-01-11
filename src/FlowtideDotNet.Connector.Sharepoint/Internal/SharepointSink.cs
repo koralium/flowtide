@@ -18,14 +18,12 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
-using improveflowtide.Sharepoint;
-using improveflowtide.Sharepoint.Internal;
 using Microsoft.Graph.Models;
 using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks.Dataflow;
 
-namespace improveflowtide
+namespace FlowtideDotNet.Connector.Sharepoint.Internal
 {
     internal class SharepointSink : SimpleGroupedWriteOperator
     {

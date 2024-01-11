@@ -20,7 +20,7 @@ using Microsoft.Kiota.Abstractions;
 using System.Net.Http.Json;
 using System.Text;
 
-namespace improveflowtide.Sharepoint.Internal
+namespace FlowtideDotNet.Connector.Sharepoint.Internal
 {
     internal class SharepointGraphListClient
     {
