@@ -89,13 +89,13 @@ namespace improveflowtide
             }
 
             // Fetch all items from sharepoint to get their ids
-            await sharepointGraphListClient.IterateList(writeRelation.NamedObject.DotSeperated, primaryKeys, (item) =>
+            await sharepointGraphListClient.IterateList(writeRelation.NamedObject.DotSeperated, primaryKeys, async (item) =>
             {
                 if (item.Id == null)
                 {
                     throw new InvalidOperationException("Item id should not be null");
                 }
-                if (item?.Fields?.AdditionalData == null)
+                if (item.Fields?.AdditionalData == null)
                 {
                     throw new InvalidOperationException("Item fields should not be null");
                 }
@@ -109,7 +109,7 @@ namespace improveflowtide
                         stringBuilder.Append(pkVal.Value.ToString());
                     }
                 }
-                _existingObjectsTree.Upsert(stringBuilder.ToString(), id);
+                await _existingObjectsTree.Upsert(stringBuilder.ToString(), id);
                 return true;
             });
         }
@@ -189,13 +189,11 @@ namespace improveflowtide
                     var statusCodes = await batchResponse.GetResponsesStatusCodesAsync();
                     foreach(var req in requests)
                     {
-                        if (statusCodes.TryGetValue(req.batchId, out var statusCode))
+                        if (statusCodes.TryGetValue(req.batchId, out var statusCode) &&
+                            statusCode != System.Net.HttpStatusCode.OK &&
+                            statusCode != System.Net.HttpStatusCode.Created)
                         {
-                            if (statusCode != System.Net.HttpStatusCode.OK &&
-                                statusCode != System.Net.HttpStatusCode.Created)
-                            {
-                                throw new InvalidOperationException($"Failed to execute batch request {req.batchId}");
-                            }
+                            throw new InvalidOperationException($"Failed to execute batch request {req.batchId}");   
                         }
                         if (req.operation == Operation.Insert)
                         {

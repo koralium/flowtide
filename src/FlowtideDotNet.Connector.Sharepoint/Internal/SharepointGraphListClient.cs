@@ -118,7 +118,7 @@ namespace improveflowtide.Sharepoint.Internal
             List<IColumnEncoder> output = new List<IColumnEncoder>();
             foreach(var column in columns)
             {
-                var col = listColumns.Value.FirstOrDefault(x => x.Name?.Equals(column, StringComparison.OrdinalIgnoreCase) ?? false);
+                var col = listColumns.Value.Find(x => x.Name?.Equals(column, StringComparison.OrdinalIgnoreCase) ?? false);
                 if (col == null)
                 {
                     throw new InvalidOperationException($"Could not find column {column}");
@@ -150,7 +150,7 @@ namespace improveflowtide.Sharepoint.Internal
             return graphClient.Batch.PostAsync(batch);
         }
 
-        private IColumnEncoder GetColumnEncoder(ColumnDefinition columnDefinition)
+        private static IColumnEncoder GetColumnEncoder(ColumnDefinition columnDefinition)
         {
             if (columnDefinition.Text != null)
             {
@@ -253,7 +253,7 @@ namespace improveflowtide.Sharepoint.Internal
 
         public async Task UpdateItemAsync(string list, string id, Dictionary<string, object> obj)
         {
-            var resp = await graphClient.Sites[siteId].Lists[list].Items[id].Fields.PatchAsync(new FieldValueSet()
+            await graphClient.Sites[siteId].Lists[list].Items[id].Fields.PatchAsync(new FieldValueSet()
             {
                 AdditionalData = obj
             });
@@ -271,7 +271,7 @@ namespace improveflowtide.Sharepoint.Internal
             };
         }
 
-        public async Task IterateList(string list, List<string> columns, Func<ListItem, bool> onItem)
+        public async Task IterateList(string list, List<string> columns, Func<ListItem, Task<bool>> onItem)
         {
             var getListReq = await graphClient.Sites[siteId].Lists[list].Items.GetAsync(b =>
             {
@@ -285,7 +285,7 @@ namespace improveflowtide.Sharepoint.Internal
             {
                 throw new InvalidOperationException("Could not get list");
             }
-            var iterator = PageIterator<ListItem, ListItemCollectionResponse>.CreatePageIterator(graphClient, getListReq, onItem);
+            var iterator = PageIterator<ListItem, ListItemCollectionResponse>.CreatePageIterator(,graphClient, getListReq, onItem);
             await iterator.IterateAsync();
         }
     }
