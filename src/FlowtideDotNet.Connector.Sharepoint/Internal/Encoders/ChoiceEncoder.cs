@@ -22,6 +22,10 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Encoders
         private List<string>? _choices;
         public Task AddValue(Dictionary<string, object> obj, string columnName, FlxValue flxValue)
         {
+            if (flxValue.IsNull)
+            {
+                return Task.CompletedTask;
+            }
             if (flxValue.ValueType == FlexBuffers.Type.String)
             {
                 var choice = flxValue.AsString;

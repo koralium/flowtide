@@ -46,5 +46,11 @@ namespace improveflowtide.Sharepoint
         /// Stop the stream if a UPN is not found
         /// </summary>
         public bool ThrowOnPersonOrGroupNotFound { get; set; }
+
+        /// <summary>
+        /// Preprocess the row before it is sent to Sharepoint.
+        /// Allows addition of metadata columns.
+        /// </summary>
+        public Action<Dictionary<string, object>>? PreprocessRow { get; set; }
     }
 }

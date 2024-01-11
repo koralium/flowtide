@@ -21,6 +21,10 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Encoders
     {
         public Task AddValue(Dictionary<string, object> obj, string columnName, FlxValue flxValue)
         {
+            if (flxValue.IsNull)
+            {
+                return Task.CompletedTask;
+            }
             if (flxValue.ValueType == FlexBuffers.Type.Int)
             {
                 obj[columnName] = flxValue.AsLong;

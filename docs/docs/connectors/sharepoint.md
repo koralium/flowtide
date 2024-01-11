@@ -50,3 +50,4 @@ The following options can be set on the sink:
 * **TokenCredential** - Required, the token credential that is used to authenticate against sharepoint.
 * **DisableDelete** - Disables row deletion.
 * **ThrowOnPersonOrGroupNotFound** - Instead of returning null when a person is not found, throw an exception.
+* **PreprocessRow** - Action that is called on each upsert, allows addition of metadata columns.

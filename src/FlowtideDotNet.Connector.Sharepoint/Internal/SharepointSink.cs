@@ -157,6 +157,10 @@ namespace improveflowtide
                         var name = writeRelation.TableSchema.Names[i];
                         await encoder.AddValue(obj, name, row.Row.GetColumn(i));
                     }
+                    if (sinkOptions.PreprocessRow != null)
+                    {
+                        sinkOptions.PreprocessRow(obj);
+                    }
                     if (found)
                     {
                         // Update
