@@ -194,7 +194,6 @@ namespace FlowtideDotNet.Base.Metrics
                 var tagList = new TagList()
                 {
                     { "operator", operatorName },
-                    { "id", operatorName },
                     { "stream", _streamName }
                 };
                 meter = new FlowtideMeter(m, tagList, displayName);
