@@ -285,7 +285,7 @@ namespace improveflowtide.Sharepoint.Internal
             {
                 throw new InvalidOperationException("Could not get list");
             }
-            var iterator = PageIterator<ListItem, ListItemCollectionResponse>.CreatePageIterator(,graphClient, getListReq, onItem);
+            var iterator = PageIterator<ListItem, ListItemCollectionResponse>.CreatePageIterator(graphClient, getListReq, onItem);
             await iterator.IterateAsync();
         }
     }
