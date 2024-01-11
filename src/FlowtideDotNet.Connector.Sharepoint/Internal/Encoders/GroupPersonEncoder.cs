@@ -29,6 +29,10 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Encoders
         public async Task AddValue(Dictionary<string, object> obj, string columnName, FlxValue flxValue)
         {
             Debug.Assert(_client != null);
+            if (flxValue.IsNull)
+            {
+                return;
+            }
             if (flxValue.ValueType == FlexBuffers.Type.String)
             {
                 var upn = flxValue.AsString;
