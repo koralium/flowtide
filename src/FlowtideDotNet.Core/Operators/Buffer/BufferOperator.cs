@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -27,8 +28,11 @@ namespace FlowtideDotNet.Core.Operators.Buffer
     {
         private ICounter<long>? _eventsCounter;
         private IBPlusTree<RowEvent, int>? _tree;
-        public BufferOperator(ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
+        private readonly BufferRelation bufferRelation;
+
+        public BufferOperator(BufferRelation bufferRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
+            this.bufferRelation = bufferRelation;
         }
 
         public override string DisplayName => "Buffer";
@@ -83,7 +87,12 @@ namespace FlowtideDotNet.Core.Operators.Buffer
             Debug.Assert(_tree != null);
             foreach(var e in msg.Events)
             {
-                await _tree.RMW(e, e.Weight, (input, current, exists) =>
+                var ev = e;
+                if (bufferRelation.EmitSet)
+                {
+                    ev = new RowEvent(e.Weight, e.Iteration, ArrayRowData.Create(e.RowData, bufferRelation.Emit));
+                }
+                await _tree.RMW(ev, ev.Weight, (input, current, exists) =>
                 {
                     if (exists)
                     {

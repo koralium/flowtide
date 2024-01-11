@@ -24,6 +24,30 @@ namespace FlowtideDotNet.Core
             this.valueArray = valueArray;
         }
 
+        public static ArrayRowData Create(IRowData row, IReadOnlyList<int>? emitList)
+        {
+            FlxValue[]? arr = null;
+            if (emitList != null)
+            {
+                arr = new FlxValue[emitList.Count];
+                for (int i = 0; i < emitList.Count; i++)
+                {
+                    var index = emitList[i];
+
+                    arr[i] = row.GetColumn(index);
+                }
+            }
+            else
+            {
+                arr = new FlxValue[row.Length];
+                for (int i = 0; i < row.Length; i++)
+                {
+                    arr[i] = row.GetColumn(i);
+                }
+            }
+            return new ArrayRowData(arr);
+        }
+
         public static ArrayRowData Create(IRowData left, IRowData right, IReadOnlyList<int>? emitList)
         {
             var leftLength = left.Length;

@@ -18,9 +18,9 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
     {
         private static readonly object _emptyObject = new object();
 
-        public static Plan Optimize(Plan plan)
+        public static Plan Optimize(Plan plan, PlanOptimizerSettings planOptimizerSettings)
         {
-            var visitor = new GetTimestampVisitor(plan);
+            var visitor = new GetTimestampVisitor(plan, planOptimizerSettings);
             for (int i = 0; i < plan.Relations.Count; i++)
             {
                 var relation = plan.Relations[i];
