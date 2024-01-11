@@ -10,18 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Connector;
+using FlowtideDotNet.Connector.Sharepoint;
+using FlowtideDotNet.Connector.Sharepoint.Internal;
 using FlowtideDotNet.Substrait.Relations;
-using improveflowtide;
-using improveflowtide.Sharepoint;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.Sharepoint.Extensions
+namespace FlowtideDotNet.Core.Engine
 {
     public static class SharepointReadWriteFactoryExtensions
     {

@@ -12,7 +12,7 @@
 
 using Azure.Core;
 
-namespace improveflowtide.Sharepoint
+namespace FlowtideDotNet.Connector.Sharepoint
 {
     public class SharepointSinkOptions
     {

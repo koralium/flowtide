@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace improveflowtide.Sharepoint.Internal
+namespace FlowtideDotNet.Connector.Sharepoint.Internal
 {
     internal class EnsureUserResult
     {
