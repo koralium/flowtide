@@ -44,6 +44,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private long m_cacheMisses;
         private long m_lastSeenCacheHits;
         private int m_sameCaheHitsCount;
+
+        private long m_metrics_lastSeenTotal;
+        private long m_metrics_lastSeenHits;
+
         private bool m_disposedValue;
         private readonly Process _currentProcess;
         private readonly CancellationTokenSource m_cleanupTokenSource;
@@ -80,8 +84,19 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 var hit = Volatile.Read(ref m_cacheHits);
                 var misses = Volatile.Read(ref m_cacheMisses);
                 var total = hit + misses;
-                var percentage = (float)hit / total;
-                return new Measurement<float>(percentage, new KeyValuePair<string, object?>("stream", m_streamName));
+                if (total > m_metrics_lastSeenTotal)
+                {
+                    var newTotal = total - m_metrics_lastSeenTotal;
+                    var newHits = hit - m_metrics_lastSeenHits;
+                    m_metrics_lastSeenTotal = total;
+                    m_metrics_lastSeenHits = hit;
+                    return new Measurement<float>((float)newHits / newTotal, new KeyValuePair<string, object?>("stream", m_streamName));
+                }
+                else
+                {
+                    var percentage = (float)m_metrics_lastSeenHits / m_metrics_lastSeenTotal;
+                    return new Measurement<float>(percentage, new KeyValuePair<string, object?>("stream", m_streamName));
+                }
             });
         }
 
