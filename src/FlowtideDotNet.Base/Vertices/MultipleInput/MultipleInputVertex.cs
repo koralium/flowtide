@@ -212,7 +212,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
             if (_currentWatermark == null) 
             {
-                _currentWatermark = new Watermark(ImmutableDictionary<string, long>.Empty);
+                _currentWatermark = new Watermark(ImmutableDictionary<string, long>.Empty, watermark.StartTime);
             }
             _targetWatermarks[targetId] = watermark;
             var currentDict = _currentWatermark.Watermarks;
@@ -240,7 +240,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     currentDict = currentDict.SetItem(kv.Key, watermarkValue);
                 }
             }
-            var newWatermark = new Watermark(currentDict);
+            var newWatermark = new Watermark(currentDict, watermark.StartTime);
 
             // only output watermark if there is a difference in the numbers
             if (!newWatermark.Equals(_currentWatermark))
@@ -299,7 +299,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     }
                 }
                 _targetWatermarkNames = targetsWatermarks.ToArray();
-                _currentWatermark = new Watermark(uniqueNames.Select(x => new KeyValuePair<string, long>(x, 0)).ToImmutableDictionary());
+                _currentWatermark = new Watermark(uniqueNames.Select(x => new KeyValuePair<string, long>(x, 0)).ToImmutableDictionary(), DateTimeOffset.UtcNow);
                 
 
                 return initWatermarksEvent;
