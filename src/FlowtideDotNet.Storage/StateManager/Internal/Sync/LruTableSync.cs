@@ -41,8 +41,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly SemaphoreSlim _fullLock;
         private int m_count;
         private long m_cacheHits;
+        private long m_cacheMisses;
         private long m_lastSeenCacheHits;
         private int m_sameCaheHitsCount;
+
+        private long m_metrics_lastSeenTotal;
+        private long m_metrics_lastSeenHits;
+
         private bool m_disposedValue;
         private readonly Process _currentProcess;
         private readonly CancellationTokenSource m_cleanupTokenSource;
@@ -73,6 +78,25 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             meter.CreateObservableGauge("flowtide_lru_table_cleanup_start", () => 
             { 
                 return new Measurement<int>(cleanupStart, new KeyValuePair<string, object?>("stream", m_streamName)); 
+            });
+            meter.CreateObservableGauge("flowtide_lru_table_cache_hits_percentage", () =>
+            {
+                var hit = Volatile.Read(ref m_cacheHits);
+                var misses = Volatile.Read(ref m_cacheMisses);
+                var total = hit + misses;
+                if (total > m_metrics_lastSeenTotal)
+                {
+                    var newTotal = total - m_metrics_lastSeenTotal;
+                    var newHits = hit - m_metrics_lastSeenHits;
+                    m_metrics_lastSeenTotal = total;
+                    m_metrics_lastSeenHits = hit;
+                    return new Measurement<float>((float)newHits / newTotal, new KeyValuePair<string, object?>("stream", m_streamName));
+                }
+                else
+                {
+                    var percentage = (float)m_metrics_lastSeenHits / m_metrics_lastSeenTotal;
+                    return new Measurement<float>(percentage, new KeyValuePair<string, object?>("stream", m_streamName));
+                }
             });
         }
 
@@ -171,6 +195,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return true;
                 }
             }
+            Interlocked.Increment(ref m_cacheMisses);
             cacheObject = default;
             return false;
         }
