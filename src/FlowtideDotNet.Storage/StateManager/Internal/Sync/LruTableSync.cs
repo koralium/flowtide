@@ -41,6 +41,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly SemaphoreSlim _fullLock;
         private int m_count;
         private long m_cacheHits;
+        private long m_cacheMisses;
         private long m_lastSeenCacheHits;
         private int m_sameCaheHitsCount;
         private bool m_disposedValue;
@@ -73,6 +74,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             meter.CreateObservableGauge("flowtide_lru_table_cleanup_start", () => 
             { 
                 return new Measurement<int>(cleanupStart, new KeyValuePair<string, object?>("stream", m_streamName)); 
+            });
+            meter.CreateObservableGauge("flowtide_lru_table_cache_hits_percentage", () =>
+            {
+                var hit = Volatile.Read(ref m_cacheHits);
+                var misses = Volatile.Read(ref m_cacheMisses);
+                var total = hit + misses;
+                var percentage = (float)hit / total;
+                return new Measurement<float>(percentage, new KeyValuePair<string, object?>("stream", m_streamName));
             });
         }
 
@@ -171,6 +180,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return true;
                 }
             }
+            Interlocked.Increment(ref m_cacheMisses);
             cacheObject = default;
             return false;
         }
