@@ -111,19 +111,25 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _contextMeter.CreateObservableGauge<float>("flowtide_health", () =>
             {
                 var currentStatus = GetStatus();
+                var val = 0.0f;
                 switch (currentStatus)
                 {
                     case StreamStatus.Running:
-                        return 1.0f;
+                        val = 1.0f;
+                        break;
                     case StreamStatus.Failing:
                     case StreamStatus.Stopped:
-                        return 0.0f;
+                        val = 0.0f;
+                        break;
                     case StreamStatus.Starting:
                     case StreamStatus.Degraded:
-                        return 0.5f;
+                        val = 0.5f;
+                        break;
                     default:
-                        return 0.0f;
+                        val = 0.0f;
+                        break;
                 }
+                return new Measurement<float>(val, new KeyValuePair<string, object?>("stream", streamName));
             });
             if (loggerFactory == null)
             {
@@ -137,7 +143,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             _checkpointLock = new object();
 
-            _stateManager = new FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState>(stateManagerOptions, this.loggerFactory.CreateLogger("StateManager"), new Meter($"flowtide.{streamName}.storage"));
+            _stateManager = new FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState>(stateManagerOptions, this.loggerFactory.CreateLogger("StateManager"), new Meter($"flowtide.{streamName}.storage"), streamName);
             
 
             _streamScheduler.Initialize(this);

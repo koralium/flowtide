@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Storage.StateManager
 {
     public class StateManagerSync<TMetadata> : StateManagerSync
     {
-        public StateManagerSync(StateManagerOptions options, ILogger logger, Meter meter) : base(new StateManagerMetadataSerializer<TMetadata>(), options, logger, meter)
+        public StateManagerSync(StateManagerOptions options, ILogger logger, Meter meter, string streamName) : base(new StateManagerMetadataSerializer<TMetadata>(), options, logger, meter, streamName)
         {
         }
 
@@ -62,6 +62,7 @@ namespace FlowtideDotNet.Storage.StateManager
         private readonly StateManagerOptions options;
         private readonly ILogger logger;
         private readonly Meter meter;
+        private readonly string streamName;
         private readonly object m_lock = new object();
         internal StateManagerMetadata? m_metadata;
         //private Functions m_functions;
@@ -85,19 +86,20 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public long PageCount => m_metadata != null ? Volatile.Read(ref m_metadata.PageCount) : throw new InvalidOperationException("Manager must be initialized before getting page count");
 
-        internal StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILogger logger, Meter meter)
+        internal StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILogger logger, Meter meter, string streamName)
         {
             this.m_metadataSerializer = metadataSerializer;
             this.options = options;
             this.logger = logger;
             this.meter = meter;
+            this.streamName = streamName;
         }
 
         private void Setup()
         {
             if (m_lruTable == null)
             {
-                m_lruTable = new LruTableSync(options.CachePageCount, logger, meter, options.MaxProcessMemory);
+                m_lruTable = new LruTableSync(options.CachePageCount, logger, meter, streamName, options.MaxProcessMemory);
             }
 
             if (m_persistentStorage != null)
