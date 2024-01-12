@@ -35,6 +35,7 @@ namespace FlowtideDotNet.Core.Operators.Project
         private readonly Func<RowEvent, FlxValue>[] _expressions;
 
         private ICounter<long>? _eventsCounter;
+        private ICounter<long>? _eventsProcessed;
 
         public override string DisplayName => "Projection";
 
@@ -67,6 +68,8 @@ namespace FlowtideDotNet.Core.Operators.Project
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
+            Debug.Assert(_eventsProcessed != null);
+            _eventsProcessed.Add(msg.Events.Count);
             List<RowEvent> output = new List<RowEvent>();
 
             foreach (var e in msg.Events)
@@ -133,6 +136,10 @@ namespace FlowtideDotNet.Core.Operators.Project
             if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
             
             return Task.CompletedTask;

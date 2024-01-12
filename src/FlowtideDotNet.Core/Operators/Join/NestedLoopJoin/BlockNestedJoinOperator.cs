@@ -24,6 +24,7 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Base.Metrics;
 
 namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 {
@@ -45,6 +46,8 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
         private readonly FlexBuffer _flexBuffer;
 
         private readonly int _leftSize;
+
+        private ICounter<long>? _eventsProcessed;
 
         public BlockNestedJoinOperator(JoinRelation joinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
@@ -339,6 +342,8 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
         {
             Debug.Assert(_leftTemporary != null, nameof(_leftTemporary));
             Debug.Assert(_rightTemporary != null, nameof(_rightTemporary));
+            Debug.Assert(_eventsProcessed != null, nameof(_eventsProcessed));
+            _eventsProcessed.Add(msg.Events.Count);
 
             if (targetId == 0)
             {
@@ -415,6 +420,11 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
                 KeySerializer = new StreamEventBPlusTreeSerializer(),
                 ValueSerializer = new JoinStorageValueBPlusTreeSerializer()
             });
+
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
         }
     }
 }

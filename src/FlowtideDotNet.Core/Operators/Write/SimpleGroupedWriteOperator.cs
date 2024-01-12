@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
@@ -66,6 +67,7 @@ namespace FlowtideDotNet.Core.Operators.Write
         private readonly ExecutionMode m_executionMode;
         private SimpleWriteState? _state;
         private Watermark _latestWatermark;
+        private ICounter<long>? _eventsProcessed;
 
         protected SimpleGroupedWriteOperator(ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -161,6 +163,10 @@ namespace FlowtideDotNet.Core.Operators.Write
             {
                 m_metadataResult = await SetupAndLoadMetadataAsync();
             }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
             if (state != null)
             {
                 _state = state;
@@ -184,6 +190,9 @@ namespace FlowtideDotNet.Core.Operators.Write
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
             Debug.Assert(m_modified != null);
+            Debug.Assert(_eventsProcessed != null);
+            _eventsProcessed.Add(msg.Events.Count);
+
             foreach (var e in msg.Events)
             {
                 // Add the row to permanent storage
