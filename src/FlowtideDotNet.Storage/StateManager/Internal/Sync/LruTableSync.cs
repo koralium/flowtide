@@ -47,6 +47,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private long m_metrics_lastSeenTotal;
         private long m_metrics_lastSeenHits;
+        private float m_metrics_lastSentPercentage;
 
         private bool m_disposedValue;
         private readonly Process _currentProcess;
@@ -90,12 +91,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     var newHits = hit - m_metrics_lastSeenHits;
                     m_metrics_lastSeenTotal = total;
                     m_metrics_lastSeenHits = hit;
-                    return new Measurement<float>((float)newHits / newTotal, new KeyValuePair<string, object?>("stream", m_streamName));
+                    m_metrics_lastSentPercentage = (float)newHits / newTotal;
+                    return new Measurement<float>(m_metrics_lastSentPercentage, new KeyValuePair<string, object?>("stream", m_streamName));
                 }
                 else
                 {
-                    var percentage = (float)m_metrics_lastSeenHits / m_metrics_lastSeenTotal;
-                    return new Measurement<float>(percentage, new KeyValuePair<string, object?>("stream", m_streamName));
+                    return new Measurement<float>(m_metrics_lastSentPercentage, new KeyValuePair<string, object?>("stream", m_streamName));
                 }
             });
         }
