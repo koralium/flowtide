@@ -35,6 +35,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private int maxSize;
         private readonly ILogger logger;
         private readonly Meter meter;
+        private readonly string m_streamName;
         private readonly long maxMemoryUsageInBytes;
         private int cleanupStart;
         private readonly SemaphoreSlim _fullLock;
@@ -46,13 +47,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly Process _currentProcess;
         private readonly CancellationTokenSource m_cleanupTokenSource;
 
-        public LruTableSync(int maxSize, ILogger logger, Meter meter, long maxMemoryUsageInBytes = -1)
+        public LruTableSync(int maxSize, ILogger logger, Meter meter, string streamName, long maxMemoryUsageInBytes = -1)
         {
             cache = new ConcurrentDictionary<long, LinkedListNode<LinkedListValue>>();
             m_nodes = new LinkedList<LinkedListValue>();
             this.maxSize = maxSize;
             this.logger = logger;
             this.meter = meter;
+            this.m_streamName = streamName;
             this.maxMemoryUsageInBytes = maxMemoryUsageInBytes;
             cleanupStart = (int)Math.Ceiling(maxSize * 0.7);
             _fullLock = new SemaphoreSlim(1);
@@ -60,9 +62,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             StartCleanupTask();
             _currentProcess = Process.GetCurrentProcess();
 
-            meter.CreateObservableGauge("flowtide_lru_table_size", () => Volatile.Read(ref m_count));
-            meter.CreateObservableGauge("flowtide_lru_table_max_size", () => this.maxSize);
-            meter.CreateObservableGauge("flowtide_lru_table_cleanup_start", () => cleanupStart);
+            meter.CreateObservableGauge("flowtide_lru_table_size", () => 
+            {
+                return new Measurement<int>(Volatile.Read(ref m_count), new KeyValuePair<string, object?>("stream", m_streamName));
+            });
+            meter.CreateObservableGauge("flowtide_lru_table_max_size", () => 
+            {
+                return new Measurement<int>(this.maxSize, new KeyValuePair<string, object?>("stream", m_streamName));
+            });
+            meter.CreateObservableGauge("flowtide_lru_table_cleanup_start", () => 
+            { 
+                return new Measurement<int>(cleanupStart, new KeyValuePair<string, object?>("stream", m_streamName)); 
+            });
         }
 
         public void Clear()
