@@ -30,6 +30,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private IEgressImplementation? _targetBlock;
         private bool _isHealthy = true;
         private CancellationTokenSource? _cancellationTokenSource;
+        private float _lastLatency = 0;
 
         public string Name { get; private set; }
 
@@ -53,12 +54,19 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         {
             if (_executionDataflowBlockOptions.GetSupportsParallelExecution())
             {
-                _targetBlock = new ParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, OnWatermark);
+                _targetBlock = new ParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
             }
             else
             {
-                _targetBlock = new NonParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, OnWatermark);
+                _targetBlock = new NonParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
             }
+        }
+
+        private Task HandleWatermark(Watermark watermark)
+        {
+            var span = DateTimeOffset.UtcNow.Subtract(watermark.StartTime);
+            _lastLatency = (float)span.TotalMilliseconds;
+            return OnWatermark(watermark);
         }
 
         protected virtual Task OnWatermark(Watermark watermark)
@@ -155,6 +163,10 @@ namespace FlowtideDotNet.Base.Vertices.Egress
                     { "links", "[]" }
                 };
                 return new Measurement<int>(1, tags);
+            });
+            Metrics.CreateObservableGauge("latency", () =>
+            {
+                return _lastLatency;
             });
 
             return InitializeOrRestore(restoreTime, dState, vertexHandler.StateClient);
