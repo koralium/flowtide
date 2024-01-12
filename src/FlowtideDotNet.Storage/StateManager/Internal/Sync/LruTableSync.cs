@@ -64,15 +64,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             meter.CreateObservableGauge("flowtide_lru_table_size", () => 
             {
-                return new Measurement<int>(Volatile.Read(ref m_count), new KeyValuePair<string, object?>("stream", streamName));
+                return new Measurement<int>(Volatile.Read(ref m_count), new KeyValuePair<string, object?>("stream", m_streamName));
             });
             meter.CreateObservableGauge("flowtide_lru_table_max_size", () => 
             {
-                return new Measurement<int>(this.maxSize, new KeyValuePair<string, object?>("stream", streamName));
+                return new Measurement<int>(this.maxSize, new KeyValuePair<string, object?>("stream", m_streamName));
             });
             meter.CreateObservableGauge("flowtide_lru_table_cleanup_start", () => 
             { 
-                return new Measurement<int>(cleanupStart, new KeyValuePair<string, object?>("stream", streamName)); 
+                return new Measurement<int>(cleanupStart, new KeyValuePair<string, object?>("stream", m_streamName)); 
             });
         }
 
