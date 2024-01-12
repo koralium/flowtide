@@ -29,6 +29,7 @@ namespace FlowtideDotNet.Core.Operators.Buffer
         private ICounter<long>? _eventsCounter;
         private IBPlusTree<RowEvent, int>? _tree;
         private readonly BufferRelation bufferRelation;
+        private ICounter<long>? _eventsProcessed;
 
         public BufferOperator(BufferRelation bufferRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -85,6 +86,8 @@ namespace FlowtideDotNet.Core.Operators.Buffer
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
             Debug.Assert(_tree != null);
+            Debug.Assert(_eventsProcessed != null);
+            _eventsProcessed.Add(msg.Events.Count);
             foreach(var e in msg.Events)
             {
                 var ev = e;
@@ -121,6 +124,10 @@ namespace FlowtideDotNet.Core.Operators.Buffer
             if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
             
             // Temporary tree for storing the input events

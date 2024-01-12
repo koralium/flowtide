@@ -33,7 +33,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected IBPlusTree<JoinStreamEvent, JoinStorageValue>? _leftTree;
         protected IBPlusTree<JoinStreamEvent, JoinStorageValue>? _rightTree;
         private ICounter<long>? _eventsCounter;
-        
+        private ICounter<long>? _eventsProcessed;
+
         protected readonly Func<JoinStreamEvent, JoinStreamEvent, bool> _keyCondition;
         protected readonly Func<JoinStreamEvent, JoinStreamEvent, bool> _postCondition;
 
@@ -342,6 +343,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
         {
+            Debug.Assert(_eventsProcessed != null, nameof(_eventsProcessed));
+            _eventsProcessed.Add(msg.Events.Count);
 #if DEBUG_WRITE
             allInput.WriteLine("New batch");
             foreach (var e in msg.Events)
@@ -380,6 +383,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             if(_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
 
             _flexBuffer.Clear();

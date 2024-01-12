@@ -12,6 +12,7 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
@@ -41,6 +42,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
         private IBPlusTree<RowEvent, int>? _temporaryTree;
         private FlexBuffer _flexBufferNewValue;
         private List<IAggregateContainer> _measures;
+        private ICounter<long>? _eventsProcessed;
 
         public AggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -264,8 +266,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
         {
             Debug.Assert(_tree != null, "Tree should not be null");
             Debug.Assert(_temporaryTree != null, "Temporary tree should not be null");
-
-            foreach(var e in msg.Events)
+            Debug.Assert(_eventsProcessed != null, "Events processed should not be null");
+            _eventsProcessed.Add(msg.Events.Count);
+            foreach (var e in msg.Events)
             {
                 // Create the key
                 RowEvent? key = default;
@@ -358,6 +361,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                     var aggregateContainer = await MeasureCompiler.CompileMeasure(groupExpressions?.Count ?? 0, stateManagerClient.GetChildManager(i.ToString()), measure.Measure, functionsRegister);
                     _measures.Add(aggregateContainer);
                 }
+            }
+
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed", "events", "Total events processed");
             }
 
             _tree = await stateManagerClient.GetOrCreateTree<RowEvent, AggregateRowState>("grouping_set_1_v1", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, AggregateRowState>()

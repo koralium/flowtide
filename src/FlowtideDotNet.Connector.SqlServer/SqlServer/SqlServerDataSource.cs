@@ -44,6 +44,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         private List<string>? primaryKeys;
         private ICounter<long>? _eventsCounter;
         private string? filter;
+        private ICounter<long>? _eventsProcessed;
 
         public SqlServerDataSource(Func<string> connectionStringFunc, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
@@ -98,6 +99,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             Debug.Assert(_streamEventCreator != null);
             Debug.Assert(primaryKeys != null);
             Debug.Assert(_eventsCounter != null);
+            Debug.Assert(_eventsProcessed != null);
 
             await output.EnterCheckpointLock();
 
@@ -159,6 +161,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             if (result.Count > 0)
             {
                 _eventsCounter.Add(result.Count);
+                _eventsProcessed.Add(result.Count);
                 Logger.LogInformation("{changeCount} Changes found from table, {tableName}", result.Count, readRelation.NamedTable.DotSeperated);
                 await output.SendAsync(new StreamEventBatch(result));
                 await output.SendWatermark(new FlowtideDotNet.Base.Watermark(readRelation.NamedTable.DotSeperated, _state.ChangeTrackingVersion));
@@ -181,6 +184,10 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
             
             Logger.LogInformation("Initializing Sql Server Source for table {tableName}.", readRelation.NamedTable.DotSeperated);
@@ -255,6 +262,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             Debug.Assert(_streamEventCreator != null);
             Debug.Assert(primaryKeys != null);
             Debug.Assert(_eventsCounter != null);
+            Debug.Assert(_eventsProcessed != null);
             
             // Check if we have never read the initial data before
             if (_state.ChangeTrackingVersion < 0)
@@ -285,6 +293,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             if (outdata.Count >= 100)
                             {
                                 _eventsCounter.Add(outdata.Count);
+                                _eventsProcessed.Add(outdata.Count);
                                 await output.SendAsync(new StreamEventBatch(outdata));
                                 outdata = new List<RowEvent>();
                             }
@@ -292,6 +301,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         if (outdata.Count > 0)
                         {
                             _eventsCounter.Add(outdata.Count);
+                            _eventsProcessed.Add(outdata.Count);
                             await output.SendAsync(new StreamEventBatch(outdata));
                         }
                         retryCount = 0;
