@@ -99,7 +99,12 @@ namespace FlowtideDotNet.Storage.StateManager
         {
             if (m_lruTable == null)
             {
-                m_lruTable = new LruTableSync(options.CachePageCount, logger, meter, streamName, options.MaxProcessMemory);
+                m_lruTable = new LruTableSync(new LruTableOptions(streamName, logger, meter)
+                {
+                    MaxSize = options.CachePageCount,
+                    MaxMemoryUsageInBytes = options.MaxProcessMemory,
+                    MinSize = options.MinCachePageCount
+                });
             }
 
             if (m_persistentStorage != null)

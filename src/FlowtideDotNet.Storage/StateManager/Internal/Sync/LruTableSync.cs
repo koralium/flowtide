@@ -52,16 +52,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private bool m_disposedValue;
         private readonly Process _currentProcess;
         private readonly CancellationTokenSource m_cleanupTokenSource;
+        private readonly LruTableOptions lruTableOptions;
 
-        public LruTableSync(int maxSize, ILogger logger, Meter meter, string streamName, long maxMemoryUsageInBytes = -1)
+        public LruTableSync(LruTableOptions lruTableOptions)
         {
             cache = new ConcurrentDictionary<long, LinkedListNode<LinkedListValue>>();
             m_nodes = new LinkedList<LinkedListValue>();
-            this.maxSize = maxSize;
-            this.logger = logger;
-            this.meter = meter;
-            this.m_streamName = streamName;
-            this.maxMemoryUsageInBytes = maxMemoryUsageInBytes;
+            this.maxSize = lruTableOptions.MaxSize;
+            this.logger = lruTableOptions.Logger;
+            this.meter = lruTableOptions.Meter;
+            this.m_streamName = lruTableOptions.StreamName;
+            this.maxMemoryUsageInBytes = lruTableOptions.MaxMemoryUsageInBytes;
             cleanupStart = (int)Math.Ceiling(maxSize * 0.7);
             _fullLock = new SemaphoreSlim(1);
             m_cleanupTokenSource = new CancellationTokenSource();
@@ -99,6 +100,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return new Measurement<float>(m_metrics_lastSentPercentage, new KeyValuePair<string, object?>("stream", m_streamName));
                 }
             });
+            this.lruTableOptions = lruTableOptions;
         }
 
         public void Clear()
@@ -265,11 +267,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 if (m_lastSeenCacheHits == cacheHitsLocal)
                 {
                     m_sameCaheHitsCount++;
-                    if (m_sameCaheHitsCount >= 1000 && currentCount > 0)
+                    if (m_sameCaheHitsCount >= 10000 && currentCount > 0)
                     {
                         // No cache hits during a long time, clear the entire cache
                         isCleanup = true;
-                        cleanupStartLocal = 0;
+                        cleanupStartLocal = lruTableOptions.MinSize;
                         m_sameCaheHitsCount = 0;
                     }
                     else
