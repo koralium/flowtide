@@ -43,22 +43,26 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
         protected IBPlusTree<RowEvent, JoinStorageValue>? _rightTemporary;
         protected readonly Func<RowEvent, RowEvent, bool> _condition;
         private readonly JoinRelation joinRelation;
-        private readonly FlexBuffer _flexBuffer;
-
-        private readonly int _leftSize;
+        private readonly IRowData _rightNullData;
 
         private ICounter<long>? _eventsProcessed;
 
         public BlockNestedJoinOperator(JoinRelation joinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
-            _flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
             if (joinRelation.Expression == null)
             {
                 throw new InvalidOperationException("Join relation must have an expression");
             }
             _condition = BooleanCompiler.Compile<RowEvent>(joinRelation.Expression, functionsRegister, joinRelation.Left.OutputLength);
             this.joinRelation = joinRelation;
-            _leftSize = joinRelation.Left.OutputLength;
+
+            _rightNullData = RowEvent.Create(0, 0, v =>
+            {
+                for (int i = 0; i < joinRelation.Right.OutputLength; i++)
+                {
+                    v.AddNull();
+                }
+            }).RowData;
         }
 
         public override string DisplayName => "Nested Loop Join";
@@ -86,82 +90,12 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 
         protected RowEvent OnConditionSuccess(RowEvent left, RowEvent right, in int weight)
         {
-            _flexBuffer.NewObject();
-            var vectorStart = _flexBuffer.StartVector();
-
-            if (joinRelation.EmitSet)
-            {
-                for (int i = 0; i < joinRelation.Emit.Count; i++)
-                {
-                    var index = joinRelation.Emit[i];
-
-                    if (index < _leftSize)
-                    {
-                        _flexBuffer.Add(left.GetColumn(index));
-                    }
-                    else
-                    {
-                        _flexBuffer.Add(right.GetColumn(index - _leftSize));
-                    }
-                }
-            }
-            else
-            {
-                for (int i = 0; i < left.Length; i++)
-                {
-                    _flexBuffer.Add(left.GetColumn(i));
-                }
-                for (int i = 0; i < right.Length; i++)
-                {
-                    _flexBuffer.Add(right.GetColumn(i));
-                }
-            }
-
-            _flexBuffer.EndVector(vectorStart, false, false);
-            var bytes = _flexBuffer.Finish();
-
-            var ev = new RowEvent(weight, 0, new CompactRowData(bytes));
-
-            return ev;
+            return new RowEvent(weight, 0, ArrayRowData.Create(left.RowData, right.RowData, joinRelation.Emit));
         }
 
         protected RowEvent CreateLeftWithNullRightEvent(int weight, RowEvent e)
         {
-            _flexBuffer.NewObject();
-            var vectorStart = _flexBuffer.StartVector();
-            //var exitingSpan = e.Vector.Span;
-
-            if (joinRelation.EmitSet)
-            {
-                for (int i = 0; i < joinRelation.Emit.Count; i++)
-                {
-                    var index = joinRelation.Emit[i];
-                    if (index < _leftSize)
-                    {
-                        _flexBuffer.Add(e.GetColumn(index));
-                    }
-                    else
-                    {
-                        _flexBuffer.AddNull();
-                    }
-                }
-            }
-            else
-            {
-                for (int i = 0; i < e.Length; i++)
-                {
-                    _flexBuffer.Add(e.GetColumn(i));
-                }
-                for (int i = 0; i < joinRelation.Right.OutputLength; i++)
-                {
-                    _flexBuffer.AddNull();
-                }
-            }
-            _flexBuffer.EndVector(vectorStart, false, false);
-            var bytes = _flexBuffer.Finish();
-
-            var o = new RowEvent(weight, 0, new CompactRowData(bytes));
-            return o;
+            return new RowEvent(weight, 0, ArrayRowData.Create(e.RowData, _rightNullData, joinRelation.Emit));
         }
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
