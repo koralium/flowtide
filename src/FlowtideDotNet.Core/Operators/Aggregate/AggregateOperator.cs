@@ -274,16 +274,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 RowEvent? key = default;
                 if (groupExpressions != null)
                 {
-                    _flexBufferNewValue.NewObject();
-                    var vectorStart = _flexBufferNewValue.StartVector();
-                    foreach (var groupExpr in groupExpressions)
+                    FlxValue[] newVector = new FlxValue[groupExpressions.Count];
+                    for (int i = 0; i < groupExpressions.Count; i++)
                     {
-                        var result = groupExpr(e);
-                        _flexBufferNewValue.Add(result);
+                        newVector[i] = groupExpressions[i](e);
                     }
-                    _flexBufferNewValue.EndVector(vectorStart, false, false);
-                    var keyBytes = _flexBufferNewValue.Finish();
-                    key = new RowEvent(e.Weight, 0, new CompactRowData(keyBytes));
+                    key = new RowEvent(e.Weight, 0, new ArrayRowData(newVector));
 
                     // Store the key in the temporary tree
                     await _temporaryTree.RMW(key.Value, default, (_, current, exist) =>
