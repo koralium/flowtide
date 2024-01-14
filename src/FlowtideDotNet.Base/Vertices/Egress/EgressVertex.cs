@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private IEgressImplementation? _targetBlock;
         private bool _isHealthy = true;
         private CancellationTokenSource? _cancellationTokenSource;
-        private ConcurrentDictionary<string, float> _lastLatency = new ConcurrentDictionary<string, float>();
+        private readonly ConcurrentDictionary<string, float> _lastLatency = new ConcurrentDictionary<string, float>();
 
         public string Name { get; private set; }
 
