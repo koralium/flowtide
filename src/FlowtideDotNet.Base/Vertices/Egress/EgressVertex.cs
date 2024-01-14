@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private IEgressImplementation? _targetBlock;
         private bool _isHealthy = true;
         private CancellationTokenSource? _cancellationTokenSource;
-        private readonly ConcurrentDictionary<string, float> _lastLatency = new ConcurrentDictionary<string, float>();
+        private IHistogram<float>? _latencyHistogram;
 
         public string Name { get; private set; }
 
@@ -65,11 +65,12 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         private Task HandleWatermark(Watermark watermark)
         {
+            Debug.Assert(_latencyHistogram != null);
             var span = DateTimeOffset.UtcNow.Subtract(watermark.StartTime);
             var latency = (float)span.TotalMilliseconds;
             if (watermark.SourceOperatorId != null)
             {
-                _lastLatency[watermark.SourceOperatorId] = latency;
+                _latencyHistogram.Record(latency, new KeyValuePair<string, object?>("source", watermark.SourceOperatorId));
             }
             else
             {
@@ -174,18 +175,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
                 };
                 return new Measurement<int>(1, tags);
             });
-            Metrics.CreateObservableGauge("latency", () =>
-            {
-                List<Measurement<float>> output = new List<Measurement<float>>();
-                foreach(var kv in _lastLatency)
-                {
-                    output.Add(new Measurement<float>(kv.Value, new TagList
-                    {
-                        { "source", kv.Key }
-                    }));
-                }
-                return output;
-            });
+            _latencyHistogram = Metrics.CreateHistogram<float>("latency");
 
             return InitializeOrRestore(restoreTime, dState, vertexHandler.StateClient);
         }
