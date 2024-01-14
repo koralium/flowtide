@@ -52,6 +52,8 @@ namespace FlowtideDotNet.Base
 
         public DateTimeOffset StartTime { get; }
 
+        public string? SourceOperatorId { get; internal set; }
+
         public override bool Equals(object? obj)
         {
             return obj is Watermark watermark &&

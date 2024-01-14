@@ -15,6 +15,7 @@ using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Egress.Internal;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
@@ -30,7 +31,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private IEgressImplementation? _targetBlock;
         private bool _isHealthy = true;
         private CancellationTokenSource? _cancellationTokenSource;
-        private float _lastLatency = 0;
+        private readonly ConcurrentDictionary<string, float> _lastLatency = new ConcurrentDictionary<string, float>();
 
         public string Name { get; private set; }
 
@@ -65,7 +66,16 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private Task HandleWatermark(Watermark watermark)
         {
             var span = DateTimeOffset.UtcNow.Subtract(watermark.StartTime);
-            _lastLatency = (float)span.TotalMilliseconds;
+            var latency = (float)span.TotalMilliseconds;
+            if (watermark.SourceOperatorId != null)
+            {
+                _lastLatency[watermark.SourceOperatorId] = latency;
+            }
+            else
+            {
+                Logger.LogWarning("Recieved watermark without source operator id");
+            }
+            
             return OnWatermark(watermark);
         }
 
@@ -166,7 +176,15 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             });
             Metrics.CreateObservableGauge("latency", () =>
             {
-                return _lastLatency;
+                List<Measurement<float>> output = new List<Measurement<float>>();
+                foreach(var kv in _lastLatency)
+                {
+                    output.Add(new Measurement<float>(kv.Value, new TagList
+                    {
+                        { "source", kv.Key }
+                    }));
+                }
+                return output;
             });
 
             return InitializeOrRestore(restoreTime, dState, vertexHandler.StateClient);
