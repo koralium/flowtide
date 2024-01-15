@@ -305,7 +305,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     }
                 }
                 _targetWatermarkNames = targetsWatermarks.ToArray();
-                _currentWatermark = new Watermark(uniqueNames.Select(x => new KeyValuePair<string, long>(x, 0)).ToImmutableDictionary(), DateTimeOffset.UtcNow);
+                _currentWatermark = new Watermark(uniqueNames.Select(x => new KeyValuePair<string, long>(x, -1)).ToImmutableDictionary(), DateTimeOffset.UtcNow);
                 
 
                 return initWatermarksEvent;
