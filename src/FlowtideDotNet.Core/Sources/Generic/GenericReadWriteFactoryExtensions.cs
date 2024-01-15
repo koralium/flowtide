@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Sources.Generic;
 using FlowtideDotNet.Core.Sources.Generic.Internal;
 using FlowtideDotNet.Substrait.Relations;
@@ -36,6 +37,28 @@ namespace FlowtideDotNet.Core.Engine
                 }
 
                 return new ReadOperatorInfo(new GenericReadOperator<T>(readRelation, dataSource(readRelation), opt));
+            });
+
+            return readWriteFactory;
+        }
+
+        public static ReadWriteFactory AddGenericDataSink<T>(this ReadWriteFactory readWriteFactory, string regexPattern, ExecutionMode executionMode, Func<WriteRelation, GenericDataSink<T>> dataSink)
+            where T: class
+        {
+            if (regexPattern == "*")
+            {
+                regexPattern = ".*";
+            }
+
+            readWriteFactory.AddWriteResolver((writeRelation, opt) =>
+            {
+                var regexResult = Regex.Match(writeRelation.NamedObject.DotSeperated, regexPattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
+                if (!regexResult.Success)
+                {
+                    return null;
+                }
+
+                return new GenericWriteOperator<T>(dataSink(writeRelation), writeRelation, executionMode, opt);
             });
 
             return readWriteFactory;
