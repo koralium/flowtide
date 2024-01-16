@@ -100,6 +100,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return new Measurement<float>(m_metrics_lastSentPercentage, new KeyValuePair<string, object?>("stream", m_streamName));
                 }
             });
+            meter.CreateObservableCounter("flowtide_lru_table_cache_hits", () =>
+            {
+                return new Measurement<long>(Volatile.Read(ref m_cacheHits), new KeyValuePair<string, object?>("stream", m_streamName));
+            });
+            meter.CreateObservableCounter("flowtide_lru_table_cache_misses", () =>
+            {
+                return new Measurement<long>(Volatile.Read(ref m_cacheMisses), new KeyValuePair<string, object?>("stream", m_streamName));
+            });
+            meter.CreateObservableGauge("flowtide_lru_table_cache_tries", () =>
+            {
+                var hits = Volatile.Read(ref m_cacheHits);
+                var misses = Volatile.Read(ref m_cacheMisses);
+                return new Measurement<long>(hits + misses, new KeyValuePair<string, object?>("stream", m_streamName));
+            });
             this.lruTableOptions = lruTableOptions;
         }
 
