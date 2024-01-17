@@ -11,8 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Persistence;
+using FlowtideDotNet.Storage.Utils;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
@@ -29,6 +31,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
         private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
+        private readonly Histogram<float> m_persistenceReadMsHistogram;
+        private readonly Histogram<float> m_temporaryReadMsHistogram;
+        private readonly TagList tagList;
 
         /// <summary>
         /// Value of how many pages have changed since last commit.
@@ -42,7 +47,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             StateClientMetadata<TMetadata> metadata,
             IPersistentStorageSession session,
             StateClientOptions<V> options,
-            FileCacheOptions fileCacheOptions)
+            FileCacheOptions fileCacheOptions,
+            Meter meter)
         {
             this.stateManager = stateManager;
             this.metadataId = metadataId;
@@ -52,6 +58,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name);
             m_modified = new ConcurrentDictionary<long, int>();
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
+            m_persistenceReadMsHistogram = meter.CreateHistogram<float>("flowtide_persistence_read_ms");
+            m_temporaryReadMsHistogram = meter.CreateHistogram<float>("flowtide_temporary_read_ms");
+            tagList = options.TagList;
+            tagList.Add("state_client", name);
         }
 
         public TMetadata? Metadata
@@ -177,9 +187,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 // Read from temporary file storage
                 if (m_modified.ContainsKey(key))
                 {
+                    var sw = ValueStopwatch.StartNew();
                     var bytes = m_fileCache.Read(key);
                     var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
                     stateManager.AddOrUpdate(key, value, this);
+                    m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
                     return ValueTask.FromResult<V?>(value);
                 }
                 // Read from persistent store
@@ -190,9 +202,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private async ValueTask<V?> GetValue_Persistent(long key)
         {
             Debug.Assert(options.ValueSerializer != null);
+            var sw = ValueStopwatch.StartNew();
             var bytes = await session.Read(key);
             var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
             stateManager.AddOrUpdate(key, value, this);
+            m_persistenceReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
             return value;
         }
 

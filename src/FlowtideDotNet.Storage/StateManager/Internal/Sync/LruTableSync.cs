@@ -108,7 +108,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 return new Measurement<long>(Volatile.Read(ref m_cacheMisses), new KeyValuePair<string, object?>("stream", m_streamName));
             });
-            meter.CreateObservableGauge("flowtide_lru_table_cache_tries", () =>
+            meter.CreateObservableCounter("flowtide_lru_table_cache_tries", () =>
             {
                 var hits = Volatile.Read(ref m_cacheHits);
                 var misses = Volatile.Read(ref m_cacheMisses);
