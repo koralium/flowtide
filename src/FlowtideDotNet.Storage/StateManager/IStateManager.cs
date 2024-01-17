@@ -10,15 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+
 namespace FlowtideDotNet.Storage.StateManager
 {
     public interface IStateManager
     {
         bool Initialized { get; }
-
         Task InitializeAsync();
 
-        IStateManagerClient GetOrCreateClient(string name);
+        IStateManagerClient GetOrCreateClient(string name, TagList tagList = default);
 
         Task Compact();
 

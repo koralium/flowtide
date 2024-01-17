@@ -194,7 +194,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     {
                         blockState = state;
                     }
-                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key);
+                    TagList tags = new TagList()
+                    {
+                        { "stream", _context.streamName },
+                        { "operator", block.Key }
+                    };
+                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
                     VertexHandler vertexHandler = new VertexHandler(_context.streamName, block.Key, _context.TryScheduleCheckpointIn, _context.AddTrigger, _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName), blockStateClient, _context.loggerFactory);
                     await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, blockState, vertexHandler);
                 }
@@ -207,7 +212,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     {
                         blockState = state;
                     }
-                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key);
+                    TagList tags = new TagList()
+                    {
+                        { "stream", _context.streamName },
+                        { "operator", block.Key }
+                    };
+                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
                     VertexHandler vertexHandler = new VertexHandler(_context.streamName, block.Key, _context.TryScheduleCheckpointIn, _context.AddTrigger, _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName), blockStateClient, _context.loggerFactory);
                     await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, blockState, vertexHandler);
                     block.Value.SetCheckpointDoneFunction(_context.EgressCheckpointDone);
@@ -221,7 +231,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     {
                         blockState = state;
                     }
-                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key);
+                    TagList tags = new TagList()
+                    {
+                        { "stream", _context.streamName },
+                        { "operator", block.Key }
+                    };
+                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
                     VertexHandler vertexHandler = new VertexHandler(_context.streamName, block.Key, _context.TryScheduleCheckpointIn, _context.AddTrigger, _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName), blockStateClient, _context.loggerFactory);
                     await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, blockState, vertexHandler);
                 }
