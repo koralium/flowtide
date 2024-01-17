@@ -27,7 +27,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private StateClientMetadata<TMetadata> metadata;
         private readonly IPersistentStorageSession session;
         private readonly StateClientOptions<V> options;
-        private readonly Meter meter;
         private readonly ConcurrentDictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
@@ -56,7 +55,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.metadata = metadata;
             this.session = session;
             this.options = options;
-            this.meter = meter;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name);
             m_modified = new ConcurrentDictionary<long, int>();
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
