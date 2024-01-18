@@ -34,9 +34,11 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         private AccessToken? ensureUserToken;
         private readonly Dictionary<string, int> _userIds = new Dictionary<string, int>();
         private readonly SharepointSinkOptions sharepointSinkOptions;
+        private readonly string streamName;
+        private readonly string operatorId;
         private readonly ILogger logger;
 
-        public SharepointGraphListClient(SharepointSinkOptions sharepointSinkOptions, ILogger logger)
+        public SharepointGraphListClient(SharepointSinkOptions sharepointSinkOptions, string streamName, string operatorId, ILogger logger)
         {
             this.graphSite = $"{sharepointSinkOptions.SharepointUrl}:/sites/{sharepointSinkOptions.Site}:";
             this.sharepointUrl = sharepointSinkOptions.SharepointUrl;
@@ -44,6 +46,8 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             this.tokenCredential = sharepointSinkOptions.TokenCredential;
             graphClient = new GraphServiceClient(tokenCredential);
             this.sharepointSinkOptions = sharepointSinkOptions;
+            this.streamName = streamName;
+            this.operatorId = operatorId;
             this.logger = logger;
         }
 
@@ -88,7 +92,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 {
                     throw new InvalidOperationException($"Person or group not found: {err}");
                 }
-                logger.LogWarning($"Person or group not found: {err}");
+                logger.PersonOrGroupNotFound(err, streamName, operatorId);
                 return default;
             }
             var ensureUserResult = await response.Content.ReadFromJsonAsync<EnsureUserResult>();
@@ -99,7 +103,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 {
                     throw new InvalidOperationException($"Person or group not found: unknown error.");
                 }
-                logger.LogWarning($"Person or group not found: unknown error.");
+                logger.PersonOrGroupNotFound("Unknown error", streamName, operatorId);
                 return default;
             }
             _userIds[upn] = ensureUserResult.Id.Value;

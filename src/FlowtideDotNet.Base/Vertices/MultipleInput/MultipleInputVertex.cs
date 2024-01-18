@@ -341,7 +341,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             lock (_targetCheckpointLock)
             {
                 Debug.Assert(_targetInCheckpoint != null, nameof(_targetInCheckpoint));
-                Logger.LogTrace("Target in checkpoint {name} target: {target}", Name, targetId);
+                Logger.TargetInCheckpoint(targetId, StreamName, Name);
                 _targetInCheckpoint[targetId] = checkpointEvent;
 
                 bool allInCheckpoint = true;
@@ -357,8 +357,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
                 if (allInCheckpoint)
                 {
-                    Logger.LogInformation("Checkpoint in operator: {operator}", Name);
-                    Logger.LogTrace("Release checkpoint {name}", Name);
+                    Logger.CheckpointInOperator(StreamName, Name);
                     // Create a new array here, have already checked that noone is null in the array
 #pragma warning disable CS8619 // Nullability of reference types in value doesn't match target type.
                     checkpoints = _targetInCheckpoint.ToArray();
