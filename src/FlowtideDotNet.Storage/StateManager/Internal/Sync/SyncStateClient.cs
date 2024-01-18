@@ -27,6 +27,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private StateClientMetadata<TMetadata> metadata;
         private readonly IPersistentStorageSession session;
         private readonly StateClientOptions<V> options;
+        private readonly bool useReadCache;
         private readonly ConcurrentDictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
@@ -48,13 +49,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             IPersistentStorageSession session,
             StateClientOptions<V> options,
             FileCacheOptions fileCacheOptions,
-            Meter meter)
+            Meter meter,
+            bool useReadCache)
         {
             this.stateManager = stateManager;
             this.metadataId = metadataId;
             this.metadata = metadata;
             this.session = session;
             this.options = options;
+            this.useReadCache = useReadCache;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name);
             m_modified = new ConcurrentDictionary<long, int>();
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
@@ -122,7 +125,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     var bytes = options.ValueSerializer.Serialize(val, stateManager.SerializeOptions);
                     // Write to persistence
                     await session.Write(kv.Key, bytes);
-                    m_fileCache.Free(kv.Key);
+
+                    if (!useReadCache)
+                    {
+                        m_fileCache.Free(kv.Key);
+                    }
                     continue;
                 }
                 {
@@ -136,8 +143,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     // Write to persistence
                     await session.Write(kv.Key, bytes);
 
-                    // Free the data from temporary storage
-                    m_fileCache.Free(kv.Key);
+                    if (!useReadCache)
+                    {
+                        // Free the data from temporary storage
+                        m_fileCache.Free(kv.Key);
+                    }
+                    else
+                    {
+                        // Set version to -2 which marks that it is a read only version
+                        m_fileCacheVersion[kv.Key] = -2;
+                    }
                 }
             }
             var modifiedPagesCount = m_modified.Count;
@@ -147,10 +162,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             // Modify active pages
             Interlocked.Add(ref stateManager.m_metadata.PageCount, newPages);
             newPages = 0;
-            
+
             m_modified.Clear();
-            m_fileCache.FreeAll();
-            m_fileCacheVersion.Clear();
+            if (!useReadCache)
+            {
+                m_fileCache.FreeAll();
+                m_fileCacheVersion.Clear();
+            }
+            
             {
                 var bytes = StateClientMetadataSerializer.Serialize(metadata);
                 await session.Write(metadataId, bytes);
@@ -185,7 +204,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return ValueTask.FromResult<V?>(val);
                 }
                 // Read from temporary file storage
-                if (m_modified.ContainsKey(key))
+                if (m_fileCacheVersion.ContainsKey(key))
                 {
                     var sw = ValueStopwatch.StartNew();
                     var bytes = m_fileCache.Read(key);
@@ -259,10 +278,31 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             Debug.Assert(options.ValueSerializer != null);
             foreach (var value in valuesToEvict)
             {
-                if (m_modified.TryGetValue(value.Item1.ValueRef.key, out var val) == false || val == -1)
+                bool isModified = m_modified.TryGetValue(value.Item1.ValueRef.key, out var val);
+                if (!useReadCache)
                 {
-                    continue;
+                    // Skip writing data if we dont use read cache and its not modified or deleted
+                    if (isModified == false || val == -1)
+                    {
+                        continue;
+                    }
                 }
+                else
+                {
+                    if (isModified)
+                    {
+                        if (val == -1)
+                        {
+                            // Deleted
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        val = -2;
+                    }
+                }
+                
                 if (m_fileCacheVersion.TryGetValue(value.Item1.ValueRef.key, out var storedVersion) && storedVersion == val)
                 {
                     continue;
