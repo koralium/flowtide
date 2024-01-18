@@ -21,6 +21,7 @@ using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Base.Metrics;
 using System.Diagnostics;
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
@@ -147,7 +148,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             catch(Exception ex)
             {
                 SetHealth(false);
-                Logger.LogWarning(ex, "Exception fetching changes, will try again in 5 seconds");
+                Logger.ExceptionFetchingChanges(ex, StreamName, Name);
                 await sqlConnection.DisposeAsync();
 
                 // Recreate the connection
@@ -162,7 +163,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 _eventsCounter.Add(result.Count);
                 _eventsProcessed.Add(result.Count);
-                Logger.LogInformation("{changeCount} Changes found from table, {tableName}", result.Count, readRelation.NamedTable.DotSeperated);
+                Logger.ChangesFoundInTable(result.Count, readRelation.NamedTable.DotSeperated, StreamName, Name);
                 await output.SendAsync(new StreamEventBatch(result));
                 await output.SendWatermark(new FlowtideDotNet.Base.Watermark(readRelation.NamedTable.DotSeperated, _state.ChangeTrackingVersion));
                 this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));
@@ -189,8 +190,8 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            
-            Logger.LogInformation("Initializing Sql Server Source for table {tableName}.", readRelation.NamedTable.DotSeperated);
+
+            Logger.InitializingSqlServerSource(readRelation.NamedTable.DotSeperated, StreamName, Name);
             if (state == null)
             {
                 state = new SqlServerState()
@@ -267,7 +268,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             // Check if we have never read the initial data before
             if (_state.ChangeTrackingVersion < 0)
             {
-                Logger.LogInformation("Selecting all data from {tableName}", readRelation.NamedTable.DotSeperated);
+                Logger.SelectingAllData(readRelation.NamedTable.DotSeperated, StreamName, Name);
                 await output.EnterCheckpointLock();
 
                 // Get current change tracking version
@@ -310,14 +311,14 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     catch(Exception e)
                     {
                         SetHealth(false);
-                        Logger.LogError(e, "Error reading data from sql server.");
+                        Logger.ErrorReadingData(e, readRelation.NamedTable.DotSeperated, StreamName, Name);
 
                         var waitTime = TimeSpan.FromSeconds(retryCount * 15);
-                        Logger.LogInformation("Waiting for {time} seconds", waitTime.Seconds);
+                        Logger.WaitingSeconds(waitTime.Seconds, StreamName, Name);
                         await Task.Delay(waitTime, output.CancellationToken);
 
                         retryCount++;
-                        Logger.LogInformation("Retrying count: " + retryCount);
+                        Logger.RetryingCount(retryCount, StreamName, Name);
                         await sqlConnection.DisposeAsync();
 
                         

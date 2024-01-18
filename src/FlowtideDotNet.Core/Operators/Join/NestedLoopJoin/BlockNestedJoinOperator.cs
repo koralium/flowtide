@@ -25,6 +25,7 @@ using System.Diagnostics;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Core.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 {
@@ -327,7 +328,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 
         protected override async Task InitializeOrRestore(JoinState? state, IStateManagerClient stateManagerClient)
         {
-            Logger.LogWarning("Block nested loop join in use, it will severely impact performance of the stream.");
+            Logger.BlockNestedLoopInUse(StreamName, Name);
             _leftTree = await stateManagerClient.GetOrCreateTree("left", new BPlusTreeOptions<RowEvent, JoinStorageValue>()
             {
                 Comparer = new NestedJoinStreamEventComparer(),

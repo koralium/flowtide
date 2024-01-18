@@ -23,6 +23,7 @@ using System.Diagnostics;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Core.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
@@ -237,7 +238,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 #if DEBUG_WRITE
             allOutput = File.CreateText($"{Name}.alloutput.txt");
 #endif
-            Logger.LogInformation("Initializing normalization operator.");
+            Logger.InitializingNormalizationOperator(StreamName, Name);
             if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");

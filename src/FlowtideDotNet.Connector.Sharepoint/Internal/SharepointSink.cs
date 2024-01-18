@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             await base.InitializeOrRestore(restoreTime, state, stateManagerClient);
             Debug.Assert(primaryKeyIndices != null);
 
-            this.sharepointGraphListClient = new SharepointGraphListClient(sinkOptions, Logger);
+            this.sharepointGraphListClient = new SharepointGraphListClient(sinkOptions, StreamName, Name, Logger);
             await sharepointGraphListClient.Initialize();
             _existingObjectsTree = await stateManagerClient.GetOrCreateTree("object_ids_tmp", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<string, string>()
             {

@@ -22,6 +22,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.Metrics;
+using FlowtideDotNet.Base.Utils;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
@@ -442,7 +443,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             lock (_contextLock)
             {
-                _logger.LogTrace("Calling egress checkpoint done, current state: {state}", currentState.ToString());
+                _logger.CallingEgressCheckpointDone(streamName, currentState.ToString());
                 _state!.EgressCheckpointDone(name);
             }
         }
@@ -458,7 +459,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task OnFailure(Exception? e)
         {
-            _logger.LogError(e, "Stream error");
+            _logger.StreamError(e, streamName);
             lock(_contextLock)
             {
                 return _state!.OnFailure();
