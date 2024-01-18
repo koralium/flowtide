@@ -25,6 +25,6 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
            EventId = 1,
            Level = LogLevel.Warning,
            Message = "Failed to write to mongoDB, will retry, stream `{stream}`, operator `{operatorId}`")]
-        public static partial void FailedToWriteMongoDB(this ILogger logger, string stream, string operatorId);
+        public static partial void FailedToWriteMongoDB(this ILogger logger, Exception? e, string stream, string operatorId);
     }
 }
