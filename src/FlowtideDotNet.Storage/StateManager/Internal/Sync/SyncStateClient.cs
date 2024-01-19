@@ -130,6 +130,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         m_fileCache.Free(kv.Key);
                     }
+                    else
+                    {
+                        // Remove it from file cache version and file cache
+                        // This is required since the data can have been modified since it was written to the cache.
+                        m_fileCacheVersion.Remove(kv.Key, out _);
+                        m_fileCache.Free(kv.Key);
+                    }
                     continue;
                 }
                 {
