@@ -196,6 +196,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
+        /// <summary>
+        /// Used for unit testing
+        /// </summary>
+        internal async Task StopCleanupTask()
+        {
+            m_cleanupTokenSource.Cancel();
+            await m_cleanupTask!;
+        }
+
         public bool TryGetValue(long key, out ICacheObject? cacheObject)
         {
             if (cache.TryGetValue(key, out var node))
@@ -269,6 +278,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             });
 
             return full;
+        }
+
+        /// <summary>
+        /// Used for testing only
+        /// </summary>
+        /// <returns></returns>
+        internal Task ForceCleanup()
+        {
+            return Cleanup();
         }
 
         private async Task Cleanup()
