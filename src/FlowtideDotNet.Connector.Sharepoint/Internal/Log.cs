@@ -10,25 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Diagnostics;
-using System.Diagnostics.Metrics;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Storage.StateManager
+namespace FlowtideDotNet.Connector.Sharepoint.Internal
 {
-    public interface IStateManager
+    internal static partial class Log
     {
-        bool Initialized { get; }
-        Task InitializeAsync();
-
-        IStateManagerClient GetOrCreateClient(string name, TagList tagList = default);
-
-        Task Compact();
-
-        ValueTask CheckpointAsync();
-    }
-
-    public interface IStateManager<TMetadata> : IStateManager
-    {
-        TMetadata? Metadata { get; set; }
+        [LoggerMessage(
+           EventId = 1,
+           Level = LogLevel.Warning,
+           Message = "Person or group not found: `{error}`, stream `{stream}`, operator `{operatorId}`")]
+        public static partial void PersonOrGroupNotFound(this ILogger logger, string error, string stream, string operatorId);
     }
 }

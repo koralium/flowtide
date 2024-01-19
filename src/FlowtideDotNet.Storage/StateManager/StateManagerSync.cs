@@ -228,7 +228,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     var metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(new ByteMemoryOwner(bytes), bytes.Length);
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheOptions);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheOptions, meter, this.options.UseReadCache);
                     lock (m_lock)
                     {
                         _stateClients.Add(client, stateClient);
@@ -252,14 +252,14 @@ namespace FlowtideDotNet.Storage.StateManager
                 lock (m_lock)
                 {
                     var session = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheOptions);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheOptions, meter, this.options.UseReadCache);
                     _stateClients.Add(client, stateClient);
                     return stateClient;
                 }
             }
         }
 
-        public IStateManagerClient GetOrCreateClient(string name)
+        public IStateManagerClient GetOrCreateClient(string name, TagList tagList = default)
         {
             lock (m_lock)
             {
@@ -269,7 +269,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 }
                 else
                 {
-                    client = new StateManagerSyncClient(name, this);
+                    client = new StateManagerSyncClient(name, this, tagList);
                     _clients.Add(name, client);
                     return client;
                 }

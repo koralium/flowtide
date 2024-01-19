@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             Debug.Assert(m_container != null);
             Debug.Assert(m_serializer != null);
 
-            Logger.LogInformation("Starting CosmosDB update");
+            Logger.StartingCosmosDBUpdate(StreamName, Name);
             var iterator = m_modified.CreateIterator();
             await iterator.SeekFirst();
 
@@ -147,7 +147,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             // Clear the modified table
             await m_modified.Clear();
             m_hasModified = false;
-            Logger.LogInformation("CosmosDB update complete");
+            Logger.CosmosDBUpdateComplete(StreamName, Name, operationCount);
         }
 
         private string GetIdValue(RowEvent streamEvent)

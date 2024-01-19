@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Utils;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -108,7 +109,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 return new Measurement<long>(Volatile.Read(ref m_cacheMisses), new KeyValuePair<string, object?>("stream", m_streamName));
             });
-            meter.CreateObservableGauge("flowtide_lru_table_cache_tries", () =>
+            meter.CreateObservableCounter("flowtide_lru_table_cache_tries", () =>
             {
                 var hits = Volatile.Read(ref m_cacheHits);
                 var misses = Volatile.Read(ref m_cacheMisses);
@@ -163,11 +164,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     if (task.IsFaulted)
                     {
-                        this.logger.LogError(task.Exception, "Exception in LRU Table cleanup");
+                        logger.ExceptionInLruTableCleanup(task.Exception, m_streamName);
                     }
                     else
                     {
-                        this.logger.LogWarning("Cleanup task closed without error.");
+                        logger.CleanupTaskClosedWithoutError(m_streamName);
                     }
                     if (!task.IsCompletedSuccessfully)
                     {
@@ -219,10 +220,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public async Task Wait()
         {
-            logger.LogWarning("LRU Table is full, waiting for cleanup to finish.");
+            logger.LruTableIsFull(m_streamName);
             await _fullLock.WaitAsync().ConfigureAwait(false);
             _fullLock.Release();
-            logger.LogInformation("LRU Table is no longer full.");
+            logger.LruTableNoLongerFull(m_streamName);
         }
 
         public bool Add(long key, ICacheObject value, ILruEvictHandler evictHandler)
