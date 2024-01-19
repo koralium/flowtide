@@ -74,6 +74,11 @@ namespace FlowtideDotNet.Storage.StateManager
         private readonly Dictionary<string, StateClient> _stateClients = new Dictionary<string, StateClient>();
         private IPersistentStorage? m_persistentStorage;
 
+        /// <summary>
+        /// Used for unit testing only
+        /// </summary>
+        internal LruTableSync LruTable => m_lruTable ?? throw new InvalidOperationException("Manager must be initialized before getting LRU table");
+
         public bool Initialized { get; private set; }
 
         internal StateSerializeOptions SerializeOptions => options?.SerializeOptions ?? throw new InvalidOperationException("Manager must be initialized before getting serialize options");
