@@ -23,6 +23,7 @@ using System.Data;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
 
 namespace FlowtideDotNet.SqlServer.SqlServer
 {
@@ -68,7 +69,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
 
             if (m_hasModified)
             {
-                Logger.LogInformation("Starting database update");
+                Logger.StartingDatabaseUpdate(StreamName, Name);
                 var iterator = m_modified.CreateIterator();
 
                 await iterator.SeekFirst();
@@ -115,7 +116,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 // Clear the modified table
                 await m_modified.Clear();
                 m_hasModified = false;
-                Logger.LogInformation("Database update complete");
+                Logger.DatabaseUpdateComplete(StreamName, Name);
             }
             return new SqlServerSinkState();
         }

@@ -10,25 +10,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Diagnostics;
-using System.Diagnostics.Metrics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Storage.StateManager
+namespace FlowtideDotNet.Core.Sources.Generic
 {
-    public interface IStateManager
+    public class FlowtideGenericWriteObject<T>
     {
-        bool Initialized { get; }
-        Task InitializeAsync();
+        public FlowtideGenericWriteObject(T value, bool isDeleted)
+        {
+            Value = value;
+            IsDeleted = isDeleted;
+        }
 
-        IStateManagerClient GetOrCreateClient(string name, TagList tagList = default);
-
-        Task Compact();
-
-        ValueTask CheckpointAsync();
-    }
-
-    public interface IStateManager<TMetadata> : IStateManager
-    {
-        TMetadata? Metadata { get; set; }
+        public T Value { get; }
+        public bool IsDeleted { get; }
     }
 }

@@ -19,6 +19,7 @@ using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Base.Metrics;
 using System.Diagnostics;
+using FlowtideDotNet.Core.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Filter
 {
@@ -58,7 +59,7 @@ namespace FlowtideDotNet.Core.Operators.Filter
 
         protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
         {
-            Logger.LogInformation("Initializing filter operator.");
+            Logger.InitializingFilterOperator(StreamName, Name);
             if (_eventsProcessed == null)
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");

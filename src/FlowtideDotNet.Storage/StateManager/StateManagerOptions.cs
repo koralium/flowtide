@@ -53,5 +53,12 @@ namespace FlowtideDotNet.Storage.StateManager
         public bool RemoveOutdatedCheckpoints { get; set; } = true;
 
         public StateSerializeOptions SerializeOptions { get; set; } = new StateSerializeOptions();
+
+        /// <summary>
+        /// Uses temporary cache as a read cache.
+        /// This can help increase performance and lower I/O against persistence storage.
+        /// Useful if persistent storage is not on disk and instead in a remote location.
+        /// </summary>
+        public bool UseReadCache { get; set; } = false;
     }
 }

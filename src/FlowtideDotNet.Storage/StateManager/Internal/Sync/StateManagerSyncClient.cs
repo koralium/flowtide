@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Tree.Internal;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
@@ -19,16 +20,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
     {
         private readonly string m_name;
         private readonly StateManagerSync stateManager;
+        private readonly TagList tagList;
 
-        internal StateManagerSyncClient(string name, StateManagerSync stateManager)
+        internal StateManagerSyncClient(string name, StateManagerSync stateManager, TagList tagList)
         {
             this.m_name = name;
             this.stateManager = stateManager;
+            this.tagList = tagList;
         }
 
         public IStateManagerClient GetChildManager(string name)
         {
-            return new StateManagerSyncClient($"{m_name}_{name}", stateManager);
+            return new StateManagerSyncClient($"{m_name}_{name}", stateManager, tagList);
         }
 
         public async ValueTask<IBPlusTree<K, V>> GetOrCreateTree<K, V>(string name, BPlusTreeOptions<K, V> options)
@@ -45,7 +48,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             var combinedName = $"{m_name}_{name}";
             return stateManager.CreateClientAsync<V, TMetadata>(combinedName, new StateClientOptions<V>()
             {
-                ValueSerializer = serializer
+                ValueSerializer = serializer,
+                TagList = tagList
             });
         }
     }
