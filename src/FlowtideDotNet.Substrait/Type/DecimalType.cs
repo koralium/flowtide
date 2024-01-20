@@ -10,19 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Substrait.Type;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Substrait.Expressions
+namespace FlowtideDotNet.Substrait.Type
 {
-    public class CastExpression : Expression
+    public class DecimalType : SubstraitBaseType
     {
-        public required Expression Expression { get; set; }
-
-        public required SubstraitBaseType Type { get; set; }
-
-        public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
-        {
-            return visitor.VisitCastExpression(this, state);
-        }
+        public override SubstraitType Type => SubstraitType.Decimal;
     }
 }
