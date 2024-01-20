@@ -541,9 +541,8 @@ namespace FlowtideDotNet.Substrait.Sql
         {
             var expr = Visit(cast.Expression, state);
 
-            SubstraitBaseType? baseType = default;
-
-            if (cast.DataType is SqlParser.Ast.DataType.StringType stringType)
+            SubstraitBaseType? baseType;
+            if (cast.DataType is SqlParser.Ast.DataType.StringType)
             {
                 baseType = new StringType();
             }
