@@ -189,7 +189,7 @@ namespace FlowtideDotNet.Storage.StateManager
             return false;
         }
 
-        public async ValueTask CheckpointAsync()
+        public async ValueTask CheckpointAsync(bool includeIndex = false)
         {
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
@@ -201,7 +201,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 bytes = m_metadataSerializer.Serialize(m_metadata, options.SerializeOptions);
             }
 
-            await m_persistentStorage.CheckpointAsync(bytes);
+            await m_persistentStorage.CheckpointAsync(bytes, includeIndex);
         }
 
         public async Task Compact()

@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Storage.StateManager
 
         Task Compact();
 
-        ValueTask CheckpointAsync();
+        ValueTask CheckpointAsync(bool includeIndex = false);
     }
 
     public interface IStateManager<TMetadata> : IStateManager
