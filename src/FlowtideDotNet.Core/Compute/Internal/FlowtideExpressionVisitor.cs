@@ -275,6 +275,27 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return blockExpr;
         }
 
+        public override System.Linq.Expressions.Expression? VisitCastExpression(CastExpression castExpression, ParametersInfo state)
+        {
+            var expr = Visit(castExpression.Expression, state);
+            if (expr == null)
+            {
+                throw new InvalidOperationException("The expression to cast is null.");
+            }
+            switch (castExpression.Type.Type)
+            {
+                case Substrait.Type.SubstraitType.String:
+                    return CastImplementations.CallCastToString(expr);
+                case Substrait.Type.SubstraitType.Int64:
+                case Substrait.Type.SubstraitType.Int32:
+                    return CastImplementations.CallCastToInt(expr);
+                case Substrait.Type.SubstraitType.Decimal:
+                    return CastImplementations.CallCastToDecimal(expr);
+                case Substrait.Type.SubstraitType.Bool:
+                    return CastImplementations.CallCastToBool(expr);
+            }
 
+            throw new InvalidOperationException($"The type {castExpression.Type.Type} is not supported in cast.");
+        }
     }
 }
