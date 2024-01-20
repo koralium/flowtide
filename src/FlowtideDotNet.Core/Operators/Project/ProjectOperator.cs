@@ -20,6 +20,7 @@ using System.Diagnostics;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Core.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Project
 {
@@ -132,7 +133,7 @@ namespace FlowtideDotNet.Core.Operators.Project
 #if DEBUG_WRITE
             allInput = File.CreateText($"{Name}.all.txt");
 #endif
-            Logger.LogInformation("Initializing project operator.");
+            Logger.InitializingProjectOperator(StreamName, Name);
             if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Utils;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -100,6 +101,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return new Measurement<float>(m_metrics_lastSentPercentage, new KeyValuePair<string, object?>("stream", m_streamName));
                 }
             });
+            meter.CreateObservableCounter("flowtide_lru_table_cache_hits", () =>
+            {
+                return new Measurement<long>(Volatile.Read(ref m_cacheHits), new KeyValuePair<string, object?>("stream", m_streamName));
+            });
+            meter.CreateObservableCounter("flowtide_lru_table_cache_misses", () =>
+            {
+                return new Measurement<long>(Volatile.Read(ref m_cacheMisses), new KeyValuePair<string, object?>("stream", m_streamName));
+            });
+            meter.CreateObservableCounter("flowtide_lru_table_cache_tries", () =>
+            {
+                var hits = Volatile.Read(ref m_cacheHits);
+                var misses = Volatile.Read(ref m_cacheMisses);
+                return new Measurement<long>(hits + misses, new KeyValuePair<string, object?>("stream", m_streamName));
+            });
             this.lruTableOptions = lruTableOptions;
         }
 
@@ -149,11 +164,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     if (task.IsFaulted)
                     {
-                        this.logger.LogError(task.Exception, "Exception in LRU Table cleanup");
+                        logger.ExceptionInLruTableCleanup(task.Exception, m_streamName);
                     }
                     else
                     {
-                        this.logger.LogWarning("Cleanup task closed without error.");
+                        logger.CleanupTaskClosedWithoutError(m_streamName);
                     }
                     if (!task.IsCompletedSuccessfully)
                     {
@@ -181,6 +196,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
+        /// <summary>
+        /// Used for unit testing
+        /// </summary>
+        internal async Task StopCleanupTask()
+        {
+            m_cleanupTokenSource.Cancel();
+            await m_cleanupTask!;
+        }
+
         public bool TryGetValue(long key, out ICacheObject? cacheObject)
         {
             if (cache.TryGetValue(key, out var node))
@@ -205,10 +229,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public async Task Wait()
         {
-            logger.LogWarning("LRU Table is full, waiting for cleanup to finish.");
+            logger.LruTableIsFull(m_streamName);
             await _fullLock.WaitAsync().ConfigureAwait(false);
             _fullLock.Release();
-            logger.LogInformation("LRU Table is no longer full.");
+            logger.LruTableNoLongerFull(m_streamName);
         }
 
         public bool Add(long key, ICacheObject value, ILruEvictHandler evictHandler)
@@ -254,6 +278,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             });
 
             return full;
+        }
+
+        /// <summary>
+        /// Used for testing only
+        /// </summary>
+        /// <returns></returns>
+        internal Task ForceCleanup()
+        {
+            return Cleanup();
         }
 
         private async Task Cleanup()

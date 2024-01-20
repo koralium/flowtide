@@ -22,6 +22,7 @@ using System.Diagnostics;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Core.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -379,8 +380,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 outputWriter = File.CreateText($"{StreamName}-{Name}.output.txt");
             }
 #endif
-            Logger.LogInformation("Initializing merge join operator.");
-            if(_eventsCounter == null)
+            Logger.InitializingMergeJoinOperator(StreamName, Name);
+            if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
             }

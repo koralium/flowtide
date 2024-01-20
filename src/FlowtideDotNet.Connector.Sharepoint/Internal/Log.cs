@@ -10,19 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Substrait.Type;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Substrait.Expressions
+namespace FlowtideDotNet.Connector.Sharepoint.Internal
 {
-    public class CastExpression : Expression
+    internal static partial class Log
     {
-        public required Expression Expression { get; set; }
-
-        public required SubstraitBaseType Type { get; set; }
-
-        public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
-        {
-            return visitor.VisitCastExpression(this, state);
-        }
+        [LoggerMessage(
+           EventId = 1,
+           Level = LogLevel.Warning,
+           Message = "Person or group not found: `{error}`, stream `{stream}`, operator `{operatorId}`")]
+        public static partial void PersonOrGroupNotFound(this ILogger logger, string error, string stream, string operatorId);
     }
 }

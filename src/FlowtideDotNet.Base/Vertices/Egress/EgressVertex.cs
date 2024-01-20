@@ -12,6 +12,7 @@
 
 using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Egress.Internal;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -74,7 +75,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             }
             else
             {
-                Logger.LogWarning("Recieved watermark without source operator id");
+                Logger.RecievedWatermarkWithoutSourceOperator(StreamName, Name);
             }
             
             return OnWatermark(watermark);
@@ -89,12 +90,12 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         {
             if (_checkpointDone != null && Name != null)
             {
-                Logger.LogTrace("Calling checkpoint done.");
+                Logger.CallingCheckpointDone(StreamName, Name);
                 _checkpointDone(Name);
             }
             else
             {
-                Logger.LogWarning("Checkpoint done function not set on egress, checkpoint wont be able to complete");
+                Logger.CheckpointDoneFunctionNotSet(StreamName, Name ?? "");
             }
         }
 
