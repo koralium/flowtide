@@ -160,7 +160,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                     {
                         foreach(var itemWithError in response.ItemsWithErrors)
                         {
-                            Logger.LogError(message: itemWithError.Error.ToString());
+                            Logger.ElasticSearchInsertError(itemWithError.Error.ToString(), StreamName, Name);
                         }
                         throw new InvalidOperationException("Error in elasticsearch sink");
                     }
@@ -188,7 +188,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                 {
                     foreach (var itemWithError in response.ItemsWithErrors)
                     {
-                        Logger.LogError(itemWithError.Error.ToString());
+                        Logger.ElasticSearchInsertError(itemWithError.Error.ToString(), StreamName, Name);
                     }
                     throw new InvalidOperationException("Error in elasticsearch sink");
                 }

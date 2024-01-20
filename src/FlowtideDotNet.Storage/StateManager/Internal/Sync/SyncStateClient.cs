@@ -11,8 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Persistence;
+using FlowtideDotNet.Storage.Utils;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
@@ -25,10 +27,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private StateClientMetadata<TMetadata> metadata;
         private readonly IPersistentStorageSession session;
         private readonly StateClientOptions<V> options;
+        private readonly bool useReadCache;
         private readonly ConcurrentDictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
         private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
+        private readonly Histogram<float> m_persistenceReadMsHistogram;
+        private readonly Histogram<float> m_temporaryReadMsHistogram;
+        private readonly TagList tagList;
 
         /// <summary>
         /// Value of how many pages have changed since last commit.
@@ -42,16 +48,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             StateClientMetadata<TMetadata> metadata,
             IPersistentStorageSession session,
             StateClientOptions<V> options,
-            FileCacheOptions fileCacheOptions)
+            FileCacheOptions fileCacheOptions,
+            Meter meter,
+            bool useReadCache)
         {
             this.stateManager = stateManager;
             this.metadataId = metadataId;
             this.metadata = metadata;
             this.session = session;
             this.options = options;
+            this.useReadCache = useReadCache;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name);
             m_modified = new ConcurrentDictionary<long, int>();
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
+            m_persistenceReadMsHistogram = meter.CreateHistogram<float>("flowtide_persistence_read_ms");
+            m_temporaryReadMsHistogram = meter.CreateHistogram<float>("flowtide_temporary_read_ms");
+            tagList = options.TagList;
+            tagList.Add("state_client", name);
         }
 
         public TMetadata? Metadata
@@ -112,7 +125,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     var bytes = options.ValueSerializer.Serialize(val, stateManager.SerializeOptions);
                     // Write to persistence
                     await session.Write(kv.Key, bytes);
-                    m_fileCache.Free(kv.Key);
+
+                    if (!useReadCache)
+                    {
+                        m_fileCache.Free(kv.Key);
+                    }
+                    else
+                    {
+                        // Remove it from file cache version and file cache
+                        // This is required since the data can have been modified since it was written to the cache.
+                        m_fileCacheVersion.Remove(kv.Key, out _);
+                        m_fileCache.Free(kv.Key);
+                    }
                     continue;
                 }
                 {
@@ -126,8 +150,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     // Write to persistence
                     await session.Write(kv.Key, bytes);
 
-                    // Free the data from temporary storage
-                    m_fileCache.Free(kv.Key);
+                    if (!useReadCache)
+                    {
+                        // Free the data from temporary storage
+                        m_fileCache.Free(kv.Key);
+                    }
+                    else
+                    {
+                        // Set version to -2 which marks that it is a read only version
+                        m_fileCacheVersion[kv.Key] = -2;
+                    }
                 }
             }
             var modifiedPagesCount = m_modified.Count;
@@ -137,10 +169,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             // Modify active pages
             Interlocked.Add(ref stateManager.m_metadata.PageCount, newPages);
             newPages = 0;
-            
+
             m_modified.Clear();
-            m_fileCache.FreeAll();
-            m_fileCacheVersion.Clear();
+            if (!useReadCache)
+            {
+                m_fileCache.FreeAll();
+                m_fileCacheVersion.Clear();
+            }
+            
             {
                 var bytes = StateClientMetadataSerializer.Serialize(metadata);
                 await session.Write(metadataId, bytes);
@@ -175,11 +211,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return ValueTask.FromResult<V?>(val);
                 }
                 // Read from temporary file storage
-                if (m_modified.ContainsKey(key))
+                if (m_fileCacheVersion.ContainsKey(key))
                 {
+                    var sw = ValueStopwatch.StartNew();
                     var bytes = m_fileCache.Read(key);
                     var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
                     stateManager.AddOrUpdate(key, value, this);
+                    m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
                     return ValueTask.FromResult<V?>(value);
                 }
                 // Read from persistent store
@@ -190,9 +228,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private async ValueTask<V?> GetValue_Persistent(long key)
         {
             Debug.Assert(options.ValueSerializer != null);
+            var sw = ValueStopwatch.StartNew();
             var bytes = await session.Read(key);
             var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
             stateManager.AddOrUpdate(key, value, this);
+            m_persistenceReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
             return value;
         }
 
@@ -245,10 +285,31 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             Debug.Assert(options.ValueSerializer != null);
             foreach (var value in valuesToEvict)
             {
-                if (m_modified.TryGetValue(value.Item1.ValueRef.key, out var val) == false || val == -1)
+                bool isModified = m_modified.TryGetValue(value.Item1.ValueRef.key, out var val);
+                if (!useReadCache)
                 {
-                    continue;
+                    // Skip writing data if we dont use read cache and its not modified or deleted
+                    if (isModified == false || val == -1)
+                    {
+                        continue;
+                    }
                 }
+                else
+                {
+                    if (isModified)
+                    {
+                        if (val == -1)
+                        {
+                            // Deleted
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        val = -2;
+                    }
+                }
+                
                 if (m_fileCacheVersion.TryGetValue(value.Item1.ValueRef.key, out var storedVersion) && storedVersion == val)
                 {
                     continue;

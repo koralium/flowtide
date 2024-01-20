@@ -20,6 +20,11 @@ namespace FlowtideDotNet.Storage.StateManager
         public int CachePageCount { get; set; } = 10000;
 
         /// <summary>
+        /// The minimum cache page count, used to keep pages in memory to reduce latency.
+        /// </summary>
+        public int MinCachePageCount { get; set; } = 1000;
+
+        /// <summary>
         /// Optional: Set a maximum process memory limit for the state manager. If the limit is reached, the state manager will start evicting pages from the cache.
         /// This can help keep the application at a steady memory usage, but can also cause performance issues if the limit is too low.
         /// Setting this value increases cache page count if memory usage is low.
@@ -48,5 +53,12 @@ namespace FlowtideDotNet.Storage.StateManager
         public bool RemoveOutdatedCheckpoints { get; set; } = true;
 
         public StateSerializeOptions SerializeOptions { get; set; } = new StateSerializeOptions();
+
+        /// <summary>
+        /// Uses temporary cache as a read cache.
+        /// This can help increase performance and lower I/O against persistence storage.
+        /// Useful if persistent storage is not on disk and instead in a remote location.
+        /// </summary>
+        public bool UseReadCache { get; set; } = false;
     }
 }

@@ -48,6 +48,8 @@ namespace FlowtideDotNet.Base.Engine.Internal
 
         public ILoggerFactory LoggerFactory { get; }
 
+        public string OperatorId => operatorName;
+
         public Task RegisterTrigger(string name, TimeSpan? scheduledInterval = null)
         {
             return registerTrigger(operatorName, name, scheduledInterval);

@@ -245,7 +245,7 @@ namespace FlowtideDotNet.Storage.Tests
                         PageSize = 128,
                         
                     })
-            }, nullFactory.CreateLogger("logger"), new Meter($"storage"));
+            }, nullFactory.CreateLogger("logger"), new Meter($"storage"), "storage");
             await manager.InitializeAsync();
             var client = manager.GetOrCreateClient("test");
             var tree = await client.GetOrCreateTree<long, string>("tree", new Tree.BPlusTreeOptions<long, string>()
@@ -295,7 +295,7 @@ namespace FlowtideDotNet.Storage.Tests
                         PageSize = 512,
 
                     })
-            }, logger, new Meter($"storage"));
+            }, logger, new Meter($"storage"), "storage");
             await manager.InitializeAsync();
             var client = manager.GetOrCreateClient("test");
             var tree = await client.GetOrCreateTree<long, string>("tree", new Tree.BPlusTreeOptions<long, string>()

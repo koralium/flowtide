@@ -328,7 +328,10 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
             Metrics.CreateObservableGauge("metadata", () =>
             {
-                TagList tags = new TagList();
+                TagList tags = new TagList()
+                {
+                    { "id", Name }
+                };
                 var links = GetLinks();
                 StringBuilder outputLinks = new StringBuilder();
                 outputLinks.Append('[');

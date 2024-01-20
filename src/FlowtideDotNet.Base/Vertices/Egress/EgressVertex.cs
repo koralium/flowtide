@@ -12,9 +12,11 @@
 
 using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Egress.Internal;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
@@ -30,6 +32,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private IEgressImplementation? _targetBlock;
         private bool _isHealthy = true;
         private CancellationTokenSource? _cancellationTokenSource;
+        private IHistogram<float>? _latencyHistogram;
 
         public string Name { get; private set; }
 
@@ -53,12 +56,29 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         {
             if (_executionDataflowBlockOptions.GetSupportsParallelExecution())
             {
-                _targetBlock = new ParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, OnWatermark);
+                _targetBlock = new ParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
             }
             else
             {
-                _targetBlock = new NonParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, OnWatermark);
+                _targetBlock = new NonParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
             }
+        }
+
+        private Task HandleWatermark(Watermark watermark)
+        {
+            Debug.Assert(_latencyHistogram != null);
+            var span = DateTimeOffset.UtcNow.Subtract(watermark.StartTime);
+            var latency = (float)span.TotalMilliseconds;
+            if (watermark.SourceOperatorId != null)
+            {
+                _latencyHistogram.Record(latency, new KeyValuePair<string, object?>("source", watermark.SourceOperatorId));
+            }
+            else
+            {
+                Logger.RecievedWatermarkWithoutSourceOperator(StreamName, Name);
+            }
+            
+            return OnWatermark(watermark);
         }
 
         protected virtual Task OnWatermark(Watermark watermark)
@@ -70,12 +90,12 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         {
             if (_checkpointDone != null && Name != null)
             {
-                Logger.LogTrace("Calling checkpoint done.");
+                Logger.CallingCheckpointDone(StreamName, Name);
                 _checkpointDone(Name);
             }
             else
             {
-                Logger.LogWarning("Checkpoint done function not set on egress, checkpoint wont be able to complete");
+                Logger.CheckpointDoneFunctionNotSet(StreamName, Name ?? "");
             }
         }
 
@@ -149,10 +169,14 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             });
             Metrics.CreateObservableGauge("metadata", () =>
             {
-                TagList tags = new TagList();
-                tags.Add("links", "[]");
+                TagList tags = new TagList
+                {
+                    { "id", Name },
+                    { "links", "[]" }
+                };
                 return new Measurement<int>(1, tags);
             });
+            _latencyHistogram = Metrics.CreateHistogram<float>("latency");
 
             return InitializeOrRestore(restoreTime, dState, vertexHandler.StateClient);
         }

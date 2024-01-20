@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 // Check if it is a checkpoint event
                 if (streamEvent is ILockingEvent ev)
                 {
-                    Logger.LogTrace("Locking event " + Name);
+                    Logger.LockingEventInOperator(StreamName, Name);
                     // TODO: Check if it has a parallel source
                     if (_parallelSource == null)
                     {
@@ -179,7 +179,10 @@ namespace FlowtideDotNet.Base.Vertices.Unary
             });
             Metrics.CreateObservableGauge("metadata", () =>
             {
-                TagList tags = new TagList();
+                TagList tags = new TagList()
+                {
+                    { "id", Name }
+                };
                 var links = GetLinks();
                 StringBuilder outputLinks = new StringBuilder();
                 outputLinks.Append('[');
@@ -269,7 +272,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
         {
             if (lockingEvent is ICheckpointEvent checkpointEvent)
             {
-                Logger.LogInformation("Checkpoint in operator: {operator}", Name);
+                Logger.CheckpointInOperator(StreamName, Name);
                 _currentTime = checkpointEvent.NewTime;
                 var checkpointState = await OnCheckpoint();
                 checkpointEvent.AddState(Name, checkpointState);
