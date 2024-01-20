@@ -155,5 +155,11 @@ namespace FlowtideDotNet.Substrait.Expressions
             }
             return default;
         }
+
+        public virtual TOutput? VisitCastExpression(CastExpression castExpression, TState state)
+        {
+            castExpression.Expression.Accept(this, state);
+            return default;
+        }
     }
 }

@@ -11,8 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.FixedPoint;
 using FlowtideDotNet.Storage.StateManager;
+using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Iteration
@@ -23,6 +25,7 @@ namespace FlowtideDotNet.Core.Operators.Iteration
     }
     internal class IterationOperator : FixedPointVertex<StreamEventBatch, IterationState>
     {
+        private ICounter<long>? _eventsProcessed;
         public IterationOperator(ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
         }
@@ -31,11 +34,17 @@ namespace FlowtideDotNet.Core.Operators.Iteration
 
         protected override Task InitializeOrRestore(IterationState? state, IStateManagerClient stateManagerClient)
         {
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
             return Task.CompletedTask;
         }
 
         protected override async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> OnFeedbackRecieve(StreamEventBatch data, long time)
         {
+            Debug.Assert(_eventsProcessed != null);
+            _eventsProcessed.Add(data.Events.Count);
             // At this time, send data to egress and to loop after each feedback.
             List<RowEvent> loopOutput = new List<RowEvent>();
             List<RowEvent> egressOutput = new List<RowEvent>();
@@ -53,6 +62,8 @@ namespace FlowtideDotNet.Core.Operators.Iteration
 
         protected override async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> OnIngressRecieve(StreamEventBatch data, long time)
         {
+            Debug.Assert(_eventsProcessed != null);
+            _eventsProcessed.Add(data.Events.Count);
             yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(0, new StreamMessage<StreamEventBatch>(data, time));
             yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(1, new StreamMessage<StreamEventBatch>(data, time));
         }

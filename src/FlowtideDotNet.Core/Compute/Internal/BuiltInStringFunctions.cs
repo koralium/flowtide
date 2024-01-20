@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Diagnostics;
 using System.Reflection;
@@ -48,6 +49,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.LTrim, (x) => LTrimImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.RTrim, (x) => RTrimImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.To_String, (x) => ToStringImplementation(x));
+
+            StringAggAggregation.Register(functionsRegister);
         }
 
         private static FlxValue ToStringImplementation(in FlxValue val)

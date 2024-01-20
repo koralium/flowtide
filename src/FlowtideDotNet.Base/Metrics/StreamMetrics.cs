@@ -186,7 +186,7 @@ namespace FlowtideDotNet.Base.Metrics
             }
         }
 
-        public IMeter GetOrCreateVertexMeter(string operatorName)
+        public IMeter GetOrCreateVertexMeter(string operatorName, Func<string> displayName)
         {
             if (!_meters.TryGetValue(operatorName, out var meter))
             {
@@ -196,7 +196,7 @@ namespace FlowtideDotNet.Base.Metrics
                     { "operator", operatorName },
                     { "stream", _streamName }
                 };
-                meter = new FlowtideMeter(m, tagList);
+                meter = new FlowtideMeter(m, tagList, displayName);
                 _meters.Add(operatorName, meter);
             }
             return meter;

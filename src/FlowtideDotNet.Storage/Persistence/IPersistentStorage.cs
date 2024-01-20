@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Storage.Persistence
         /// Checkpoint the storage
         /// </summary>
         /// <returns></returns>
-        ValueTask CheckpointAsync(byte[] metadata);
+        ValueTask CheckpointAsync(byte[] metadata, bool includeIndex);
 
         /// <summary>
         /// Compacts the data, removes old versions of data that are no longer in use

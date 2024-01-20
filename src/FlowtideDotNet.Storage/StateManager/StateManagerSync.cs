@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Storage.StateManager
 {
     public class StateManagerSync<TMetadata> : StateManagerSync
     {
-        public StateManagerSync(StateManagerOptions options, ILogger logger, Meter meter) : base(new StateManagerMetadataSerializer<TMetadata>(), options, logger, meter)
+        public StateManagerSync(StateManagerOptions options, ILogger logger, Meter meter, string streamName) : base(new StateManagerMetadataSerializer<TMetadata>(), options, logger, meter, streamName)
         {
         }
 
@@ -62,6 +62,7 @@ namespace FlowtideDotNet.Storage.StateManager
         private readonly StateManagerOptions options;
         private readonly ILogger logger;
         private readonly Meter meter;
+        private readonly string streamName;
         private readonly object m_lock = new object();
         internal StateManagerMetadata? m_metadata;
         //private Functions m_functions;
@@ -72,6 +73,11 @@ namespace FlowtideDotNet.Storage.StateManager
         readonly Dictionary<string, IStateManagerClient> _clients = new Dictionary<string, IStateManagerClient>();
         private readonly Dictionary<string, StateClient> _stateClients = new Dictionary<string, StateClient>();
         private IPersistentStorage? m_persistentStorage;
+
+        /// <summary>
+        /// Used for unit testing only
+        /// </summary>
+        internal LruTableSync LruTable => m_lruTable ?? throw new InvalidOperationException("Manager must be initialized before getting LRU table");
 
         public bool Initialized { get; private set; }
 
@@ -85,19 +91,25 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public long PageCount => m_metadata != null ? Volatile.Read(ref m_metadata.PageCount) : throw new InvalidOperationException("Manager must be initialized before getting page count");
 
-        internal StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILogger logger, Meter meter)
+        private protected StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILogger logger, Meter meter, string streamName)
         {
             this.m_metadataSerializer = metadataSerializer;
             this.options = options;
             this.logger = logger;
             this.meter = meter;
+            this.streamName = streamName;
         }
 
         private void Setup()
         {
             if (m_lruTable == null)
             {
-                m_lruTable = new LruTableSync(options.CachePageCount, logger, meter, options.MaxProcessMemory);
+                m_lruTable = new LruTableSync(new LruTableOptions(streamName, logger, meter)
+                {
+                    MaxSize = options.CachePageCount,
+                    MaxMemoryUsageInBytes = options.MaxProcessMemory,
+                    MinSize = options.MinCachePageCount
+                });
             }
 
             if (m_persistentStorage != null)
@@ -177,7 +189,7 @@ namespace FlowtideDotNet.Storage.StateManager
             return false;
         }
 
-        public async ValueTask CheckpointAsync()
+        public async ValueTask CheckpointAsync(bool includeIndex = false)
         {
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
@@ -189,7 +201,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 bytes = m_metadataSerializer.Serialize(m_metadata, options.SerializeOptions);
             }
 
-            await m_persistentStorage.CheckpointAsync(bytes);
+            await m_persistentStorage.CheckpointAsync(bytes, includeIndex);
         }
 
         public async Task Compact()
@@ -221,7 +233,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     var metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(new ByteMemoryOwner(bytes), bytes.Length);
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheOptions);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheOptions, meter, this.options.UseReadCache);
                     lock (m_lock)
                     {
                         _stateClients.Add(client, stateClient);
@@ -245,14 +257,14 @@ namespace FlowtideDotNet.Storage.StateManager
                 lock (m_lock)
                 {
                     var session = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheOptions);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheOptions, meter, this.options.UseReadCache);
                     _stateClients.Add(client, stateClient);
                     return stateClient;
                 }
             }
         }
 
-        public IStateManagerClient GetOrCreateClient(string name)
+        public IStateManagerClient GetOrCreateClient(string name, TagList tagList = default)
         {
             lock (m_lock)
             {
@@ -262,7 +274,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 }
                 else
                 {
-                    client = new StateManagerSyncClient(name, this);
+                    client = new StateManagerSyncClient(name, this, tagList);
                     _clients.Add(name, client);
                     return client;
                 }

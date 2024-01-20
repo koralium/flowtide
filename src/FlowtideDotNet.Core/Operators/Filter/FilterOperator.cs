@@ -17,6 +17,9 @@ using Microsoft.Extensions.Logging;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Base.Metrics;
+using System.Diagnostics;
+using FlowtideDotNet.Core.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Filter
 {
@@ -25,6 +28,8 @@ namespace FlowtideDotNet.Core.Operators.Filter
         public override string DisplayName => "Filter";
 
         private readonly IFilterImplementation _filterImplementation;
+        private ICounter<long>? _eventsProcessed;
+
         public FilterOperator(FilterRelation filterRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             _filterImplementation = new NormalFilterImpl(filterRelation, functionsRegister);
@@ -47,12 +52,18 @@ namespace FlowtideDotNet.Core.Operators.Filter
 
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
+            Debug.Assert(_eventsProcessed != null);
+            _eventsProcessed.Add(msg.Events.Count);
             return _filterImplementation.OnRecieve(msg, time);
         }
 
         protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
         {
-            Logger.LogInformation("Initializing filter operator.");
+            Logger.InitializingFilterOperator(StreamName, Name);
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
             return _filterImplementation.InitializeOrRestore(StreamName, Name, RegisterTrigger, state);
         }
 

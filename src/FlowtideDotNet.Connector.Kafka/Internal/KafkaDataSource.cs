@@ -12,6 +12,7 @@
 
 using Confluent.Kafka;
 using FlexBuffers;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Read;
@@ -41,6 +42,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
         private readonly FlexBuffer _flexBuffer;
         private IFlowtideKafkaKeyDeserializer _keyDeserializer;
         private readonly string topicName;
+        private ICounter<long>? _eventsProcessed;
 
         public KafkaDataSource(ReadRelation readRelation, FlowtideKafkaSourceOptions flowtideKafkaOptions, DataflowBlockOptions options) : base(options)
         {
@@ -85,6 +87,11 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             }
             _state = state;
 
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
+
             var adminConf = new AdminClientConfig(flowtideKafkaOptions.ConsumerConfig);
 
             var adminClient = new AdminClientBuilder(adminConf).Build();
@@ -127,6 +134,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
         {
             Debug.Assert(_state?.PartitionOffsets != null);
             Debug.Assert(_consumer != null);
+            Debug.Assert(_eventsProcessed != null);
 
             List<RowEvent> rows = new List<RowEvent>();
             int waitTimeMs = 100;
@@ -154,6 +162,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                         await output.SendAsync(new StreamEventBatch(rows));
                         rows = new List<RowEvent>();
                         await SendWatermark(output);
+                        _eventsProcessed.Add(rows.Count);
                     }
                 }
                 else
@@ -163,6 +172,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                         await output.SendAsync(new StreamEventBatch(rows));
                         rows = new List<RowEvent>();
                         await SendWatermark(output);
+                        _eventsProcessed.Add(rows.Count);
                     }
                     if (inLock)
                     {
@@ -196,6 +206,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
         {
             Debug.Assert(_state?.PartitionOffsets != null);
             Debug.Assert(_consumer != null);
+            Debug.Assert(_eventsProcessed != null);
 
             await output.EnterCheckpointLock();
             Dictionary<int, long> beforeStartOffsets = new Dictionary<int, long>();
@@ -236,6 +247,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 {
                     await output.SendAsync(new StreamEventBatch(rows));
                     rows = new List<RowEvent>();
+                    _eventsProcessed.Add(rows.Count);
                     // Check offsets
                     bool offsetsReached = true;
                     foreach(var kv in beforeStartOffsets)
@@ -263,6 +275,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             if (rows.Count > 0)
             {
                 await output.SendAsync(new StreamEventBatch(rows));
+                _eventsProcessed.Add(rows.Count);
             }
 
             // Send watermark
