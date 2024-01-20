@@ -16,7 +16,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.14" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-    <PackageReference Include="Testcontainers" Version="3.6.0" />
+    <PackageReference Include="Testcontainers" Version="3.7.0" />
     <PackageReference Include="Testcontainers.MsSql" Version="3.6.0" />
     <PackageReference Include="xunit" Version="2.6.5" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.6">
