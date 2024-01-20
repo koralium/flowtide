@@ -108,3 +108,43 @@ Example:
 ```csharp
 sqlPlanBuilder.AddGenericDataTable<User>("users");
 ```
+
+## Generic data sink
+
+The generic data sink allow the implementation of a sink that reads the rows as C# classes.
+This limits the stream to only send those specific columns, but it can be useful im cases such as API integrations where there is a strict schema.
+
+### Implementation example
+
+Create a class that inherits from *GenericDataSink*.
+
+```csharp
+internal class TestDataSink : GenericDataSink<User>
+{
+    public override Task<List<string>> GetPrimaryKeyNames()
+    {
+        return Task.FromResult(new List<string> { "{primaryKeyColumnName}" });
+    }
+
+    public override async Task OnChanges(IAsyncEnumerable<FlowtideGenericWriteObject<User>> changes)
+    {
+        await foreach(var userChange in changes)
+        {
+            if (!userChange.IsDeleted)
+            {
+                // Do upsert to destination
+            }
+            else
+            {
+                // Do delete against destination
+            }
+        }
+    }
+}
+```
+
+Add the generic data sink to the *ReadWriteFactory*:
+
+```csharp
+factory.AddGenericDataSink("{regexPattern}", ExecutionMode.OnCheckpoint, (rel) => new testDataSink());
+```

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Utils;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text.Json;
@@ -57,7 +58,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // Check if all egresses has done their checkpoint
                 if (nonInitEgresses.Count == 0)
                 {
-                    _context._logger.LogInformation("Watermark system initialized.");
+                    _context._logger.WatermarkSystemInitialized(_context.streamName);
                     InitEventsDone();
                 }
             }
@@ -72,7 +73,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override void Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
-            _context._logger.LogInformation("Starting stream");
+            _context._logger.StartingStream(_context.streamName);
 
             if (previousState == StreamStateValue.NotStarted)
             {
@@ -156,7 +157,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (_context._streamVersionInformation != null)
                 {
-                    _context._logger.LogTrace("Checking stream hash consistency");
+                    _context._logger.CheckingStreamHashConsistency(_context.streamName);
                     if (_context._streamVersionInformation.Version != _context._lastState.StrreamVersion)
                     {
                         throw new InvalidOperationException("Stream version missmatch, the version stored in storage is different than the version used.");
@@ -171,14 +172,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _context.producingTime = _context._lastState.Time + 1;
 
             // Create the blocks
-            _context._logger.LogInformation("Setting up blocks");
+            _context._logger.SettingUpBlocks(_context.streamName);
             _context.ForEachBlock((key, block) =>
             {
                 block.Setup(_context.streamName, key);
                 block.CreateBlock();
             });
             // Link the blocks
-            _context._logger.LogInformation("Linking blocks together");
+            _context._logger.LinkingBlocks(_context.streamName);
             _context.ForEachBlock((key, block) =>
             {
                 block.Link();
@@ -186,7 +187,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             try
             {
-                _context._logger.LogInformation("Initializing propagator blocks");
+                _context._logger.InitializingPropagatorBLocks(_context.streamName);
                 foreach (var block in _context.propagatorBlocks)
                 {
                     JsonElement? blockState = null;
@@ -194,12 +195,17 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     {
                         blockState = state;
                     }
-                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key);
-                    VertexHandler vertexHandler = new VertexHandler(_context.streamName, block.Key, _context.TryScheduleCheckpointIn, _context.AddTrigger, _context._streamMetrics.GetOrCreateVertexMeter(block.Key), blockStateClient, _context.loggerFactory);
+                    TagList tags = new TagList()
+                    {
+                        { "stream", _context.streamName },
+                        { "operator", block.Key }
+                    };
+                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
+                    VertexHandler vertexHandler = new VertexHandler(_context.streamName, block.Key, _context.TryScheduleCheckpointIn, _context.AddTrigger, _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName), blockStateClient, _context.loggerFactory);
                     await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, blockState, vertexHandler);
                 }
 
-                _context._logger.LogInformation("Initializing egress blocks");
+                _context._logger.InitializingEgressBlocks(_context.streamName);
                 foreach (var block in _context.egressBlocks)
                 {
                     JsonElement? blockState = null;
@@ -207,13 +213,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     {
                         blockState = state;
                     }
-                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key);
-                    VertexHandler vertexHandler = new VertexHandler(_context.streamName, block.Key, _context.TryScheduleCheckpointIn, _context.AddTrigger, _context._streamMetrics.GetOrCreateVertexMeter(block.Key), blockStateClient, _context.loggerFactory);
+                    TagList tags = new TagList()
+                    {
+                        { "stream", _context.streamName },
+                        { "operator", block.Key }
+                    };
+                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
+                    VertexHandler vertexHandler = new VertexHandler(_context.streamName, block.Key, _context.TryScheduleCheckpointIn, _context.AddTrigger, _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName), blockStateClient, _context.loggerFactory);
                     await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, blockState, vertexHandler);
                     block.Value.SetCheckpointDoneFunction(_context.EgressCheckpointDone);
                 }
 
-                _context._logger.LogInformation("Initializing ingress blocks");
+                _context._logger.InitializingIngressBlocks(_context.streamName);
                 foreach (var block in _context.ingressBlocks)
                 {
                     JsonElement? blockState = null;
@@ -221,8 +232,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     {
                         blockState = state;
                     }
-                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key);
-                    VertexHandler vertexHandler = new VertexHandler(_context.streamName, block.Key, _context.TryScheduleCheckpointIn, _context.AddTrigger, _context._streamMetrics.GetOrCreateVertexMeter(block.Key), blockStateClient, _context.loggerFactory);
+                    TagList tags = new TagList()
+                    {
+                        { "stream", _context.streamName },
+                        { "operator", block.Key }
+                    };
+                    var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
+                    VertexHandler vertexHandler = new VertexHandler(_context.streamName, block.Key, _context.TryScheduleCheckpointIn, _context.AddTrigger, _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName), blockStateClient, _context.loggerFactory);
                     await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, blockState, vertexHandler);
                 }
             }
@@ -254,7 +270,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Run an init locking event through the stream to initialize information such as watermarks.
             // Watermark initialization must go through this flow so all blocks know what watermarks will pass through it.
             // Since a source can be joined with itself some blocks will get the same watermark from multiple inputs.
-            _context._logger.LogInformation("Initializing watermark system.");
+            _context._logger.InitializingWatermarkSystem(_context.streamName);
             nonInitEgresses = _context.egressBlocks.Keys.ToHashSet();
             foreach (var ingress in _context.ingressBlocks)
             {

@@ -807,6 +807,14 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     {
                         return null;
                     }
+                    if (c.ValueType == FlexBuffers.Type.Float)
+                    {
+                        return (decimal)c.AsDouble;
+                    }
+                    if (c.ValueType == FlexBuffers.Type.Int)
+                    {
+                        return (decimal)c.AsLong;
+                    }
                     return c.AsDecimal;
                 };
             }

@@ -154,5 +154,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             return Visit(trim.Expression, state);
         }
+
+        protected override bool VisitCast(Expression.Cast cast, object? state)
+        {
+            return Visit(cast.Expression, state);
+        }
     }
 }

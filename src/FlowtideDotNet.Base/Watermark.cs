@@ -25,14 +25,34 @@ namespace FlowtideDotNet.Base
             var builder = ImmutableDictionary.CreateBuilder<string, long>();
             builder.Add(name, offset);
             Watermarks = builder.ToImmutable();
+            StartTime = DateTimeOffset.UtcNow;
+        }
+
+        public Watermark(string name, long offset, DateTimeOffset startTime)
+        {
+            var builder = ImmutableDictionary.CreateBuilder<string, long>();
+            builder.Add(name, offset);
+            Watermarks = builder.ToImmutable();
+            StartTime = startTime;
         }
 
         public Watermark(IImmutableDictionary<string, long> watermarks)
         {
             Watermarks = watermarks;
+            StartTime = DateTimeOffset.UtcNow;
+        }
+
+        public Watermark(IImmutableDictionary<string, long> watermarks, DateTimeOffset startTime)
+        {
+            Watermarks = watermarks;
+            StartTime = startTime;
         }
 
         public IImmutableDictionary<string, long> Watermarks { get; }
+
+        public DateTimeOffset StartTime { get; }
+
+        public string? SourceOperatorId { get; internal set; }
 
         public override bool Equals(object? obj)
         {

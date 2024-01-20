@@ -76,7 +76,16 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitTrim(trim, state);
             }
+            if (expression is Expression.Cast cast)
+            {
+                return VisitCast(cast, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitCast(Expression.Cast cast, TState state)
+        {
+            throw new NotImplementedException($"The expression '{cast.GetType().Name}' is not supported in SQL");
         }
 
         protected virtual TReturn VisitTrim(Expression.Trim trim, TState state)

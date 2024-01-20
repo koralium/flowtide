@@ -207,12 +207,12 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             {
                 CachePageCount = 1000,
                 PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions())
-            }, new NullLogger<StateManagerSync<object>>(), new Meter($"storage"));
+            }, new NullLogger<StateManagerSync<object>>(), new Meter($"storage"), "storage");
             await stateManager.InitializeAsync();
             var stateClient = stateManager.GetOrCreateClient("node");
 
             StreamMetrics streamMetrics = new StreamMetrics("stream");
-            var nodeMetrics = streamMetrics.GetOrCreateVertexMeter("node1");
+            var nodeMetrics = streamMetrics.GetOrCreateVertexMeter("node1", () => "node1");
 
             var vertexHandler = new VertexHandler("mergejoinstream", "op", (time) =>
             {

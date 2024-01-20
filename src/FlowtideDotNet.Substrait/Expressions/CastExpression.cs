@@ -10,14 +10,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Type;
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    internal class CastExpression : Expression
+    public class CastExpression : Expression
     {
+        public required Expression Expression { get; set; }
+
+        public required SubstraitBaseType Type { get; set; }
+
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
-            
-            throw new NotImplementedException();
+            return visitor.VisitCastExpression(this, state);
         }
     }
 }

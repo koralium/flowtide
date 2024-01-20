@@ -76,6 +76,10 @@ namespace FlowtideDotNet.Core.Compute.Internal
             {
                 return value.AsMap.ToJson;
             }
+            if (value.ValueType == FlexBuffers.Type.Decimal)
+            {
+                return value.AsDecimal.ToString();
+            }
             throw new NotImplementedException();
         }
     }

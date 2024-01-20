@@ -105,7 +105,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                         {
                             throw;
                         }
-                        Logger.LogWarning(e, "Failed to write to mongoDB, will retry");
+                        Logger.FailedToWriteMongoDB(e, StreamName, Name);
                         retryCount++;
                         await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
                     }
