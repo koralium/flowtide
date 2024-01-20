@@ -14,7 +14,7 @@ namespace FlowtideDotNet.Substrait.Expressions
 {
     public class MapNestedExpression : NestedExpression
     {
-        public List<KeyValuePair<Expression, Expression>> KeyValues { get; set; }
+        public required List<KeyValuePair<Expression, Expression>> KeyValues { get; set; }
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {

@@ -271,12 +271,11 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         public Task InitializationCompleted()
         {
-            RunTask(async (output, state) =>
+            return RunTask(async (output, state) =>
             {
                 await SendInitial(output);
                 // Send event here that initial is completed
             }, taskCreationOptions: TaskCreationOptions.LongRunning);
-            return Task.CompletedTask;
         }
 
         public async Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
@@ -329,9 +328,9 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
             Metrics.CreateObservableGauge("metadata", () =>
             {
-                TagList tags = new TagList
+                TagList tags = new TagList()
                 {
-                    { "displayName", DisplayName }
+                    { "id", Name }
                 };
                 var links = GetLinks();
                 StringBuilder outputLinks = new StringBuilder();
@@ -352,6 +351,33 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 outputLinks.Append(']');
                 tags.Add("links", outputLinks.ToString());
                 return new Measurement<int>(1, tags);
+            });
+
+            Metrics.CreateObservableGauge("link", () =>
+            {
+                var links = GetLinks();
+
+                List<Measurement<int>> measurements = new List<Measurement<int>>();
+
+                foreach (var link in links)
+                {
+                    TagList tags = new TagList
+                    {
+                        { "source", Name }
+                    };
+                    if (link is IStreamVertex streamVertex)
+                    {
+                        tags.Add("target", streamVertex.Name);
+                        tags.Add("id", streamVertex.Name + "-" + Name);
+                    }
+                    else if (link is MultipleInputTargetHolder target)
+                    {
+                        tags.Add("target", target.OperatorName);
+                        tags.Add("id", target.OperatorName + "-" + Name);
+                    }
+                    measurements.Add(new Measurement<int>(1, tags));
+                }
+                return measurements;
             });
 
             await InitializeOrRestore(restoreTime, dState, vertexHandler.StateClient);

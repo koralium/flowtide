@@ -16,6 +16,6 @@ namespace FlowtideDotNet.Substrait
 {
     public class Plan
     {
-        public List<Relation> Relations { get; set; }
+        public required List<Relation> Relations { get; set; }
     }
 }

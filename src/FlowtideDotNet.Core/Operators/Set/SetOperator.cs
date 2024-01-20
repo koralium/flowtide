@@ -30,6 +30,7 @@ namespace FlowtideDotNet.Core.Operators.Set
         private readonly Func<int, StreamEventBatch, long, IAsyncEnumerable<StreamEventBatch>> _operation;
 
         private ICounter<long>? _eventsCounter;
+        private ICounter<long>? _eventsProcessed;
 
 #if DEBUG_WRITE
         // TODO: Tmp remove
@@ -147,6 +148,8 @@ namespace FlowtideDotNet.Core.Operators.Set
 
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
         {
+            Debug.Assert(_eventsProcessed != null, nameof(_eventsProcessed));
+            _eventsProcessed.Add(msg.Events.Count);
 #if DEBUG_WRITE
             allInput.WriteLine("New batch");
             foreach (var e in msg.Events)
@@ -167,6 +170,10 @@ namespace FlowtideDotNet.Core.Operators.Set
             if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
             
             await InitializeTrees(stateManagerClient);

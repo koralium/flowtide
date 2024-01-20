@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Confluent.Kafka;
+using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Connector.Kafka
 {
@@ -21,5 +22,15 @@ namespace FlowtideDotNet.Connector.Kafka
         public required IFlowtideKafkaKeySerializer KeySerializer { get; set; }
 
         public required IFlowtideKafkaValueSerializer ValueSerializer { get; set; }
+
+        /// <summary>
+        /// A method that gets called before events are sent to kafka.
+        /// It is possible here to remove or add events from the list before they are sent to kafka.
+        /// 
+        /// One use case is to look up sent events in a database and remove them from the list if they ere already sent.
+        /// </summary>
+        public Func<List<KeyValuePair<byte[], byte[]?>>, Task>? EventProcessor { get; set; }
+
+        public Func<IProducer<byte[], byte[]?>, WriteRelation, string, Task>? OnInitialDataSent { get; set; }
     }
 }

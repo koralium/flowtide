@@ -33,10 +33,12 @@ namespace FlowtideDotNet.Base.Engine
         private StateManagerOptions? _stateManagerOptions;
         private ILoggerFactory? _loggerFactory;
         private StreamVersionInformation? _streamVersionInformation;
+        private readonly DataflowStreamOptions _dataflowStreamOptions;
 
         public DataflowStreamBuilder(string streamName)
         {
             _streamName = streamName;
+            _dataflowStreamOptions = new DataflowStreamOptions();
         }
 
         public DataflowStreamBuilder AddPropagatorBlock(string name, IStreamVertex block)
@@ -102,6 +104,12 @@ namespace FlowtideDotNet.Base.Engine
             return this;
         }
 
+        public DataflowStreamBuilder WaitForCheckpointAfterInitialData(bool wait)
+        {
+            _dataflowStreamOptions.WaitForCheckpointAfterInitialData = wait;
+            return this;
+        }
+
         public DataflowStream Build()
         {
             if (_stateManagerOptions == null)
@@ -128,7 +136,8 @@ namespace FlowtideDotNet.Base.Engine
                 _streamNotificationReciever,
                 _stateManagerOptions,
                 _loggerFactory,
-                _streamVersionInformation);
+                _streamVersionInformation,
+                _dataflowStreamOptions);
 
             return new DataflowStream(streamContext);
         }

@@ -103,5 +103,20 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             throw new NotImplementedException("Buffer relation is not implemented");
         }
+
+        public virtual TReturn VisitTopNRelation(TopNRelation topNRelation, TState state)
+        {
+            throw new NotImplementedException("TopN relation is not implemented");
+        }
+
+        public virtual TReturn VisitSortRelation(SortRelation sortRelation, TState state)
+        {
+            throw new NotImplementedException("Sort relation is not implemented");
+        }
+
+        public virtual TReturn VisitFetchRelation(FetchRelation fetchRelation, TState state)
+        {
+            throw new NotImplementedException("Fetch relation is not implemented");
+        }
     }
 }

@@ -11,10 +11,12 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.PartitionVertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Storage.StateManager;
+using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Partition
@@ -24,6 +26,7 @@ namespace FlowtideDotNet.Core.Operators.Partition
         private readonly int targetNumber;
         private readonly Func<RowEvent, uint> _partitionFunction;
         private List<RowEvent>?[] outputs;
+        private ICounter<long>? _eventsProcessed;
 
         public PartitionOperator(PartitionOperatorOptions options, FunctionsRegister functionsRegister, int targetNumber, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(targetNumber, executionDataflowBlockOptions)
         {
@@ -36,11 +39,17 @@ namespace FlowtideDotNet.Core.Operators.Partition
 
         protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
         {
+            if (_eventsProcessed == null) 
+            {                 
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
             return Task.CompletedTask;
         }
 
         protected override async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
         {
+            Debug.Assert(_eventsProcessed != null);
+            _eventsProcessed.Add(data.Events.Count);
             foreach(var e in data.Events)
             {
                 var hash = _partitionFunction(e);

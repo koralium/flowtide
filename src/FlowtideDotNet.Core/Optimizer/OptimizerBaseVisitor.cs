@@ -123,5 +123,23 @@ namespace FlowtideDotNet.Core.Optimizer
             bufferRelation.Input = Visit(bufferRelation.Input, state);
             return bufferRelation;
         }
+
+        public override Relation VisitFetchRelation(FetchRelation fetchRelation, object state)
+        {
+            fetchRelation.Input = Visit(fetchRelation.Input, state);
+            return fetchRelation;
+        }
+
+        public override Relation VisitSortRelation(SortRelation sortRelation, object state)
+        {
+            sortRelation.Input = Visit(sortRelation.Input, state);
+            return sortRelation;
+        }
+
+        public override Relation VisitTopNRelation(TopNRelation topNRelation, object state)
+        {
+            topNRelation.Input = Visit(topNRelation.Input, state);
+            return topNRelation;
+        }
     }
 }

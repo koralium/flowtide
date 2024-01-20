@@ -21,9 +21,9 @@ namespace FlowtideDotNet.Substrait
 {
     public class SubstraitDeserializer
     {
-        private class ExpressionDeserializerImpl
+        private sealed class ExpressionDeserializerImpl
         {
-            private Dictionary<uint, string> idToFunctionLookup = new Dictionary<uint, string>();
+            private readonly Dictionary<uint, string> idToFunctionLookup = new Dictionary<uint, string>();
 
             public ExpressionDeserializerImpl(Protobuf.Plan plan)
             {
@@ -42,19 +42,14 @@ namespace FlowtideDotNet.Substrait
                 {
                     case Protobuf.Expression.RexTypeOneofCase.ScalarFunction:
                         return VisitScalarFunction(expression.ScalarFunction);
-                        break;
                     case Protobuf.Expression.RexTypeOneofCase.Selection:
                         return VisitFieldReferencce(expression.Selection);
-                        break;
                     case Protobuf.Expression.RexTypeOneofCase.Literal:
                         return VisitLiteral(expression.Literal);
-                        break;
                     case Protobuf.Expression.RexTypeOneofCase.IfThen:
                         return VisitIfThen(expression.IfThen);
-                        break;
                     case Protobuf.Expression.RexTypeOneofCase.Cast:
                         return VisitCast(expression.Cast);
-                        break;
                 }
                 throw new NotImplementedException();
             }
@@ -75,6 +70,7 @@ namespace FlowtideDotNet.Substrait
                     ExtensionUri = uri,
                     Arguments = new List<Expression>()
                 };
+#pragma warning disable CS0612 // Type or member is obsolete
                 if (aggregateFunction.Args.Count > 0)
                 {
                     foreach(var arg in aggregateFunction.Args)
@@ -89,6 +85,7 @@ namespace FlowtideDotNet.Substrait
                         result.Arguments.Add(VisitExpression(arg.Value));
                     }
                 }
+#pragma warning restore CS0612 // Type or member is obsolete
                 return result;
             }
 
@@ -117,7 +114,7 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
-            private Literal VisitLiteral(Protobuf.Expression.Types.Literal literal)
+            private static Literal VisitLiteral(Protobuf.Expression.Types.Literal literal)
             {
                 switch (literal.LiteralTypeCase)
                 {
@@ -153,31 +150,29 @@ namespace FlowtideDotNet.Substrait
                 }
             }
 
-            private FieldReference VisitFieldReferencce(Protobuf.Expression.Types.FieldReference fieldReference)
+            private static FieldReference VisitFieldReferencce(Protobuf.Expression.Types.FieldReference fieldReference)
             {
                 switch (fieldReference.ReferenceTypeCase)
                 {
                     case Protobuf.Expression.Types.FieldReference.ReferenceTypeOneofCase.DirectReference:
                         return VisitDirectReference(fieldReference.DirectReference);
-                        break;
                     default:
                         throw new NotImplementedException();
                 }
             }
 
-            private DirectFieldReference VisitDirectReference(Protobuf.Expression.Types.ReferenceSegment referenceSegment)
+            private static DirectFieldReference VisitDirectReference(Protobuf.Expression.Types.ReferenceSegment referenceSegment)
             {
                 switch (referenceSegment.ReferenceTypeCase)
                 {
                     case Protobuf.Expression.Types.ReferenceSegment.ReferenceTypeOneofCase.StructField:
                         return VisitStructField(referenceSegment.StructField);
-                        break;
                     default:
                         throw new NotImplementedException();
                 }
             }
 
-            private DirectFieldReference VisitStructField(Protobuf.Expression.Types.ReferenceSegment.Types.StructField structField)
+            private static DirectFieldReference VisitStructField(Protobuf.Expression.Types.ReferenceSegment.Types.StructField structField)
             {
                 return new DirectFieldReference()
                 {
@@ -200,6 +195,7 @@ namespace FlowtideDotNet.Substrait
 
                 List<Expression> args = new List<Expression>();
 
+#pragma warning disable CS0612 // Type or member is obsolete
                 if (scalarFunction.Args != null && scalarFunction.Args.Count > 0)
                 {
                     foreach (var arg in scalarFunction.Args)
@@ -214,6 +210,7 @@ namespace FlowtideDotNet.Substrait
                         args.Add(VisitExpression(arg.Value));
                     }
                 }
+#pragma warning restore CS0612 // Type or member is obsolete
 
                 return new ScalarFunction()
                 {
@@ -228,7 +225,7 @@ namespace FlowtideDotNet.Substrait
             }
         }
 
-        private class SubstraitDeserializerImpl
+        private sealed class SubstraitDeserializerImpl
         {
             private readonly Protobuf.Plan plan;
             private readonly ExpressionDeserializerImpl expressionDeserializer;
@@ -246,8 +243,10 @@ namespace FlowtideDotNet.Substrait
 
             private Plan VisitPlan(Protobuf.Plan plan)
             {
-                var output = new Plan();
-                output.Relations = new List<Relation>();
+                var output = new Plan
+                {
+                    Relations = new List<Relation>()
+                };
                 foreach (var relation in plan.Relations)
                 {
                     output.Relations.Add(VisitPlanRel(relation));
@@ -266,7 +265,6 @@ namespace FlowtideDotNet.Substrait
                         throw new NotImplementedException();
                     case Protobuf.PlanRel.RelTypeOneofCase.Root:
                         return VisitRelRoot(planRel.Root);
-                        break;
                 }
                 throw new NotImplementedException();
             }
@@ -288,16 +286,12 @@ namespace FlowtideDotNet.Substrait
                 {
                     case Protobuf.Rel.RelTypeOneofCase.Project:
                         return VisitProject(rel.Project);
-                        break;
                     case Protobuf.Rel.RelTypeOneofCase.Read:
                         return VisitRead(rel.Read);
-                        break;
                     case Protobuf.Rel.RelTypeOneofCase.Filter:
                         return VisitFilter(rel.Filter);
-                        break;
                     case Protobuf.Rel.RelTypeOneofCase.Join:
                         return VisitJoin(rel.Join);
-                        break;
                     case Protobuf.Rel.RelTypeOneofCase.Set:
                         return VisitSet(rel.Set);
                     case Protobuf.Rel.RelTypeOneofCase.Aggregate:
@@ -351,7 +345,7 @@ namespace FlowtideDotNet.Substrait
                 return relation;
             }
 
-            private List<int>? GetEmit(Protobuf.RelCommon relCommon)
+            private static List<int>? GetEmit(Protobuf.RelCommon relCommon)
             {
                 if (relCommon == null)
                 {
@@ -361,10 +355,8 @@ namespace FlowtideDotNet.Substrait
                 {
                     case Protobuf.RelCommon.EmitKindOneofCase.Direct:
                         return null;
-                        break;
                     case Protobuf.RelCommon.EmitKindOneofCase.Emit:
                         return relCommon.Emit.OutputMapping.ToList();
-                        break;
                 }
                 throw new NotImplementedException();
             }
@@ -405,21 +397,19 @@ namespace FlowtideDotNet.Substrait
                 return project;
             }
 
-            private Relation VisitRead(Protobuf.ReadRel readRel)
+            private static Relation VisitRead(Protobuf.ReadRel readRel)
             {
                 List<string> names = new List<string>();
                 names.AddRange(readRel.BaseSchema.Names);
 
-                var namedStruct = new Type.NamedStruct()
-                {
-                    Names = names,
-                };
+                
                 List<string> namedTable = new List<string>();
                 if (readRel.NamedTable != null)
                 {
                     namedTable.AddRange(readRel.NamedTable.Names);
                 }
 
+                Struct? schema = default;
                 if (readRel.BaseSchema.Struct != null)
                 {
                     var st = new Type.Struct();
@@ -475,9 +465,14 @@ namespace FlowtideDotNet.Substrait
                                 throw new NotImplementedException($"Type is not yet implemented {type.KindCase}");
                         }
                     }
-                    namedStruct.Struct = st;
+                    schema = st;
                 }
 
+                var namedStruct = new Type.NamedStruct()
+                {
+                    Names = names,
+                    Struct = schema
+                };
                 return new ReadRelation()
                 {
                     BaseSchema = namedStruct,

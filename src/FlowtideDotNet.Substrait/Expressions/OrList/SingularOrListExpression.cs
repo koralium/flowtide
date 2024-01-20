@@ -14,9 +14,9 @@ namespace FlowtideDotNet.Substrait.Expressions
 {
     public class SingularOrListExpression : Expression
     {
-        public Expression Value { get; set; }
+        public required Expression Value { get; set; }
 
-        public List<Expression> Options { get; set; }
+        public required List<Expression> Options { get; set; }
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {

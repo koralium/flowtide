@@ -50,6 +50,33 @@ namespace FlowtideDotNet.AspNetCore
             _pathCache = new Dictionary<string, PageCache>();
         }
 
+        private static string TranslatePath(string path)
+        {
+            int secondLastDotIndex;
+            if (path.EndsWith(".map"))
+            {
+                secondLastDotIndex = path.LastIndexOf('.', path.LastIndexOf('.', path.LastIndexOf('.') - 1) - 1);
+            }
+            else
+            {
+                secondLastDotIndex = path.LastIndexOf('.', path.LastIndexOf('.') - 1);
+            }
+            
+
+            if (secondLastDotIndex != -1)
+            {
+                // Replace hyphens with underscores up to the second last dot
+                string startPart = path.Substring(0, secondLastDotIndex).Replace('-', '_');
+
+                // Concatenate the unchanged part of the string
+                string result = string.Concat(startPart, path.AsSpan(secondLastDotIndex));
+
+                return result;
+            }
+
+            return path;
+        }
+
         public Task Invoke(HttpContext httpContext)
         {
             httpContext.Response.StatusCode = 200;
@@ -109,8 +136,9 @@ namespace FlowtideDotNet.AspNetCore
                 isText = true;
             }
 
+            var translatedPath = TranslatePath(remain);
             using var stream = typeof(ReactEndpoint).Assembly
-                .GetManifestResourceStream($"FlowtideDotNet.AspNetCore.ClientApp.build.{remain}")!;
+                .GetManifestResourceStream($"FlowtideDotNet.AspNetCore.ClientApp.public.{translatedPath}")!;
 
             if (isText)
             {
@@ -122,6 +150,8 @@ namespace FlowtideDotNet.AspNetCore
                 {
                     combinedPath = combinedPath.Substring(1);
                 }
+
+                txt = txt.Replace("flowtidedir", m_rootPath.Substring(1));
                 txt = txt.Replace("static/", combinedPath);
                 txt = txt.Replace("@(rootpath)", m_apiPath);
                 if (isHtml)

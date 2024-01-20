@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Utils;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -35,34 +36,86 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private int maxSize;
         private readonly ILogger logger;
         private readonly Meter meter;
+        private readonly string m_streamName;
         private readonly long maxMemoryUsageInBytes;
         private int cleanupStart;
         private readonly SemaphoreSlim _fullLock;
         private int m_count;
         private long m_cacheHits;
+        private long m_cacheMisses;
         private long m_lastSeenCacheHits;
         private int m_sameCaheHitsCount;
+
+        private long m_metrics_lastSeenTotal;
+        private long m_metrics_lastSeenHits;
+        private float m_metrics_lastSentPercentage;
+
         private bool m_disposedValue;
         private readonly Process _currentProcess;
         private readonly CancellationTokenSource m_cleanupTokenSource;
+        private readonly LruTableOptions lruTableOptions;
 
-        public LruTableSync(int maxSize, ILogger logger, Meter meter, long maxMemoryUsageInBytes = -1)
+        public LruTableSync(LruTableOptions lruTableOptions)
         {
             cache = new ConcurrentDictionary<long, LinkedListNode<LinkedListValue>>();
             m_nodes = new LinkedList<LinkedListValue>();
-            this.maxSize = maxSize;
-            this.logger = logger;
-            this.meter = meter;
-            this.maxMemoryUsageInBytes = maxMemoryUsageInBytes;
+            this.maxSize = lruTableOptions.MaxSize;
+            this.logger = lruTableOptions.Logger;
+            this.meter = lruTableOptions.Meter;
+            this.m_streamName = lruTableOptions.StreamName;
+            this.maxMemoryUsageInBytes = lruTableOptions.MaxMemoryUsageInBytes;
             cleanupStart = (int)Math.Ceiling(maxSize * 0.7);
             _fullLock = new SemaphoreSlim(1);
             m_cleanupTokenSource = new CancellationTokenSource();
             StartCleanupTask();
             _currentProcess = Process.GetCurrentProcess();
 
-            meter.CreateObservableGauge("lru_table_size", () => Volatile.Read(ref m_count));
-            meter.CreateObservableGauge("lru_table_max_size", () => this.maxSize);
-            meter.CreateObservableGauge("lru_table_cleanup_start", () => cleanupStart);
+            meter.CreateObservableGauge("flowtide_lru_table_size", () => 
+            {
+                return new Measurement<int>(Volatile.Read(ref m_count), new KeyValuePair<string, object?>("stream", m_streamName));
+            });
+            meter.CreateObservableGauge("flowtide_lru_table_max_size", () => 
+            {
+                return new Measurement<int>(this.maxSize, new KeyValuePair<string, object?>("stream", m_streamName));
+            });
+            meter.CreateObservableGauge("flowtide_lru_table_cleanup_start", () => 
+            { 
+                return new Measurement<int>(cleanupStart, new KeyValuePair<string, object?>("stream", m_streamName)); 
+            });
+            meter.CreateObservableGauge("flowtide_lru_table_cache_hits_percentage", () =>
+            {
+                var hit = Volatile.Read(ref m_cacheHits);
+                var misses = Volatile.Read(ref m_cacheMisses);
+                var total = hit + misses;
+                if (total > m_metrics_lastSeenTotal)
+                {
+                    var newTotal = total - m_metrics_lastSeenTotal;
+                    var newHits = hit - m_metrics_lastSeenHits;
+                    m_metrics_lastSeenTotal = total;
+                    m_metrics_lastSeenHits = hit;
+                    m_metrics_lastSentPercentage = (float)newHits / newTotal;
+                    return new Measurement<float>(m_metrics_lastSentPercentage, new KeyValuePair<string, object?>("stream", m_streamName));
+                }
+                else
+                {
+                    return new Measurement<float>(m_metrics_lastSentPercentage, new KeyValuePair<string, object?>("stream", m_streamName));
+                }
+            });
+            meter.CreateObservableCounter("flowtide_lru_table_cache_hits", () =>
+            {
+                return new Measurement<long>(Volatile.Read(ref m_cacheHits), new KeyValuePair<string, object?>("stream", m_streamName));
+            });
+            meter.CreateObservableCounter("flowtide_lru_table_cache_misses", () =>
+            {
+                return new Measurement<long>(Volatile.Read(ref m_cacheMisses), new KeyValuePair<string, object?>("stream", m_streamName));
+            });
+            meter.CreateObservableCounter("flowtide_lru_table_cache_tries", () =>
+            {
+                var hits = Volatile.Read(ref m_cacheHits);
+                var misses = Volatile.Read(ref m_cacheMisses);
+                return new Measurement<long>(hits + misses, new KeyValuePair<string, object?>("stream", m_streamName));
+            });
+            this.lruTableOptions = lruTableOptions;
         }
 
         public void Clear()
@@ -111,11 +164,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     if (task.IsFaulted)
                     {
-                        this.logger.LogError(task.Exception, "Exception in LRU Table cleanup");
+                        logger.ExceptionInLruTableCleanup(task.Exception, m_streamName);
                     }
                     else
                     {
-                        this.logger.LogWarning("Cleanup task closed without error.");
+                        logger.CleanupTaskClosedWithoutError(m_streamName);
                     }
                     if (!task.IsCompletedSuccessfully)
                     {
@@ -143,6 +196,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
+        /// <summary>
+        /// Used for unit testing
+        /// </summary>
+        internal async Task StopCleanupTask()
+        {
+            m_cleanupTokenSource.Cancel();
+            await m_cleanupTask!;
+        }
+
         public bool TryGetValue(long key, out ICacheObject? cacheObject)
         {
             if (cache.TryGetValue(key, out var node))
@@ -160,16 +222,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return true;
                 }
             }
+            Interlocked.Increment(ref m_cacheMisses);
             cacheObject = default;
             return false;
         }
 
         public async Task Wait()
         {
-            logger.LogWarning("LRU Table is full, waiting for cleanup to finish.");
+            logger.LruTableIsFull(m_streamName);
             await _fullLock.WaitAsync().ConfigureAwait(false);
             _fullLock.Release();
-            logger.LogInformation("LRU Table is no longer full.");
+            logger.LruTableNoLongerFull(m_streamName);
         }
 
         public bool Add(long key, ICacheObject value, ILruEvictHandler evictHandler)
@@ -217,6 +280,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return full;
         }
 
+        /// <summary>
+        /// Used for testing only
+        /// </summary>
+        /// <returns></returns>
+        internal Task ForceCleanup()
+        {
+            return Cleanup();
+        }
+
         private async Task Cleanup()
         {
             var currentCount = Volatile.Read(ref m_count);
@@ -228,11 +300,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 if (m_lastSeenCacheHits == cacheHitsLocal)
                 {
                     m_sameCaheHitsCount++;
-                    if (m_sameCaheHitsCount >= 1000 && currentCount > 0)
+                    if (m_sameCaheHitsCount >= 10000 && currentCount > 0)
                     {
                         // No cache hits during a long time, clear the entire cache
                         isCleanup = true;
-                        cleanupStartLocal = 0;
+                        cleanupStartLocal = lruTableOptions.MinSize;
                         m_sameCaheHitsCount = 0;
                     }
                     else

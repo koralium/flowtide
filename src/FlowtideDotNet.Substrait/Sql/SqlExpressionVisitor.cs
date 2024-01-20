@@ -15,6 +15,7 @@ using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Sql.Internal;
+using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 using SqlParser.Ast;
 using static SqlParser.Ast.Expression;
@@ -367,16 +368,14 @@ namespace FlowtideDotNet.Substrait.Sql
 
         protected override ExpressionData VisitCaseExpression(SqlParser.Ast.Expression.Case caseExpression, EmitData state)
         {
-            var ifThen = new IfThenExpression()
-            {
-                Ifs = new List<IfClause>()
-            };
+            var ifs = new List<IfClause>();
+            Expressions.Expression? elseExpr = null;
 
             for (int i = 0; i < caseExpression.Conditions.Count; i++)
             {
                 var condition = Visit(caseExpression.Conditions[i], state);
                 var result = Visit(caseExpression.Results[i], state);
-                ifThen.Ifs.Add(new IfClause()
+                ifs.Add(new IfClause()
                 {
                     If = condition.Expr,
                     Then = result.Expr
@@ -385,8 +384,14 @@ namespace FlowtideDotNet.Substrait.Sql
             if (caseExpression.ElseResult != null)
             {
                 var elseResult = Visit(caseExpression.ElseResult, state);
-                ifThen.Else = elseResult.Expr;
+                elseExpr = elseResult.Expr;
             }
+
+            var ifThen = new IfThenExpression()
+            {
+                Ifs = ifs,
+                Else = elseExpr
+            };
             return new ExpressionData(ifThen, "$case");
         }
 
@@ -530,6 +535,49 @@ namespace FlowtideDotNet.Substrait.Sql
                 },
                 "$inlist"
                 );
+        }
+
+        protected override ExpressionData VisitCast(Cast cast, EmitData state)
+        {
+            var expr = Visit(cast.Expression, state);
+
+            SubstraitBaseType? baseType;
+            if (cast.DataType is SqlParser.Ast.DataType.StringType)
+            {
+                baseType = new StringType();
+            }
+            else if(cast.DataType is SqlParser.Ast.DataType.Int || 
+                cast.DataType is SqlParser.Ast.DataType.Integer ||
+                cast.DataType is SqlParser.Ast.DataType.SmallInt ||
+                cast.DataType is SqlParser.Ast.DataType.TinyInt)
+            {
+                baseType = new Int64Type();
+            }
+            else if (cast.DataType is SqlParser.Ast.DataType.Decimal)
+            {
+                baseType = new DecimalType();
+            }
+            else if (cast.DataType is SqlParser.Ast.DataType.Boolean)
+            {
+                baseType = new BoolType();
+            }
+            else if (cast.DataType is SqlParser.Ast.DataType.Double ||
+                cast.DataType is SqlParser.Ast.DataType.Float)
+            {
+                baseType = new Fp64Type();
+            }
+            else
+            {
+                throw new NotImplementedException($"The data type '{cast.DataType.GetType().Name}' is not yet supported in cast for SQL.");
+            }
+
+            var castExpression = new Expressions.CastExpression()
+            {
+                Expression = expr.Expr,
+                Type = baseType
+            };
+
+            return new ExpressionData(castExpression, expr.Name);
         }
     }
 }

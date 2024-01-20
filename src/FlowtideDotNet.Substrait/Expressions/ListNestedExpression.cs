@@ -14,7 +14,7 @@ namespace FlowtideDotNet.Substrait.Expressions
 {
     public class ListNestedExpression : NestedExpression
     {
-        public List<Expression> Values { get; set; }
+        public required List<Expression> Values { get; set; }
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             return visitor.VisitListNestedExpression(this, state);

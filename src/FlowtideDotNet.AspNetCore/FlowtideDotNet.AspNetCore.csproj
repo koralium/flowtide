@@ -21,7 +21,7 @@
   </ItemGroup>
   
     <ItemGroup>
-    <EmbeddedResource Include="$(SpaRoot)build\**" />
+    <EmbeddedResource Include="$(SpaRoot)public\**" />
   </ItemGroup>
 
   <Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">

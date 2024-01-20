@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Storage;
@@ -39,6 +40,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
         private StreamEventToJsonCosmos? m_serializer;
         private int idIndex;
         private CosmosClient? m_cosmosClient;
+        private ICounter<long>? _eventsProcessed;
 
         public CosmosDbSink(FlowtideCosmosOptions cosmosOptions, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -91,7 +93,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             Debug.Assert(m_container != null);
             Debug.Assert(m_serializer != null);
 
-            Logger.LogInformation("Starting CosmosDB update");
+            Logger.StartingCosmosDBUpdate(StreamName, Name);
             var iterator = m_modified.CreateIterator();
             await iterator.SeekFirst();
 
@@ -145,7 +147,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             // Clear the modified table
             await m_modified.Clear();
             m_hasModified = false;
-            Logger.LogInformation("CosmosDB update complete");
+            Logger.CosmosDBUpdateComplete(StreamName, Name, operationCount);
         }
 
         private string GetIdValue(RowEvent streamEvent)
@@ -280,6 +282,10 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             {
                 await LoadMetadata();
             }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
 
             m_modified = await stateManagerClient.GetOrCreateTree<RowEvent, int>("temporary", new Storage.Tree.BPlusTreeOptions<RowEvent, int>()
             {
@@ -294,6 +300,10 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
+            Debug.Assert(m_modified != null);
+            Debug.Assert(_eventsProcessed != null);
+            _eventsProcessed.Add(msg.Events.Count);
+
             foreach (var e in msg.Events)
             {
                 // Add the row to permanent storage

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
@@ -27,6 +28,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
         private readonly TimeSpan interval;
         private IReadOnlySet<string> _watermarks;
         private TimestampProviderState? _state;
+        private ICounter<long>? _eventsProcessed;
 
         public TimestampProviderOperator(TimeSpan interval, DataflowBlockOptions options) : base(options)
         {
@@ -65,6 +67,10 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
             {
                 _state = new TimestampProviderState();
             }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
             await RegisterTrigger("update", interval);
         }
 
@@ -77,6 +83,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
         private async Task UpdateTimestamp(IngressOutput<StreamEventBatch> output, object? state)
         {
             Debug.Assert(_state != null);
+            Debug.Assert(_eventsProcessed != null);
 
             await output.EnterCheckpointLock();
 
@@ -90,6 +97,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
                         b.Add(currentTimestamp);
                     })
                 }));
+                _eventsProcessed.Add(1);
             }
             else
             {
@@ -108,6 +116,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
                         b.Add(_state.LastSentTimestamp.Value);
                     })
                 }));
+                _eventsProcessed.Add(2);
             }
 
             _state.LastSentTimestamp = currentTimestamp;

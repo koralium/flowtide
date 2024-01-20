@@ -678,8 +678,8 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                     graph = dataflowStream.GetDiagnosticsGraph();
                     graph.Nodes.TryGetValue("3", out var node1);
                     graph.Nodes.TryGetValue("5", out var node2);
-                    var node1Health = node1!.Gauges.FirstOrDefault(x => x.Name == "health")!.Dimensions[""].Value;
-                    var node2Health = node2!.Gauges.FirstOrDefault(x => x.Name == "health")!.Dimensions[""].Value;
+                    var node1Health = node1!.Gauges.FirstOrDefault(x => x.Name == "flowtide_health")!.Dimensions[""].Value;
+                    var node2Health = node2!.Gauges.FirstOrDefault(x => x.Name == "flowtide_health")!.Dimensions[""].Value;
 
                     if (node1Health == 1 && node2Health == 1)
                     {

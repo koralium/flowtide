@@ -78,6 +78,8 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         public Task SendWatermark(Watermark watermark)
         {
+            Debug.Assert(_ingressState._vertexHandler != null, nameof(_ingressState._vertexHandler));
+            watermark.SourceOperatorId = _ingressState._vertexHandler.OperatorId;
             if (_inLock)
             {
                 return _targetBlock.SendAsync(watermark, CancellationToken);

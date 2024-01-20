@@ -212,7 +212,10 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
             if (_currentWatermark == null) 
             {
-                _currentWatermark = new Watermark(ImmutableDictionary<string, long>.Empty);
+                _currentWatermark = new Watermark(ImmutableDictionary<string, long>.Empty, watermark.StartTime)
+                {
+                    SourceOperatorId = watermark.SourceOperatorId
+                };
             }
             _targetWatermarks[targetId] = watermark;
             var currentDict = _currentWatermark.Watermarks;
@@ -240,7 +243,10 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     currentDict = currentDict.SetItem(kv.Key, watermarkValue);
                 }
             }
-            var newWatermark = new Watermark(currentDict);
+            var newWatermark = new Watermark(currentDict, watermark.StartTime)
+            {
+                SourceOperatorId = watermark.SourceOperatorId
+            };
 
             // only output watermark if there is a difference in the numbers
             if (!newWatermark.Equals(_currentWatermark))
@@ -299,7 +305,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     }
                 }
                 _targetWatermarkNames = targetsWatermarks.ToArray();
-                _currentWatermark = new Watermark(uniqueNames.Select(x => new KeyValuePair<string, long>(x, 0)).ToImmutableDictionary());
+                _currentWatermark = new Watermark(uniqueNames.Select(x => new KeyValuePair<string, long>(x, -1)).ToImmutableDictionary(), DateTimeOffset.UtcNow);
                 
 
                 return initWatermarksEvent;
@@ -335,7 +341,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             lock (_targetCheckpointLock)
             {
                 Debug.Assert(_targetInCheckpoint != null, nameof(_targetInCheckpoint));
-                Logger.LogTrace("Target in checkpoint {name} target: {target}", Name, targetId);
+                Logger.TargetInCheckpoint(targetId, StreamName, Name);
                 _targetInCheckpoint[targetId] = checkpointEvent;
 
                 bool allInCheckpoint = true;
@@ -351,8 +357,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
                 if (allInCheckpoint)
                 {
-                    Logger.LogInformation("Checkpoint in operator: {operator}", Name);
-                    Logger.LogTrace("Release checkpoint {name}", Name);
+                    Logger.CheckpointInOperator(StreamName, Name);
                     // Create a new array here, have already checked that noone is null in the array
 #pragma warning disable CS8619 // Nullability of reference types in value doesn't match target type.
                     checkpoints = _targetInCheckpoint.ToArray();
@@ -467,9 +472,9 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             });
             Metrics.CreateObservableGauge("metadata", () =>
             {
-                TagList tags = new TagList
+                TagList tags = new TagList()
                 {
-                    { "displayName", DisplayName }
+                    { "id", Name }
                 };
                 var links = GetLinks();
                 StringBuilder outputLinks = new StringBuilder();
@@ -490,6 +495,33 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 outputLinks.Append(']');
                 tags.Add("links", outputLinks.ToString());
                 return new Measurement<int>(1, tags);
+            });
+
+            Metrics.CreateObservableGauge("link", () =>
+            {
+                var links = GetLinks();
+
+                List<Measurement<int>> measurements = new List<Measurement<int>>();
+
+                foreach (var link in links)
+                {
+                    TagList tags = new TagList
+                    {
+                        { "source", Name }
+                    };
+                    if (link is IStreamVertex streamVertex)
+                    {
+                        tags.Add("target", streamVertex.Name);
+                        tags.Add("id", streamVertex.Name + "-" + Name);
+                    }
+                    else if (link is MultipleInputTargetHolder target)
+                    {
+                        tags.Add("target", target.OperatorName);
+                        tags.Add("id", target.OperatorName + "-" + Name);
+                    }
+                    measurements.Add(new Measurement<int>(1, tags));
+                }
+                return measurements;
             });
 
             _currentTime = newTime;

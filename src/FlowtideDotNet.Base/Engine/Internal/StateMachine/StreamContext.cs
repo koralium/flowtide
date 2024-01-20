@@ -22,6 +22,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.Metrics;
+using FlowtideDotNet.Base.Utils;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
@@ -52,6 +53,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly IStreamScheduler _streamScheduler;
         private readonly object _contextLock = new object();
         internal readonly StreamVersionInformation? _streamVersionInformation;
+        internal readonly DataflowStreamOptions _dataflowStreamOptions;
         private readonly Meter _contextMeter;
 
         internal StreamState? _lastState;
@@ -92,7 +94,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             IStreamNotificationReciever? notificationReciever,
             StateManagerOptions stateManagerOptions,
             ILoggerFactory? loggerFactory,
-            StreamVersionInformation? streamVersionInformation)
+            StreamVersionInformation? streamVersionInformation,
+            DataflowStreamOptions dataflowStreamOptions)
         {
             this.streamName = streamName;
             this.propagatorBlocks = propagatorBlocks;
@@ -104,24 +107,30 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _streamMetrics = new StreamMetrics(streamName);
             _notificationReciever = notificationReciever;
             _streamVersionInformation = streamVersionInformation;
-
+            this._dataflowStreamOptions = dataflowStreamOptions;
             _contextMeter = new Meter($"flowtide.{streamName}");
-            _contextMeter.CreateObservableGauge<float>("health", () =>
+            _contextMeter.CreateObservableGauge<float>("flowtide_health", () =>
             {
                 var currentStatus = GetStatus();
+                var val = 0.0f;
                 switch (currentStatus)
                 {
                     case StreamStatus.Running:
-                        return 1.0f;
+                        val = 1.0f;
+                        break;
                     case StreamStatus.Failing:
                     case StreamStatus.Stopped:
-                        return 0.0f;
+                        val = 0.0f;
+                        break;
                     case StreamStatus.Starting:
                     case StreamStatus.Degraded:
-                        return 0.5f;
+                        val = 0.5f;
+                        break;
                     default:
-                        return 0.0f;
+                        val = 0.0f;
+                        break;
                 }
+                return new Measurement<float>(val, new KeyValuePair<string, object?>("stream", streamName));
             });
             if (loggerFactory == null)
             {
@@ -135,7 +144,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             _checkpointLock = new object();
 
-            _stateManager = new FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState>(stateManagerOptions, this.loggerFactory.CreateLogger("StateManager"), new Meter($"flowtide.{streamName}.storage"));
+            _stateManager = new FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState>(stateManagerOptions, this.loggerFactory.CreateLogger("StateManager"), new Meter($"flowtide.{streamName}.storage"), streamName);
             
 
             _streamScheduler.Initialize(this);
@@ -434,7 +443,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             lock (_contextLock)
             {
-                _logger.LogTrace("Calling egress checkpoint done, current state: {state}", currentState.ToString());
+                _logger.CallingEgressCheckpointDone(streamName, currentState.ToString());
                 _state!.EgressCheckpointDone(name);
             }
         }
@@ -450,7 +459,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task OnFailure(Exception? e)
         {
-            _logger.LogError(e, "Stream error");
+            _logger.StreamError(e, streamName);
             lock(_contextLock)
             {
                 return _state!.OnFailure();

@@ -64,6 +64,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             this.testName = testName;
         }
 
+        public virtual void RegisterTableProviders(Action<SqlPlanBuilder> action)
+        {
+            action(sqlPlanBuilder);
+        }
+
         public void Generate(int count = 1000)
         {
             generator.Generate(count);
@@ -287,6 +292,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 _fileCachePersistence.ForceDispose();
             }
+        }
+
+        public async Task Trigger(string triggerName)
+        {
+            await _stream!.CallTrigger(triggerName, default);
         }
     }
 }

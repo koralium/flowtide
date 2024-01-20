@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Utils;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
@@ -43,7 +44,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            _context._logger.LogTrace("Starting checkpoint done task");
+            _context._logger.StartCheckpointDoneTask(_context.streamName);
             Task.Factory.StartNew(async (state) =>
             {
                 var run = (RunningStreamState)state!;
@@ -59,17 +60,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                 run._context._stateManager.Metadata = run._context._lastState;
 
+                long changesSinceLastCompaction = run._context._stateManager.PageCommitsSinceLastCompaction;
+                var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
+
                 // Take state checkpoint
-                _context._logger.LogTrace("Starting state manager checkpoint");
-                await run._context._stateManager.CheckpointAsync();
-                _context._logger.LogTrace("State manager checkpoint done");
+                _context._logger.StartingStateManagerCheckpoint(_context.streamName);
+                await run._context._stateManager.CheckpointAsync(changesSinceLastCompaction > compactionThreshold);
+                _context._logger.StateManagerCheckpointDone(_context.streamName);
 
                 await run._context.stateHandler.WriteLatestState(run._context.streamName, run._context._lastState);
 
 
                 // Compaction: if more than 30% of the pages has been changed since last compaction, do compaction
-                long changesSinceLastCompaction = run._context._stateManager.PageCommitsSinceLastCompaction;
-                var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
                 if (changesSinceLastCompaction > compactionThreshold)
                 {
                     await run._context._stateManager.Compact();
@@ -77,7 +79,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
 
                 // After writing do compaction
-                _context._logger.LogTrace("Starting compaction on all nodes");
+                _context._logger.StartingCompactionOnVertices(_context.streamName);
                 List<Task> tasks = new List<Task>();
                 foreach (var ingressNode in run._context.ingressBlocks)
                 {
@@ -93,7 +95,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
 
                 await Task.WhenAll(tasks);
-                _context._logger.LogTrace("Compaction done on nodes");
+                _context._logger.CompactionDoneOnVertices(_context.streamName);
             }, this)
                 .Unwrap()
                  .ContinueWith((t, state) =>
@@ -105,6 +107,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                      }
                      // Finish the checkpoint
                      @this.CheckpointCompleted();
+                     _context._logger.CheckpointDone(_context.streamName);
                      return Task.CompletedTask;
                  }, this)
                  .Unwrap();
@@ -118,7 +121,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (_context.checkpointTask != null)
                 {
-                    _context._logger.LogInformation("Checkpoint done.");
                     _context._scheduleCheckpointTask = null;
                     _context.checkpointTask.SetResult();
                     _context.checkpointTask = null;
@@ -148,7 +150,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            _context._logger.LogInformation("Stream is in running state");
+            _context._logger.StreamIsInRunningState(_context.streamName);
             lock (_lock)
             {
                 if (_initialBatchTask != null)
@@ -156,13 +158,21 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return;
                 }
 
+                if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
+                {
+                    // Set the checkpoint task to stop any other checkpoint from happening
+                    _context.checkpointTask = new TaskCompletionSource();
+                }
+
                 _initialBatchTask = Task.Factory.StartNew(async () =>
                 {
+                    List<Task> tasks = new List<Task>();
                     foreach (var block in _context.ingressBlocks)
                     {
                         // Signal to ingress blocks that all has been initialized and it can now start accepting data
-                        await block.Value.InitializationCompleted();
+                        tasks.Add(block.Value.InitializationCompleted());
                     }
+                    await Task.WhenAll(tasks);
                 })
                     .Unwrap()
                     .ContinueWith((t) =>
@@ -175,6 +185,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         {
 
                             return _context.OnFailure(t.Exception);
+                        }
+                        if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
+                        {
+                            CheckpointCompleted();
                         }
                         
                         return Task.CompletedTask;
@@ -201,7 +215,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     return _context.checkpointTask.Task;
                 }
-                _context._logger.LogInformation("Starting checkpoint.");
+                _context._logger.StartingCheckpoint(_context.streamName);
                 nonCheckpointedEgresses = new HashSet<string>();
                 foreach (var key in _context.egressBlocks.Keys)
                 {

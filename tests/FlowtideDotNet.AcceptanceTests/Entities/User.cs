@@ -34,5 +34,9 @@ namespace FlowtideDotNet.AcceptanceTests.Entities
         public int? ManagerKey { get; set; }
 
         public string? TrimmableNullableString { get; set; }
+
+        public double DoubleValue { get; set; }
+
+        public bool Active { get; set; }
     }
 }

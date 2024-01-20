@@ -100,7 +100,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                         return managerKey;
                     }
                 })
-                .RuleFor(x => x.TrimmableNullableString, (f, u) => u.NullableString != null ? $" {u.NullableString} " : null);
+                .RuleFor(x => x.TrimmableNullableString, (f, u) => u.NullableString != null ? $" {u.NullableString} " : null)
+                .RuleFor(x => x.DoubleValue, (f, u) => f.Random.Double(0, 1000))
+                .RuleFor(x => x.Active, (f, u) => f.Random.Bool());
 
 
             var newUsers = testUsers.Generate(count);

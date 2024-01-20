@@ -18,6 +18,8 @@ namespace FlowtideDotNet.Base
 {
     public interface IVertexHandler
     {
+        string OperatorId { get; }
+
         string StreamName { get; }
 
         IMeter Metrics { get; }
