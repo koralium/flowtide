@@ -293,6 +293,9 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     return CastImplementations.CallCastToDecimal(expr);
                 case Substrait.Type.SubstraitType.Bool:
                     return CastImplementations.CallCastToBool(expr);
+                case Substrait.Type.SubstraitType.Fp32:
+                case Substrait.Type.SubstraitType.Fp64:
+                    return CastImplementations.CallCastToDouble(expr);
             }
 
             throw new InvalidOperationException($"The type {castExpression.Type.Type} is not supported in cast.");

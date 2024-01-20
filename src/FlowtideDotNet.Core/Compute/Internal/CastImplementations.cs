@@ -28,6 +28,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
         private static FlxValue ZeroIntValue = FlxValue.FromBytes(FlexBuffer.SingleValue(0));
         private static FlxValue OneDecimalValue = FlxValue.FromBytes(FlexBuffer.SingleValue((decimal)1));
         private static FlxValue ZeroDecimalValue = FlxValue.FromBytes(FlexBuffer.SingleValue((decimal)0));
+        private static FlxValue OneDoubleValue = FlxValue.FromBytes(FlexBuffer.SingleValue((double)1));
+        private static FlxValue ZeroDoubleValue = FlxValue.FromBytes(FlexBuffer.SingleValue((double)0));
 
         internal static FlxValue CastToString(FlxValue value)
         {
@@ -56,6 +58,11 @@ namespace FlowtideDotNet.Core.Compute.Internal
         internal static Expression CallCastToBool(Expression value)
         {
             return Expression.Call(typeof(CastImplementations), nameof(CastToBool), null, value);
+        }
+
+        internal static Expression CallCastToDouble(Expression value)
+        {
+            return Expression.Call(typeof(CastImplementations), nameof(CastToDouble), null, value);
         }
 
         internal static FlxValue CastToInt(FlxValue value)
@@ -157,6 +164,43 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     return FlxValue.FromBytes(FlexBuffer.SingleValue(value.AsDecimal != (decimal)0.0));
                 case FlexBuffers.Type.Int:
                     return FlxValue.FromBytes(FlexBuffer.SingleValue(value.AsLong != 0));
+                default:
+                    return NullValue;
+            }
+        }
+
+        internal static FlxValue CastToDouble(FlxValue value)
+        {
+            if (value.IsNull)
+            {
+                return NullValue;
+            }
+            switch (value.ValueType)
+            {
+                case FlexBuffers.Type.Bool:
+                    if (value.AsBool)
+                    {
+                        return OneDoubleValue;
+                    }
+                    else
+                    {
+                        return ZeroDoubleValue;
+                    }
+                case FlexBuffers.Type.String:
+                    if (double.TryParse(value.AsString, out var doubleValue))
+                    {
+                        return FlxValue.FromBytes(FlexBuffer.SingleValue(doubleValue));
+                    }
+                    else
+                    {
+                        return NullValue;
+                    }
+                case FlexBuffers.Type.Float:
+                    return value;
+                case FlexBuffers.Type.Decimal:
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue((double)value.AsDecimal));
+                case FlexBuffers.Type.Int:
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue((double)value.AsLong));
                 default:
                     return NullValue;
             }

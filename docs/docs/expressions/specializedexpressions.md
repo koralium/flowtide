@@ -4,6 +4,76 @@ sidebar_position: 3
 
 # Specialized Expressions
 
+## Cast Expression
+
+The cast expression allows conversion between data types.
+The supported data types at this point are:
+
+* String
+* Boolean
+* Int
+* Double
+* Decimal
+
+If it is not possible to cast a value, null will be returned.
+
+### Cast to string
+
+| Data Type     | Value         | Output    |
+| ------------- | ------------- | --------- |
+| Integer       | 3             | '3'       |
+| Float         | 3.1           | '3.1'     |
+| Decimal       | 3.1           | '3.1'     |
+| Boolean       | True          | 'true'    |
+| Boolean       | False         | 'false'   |
+
+### Cast to boolean
+
+For numeric types, any value except 0 becomes true, and 0 becomes false.
+
+| Data Type     | Value         | Output    |
+| ------------- | ------------- | --------- |
+| Integer       | 3             | true      |
+| Integer       | 0             | false     |
+| Float         | 3.1           | true      |
+| Float         | 0.0           | false     |
+| Decimal       | 3.1           | true      |
+| Decimal       | 0.0           | false     |
+| String        | 'true'        | true      |
+| String        | 'false'       | false     |
+
+### Cast to integer
+
+For any numeric type with decimals, the value will be floored.
+
+| Data Type     | Value         | Output    |
+| ------------- | ------------- | --------- |
+| Float         | 3.1           | 3         |
+| Decimal       | 3.1           | 3         |
+| Boolean       | True          | 1         |
+| Boolean       | False         | 0         |
+| String        | '1'           | 1         |
+
+### Cast to double
+
+| Data Type     | Value         | Output    |
+| ------------- | ------------- | --------- |
+| Int           | 3             | 3         |
+| Decimal       | 3.1           | 3.1       |
+| Boolean       | True          | 1.0       |
+| Boolean       | False         | 0.0       |
+| String        | '1.3'         | 1.3       |
+
+### Cast to decimal
+
+| Data Type     | Value         | Output    |
+| ------------- | ------------- | --------- |
+| Int           | 3             | 3         |
+| Float         | 3.1           | 3.1       |
+| Boolean       | True          | 1.0       |
+| Boolean       | False         | 0.0       |
+| String        | '1.3'         | 1.3       |
+
 ## Nested Type Constructor Expressions
 
 ### List

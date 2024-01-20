@@ -280,5 +280,69 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(Orders.Select(u => new { money = u.Money != (decimal)0.0 }));
         }
+
+        [Fact]
+        public async Task ConvertIntToDouble()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CAST(userkey AS double) 
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(u => new { userkey = (double)u.UserKey }));
+        }
+
+        [Fact]
+        public async Task ConvertDecimalToDouble()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CAST(Money AS double)
+            FROM orders
+            ");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.Select(u => new { val = (double?)u.Money }));
+        }
+
+        [Fact]
+        public async Task ConvertStringToDouble()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CAST('17' AS double)
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(u => new { val = (double)17 }));
+        }
+
+        [Fact]
+        public async Task ConvertBoolToDouble()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CAST(active AS decimal)
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(u => new { val = u.Active ? (double)1 : (double)0 }));
+        }
     }
 }

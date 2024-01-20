@@ -561,6 +561,11 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 baseType = new BoolType();
             }
+            else if (cast.DataType is SqlParser.Ast.DataType.Double ||
+                cast.DataType is SqlParser.Ast.DataType.Float)
+            {
+                baseType = new Fp64Type();
+            }
             else
             {
                 throw new NotImplementedException($"The data type '{cast.DataType.GetType().Name}' is not yet supported in cast for SQL.");
