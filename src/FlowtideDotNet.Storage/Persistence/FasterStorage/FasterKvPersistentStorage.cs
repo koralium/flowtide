@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         public long CurrentVersion => m_persistentStorage.CurrentVersion;
 
-        public async ValueTask CheckpointAsync(byte[] metadata)
+        public async ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
         {
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             Memory<byte> memory = metadata.AsMemory();
@@ -42,10 +42,10 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             var status = result.Complete();
             handle.Dispose();
             
-            await TakeCheckpointAsync();
+            await TakeCheckpointAsync(includeIndex);
         }
 
-        internal async Task<Guid> TakeCheckpointAsync()
+        internal async Task<Guid> TakeCheckpointAsync(bool includeIndex)
         {
             bool success = false;
             Guid token;
@@ -53,7 +53,14 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             do
             {
                 using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-                (success, token) = await m_persistentStorage.TakeHybridLogCheckpointAsync(CheckpointType.FoldOver, cancellationToken: tokenSource.Token).ConfigureAwait(false);
+                if (includeIndex)
+                {
+                    (success, token) = await m_persistentStorage.TakeFullCheckpointAsync(CheckpointType.FoldOver, cancellationToken: tokenSource.Token).ConfigureAwait(false);
+                }
+                else
+                {
+                    (success, token) = await m_persistentStorage.TakeHybridLogCheckpointAsync(CheckpointType.FoldOver, cancellationToken: tokenSource.Token).ConfigureAwait(false);
+                }
                 if (!success) 
                 { 
                     retryCount++; 
