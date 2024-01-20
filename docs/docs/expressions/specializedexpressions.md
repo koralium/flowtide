@@ -27,6 +27,12 @@ If it is not possible to cast a value, null will be returned.
 | Boolean       | True          | 'true'    |
 | Boolean       | False         | 'false'   |
 
+#### SQL Usage
+
+```sql
+CAST(column1 AS string)
+```
+
 ### Cast to boolean
 
 For numeric types, any value except 0 becomes true, and 0 becomes false.
@@ -42,6 +48,12 @@ For numeric types, any value except 0 becomes true, and 0 becomes false.
 | String        | 'true'        | true      |
 | String        | 'false'       | false     |
 
+#### SQL Usage
+
+```sql
+CAST(column1 AS boolean)
+```
+
 ### Cast to integer
 
 For any numeric type with decimals, the value will be floored.
@@ -54,6 +66,12 @@ For any numeric type with decimals, the value will be floored.
 | Boolean       | False         | 0         |
 | String        | '1'           | 1         |
 
+#### SQL Usage
+
+```sql
+CAST(column1 AS int)
+```
+
 ### Cast to double
 
 | Data Type     | Value         | Output    |
@@ -64,6 +82,12 @@ For any numeric type with decimals, the value will be floored.
 | Boolean       | False         | 0.0       |
 | String        | '1.3'         | 1.3       |
 
+#### SQL Usage
+
+```sql
+CAST(column1 AS double)
+```
+
 ### Cast to decimal
 
 | Data Type     | Value         | Output    |
@@ -73,6 +97,12 @@ For any numeric type with decimals, the value will be floored.
 | Boolean       | True          | 1.0       |
 | Boolean       | False         | 0.0       |
 | String        | '1.3'         | 1.3       |
+
+#### SQL Usage
+
+```sql
+CAST(column1 AS decimal)
+```
 
 ## Nested Type Constructor Expressions
 
