@@ -17,5 +17,10 @@ namespace FlowtideDotNet.Core.Optimizer
         public bool NoMergeJoin { get; set; } = false;
 
         public bool GetTimestampToJoin { get; set; } = true;
+
+        /// <summary>
+        /// Automatically add a buffer block infront of get timestamp operations to reduce the number of outgoing events.
+        /// </summary>
+        public bool AddBufferBlockOnGetTimestamp { get; set; } = true;
     }
 }

@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public long CurrentVersion => _version;
 
-        public ValueTask CheckpointAsync(byte[] metadata)
+        public ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
         {
             Write(1, metadata);
             _version++;

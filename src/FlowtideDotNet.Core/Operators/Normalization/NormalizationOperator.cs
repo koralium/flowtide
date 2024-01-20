@@ -23,6 +23,7 @@ using System.Diagnostics;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Core.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
@@ -39,7 +40,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         private readonly Func<RowEvent, bool>? _filter;
 
         private ICounter<long>? _eventsCounter;
-        
+        private ICounter<long>? _eventsProcessed;
+
         public override string DisplayName => "Normalize";
 
         public NormalizationOperator(
@@ -73,6 +75,9 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
+            Debug.Assert(_eventsProcessed != null);
+            _eventsProcessed.Add(msg.Events.Count);
+
             List<RowEvent> output = new List<RowEvent>();
             foreach(var e in msg.Events)
             {
@@ -233,8 +238,15 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 #if DEBUG_WRITE
             allOutput = File.CreateText($"{Name}.alloutput.txt");
 #endif
-            Logger.LogInformation("Initializing normalization operator.");
-            _eventsCounter = Metrics.CreateCounter<long>("events");
+            Logger.InitializingNormalizationOperator(StreamName, Name);
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
             _tree = await stateManagerClient.GetOrCreateTree("input", new BPlusTreeOptions<string, IngressData>()
             {
                 Comparer = StringComparer.Ordinal,

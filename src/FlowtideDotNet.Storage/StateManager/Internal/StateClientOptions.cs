@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FASTER.core;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
@@ -19,6 +20,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
     {
         public IStateSerializer<V>? ValueSerializer { get; set; }
 
-        public IDevice? TemporaryLogDevice { get; set; }
+        public TagList TagList { get; set; }
     }
 }

@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Storage.Tests
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistent"
                     })
-                }, NullLogger.Instance, new Meter($"storage"));
+                }, NullLogger.Instance, new Meter($"storage"), "storage");
 
             await stateManager.InitializeAsync();
 
@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Storage.Tests
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistentfail"
                     })
-                }, NullLogger.Instance, new Meter($"storage"));
+                }, NullLogger.Instance, new Meter($"storage"), "storage");
 
             await stateManager.InitializeAsync();
 
@@ -151,7 +151,7 @@ namespace FlowtideDotNet.Storage.Tests
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistentcompact"
                     })
-                },  NullLogger.Instance, new Meter($"storage"));
+                },  NullLogger.Instance, new Meter($"storage"), "storage");
 
             await stateManager.InitializeAsync();
 

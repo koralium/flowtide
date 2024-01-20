@@ -31,6 +31,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
         private readonly TopNRelation relation;
         private IBPlusTree<RowEvent, int>? _tree;
         private ICounter<long>? _eventsOutCounter;
+        private ICounter<long>? _eventsProcessed;
 
         public TopNOperator(TopNRelation relation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -61,6 +62,9 @@ namespace FlowtideDotNet.Core.Operators.TopN
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
             Debug.Assert(_tree != null);
+            Debug.Assert(_eventsProcessed != null);
+            _eventsProcessed.Add(msg.Events.Count);
+
             var iterator = _tree.CreateIterator();
             List<RowEvent> output = new List<RowEvent>();
             foreach(var e in msg.Events)
@@ -242,6 +246,10 @@ namespace FlowtideDotNet.Core.Operators.TopN
             if (_eventsOutCounter == null)
             {
                 _eventsOutCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
             // Create tree that will hold all rows
             _tree = await stateManagerClient.GetOrCreateTree("topn", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
