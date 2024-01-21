@@ -518,6 +518,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
             });
+
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "power", FunctionsArithmetic.Uri, FunctionsArithmetic.Power);
         }
 
         private static void RegisterSingleVariableFunction(
@@ -547,6 +549,42 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     };
                 }
                 throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+            });
+        }
+
+        private static void RegisterTwoVariableScalarFunction(
+            SqlFunctionRegister sqlFunctionRegister,
+            string functionName,
+            string extensionUri,
+            string extensionName)
+        {
+            sqlFunctionRegister.RegisterScalarFunction(functionName, (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 2)
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
+                }
+                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
+                }
+                if ((f.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
+                f.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+                    var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData).Expr;
+                    return new ScalarFunction()
+                    {
+                        ExtensionUri = extensionUri,
+                        ExtensionName = extensionName,
+                        Arguments = new List<Expressions.Expression>() { argExpr, argExpr2 }
+                    };
+                }
+                throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
             });
         }
 

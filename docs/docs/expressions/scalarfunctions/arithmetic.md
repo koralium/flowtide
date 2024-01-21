@@ -127,3 +127,51 @@ Non numeric values becomes 'null'.
 ```sql
 SELECT -column1 FROM ...
 ```
+
+## Modulo
+
+[Substrait definition](https://substrait.io/extensions/functions_arithmetic/#modulus)
+
+Calculate the remainder when dividing two numbers.
+
+Modulo depends on the input types on what result it will give:
+
+| Left type     | Right type    | Output    |
+| ------------- | ------------- | --------- |
+| Integer       | Integer       | Integer   |
+| Integer       | Float         | Float     |
+| Float         | Float         | Float     |
+| Non numeric   | Integer       | Null      |
+| num numeric   | Float         | Null      |
+| Non numeric   | Non numeric   | Null      |
+
+Taking modulo between two integers where the divider is 0, the return will be type double and the value NaN.
+
+### SQL Usage
+
+```sql
+SELECT column1 % 3 FROM ...
+```
+
+## Power
+
+[Substrait definition](https://substrait.io/extensions/functions_arithmetic/#power)
+
+Calculate the power with the first argument being the base and the other the exponent.
+
+Power depends on the input types on what result it will give:
+
+| Left type     | Right type    | Output    |
+| ------------- | ------------- | --------- |
+| Integer       | Integer       | Integer   |
+| Integer       | Float         | Float     |
+| Float         | Float         | Float     |
+| Non numeric   | Integer       | Null      |
+| num numeric   | Float         | Null      |
+| Non numeric   | Non numeric   | Null      |
+
+### SQL Usage
+
+```sql
+SELECT power(column1, 2) FROM ...
+```

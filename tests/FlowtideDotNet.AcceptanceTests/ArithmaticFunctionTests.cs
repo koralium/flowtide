@@ -112,6 +112,51 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task SelectWithModulusNumber()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT userkey % 3 as UserKey FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey % 3 }));
+        }
+
+        [Fact]
+        public async Task SelectWithModulusString()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT firstName % 3 as firstName FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { FirstName = default(string) }));
+        }
+
+        [Fact]
+        public async Task SelectWithModulusNumberZero()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT userkey % 0 as UserKey FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey % (double)0 }));
+        }
+
+        [Fact]
+        public async Task SelectWithPowerNumber()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT power(userkey, 2) as UserKey FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = Math.Pow(x.UserKey, 2) }));
+        }
+
+        [Fact]
+        public async Task SelectWithPowerString()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT power(firstName, 2) as firstName FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { FirstName = default(string) }));
+        }
+
+        [Fact]
         public async Task SelectSum()
         {
             GenerateData();
