@@ -464,28 +464,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new InvalidOperationException("sum0 must have exactly one argument, and not be '*'");
             });
 
-            sqlFunctionRegister.RegisterAggregateFunction("min", (f, visitor, emitData) =>
-            {
-                if (f.Args == null || f.Args.Count != 1)
-                {
-                    throw new InvalidOperationException("min must have exactly one argument, and not be '*'");
-                }
-                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
-                {
-                    throw new InvalidOperationException("min must have exactly one argument, and not be '*'");
-                }
-                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
-                {
-                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
-                    return new AggregateFunction()
-                    {
-                        ExtensionUri = FunctionsArithmetic.Uri,
-                        ExtensionName = FunctionsArithmetic.Min,
-                        Arguments = new List<Expressions.Expression>() { argExpr }
-                    };
-                }
-                throw new InvalidOperationException("min must have exactly one argument, and not be '*'");
-            });
+            RegisterSingleVariableFunction(sqlFunctionRegister, "min", FunctionsArithmetic.Uri, FunctionsArithmetic.Min);
+            RegisterSingleVariableFunction(sqlFunctionRegister, "max", FunctionsArithmetic.Uri, FunctionsArithmetic.Max);
 
             sqlFunctionRegister.RegisterAggregateFunction("list_agg", (f, visitor, emitData) =>
             {
@@ -537,6 +517,36 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     };
                 }
                 throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
+            });
+        }
+
+        private static void RegisterSingleVariableFunction(
+            SqlFunctionRegister sqlFunctionRegister, 
+            string functionName,
+            string extensionUri,
+            string extensionName)
+        {
+            sqlFunctionRegister.RegisterAggregateFunction(functionName, (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+                }
+                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+                    return new AggregateFunction()
+                    {
+                        ExtensionUri = extensionUri,
+                        ExtensionName = extensionName,
+                        Arguments = new List<Expressions.Expression>() { argExpr }
+                    };
+                }
+                throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
             });
         }
 
