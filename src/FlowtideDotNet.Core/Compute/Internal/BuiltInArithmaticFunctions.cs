@@ -28,6 +28,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Multiply, (x, y) => MultiplyImplementation(x, y));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Divide, (x, y) => DivideImplementation(x, y));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Negate, (x) => NegateImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Modulo, (x, y) => ModuloImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Power, (x, y) => PowerImplementation(x, y));
 
             // Aggregate functions
             functionsRegister.RegisterStreamingAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, 
@@ -205,6 +207,76 @@ namespace FlowtideDotNet.Core.Compute.Internal
             else if (x.ValueType == FlexBuffers.Type.Int)
             {
                 return FlxValue.FromBytes(FlexBuffer.SingleValue(-x.AsLong));
+            }
+            return NullValue;
+        }
+
+        private static FlxValue ModuloImplementation(FlxValue x, FlxValue y)
+        {
+            if (x.ValueType == FlexBuffers.Type.Float)
+            {
+                // Float add float always return a float
+                if (y.ValueType == FlexBuffers.Type.Float)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsDouble % y.AsDouble));
+                }
+                // Float add int, will always return a float
+                else if (y.ValueType == FlexBuffers.Type.Int)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsDouble % (double)y.AsLong));
+                }
+            }
+            else if (x.ValueType == FlexBuffers.Type.Int)
+            {
+                // Int add int, will always return an int
+                if (y.ValueType == FlexBuffers.Type.Int)
+                {
+                    try
+                    {
+                        return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsLong % y.AsLong));
+                    }
+                    catch (DivideByZeroException)
+                    {
+                        return FlxValue.FromBytes(FlexBuffer.SingleValue(double.NaN));
+                    }
+                    
+                }
+                // Int add float, will always return a float
+                else if (y.ValueType == FlexBuffers.Type.Float)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsLong % y.AsDouble));
+                }
+            }
+            return NullValue;
+        }
+
+        private static FlxValue PowerImplementation(FlxValue x, FlxValue y)
+        {
+            if (x.ValueType == FlexBuffers.Type.Float)
+            {
+                // Float add float always return a float
+                if (y.ValueType == FlexBuffers.Type.Float)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(Math.Pow(x.AsDouble, y.AsDouble)));
+                }
+                // Float add int, will always return a float
+                else if (y.ValueType == FlexBuffers.Type.Int)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(Math.Pow(x.AsDouble, y.AsLong)));
+                }
+            }
+            else if (x.ValueType == FlexBuffers.Type.Int)
+            {
+                // Int add int, will always return an int
+                if (y.ValueType == FlexBuffers.Type.Int)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue((long)Math.Pow(x.AsLong, y.AsLong)));
+                }
+                // Int add float, will always return a float
+                else if (y.ValueType == FlexBuffers.Type.Float)
+                {
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(Math.Pow(x.AsLong, y.AsDouble)));
+                }
             }
             return NullValue;
         }

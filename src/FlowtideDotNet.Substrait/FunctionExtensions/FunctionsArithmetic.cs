@@ -20,6 +20,8 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Multiply = "multiply";
         public const string Divide = "divide";
         public const string Negate = "negate";
+        public const string Modulo = "modulo";
+        public const string Power = "power";
 
         //Aggregate
         public const string Sum = "sum";
