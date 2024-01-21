@@ -43,11 +43,53 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
         }
     }
 
-    internal class MinAggregationSingleton
+    internal class MaxAggregationInsertComparer : IComparer<RowEvent>
+    {
+        private readonly int length;
+
+        public MaxAggregationInsertComparer(int length)
+        {
+            this.length = length;
+        }
+
+        public int Compare(RowEvent x, RowEvent y)
+        {
+            for (int i = 0; i < length; i++)
+            {
+                var yref = y.GetColumnRef(i);
+                var xref = x.GetColumnRef(i);
+
+                if (yref.IsNull)
+                {
+                    if (xref.IsNull)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        return 1;
+                    }
+                }
+                else if (xref.IsNull)
+                {
+                    return -1;
+                }
+
+                var c = FlxValueRefComparer.CompareTo(yref, xref);
+                if (c != 0)
+                {
+                    return c;
+                }
+            }
+            return 0;
+        }
+    }
+
+    internal class MinMaxAggregationSingleton
     {
         private readonly int keyLength;
 
-        public MinAggregationSingleton(IBPlusTree<RowEvent, int> tree, int keyLength)
+        public MinMaxAggregationSingleton(IBPlusTree<RowEvent, int> tree, int keyLength)
         {
             Tree = tree;
             this.keyLength = keyLength;
@@ -68,11 +110,15 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             return true;
         }
     }
-    internal static class MinAggregationRegistration
+    internal static class MinMaxAggregationRegistration
     {
         private static FlxValue NullValue = FlxValue.FromBytes(FlexBuffer.Null());
 
-        private static async Task<MinAggregationSingleton> Initialize(int groupingLength, IStateManagerClient stateManagerClient)
+        private static async Task<MinMaxAggregationSingleton> InitializeMinMax(
+            int groupingLength, 
+            IStateManagerClient stateManagerClient, 
+            IComparer<RowEvent> comparer,
+            string treeName)
         {
             List<int> insertPrimaryKeys = new List<int>();
             for (int i = 0; i < groupingLength + 1; i++)
@@ -84,19 +130,29 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             {
                 searchPrimaryKeys.Add(i);
             }
-            var tree = await stateManagerClient.GetOrCreateTree("mintree", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
+            var tree = await stateManagerClient.GetOrCreateTree(treeName, new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
             {
-                Comparer = new MinAggregationInsertComparer(groupingLength + 1),
+                Comparer = comparer,
                 KeySerializer = new StreamEventBPlusTreeSerializer(),
                 ValueSerializer = new IntSerializer()
             });
-            
-            return new MinAggregationSingleton(tree, groupingLength);
+
+            return new MinMaxAggregationSingleton(tree, groupingLength);
         }
 
-        
+        private static Task<MinMaxAggregationSingleton> InitializeMin(int groupingLength, IStateManagerClient stateManagerClient)
+        {
+            return InitializeMinMax(groupingLength, stateManagerClient, new MinAggregationInsertComparer(groupingLength + 1), "mintree");
+        }
 
-        private static System.Linq.Expressions.Expression MinMapFunction(
+        private static Task<MinMaxAggregationSingleton> InitializeMax(int groupingLength, IStateManagerClient stateManagerClient)
+        {
+            return InitializeMinMax(groupingLength, stateManagerClient, new MaxAggregationInsertComparer(groupingLength + 1), "maxtree");
+        }
+
+
+
+        private static System.Linq.Expressions.Expression MinMaxMapFunction(
             Substrait.Expressions.AggregateFunction function,
             ParametersInfo parametersInfo,
             ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo> visitor,
@@ -110,7 +166,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
                 throw new InvalidOperationException("Min must have one argument.");
             }
             var arg = visitor.Visit(function.Arguments[0], parametersInfo);
-            var expr = GetMinBody();
+            var expr = GetMinMaxBody();
             var body = expr.Body;
             var replacer = new ParameterReplacerVisitor(expr.Parameters[0], arg!);
             System.Linq.Expressions.Expression e = replacer.Visit(body);
@@ -125,7 +181,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             return e;
         }
 
-        private static async ValueTask<FlxValue> MinGetValue(byte[]? state, RowEvent groupingKey, MinAggregationSingleton singleton)
+        private static async ValueTask<FlxValue> MinMaxGetValue(byte[]? state, RowEvent groupingKey, MinMaxAggregationSingleton singleton)
         {
             var vector = FlexBufferBuilder.Vector(v =>
             {
@@ -156,12 +212,12 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             return NullValue;
         }
 
-        private static Expression<Func<FlxValue, byte[], long, MinAggregationSingleton, RowEvent, ValueTask<byte[]>>> GetMinBody()
+        private static Expression<Func<FlxValue, byte[], long, MinMaxAggregationSingleton, RowEvent, ValueTask<byte[]>>> GetMinMaxBody()
         {
-            return (ev, bytes, weight, singleton, groupingKey) => DoMin(ev, bytes, weight, singleton, groupingKey);
+            return (ev, bytes, weight, singleton, groupingKey) => DoMinMax(ev, bytes, weight, singleton, groupingKey);
         }
 
-        private static async ValueTask<byte[]> DoMin(FlxValue column, byte[] currentState, long weight, MinAggregationSingleton singleton, RowEvent groupingKey)
+        private static async ValueTask<byte[]> DoMinMax(FlxValue column, byte[] currentState, long weight, MinMaxAggregationSingleton singleton, RowEvent groupingKey)
         {
             if (column.IsNull)
             {
@@ -194,21 +250,34 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             return currentState;
         }
 
-        private static async Task Commit(MinAggregationSingleton singleton)
+        private static async Task Commit(MinMaxAggregationSingleton singleton)
         {
             await singleton.Tree.Commit();
         }
 
-        public static void Register(IFunctionsRegister functionsRegister)
+        public static void RegisterMax(IFunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterStatefulAggregateFunction<MinAggregationSingleton>(
+            functionsRegister.RegisterStatefulAggregateFunction<MinMaxAggregationSingleton>(
                 FunctionsArithmetic.Uri,
-                FunctionsArithmetic.Min,
-                Initialize,
+                FunctionsArithmetic.Max,
+                InitializeMax,
                 (singleton) => { },
                 Commit,
-                MinMapFunction,
-                MinGetValue
+                MinMaxMapFunction,
+                MinMaxGetValue
+                );
+        }
+
+        public static void RegisterMin(IFunctionsRegister functionsRegister)
+        {
+            functionsRegister.RegisterStatefulAggregateFunction<MinMaxAggregationSingleton>(
+                FunctionsArithmetic.Uri,
+                FunctionsArithmetic.Min,
+                InitializeMin,
+                (singleton) => { },
+                Commit,
+                MinMaxMapFunction,
+                MinMaxGetValue
                 );
         }
     }

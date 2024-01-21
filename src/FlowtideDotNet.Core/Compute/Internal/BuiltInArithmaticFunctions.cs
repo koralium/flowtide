@@ -68,7 +68,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     return e;
                 }, GetSum0Value);
 
-            MinAggregationRegistration.Register(functionsRegister);
+            MinMaxAggregationRegistration.RegisterMin(functionsRegister);
+            MinMaxAggregationRegistration.RegisterMax(functionsRegister);
         }
 
         private static FlxValue AddImplementation(FlxValue x, FlxValue y)
