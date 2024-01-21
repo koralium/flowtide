@@ -42,3 +42,16 @@ MIN ignores any null input values.
 ```sql
 SELECT min(column1) FROM ...
 ```
+
+## Max
+
+[Substrait definition](https://substrait.io/extensions/functions_arithmetic/#max)
+
+Returns the maximum value in the result. If there are no rows a NULL value is returned.
+MAX ignores any null input values.
+
+### SQL Usage
+
+```sql
+SELECT max(column1) FROM ...
+```
