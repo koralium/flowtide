@@ -204,5 +204,64 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(new[] { new { Min = (double)Users.Min(x => x.Visits) } });
         }
+
+        [Fact]
+        public async Task SelectMax()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT max(userkey) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Min = (double)Users.Max(x => x.UserKey) } });
+        }
+
+        [Fact]
+        public async Task SelectMaxNonZero()
+        {
+            GenerateData();
+            await StartStream(@"
+
+            CREATE VIEW t AS
+            SELECT userkey FROM users WHERE userkey > 200;
+            INSERT INTO output SELECT max(userkey) FROM t");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Min = (double)Users.Where(x => x.UserKey > 200).Max(x => x.UserKey) } });
+        }
+
+        [Fact]
+        public async Task MaxWithGrouping()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, max(orderkey)
+                FROM orders
+                GROUP BY userkey
+                ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, MaxVal = x.Max(y => y.OrderKey) }));
+        }
+
+        [Fact]
+        public async Task SelectMaxWithUpdate()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT max(userkey) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Max = (double)Users.Max(x => x.UserKey) } });
+            GenerateData();
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Max = (double)Users.Max(x => x.UserKey) } });
+        }
+
+        [Fact]
+        public async Task SelectMaxWithNull()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT max(visits) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Min = Users.Max(x => x.Visits) } });
+        }
     }
 }

@@ -25,5 +25,6 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Sum = "sum";
         public const string Sum0 = "sum0";
         public const string Min = "min";
+        public const string Max = "max";
     }
 }

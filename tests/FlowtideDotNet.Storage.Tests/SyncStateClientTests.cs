@@ -37,7 +37,10 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task TestEvictVersionZeroAndWriteEvict()
         {
-            var persist = new FileCachePersistentStorage(new FileCacheOptions());
+            var persist = new FileCachePersistentStorage(new FileCacheOptions()
+            {
+                DirectoryPath = "./testEvictVersionZeroAndWriteEvict"
+            });
             var a = new StateManagerOptions()
             {
                 PersistentStorage = persist,
