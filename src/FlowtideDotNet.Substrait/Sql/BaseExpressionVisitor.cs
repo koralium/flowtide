@@ -80,7 +80,16 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitCast(cast, state);
             }
+            if (expression is Expression.Nested nested)
+            {
+                return VisitNested(nested, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitNested(Expression.Nested nested, TState state)
+        {
+            throw new NotImplementedException($"The expression '{nested.GetType().Name}' is not supported in SQL");
         }
 
         protected virtual TReturn VisitCast(Expression.Cast cast, TState state)
