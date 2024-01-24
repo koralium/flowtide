@@ -64,3 +64,27 @@ F = False, T = True, N = Null
 ```sql
 ... WHERE c1 = 'hello' AND c2 = 'world'
 ```
+
+## Not
+
+[Substrait definition](https://substrait.io/extensions/functions_boolean/#not)
+
+The *not* of a boolean value. When a null is input, a null is output.
+
+### SQL Usage
+
+```sql
+... WHERE NOT c1 = 'hello'
+```
+
+## Xor
+
+[Substrait definition](https://substrait.io/extensions/functions_boolean/#xor)
+
+*Xor* implements the boolean logic *Xor* operator using kleene logic.
+
+### SQL Usage
+
+```sql
+... WHERE (c1 = 'hello') XOR (c2 = 'world')
+```

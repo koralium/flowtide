@@ -520,6 +520,25 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             });
 
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "power", FunctionsArithmetic.Uri, FunctionsArithmetic.Power);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "sqrt", FunctionsArithmetic.Uri, FunctionsArithmetic.Sqrt);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "exp", FunctionsArithmetic.Uri, FunctionsArithmetic.Exp);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "cos", FunctionsArithmetic.Uri, FunctionsArithmetic.Cos);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "sin", FunctionsArithmetic.Uri, FunctionsArithmetic.Sin);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "tan", FunctionsArithmetic.Uri, FunctionsArithmetic.Tan);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "cosh", FunctionsArithmetic.Uri, FunctionsArithmetic.Cosh);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "sinh", FunctionsArithmetic.Uri, FunctionsArithmetic.Sinh);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "tanh", FunctionsArithmetic.Uri, FunctionsArithmetic.Tanh);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "acos", FunctionsArithmetic.Uri, FunctionsArithmetic.Acos);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "asin", FunctionsArithmetic.Uri, FunctionsArithmetic.Asin);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "atan", FunctionsArithmetic.Uri, FunctionsArithmetic.Atan);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "acosh", FunctionsArithmetic.Uri, FunctionsArithmetic.Acosh);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "asinh", FunctionsArithmetic.Uri, FunctionsArithmetic.Asinh);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "atanh", FunctionsArithmetic.Uri, FunctionsArithmetic.Atanh);
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "atan2", FunctionsArithmetic.Uri, FunctionsArithmetic.Atan2);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "radians", FunctionsArithmetic.Uri, FunctionsArithmetic.Radians);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "degrees", FunctionsArithmetic.Uri, FunctionsArithmetic.Degrees);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "abs", FunctionsArithmetic.Uri, FunctionsArithmetic.Abs);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "sign", FunctionsArithmetic.Uri, FunctionsArithmetic.Sign);
         }
 
         private static void RegisterSingleVariableFunction(
@@ -542,6 +561,36 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
                     return new AggregateFunction()
+                    {
+                        ExtensionUri = extensionUri,
+                        ExtensionName = extensionName,
+                        Arguments = new List<Expressions.Expression>() { argExpr }
+                    };
+                }
+                throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+            });
+        }
+
+        private static void RegisterOneVariableScalarFunction(
+            SqlFunctionRegister sqlFunctionRegister,
+            string functionName,
+            string extensionUri,
+            string extensionName)
+        {
+            sqlFunctionRegister.RegisterScalarFunction(functionName, (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 1)
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+                }
+                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+                    return new ScalarFunction()
                     {
                         ExtensionUri = extensionUri,
                         ExtensionName = extensionName,

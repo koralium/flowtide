@@ -190,5 +190,33 @@ namespace FlowtideDotNet.AcceptanceTests
             List<int> list = new List<int>() { 325 };
             AssertCurrentDataEqual(Users.Where(x => list.Contains(x.UserKey)).Select(x => new { x.UserKey }));
         }
+
+        [Fact]
+        public async Task WhereNotFilter()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey 
+                FROM users u
+                WHERE NOT u.gender = 0");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => x.Gender != 0).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task XorFilter()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey 
+                FROM users u
+                WHERE (u.userkey <= 200) XOR (u.gender = 0)");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => x.Gender == Entities.Gender.Male ^ x.UserKey <= 200).Select(x => new { x.UserKey }));
+        }
     }
 }
