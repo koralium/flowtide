@@ -269,6 +269,19 @@ namespace FlowtideDotNet.Substrait.Sql
                                 right.Expr
                             }
                         }, "$modulo");
+                case BinaryOperator.Xor:
+                    return new ExpressionData(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsBoolean.Uri,
+                            ExtensionName = FunctionsBoolean.Xor,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                left.Expr,
+                                right.Expr
+                            }
+                        }, $"{left.Name}_{right.Name}"
+                        );
                 default:
                     throw new NotImplementedException($"Binary operation {binaryOp.Op.ToString()}' is not yet supported in SQL mode.");
             }
@@ -470,8 +483,22 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 case UnaryOperator.Minus:
                     return VisitMinusUnaryOp(exprResult);
+                case UnaryOperator.Not:
+                    return VisitNotUnaryOp(exprResult);
             }
             return base.VisitUnaryOperation(unaryOp, state);
+        }
+
+        private ExpressionData VisitNotUnaryOp(ExpressionData expressionData)
+        {
+            return new ExpressionData(
+                new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionName = FunctionsBoolean.Not,
+                    Arguments = new List<Expressions.Expression>() { expressionData.Expr }
+                }, expressionData.Name
+                );
         }
 
         private ExpressionData VisitMinusUnaryOp(ExpressionData expressionData)
@@ -590,6 +617,11 @@ namespace FlowtideDotNet.Substrait.Sql
             };
 
             return new ExpressionData(castExpression, expr.Name);
+        }
+
+        protected override ExpressionData VisitNested(Nested nested, EmitData state)
+        {
+            return Visit(nested.Expression, state);
         }
     }
 }
