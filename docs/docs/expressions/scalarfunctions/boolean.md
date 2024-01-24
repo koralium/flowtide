@@ -79,6 +79,8 @@ The *not* of a boolean value. When a null is input, a null is output.
 
 ## Xor
 
+[Substrait definition](https://substrait.io/extensions/functions_boolean/#xor)
+
 *Xor* implements the boolean logic *Xor* operator using kleene logic.
 
 ### SQL Usage
