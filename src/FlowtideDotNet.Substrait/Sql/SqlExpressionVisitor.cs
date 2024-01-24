@@ -489,7 +489,7 @@ namespace FlowtideDotNet.Substrait.Sql
             return base.VisitUnaryOperation(unaryOp, state);
         }
 
-        private ExpressionData VisitNotUnaryOp(ExpressionData expressionData)
+        private static ExpressionData VisitNotUnaryOp(ExpressionData expressionData)
         {
             return new ExpressionData(
                 new ScalarFunction()
