@@ -485,7 +485,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             else if (x.ValueType == FlexBuffers.Type.Decimal)
             {
                 // Will loose some precision here
-                return FlxValue.FromBytes(FlexBuffer.SingleValue((double)Math.Exp((double)x.AsDecimal)));
+                return FlxValue.FromBytes(FlexBuffer.SingleValue(Math.Exp((double)x.AsDecimal)));
             }
             return NullValue;
         }
@@ -503,7 +503,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             else if (x.ValueType == FlexBuffers.Type.Decimal)
             {
                 // Will loose some precision here
-                return FlxValue.FromBytes(FlexBuffer.SingleValue((double)Math.Cos((double)x.AsDecimal)));
+                return FlxValue.FromBytes(FlexBuffer.SingleValue(Math.Cos((double)x.AsDecimal)));
             }
             return NullValue;
         }
@@ -521,7 +521,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             else if (x.ValueType == FlexBuffers.Type.Decimal)
             {
                 // Will loose some precision here
-                return FlxValue.FromBytes(FlexBuffer.SingleValue((double)Math.Sin((double)x.AsDecimal)));
+                return FlxValue.FromBytes(FlexBuffer.SingleValue(Math.Sin((double)x.AsDecimal)));
             }
             return NullValue;
         }
@@ -539,7 +539,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             else if (x.ValueType == FlexBuffers.Type.Decimal)
             {
                 // Will loose some precision here
-                return FlxValue.FromBytes(FlexBuffer.SingleValue((double)Math.Tan((double)x.AsDecimal)));
+                return FlxValue.FromBytes(FlexBuffer.SingleValue(Math.Tan((double)x.AsDecimal)));
             }
             return NullValue;
         }
@@ -557,7 +557,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             else if (x.ValueType == FlexBuffers.Type.Decimal)
             {
                 // Will loose some precision here
-                return FlxValue.FromBytes(FlexBuffer.SingleValue((double)Math.Cosh((double)x.AsDecimal)));
+                return FlxValue.FromBytes(FlexBuffer.SingleValue(Math.Cosh((double)x.AsDecimal)));
             }
             return NullValue;
         }
@@ -575,7 +575,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             else if (x.ValueType == FlexBuffers.Type.Decimal)
             {
                 // Will loose some precision here
-                return FlxValue.FromBytes(FlexBuffer.SingleValue((double)Math.Sinh((double)x.AsDecimal)));
+                return FlxValue.FromBytes(FlexBuffer.SingleValue(Math.Sinh((double)x.AsDecimal)));
             }
             return NullValue;
         }
@@ -593,7 +593,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             else if (x.ValueType == FlexBuffers.Type.Decimal)
             {
                 // Will loose some precision here
-                return FlxValue.FromBytes(FlexBuffer.SingleValue((double)Math.Tanh((double)x.AsDecimal)));
+                return FlxValue.FromBytes(FlexBuffer.SingleValue(Math.Tanh((double)x.AsDecimal)));
             }
             return NullValue;
         }
