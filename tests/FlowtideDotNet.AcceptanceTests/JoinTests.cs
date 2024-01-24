@@ -314,5 +314,34 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
         }
+
+        record JoinWithNotResult(int orderkey, string? firstname, string? lastname);
+
+        [Fact]
+        public async Task JoinWithNotCauseNLJ()
+        {
+            GenerateData(10);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM orders o
+                INNER JOIN users u
+                ON NOT o.userkey = u.userkey");
+            await WaitForUpdate();
+
+            List<JoinWithNotResult> expected = new List<JoinWithNotResult>();
+            for (int i = 0; i < Orders.Count; i++)
+            {
+                for (int j = 0; j < Users.Count; j++)
+                {
+                    if (Orders[i].UserKey != Users[j].UserKey)
+                    {
+                        expected.Add(new JoinWithNotResult(Orders[i].OrderKey, Users[j].FirstName, Users[j].LastName));
+                    }
+                }
+            }
+            AssertCurrentDataEqual(expected);
+        }
     }
 }

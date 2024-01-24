@@ -17,5 +17,7 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Uri = "/functions_boolean.yaml";
         public const string And = "and";
         public const string Or = "or";
+        public const string Not = "not";
+        public const string Xor = "xor";
     }
 }
