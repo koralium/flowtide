@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
         private static Expression<Func<bool?, FlxValue>> convertToFlxValue = (x) => GetFlxValue(x);
         private static Expression<Func<bool?, bool?, bool?>> andExpr = (x, y) => x & y;
         private static Expression<Func<bool?, bool?, bool?>> orExpr = (x, y) => x | y;
+        private static Expression<Func<bool?, bool?, bool?>> xorExpr = (x, y) => x ^ y;
 
         public static void AddBooleanFunctions(FunctionsRegister functionsRegister)
         {
@@ -44,6 +45,18 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 {
                     return BuildExpression(visitor, parametersInfo, scalarFunction, orExpr);
                 });
+            functionsRegister.RegisterScalarFunction(FunctionsBoolean.Uri, FunctionsBoolean.Xor,
+                (scalarFunction, parametersInfo, visitor) =>
+                {
+                    return BuildExpression(visitor, parametersInfo, scalarFunction, xorExpr);
+                });
+
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsBoolean.Uri, FunctionsBoolean.Not, x => NotImplementation(x));
+        }
+
+        private static FlxValue NotImplementation(FlxValue value)
+        {
+            return GetFlxValue(!GetBoolValue(value));
         }
 
         private static System.Linq.Expressions.Expression BuildExpression(
