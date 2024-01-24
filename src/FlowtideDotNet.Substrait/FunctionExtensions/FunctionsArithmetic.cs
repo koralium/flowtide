@@ -22,6 +22,25 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Negate = "negate";
         public const string Modulo = "modulo";
         public const string Power = "power";
+        public const string Sqrt = "sqrt";
+        public const string Exp = "exp";
+        public const string Cos = "cos";
+        public const string Sin = "sin";
+        public const string Tan = "tan";
+        public const string Cosh = "cosh";
+        public const string Sinh = "sinh";
+        public const string Tanh = "tanh";
+        public const string Acos = "acos";
+        public const string Asin = "asin";
+        public const string Atan = "atan";
+        public const string Acosh = "acosh";
+        public const string Asinh = "asinh";
+        public const string Atanh = "atanh";
+        public const string Atan2 = "atan2";
+        public const string Radians = "radians";
+        public const string Degrees = "degrees";
+        public const string Abs = "abs";
+        public const string Sign = "sign";
 
         //Aggregate
         public const string Sum = "sum";
