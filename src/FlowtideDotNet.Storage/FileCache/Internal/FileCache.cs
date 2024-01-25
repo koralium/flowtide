@@ -388,14 +388,14 @@ namespace FlowtideDotNet.Storage.FileCache
                         }
                     }
                 }
-            }
 
-            if (segmentWriter == null)
-            {
-                throw new InvalidOperationException("Segment not found");
-            }
+                if (segmentWriter == null)
+                {
+                    throw new InvalidOperationException("Segment not found");
+                }
 
-            segmentWriter.Write(position, data);
+                segmentWriter.Write(position, data);
+            }
         }
 
         public bool Exists(long pageKey)
@@ -420,13 +420,13 @@ namespace FlowtideDotNet.Storage.FileCache
                     size = node.ValueRef.size;
                     segmentWriter = segment;
                 }
-            }
 
-            if (segmentWriter != null)
-            {
-                return segmentWriter.Read(position, size);
+                if (segmentWriter != null)
+                {
+                    return segmentWriter.Read(position, size);
+                }
+                throw new InvalidOperationException("Segment not found");
             }
-            throw new InvalidOperationException("Segment not found");
         }
 
         private int UpperPowerOfTwo(int v)
