@@ -12,6 +12,7 @@
 
 using Elasticsearch.Net;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Connector.ElasticSearch.Exceptions;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
@@ -91,13 +92,15 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
             if (indexState == null)
             {
+                Logger.ElasticsearchCreatingIndex(m_indexName, StreamName, Name);
                 var response = client.Indices.Create(m_indexName);
                 if (!response.IsValid)
                 {
-                    throw new InvalidOperationException(response.ServerError.Error.Reason);
+                    throw new FlowtideElasticsearchResponseException(response);
                 }
             }
 
+            Logger.ElasticsearchCreateMappings(m_indexName, StreamName, Name);
             var mapResponse = client.Map(new PutMappingRequest(m_indexName)
             {
                 Properties = properties
@@ -105,7 +108,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
             if (!mapResponse.IsValid)
             {
-                throw new InvalidOperationException(mapResponse.ServerError.Error.Reason);
+                throw new FlowtideElasticsearchResponseException(mapResponse);
             }
         }
 
