@@ -26,5 +26,18 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
            Level = LogLevel.Error,
            Message = "Error inserting to elasticsearch: `{error}`, stream * {stream}`, operator `{operatorId}`")]
         public static partial void ElasticSearchInsertError(this ILogger logger, string error, string stream, string operatorId);
+
+        [LoggerMessage(
+           EventId = 2,
+           Level = LogLevel.Information,
+           Message = "Creating elasticsearch index {indexName}, stream `{stream}`, operator `{operatorId}`")]
+        public static partial void ElasticsearchCreatingIndex(this ILogger logger, string indexName, string stream, string operatorId);
+
+
+        [LoggerMessage(
+           EventId = 3,
+           Level = LogLevel.Trace,
+           Message = "Creating elasticsearch mappings for {indexName}, stream `{stream}`, operator `{operatorId}`")]
+        public static partial void ElasticsearchCreateMappings(this ILogger logger, string indexName, string stream, string operatorId);
     }
 }

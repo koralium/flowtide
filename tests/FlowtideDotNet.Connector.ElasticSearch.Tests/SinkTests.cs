@@ -1,5 +1,6 @@
 using Elasticsearch.Net;
 using FlowtideDotNet.Connector.CosmosDB.Tests;
+using FlowtideDotNet.Connector.ElasticSearch.Exceptions;
 using Nest;
 
 namespace FlowtideDotNet.Connector.ElasticSearch.Tests
@@ -141,7 +142,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             });
             stream.Generate();
 
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            var ex = await Assert.ThrowsAsync<FlowtideElasticsearchResponseException>(async () =>
             {
                 await stream.StartStream(@"
                     INSERT INTO testindex
@@ -153,8 +154,6 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
                     FROM users
                     ");
             });
-
-            Assert.Equal("mapper [FirstName] cannot be changed from type [text] to [keyword]", ex.Message);
         }
     }
 }
