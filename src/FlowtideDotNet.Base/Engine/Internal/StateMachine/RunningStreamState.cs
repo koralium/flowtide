@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Utils;
+using FlowtideDotNet.Base.Vertices.Ingress;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
@@ -70,6 +71,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                 await run._context.stateHandler.WriteLatestState(run._context.streamName, run._context._lastState);
 
+                await _context.ForEachIngressBlockAsync((key, block) =>
+                {
+                    if (block is IStreamIngressVertex streamIngressVertex)
+                    {
+                        return streamIngressVertex.CheckpointDone(run._currentCheckpoint.CheckpointTime);
+                    }
+                    return Task.CompletedTask;
+                });
 
                 // Compaction: if more than 30% of the pages has been changed since last compaction, do compaction
                 if (changesSinceLastCompaction > compactionThreshold)
@@ -183,7 +192,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         }
                         if (t.IsFaulted)
                         {
-
                             return _context.OnFailure(t.Exception);
                         }
                         if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)

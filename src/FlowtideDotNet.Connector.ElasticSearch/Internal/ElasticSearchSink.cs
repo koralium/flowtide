@@ -92,7 +92,6 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
             if (indexState == null)
             {
-                Logger.ElasticsearchCreatingIndex(m_indexName, StreamName, Name);
                 var response = client.Indices.Create(m_indexName);
                 if (!response.IsValid)
                 {
@@ -100,7 +99,6 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                 }
             }
 
-            Logger.ElasticsearchCreateMappings(m_indexName, StreamName, Name);
             var mapResponse = client.Map(new PutMappingRequest(m_indexName)
             {
                 Properties = properties
