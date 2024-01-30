@@ -33,11 +33,20 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
         protected override void AddWriteResolvers(ReadWriteFactory factory)
         {
-            factory.AddOpenFGASink("*", new OpenFGASinkOptions
+            factory.AddOpenFGASink("openfga", new OpenFGASinkOptions
             {
                 ClientConfiguration = clientConfiguration
             });
             base.AddWriteResolvers(factory);
+        }
+
+        protected override void AddReadResolvers(ReadWriteFactory factory)
+        {
+            factory.AddOpenFGASource("openfga", new OpenFGASourceOptions
+            {
+                ClientConfiguration = clientConfiguration
+            });
+            base.AddReadResolvers(factory);
         }
     }
 }

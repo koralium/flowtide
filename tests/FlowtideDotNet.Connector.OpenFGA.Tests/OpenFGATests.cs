@@ -224,5 +224,83 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
         }
+
+        [Fact]
+        public async Task TestReadTuples()
+        {
+            var config = openFGAFixture.Configuration;
+
+            var model = @"
+            {
+              ""schema_version"": ""1.1"",
+              ""type_definitions"": [
+                {
+                  ""type"": ""user"",
+                  ""relations"": {},
+                  ""metadata"": null
+                },
+                {
+                  ""type"": ""doc"",
+                  ""relations"": {
+                    ""member"": {
+                      ""this"": {}
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""member"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""user""
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }";
+            var client = new OpenFgaClient(config);
+
+            var createStoreResponse = await client.CreateStore(new ClientCreateStoreRequest()
+            {
+                Name = "teststore"
+            });
+            var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+
+            var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
+
+            var conf = openFGAFixture.Configuration;
+            conf.StoreId = createStoreResponse.Id;
+            conf.AuthorizationModelId = createModelResponse.AuthorizationModelId;
+
+            var addTupleClient = new OpenFgaClient(conf);
+            await addTupleClient.Write(new ClientWriteRequest()
+            {
+                Writes = new List<ClientTupleKey>()
+                {
+                    new ClientTupleKey()
+                    {
+                        User = "user:1",
+                        Object = "doc:1",
+                        Relation = "member"
+                    }
+                }
+            });
+
+            var stream = new OpenFgaTestStream("test", conf);
+            stream.Generate(100);
+            await stream.StartStream(@"
+                INSERT INTO testverify
+                SELECT 
+                    user,
+                    relation,
+                    object
+                FROM openfga
+            ");
+
+            await stream.WaitForUpdate();
+
+        }
     }
 }
