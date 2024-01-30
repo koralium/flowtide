@@ -160,7 +160,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return Visit(cast.Expression, state);
         }
 
-        protected override bool VisitSubstring(Expression.Substring substring, object state)
+        protected override bool VisitSubstring(Expression.Substring substring, object? state)
         {
             return Visit(substring.Expression, state);
         }

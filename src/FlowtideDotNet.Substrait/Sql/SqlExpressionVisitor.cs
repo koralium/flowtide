@@ -659,9 +659,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     }
                 };
                 return new ExpressionData(substringFunction, expr.Name);
-
             }
-            return base.VisitSubstring(substring, state);
         }
     }
 }
