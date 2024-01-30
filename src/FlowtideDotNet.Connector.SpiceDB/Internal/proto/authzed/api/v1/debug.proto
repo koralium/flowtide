@@ -1,0 +1,107 @@
+syntax = "proto3";
+package authzed.api.v1;
+
+import "authzed/api/v1/core.proto";
+import "validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/duration.proto";
+
+option go_package = "github.com/authzed/authzed-go/proto/authzed/api/v1";
+option java_package = "com.authzed.api.v1";
+
+// DebugInformation defines debug information returned by an API call in a footer when
+// requested with a specific debugging header.
+//
+// The specific debug information returned will depend on the type of the API call made.
+//
+// See the github.com/authzed/authzed-go project for the specific header and footer names.
+message DebugInformation {
+  // check holds debug information about a check request.
+  CheckDebugTrace check = 1;
+
+  // schema_used holds the schema used for the request.
+  string schema_used = 2;
+}
+
+// CheckDebugTrace is a recursive trace of the requests made for resolving a CheckPermission
+// API call.
+message CheckDebugTrace {
+  enum PermissionType {
+    PERMISSION_TYPE_UNSPECIFIED = 0;
+    PERMISSION_TYPE_RELATION = 1;
+    PERMISSION_TYPE_PERMISSION = 2;
+  }
+
+  enum Permissionship {
+    PERMISSIONSHIP_UNSPECIFIED = 0;
+    PERMISSIONSHIP_NO_PERMISSION = 1;
+    PERMISSIONSHIP_HAS_PERMISSION = 2;
+    PERMISSIONSHIP_CONDITIONAL_PERMISSION = 3;
+  }
+
+  message SubProblems {
+    repeated CheckDebugTrace traces = 1;
+  }
+
+  // resource holds the resource on which the Check was performed.
+  ObjectReference resource = 1 [ (validate.rules).message.required = true ];
+
+  // permission holds the name of the permission or relation on which the Check was performed.
+  string permission = 2;
+
+  // permission_type holds information indicating whether it was a permission or relation.
+  PermissionType permission_type = 3 [ (validate.rules).enum = {defined_only: true, not_in: [0]} ];
+
+  // subject holds the subject on which the Check was performed. This will be static across all calls within
+  // the same Check tree.
+  SubjectReference subject = 4 [ (validate.rules).message.required = true ];
+
+  // result holds the result of the Check call.
+  Permissionship result = 5 [ (validate.rules).enum = {defined_only: true, not_in: [0]} ];
+ 
+  // caveat_evaluation_info holds information about the caveat evaluated for this step of the trace.
+  CaveatEvalInfo caveat_evaluation_info = 8;
+
+  // duration holds the time spent executing this Check operation.
+  google.protobuf.Duration duration = 9;
+
+  // resolution holds information about how the problem was resolved.
+  oneof resolution {
+    option (validate.required) = true;
+
+    // was_cached_result, if true, indicates that the result was found in the cache and returned directly.
+    bool was_cached_result = 6;
+
+    // sub_problems holds the sub problems that were executed to resolve the answer to this Check. An empty list
+    // and a permissionship of PERMISSIONSHIP_HAS_PERMISSION indicates the subject was found within this relation.
+    SubProblems sub_problems = 7;
+  }
+}
+
+// CaveatEvalInfo holds information about a caveat expression that was evaluated.
+message CaveatEvalInfo {
+  enum Result {
+    RESULT_UNSPECIFIED = 0;
+
+    RESULT_UNEVALUATED = 1;
+
+    RESULT_FALSE = 2;
+    RESULT_TRUE = 3;
+    RESULT_MISSING_SOME_CONTEXT = 4;
+  }
+
+  // expression is the expression that was evaluated.
+  string expression = 1;
+
+  // result is the result of the evaluation.
+  Result result = 2;
+
+  // context consists of any named values that were used for evaluating the caveat expression.
+  google.protobuf.Struct context = 3;
+
+  // partial_caveat_info holds information of a partially-evaluated caveated response, if applicable.
+  PartialCaveatInfo partial_caveat_info = 4;
+
+  // caveat_name is the name of the caveat that was executed, if applicable.
+  string caveat_name = 5;
+}

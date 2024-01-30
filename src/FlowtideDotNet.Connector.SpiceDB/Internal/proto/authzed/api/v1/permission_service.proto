@@ -1,0 +1,548 @@
+syntax = "proto3";
+package authzed.api.v1;
+
+option go_package = "github.com/authzed/authzed-go/proto/authzed/api/v1";
+option java_package = "com.authzed.api.v1";
+
+import "google/protobuf/struct.proto";
+import "google/api/annotations.proto";
+import "validate/validate.proto";
+
+import "authzed/api/v1/core.proto";
+
+// PermissionsService implements a set of RPCs that perform operations on
+// relationships and permissions.
+service PermissionsService {
+  // ReadRelationships reads a set of the relationships matching one or more
+  // filters.
+  rpc ReadRelationships(ReadRelationshipsRequest)
+    returns (stream ReadRelationshipsResponse) {
+      option (google.api.http) = {
+        post: "/v1/relationships/read"
+        body: "*"
+      };
+  }
+
+  // WriteRelationships atomically writes and/or deletes a set of specified
+  // relationships. An optional set of preconditions can be provided that must
+  // be satisfied for the operation to commit.
+  rpc WriteRelationships(WriteRelationshipsRequest)
+    returns (WriteRelationshipsResponse) {
+      option (google.api.http) = {
+        post: "/v1/relationships/write"
+        body: "*"
+      };
+    }
+
+  // DeleteRelationships atomically bulk deletes all relationships matching the
+  // provided filter. If no relationships match, none will be deleted and the
+  // operation will succeed. An optional set of preconditions can be provided that must
+  // be satisfied for the operation to commit.
+  rpc DeleteRelationships(DeleteRelationshipsRequest)
+    returns (DeleteRelationshipsResponse) {
+      option (google.api.http) = {
+        post: "/v1/relationships/delete"
+        body: "*"
+      };
+    }
+
+  // CheckPermission determines for a given resource whether a subject computes
+  // to having a permission or is a direct member of a particular relation.
+  rpc CheckPermission(CheckPermissionRequest)
+    returns (CheckPermissionResponse) {
+      option (google.api.http) = {
+        post: "/v1/permissions/check"
+        body: "*"
+      };
+    }
+
+  // ExpandPermissionTree reveals the graph structure for a resource's
+  // permission or relation. This RPC does not recurse infinitely deep and may
+  // require multiple calls to fully unnest a deeply nested graph.
+  rpc ExpandPermissionTree(ExpandPermissionTreeRequest)
+    returns (ExpandPermissionTreeResponse) {
+      option (google.api.http) = {
+        post: "/v1/permissions/expand"
+        body: "*"
+      };
+    }
+
+  // LookupResources returns all the resources of a given type that a subject
+  // can access whether via a computed permission or relation membership.
+  rpc LookupResources(LookupResourcesRequest)
+    returns (stream LookupResourcesResponse) {
+      option (google.api.http) = {
+        post: "/v1/permissions/resources"
+        body: "*"
+      };
+    }
+
+  // LookupSubjects returns all the subjects of a given type that
+  // have access whether via a computed permission or relation membership.
+  rpc LookupSubjects(LookupSubjectsRequest)
+    returns (stream LookupSubjectsResponse) {
+      option (google.api.http) = {
+        post: "/v1/permissions/subjects"
+        body: "*"
+      };
+    }
+}
+
+// Consistency will define how a request is handled by the backend.
+// By defining a consistency requirement, and a token at which those
+// requirements should be applied, where applicable.
+message Consistency {
+  oneof requirement {
+    option (validate.required) = true;
+
+    // minimize_latency indicates that the latency for the call should be
+    // minimized by having the system select the fastest snapshot available.
+    bool minimize_latency = 1 [ (validate.rules).bool.const = true ];
+
+    // at_least_as_fresh indicates that all data used in the API call must be
+    // *at least as fresh* as that found in the ZedToken; more recent data might
+    // be used if available or faster.
+    ZedToken at_least_as_fresh = 2;
+
+    // at_exact_snapshot indicates that all data used in the API call must be
+    // *at the given* snapshot in time; if the snapshot is no longer available,
+    // an error will be returned to the caller.
+    ZedToken at_exact_snapshot = 3;
+
+    // fully_consistent indicates that all data used in the API call *must* be
+    // at the most recent snapshot found.
+    //
+    // NOTE: using this method can be *quite slow*, so unless there is a need to
+    // do so, it is recommended to use `at_least_as_fresh` with a stored
+    // ZedToken.
+    bool fully_consistent = 4 [ (validate.rules).bool.const = true ];
+  }
+}
+
+// RelationshipFilter is a collection of filters which when applied to a
+// relationship will return relationships that have exactly matching fields.
+//
+// resource_type is required. All other fields are optional and if left
+// unspecified will not filter relationships.
+message RelationshipFilter {
+  string resource_type = 1 [ (validate.rules).string = {
+    pattern : "^([a-z][a-z0-9_]{1,61}[a-z0-9]/)*[a-z][a-z0-9_]{1,62}[a-z0-9]$",
+    max_bytes : 128,
+  } ];
+
+  string optional_resource_id = 2 [ (validate.rules).string = {
+    pattern : "^([a-zA-Z0-9/_|\\-=+]{1,})?$",
+    max_bytes : 1024,
+  } ];
+
+  string optional_relation = 3 [ (validate.rules).string = {
+    pattern : "^([a-z][a-z0-9_]{1,62}[a-z0-9])?$",
+    max_bytes : 64,
+  } ];
+
+  SubjectFilter optional_subject_filter = 4;
+}
+
+// SubjectFilter specifies a filter on the subject of a relationship.
+//
+// subject_type is required and all other fields are optional, and will not
+// impose any additional requirements if left unspecified.
+message SubjectFilter {
+  message RelationFilter {
+    string relation = 1 [ (validate.rules).string = {
+      pattern : "^([a-z][a-z0-9_]{1,62}[a-z0-9])?$",
+      max_bytes : 64,
+    } ];
+  }
+
+  string subject_type = 1 [ (validate.rules).string = {
+    pattern : "^([a-z][a-z0-9_]{1,61}[a-z0-9]/)*[a-z][a-z0-9_]{1,62}[a-z0-9]$",
+    max_bytes : 128,
+  } ];
+
+  string optional_subject_id = 2 [ (validate.rules).string = {
+    pattern : "^(([a-zA-Z0-9/_|\\-=+]{1,})|\\*)?$",
+    max_bytes : 1024,
+  } ];
+
+  RelationFilter optional_relation = 3;
+}
+
+// ReadRelationshipsRequest specifies one or more filters used to read matching
+// relationships within the system.
+message ReadRelationshipsRequest {
+  Consistency consistency = 1;
+
+  // relationship_filter defines the filter to be applied to the relationships
+  // to be returned.
+  RelationshipFilter relationship_filter = 2
+      [ (validate.rules).message.required = true ];
+
+  // optional_limit, if non-zero, specifies the limit on the number of relationships to return
+  // before the stream is closed on the server side. By default, the stream will continue
+  // resolving relationships until exhausted or the stream is closed due to the client or a
+  // network issue.
+  uint32 optional_limit = 3 [(validate.rules).uint32 = {gte:0, lte: 1000}];
+
+  // optional_cursor, if specified, indicates the cursor after which results should resume being returned.
+  // The cursor can be found on the ReadRelationshipsResponse object.
+  Cursor optional_cursor = 4;
+}
+
+// ReadRelationshipsResponse contains a Relationship found that matches the
+// specified relationship filter(s). A instance of this response message will
+// be streamed to the client for each relationship found.
+message ReadRelationshipsResponse {
+  // read_at is the ZedToken at which the relationship was found.
+  ZedToken read_at = 1 [ (validate.rules).message.required = true ];
+
+  // relationship is the found relationship.
+  Relationship relationship = 2 [ (validate.rules).message.required = true ];
+
+  // after_result_cursor holds a cursor that can be used to resume the ReadRelationships stream after this
+  // result.
+  Cursor after_result_cursor = 3;
+}
+
+// Precondition specifies how and the existence or absence of certain
+// relationships as expressed through the accompanying filter should affect
+// whether or not the operation proceeds.
+//
+// MUST_NOT_MATCH will fail the parent request if any relationships match the
+// relationships filter.
+// MUST_MATCH will fail the parent request if there are no
+// relationships that match the filter.
+message Precondition {
+  enum Operation {
+    OPERATION_UNSPECIFIED = 0;
+    OPERATION_MUST_NOT_MATCH = 1;
+    OPERATION_MUST_MATCH = 2;
+  }
+
+  Operation operation = 1 [ (validate.rules).enum = {defined_only: true, not_in: [0]} ];
+  RelationshipFilter filter = 2 [ (validate.rules).message.required = true ];
+}
+
+// WriteRelationshipsRequest contains a list of Relationship mutations that
+// should be applied to the service. If the optional_preconditions parameter
+// is included, all of the specified preconditions must also be satisfied before
+// the write will be committed.
+message WriteRelationshipsRequest {
+  repeated RelationshipUpdate updates = 1
+      [ (validate.rules).repeated .items.message.required = true ];
+
+  repeated Precondition optional_preconditions = 2
+      [ (validate.rules).repeated .items.message.required =
+            true ]; // To be bounded by configuration
+}
+
+message WriteRelationshipsResponse { ZedToken written_at = 1; }
+
+// DeleteRelationshipsRequest specifies which Relationships should be deleted,
+// requesting the delete of *ALL* relationships that match the specified
+// filters. If the optional_preconditions parameter is included, all of the
+// specified preconditions must also be satisfied before the delete will be
+// executed.
+message DeleteRelationshipsRequest {
+  RelationshipFilter relationship_filter = 1
+      [ (validate.rules).message.required = true ];
+
+  repeated Precondition optional_preconditions = 2
+      [ (validate.rules).repeated .items.message.required =
+            true ]; // To be bounded by configuration
+
+  // optional_limit, if non-zero, specifies the limit on the number of relationships to be deleted.
+  // If there are more matching relationships found to be deleted than the limit specified here,
+  // the deletion call will fail with an error to prevent partial deletion. If partial deletion
+  // is needed, specify below that partial deletion is allowed. Partial deletions can be used
+  // in a loop to delete large amounts of relationships in a *non-transactional* manner.
+  uint32 optional_limit = 3 [(validate.rules).uint32 = {gte:0, lte: 1000}];
+
+  // optional_allow_partial_deletions, if true and a limit is specified, will delete matching found
+  // relationships up to the count specified in optional_limit, and no more.
+  bool optional_allow_partial_deletions = 4;
+}
+
+message DeleteRelationshipsResponse {
+  enum DeletionProgress {
+    DELETION_PROGRESS_UNSPECIFIED = 0;
+    
+    // DELETION_PROGRESS_COMPLETE indicates that all remaining relationships matching the filter
+    // were deleted. Will be returned even if no relationships were deleted.
+    DELETION_PROGRESS_COMPLETE = 1;
+
+    // DELETION_PROGRESS_PARTIAL indicates that a subset of the relationships matching the filter
+    // were deleted. Only returned if optional_allow_partial_deletions was true, an optional_limit was
+    // specified, and there existed more relationships matching the filter than optional_limit would allow.
+    // Once all remaining relationships have been deleted, DELETION_PROGRESS_COMPLETE will be returned.
+    DELETION_PROGRESS_PARTIAL = 2;
+  }
+
+  // deleted_at is the revision at which the relationships were deleted.
+  ZedToken deleted_at = 1;
+
+  // deletion_progress is an enumeration of the possible outcomes that occurred when attempting to delete the specified relationships.
+  DeletionProgress deletion_progress = 2;
+}
+
+// CheckPermissionRequest issues a check on whether a subject has a permission
+// or is a member of a relation, on a specific resource.
+message CheckPermissionRequest {
+  Consistency consistency = 1;
+
+  // resource is the resource on which to check the permission or relation.
+  ObjectReference resource = 2 [ (validate.rules).message.required = true ];
+
+  // permission is the name of the permission (or relation) on which to execute
+  // the check.
+  string permission = 3 [ (validate.rules).string = {
+    pattern : "^([a-z][a-z0-9_]{1,62}[a-z0-9])?$",
+    max_bytes : 64,
+  } ];
+
+  // subject is the subject that will be checked for the permission or relation.
+  SubjectReference subject = 4 [ (validate.rules).message.required = true ];
+
+  // context consists of named values that are injected into the caveat evaluation context
+  google.protobuf.Struct context = 5 [ (validate.rules).message.required = false ];
+}
+
+message CheckPermissionResponse {
+  enum Permissionship {
+    PERMISSIONSHIP_UNSPECIFIED = 0;
+    PERMISSIONSHIP_NO_PERMISSION = 1;
+    PERMISSIONSHIP_HAS_PERMISSION = 2;
+    PERMISSIONSHIP_CONDITIONAL_PERMISSION = 3;
+  }
+
+  ZedToken checked_at = 1 [ (validate.rules).message.required = false ];
+
+  // Permissionship communicates whether or not the subject has the requested
+  // permission or has a relationship with the given resource, over the given
+  // relation.
+  //
+  // This value will be authzed.api.v1.PERMISSIONSHIP_HAS_PERMISSION if the
+  // requested subject is a member of the computed permission set or there
+  // exists a relationship with the requested relation from the given resource
+  // to the given subject.
+  Permissionship permissionship = 2 [ (validate.rules).enum = {defined_only: true, not_in: [0]} ];
+
+  // partial_caveat_info holds information of a partially-evaluated caveated response
+  PartialCaveatInfo partial_caveat_info = 3 [ (validate.rules).message.required = false ];
+}
+
+// ExpandPermissionTreeRequest returns a tree representing the expansion of all
+// relationships found accessible from a permission or relation on a particular
+// resource.
+//
+// ExpandPermissionTreeRequest is typically used to determine the full set of
+// subjects with a permission, along with the relationships that grant said
+// access.
+message ExpandPermissionTreeRequest {
+  Consistency consistency = 1;
+
+  // resource is the resource over which to run the expansion.
+  ObjectReference resource = 2 [ (validate.rules).message.required = true ];
+
+  // permission is the name of the permission or relation over which to run the
+  // expansion for the resource.
+  string permission = 3 [ (validate.rules).string = {
+    pattern : "^([a-z][a-z0-9_]{1,62}[a-z0-9])?$",
+    max_bytes : 64,
+  } ];
+}
+
+message ExpandPermissionTreeResponse {
+  ZedToken expanded_at = 1;
+
+  // tree_root is a tree structure whose leaf nodes are subjects, and
+  // intermediate nodes represent the various operations (union, intersection,
+  // exclusion) to reach those subjects.
+  PermissionRelationshipTree tree_root = 2;
+}
+
+// LookupResourcesRequest performs a lookup of all resources of a particular
+// kind on which the subject has the specified permission or the relation in
+// which the subject exists, streaming back the IDs of those resources.
+message LookupResourcesRequest {
+  Consistency consistency = 1;
+
+  // resource_object_type is the type of resource object for which the IDs will
+  // be returned.
+  string resource_object_type = 2 [ (validate.rules).string = {
+    pattern : "^([a-z][a-z0-9_]{1,61}[a-z0-9]/)*[a-z][a-z0-9_]{1,62}[a-z0-9]$",
+    max_bytes : 128,
+  } ];
+
+  // permission is the name of the permission or relation for which the subject
+  // must Check.
+  string permission = 3 [ (validate.rules).string = {
+    pattern : "^[a-z][a-z0-9_]{1,62}[a-z0-9]$",
+    max_bytes : 64,
+  } ];
+
+  // subject is the subject with access to the resources.
+  SubjectReference subject = 4 [ (validate.rules).message.required = true ];
+
+  // context consists of named values that are injected into the caveat evaluation context
+  google.protobuf.Struct context = 5 [ (validate.rules).message.required = false ];
+
+  // optional_limit, if non-zero, specifies the limit on the number of resources to return
+  // before the stream is closed on the server side. By default, the stream will continue
+  // resolving resources until exhausted or the stream is closed due to the client or a
+  // network issue.
+  uint32 optional_limit = 6 [(validate.rules).uint32 = {gte:0, lte: 1000}];
+
+  // optional_cursor, if specified, indicates the cursor after which results should resume being returned.
+  // The cursor can be found on the LookupResourcesResponse object.
+  Cursor optional_cursor = 7;
+}
+
+// LookupPermissionship represents whether a Lookup response was partially evaluated or not
+enum LookupPermissionship {
+  LOOKUP_PERMISSIONSHIP_UNSPECIFIED = 0;
+  LOOKUP_PERMISSIONSHIP_HAS_PERMISSION = 1;
+  LOOKUP_PERMISSIONSHIP_CONDITIONAL_PERMISSION = 2;
+}
+
+// LookupResourcesResponse contains a single matching resource object ID for the
+// requested object type, permission, and subject.
+message LookupResourcesResponse {
+  // looked_up_at is the ZedToken at which the resource was found.
+  ZedToken looked_up_at = 1;
+
+  // resource_object_id is the object ID of the found resource.
+  string resource_object_id = 2;
+
+  // permissionship indicates whether the response was partially evaluated or not
+  LookupPermissionship permissionship = 3 [ (validate.rules).enum = {defined_only: true, not_in: [0]} ];
+
+  // partial_caveat_info holds information of a partially-evaluated caveated response
+  PartialCaveatInfo partial_caveat_info = 4  [ (validate.rules).message.required = false ];
+
+  // after_result_cursor holds a cursor that can be used to resume the LookupResources stream after this
+  // result.
+  Cursor after_result_cursor = 5;
+}
+
+// LookupSubjectsRequest performs a lookup of all subjects of a particular
+// kind for which the subject has the specified permission or the relation in
+// which the subject exists, streaming back the IDs of those subjects.
+message LookupSubjectsRequest {
+  enum WildcardOption {
+    WILDCARD_OPTION_UNSPECIFIED = 0;
+    WILDCARD_OPTION_INCLUDE_WILDCARDS = 1;
+    WILDCARD_OPTION_EXCLUDE_WILDCARDS = 2;
+  }
+
+  Consistency consistency = 1;
+
+  // resource is the resource for which all matching subjects for the permission
+  // or relation will be returned.
+  ObjectReference resource = 2 [ (validate.rules).message.required = true ];
+
+  // permission is the name of the permission (or relation) for which to find
+  // the subjects.
+  string permission = 3 [ (validate.rules).string = {
+    pattern : "^([a-z][a-z0-9_]{1,62}[a-z0-9])?$",
+    max_bytes : 64,
+  } ];
+
+  // subject_object_type is the type of subject object for which the IDs will
+  // be returned.
+  string subject_object_type = 4 [ (validate.rules).string = {
+    pattern : "^([a-z][a-z0-9_]{1,61}[a-z0-9]/)*[a-z][a-z0-9_]{1,62}[a-z0-9]$",
+    max_bytes : 128,
+  } ];
+
+  // optional_subject_relation is the optional relation for the subject.
+  string optional_subject_relation = 5 [ (validate.rules).string = {
+    pattern : "^([a-z][a-z0-9_]{1,62}[a-z0-9])?$",
+    max_bytes : 64,
+  } ];
+
+  // context consists of named values that are injected into the caveat evaluation context
+  google.protobuf.Struct context = 6 [ (validate.rules).message.required = false ];
+
+  // optional_concrete_limit, if non-zero, specifies the limit on the number of
+  // *concrete* (non-wildcard) subjects to return before the stream is closed on the
+  // server side. With the default value of zero, the stream will continue resolving
+  // concrete subjects until exhausted or the stream is closed due to the client or
+  // a network issue.
+  //
+  // NOTE: Wildcard subjects ("*") have special treatment when cursors and limits are used. Because
+  // wildcards can apply to *any* concrete subjects, if a wildcard subject is found within the dataset,
+  // a wildcard subject can be returned for *all* LookupSubjects calls, regardless of the cursor or
+  // limit.
+  //
+  // For example, if wildcards are requested, a wildcard subject exists, there is a specified limit
+  // of 10 concrete subjects, and at least 10 concrete subjects exist, the API will return 11 subjects
+  // in total: the 10 concrete + the wildcard
+  //
+  // Furthermore, if a wildcard has a set of exclusions generated by the dataset,
+  // the exclusions *will respect the cursor* and only a *partial* set of exclusions will be returned
+  // for each invocation of the API.
+  //
+  // ***IT IS UP TO THE CALLER IN THIS CASE TO COMBINE THE EXCLUSIONS IF DESIRED***
+  uint32 optional_concrete_limit = 7 [(validate.rules).uint32 = {gte:0, lte: 1000}];
+
+  // optional_cursor, if specified, indicates the cursor after which results should resume being returned.
+  // The cursor can be found on the LookupSubjectsResponse object.
+  //
+  // NOTE: See above for notes about how cursors interact with wildcard subjects.
+  Cursor optional_cursor = 8;
+
+  // wildcard_option specifies whether wildcards should be returned by LookupSubjects.
+  // For backwards compatibility, defaults to WILDCARD_OPTION_INCLUDE_WILDCARDS if unspecified.
+  WildcardOption wildcard_option = 9;
+}
+
+// LookupSubjectsResponse contains a single matching subject object ID for the
+// requested subject object type on the permission or relation.
+message LookupSubjectsResponse {
+  ZedToken looked_up_at = 1;
+
+  // subject_object_id is the Object ID of the subject found. May be a `*` if
+  // a wildcard was found.
+  // deprecated: use `subject`
+  string subject_object_id = 2 [deprecated = true];
+
+  // excluded_subject_ids are the Object IDs of the subjects excluded. This list
+  // will only contain object IDs if `subject_object_id` is a wildcard (`*`) and
+  // will only be populated if exclusions exist from the wildcard.
+  // deprecated: use `excluded_subjects`
+  repeated string excluded_subject_ids = 3 [deprecated = true];
+
+  // permissionship indicates whether the response was partially evaluated or not
+  // deprecated: use `subject.permissionship`
+  LookupPermissionship permissionship = 4 [ deprecated = true, (validate.rules).enum = {defined_only: true, not_in: [0]} ];
+
+  // partial_caveat_info holds information of a partially-evaluated caveated response
+  // deprecated: use `subject.partial_caveat_info`
+  PartialCaveatInfo partial_caveat_info = 5 [ deprecated = true, (validate.rules).message.required = false ];
+
+  // subject is the subject found, along with its permissionship.
+  ResolvedSubject subject = 6;
+
+  // excluded_subjects are the subjects excluded. This list
+  // will only contain subjects if `subject.subject_object_id` is a wildcard (`*`) and
+  // will only be populated if exclusions exist from the wildcard.
+  repeated ResolvedSubject excluded_subjects = 7;
+
+  // after_result_cursor holds a cursor that can be used to resume the LookupSubjects stream after this
+  // result.
+  Cursor after_result_cursor = 8;
+}
+
+// ResolvedSubject is a single subject resolved within LookupSubjects.
+message ResolvedSubject {
+  // subject_object_id is the Object ID of the subject found. May be a `*` if
+  // a wildcard was found.
+  string subject_object_id = 1;
+
+  // permissionship indicates whether the response was partially evaluated or not
+  LookupPermissionship permissionship = 2 [ (validate.rules).enum = {defined_only: true, not_in: [0]} ];
+
+  // partial_caveat_info holds information of a partially-evaluated caveated response
+  PartialCaveatInfo partial_caveat_info = 3 [ (validate.rules).message.required = false ];
+}

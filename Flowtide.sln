@@ -59,7 +59,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Ka
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Kafka.Tests", "tests\FlowtideDotNet.Connector.Kafka.Tests\FlowtideDotNet.Connector.Kafka.Tests.csproj", "{A33C7FAA-EADB-48D5-A62E-958B6BE8AE8D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Sharepoint", "src\FlowtideDotNet.Connector.Sharepoint\FlowtideDotNet.Connector.Sharepoint.csproj", "{C371CB36-0122-4D6F-9DEF-8E8DE91ADD82}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Sharepoint", "src\FlowtideDotNet.Connector.Sharepoint\FlowtideDotNet.Connector.Sharepoint.csproj", "{C371CB36-0122-4D6F-9DEF-8E8DE91ADD82}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.SpiceDB", "src\FlowtideDotNet.Connector.SpiceDB\FlowtideDotNet.Connector.SpiceDB.csproj", "{93E6DBEB-CF2E-4D1D-B211-04C0DEB0AC29}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.SpiceDB.Tests", "tests\FlowtideDotNet.Connector.SpiceDB.Tests\FlowtideDotNet.Connector.SpiceDB.Tests.csproj", "{E0D7BE9D-B831-4B8F-8629-FBBF9500EA99}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -171,6 +175,14 @@ Global
 		{C371CB36-0122-4D6F-9DEF-8E8DE91ADD82}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C371CB36-0122-4D6F-9DEF-8E8DE91ADD82}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C371CB36-0122-4D6F-9DEF-8E8DE91ADD82}.Release|Any CPU.Build.0 = Release|Any CPU
+		{93E6DBEB-CF2E-4D1D-B211-04C0DEB0AC29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{93E6DBEB-CF2E-4D1D-B211-04C0DEB0AC29}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{93E6DBEB-CF2E-4D1D-B211-04C0DEB0AC29}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{93E6DBEB-CF2E-4D1D-B211-04C0DEB0AC29}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E0D7BE9D-B831-4B8F-8629-FBBF9500EA99}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E0D7BE9D-B831-4B8F-8629-FBBF9500EA99}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E0D7BE9D-B831-4B8F-8629-FBBF9500EA99}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E0D7BE9D-B831-4B8F-8629-FBBF9500EA99}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -202,6 +214,8 @@ Global
 		{75D8B6D8-6CC0-4FF7-8619-C9171B29A7C8} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
 		{A33C7FAA-EADB-48D5-A62E-958B6BE8AE8D} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 		{C371CB36-0122-4D6F-9DEF-8E8DE91ADD82} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
+		{93E6DBEB-CF2E-4D1D-B211-04C0DEB0AC29} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
+		{E0D7BE9D-B831-4B8F-8629-FBBF9500EA99} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {314C9503-DE99-42AA-8FB0-E355C91986C4}
