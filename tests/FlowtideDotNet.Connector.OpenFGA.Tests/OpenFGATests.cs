@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
             var createStoreResponse = await client.CreateStore(new ClientCreateStoreRequest()
             {
-                Name = "teststore"
+                Name = "teststore1"
             });
             var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
             
@@ -99,131 +99,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             });
         }
 
-        [Fact]
-        public async Task TestParseModelToView()
-        {
-            var config = openFGAFixture.Configuration;
-
-            var model = @"
-            {
-              ""schema_version"": ""1.1"",
-              ""type_definitions"": [
-                {
-                  ""type"": ""user"",
-                  ""relations"": {},
-                  ""metadata"": null
-                },
-                {
-                  ""type"": ""organization_group"",
-                  ""relations"": {
-                    ""parent"": {
-                      ""this"": {}
-                    },
-                    ""member"": {
-                      ""this"": {}
-                    },
-                    ""can_read"": {
-                      ""union"": {
-                        ""child"": [
-                          {
-                            ""computedUserset"": {
-                              ""relation"": ""member""
-                            }
-                          },
-                          {
-                            ""tupleToUserset"": {
-                              ""computedUserset"": {
-                                ""relation"": ""can_read""
-                              },
-                              ""tupleset"": {
-                                ""relation"": ""parent""
-                              }
-                            }
-                          }
-                        ]
-                      }
-                    }
-                  },
-                  ""metadata"": {
-                    ""relations"": {
-                      ""parent"": {
-                        ""directly_related_user_types"": [
-                          {
-                            ""type"": ""organization_group""
-                          }
-                        ]
-                      },
-                      ""member"": {
-                        ""directly_related_user_types"": [
-                          {
-                            ""type"": ""user""
-                          }
-                        ]
-                      },
-                      ""can_read"": {
-                        ""directly_related_user_types"": []
-                      }
-                    }
-                  }
-                },
-                {
-                  ""type"": ""project"",
-                  ""relations"": {
-                    ""organisation"": {
-                      ""this"": {}
-                    },
-                    ""member"": {
-                      ""this"": {}
-                    },
-                    ""can_read"": {
-                      ""union"": {
-                        ""child"": [
-                          {
-                            ""computedUserset"": {
-                              ""relation"": ""member""
-                            }
-                          },
-                          {
-                            ""tupleToUserset"": {
-                              ""computedUserset"": {
-                                ""relation"": ""can_read""
-                              },
-                              ""tupleset"": {
-                                ""relation"": ""organisation""
-                              }
-                            }
-                          }
-                        ]
-                      }
-                    }
-                  },
-                  ""metadata"": {
-                    ""relations"": {
-                      ""organisation"": {
-                        ""directly_related_user_types"": [
-                          {
-                            ""type"": ""organization_group""
-                          }
-                        ]
-                      },
-                      ""member"": {
-                        ""directly_related_user_types"": [
-                          {
-                            ""type"": ""user""
-                          }
-                        ]
-                      },
-                      ""can_read"": {
-                        ""directly_related_user_types"": []
-                      }
-                    }
-                  }
-                }
-              ]
-            }";
-
-            var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
-        }
+        
 
         [Fact]
         public async Task TestReadTuples()
@@ -264,7 +140,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
             var createStoreResponse = await client.CreateStore(new ClientCreateStoreRequest()
             {
-                Name = "teststore"
+                Name = "teststore2"
             });
             var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
 
@@ -275,22 +151,34 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             conf.AuthorizationModelId = createModelResponse.AuthorizationModelId;
 
             var addTupleClient = new OpenFgaClient(conf);
-            await addTupleClient.Write(new ClientWriteRequest()
+
+            for (int i = 0; i < 10; i++)
             {
-                Writes = new List<ClientTupleKey>()
+                await addTupleClient.Write(new ClientWriteRequest()
+                {
+                    Writes = new List<ClientTupleKey>()
                 {
                     new ClientTupleKey()
                     {
-                        User = "user:1",
+                        User = $"user:{i}",
                         Object = "doc:1",
                         Relation = "member"
                     }
                 }
-            });
+                });
+            }
+            
 
-            var stream = new OpenFgaTestStream("test", conf);
+            var stream = new OpenFgaTestStream("testreadtuples", conf);
             stream.Generate(100);
             await stream.StartStream(@"
+
+                CREATE TABLE openfga (
+                    user,
+                    relation,
+                    object
+                );
+
                 INSERT INTO testverify
                 SELECT 
                     user,
@@ -300,7 +188,129 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             ");
 
             await stream.WaitForUpdate();
+            var rows = stream.GetActualRowsAsVectors();
 
+            await addTupleClient.Write(new ClientWriteRequest()
+            {
+                Writes = new List<ClientTupleKey>()
+                {
+                    new ClientTupleKey()
+                    {
+                        User = $"user:11",
+                        Object = "doc:1",
+                        Relation = "member"
+                    }
+                }
+            });
+
+            await stream.WaitForUpdate();
+        }
+
+        [Fact]
+        public async Task TesObjectTypeFilter()
+        {
+            var config = openFGAFixture.Configuration;
+
+            var model = @"
+            {
+              ""schema_version"": ""1.1"",
+              ""type_definitions"": [
+                {
+                  ""type"": ""user"",
+                  ""relations"": {},
+                  ""metadata"": null
+                },
+                {
+                  ""type"": ""doc"",
+                  ""relations"": {
+                    ""member"": {
+                      ""this"": {}
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""member"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""user""
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }";
+            var client = new OpenFgaClient(config);
+
+            var createStoreResponse = await client.CreateStore(new ClientCreateStoreRequest()
+            {
+                Name = "teststore3"
+            });
+            var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+
+            var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
+
+            var conf = openFGAFixture.Configuration;
+            conf.StoreId = createStoreResponse.Id;
+            conf.AuthorizationModelId = createModelResponse.AuthorizationModelId;
+
+            var addTupleClient = new OpenFgaClient(conf);
+
+            for (int i = 0; i < 10; i++)
+            {
+                await addTupleClient.Write(new ClientWriteRequest()
+                {
+                    Writes = new List<ClientTupleKey>()
+                {
+                    new ClientTupleKey()
+                    {
+                        User = $"user:{i}",
+                        Object = "doc:1",
+                        Relation = "member"
+                    }
+                }
+                });
+            }
+
+
+            var stream = new OpenFgaTestStream("testobjecttypefilter", conf);
+            stream.Generate(100);
+            await stream.StartStream(@"
+
+                CREATE TABLE openfga (
+                    user,
+                    relation,
+                    object,
+                    object_type
+                );
+
+                INSERT INTO testverify
+                SELECT 
+                    user,
+                    relation,
+                    object
+                FROM openfga
+                where object_type = 'doc'
+            ");
+
+            await stream.WaitForUpdate();
+            var rows = stream.GetActualRowsAsVectors();
+
+            await addTupleClient.Write(new ClientWriteRequest()
+            {
+                Writes = new List<ClientTupleKey>()
+                {
+                    new ClientTupleKey()
+                    {
+                        User = $"user:11",
+                        Object = "doc:1",
+                        Relation = "member"
+                    }
+                }
+            });
+
+            await stream.WaitForUpdate();
         }
     }
 }
