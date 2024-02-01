@@ -121,6 +121,12 @@ namespace FlowtideDotNet.Core.Operators.Set
                     newWeight = _unionWeightFunction(newWeight, otherWeight);
                 }
 
+                if (_storages.Count == 1)
+                {
+                    newWeight = _unionWeightFunction(newWeight, newWeight);
+                    previousWeight = _unionWeightFunction(previousWeight, previousWeight);
+                }
+
                 // Check if there is a difference in weight
                 if (newWeight != previousWeight)
                 {
