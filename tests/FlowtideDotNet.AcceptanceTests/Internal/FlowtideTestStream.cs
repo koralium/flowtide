@@ -52,6 +52,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public ISqlFunctionRegister SqlFunctionRegister => sqlPlanBuilder.FunctionRegister;
 
+        public SqlPlanBuilder SqlPlanBuilder => sqlPlanBuilder;
+
         public FlowtideTestStream(string testName)
         {
             var streamName = testName.Replace("/", "_");
@@ -95,7 +97,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 timestampInterval = TimeSpan.FromSeconds(1);
             }
-
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
 

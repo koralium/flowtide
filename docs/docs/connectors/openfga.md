@@ -6,7 +6,7 @@ sidebar_position: 8
 
 
 
-## Permission to query
+## Authorization model permission to query
 
 It is possible to take in a authorization model and denormalize the permission for a specific type.
 This can be useful if one wants to add permisison data to a non relational database such as a search engine to allow searching based on user permissions.
@@ -15,6 +15,29 @@ If one develops a CQRS service for instance the query service can get in the mat
 It can also be useful if the permissions should be sent to another system that does not integrate with OpenFGA.
 
 Important to note is that one should check the watermark on the stream from OpenFGA to make sure that permissions have been synced to the external system.
+
+To use the model to query parser with sql plan builder, write the following:
+
+```csharp
+var modelPlan = new FlowtideOpenFgaModelParser(yourModel).Parse("{type name}", "{relation name}", "{input table name}");
+sqlPlanBuilder.AddPlanAsView("permissions", modelPlan);
+
+// Add a source that matches the input table name for openfga
+factory.AddOpenFGASource("{input table name}", new OpenFGASourceOptions
+{
+    ClientConfiguration = clientConfiguration
+});
+```
+
+The view will contains the following columns:
+
+* User - user field from the tuple
+* Relation - relation name
+* Object - object field from the tuple
+
+You can then use the data from the view to join it with other data.
+
+### How it works
 
 Given the following permission structure:
 

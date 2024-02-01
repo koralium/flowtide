@@ -125,8 +125,8 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
 
-            var parser = new ModelParser(parsedModel);
-            parser.Parse(parsedModel, "doc", "can_read");
+            var parser = new FlowtideOpenFgaModelParser(parsedModel);
+            var relation = parser.Parse("doc", "can_read", "openfga");
         }
     }
 }

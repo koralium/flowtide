@@ -35,6 +35,13 @@ namespace FlowtideDotNet.Core.Operators.Iteration
 
         public override string DisplayName => "Iteration Operator";
 
+        public override bool NoReadSourceInLoop()
+        {
+            var visitor = new ReadSourceLocateVisitor();
+            visitor.Visit(_iterationRelation, new object());
+            return visitor.ReadExists;
+        }
+
         protected override Task InitializeOrRestore(IterationState? state, IStateManagerClient stateManagerClient)
         {
             if (_eventsProcessed == null)
