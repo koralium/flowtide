@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                   ""metadata"": null
                 },
                 {
-                  ""type"": ""organization_group"",
+                  ""type"": ""group"",
                   ""relations"": {
                     ""parent"": {
                       ""this"": {}
@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                       ""parent"": {
                         ""directly_related_user_types"": [
                           {
-                            ""type"": ""organization_group""
+                            ""type"": ""group""
                           }
                         ]
                       },
@@ -89,49 +89,28 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                   }
                 },
                 {
-                  ""type"": ""project"",
+                  ""type"": ""doc"",
                   ""relations"": {
-                    ""organisation"": {
-                      ""this"": {}
-                    },
-                    ""member"": {
+                    ""parent_group"": {
                       ""this"": {}
                     },
                     ""can_read"": {
-                      ""union"": {
-                        ""child"": [
-                          {
-                            ""computedUserset"": {
-                              ""relation"": ""member""
-                            }
-                          },
-                          {
-                            ""tupleToUserset"": {
-                              ""computedUserset"": {
-                                ""relation"": ""can_read""
-                              },
-                              ""tupleset"": {
-                                ""relation"": ""organisation""
-                              }
-                            }
-                          }
-                        ]
+                      ""tupleToUserset"": {
+                        ""computedUserset"": {
+                          ""relation"": ""can_read""
+                        },
+                        ""tupleset"": {
+                          ""relation"": ""parent_group""
+                        }
                       }
                     }
                   },
                   ""metadata"": {
                     ""relations"": {
-                      ""organisation"": {
+                      ""parent_group"": {
                         ""directly_related_user_types"": [
                           {
-                            ""type"": ""organization_group""
-                          }
-                        ]
-                      },
-                      ""member"": {
-                        ""directly_related_user_types"": [
-                          {
-                            ""type"": ""user""
+                            ""type"": ""group""
                           }
                         ]
                       },
@@ -147,7 +126,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
 
             var parser = new ModelParser(parsedModel);
-            parser.Parse(parsedModel, "project", "can_read");
+            parser.Parse(parsedModel, "doc", "can_read");
         }
     }
 }

@@ -35,6 +35,8 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public Expression? ShouldIterateCondition { get; set; }
 
+        public int? MaxIterations { get; set; }
+
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitIterationRelation(this, state);

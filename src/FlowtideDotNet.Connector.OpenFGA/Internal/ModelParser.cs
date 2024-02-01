@@ -10,6 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Expressions.Literals;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using OpenFga.Sdk.Model;
 using System;
@@ -23,19 +26,38 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 {
     public class ModelParser
     {
-        private readonly AuthorizationModel authorizationModel;
-        private List<RelationshipEdge> EdgeStack = new List<RelationshipEdge>();
-
-        private class RelationshipEdge
+        private class TypeReference
         {
             public required string Type { get; set; }
 
             public required string Relation { get; set; }
+
+            public override bool Equals(object? obj)
+            {
+                if (obj is TypeReference other)
+                {
+                    return other.Type == Type && other.Relation == Relation;
+                }
+                return false;
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(Type, Relation);
+            }
         }
+
+        private readonly AuthorizationModel authorizationModel;
+        private HashSet<TypeReference> typeReferences = new HashSet<TypeReference>();
+        private HashSet<TypeReference> handledTypeReferences = new HashSet<TypeReference>();
+
+        
 
         private class Result
         {
             public required List<TypeDefinition> ResultTypes { get; set; }
+
+            public required Relation Relation { get; set; }
         }
 
         public ModelParser(AuthorizationModel authorizationModel)
@@ -45,21 +67,59 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         public void Parse(AuthorizationModel authorizationModel, string type, string relation)
         {
-            var typeDefinition = authorizationModel.TypeDefinitions.Find(x => x.Type.Equals(type, StringComparison.OrdinalIgnoreCase));
+            typeReferences.Add(new TypeReference() { Type = type, Relation = relation });
+            Start(authorizationModel);
+            //var typeDefinition = authorizationModel.TypeDefinitions.Find(x => x.Type.Equals(type, StringComparison.OrdinalIgnoreCase));
 
-            if (typeDefinition == null)
+            //if (typeDefinition == null)
+            //{
+            //    throw new InvalidOperationException($"Type {type} not found in authorization model");
+            //}
+            //if (typeDefinition.Relations == null)
+            //{
+            //    throw new InvalidOperationException($"Type {type} has no relations defined");
+            //}
+            //if (!typeDefinition.Relations.TryGetValue(relation, out var relationDefinition))
+            //{
+            //    throw new InvalidOperationException($"Relation {relation} not found in type {type}");
+            //}
+            //VisitRelationDefinition(relationDefinition, relation, typeDefinition);
+            //if (relationDefinition.This != null)
+            //{
+            //    if (!typeDefinition.Metadata.Relations.TryGetValue(relation, out var thisRelation))
+            //    {
+            //        throw new InvalidOperationException($"Relation {relation} not found in type {type}");
+            //    }
+            //}
+        }
+
+        public void Start(AuthorizationModel authorizationModel)
+        {
+            while (true)
             {
-                throw new InvalidOperationException($"Type {type} not found in authorization model");
+                if (typeReferences.Count == handledTypeReferences.Count)
+                {
+                    break;
+                }
+                var t = typeReferences.Except(handledTypeReferences).FirstOrDefault();
+                handledTypeReferences.Add(t);
+                var typeDefinition = authorizationModel.TypeDefinitions.Find(x => x.Type.Equals(t.Type, StringComparison.OrdinalIgnoreCase));
+
+                if (typeDefinition == null)
+                {
+                    throw new InvalidOperationException($"Type {t.Type} not found in authorization model");
+                }
+                if (typeDefinition.Relations == null)
+                {
+                    throw new InvalidOperationException($"Type {t.Type} has no relations defined");
+                }
+                if (!typeDefinition.Relations.TryGetValue(t.Relation, out var relationDefinition))
+                {
+                    throw new InvalidOperationException($"Relation {t.Relation} not found in type {t.Type}");
+                }
+                VisitRelationDefinition(relationDefinition, t.Relation, typeDefinition);
             }
-            if (typeDefinition.Relations == null)
-            {
-                throw new InvalidOperationException($"Type {type} has no relations defined");
-            }
-            if (!typeDefinition.Relations.TryGetValue(relation, out var relationDefinition))
-            {
-                throw new InvalidOperationException($"Relation {relation} not found in type {type}");
-            }
-            VisitRelationDefinition(relationDefinition, relation, typeDefinition);
+            
             //if (relationDefinition.This != null)
             //{
             //    if (!typeDefinition.Metadata.Relations.TryGetValue(relation, out var thisRelation))
@@ -81,20 +141,116 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             }
             if (relationDefinition.ComputedUserset != null)
             {
-                return VisitComputedUserset(relationDefinition.ComputedUserset, typeDefinition);
+                return VisitComputedUserset(relationDefinition.ComputedUserset, relationName, typeDefinition);
             }
             if (relationDefinition.TupleToUserset != null)
             {
-                return VisitTupleToUserset(relationDefinition.TupleToUserset, typeDefinition);
+                return VisitTupleToUserset(relationDefinition.TupleToUserset, relationName, typeDefinition);
             }
             throw new NotImplementedException();
         }
 
-        private Result VisitTupleToUserset(TupleToUserset tupleToUserset, TypeDefinition typeDefinition)
+        private Result VisitTupleToUserset(TupleToUserset tupleToUserset, string toRelationName, TypeDefinition typeDefinition)
         {
-            var tuplesetResult = VisitComputedUserset(tupleToUserset.Tupleset, typeDefinition);
-            VisitComputedUserset(tupleToUserset.ComputedUserset, tuplesetResult.ResultTypes[0]);
-            return tuplesetResult;
+            var tuplesetResult = VisitTupleset(tupleToUserset.Tupleset, typeDefinition);
+
+            if (tuplesetResult.ResultTypes.Count > 1)
+            {
+                throw new InvalidOperationException("At this time only 1 type is allowed for tuple to userset");
+            }
+            var resultType = tuplesetResult.ResultTypes[0];
+            typeReferences.Add(new TypeReference() { Type = resultType.Type, Relation = tupleToUserset.ComputedUserset.Relation });
+
+            var filterRel = new FilterRelation()
+            {
+                // TODO: Set the input here to a real input
+                Input = null,
+                Condition = new ScalarFunction()
+                {
+                    ExtensionName = FunctionsBoolean.And,
+                    ExtensionUri = FunctionsBoolean.Uri,
+                    Arguments = new List<Expression>()
+                    {
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.Equal,
+                            Arguments = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 1 // Field 1 is the relation field
+                                    }
+                                },
+                                new StringLiteral()
+                                {
+                                    Value = tupleToUserset.ComputedUserset.Relation
+                                }
+                            }
+                        },
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.Equal,
+                            Arguments = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 3 // Field 3 is the object type field
+                                    }
+                                },
+                                new StringLiteral()
+                                {
+                                    Value = resultType.Type
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var joinRel = new JoinRelation()
+            {
+                Left = tuplesetResult.Relation,
+                Right = filterRel,
+                Expression = new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionName = FunctionsComparison.Equal,
+                    Arguments = new List<Expression>()
+                    {
+                        new DirectFieldReference()
+                        {
+                            ReferenceSegment = new StructReferenceSegment()
+                            {
+                                Field = 0 // Field 0 is the user field of the left one
+                            }
+                        },
+                        new DirectFieldReference()
+                        {
+                            ReferenceSegment = new StructReferenceSegment()
+                            {
+                                Field = 6 // Field 6 is the object field on right
+                            }
+                        }
+                    }
+                },
+            };
+            //VisitComputedUserset(tupleToUserset.ComputedUserset, toRelationName, null);
+            return new Result() { Relation = joinRel, ResultTypes = new List<TypeDefinition>() { typeDefinition } };
+        }
+
+        private Result VisitTupleset(ObjectRelation tupleSet, TypeDefinition typeDefinition)
+        {
+            if (!typeDefinition.Relations.TryGetValue(tupleSet.Relation, out var relationDef))
+            {
+                throw new InvalidOperationException($"Relation {tupleSet.Relation} not found in type {typeDefinition.Type}");
+            }
+            return VisitRelationDefinition(relationDef, tupleSet.Relation, typeDefinition);
         }
 
         private Result VisitThis(Userset userset, string relationName, TypeDefinition typeDefinition)
@@ -103,11 +259,64 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             {
                 throw new InvalidOperationException($"Relation {relationName} not found in type {typeDefinition.Type}");
             }
-            var query = "SELECT user, relation, object FROM openfga WHERE object_type = '" + typeDefinition.Type + "' AND relation = '" + relationName + "'";
+
+
+            // Create a filter that checks that the relation name is equal and the type is equal to the expected type.
+            var filterRel = new FilterRelation()
+            {
+                // TODO: Set the input here to a real input
+                Input = null,
+                Condition = new ScalarFunction()
+                {
+                    ExtensionName = FunctionsBoolean.And,
+                    ExtensionUri = FunctionsBoolean.Uri,
+                    Arguments = new List<Expression>()
+                    {
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.Equal,
+                            Arguments = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 1 // Field 1 is the relation field
+                                    }
+                                },
+                                new StringLiteral()
+                                {
+                                    Value = relationName
+                                }
+                            }
+                        },
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.Equal,
+                            Arguments = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 3 // Field 3 is the object type field
+                                    }
+                                },
+                                new StringLiteral()
+                                {
+                                    Value = typeDefinition.Type
+                                }
+                            }
+                        }
+                    }
+                }
+            };
 
             List<TypeDefinition> types = new List<TypeDefinition>();
 
-            foreach(var t in thisRelation.DirectlyRelatedUserTypes)
+            foreach (var t in thisRelation.DirectlyRelatedUserTypes)
             {
                 var typeDef = authorizationModel.TypeDefinitions.Find(x => x.Type == t.Type);
                 if (typeDef == null)
@@ -116,27 +325,68 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 }
                 types.Add(typeDef);
             }
-            return new Result() { ResultTypes = types };
+
+            return new Result() { Relation = filterRel, ResultTypes = types };
+            //var query = "SELECT user, relation, object FROM openfga WHERE object_type = '" + typeDefinition.Type + "' AND relation = '" + relationName + "'";
+
+            //List<TypeDefinition> types = new List<TypeDefinition>();
+
+            //foreach(var t in thisRelation.DirectlyRelatedUserTypes)
+            //{
+            //    var typeDef = authorizationModel.TypeDefinitions.Find(x => x.Type == t.Type);
+            //    if (typeDef == null)
+            //    {
+            //        throw new InvalidOperationException();
+            //    }
+            //    types.Add(typeDef);
+            //}
+            //return null;//new Result() { ResultTypes = types };
         }
 
-        private Result VisitComputedUserset(ObjectRelation objectRelation, TypeDefinition typeDefinition)
+        private Result VisitComputedUserset(ObjectRelation objectRelation, string toRelationName, TypeDefinition typeDefinition)
         {
             if (!typeDefinition.Relations.TryGetValue(objectRelation.Relation, out var relationDef))
             {
                 throw new InvalidOperationException($"Relation {objectRelation.Relation} not found in type {typeDefinition.Type}");
             }
-            return VisitRelationDefinition(relationDef, objectRelation.Relation, typeDefinition);
-            // Select all tuples that match the relation and object type
-            //
+            var relation = VisitRelationDefinition(relationDef, objectRelation.Relation, typeDefinition);
+
+            var projectRelation = new ProjectRelation()
+            {
+                Input = relation.Relation,
+                Expressions = new List<Expression>()
+                {
+                    new StringLiteral()
+                    {
+                        Value = toRelationName
+                    }
+                },
+                Emit = new List<int>()
+                {
+                    0,
+                    4, // The new expression is added as relation name
+                    2,
+                    3
+                }
+            };
+
+            return new Result() { Relation = projectRelation, ResultTypes = relation.ResultTypes };
         }
 
         private Result VisitUnion(Usersets usersets, string relationName, TypeDefinition typeDefinition)
         {
+            var relation = new SetRelation()
+            {
+                Inputs = new List<Relation>(),
+                Operation = SetOperation.UnionAll
+            };
+
             foreach(var child in usersets.Child)
             {
-                VisitRelationDefinition(child, relationName, typeDefinition);
+                var subRel = VisitRelationDefinition(child, relationName, typeDefinition);
+                relation.Inputs.Add(subRel.Relation);
             }
-            return new Result() { ResultTypes = new List<TypeDefinition>() { typeDefinition } };
+            return new Result() { Relation = relation, ResultTypes = new List<TypeDefinition>() { typeDefinition } };//new Result() { ResultTypes = new List<TypeDefinition>() { typeDefinition } };
         }
     }
 }
