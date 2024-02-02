@@ -277,16 +277,20 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             await stream.StartStream(@"
 
                 CREATE TABLE openfga (
-                    user,
+                    user_id,
+                    user_type,
                     relation,
-                    object
+                    object_id,
+                    object_type
                 );
 
                 INSERT INTO testverify
                 SELECT 
-                    user,
+                    user_id,
+                    user_type,
                     relation,
-                    object
+                    object_id,
+                    object_type
                 FROM openfga
             ");
 
@@ -382,17 +386,18 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             await stream.StartStream(@"
 
                 CREATE TABLE openfga (
-                    user,
+                    user_id,
+                    user_type,
                     relation,
-                    object,
+                    object_id,
                     object_type
                 );
 
                 INSERT INTO testverify
                 SELECT 
-                    user,
+                    user_id,
                     relation,
-                    object
+                    object_id
                 FROM openfga
                 where object_type = 'doc'
             ");
@@ -596,9 +601,11 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             await stream.StartStream(@"
                 INSERT INTO testverify
                 SELECT 
-                    user,
+                    user_type,
+                    user_id
                     relation,
-                    object
+                    object_type,
+                    object_id
                 FROM authdata
             ");
 
@@ -732,9 +739,11 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             await stream.StartStream(@"
                 INSERT INTO testverify
                 SELECT 
-                    user,
+                    user_type,
+                    user_id
                     relation,
-                    object
+                    object_type,
+                    object_id
                 FROM authdata
             ");
 
@@ -742,6 +751,192 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             var rows = stream.GetActualRowsAsVectors();
 
             Assert.Equal(2, rows.Count);
+        }
+
+        [Fact]
+        public async Task TestParsedModelWithAndWildcard()
+        {
+            var config = openFGAFixture.Configuration;
+
+            var model = @"
+            {
+              ""schema_version"": ""1.1"",
+              ""type_definitions"": [
+                {
+                  ""type"": ""user"",
+                  ""relations"": {},
+                  ""metadata"": null
+                },
+                {
+                  ""type"": ""role"",
+                  ""relations"": {
+                    ""can_read"": {
+                      ""this"": {}
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""can_read"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""user"",
+                            ""wildcard"": {}
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  ""type"": ""role_binding"",
+                  ""relations"": {
+                    ""role"": {
+                      ""this"": {}
+                    },
+                    ""user"": {
+                      ""this"": {}
+                    },
+                    ""can_read"": {
+                      ""intersection"": {
+                        ""child"": [
+                          {
+                            ""computedUserset"": {
+                              ""relation"": ""user""
+                            }
+                          },
+                          {
+                            ""tupleToUserset"": {
+                              ""computedUserset"": {
+                                ""relation"": ""can_read""
+                              },
+                              ""tupleset"": {
+                                ""relation"": ""role""
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""role"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""role""
+                          }
+                        ]
+                      },
+                      ""user"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""user""
+                          }
+                        ]
+                      },
+                      ""can_read"": {
+                        ""directly_related_user_types"": []
+                      }
+                    }
+                  }
+                }
+              ]
+            }";
+
+            var client = new OpenFgaClient(config);
+
+            var createStoreResponse = await client.CreateStore(new ClientCreateStoreRequest()
+            {
+                Name = "teststore6"
+            });
+            var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+
+            var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
+
+            var conf = openFGAFixture.Configuration;
+            conf.StoreId = createStoreResponse.Id;
+            conf.AuthorizationModelId = createModelResponse.AuthorizationModelId;
+
+            var addTupleClient = new OpenFgaClient(conf);
+
+            await addTupleClient.Write(new ClientWriteRequest()
+            {
+                Writes = new List<ClientTupleKey>()
+                {
+                    new ClientTupleKey()
+                    {
+                        User = $"user:1",
+                        Object = "role_binding:1_1",
+                        Relation = "user"
+                    }
+                }
+            });
+            await addTupleClient.Write(new ClientWriteRequest()
+            {
+                Writes = new List<ClientTupleKey>()
+                {
+                    new ClientTupleKey()
+                    {
+                        User = $"role:1",
+                        Object = "role_binding:1_1",
+                        Relation = "role"
+                    }
+                }
+            });
+            await addTupleClient.Write(new ClientWriteRequest()
+            {
+                Writes = new List<ClientTupleKey>()
+                {
+                    new ClientTupleKey()
+                    {
+                        User = $"user:*",
+                        Object = "role:1",
+                        Relation = "can_read"
+                    }
+                }
+            });
+
+
+            var stream = new OpenFgaTestStream("TestParsedModelWithAndWildcard", conf);
+
+            var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
+            var modelPlan = new FlowtideOpenFgaModelParser(parsedModel).Parse("role_binding", "can_read", "openfga");
+
+            stream.SqlPlanBuilder.AddPlanAsView("authdata", modelPlan);
+
+            stream.Generate(100);
+            await stream.StartStream(@"
+                INSERT INTO testverify
+                SELECT 
+                    user_type,
+                    user_id
+                    relation,
+                    object_type,
+                    object_id
+                FROM authdata
+            ");
+
+            await stream.WaitForUpdate();
+            var rows = stream.GetActualRowsAsVectors();
+
+            Assert.Equal(1, rows.Count);
+
+            // Remove the can_read access from the role
+            await addTupleClient.Write(new ClientWriteRequest()
+            {
+                Deletes = new List<ClientTupleKeyWithoutCondition>()
+                {
+                    new ClientTupleKeyWithoutCondition()
+                    {
+                        User = $"user:*",
+                        Object = "role:1",
+                        Relation = "can_read"
+                    }
+                }
+            });
+            await stream.WaitForUpdate();
+            var rowsAfterDelete = stream.GetActualRowsAsVectors();
+            await stream.WaitForUpdate();
         }
     }
 }

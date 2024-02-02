@@ -58,14 +58,17 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 var name = readRelation.BaseSchema.Names[i];
                 switch (name.ToLower())
                 {
-                    case "user":
-                        m_encoders.Add((tupleKey, builder) => builder.Add(tupleKey.User));
+                    case "user_type":
+                        m_encoders.Add((tupleKey, builder) => builder.Add(tupleKey.User.Substring(0, tupleKey.User.IndexOf(':'))));
+                        break;
+                    case "user_id":
+                        m_encoders.Add((tupleKey, builder) => builder.Add(tupleKey.User.Substring(tupleKey.User.IndexOf(':') + 1)));
                         break;
                     case "relation":
                         m_encoders.Add((tupleKey, builder) => builder.Add(tupleKey.Relation));
                         break;
-                    case "object":
-                        m_encoders.Add((tupleKey, builder) => builder.Add(tupleKey.Object));
+                    case "object_id":
+                        m_encoders.Add((tupleKey, builder) => builder.Add(tupleKey.Object.Substring(tupleKey.Object.IndexOf(':') + 1)));
                         break;
                     case "object_type":
                         m_encoders.Add((tupleKey, builder) => builder.Add(tupleKey.Object.Substring(0, tupleKey.Object.IndexOf(':'))));

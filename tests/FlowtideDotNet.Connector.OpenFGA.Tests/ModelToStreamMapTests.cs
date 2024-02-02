@@ -130,7 +130,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
         }
 
         [Fact]
-        public async Task TestParseModelWithAnd()
+        public async Task TestParseModelWithAndWildcard()
         {
             var model = @"
             {

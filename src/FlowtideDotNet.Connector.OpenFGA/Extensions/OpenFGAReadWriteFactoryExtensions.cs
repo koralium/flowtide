@@ -68,14 +68,22 @@ namespace FlowtideDotNet.Connector.OpenFGA.Extensions
 
                 // Make sure that all primary key columns are in the query, if not add them.
                 List<int> indices = new List<int>();
-                var userIndex = readRelation.BaseSchema.Names.FindIndex(x => x.Equals("user", StringComparison.OrdinalIgnoreCase));
-                if (userIndex < 0)
+                var userTypeIndex = readRelation.BaseSchema.Names.FindIndex(x => x.Equals("user_type", StringComparison.OrdinalIgnoreCase));
+                if (userTypeIndex < 0)
                 {
-                    readRelation.BaseSchema.Names.Add("user");
+                    readRelation.BaseSchema.Names.Add("user_type");
                     readRelation.BaseSchema.Struct!.Types.Add(new AnyType() { Nullable = false });
-                    userIndex = readRelation.BaseSchema.Names.Count - 1;
+                    userTypeIndex = readRelation.BaseSchema.Names.Count - 1;
                 }
-                indices.Add(userIndex);
+                indices.Add(userTypeIndex);
+                var userIdIndex = readRelation.BaseSchema.Names.FindIndex(x => x.Equals("user_id", StringComparison.OrdinalIgnoreCase));
+                if (userIdIndex < 0)
+                {
+                    readRelation.BaseSchema.Names.Add("user_id");
+                    readRelation.BaseSchema.Struct!.Types.Add(new AnyType() { Nullable = false });
+                    userIdIndex = readRelation.BaseSchema.Names.Count - 1;
+                }
+                indices.Add(userIdIndex);
 
                 var relationIndex = readRelation.BaseSchema.Names.FindIndex(x => x.Equals("relation", StringComparison.OrdinalIgnoreCase));
                 if (relationIndex < 0)
@@ -86,14 +94,22 @@ namespace FlowtideDotNet.Connector.OpenFGA.Extensions
                 }
                 indices.Add(relationIndex);
 
-                var objectIndex = readRelation.BaseSchema.Names.FindIndex(x => x.Equals("object", StringComparison.OrdinalIgnoreCase));
-                if (objectIndex < 0)
+                var objectTypeIndex = readRelation.BaseSchema.Names.FindIndex(x => x.Equals("object_type", StringComparison.OrdinalIgnoreCase));
+                if (objectTypeIndex < 0)
                 {
-                    readRelation.BaseSchema.Names.Add("object");
+                    readRelation.BaseSchema.Names.Add("object_type");
                     readRelation.BaseSchema.Struct!.Types.Add(new AnyType() { Nullable = false });
-                    objectIndex = readRelation.BaseSchema.Names.Count - 1;
+                    objectTypeIndex = readRelation.BaseSchema.Names.Count - 1;
                 }
-                indices.Add(objectIndex);
+                indices.Add(objectTypeIndex);
+                var objectIdIndex = readRelation.BaseSchema.Names.FindIndex(x => x.Equals("object_id", StringComparison.OrdinalIgnoreCase));
+                if (objectIdIndex < 0)
+                {
+                    readRelation.BaseSchema.Names.Add("object_id");
+                    readRelation.BaseSchema.Struct!.Types.Add(new AnyType() { Nullable = false });
+                    objectIdIndex = readRelation.BaseSchema.Names.Count - 1;
+                }
+                indices.Add(objectIdIndex);
 
                 return new ReadOperatorInfo(new FlowtideOpenFGASource(options, readRelation, opt), new NormalizationRelation()
                 {

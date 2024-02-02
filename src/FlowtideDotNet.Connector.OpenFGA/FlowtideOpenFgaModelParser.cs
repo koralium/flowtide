@@ -48,6 +48,11 @@ namespace FlowtideDotNet.Connector.OpenFGA
         private HashSet<TypeReference> handledTypeReferences = new HashSet<TypeReference>();
         private Relation? readRelation;
 
+        private const int UserTypeColumn = 0;
+        private const int UserIdColumn = 1;
+        private const int RelationColumn = 2;
+        private const int ObjectTypeColumn = 3;
+        private const int ObjectIdColumn = 4;
 
         private class Result
         {
@@ -88,7 +93,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
         {
             readRelation = new IterationReferenceReadRelation()
             {
-                ReferenceOutputLength = 4,
+                ReferenceOutputLength = 5,
                 IterationName = "auth"
             };
 
@@ -103,11 +108,12 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 },
                 BaseSchema = new NamedStruct()
                 {
-                    Names = new List<string>() { "user", "relation", "object", "object_type" },
+                    Names = new List<string>() { "user_type", "user_id", "relation", "object_type", "object_id" },
                     Struct = new Struct()
                     {
                         Types = new List<SubstraitBaseType>()
                         {
+                            new StringType(),
                             new StringType(),
                             new StringType(),
                             new StringType(),
@@ -143,7 +149,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                                 {
                                     ReferenceSegment = new StructReferenceSegment()
                                     {
-                                        Field = 1 // Field 1 is the relation field
+                                        Field = RelationColumn // Field 1 is the relation field
                                     }
                                 },
                                 new StringLiteral()
@@ -162,7 +168,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                                 {
                                     ReferenceSegment = new StructReferenceSegment()
                                     {
-                                        Field = 3 // Field 3 is the object type field
+                                        Field = ObjectTypeColumn
                                     }
                                 },
                                 new StringLiteral()
@@ -178,7 +184,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
             var rootRel = new RootRelation()
             {
                 Input = filterRel,
-                Names = new List<string>() { "user", "relation", "object", "object_type" }
+                Names = new List<string>() { "user_type", "user_id", "relation", "object_type", "object_id" }
             };
 
             var plan = new Plan()
@@ -282,29 +288,60 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 // No wildcard, an inner join can be used.
                 if (!containsWildcard)
                 {
+                    // INNER JOIN ON l.user_type = r.user_type AND l.user_id = r.user_id
                     rootRel = new JoinRelation()
                     {
-                        Emit = new List<int>() { 0, 1, 2, 3 },
+                        Emit = new List<int>() { UserTypeColumn, UserIdColumn, RelationColumn, ObjectTypeColumn, ObjectIdColumn },
                         Left = rootRel,
                         Right = subRel.Relation,
                         Expression = new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
-                            ExtensionName = FunctionsComparison.Equal,
+                            ExtensionUri = FunctionsBoolean.Uri,
+                            ExtensionName = FunctionsBoolean.And,
                             Arguments = new List<Expression>()
                             {
-                                new DirectFieldReference()
+                                new ScalarFunction()
                                 {
-                                    ReferenceSegment = new StructReferenceSegment()
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.Equal,
+                                    Arguments = new List<Expression>()
                                     {
-                                        Field = 0 // Field 0 is the user field of the left one
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = UserTypeColumn // Field 0 is the user type field of the left one
+                                            }
+                                        },
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = rootRel.OutputLength + UserTypeColumn // User type field in the right
+                                            }
+                                        }
                                     }
                                 },
-                                new DirectFieldReference()
+                                new ScalarFunction()
                                 {
-                                    ReferenceSegment = new StructReferenceSegment()
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.Equal,
+                                    Arguments = new List<Expression>()
                                     {
-                                        Field = rootRel.OutputLength // User field in the right
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = UserIdColumn // Field 0 is the user type field of the left one
+                                            }
+                                        },
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = rootRel.OutputLength + UserIdColumn // User type field in the right
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -317,47 +354,256 @@ namespace FlowtideDotNet.Connector.OpenFGA
                     // Must have a projection that tries to select the user field that is not a wildcard.
                     // But if both are wildcard, wildcard is returned.
 
+                    // Set operation that merges together the different results.
+                    SetRelation setRelation = new SetRelation()
+                    {
+                        Inputs = new List<Relation>(),
+                        Operation = SetOperation.UnionDistinct
+                    };
+
                     // First join checks if the user field is equal with no wildcard check
                     var joinEqual = new JoinRelation()
                     {
-                        Emit = new List<int>() { 0, 1, 2, 3 },
+                        Emit = new List<int>() { UserTypeColumn, UserIdColumn, RelationColumn, ObjectTypeColumn, ObjectIdColumn },
                         Left = rootRel,
                         Right = subRel.Relation,
-                        Type = JoinType.Left,
+                        Type = JoinType.Inner,
+                        // l.user_type = r.user_type AND l.user_id = r.user_id
                         Expression = new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
-                            ExtensionName = FunctionsComparison.Equal,
+                            ExtensionUri = FunctionsBoolean.Uri,
+                            ExtensionName = FunctionsBoolean.And,
                             Arguments = new List<Expression>()
                             {
-                                new DirectFieldReference()
+                                // l.user_type = r.user_type
+                                new ScalarFunction()
                                 {
-                                    ReferenceSegment = new StructReferenceSegment()
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.Equal,
+                                    Arguments = new List<Expression>()
                                     {
-                                        Field = 0 // Field 0 is the user field of the left one
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = UserTypeColumn
+                                            }
+                                        },
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = rootRel.OutputLength + UserTypeColumn
+                                            }
+                                        },
                                     }
                                 },
-                                new DirectFieldReference()
+                                // l.user_id = r.user_id
+                                new ScalarFunction()
                                 {
-                                    ReferenceSegment = new StructReferenceSegment()
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.Equal,
+                                    Arguments = new List<Expression>()
                                     {
-                                        Field = rootRel.OutputLength // User field in the right
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = UserIdColumn
+                                            }
+                                        },
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = rootRel.OutputLength + UserIdColumn
+                                            }
+                                        },
                                     }
                                 }
                             }
                         }
                     };
 
+                    setRelation.Inputs.Add(joinEqual);
+
                     var leftHasWildcard = resultTypes.Any(x => x.Wildcard);
                     var rightHasWildcard = subRel.ResultUserType.Any(x => x.Wildcard);
-                    
+
                     if (leftHasWildcard)
                     {
+                        // This join takes the user from the right input since it only looks for wildcards on left side.
+                        var leftWildcardJoin = new JoinRelation()
+                        {
+                            Emit = new List<int>() { rootRel.OutputLength + UserTypeColumn, rootRel.OutputLength + UserIdColumn, RelationColumn, ObjectTypeColumn, ObjectIdColumn },
+                            Left = rootRel,
+                            Right = subRel.Relation,
+                            Type = JoinType.Inner,
+                            // l.user_type = r.user_type AND l.user_id = r.user_id
+                            Expression = new ScalarFunction()
+                            {
+                                ExtensionUri = FunctionsBoolean.Uri,
+                                ExtensionName = FunctionsBoolean.And,
+                                Arguments = new List<Expression>()
+                                {
+                                    // l.user_type = r.user_type
+                                    new ScalarFunction()
+                                    {
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.Equal,
+                                        Arguments = new List<Expression>()
+                                        {
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = UserTypeColumn
+                                                }
+                                            },
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = rootRel.OutputLength + UserTypeColumn
+                                                }
+                                            },
+                                        }
+                                    },
+                                    // l.user_id = '*'
+                                    new ScalarFunction()
+                                    {
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.Equal,
+                                        Arguments = new List<Expression>()
+                                        {
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = UserIdColumn
+                                                }
+                                            },
+                                            new StringLiteral()
+                                            {
+                                                Value = "*"
+                                            }
+                                        }
+                                    },
+                                    // r.user_id != '*'
+                                    new ScalarFunction()
+                                    {
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.NotEqual,
+                                        Arguments = new List<Expression>()
+                                        {
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = rootRel.OutputLength + UserIdColumn
+                                                }
+                                            },
+                                            new StringLiteral()
+                                            {
+                                                Value = "*"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        };
 
+                        setRelation.Inputs.Add(leftWildcardJoin);
                     }
 
+                    if (rightHasWildcard)
+                    {
+                        // Do same as for left side but instead look if right side user_id is * but not left side.
+                        var rightWildcardJoin = new JoinRelation()
+                        {
+                            Emit = new List<int>() { UserTypeColumn, UserIdColumn, RelationColumn, ObjectTypeColumn, ObjectIdColumn },
+                            Left = rootRel,
+                            Right = subRel.Relation,
+                            Type = JoinType.Inner,
+                            // l.user_type = r.user_type AND l.user_id = r.user_id
+                            Expression = new ScalarFunction()
+                            {
+                                ExtensionUri = FunctionsBoolean.Uri,
+                                ExtensionName = FunctionsBoolean.And,
+                                Arguments = new List<Expression>()
+                                {
+                                    // l.user_type = r.user_type
+                                    new ScalarFunction()
+                                    {
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.Equal,
+                                        Arguments = new List<Expression>()
+                                        {
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = UserTypeColumn
+                                                }
+                                            },
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = rootRel.OutputLength + UserTypeColumn
+                                                }
+                                            },
+                                        }
+                                    },
+                                    // l.user_id = '*'
+                                    new ScalarFunction()
+                                    {
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.NotEqual,
+                                        Arguments = new List<Expression>()
+                                        {
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = UserIdColumn
+                                                }
+                                            },
+                                            new StringLiteral()
+                                            {
+                                                Value = "*"
+                                            }
+                                        }
+                                    },
+                                    // r.user_id != '*'
+                                    new ScalarFunction()
+                                    {
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.Equal,
+                                        Arguments = new List<Expression>()
+                                        {
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = rootRel.OutputLength + UserIdColumn
+                                                }
+                                            },
+                                            new StringLiteral()
+                                            {
+                                                Value = "*"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        };
 
-                    throw new NotImplementedException();
+                        setRelation.Inputs.Add(rightWildcardJoin);
+                    }
+
+                    resultTypes = comibedTypes;
+                    rootRel = setRelation;
                 }
             }
 
@@ -492,7 +738,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                                 {
                                     ReferenceSegment = new StructReferenceSegment()
                                     {
-                                        Field = 1 // Field 1 is the relation field
+                                        Field = RelationColumn
                                     }
                                 },
                                 new StringLiteral()
@@ -511,7 +757,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                                 {
                                     ReferenceSegment = new StructReferenceSegment()
                                     {
-                                        Field = 3 // Field 3 is the object type field
+                                        Field = ObjectTypeColumn // Field 3 is the object type field
                                     }
                                 },
                                 new StringLiteral()
@@ -531,26 +777,58 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 Type = JoinType.Inner,
                 Expression = new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsComparison.Uri,
-                    ExtensionName = FunctionsComparison.Equal,
+                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionName = FunctionsBoolean.And,
                     Arguments = new List<Expression>()
                     {
-                        new DirectFieldReference()
+                        // user_type = object_type
+                        new ScalarFunction()
                         {
-                            ReferenceSegment = new StructReferenceSegment()
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.Equal,
+                            Arguments = new List<Expression>()
                             {
-                                Field = 0 // Field 0 is the user field of the left one
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = UserTypeColumn //User type from left
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = tuplesetResult.Relation.OutputLength + ObjectTypeColumn // Field 0 is the user field of the left one
+                                    }
+                                },
                             }
                         },
-                        new DirectFieldReference()
+                        // user_id = object_id
+                        new ScalarFunction()
                         {
-                            ReferenceSegment = new StructReferenceSegment()
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.Equal,
+                            Arguments = new List<Expression>()
                             {
-                                Field = 6 // Field 6 is the object field on right
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = UserIdColumn //User id from left
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = tuplesetResult.Relation.OutputLength + ObjectIdColumn // Object id from right
+                                    }
+                                }
                             }
                         }
                     }
-                },
+                }
             };
 
             var projectRel = new ProjectRelation()
@@ -565,10 +843,11 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 },
                 Emit = new List<int>()
                 {
-                    tuplesetResult.Relation.OutputLength, //Take the first column from right which is the user
+                    tuplesetResult.Relation.OutputLength + UserTypeColumn,
+                    tuplesetResult.Relation.OutputLength + UserIdColumn,
                     joinRel.OutputLength, // The new expression is added as relation name
-                    2, // Keep the object id from left
-                    3 // Keep the object type from left
+                    ObjectTypeColumn, // Keep the object type from left
+                    ObjectIdColumn // Keep the object id from left
                 }
             };
 
@@ -612,7 +891,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                                 {
                                     ReferenceSegment = new StructReferenceSegment()
                                     {
-                                        Field = 1 // Field 1 is the relation field
+                                        Field = RelationColumn // Field 1 is the relation field
                                     }
                                 },
                                 new StringLiteral()
@@ -631,7 +910,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                                 {
                                     ReferenceSegment = new StructReferenceSegment()
                                     {
-                                        Field = 3 // Field 3 is the object type field
+                                        Field = ObjectTypeColumn // Field 3 is the object type field
                                     }
                                 },
                                 new StringLiteral()
@@ -680,10 +959,11 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 },
                 Emit = new List<int>()
                 {
-                    0,
-                    4, // The new expression is added as relation name
-                    2,
-                    3
+                    UserTypeColumn,
+                    UserIdColumn,
+                    relation.Relation.OutputLength, // The new expression is added as relation name
+                    ObjectTypeColumn,
+                    ObjectIdColumn
                 }
             };
 

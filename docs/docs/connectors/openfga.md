@@ -4,7 +4,19 @@ sidebar_position: 8
 
 # OpenFGA Connector
 
+## Source
 
+
+### Output columns
+
+The source splits up the user and object columns into user_type, user_id, object_type and object_id.
+This is done to reduce memory consumption in the system since there is a low cardinality on the type fields, and the values can be reused.
+
+* **user_type** - user type
+* **user_id** - identifier of the user
+* **relation** - relation name
+* **object_type** - object type
+* **object_id** - identifier of the object. 
 
 ## Authorization model permission to query
 
@@ -31,9 +43,11 @@ factory.AddOpenFGASource("{input table name}", new OpenFGASourceOptions
 
 The view will contains the following columns:
 
-* User - user field from the tuple
-* Relation - relation name
-* Object - object field from the tuple
+* user_type - user type field from the tuple
+* user_id - identifier of the user
+* relation - relation name
+* object_type - object type field from the tuple
+* object_id - identifier of the object.
 
 You can then use the data from the view to join it with other data.
 
@@ -59,7 +73,7 @@ type doc
     define can_read: can_read from group
 ```
 
-And one wants to materialize users based on "*project*: *can_read*" definition, the following query graph is created:
+And one wants to materialize users based on "*doc*: *can_read*" definition, the following query graph is created:
 
 
 ```kroki type=blockdiag
