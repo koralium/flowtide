@@ -1,4 +1,5 @@
 using FlowtideDotNet.Connector.OpenFGA.Internal;
+using FlowtideDotNet.Substrait.Relations;
 using OpenFga.Sdk.Client;
 using OpenFga.Sdk.Client.Model;
 using OpenFga.Sdk.Model;
@@ -756,6 +757,21 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
         [Fact]
         public async Task TestParsedModelWithAndWildcard()
         {
+            //  model
+            //    schema 1.1
+            //
+            //  type user
+            //
+            //  type role
+            //    relations
+            //      define can_read: [user:*]
+            //
+            //  type role_binding
+            //    relations
+            //      define role: [role]
+            //        define user: [user]
+            //        define can_read: user and can_read from role
+            
             var config = openFGAFixture.Configuration;
 
             var model = @"
