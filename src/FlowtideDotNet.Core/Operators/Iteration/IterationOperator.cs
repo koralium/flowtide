@@ -13,6 +13,8 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.FixedPoint;
+using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
@@ -28,9 +30,15 @@ namespace FlowtideDotNet.Core.Operators.Iteration
     {
         private readonly IterationRelation _iterationRelation;
         private ICounter<long>? _eventsProcessed;
-        public IterationOperator(IterationRelation iterationRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
+        private readonly Func<RowEvent, bool>? _expression;
+        public IterationOperator(IterationRelation iterationRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this._iterationRelation = iterationRelation;
+            if (iterationRelation.SkipIterateCondition != null)
+            {
+                _expression = BooleanCompiler.Compile<RowEvent>(iterationRelation.SkipIterateCondition, functionsRegister);
+            }
+            
         }
 
         public override string DisplayName => "Iteration Operator";
@@ -66,7 +74,11 @@ namespace FlowtideDotNet.Core.Operators.Iteration
                     continue;
                 }
                 // Increase iteration counter for the loop output.
-                loopOutput.Add(new RowEvent(streamEvent.Weight, streamEvent.Iteration + 1, streamEvent.RowData));
+                if (_expression == null || !_expression(streamEvent))
+                {
+                    loopOutput.Add(new RowEvent(streamEvent.Weight, streamEvent.Iteration + 1, streamEvent.RowData));
+                }
+                
                 // Reset iteration counter for the egress output.
                 egressOutput.Add(new RowEvent(streamEvent.Weight, 0, streamEvent.RowData));
             }

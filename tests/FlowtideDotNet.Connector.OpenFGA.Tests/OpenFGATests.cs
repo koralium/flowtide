@@ -952,7 +952,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             });
             await stream.WaitForUpdate();
             var rowsAfterDelete = stream.GetActualRowsAsVectors();
-            await stream.WaitForUpdate();
+            Assert.Equal(0, rowsAfterDelete.Count);
         }
     }
 }

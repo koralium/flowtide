@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Substrait.Relations
         /// </summary>
         public required Relation LoopPlan { get; set; }
 
-        public Expression? ShouldIterateCondition { get; set; }
+        public Expression? SkipIterateCondition { get; set; }
 
         public int? MaxIterations { get; set; }
 

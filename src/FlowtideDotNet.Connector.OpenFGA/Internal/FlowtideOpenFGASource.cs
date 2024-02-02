@@ -42,16 +42,22 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         private OpenFgaClient? m_client;
         private FlowtideOpenFGASourceState? m_state;
 
-        private List<Action<TupleKey, FlexBuffer>> m_encoders;
+        private List<Action<TupleKey, int, FlxValue[]>> m_encoders;
         private FlexBuffer flexBuffer;
         private Task? _changesTask;
         private readonly string? m_objectTypeFilter;
 
         private const string WatermarkName = "openfga";
-        
+
+        /// <summary>
+        /// Cache for types and relation values
+        /// These will be low cardinality and can be cached to reduce memory consumption in the stream.
+        /// </summary>
+        private Dictionary<string, FlxValue> _typesAndRelationValues = new Dictionary<string, FlxValue>();
+
         public FlowtideOpenFGASource(OpenFGASourceOptions openFgaOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
-            m_encoders = new List<Action<TupleKey, FlexBuffer>>();
+            m_encoders = new List<Action<TupleKey, int, FlxValue[]>>();
             flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
             for (int i = 0; i < readRelation.BaseSchema.Names.Count; i++)
             {
@@ -59,19 +65,64 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 switch (name.ToLower())
                 {
                     case "user_type":
-                        m_encoders.Add((tupleKey, builder) => builder.Add(tupleKey.User.Substring(0, tupleKey.User.IndexOf(':'))));
+                        m_encoders.Add((tupleKey, i, arr) => {
+                            var typeName = tupleKey.User.Substring(0, tupleKey.User.IndexOf(':'));
+                            if (_typesAndRelationValues.TryGetValue(typeName, out var value))
+                            {
+                                arr[i] = value;
+                                return;
+                            }
+                            flexBuffer.NewObject();
+                            flexBuffer.Add(typeName);
+                            var bytes = flexBuffer.Finish();
+                            var flxValue = FlxValue.FromBytes(bytes);
+                            _typesAndRelationValues.Add(typeName, flxValue);
+                            arr[i] = flxValue;
+                        });
                         break;
                     case "user_id":
-                        m_encoders.Add((tupleKey, builder) => builder.Add(tupleKey.User.Substring(tupleKey.User.IndexOf(':') + 1)));
+                        m_encoders.Add((tupleKey, i, arr) => {
+                            flexBuffer.NewObject();
+                            flexBuffer.Add(tupleKey.User.Substring(tupleKey.User.IndexOf(':') + 1));
+                            arr[i] = FlxValue.FromBytes(flexBuffer.Finish());
+                            });
                         break;
                     case "relation":
-                        m_encoders.Add((tupleKey, builder) => builder.Add(tupleKey.Relation));
+                        m_encoders.Add((tupleKey, i, arr) => {
+                            if (_typesAndRelationValues.TryGetValue(tupleKey.Relation, out var value))
+                            {
+                                arr[i] = value;
+                                return;
+                            } flexBuffer.NewObject(); 
+                            flexBuffer.Add(tupleKey.Relation);
+                            var bytes = flexBuffer.Finish();
+                            var flxValue = FlxValue.FromBytes(bytes);
+                            _typesAndRelationValues.Add(tupleKey.Relation, flxValue);
+                            arr[i] = flxValue;
+                            });
                         break;
                     case "object_id":
-                        m_encoders.Add((tupleKey, builder) => builder.Add(tupleKey.Object.Substring(tupleKey.Object.IndexOf(':') + 1)));
+                        m_encoders.Add((tupleKey, i, arr) => {
+                            flexBuffer.NewObject();
+                            flexBuffer.Add(tupleKey.Object.Substring(tupleKey.Object.IndexOf(':') + 1));
+                            arr[i] = FlxValue.FromBytes(flexBuffer.Finish());
+                            });
                         break;
                     case "object_type":
-                        m_encoders.Add((tupleKey, builder) => builder.Add(tupleKey.Object.Substring(0, tupleKey.Object.IndexOf(':'))));
+                        m_encoders.Add((tupleKey, i, arr) => {
+                            var objectTypeValue = tupleKey.Object.Substring(0, tupleKey.Object.IndexOf(':'));
+                            if (_typesAndRelationValues.TryGetValue(objectTypeValue, out var value))
+                            {
+                                arr[i] = value;
+                                return;
+                            }
+                            flexBuffer.NewObject();
+                            flexBuffer.Add(objectTypeValue);
+                            var bytes = flexBuffer.Finish();
+                            var flxValue = FlxValue.FromBytes(bytes);
+                            _typesAndRelationValues.Add(objectTypeValue, flxValue);
+                            arr[i] = flxValue;
+                            });
                         break;
                 }
             }
@@ -129,15 +180,12 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                     List<RowEvent> outputData = new List<RowEvent>();
                     foreach (var change in changes.Changes)
                     {
-                        flexBuffer.NewObject();
-                        var vectorStart = flexBuffer.StartVector();
+                        FlxValue[] arr = new FlxValue[m_encoders.Count];
                         for (int i = 0; i < m_encoders.Count; i++)
                         {
-                            m_encoders[i](change.TupleKey, flexBuffer);
+                            m_encoders[i](change.TupleKey, i, arr);
                         }
-                        flexBuffer.EndVector(vectorStart, false, false);
-                        var vector = flexBuffer.Finish();
-                        var row = new CompactRowData(vector);
+                        var row = new ArrayRowData(arr);
                         if (change.Operation == TupleOperation.WRITE)
                         {
                             outputData.Add(new RowEvent(1, 0, row));
@@ -217,15 +265,13 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 List<RowEvent> outputData = new List<RowEvent>();
                 foreach(var change in changes.Changes)
                 {
-                    flexBuffer.NewObject();
-                    var vectorStart = flexBuffer.StartVector();
-                    for(int i = 0; i < m_encoders.Count; i++)
+                    FlxValue[] arr = new FlxValue[m_encoders.Count];
+                    for (int i = 0; i < m_encoders.Count; i++)
                     {
-                        m_encoders[i](change.TupleKey, flexBuffer);
+                        m_encoders[i](change.TupleKey, i, arr);
                     }
-                    flexBuffer.EndVector(vectorStart, false, false);
-                    var vector = flexBuffer.Finish();
-                    var row = new CompactRowData(vector);
+                    var row = new ArrayRowData(arr);
+
                     if (change.Operation == TupleOperation.WRITE)
                     {
                         outputData.Add(new RowEvent(1, 0, row));

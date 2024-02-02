@@ -17,6 +17,7 @@ using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using OpenFga.Sdk.Model;
+using System.Transactions;
 
 namespace FlowtideDotNet.Connector.OpenFGA
 {
@@ -43,6 +44,29 @@ namespace FlowtideDotNet.Connector.OpenFGA
             }
         }
 
+        private class TupleReference
+        {
+            public required string UserType { get; set; }
+
+            public required string Relation { get; set; }
+
+            public required string ObjectType { get; set; }
+
+            public override bool Equals(object? obj)
+            {
+                if (obj is TupleReference other)
+                {
+                    return other.UserType == UserType && other.Relation == Relation && ObjectType == other.ObjectType;
+                }
+                return false;
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(UserType, Relation, ObjectType);
+            }
+        }
+
         private readonly AuthorizationModel authorizationModel;
         private HashSet<TypeReference> typeReferences = new HashSet<TypeReference>();
         private HashSet<TypeReference> handledTypeReferences = new HashSet<TypeReference>();
@@ -61,6 +85,12 @@ namespace FlowtideDotNet.Connector.OpenFGA
             public required Relation Relation { get; set; }
 
             public required List<ResultUserType> ResultUserType { get; set; }
+
+            /// <summary>
+            /// Hashset of types that are not computed.
+            /// This is used to add filters to the loop to not send them again.
+            /// </summary>
+            public required HashSet<TupleReference> NonComputedTypes { get; set; }
         }
 
         public class ResultUserType
@@ -98,7 +128,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
             };
 
             typeReferences.Add(new TypeReference() { Type = type, Relation = relation });
-            var loopPlan = Start(authorizationModel);
+            var (loopPlan, nonComputedTuples) = Start(authorizationModel);
 
             var readRel = new ReadRelation()
             {
@@ -123,11 +153,103 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
             };
 
+            Expression? skipIterateCondition = default;
+            if (nonComputedTuples.Count > 0)
+            {
+                List<Expression> orExpressions = new List<Expression>();
+                foreach(var tuple in nonComputedTuples)
+                {
+                    // (user_type = 'type' AND relation = 'relation' AND object_type = 'object_type')
+                    var func = new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsBoolean.Uri,
+                        ExtensionName = FunctionsBoolean.And,
+                        Arguments = new List<Expression>()
+                        {
+                            new ScalarFunction()
+                            {
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.Equal,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = UserTypeColumn
+                                        }
+                                    },
+                                    new StringLiteral()
+                                    {
+                                        Value = tuple.UserType
+                                    }
+                                }
+                            },
+                            new ScalarFunction()
+                            {
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.Equal,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = RelationColumn
+                                        }
+                                    },
+                                    new StringLiteral()
+                                    {
+                                        Value = tuple.Relation
+                                    }
+                                }
+                            },
+                            new ScalarFunction()
+                            {
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.Equal,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = ObjectTypeColumn
+                                        }
+                                    },
+                                    new StringLiteral()
+                                    {
+                                        Value = tuple.ObjectType
+                                    }
+                                }
+                            }
+                        }
+                    };
+                    orExpressions.Add(func);
+                }
+
+                if (orExpressions.Count > 1)
+                {
+                    var orFunc = new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsBoolean.Uri,
+                        ExtensionName = FunctionsBoolean.Or,
+                        Arguments = orExpressions
+                    };
+                    skipIterateCondition = orFunc;
+                }
+                else
+                {
+                    skipIterateCondition = orExpressions[0];
+                }
+            }
+
             var iterationRel = new IterationRelation()
             {
                 IterationName = "auth",
                 LoopPlan = loopPlan,
-                Input = readRel
+                Input = readRel,
+                SkipIterateCondition = skipIterateCondition
             };
 
             var filterRel = new FilterRelation()
@@ -194,13 +316,14 @@ namespace FlowtideDotNet.Connector.OpenFGA
             return plan;
         }
 
-        public Relation Start(AuthorizationModel authorizationModel)
+        private (Relation, HashSet<TupleReference>) Start(AuthorizationModel authorizationModel)
         {
             var union = new SetRelation()
             {
                 Inputs = new List<Relation>(),
-                Operation = SetOperation.UnionDistinct
+                Operation = SetOperation.UnionAll
             };
+            HashSet<TupleReference> nonComputedTuples = new HashSet<TupleReference>();
             while (true)
             {
                 if (typeReferences.Count == handledTypeReferences.Count)
@@ -225,6 +348,11 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
                 var result = VisitRelationDefinition(relationDefinition, t.Relation, typeDefinition);
 
+                foreach(var nonComputedType in result.NonComputedTypes)
+                {
+                    nonComputedTuples.Add(nonComputedType);
+                }
+
                 if (result.Relation is SetRelation setRel)
                 {
                     foreach (var input in setRel.Inputs)
@@ -238,7 +366,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
             }
 
-            return union;
+            return (union, nonComputedTuples);
         }
 
         private Result VisitRelationDefinition(Userset relationDefinition, string relationName, TypeDefinition typeDefinition)
@@ -273,10 +401,15 @@ namespace FlowtideDotNet.Connector.OpenFGA
 
             var rootRel = firstRel.Relation;
             var resultTypes = firstRel.ResultUserType.ToHashSet();
-
+            HashSet<TupleReference> nonComputedTypes = new HashSet<TupleReference>(firstRel.NonComputedTypes);
             for (int i = 1; i < userset.Child.Count; i++)
             {
                 var subRel = VisitRelationDefinition(userset.Child[i], relationName, typeDefinition);
+
+                foreach (var t in subRel.NonComputedTypes)
+                {
+                    nonComputedTypes.Add(t);
+                }
 
                 var comibedTypes = new HashSet<ResultUserType>(resultTypes);
                 foreach(var t in subRel.ResultUserType)
@@ -358,7 +491,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                     SetRelation setRelation = new SetRelation()
                     {
                         Inputs = new List<Relation>(),
-                        Operation = SetOperation.UnionDistinct
+                        Operation = SetOperation.UnionAll
                     };
 
                     // First join checks if the user field is equal with no wildcard check
@@ -607,10 +740,16 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
             }
 
-            return new Result() { Relation = rootRel, ResultTypes = firstRel.ResultTypes, ResultUserType = resultTypes.ToList() };
+            return new Result() 
+            { 
+                Relation = rootRel, 
+                ResultTypes = firstRel.ResultTypes, 
+                ResultUserType = resultTypes.ToList(),
+                NonComputedTypes = nonComputedTypes
+            };
         }
 
-        private List<ResultUserType> GetTupleToUsersetUserType(ObjectRelation objectRelation, TypeDefinition typeDefinition)
+        private (List<ResultUserType>, bool isDirect) GetTupleToUsersetUserType(ObjectRelation objectRelation, TypeDefinition typeDefinition)
         {
             if (!typeDefinition.Relations.TryGetValue(objectRelation.Relation, out var relationDef))
             {
@@ -625,26 +764,26 @@ namespace FlowtideDotNet.Connector.OpenFGA
             {
                 throw new InvalidOperationException($"Relation {objectRelation.Relation} not found in type {typeDefinition.Type}");
             }
-            return GetUserType(relationDef, objectRelation.Relation, typeDefinition, visitedRelations);
+            return GetUserType(relationDef, objectRelation.Relation, typeDefinition, visitedRelations).Item1;
         }
 
-        private List<ResultUserType> GetUserType(Userset userset, string relationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
+        private (List<ResultUserType>, bool isDirect) GetUserType(Userset userset, string relationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
         {
             if (userset.This != null)
             {
-                return GetUserTypeFromThis(userset,relationName, typeDefinition, visitedRelations);
+                return (GetUserTypeFromThis(userset,relationName, typeDefinition, visitedRelations), true);
             }
             else if (userset.Union != null)
             {
-                return GetUserTypeFromUnion(userset.Union, relationName, typeDefinition, visitedRelations);
+                return (GetUserTypeFromUnion(userset.Union, relationName, typeDefinition, visitedRelations), false);
             }
             else if (userset.ComputedUserset != null)
             {
-                return GetUserTypeFromComputedUserset(userset.ComputedUserset, relationName, typeDefinition, visitedRelations);
+                return (GetUserTypeFromComputedUserset(userset.ComputedUserset, relationName, typeDefinition, visitedRelations), false);
             }
             else if (userset.TupleToUserset != null)
             {
-                return GetUserTypeFromTupleToUserset(userset.TupleToUserset, relationName, typeDefinition, visitedRelations);
+                return (GetUserTypeFromTupleToUserset(userset.TupleToUserset, relationName, typeDefinition, visitedRelations), false);
             }
             throw new NotImplementedException();
         }
@@ -674,7 +813,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
             {
                 throw new InvalidOperationException($"Relation {objectRelation.Relation} not found in type {typeDefinition.Type}");
             }
-            return GetUserType(relationDef, objectRelation.Relation, typeDefinition, visitedRelations);
+            return GetUserType(relationDef, objectRelation.Relation, typeDefinition, visitedRelations).Item1;
         }
 
         private List<ResultUserType> GetUserTypeFromUnion(Usersets usersets, string relationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
@@ -682,7 +821,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
             HashSet<ResultUserType> resultUserTypes = new HashSet<ResultUserType>();
             foreach(var child in usersets.Child)
             {
-                var types = GetUserType(child, relationName, typeDefinition, visitedRelations);
+                var types = GetUserType(child, relationName, typeDefinition, visitedRelations).Item1;
                 foreach(var t in types)
                 {
                     resultUserTypes.Add(t);
@@ -716,9 +855,14 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 throw new InvalidOperationException("At this time only 1 type is allowed for tuple to userset");
             }
             var resultType = tuplesetResult.ResultTypes[0];
-            typeReferences.Add(new TypeReference() { Type = resultType.Type, Relation = tupleToUserset.ComputedUserset.Relation });
 
-            var userTypes = GetTupleToUsersetUserType(tupleToUserset.ComputedUserset, resultType);
+            var (userTypes, isDirect) = GetTupleToUsersetUserType(tupleToUserset.ComputedUserset, resultType);
+
+            if (!isDirect)
+            {
+                typeReferences.Add(new TypeReference() { Type = resultType.Type, Relation = tupleToUserset.ComputedUserset.Relation });
+            }
+
             var filterRel = new FilterRelation()
             {
                 Input = readRelation,
@@ -851,7 +995,14 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
             };
 
-            return new Result() { Relation = projectRel, ResultTypes = new List<TypeDefinition>() { typeDefinition }, ResultUserType = userTypes };
+            return new Result() 
+            { 
+                Relation = projectRel, 
+                ResultTypes = new List<TypeDefinition>() { typeDefinition }, 
+                ResultUserType = userTypes,
+                // Clear since this is a computed relation.
+                NonComputedTypes = new HashSet<TupleReference>()
+            };
         }
 
         private Result VisitTupleset(ObjectRelation tupleSet, TypeDefinition typeDefinition)
@@ -923,6 +1074,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
             };
 
+            HashSet<TupleReference> nonModifiedTuples = new HashSet<TupleReference>();
             List<TypeDefinition> types = new List<TypeDefinition>();
             var userTypes = new List<ResultUserType>();
             foreach (var t in thisRelation.DirectlyRelatedUserTypes)
@@ -934,9 +1086,10 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
                 types.Add(typeDef);
                 userTypes.Add(new ResultUserType() { TypeName = t.Type, Wildcard = t.Wildcard != null });
+                nonModifiedTuples.Add(new TupleReference() { UserType = t.Type, Relation = relationName, ObjectType = typeDefinition.Type });
             }
 
-            return new Result() { Relation = filterRel, ResultTypes = types, ResultUserType = userTypes };
+            return new Result() { Relation = filterRel, ResultTypes = types, ResultUserType = userTypes, NonComputedTypes = nonModifiedTuples };
         }
 
         private Result VisitComputedUserset(ObjectRelation objectRelation, string toRelationName, TypeDefinition typeDefinition)
@@ -967,7 +1120,14 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
             };
 
-            return new Result() { Relation = projectRelation, ResultTypes = relation.ResultTypes, ResultUserType = new List<ResultUserType>() };
+            return new Result() { 
+                Relation = projectRelation, 
+                ResultTypes = relation.ResultTypes, 
+                ResultUserType = new List<ResultUserType>(), 
+                // Clear non computed types since this is a computed relation.
+                // No original tuples will be returned
+                NonComputedTypes = new HashSet<TupleReference>() 
+            };
         }
 
         private Result VisitUnion(Usersets usersets, string relationName, TypeDefinition typeDefinition)
@@ -975,15 +1135,25 @@ namespace FlowtideDotNet.Connector.OpenFGA
             var relation = new SetRelation()
             {
                 Inputs = new List<Relation>(),
-                Operation = SetOperation.UnionDistinct
+                Operation = SetOperation.UnionAll
             };
-
+            HashSet<TupleReference> nonComputedTuples = new HashSet<TupleReference>();
             foreach (var child in usersets.Child)
             {
                 var subRel = VisitRelationDefinition(child, relationName, typeDefinition);
                 relation.Inputs.Add(subRel.Relation);
+                foreach(var t in subRel.NonComputedTypes)
+                {
+                    nonComputedTuples.Add(t);
+                }
             }
-            return new Result() { Relation = relation, ResultTypes = new List<TypeDefinition>() { typeDefinition }, ResultUserType = new List<ResultUserType>() };//new Result() { ResultTypes = new List<TypeDefinition>() { typeDefinition } };
+            return new Result() 
+            { 
+                Relation = relation, 
+                ResultTypes = new List<TypeDefinition>() { typeDefinition }, 
+                ResultUserType = new List<ResultUserType>(),
+                NonComputedTypes = nonComputedTuples
+            };
         }
     }
 }

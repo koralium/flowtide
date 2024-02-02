@@ -489,7 +489,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitIterationRelation(IterationRelation iterationRelation, ITargetBlock<IStreamEvent> state)
         {
             var id = _operatorId++;
-            var op = new IterationOperator(iterationRelation, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            var op = new IterationOperator(iterationRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
             if (state != null)
             {
                 op.EgressSource.LinkTo(state);
