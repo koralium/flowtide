@@ -235,10 +235,20 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                         {
                             if (x.IsFaulted)
                             {
-                                Logger.LogError(x.Exception, "Exception deleting from store");
+                                
                                 if (x.Exception != null)
                                 {
-                                    throw x.Exception;
+                                    if (x.Exception.InnerException is OpenFga.Sdk.Exceptions.FgaApiValidationError apiErrorEx &&
+                                    apiErrorEx.ApiError.ErrorCode == "write_failed_due_to_invalid_input")
+                                    {
+                                        // Already exists
+                                        return;
+                                    }
+                                    else
+                                    {
+                                        Logger.LogError(x.Exception, "Exception deleting from store");
+                                        throw x.Exception;
+                                    }
                                 }
                                 else
                                 {

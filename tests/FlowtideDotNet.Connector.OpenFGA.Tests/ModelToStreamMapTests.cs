@@ -128,5 +128,99 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             var parser = new FlowtideOpenFgaModelParser(parsedModel);
             var relation = parser.Parse("doc", "can_read", "openfga");
         }
+
+        [Fact]
+        public async Task TestParseModelWithAnd()
+        {
+            var model = @"
+            {
+              ""schema_version"": ""1.1"",
+              ""type_definitions"": [
+                {
+                  ""type"": ""user"",
+                  ""relations"": {},
+                  ""metadata"": null
+                },
+                {
+                  ""type"": ""role"",
+                  ""relations"": {
+                    ""can_read"": {
+                      ""this"": {}
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""can_read"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""user"",
+                            ""wildcard"": {}
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  ""type"": ""role_binding"",
+                  ""relations"": {
+                    ""role"": {
+                      ""this"": {}
+                    },
+                    ""user"": {
+                      ""this"": {}
+                    },
+                    ""can_read"": {
+                      ""intersection"": {
+                        ""child"": [
+                          {
+                            ""computedUserset"": {
+                              ""relation"": ""user""
+                            }
+                          },
+                          {
+                            ""tupleToUserset"": {
+                              ""computedUserset"": {
+                                ""relation"": ""can_read""
+                              },
+                              ""tupleset"": {
+                                ""relation"": ""role""
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""role"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""role""
+                          }
+                        ]
+                      },
+                      ""user"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""user""
+                          }
+                        ]
+                      },
+                      ""can_read"": {
+                        ""directly_related_user_types"": []
+                      }
+                    }
+                  }
+                }
+              ]
+            }";
+
+            var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
+
+            var parser = new FlowtideOpenFgaModelParser(parsedModel);
+            var relation = parser.Parse("role_binding", "can_read", "openfga");
+        }
     }
 }

@@ -54,6 +54,29 @@ namespace FlowtideDotNet.Connector.OpenFGA
             public required List<TypeDefinition> ResultTypes { get; set; }
 
             public required Relation Relation { get; set; }
+
+            public required List<ResultUserType> ResultUserType { get; set; }
+        }
+
+        public class ResultUserType
+        {
+            public string TypeName { get; set; }
+
+            public bool Wildcard { get; set; }
+
+            public override bool Equals(object? obj)
+            {
+                if (obj is ResultUserType other)
+                {
+                    return other.TypeName == TypeName && other.Wildcard == Wildcard;
+                }
+                return false;
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(TypeName, Wildcard);
+            }
         }
 
         public FlowtideOpenFgaModelParser(AuthorizationModel authorizationModel)
@@ -230,7 +253,212 @@ namespace FlowtideDotNet.Connector.OpenFGA
             {
                 return VisitTupleToUserset(relationDefinition.TupleToUserset, relationName, typeDefinition);
             }
+            if (relationDefinition.Intersection != null)
+            {
+                return VisitIntersection(relationDefinition.Intersection, relationName, typeDefinition);
+            }
             throw new NotImplementedException();
+        }
+
+        private Result VisitIntersection(Usersets userset, string relationName, TypeDefinition typeDefinition)
+        {
+            var first = userset.Child[0];
+            var firstRel = VisitRelationDefinition(first, relationName, typeDefinition);
+
+            var rootRel = firstRel.Relation;
+            var resultTypes = firstRel.ResultUserType.ToHashSet();
+
+            for (int i = 1; i < userset.Child.Count; i++)
+            {
+                var subRel = VisitRelationDefinition(userset.Child[i], relationName, typeDefinition);
+
+                var comibedTypes = new HashSet<ResultUserType>(resultTypes);
+                foreach(var t in subRel.ResultUserType)
+                {
+                    comibedTypes.Add(t);
+                }
+                bool containsWildcard = comibedTypes.Any(x => x.Wildcard);
+
+                // No wildcard, an inner join can be used.
+                if (!containsWildcard)
+                {
+                    rootRel = new JoinRelation()
+                    {
+                        Emit = new List<int>() { 0, 1, 2, 3 },
+                        Left = rootRel,
+                        Right = subRel.Relation,
+                        Expression = new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.Equal,
+                            Arguments = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0 // Field 0 is the user field of the left one
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = rootRel.OutputLength // User field in the right
+                                    }
+                                }
+                            }
+                        }
+                    };
+                }
+                else
+                {
+                    // Wildcard, left join must be used with a filter condition.
+                    // Must have a projection that tries to select the user field that is not a wildcard.
+                    // But if both are wildcard, wildcard is returned.
+
+                    // First join checks if the user field is equal with no wildcard check
+                    var joinEqual = new JoinRelation()
+                    {
+                        Emit = new List<int>() { 0, 1, 2, 3 },
+                        Left = rootRel,
+                        Right = subRel.Relation,
+                        Type = JoinType.Left,
+                        Expression = new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.Equal,
+                            Arguments = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0 // Field 0 is the user field of the left one
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = rootRel.OutputLength // User field in the right
+                                    }
+                                }
+                            }
+                        }
+                    };
+
+                    var leftHasWildcard = resultTypes.Any(x => x.Wildcard);
+                    var rightHasWildcard = subRel.ResultUserType.Any(x => x.Wildcard);
+                    
+                    if (leftHasWildcard)
+                    {
+
+                    }
+
+
+                    throw new NotImplementedException();
+                }
+            }
+
+            return new Result() { Relation = rootRel, ResultTypes = firstRel.ResultTypes, ResultUserType = resultTypes.ToList() };
+        }
+
+        private List<ResultUserType> GetTupleToUsersetUserType(ObjectRelation objectRelation, TypeDefinition typeDefinition)
+        {
+            if (!typeDefinition.Relations.TryGetValue(objectRelation.Relation, out var relationDef))
+            {
+                throw new InvalidOperationException($"Relation {objectRelation.Relation} not found in type {typeDefinition.Type}");
+            }
+            return GetUserType(relationDef, objectRelation.Relation, typeDefinition, new HashSet<TypeReference>());
+        }
+
+        private List<ResultUserType> GetTupleToUsersetUserType(ObjectRelation objectRelation, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
+        {
+            if (!typeDefinition.Relations.TryGetValue(objectRelation.Relation, out var relationDef))
+            {
+                throw new InvalidOperationException($"Relation {objectRelation.Relation} not found in type {typeDefinition.Type}");
+            }
+            return GetUserType(relationDef, objectRelation.Relation, typeDefinition, visitedRelations);
+        }
+
+        private List<ResultUserType> GetUserType(Userset userset, string relationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
+        {
+            if (userset.This != null)
+            {
+                return GetUserTypeFromThis(userset,relationName, typeDefinition, visitedRelations);
+            }
+            else if (userset.Union != null)
+            {
+                return GetUserTypeFromUnion(userset.Union, relationName, typeDefinition, visitedRelations);
+            }
+            else if (userset.ComputedUserset != null)
+            {
+                return GetUserTypeFromComputedUserset(userset.ComputedUserset, relationName, typeDefinition, visitedRelations);
+            }
+            else if (userset.TupleToUserset != null)
+            {
+                return GetUserTypeFromTupleToUserset(userset.TupleToUserset, relationName, typeDefinition, visitedRelations);
+            }
+            throw new NotImplementedException();
+        }
+
+        private List<ResultUserType> GetUserTypeFromTupleToUserset(TupleToUserset tupleToUserset, string toRelationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
+        {
+            if (visitedRelations.Contains(new TypeReference() { Type = typeDefinition.Type, Relation = toRelationName }))
+            {
+                return new List<ResultUserType>();
+            }
+            visitedRelations.Add(new TypeReference() { Type = typeDefinition.Type, Relation = toRelationName });
+            var tuplesetResult = VisitTupleset(tupleToUserset.Tupleset, typeDefinition);
+
+            if (tuplesetResult.ResultTypes.Count > 1)
+            {
+                throw new InvalidOperationException("At this time only 1 type is allowed for tuple to userset");
+            }
+            var resultType = tuplesetResult.ResultTypes[0];
+            var userTypes = GetTupleToUsersetUserType(tupleToUserset.ComputedUserset, resultType, visitedRelations);
+
+            return userTypes;
+        }
+
+        private List<ResultUserType> GetUserTypeFromComputedUserset(ObjectRelation objectRelation, string toRelationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
+        {
+            if (!typeDefinition.Relations.TryGetValue(objectRelation.Relation, out var relationDef))
+            {
+                throw new InvalidOperationException($"Relation {objectRelation.Relation} not found in type {typeDefinition.Type}");
+            }
+            return GetUserType(relationDef, objectRelation.Relation, typeDefinition, visitedRelations);
+        }
+
+        private List<ResultUserType> GetUserTypeFromUnion(Usersets usersets, string relationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
+        {
+            HashSet<ResultUserType> resultUserTypes = new HashSet<ResultUserType>();
+            foreach(var child in usersets.Child)
+            {
+                var types = GetUserType(child, relationName, typeDefinition, visitedRelations);
+                foreach(var t in types)
+                {
+                    resultUserTypes.Add(t);
+                }
+            }
+            return resultUserTypes.ToList();
+        }
+
+        private List<ResultUserType> GetUserTypeFromThis(Userset userset, string relationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
+        {
+            visitedRelations.Add(new TypeReference() { Type = typeDefinition.Type, Relation = relationName });
+            if (!typeDefinition.Metadata.Relations.TryGetValue(relationName, out var thisRelation))
+            {
+                throw new InvalidOperationException($"Relation {relationName} not found in type {typeDefinition.Type}");
+            }
+
+            List<ResultUserType> userTypes = new List<ResultUserType>();
+            foreach(var t in thisRelation.DirectlyRelatedUserTypes)
+            {
+                userTypes.Add(new ResultUserType() { TypeName = t.Type, Wildcard = t.Wildcard != null });
+            }
+            return userTypes;
         }
 
         private Result VisitTupleToUserset(TupleToUserset tupleToUserset, string toRelationName, TypeDefinition typeDefinition)
@@ -244,6 +472,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
             var resultType = tuplesetResult.ResultTypes[0];
             typeReferences.Add(new TypeReference() { Type = resultType.Type, Relation = tupleToUserset.ComputedUserset.Relation });
 
+            var userTypes = GetTupleToUsersetUserType(tupleToUserset.ComputedUserset, resultType);
             var filterRel = new FilterRelation()
             {
                 Input = readRelation,
@@ -343,7 +572,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
             };
 
-            return new Result() { Relation = projectRel, ResultTypes = new List<TypeDefinition>() { typeDefinition } };
+            return new Result() { Relation = projectRel, ResultTypes = new List<TypeDefinition>() { typeDefinition }, ResultUserType = userTypes };
         }
 
         private Result VisitTupleset(ObjectRelation tupleSet, TypeDefinition typeDefinition)
@@ -416,7 +645,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
             };
 
             List<TypeDefinition> types = new List<TypeDefinition>();
-
+            var userTypes = new List<ResultUserType>();
             foreach (var t in thisRelation.DirectlyRelatedUserTypes)
             {
                 var typeDef = authorizationModel.TypeDefinitions.Find(x => x.Type == t.Type);
@@ -425,9 +654,10 @@ namespace FlowtideDotNet.Connector.OpenFGA
                     throw new InvalidOperationException();
                 }
                 types.Add(typeDef);
+                userTypes.Add(new ResultUserType() { TypeName = t.Type, Wildcard = t.Wildcard != null });
             }
 
-            return new Result() { Relation = filterRel, ResultTypes = types };
+            return new Result() { Relation = filterRel, ResultTypes = types, ResultUserType = userTypes };
         }
 
         private Result VisitComputedUserset(ObjectRelation objectRelation, string toRelationName, TypeDefinition typeDefinition)
@@ -457,7 +687,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
             };
 
-            return new Result() { Relation = projectRelation, ResultTypes = relation.ResultTypes };
+            return new Result() { Relation = projectRelation, ResultTypes = relation.ResultTypes, ResultUserType = new List<ResultUserType>() };
         }
 
         private Result VisitUnion(Usersets usersets, string relationName, TypeDefinition typeDefinition)
@@ -473,7 +703,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 var subRel = VisitRelationDefinition(child, relationName, typeDefinition);
                 relation.Inputs.Add(subRel.Relation);
             }
-            return new Result() { Relation = relation, ResultTypes = new List<TypeDefinition>() { typeDefinition } };//new Result() { ResultTypes = new List<TypeDefinition>() { typeDefinition } };
+            return new Result() { Relation = relation, ResultTypes = new List<TypeDefinition>() { typeDefinition }, ResultUserType = new List<ResultUserType>() };//new Result() { ResultTypes = new List<TypeDefinition>() { typeDefinition } };
         }
     }
 }

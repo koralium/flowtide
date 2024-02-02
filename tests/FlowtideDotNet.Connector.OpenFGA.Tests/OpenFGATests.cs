@@ -100,7 +100,109 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             });
         }
 
-        
+        [Fact]
+        public async Task TestInsertAlreadyExists()
+        {
+            var config = openFGAFixture.Configuration;
+
+            var model = @"
+            {
+              ""schema_version"": ""1.1"",
+              ""type_definitions"": [
+                {
+                  ""type"": ""user"",
+                  ""relations"": {},
+                  ""metadata"": null
+                },
+                {
+                  ""type"": ""doc"",
+                  ""relations"": {
+                    ""member"": {
+                      ""this"": {}
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""member"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""user""
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }";
+            var client = new OpenFgaClient(config);
+
+            var createStoreResponse = await client.CreateStore(new ClientCreateStoreRequest()
+            {
+                Name = "testalreadyexist"
+            });
+            var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+
+            var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
+
+            var conf = openFGAFixture.Configuration;
+            conf.StoreId = createStoreResponse.Id;
+            conf.AuthorizationModelId = createModelResponse.AuthorizationModelId;
+            var stream = new OpenFgaTestStream("testalreadyexist", conf);
+            stream.Generate(10);
+
+            var addTupleClient = new OpenFgaClient(conf);
+
+
+            await addTupleClient.Write(new ClientWriteRequest()
+            {
+                Writes = new List<ClientTupleKey>()
+                {
+                    new ClientTupleKey()
+                    {
+                        User = $"user:{stream.Orders[0].UserKey}",
+                        Object = $"doc:{stream.Orders[0].OrderKey}",
+                        Relation = "member"
+                    }
+                }
+            });
+
+            await stream.StartStream(@"
+                INSERT INTO openfga
+                SELECT 
+                    'user:' || o.userkey as user,
+                    'member' as relation,
+                    'doc:' || o.orderkey as object
+                FROM orders o
+            ");
+
+            var postClient = new OpenFgaClient(conf);
+            while (true)
+            {
+                var readResp = await postClient.Read(options: new ClientReadOptions() { PageSize = 100 });
+                if (readResp.Tuples.Count == 10)
+                {
+                    break;
+                }
+                await Task.Delay(10);
+            }
+
+            var firstOrder = stream.Orders[0];
+            var checkResponse = await postClient.Check(new ClientCheckRequest()
+            {
+                User = $"user:{firstOrder.UserKey}",
+                Relation = "member",
+                Object = $"doc:{firstOrder.OrderKey}"
+            });
+            var checkResponse2 = await postClient.Check(new ClientCheckRequest()
+            {
+                User = $"user:9000",
+                Relation = "member",
+                Object = $"doc:{firstOrder.OrderKey}"
+            });
+        }
+
+
 
         [Fact]
         public async Task TestReadTuples()
@@ -619,7 +721,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             });
 
 
-            var stream = new OpenFgaTestStream("testreadparsedstream", conf);
+            var stream = new OpenFgaTestStream("testparsedmodeldirect", conf);
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
             var modelPlan = new FlowtideOpenFgaModelParser(parsedModel).Parse("group", "member", "openfga");
