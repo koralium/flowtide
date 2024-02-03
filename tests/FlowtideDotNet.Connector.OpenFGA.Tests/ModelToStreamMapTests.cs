@@ -124,9 +124,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             }";
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
-
-            var parser = new FlowtideOpenFgaModelParser(parsedModel);
-            var relation = parser.Parse("doc", "can_read", "openfga");
+            var relation = OpenFgaToFlowtide.Convert(parsedModel, "doc", "can_read", "openfga");
         }
 
         [Fact]
@@ -219,8 +217,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
 
-            var parser = new FlowtideOpenFgaModelParser(parsedModel);
-            var relation = parser.Parse("role_binding", "can_read", "openfga");
+            var relation = OpenFgaToFlowtide.Convert(parsedModel, "role_binding", "can_read", "openfga");
         }
     }
 }

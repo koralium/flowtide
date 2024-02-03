@@ -6,6 +6,9 @@ sidebar_position: 8
 
 ## Source
 
+The OpenFGA source allows you to read data from OpenFGA, which can be useful to combine with other data.
+It can be combined with the authorization model permission to query parser which creates a view from your model
+for a specific permission which can then be materialized with your data.
 
 ### Output columns
 
@@ -31,7 +34,7 @@ Important to note is that one should check the watermark on the stream from Open
 To use the model to query parser with sql plan builder, write the following:
 
 ```csharp
-var modelPlan = new FlowtideOpenFgaModelParser(yourModel).Parse("{type name}", "{relation name}", "{input table name}");
+var modelPlan = OpenFgaToFlowtide.Convert(yourModel, "{type name}", "{relation name}", "{input table name}");
 sqlPlanBuilder.AddPlanAsView("permissions", modelPlan);
 
 // Add a source that matches the input table name for openfga
@@ -50,6 +53,23 @@ The view will contains the following columns:
 * object_id - identifier of the object.
 
 You can then use the data from the view to join it with other data.
+
+### Stop at types
+
+It is possible to send in an array of type names where the search should end.
+This can be useful in scenarios where say an entire company has access to a resource, it can be better to add the company identifier instead of every single user in the company.
+
+Example:
+
+```csharp
+var modelPlan = OpenFgaToFlowtide.Convert(yourModel, "{type name}", "{relation name}", "{input table name}", "company");
+```
+
+The relation name will still be the relation name you are filtering on but instead with the object type company and its identifier.
+
+This can work well with using OpenFGA *ListObjects* commands where one could list the companies a user belongs to.
+It does require that the application knows more about the authorization model, but can be a good optimization to avoid
+alot of user rows.
 
 ### How it works
 
