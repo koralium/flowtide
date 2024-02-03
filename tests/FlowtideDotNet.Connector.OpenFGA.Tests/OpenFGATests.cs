@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
         }
 
         [Fact]
-        public async Task TestSimpleModel()
+        public async Task TestInsert()
         {
             var config = openFGAFixture.Configuration;
 
@@ -69,9 +69,11 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             await stream.StartStream(@"
                 INSERT INTO openfga
                 SELECT 
-                    'user:' || o.userkey as user,
+                    'user' as user_type,
+                    o.userkey as user_id,
                     'member' as relation,
-                    'doc:' || o.orderkey as object
+                    'doc' as object_type,
+                    o.orderkey as object_id
                 FROM orders o
             ");
 
@@ -171,9 +173,11 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             await stream.StartStream(@"
                 INSERT INTO openfga
                 SELECT 
-                    'user:' || o.userkey as user,
+                    'user' as user_type,
+                    o.userkey as user_id,
                     'member' as relation,
-                    'doc:' || o.orderkey as object
+                    'doc' as object_type,
+                    o.orderkey as object_id
                 FROM orders o
             ");
 
@@ -187,20 +191,96 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 }
                 await Task.Delay(10);
             }
+        }
 
+        [Fact]
+        public async Task TestDeleteDoesNotExist()
+        {
+            var config = openFGAFixture.Configuration;
+
+            var model = @"
+            {
+              ""schema_version"": ""1.1"",
+              ""type_definitions"": [
+                {
+                  ""type"": ""user"",
+                  ""relations"": {},
+                  ""metadata"": null
+                },
+                {
+                  ""type"": ""doc"",
+                  ""relations"": {
+                    ""member"": {
+                      ""this"": {}
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""member"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""user""
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }";
+            var client = new OpenFgaClient(config);
+
+            var createStoreResponse = await client.CreateStore(new ClientCreateStoreRequest()
+            {
+                Name = "testdeletenotexist"
+            });
+            var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+
+            var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
+
+            var conf = openFGAFixture.Configuration;
+            conf.StoreId = createStoreResponse.Id;
+            conf.AuthorizationModelId = createModelResponse.AuthorizationModelId;
+            var stream = new OpenFgaTestStream("testdeletenotexist", conf);
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                INSERT INTO openfga
+                SELECT 
+                    'user' as user_type,
+                    o.userkey as user_id,
+                    'member' as relation,
+                    'doc' as object_type,
+                    o.orderkey as object_id
+                FROM orders o
+            ");
+
+            var postClient = new OpenFgaClient(conf);
+            while (true)
+            {
+                var readResp = await postClient.Read(options: new ClientReadOptions() { PageSize = 100 });
+                if (readResp.Tuples.Count == 10)
+                {
+                    break;
+                }
+                await Task.Delay(10);
+            }
             var firstOrder = stream.Orders[0];
-            var checkResponse = await postClient.Check(new ClientCheckRequest()
+            await postClient.Write(new ClientWriteRequest()
             {
-                User = $"user:{firstOrder.UserKey}",
-                Relation = "member",
-                Object = $"doc:{firstOrder.OrderKey}"
+                Deletes = new List<ClientTupleKeyWithoutCondition>()
+                {
+                    new ClientTupleKeyWithoutCondition()
+                    {
+                        User = $"user:{firstOrder.UserKey}",
+                        Object = $"doc:{firstOrder.OrderKey}",
+                        Relation = "member"
+                    }
+                }
             });
-            var checkResponse2 = await postClient.Check(new ClientCheckRequest()
-            {
-                User = $"user:9000",
-                Relation = "member",
-                Object = $"doc:{firstOrder.OrderKey}"
-            });
+            stream.DeleteOrder(firstOrder);
+
+            await stream.HealthyFor(TimeSpan.FromSeconds(2));
         }
 
 
@@ -1060,7 +1140,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
             var createStoreResponse = await client.CreateStore(new ClientCreateStoreRequest()
             {
-                Name = "teststore4"
+                Name = "TestReadParsedModelWithStopType"
             });
             var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
 
@@ -1124,7 +1204,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 }
             });
 
-            var stream = new OpenFgaTestStream("testreadparsedstream", conf);
+            var stream = new OpenFgaTestStream("TestReadParsedModelWithStopType", conf);
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
             var modelPlan = OpenFgaToFlowtide.Convert(parsedModel, "doc", "can_read", "openfga", "group");

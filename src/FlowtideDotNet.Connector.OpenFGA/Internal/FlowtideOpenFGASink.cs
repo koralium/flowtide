@@ -31,9 +31,11 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 {
     internal class FlowtideOpenFGASink : SimpleGroupedWriteOperator
     {
-        private readonly int m_userIndex;
+        private readonly int m_userTypeIndex;
+        private readonly int m_userIdIndex;
         private readonly int m_relationIndex;
-        private readonly int m_objectIndex;
+        private readonly int m_objectTypeIndex;
+        private readonly int m_objectIdIndex;
         private readonly int m_authorizationModelIdIndex;
         private readonly List<int> m_primaryKeys;
         private readonly OpenFGASinkOptions m_openFGASinkOptions;
@@ -41,23 +43,33 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         public FlowtideOpenFGASink(OpenFGASinkOptions openFGASinkOptions, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
         {
-            m_userIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("user", StringComparison.OrdinalIgnoreCase));
-            if (m_userIndex == -1)
+            m_userTypeIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("user_type", StringComparison.OrdinalIgnoreCase));
+            if (m_userTypeIndex == -1)
             {
-                throw new InvalidOperationException("OpenFGA requires a user field");
+                throw new InvalidOperationException("OpenFGA requires a user_type field");
+            }
+            m_userIdIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("user_id", StringComparison.OrdinalIgnoreCase));
+            if (m_userIdIndex == -1)
+            {
+                throw new InvalidOperationException("OpenFGA requires a user_id field");
             }
             m_relationIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("relation", StringComparison.OrdinalIgnoreCase));
             if (m_relationIndex == -1)
             {
                 throw new InvalidOperationException("OpenFGA requires a relation field");
             }
-            m_objectIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("object", StringComparison.OrdinalIgnoreCase));
-            if (m_objectIndex == -1)
+            m_objectTypeIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("object_type", StringComparison.OrdinalIgnoreCase));
+            if (m_objectTypeIndex == -1)
             {
-                throw new InvalidOperationException("OpenFGA requires a object field");
+                throw new InvalidOperationException("OpenFGA requires a object_type field");
+            }
+            m_objectIdIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("object_id", StringComparison.OrdinalIgnoreCase));
+            if (m_objectIdIndex == -1)
+            {
+                throw new InvalidOperationException("OpenFGA requires a object_id field");
             }
             m_authorizationModelIdIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("authorizationModelId", StringComparison.OrdinalIgnoreCase));
-            m_primaryKeys = new List<int>() { m_userIndex, m_relationIndex, m_objectIndex };
+            m_primaryKeys = new List<int>() { m_userTypeIndex, m_userIdIndex, m_relationIndex, m_objectTypeIndex, m_objectIdIndex };
             this.m_openFGASinkOptions = openFGASinkOptions;
         }
 
@@ -94,29 +106,33 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         private ClientTupleKey GetClientTupleKey(SimpleChangeEvent row)
         {
-            var userColumn = row.Row.GetColumnRef(m_userIndex);
+            var userTypeColumn = row.Row.GetColumnRef(m_userTypeIndex);
+            var userIdColumn = row.Row.GetColumnRef(m_userIdIndex);
             var relationColumn = row.Row.GetColumnRef(m_relationIndex);
-            var objectColumn = row.Row.GetColumnRef(m_objectIndex);
+            var objectTypeColumn = row.Row.GetColumnRef(m_objectTypeIndex);
+            var objectIdColumn = row.Row.GetColumnRef(m_objectIdIndex);
 
             return new ClientTupleKey()
             {
-                User = ColumnToString(userColumn),
+                User = $"{ColumnToString(userTypeColumn)}:{ColumnToString(userIdColumn)}",
                 Relation = ColumnToString(relationColumn),
-                Object = ColumnToString(objectColumn)
+                Object = $"{ColumnToString(objectTypeColumn)}:{ColumnToString(objectIdColumn)}"
             };
         }
 
         private ClientTupleKeyWithoutCondition GetClientTupleKeyWithoutCondition(SimpleChangeEvent row)
         {
-            var userColumn = row.Row.GetColumnRef(m_userIndex);
+            var userTypeColumn = row.Row.GetColumnRef(m_userTypeIndex);
+            var userIdColumn = row.Row.GetColumnRef(m_userIdIndex);
             var relationColumn = row.Row.GetColumnRef(m_relationIndex);
-            var objectColumn = row.Row.GetColumnRef(m_objectIndex);
+            var objectTypeColumn = row.Row.GetColumnRef(m_objectTypeIndex);
+            var objectIdColumn = row.Row.GetColumnRef(m_objectIdIndex);
 
             return new ClientTupleKeyWithoutCondition()
             {
-                User = ColumnToString(userColumn),
+                User = $"{ColumnToString(userTypeColumn)}:{ColumnToString(userIdColumn)}",
                 Relation = ColumnToString(relationColumn),
-                Object = ColumnToString(objectColumn)
+                Object = $"{ColumnToString(objectTypeColumn)}:{ColumnToString(objectIdColumn)}"
             };
         }
 
@@ -176,7 +192,24 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                             {
                                 if (x.IsFaulted)
                                 {
-                                    Logger.LogError(x.Exception, "Exception deleting from store");
+                                    if (x.Exception != null)
+                                    {
+                                        if (x.Exception.InnerException is OpenFga.Sdk.Exceptions.FgaApiValidationError apiErrorEx &&
+                                        apiErrorEx.ApiError.ErrorCode == "write_failed_due_to_invalid_input")
+                                        {
+                                            // Already exists
+                                            return;
+                                        }
+                                        else
+                                        {
+                                            Logger.LogError(x.Exception, "Exception writing to store");
+                                            throw x.Exception;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        throw new InvalidOperationException("Unknown error sending data to OpenFGA");
+                                    }
                                 }
                             });
                     }
@@ -190,7 +223,24 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                         {
                             if (x.IsFaulted)
                             {
-                                Logger.LogError(x.Exception, "Exception deleting from store");
+                                if (x.Exception != null)
+                                {
+                                    if (x.Exception.InnerException is OpenFga.Sdk.Exceptions.FgaApiValidationError apiErrorEx &&
+                                    apiErrorEx.ApiError.ErrorCode == "write_failed_due_to_invalid_input")
+                                    {
+                                        // Already exists
+                                        return;
+                                    }
+                                    else
+                                    {
+                                        Logger.LogError(x.Exception, "Exception writing to store");
+                                        throw x.Exception;
+                                    }
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException("Unknown error sending data to OpenFGA");
+                                }
                             }
                         });
                     }
@@ -221,7 +271,24 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                             {
                                 if (x.IsFaulted)
                                 {
-                                    Logger.LogError(x.Exception, "Exception deleting from store");
+                                    if (x.Exception != null)
+                                    {
+                                        if (x.Exception.InnerException is OpenFga.Sdk.Exceptions.FgaApiValidationError apiErrorEx &&
+                                        apiErrorEx.ApiError.ErrorCode == "write_failed_due_to_invalid_input")
+                                        {
+                                            // Already exists
+                                            return;
+                                        }
+                                        else
+                                        {
+                                            Logger.LogError(x.Exception, "Exception writing to store");
+                                            throw x.Exception;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        throw new InvalidOperationException("Unknown error sending data to OpenFGA");
+                                    }
                                 }
                             });
                     }
@@ -246,7 +313,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                                     }
                                     else
                                     {
-                                        Logger.LogError(x.Exception, "Exception deleting from store");
+                                        Logger.LogError(x.Exception, "Exception writing to store");
                                         throw x.Exception;
                                     }
                                 }

@@ -86,6 +86,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.DeleteUser(user);
         }
 
+        public void DeleteOrder(Order order)
+        {
+            generator.DeleteOrder(order);
+        }
+
         public async Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default, TimeSpan? timestampInterval = default)
         {
             if (stateSerializeOptions == null)
@@ -154,6 +159,29 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 graph = _stream.GetDiagnosticsGraph();
                 await scheduler!.Tick();
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
+            }
+        }
+
+        public async Task HealthyFor(TimeSpan time)
+        {
+            var graph = _stream.GetDiagnosticsGraph();
+            var scheduler = _stream.Scheduler as DefaultStreamScheduler;
+
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            while (_stream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            {
+                if (stopwatch.Elapsed.CompareTo(time) > 0)
+                {
+                    break;
+                }
+                graph = _stream.GetDiagnosticsGraph();
+                await scheduler!.Tick();
+                await Task.Delay(TimeSpan.FromMilliseconds(10));
+            }
+            if (graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running || graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running)
+            {
+                Assert.Fail("Stream failed");
             }
         }
 

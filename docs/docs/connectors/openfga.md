@@ -4,11 +4,67 @@ sidebar_position: 8
 
 # OpenFGA Connector
 
+OpenFGA is a system that allows the implementation of fine grained authorization. This connector allows both sending and reading data into OpenFGA, with the addition of materializing permission tuples together with the data for use-cases that requires combining permissions with queries such as listing what a user has access to.
+
+## Sink
+
+The OpenFGA sink allows you to write data into OpenFGA.
+
+These columns are required to insert data:
+
+* **user_type** - user type
+* **user_id** - identifier of the user
+* **relation** - relation name
+* **object_type** - object type
+* **object_id** - identifier of the object. 
+
+To use the *OpenFGA Sink* add the following line to the *ReadWriteFactory*:
+
+```csharp
+factory.AddOpenFGASink("regex pattern for tablename", new OpenFGASinkOptions
+{
+    ClientConfiguration = clientConfiguration
+});
+```
+
+Sql example:
+
+```sql
+INSERT INTO openfga
+SELECT 
+    'user' as user_type,
+    o.userkey as user_id,
+    'member' as relation,
+    'doc' as object_type,
+    o.orderkey as object_id
+FROM orders o
+```
+
+### Events
+
+The sink provides multiple event listeners to be able to extend the solution such as writing to an external store.
+It may be useful to write to an external store what has been written to *OpenFGA*, to be able to clean up
+what was written from a stream.
+
+* **BeforeWriteFunc** - Called before each write of a tuple, can be called multiple times in parallel.
+* **BeforeDeleteFunc** - Called before each delete of a tuple, can be called multiple times in parallel.
+* **OnInitialDataSentFunc** - Called after all initial data has been written for the first time of a stream.
+* **OnWatermarkFunc** - Called after a write with the new watermarks of the source systems that have contributed to the data written.
+
 ## Source
 
 The OpenFGA source allows you to read data from OpenFGA, which can be useful to combine with other data.
 It can be combined with the authorization model permission to query parser which creates a view from your model
 for a specific permission which can then be materialized with your data.
+
+The source is added to the read write factory with the following line:
+
+```csharp
+factory.AddOpenFGASource("regex pattern for tablename", new OpenFGASourceOptions
+{
+    ClientConfiguration = clientConfiguration
+});
+```
 
 ### Output columns
 

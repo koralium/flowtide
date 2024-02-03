@@ -65,6 +65,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             mockTable.Delete(new List<User>() { user });
         }
 
+        public void DeleteOrder(Order order)
+        {
+            var index = Orders.FindIndex(x => x.OrderKey == order.OrderKey);
+
+            Orders.RemoveAt(index);
+
+            var mockTable = mockDatabase.GetOrCreateTable<Order>("orders");
+            mockTable.Delete(new List<Order>() { order });
+        }
+
         private void GenerateUsers(int count)
         {
             string?[] nullableStrings = new string?[] { null, "value" };
