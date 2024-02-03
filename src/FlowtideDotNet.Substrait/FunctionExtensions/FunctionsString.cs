@@ -22,6 +22,9 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string LTrim = "ltrim";
         public const string RTrim = "rtrim";
         public const string To_String = "to_string";
+        public const string StartsWith = "starts_with";
+        public const string Substring = "substring";
+
         public const string StringAgg = "string_agg";
     }
 }

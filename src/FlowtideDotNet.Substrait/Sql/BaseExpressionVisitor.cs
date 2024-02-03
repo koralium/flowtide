@@ -84,7 +84,16 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitNested(nested, state);
             }
+            if (expression is Expression.Substring substring)
+            {
+                return VisitSubstring(substring, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitSubstring(Expression.Substring substring, TState state)
+        {
+            throw new NotImplementedException($"The expression '{substring.GetType().Name}' is not supported in SQL");
         }
 
         protected virtual TReturn VisitNested(Expression.Nested nested, TState state)
