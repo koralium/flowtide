@@ -446,5 +446,10 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         {
             return _links.Select(x => x.Item1);
         }
+
+        public virtual Task CheckpointDone(long checkpointVersion)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

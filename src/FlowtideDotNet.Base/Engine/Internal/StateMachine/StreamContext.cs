@@ -298,6 +298,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
+        internal async Task ForEachIngressBlockAsync(Func<string, IStreamVertex, Task> action)
+        {
+            foreach (var block in ingressBlocks)
+            {
+                await action(block.Key, block.Value);
+            }
+        }
+
         internal List<Task> GetCompletionTasks()
         {
             List<Task> completionTasks = new List<Task>();
