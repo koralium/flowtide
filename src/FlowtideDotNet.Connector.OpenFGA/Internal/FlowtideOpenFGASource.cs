@@ -20,13 +20,8 @@ using FlowtideDotNet.Substrait.Relations;
 using OpenFga.Sdk.Client;
 using OpenFga.Sdk.Client.Model;
 using OpenFga.Sdk.Model;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Internal
@@ -175,39 +170,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             if (changes.Changes.Count > 0)
             {
                 await output.EnterCheckpointLock();
-                do
-                {
-                    List<RowEvent> outputData = new List<RowEvent>();
-                    foreach (var change in changes.Changes)
-                    {
-                        FlxValue[] arr = new FlxValue[m_encoders.Count];
-                        for (int i = 0; i < m_encoders.Count; i++)
-                        {
-                            m_encoders[i](change.TupleKey, i, arr);
-                        }
-                        var row = new ArrayRowData(arr);
-                        if (change.Operation == TupleOperation.WRITE)
-                        {
-                            outputData.Add(new RowEvent(1, 0, row));
-                        }
-                        else
-                        {
-                            outputData.Add(new RowEvent(-1, 0, row));
-                        }
-                        var timestamp = new DateTimeOffset(change.Timestamp).ToUnixTimeMilliseconds();
-                        if (timestamp > m_state.LastTimestamp)
-                        {
-                            m_state.LastTimestamp = timestamp;
-                        }
-                    }
-                    await output.SendAsync(new StreamEventBatch(outputData));
-                    m_state.ContinuationToken = changes.ContinuationToken;
-
-                    changes = await m_client.ReadChanges(request, options: new OpenFga.Sdk.Client.Model.ClientReadChangesOptions()
-                    {
-                        ContinuationToken = m_state.ContinuationToken,
-                    });
-                } while (changes.Changes.Count > 0);
+                await SendChanges(request, changes, output);
                 await output.SendWatermark(new Watermark(WatermarkName, m_state.LastTimestamp));
                 output.ExitCheckpointLock();
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
@@ -239,31 +202,12 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             return Task.FromResult(m_state);
         }
 
-        protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
+        private async Task SendChanges(ClientReadChangesRequest request, ReadChangesResponse changes, IngressOutput<StreamEventBatch> output)
         {
-            Debug.Assert(m_client != null);
-            Debug.Assert(m_state != null);
-
-            ClientReadChangesRequest? request = default;
-
-            if (m_objectTypeFilter != null)
-            {
-                request = new ClientReadChangesRequest()
-                {
-                    Type = m_objectTypeFilter
-                };
-            }
-
-            await output.EnterCheckpointLock();
-            var changes = await m_client.ReadChanges(request, options: new OpenFga.Sdk.Client.Model.ClientReadChangesOptions()
-            {
-                ContinuationToken = m_state.ContinuationToken,
-            });
-            
             do
             {
                 List<RowEvent> outputData = new List<RowEvent>();
-                foreach(var change in changes.Changes)
+                foreach (var change in changes.Changes)
                 {
                     FlxValue[] arr = new FlxValue[m_encoders.Count];
                     for (int i = 0; i < m_encoders.Count; i++)
@@ -288,12 +232,36 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 }
                 await output.SendAsync(new StreamEventBatch(outputData));
                 m_state.ContinuationToken = changes.ContinuationToken;
-                
+
                 changes = await m_client.ReadChanges(request, options: new OpenFga.Sdk.Client.Model.ClientReadChangesOptions()
                 {
                     ContinuationToken = m_state.ContinuationToken,
                 });
             } while (changes.Changes.Count > 0);
+        }
+
+        protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
+        {
+            Debug.Assert(m_client != null);
+            Debug.Assert(m_state != null);
+
+            ClientReadChangesRequest? request = default;
+
+            if (m_objectTypeFilter != null)
+            {
+                request = new ClientReadChangesRequest()
+                {
+                    Type = m_objectTypeFilter
+                };
+            }
+
+            await output.EnterCheckpointLock();
+            var changes = await m_client.ReadChanges(request, options: new OpenFga.Sdk.Client.Model.ClientReadChangesOptions()
+            {
+                ContinuationToken = m_state.ContinuationToken,
+            });
+
+            await SendChanges(request, changes, output);
 
             await output.SendWatermark(new Watermark(WatermarkName, m_state.LastTimestamp));
             output.ExitCheckpointLock();
