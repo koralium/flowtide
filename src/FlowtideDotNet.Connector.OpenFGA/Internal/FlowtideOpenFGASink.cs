@@ -155,12 +155,14 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         {
             if (task.IsFaulted)
             {
-                if (task.Exception != null &&
-                    !(task.Exception.InnerException is OpenFga.Sdk.Exceptions.FgaApiValidationError apiErrorEx &&
-                    apiErrorEx.ApiError.ErrorCode == "write_failed_due_to_invalid_input"))
+                if (task.Exception != null)
                 {
-                    Logger.LogError(task.Exception, "Exception writing to store");
-                    throw task.Exception;
+                    if (!(task.Exception.InnerException is OpenFga.Sdk.Exceptions.FgaApiValidationError apiErrorEx &&
+                    apiErrorEx.ApiError.ErrorCode == "write_failed_due_to_invalid_input"))
+                    {
+                        Logger.LogError(task.Exception, "Exception writing to store");
+                        throw task.Exception;
+                    }
                 }
                 else
                 {
