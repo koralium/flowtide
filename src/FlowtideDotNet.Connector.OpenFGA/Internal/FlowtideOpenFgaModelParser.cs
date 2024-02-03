@@ -96,7 +96,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         public sealed class ResultUserType
         {
-            public string TypeName { get; set; }
+            public required string TypeName { get; set; }
 
             public bool Wildcard { get; set; }
 
@@ -283,7 +283,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 {
                     break;
                 }
-                var t = typeReferences.Except(handledTypeReferences).FirstOrDefault();
+                var t = typeReferences.Except(handledTypeReferences).First();
                 handledTypeReferences.Add(t);
                 var typeDefinition = authorizationModel.TypeDefinitions.Find(x => x.Type.Equals(t.Type, StringComparison.OrdinalIgnoreCase));
 
@@ -430,6 +430,14 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         private (List<ResultUserType>, bool isDirect) GetTupleToUsersetUserType(ObjectRelation objectRelation, TypeDefinition typeDefinition)
         {
+            if (typeDefinition.Relations == null)
+            {
+                throw new InvalidOperationException($"Type {typeDefinition.Type} has no relations defined");
+            }
+            if (objectRelation.Relation == null)
+            {
+                throw new InvalidOperationException("Relation is null in object relation.");
+            }
             if (!typeDefinition.Relations.TryGetValue(objectRelation.Relation, out var relationDef))
             {
                 throw new InvalidOperationException($"Relation {objectRelation.Relation} not found in type {typeDefinition.Type}");
@@ -439,6 +447,14 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         private List<ResultUserType> GetTupleToUsersetUserType(ObjectRelation objectRelation, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
         {
+            if (typeDefinition.Relations == null)
+            {
+                throw new InvalidOperationException($"Type {typeDefinition.Type} has no relations defined");
+            }
+            if (objectRelation.Relation == null)
+            {
+                throw new InvalidOperationException("Relation is null in object relation.");
+            }
             if (!typeDefinition.Relations.TryGetValue(objectRelation.Relation, out var relationDef))
             {
                 throw new InvalidOperationException($"Relation {objectRelation.Relation} not found in type {typeDefinition.Type}");
@@ -488,6 +504,14 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         private List<ResultUserType> GetUserTypeFromComputedUserset(ObjectRelation objectRelation, string toRelationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
         {
+            if (typeDefinition.Relations == null)
+            {
+                throw new InvalidOperationException($"Type {typeDefinition.Type} has no relations defined");
+            }
+            if (objectRelation.Relation == null)
+            {
+                throw new InvalidOperationException("Relation is null in object relation.");
+            }
             if (!typeDefinition.Relations.TryGetValue(objectRelation.Relation, out var relationDef))
             {
                 throw new InvalidOperationException($"Relation {objectRelation.Relation} not found in type {typeDefinition.Type}");
@@ -512,9 +536,21 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         private static List<ResultUserType> GetUserTypeFromThis(Userset userset, string relationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
         {
             visitedRelations.Add(new TypeReference() { Type = typeDefinition.Type, Relation = relationName });
+            if (typeDefinition.Metadata == null)
+            {
+                throw new InvalidOperationException($"Type {typeDefinition.Type} has no metadata defined");
+            }
+            if (typeDefinition.Metadata.Relations == null)
+            {
+                throw new InvalidOperationException($"Type {typeDefinition.Type} has no relations defined");
+            }
             if (!typeDefinition.Metadata.Relations.TryGetValue(relationName, out var thisRelation))
             {
                 throw new InvalidOperationException($"Relation {relationName} not found in type {typeDefinition.Type}");
+            }
+            if (thisRelation.DirectlyRelatedUserTypes == null)
+            {
+                throw new InvalidOperationException($"Relation {relationName} has no directly related user types defined");
             }
 
             List<ResultUserType> userTypes = new List<ResultUserType>();
@@ -569,9 +605,19 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
             var (userTypes, isDirect) = GetTupleToUsersetUserType(tupleToUserset.ComputedUserset, resultType);
 
+            if (tupleToUserset.ComputedUserset.Relation == null)
+            {
+                throw new InvalidOperationException("Relation is null in computed userset.");
+            }
+
             if (!isDirect)
             {
                 typeReferences.Add(new TypeReference() { Type = resultType.Type, Relation = tupleToUserset.ComputedUserset.Relation });
+            }
+
+            if (readRelation == null)
+            {
+                throw new InvalidOperationException("Read relation is null");
             }
 
             var filterRel = CreateRelationTypeFilter(readRelation, tupleToUserset.ComputedUserset.Relation, resultType.Type);
@@ -669,6 +715,14 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         private Result VisitTupleset(ObjectRelation tupleSet, TypeDefinition typeDefinition)
         {
+            if (typeDefinition.Relations == null)
+            {
+                throw new InvalidOperationException($"Type {typeDefinition.Type} has no relations defined");
+            }
+            if (tupleSet.Relation == null)
+            {
+                throw new InvalidOperationException("Relation is null in object relation.");
+            }
             if (!typeDefinition.Relations.TryGetValue(tupleSet.Relation, out var relationDef))
             {
                 throw new InvalidOperationException($"Relation {tupleSet.Relation} not found in type {typeDefinition.Type}");
@@ -678,11 +732,26 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         private Result VisitThis(Userset userset, string relationName, TypeDefinition typeDefinition)
         {
+            if (typeDefinition.Metadata == null)
+            {
+                throw new InvalidOperationException($"Type {typeDefinition.Type} has no metadata defined");
+            }
+            if (typeDefinition.Metadata.Relations == null)
+            {
+                throw new InvalidOperationException($"Type {typeDefinition.Type} has no relations defined");
+            }
             if (!typeDefinition.Metadata.Relations.TryGetValue(relationName, out var thisRelation))
             {
                 throw new InvalidOperationException($"Relation {relationName} not found in type {typeDefinition.Type}");
             }
-
+            if (thisRelation.DirectlyRelatedUserTypes == null)
+            {
+                throw new InvalidOperationException($"Relation {relationName} has no directly related user types defined");
+            }
+            if (readRelation == null)
+            {
+                throw new InvalidOperationException("Read relation is null");
+            }
 
             // Create a filter that checks that the relation name is equal and the type is equal to the expected type.
             var filterRel = new FilterRelation()
@@ -756,6 +825,14 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         private Result VisitComputedUserset(ObjectRelation objectRelation, string toRelationName, TypeDefinition typeDefinition)
         {
+            if (typeDefinition.Relations == null)
+            {
+                throw new InvalidOperationException($"Type {typeDefinition.Type} has no relations defined");
+            }
+            if (objectRelation.Relation == null)
+            {
+                throw new InvalidOperationException("Relation is null in object relation.");
+            }
             if (!typeDefinition.Relations.TryGetValue(objectRelation.Relation, out var relationDef))
             {
                 throw new InvalidOperationException($"Relation {objectRelation.Relation} not found in type {typeDefinition.Type}");

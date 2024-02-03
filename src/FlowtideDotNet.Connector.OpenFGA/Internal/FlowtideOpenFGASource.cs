@@ -202,8 +202,11 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             return Task.FromResult(m_state);
         }
 
-        private async Task SendChanges(ClientReadChangesRequest request, ReadChangesResponse changes, IngressOutput<StreamEventBatch> output)
+        private async Task SendChanges(ClientReadChangesRequest? request, ReadChangesResponse changes, IngressOutput<StreamEventBatch> output)
         {
+            Debug.Assert(m_client != null);
+            Debug.Assert(m_state != null);
+
             do
             {
                 List<RowEvent> outputData = new List<RowEvent>();
