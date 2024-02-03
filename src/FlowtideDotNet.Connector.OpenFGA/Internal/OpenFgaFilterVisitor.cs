@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 switch (scalarFunction.ExtensionName)
                 {
                     case FunctionsComparison.Equal:
-                        return VisitEqualComparison(scalarFunction, state);
+                        return VisitEqualComparison(scalarFunction);
                 }
             }
             if (scalarFunction.ExtensionUri == FunctionsBoolean.Uri)
@@ -78,7 +78,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             return false;
         }
 
-        private string? VisitEqualComparison(ScalarFunction scalarFunction, object? state)
+        private string? VisitEqualComparison(ScalarFunction scalarFunction)
         {
             Debug.Assert(scalarFunction.Arguments.Count == 2);
 

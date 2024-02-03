@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 Name = "teststore1"
             });
             var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
-            
+            Assert.NotNull(authModelRequest);
             var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
 
             var conf = openFGAFixture.Configuration;
@@ -191,6 +191,8 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 }
                 await Task.Delay(10);
             }
+
+            await stream.HealthyFor(TimeSpan.FromSeconds(2));
         }
 
         [Fact]

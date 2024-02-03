@@ -326,7 +326,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         {
             if (relationDefinition.This != null)
             {
-                return VisitThis(relationDefinition, relationName, typeDefinition);
+                return VisitThis(relationName, typeDefinition);
             }
             if (relationDefinition.Union != null)
             {
@@ -396,7 +396,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                     setRelation.Inputs.Add(joinEqual);
 
                     var leftHasWildcard = resultTypes.Any(x => x.Wildcard);
-                    var rightHasWildcard = subRel.ResultUserType.Any(x => x.Wildcard);
+                    var rightHasWildcard = subRel.ResultUserType.Exists(x => x.Wildcard);
 
                     if (leftHasWildcard)
                     {
@@ -466,7 +466,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         {
             if (userset.This != null)
             {
-                return (GetUserTypeFromThis(userset, relationName, typeDefinition, visitedRelations), true);
+                return (GetUserTypeFromThis(relationName, typeDefinition, visitedRelations), true);
             }
             else if (userset.Union != null)
             {
@@ -474,7 +474,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             }
             else if (userset.ComputedUserset != null)
             {
-                return (GetUserTypeFromComputedUserset(userset.ComputedUserset, relationName, typeDefinition, visitedRelations), false);
+                return (GetUserTypeFromComputedUserset(userset.ComputedUserset, typeDefinition, visitedRelations), false);
             }
             else if (userset.TupleToUserset != null)
             {
@@ -502,7 +502,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             return userTypes;
         }
 
-        private List<ResultUserType> GetUserTypeFromComputedUserset(ObjectRelation objectRelation, string toRelationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
+        private List<ResultUserType> GetUserTypeFromComputedUserset(ObjectRelation objectRelation, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
         {
             if (typeDefinition.Relations == null)
             {
@@ -533,7 +533,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             return resultUserTypes.ToList();
         }
 
-        private static List<ResultUserType> GetUserTypeFromThis(Userset userset, string relationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
+        private static List<ResultUserType> GetUserTypeFromThis(string relationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
         {
             visitedRelations.Add(new TypeReference() { Type = typeDefinition.Type, Relation = relationName });
             if (typeDefinition.Metadata == null)
@@ -730,7 +730,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             return VisitRelationDefinition(relationDef, tupleSet.Relation, typeDefinition);
         }
 
-        private Result VisitThis(Userset userset, string relationName, TypeDefinition typeDefinition)
+        private Result VisitThis(string relationName, TypeDefinition typeDefinition)
         {
             if (typeDefinition.Metadata == null)
             {

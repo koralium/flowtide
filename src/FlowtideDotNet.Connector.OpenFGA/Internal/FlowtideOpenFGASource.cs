@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         private FlowtideOpenFgaSourceState? m_state;
 
         private readonly List<Action<TupleKey, int, FlxValue[]>> m_encoders;
-        private FlexBuffer flexBuffer;
+        private readonly FlexBuffer flexBuffer;
         private Task? _changesTask;
         private readonly string? m_objectTypeFilter;
 

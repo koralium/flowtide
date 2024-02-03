@@ -164,6 +164,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public async Task HealthyFor(TimeSpan time)
         {
+            Debug.Assert(_stream != null);
             var graph = _stream.GetDiagnosticsGraph();
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
 
