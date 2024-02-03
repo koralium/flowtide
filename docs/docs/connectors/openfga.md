@@ -23,6 +23,12 @@ This is done to reduce memory consumption in the system since there is a low car
 
 ## Authorization model permission to query
 
+:::warning
+
+Authorization model permission to query is still experimental.
+
+:::
+
 It is possible to take in a authorization model and denormalize the permission for a specific type.
 This can be useful if one wants to add permisison data to a non relational database such as a search engine to allow searching based on user permissions.
 
