@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
     public class ModelToStreamMapTests
     {
         [Fact]
-        public async Task TestParseModelToView()
+        public void TestParseModelToView()
         {
             var model = @"
             {
@@ -128,7 +128,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
         }
 
         [Fact]
-        public async Task TestParseModelWithAndWildcard()
+        public void TestParseModelWithAndWildcard()
         {
             var model = @"
             {

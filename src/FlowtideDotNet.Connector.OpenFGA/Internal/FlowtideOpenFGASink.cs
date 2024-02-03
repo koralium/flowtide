@@ -155,19 +155,12 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         {
             if (task.IsFaulted)
             {
-                if (task.Exception != null)
+                if (task.Exception != null &&
+                    !(task.Exception.InnerException is OpenFga.Sdk.Exceptions.FgaApiValidationError apiErrorEx &&
+                    apiErrorEx.ApiError.ErrorCode == "write_failed_due_to_invalid_input"))
                 {
-                    if (task.Exception.InnerException is OpenFga.Sdk.Exceptions.FgaApiValidationError apiErrorEx &&
-                    apiErrorEx.ApiError.ErrorCode == "write_failed_due_to_invalid_input")
-                    {
-                        // Already exists
-                        return;
-                    }
-                    else
-                    {
-                        Logger.LogError(task.Exception, "Exception writing to store");
-                        throw task.Exception;
-                    }
+                    Logger.LogError(task.Exception, "Exception writing to store");
+                    throw task.Exception;
                 }
                 else
                 {
@@ -211,23 +204,23 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                                 await m_openFgaClient.Write(new ClientWriteRequest()
                                 {
                                     Deletes = new List<ClientTupleKeyWithoutCondition>() { tuple }
-                                }, clientWriteOptions);
-                            })
+                                }, clientWriteOptions, cancellationToken);
+                            }, cancellationToken)
                             .ContinueWith(x =>
                             {
                                 ValidateResponse(x);
-                            });
+                            }, cancellationToken);
                     }
                     else
                     {
                         task = m_openFgaClient.Write(new ClientWriteRequest()
                         {
                             Deletes = new List<ClientTupleKeyWithoutCondition>() { tuple }
-                        }, clientWriteOptions)
+                        }, clientWriteOptions, cancellationToken)
                         .ContinueWith(x =>
                         {
                             ValidateResponse(x);
-                        });
+                        }, cancellationToken);
                     }
 
                     tasks.Add(task);
@@ -250,23 +243,23 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                                 await m_openFgaClient.Write(new ClientWriteRequest()
                                 {
                                     Writes = new List<ClientTupleKey>() { tuple }
-                                }, clientWriteOptions);
-                            })
+                                }, clientWriteOptions, cancellationToken);
+                            }, cancellationToken)
                             .ContinueWith(x =>
                             {
                                 ValidateResponse(x);
-                            });
+                            }, cancellationToken);
                     }
                     else
                     {
                         task = m_openFgaClient.Write(new ClientWriteRequest()
                         {
                             Writes = new List<ClientTupleKey>() { tuple }
-                        }, clientWriteOptions)
+                        }, clientWriteOptions, cancellationToken)
                         .ContinueWith(x =>
                         {
                             ValidateResponse(x);
-                        });
+                        }, cancellationToken);
                     }
 
                     tasks.Add(task);

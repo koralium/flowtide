@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         private OpenFgaClient? m_client;
         private FlowtideOpenFgaSourceState? m_state;
 
-        private List<Action<TupleKey, int, FlxValue[]>> m_encoders;
+        private readonly List<Action<TupleKey, int, FlxValue[]>> m_encoders;
         private FlexBuffer flexBuffer;
         private Task? _changesTask;
         private readonly string? m_objectTypeFilter;
@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         /// Cache for types and relation values
         /// These will be low cardinality and can be cached to reduce memory consumption in the stream.
         /// </summary>
-        private Dictionary<string, FlxValue> _typesAndRelationValues = new Dictionary<string, FlxValue>();
+        private readonly Dictionary<string, FlxValue> _typesAndRelationValues = new Dictionary<string, FlxValue>();
 
         public FlowtideOpenFgaSource(OpenFgaSourceOptions openFgaOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {

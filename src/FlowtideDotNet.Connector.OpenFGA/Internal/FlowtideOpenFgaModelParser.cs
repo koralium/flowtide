@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 {
     internal partial class FlowtideOpenFgaModelParser
     {
-        private class TypeReference
+        private sealed class TypeReference
         {
             public required string Type { get; set; }
 
@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             }
         }
 
-        private class TupleReference
+        private sealed class TupleReference
         {
             public required string UserType { get; set; }
 
@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         private const int ObjectTypeColumn = 3;
         private const int ObjectIdColumn = 4;
 
-        private class Result
+        private sealed class Result
         {
             public required List<TypeDefinition> ResultTypes { get; set; }
 
@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             public required HashSet<TupleReference> NonComputedTypes { get; set; }
         }
 
-        public class ResultUserType
+        public sealed class ResultUserType
         {
             public string TypeName { get; set; }
 
@@ -509,7 +509,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             return resultUserTypes.ToList();
         }
 
-        private List<ResultUserType> GetUserTypeFromThis(Userset userset, string relationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
+        private static List<ResultUserType> GetUserTypeFromThis(Userset userset, string relationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
         {
             visitedRelations.Add(new TypeReference() { Type = typeDefinition.Type, Relation = relationName });
             if (!typeDefinition.Metadata.Relations.TryGetValue(relationName, out var thisRelation))
