@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.OpenFGA
 {
-    public class OpenFGASourceOptions
+    public class OpenFgaSourceOptions
     {
         /// <summary>
         /// The OpenFGA client configuration.

@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
         protected override void AddWriteResolvers(ReadWriteFactory factory)
         {
-            factory.AddOpenFGASink("openfga", new OpenFGASinkOptions
+            factory.AddOpenFGASink("openfga", new OpenFgaSinkOptions
             {
                 ClientConfiguration = clientConfiguration
             });
@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
         protected override void AddReadResolvers(ReadWriteFactory factory)
         {
-            factory.AddOpenFGASource("openfga", new OpenFGASourceOptions
+            factory.AddOpenFGASource("openfga", new OpenFgaSourceOptions
             {
                 ClientConfiguration = clientConfiguration
             });

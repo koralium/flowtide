@@ -26,16 +26,16 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Internal
 {
-    internal class FlowtideOpenFGASourceState 
+    internal class FlowtideOpenFgaSourceState 
     {
         public string? ContinuationToken { get; set; }
         public long LastTimestamp { get; set; }
     }
-    internal class FlowtideOpenFGASource : ReadBaseOperator<FlowtideOpenFGASourceState>
+    internal class FlowtideOpenFgaSource : ReadBaseOperator<FlowtideOpenFgaSourceState>
     {
-        private readonly OpenFGASourceOptions m_options;
+        private readonly OpenFgaSourceOptions m_options;
         private OpenFgaClient? m_client;
-        private FlowtideOpenFGASourceState? m_state;
+        private FlowtideOpenFgaSourceState? m_state;
 
         private List<Action<TupleKey, int, FlxValue[]>> m_encoders;
         private FlexBuffer flexBuffer;
@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         /// </summary>
         private Dictionary<string, FlxValue> _typesAndRelationValues = new Dictionary<string, FlxValue>();
 
-        public FlowtideOpenFGASource(OpenFGASourceOptions openFgaOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
+        public FlowtideOpenFgaSource(OpenFgaSourceOptions openFgaOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
             m_encoders = new List<Action<TupleKey, int, FlxValue[]>>();
             flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
@@ -182,7 +182,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { WatermarkName });
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, FlowtideOpenFGASourceState? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, FlowtideOpenFgaSourceState? state, IStateManagerClient stateManagerClient)
         {
             if (state != null)
             {
@@ -190,13 +190,13 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             }
             else
             {
-                m_state = new FlowtideOpenFGASourceState();
+                m_state = new FlowtideOpenFgaSourceState();
             }
             m_client = new OpenFgaClient(m_options.ClientConfiguration);
             return Task.CompletedTask;
         }
 
-        protected override Task<FlowtideOpenFGASourceState> OnCheckpoint(long checkpointTime)
+        protected override Task<FlowtideOpenFgaSourceState> OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(m_state != null);
             return Task.FromResult(m_state);

@@ -29,7 +29,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Internal
 {
-    internal class FlowtideOpenFGASink : SimpleGroupedWriteOperator
+    internal class FlowtideOpenFgaSink : SimpleGroupedWriteOperator
     {
         private readonly int m_userTypeIndex;
         private readonly int m_userIdIndex;
@@ -38,10 +38,10 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         private readonly int m_objectIdIndex;
         private readonly int m_authorizationModelIdIndex;
         private readonly List<int> m_primaryKeys;
-        private readonly OpenFGASinkOptions m_openFGASinkOptions;
+        private readonly OpenFgaSinkOptions m_openFGASinkOptions;
         private OpenFgaClient? m_openFgaClient;
 
-        public FlowtideOpenFGASink(OpenFGASinkOptions openFGASinkOptions, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
+        public FlowtideOpenFgaSink(OpenFgaSinkOptions openFGASinkOptions, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
         {
             m_userTypeIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("user_type", StringComparison.OrdinalIgnoreCase));
             if (m_userTypeIndex == -1)
@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             return Task.FromResult(new MetadataResult(m_primaryKeys));
         }
 
-        private string ColumnToString(scoped in FlxValueRef flxValue)
+        private static string ColumnToString(scoped in FlxValueRef flxValue)
         {
             switch (flxValue.ValueType)
             {

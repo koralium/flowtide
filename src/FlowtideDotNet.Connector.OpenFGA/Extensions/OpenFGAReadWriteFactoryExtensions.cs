@@ -24,12 +24,12 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Extensions
 {
-    public static class OpenFGAReadWriteFactoryExtensions
+    public static class OpenFgaReadWriteFactoryExtensions
     {
         public static ReadWriteFactory AddOpenFGASink(
             this ReadWriteFactory factory,
             string regexPattern,
-            OpenFGASinkOptions options,
+            OpenFgaSinkOptions options,
             Action<WriteRelation>? transform = null)
         {
             if (regexPattern == "*")
@@ -45,13 +45,13 @@ namespace FlowtideDotNet.Connector.OpenFGA.Extensions
                 }
                 transform?.Invoke(writeRel);
 
-                var sink = new FlowtideOpenFGASink(options, writeRel, ExecutionMode.OnCheckpoint, opt);
+                var sink = new FlowtideOpenFgaSink(options, writeRel, ExecutionMode.OnCheckpoint, opt);
                 return sink;
             });
             return factory;
         }
 
-        public static ReadWriteFactory AddOpenFGASource(this ReadWriteFactory readWriteFactory, string regexPattern, OpenFGASourceOptions options)
+        public static ReadWriteFactory AddOpenFGASource(this ReadWriteFactory readWriteFactory, string regexPattern, OpenFgaSourceOptions options)
         {
             if (regexPattern == "*")
             {
@@ -111,7 +111,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Extensions
                 }
                 indices.Add(objectIdIndex);
 
-                return new ReadOperatorInfo(new FlowtideOpenFGASource(options, readRelation, opt), new NormalizationRelation()
+                return new ReadOperatorInfo(new FlowtideOpenFgaSource(options, readRelation, opt), new NormalizationRelation()
                 {
                     Input = readRelation,
                     Filter = readRelation.Filter,

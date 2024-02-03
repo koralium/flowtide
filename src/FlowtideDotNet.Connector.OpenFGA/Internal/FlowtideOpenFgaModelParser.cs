@@ -21,7 +21,7 @@ using System.Transactions;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Internal
 {
-    internal class FlowtideOpenFgaModelParser
+    internal partial class FlowtideOpenFgaModelParser
     {
         private class TypeReference
         {
@@ -254,56 +254,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 SkipIterateCondition = skipIterateCondition
             };
 
-            var filterRel = new FilterRelation()
-            {
-                Input = iterationRel,
-                Condition = new ScalarFunction()
-                {
-                    ExtensionName = FunctionsBoolean.And,
-                    ExtensionUri = FunctionsBoolean.Uri,
-                    Arguments = new List<Expression>()
-                    {
-                        new ScalarFunction()
-                        {
-                            ExtensionUri = FunctionsComparison.Uri,
-                            ExtensionName = FunctionsComparison.Equal,
-                            Arguments = new List<Expression>()
-                            {
-                                new DirectFieldReference()
-                                {
-                                    ReferenceSegment = new StructReferenceSegment()
-                                    {
-                                        Field = RelationColumn // Field 1 is the relation field
-                                    }
-                                },
-                                new StringLiteral()
-                                {
-                                    Value = relation
-                                }
-                            }
-                        },
-                        new ScalarFunction()
-                        {
-                            ExtensionUri = FunctionsComparison.Uri,
-                            ExtensionName = FunctionsComparison.Equal,
-                            Arguments = new List<Expression>()
-                            {
-                                new DirectFieldReference()
-                                {
-                                    ReferenceSegment = new StructReferenceSegment()
-                                    {
-                                        Field = ObjectTypeColumn
-                                    }
-                                },
-                                new StringLiteral()
-                                {
-                                    Value = type
-                                }
-                            }
-                        }
-                    }
-                }
-            };
+            var filterRel = CreateRelationTypeFilter(iterationRel, relation, type);
 
             var rootRel = new RootRelation()
             {
@@ -424,64 +375,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 if (!containsWildcard)
                 {
                     // INNER JOIN ON l.user_type = r.user_type AND l.user_id = r.user_id
-                    rootRel = new JoinRelation()
-                    {
-                        Emit = new List<int>() { UserTypeColumn, UserIdColumn, RelationColumn, ObjectTypeColumn, ObjectIdColumn },
-                        Left = rootRel,
-                        Right = subRel.Relation,
-                        Expression = new ScalarFunction()
-                        {
-                            ExtensionUri = FunctionsBoolean.Uri,
-                            ExtensionName = FunctionsBoolean.And,
-                            Arguments = new List<Expression>()
-                            {
-                                new ScalarFunction()
-                                {
-                                    ExtensionUri = FunctionsComparison.Uri,
-                                    ExtensionName = FunctionsComparison.Equal,
-                                    Arguments = new List<Expression>()
-                                    {
-                                        new DirectFieldReference()
-                                        {
-                                            ReferenceSegment = new StructReferenceSegment()
-                                            {
-                                                Field = UserTypeColumn // Field 0 is the user type field of the left one
-                                            }
-                                        },
-                                        new DirectFieldReference()
-                                        {
-                                            ReferenceSegment = new StructReferenceSegment()
-                                            {
-                                                Field = rootRel.OutputLength + UserTypeColumn // User type field in the right
-                                            }
-                                        }
-                                    }
-                                },
-                                new ScalarFunction()
-                                {
-                                    ExtensionUri = FunctionsComparison.Uri,
-                                    ExtensionName = FunctionsComparison.Equal,
-                                    Arguments = new List<Expression>()
-                                    {
-                                        new DirectFieldReference()
-                                        {
-                                            ReferenceSegment = new StructReferenceSegment()
-                                            {
-                                                Field = UserIdColumn // Field 0 is the user type field of the left one
-                                            }
-                                        },
-                                        new DirectFieldReference()
-                                        {
-                                            ReferenceSegment = new StructReferenceSegment()
-                                            {
-                                                Field = rootRel.OutputLength + UserIdColumn // User type field in the right
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    };
+                    rootRel = CreateJoinRelationUserTypeAndId(rootRel, subRel.Relation);
                 }
                 else
                 {
@@ -497,68 +391,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                     };
 
                     // First join checks if the user field is equal with no wildcard check
-                    var joinEqual = new JoinRelation()
-                    {
-                        Emit = new List<int>() { UserTypeColumn, UserIdColumn, RelationColumn, ObjectTypeColumn, ObjectIdColumn },
-                        Left = rootRel,
-                        Right = subRel.Relation,
-                        Type = JoinType.Inner,
-                        // l.user_type = r.user_type AND l.user_id = r.user_id
-                        Expression = new ScalarFunction()
-                        {
-                            ExtensionUri = FunctionsBoolean.Uri,
-                            ExtensionName = FunctionsBoolean.And,
-                            Arguments = new List<Expression>()
-                            {
-                                // l.user_type = r.user_type
-                                new ScalarFunction()
-                                {
-                                    ExtensionUri = FunctionsComparison.Uri,
-                                    ExtensionName = FunctionsComparison.Equal,
-                                    Arguments = new List<Expression>()
-                                    {
-                                        new DirectFieldReference()
-                                        {
-                                            ReferenceSegment = new StructReferenceSegment()
-                                            {
-                                                Field = UserTypeColumn
-                                            }
-                                        },
-                                        new DirectFieldReference()
-                                        {
-                                            ReferenceSegment = new StructReferenceSegment()
-                                            {
-                                                Field = rootRel.OutputLength + UserTypeColumn
-                                            }
-                                        },
-                                    }
-                                },
-                                // l.user_id = r.user_id
-                                new ScalarFunction()
-                                {
-                                    ExtensionUri = FunctionsComparison.Uri,
-                                    ExtensionName = FunctionsComparison.Equal,
-                                    Arguments = new List<Expression>()
-                                    {
-                                        new DirectFieldReference()
-                                        {
-                                            ReferenceSegment = new StructReferenceSegment()
-                                            {
-                                                Field = UserIdColumn
-                                            }
-                                        },
-                                        new DirectFieldReference()
-                                        {
-                                            ReferenceSegment = new StructReferenceSegment()
-                                            {
-                                                Field = rootRel.OutputLength + UserIdColumn
-                                            }
-                                        },
-                                    }
-                                }
-                            }
-                        }
-                    };
+                    var joinEqual = CreateJoinRelationUserTypeAndId(rootRel, subRel.Relation);
 
                     setRelation.Inputs.Add(joinEqual);
 
@@ -568,85 +401,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                     if (leftHasWildcard)
                     {
                         // This join takes the user from the right input since it only looks for wildcards on left side.
-                        var leftWildcardJoin = new JoinRelation()
-                        {
-                            Emit = new List<int>() { rootRel.OutputLength + UserTypeColumn, rootRel.OutputLength + UserIdColumn, RelationColumn, ObjectTypeColumn, ObjectIdColumn },
-                            Left = rootRel,
-                            Right = subRel.Relation,
-                            Type = JoinType.Inner,
-                            // l.user_type = r.user_type AND l.user_id = r.user_id
-                            Expression = new ScalarFunction()
-                            {
-                                ExtensionUri = FunctionsBoolean.Uri,
-                                ExtensionName = FunctionsBoolean.And,
-                                Arguments = new List<Expression>()
-                                {
-                                    // l.user_type = r.user_type
-                                    new ScalarFunction()
-                                    {
-                                        ExtensionUri = FunctionsComparison.Uri,
-                                        ExtensionName = FunctionsComparison.Equal,
-                                        Arguments = new List<Expression>()
-                                        {
-                                            new DirectFieldReference()
-                                            {
-                                                ReferenceSegment = new StructReferenceSegment()
-                                                {
-                                                    Field = UserTypeColumn
-                                                }
-                                            },
-                                            new DirectFieldReference()
-                                            {
-                                                ReferenceSegment = new StructReferenceSegment()
-                                                {
-                                                    Field = rootRel.OutputLength + UserTypeColumn
-                                                }
-                                            },
-                                        }
-                                    },
-                                    // l.user_id = '*'
-                                    new ScalarFunction()
-                                    {
-                                        ExtensionUri = FunctionsComparison.Uri,
-                                        ExtensionName = FunctionsComparison.Equal,
-                                        Arguments = new List<Expression>()
-                                        {
-                                            new DirectFieldReference()
-                                            {
-                                                ReferenceSegment = new StructReferenceSegment()
-                                                {
-                                                    Field = UserIdColumn
-                                                }
-                                            },
-                                            new StringLiteral()
-                                            {
-                                                Value = "*"
-                                            }
-                                        }
-                                    },
-                                    // r.user_id != '*'
-                                    new ScalarFunction()
-                                    {
-                                        ExtensionUri = FunctionsComparison.Uri,
-                                        ExtensionName = FunctionsComparison.NotEqual,
-                                        Arguments = new List<Expression>()
-                                        {
-                                            new DirectFieldReference()
-                                            {
-                                                ReferenceSegment = new StructReferenceSegment()
-                                                {
-                                                    Field = rootRel.OutputLength + UserIdColumn
-                                                }
-                                            },
-                                            new StringLiteral()
-                                            {
-                                                Value = "*"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        };
+                        var leftWildcardJoin = CreateJoinRelationUserTypeWildcard(rootRel, subRel.Relation, true);
 
                         setRelation.Inputs.Add(leftWildcardJoin);
                     }
@@ -654,85 +409,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                     if (rightHasWildcard)
                     {
                         // Do same as for left side but instead look if right side user_id is * but not left side.
-                        var rightWildcardJoin = new JoinRelation()
-                        {
-                            Emit = new List<int>() { UserTypeColumn, UserIdColumn, RelationColumn, ObjectTypeColumn, ObjectIdColumn },
-                            Left = rootRel,
-                            Right = subRel.Relation,
-                            Type = JoinType.Inner,
-                            // l.user_type = r.user_type AND l.user_id = r.user_id
-                            Expression = new ScalarFunction()
-                            {
-                                ExtensionUri = FunctionsBoolean.Uri,
-                                ExtensionName = FunctionsBoolean.And,
-                                Arguments = new List<Expression>()
-                                {
-                                    // l.user_type = r.user_type
-                                    new ScalarFunction()
-                                    {
-                                        ExtensionUri = FunctionsComparison.Uri,
-                                        ExtensionName = FunctionsComparison.Equal,
-                                        Arguments = new List<Expression>()
-                                        {
-                                            new DirectFieldReference()
-                                            {
-                                                ReferenceSegment = new StructReferenceSegment()
-                                                {
-                                                    Field = UserTypeColumn
-                                                }
-                                            },
-                                            new DirectFieldReference()
-                                            {
-                                                ReferenceSegment = new StructReferenceSegment()
-                                                {
-                                                    Field = rootRel.OutputLength + UserTypeColumn
-                                                }
-                                            },
-                                        }
-                                    },
-                                    // l.user_id = '*'
-                                    new ScalarFunction()
-                                    {
-                                        ExtensionUri = FunctionsComparison.Uri,
-                                        ExtensionName = FunctionsComparison.NotEqual,
-                                        Arguments = new List<Expression>()
-                                        {
-                                            new DirectFieldReference()
-                                            {
-                                                ReferenceSegment = new StructReferenceSegment()
-                                                {
-                                                    Field = UserIdColumn
-                                                }
-                                            },
-                                            new StringLiteral()
-                                            {
-                                                Value = "*"
-                                            }
-                                        }
-                                    },
-                                    // r.user_id != '*'
-                                    new ScalarFunction()
-                                    {
-                                        ExtensionUri = FunctionsComparison.Uri,
-                                        ExtensionName = FunctionsComparison.Equal,
-                                        Arguments = new List<Expression>()
-                                        {
-                                            new DirectFieldReference()
-                                            {
-                                                ReferenceSegment = new StructReferenceSegment()
-                                                {
-                                                    Field = rootRel.OutputLength + UserIdColumn
-                                                }
-                                            },
-                                            new StringLiteral()
-                                            {
-                                                Value = "*"
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        };
+                        var rightWildcardJoin = CreateJoinRelationUserTypeWildcard(rootRel, subRel.Relation, false);
 
                         setRelation.Inputs.Add(rightWildcardJoin);
                     }
@@ -897,56 +574,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 typeReferences.Add(new TypeReference() { Type = resultType.Type, Relation = tupleToUserset.ComputedUserset.Relation });
             }
 
-            var filterRel = new FilterRelation()
-            {
-                Input = readRelation,
-                Condition = new ScalarFunction()
-                {
-                    ExtensionName = FunctionsBoolean.And,
-                    ExtensionUri = FunctionsBoolean.Uri,
-                    Arguments = new List<Expression>()
-                    {
-                        new ScalarFunction()
-                        {
-                            ExtensionUri = FunctionsComparison.Uri,
-                            ExtensionName = FunctionsComparison.Equal,
-                            Arguments = new List<Expression>()
-                            {
-                                new DirectFieldReference()
-                                {
-                                    ReferenceSegment = new StructReferenceSegment()
-                                    {
-                                        Field = RelationColumn
-                                    }
-                                },
-                                new StringLiteral()
-                                {
-                                    Value = tupleToUserset.ComputedUserset.Relation
-                                }
-                            }
-                        },
-                        new ScalarFunction()
-                        {
-                            ExtensionUri = FunctionsComparison.Uri,
-                            ExtensionName = FunctionsComparison.Equal,
-                            Arguments = new List<Expression>()
-                            {
-                                new DirectFieldReference()
-                                {
-                                    ReferenceSegment = new StructReferenceSegment()
-                                    {
-                                        Field = ObjectTypeColumn // Field 3 is the object type field
-                                    }
-                                },
-                                new StringLiteral()
-                                {
-                                    Value = resultType.Type
-                                }
-                            }
-                        }
-                    }
-                }
-            };
+            var filterRel = CreateRelationTypeFilter(readRelation, tupleToUserset.ComputedUserset.Relation, resultType.Type);
 
             var joinRel = new JoinRelation()
             {
