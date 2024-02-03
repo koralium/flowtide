@@ -151,6 +151,31 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             await base.OnInitialDataSent();
         }
 
+        private void ValidateResponse(Task task)
+        {
+            if (task.IsFaulted)
+            {
+                if (task.Exception != null)
+                {
+                    if (task.Exception.InnerException is OpenFga.Sdk.Exceptions.FgaApiValidationError apiErrorEx &&
+                    apiErrorEx.ApiError.ErrorCode == "write_failed_due_to_invalid_input")
+                    {
+                        // Already exists
+                        return;
+                    }
+                    else
+                    {
+                        Logger.LogError(task.Exception, "Exception writing to store");
+                        throw task.Exception;
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("Unknown error sending data to OpenFGA");
+                }
+            }
+        }
+
         protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
         {
             Debug.Assert(m_openFgaClient != null);
@@ -190,27 +215,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                             })
                             .ContinueWith(x =>
                             {
-                                if (x.IsFaulted)
-                                {
-                                    if (x.Exception != null)
-                                    {
-                                        if (x.Exception.InnerException is OpenFga.Sdk.Exceptions.FgaApiValidationError apiErrorEx &&
-                                        apiErrorEx.ApiError.ErrorCode == "write_failed_due_to_invalid_input")
-                                        {
-                                            // Already exists
-                                            return;
-                                        }
-                                        else
-                                        {
-                                            Logger.LogError(x.Exception, "Exception writing to store");
-                                            throw x.Exception;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        throw new InvalidOperationException("Unknown error sending data to OpenFGA");
-                                    }
-                                }
+                                ValidateResponse(x);
                             });
                     }
                     else
@@ -221,27 +226,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                         }, clientWriteOptions)
                         .ContinueWith(x =>
                         {
-                            if (x.IsFaulted)
-                            {
-                                if (x.Exception != null)
-                                {
-                                    if (x.Exception.InnerException is OpenFga.Sdk.Exceptions.FgaApiValidationError apiErrorEx &&
-                                    apiErrorEx.ApiError.ErrorCode == "write_failed_due_to_invalid_input")
-                                    {
-                                        // Already exists
-                                        return;
-                                    }
-                                    else
-                                    {
-                                        Logger.LogError(x.Exception, "Exception writing to store");
-                                        throw x.Exception;
-                                    }
-                                }
-                                else
-                                {
-                                    throw new InvalidOperationException("Unknown error sending data to OpenFGA");
-                                }
-                            }
+                            ValidateResponse(x);
                         });
                     }
 
@@ -269,27 +254,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                             })
                             .ContinueWith(x =>
                             {
-                                if (x.IsFaulted)
-                                {
-                                    if (x.Exception != null)
-                                    {
-                                        if (x.Exception.InnerException is OpenFga.Sdk.Exceptions.FgaApiValidationError apiErrorEx &&
-                                        apiErrorEx.ApiError.ErrorCode == "write_failed_due_to_invalid_input")
-                                        {
-                                            // Already exists
-                                            return;
-                                        }
-                                        else
-                                        {
-                                            Logger.LogError(x.Exception, "Exception writing to store");
-                                            throw x.Exception;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        throw new InvalidOperationException("Unknown error sending data to OpenFGA");
-                                    }
-                                }
+                                ValidateResponse(x);
                             });
                     }
                     else
@@ -300,29 +265,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                         }, clientWriteOptions)
                         .ContinueWith(x =>
                         {
-                            if (x.IsFaulted)
-                            {
-                                
-                                if (x.Exception != null)
-                                {
-                                    if (x.Exception.InnerException is OpenFga.Sdk.Exceptions.FgaApiValidationError apiErrorEx &&
-                                    apiErrorEx.ApiError.ErrorCode == "write_failed_due_to_invalid_input")
-                                    {
-                                        // Already exists
-                                        return;
-                                    }
-                                    else
-                                    {
-                                        Logger.LogError(x.Exception, "Exception writing to store");
-                                        throw x.Exception;
-                                    }
-                                }
-                                else
-                                {
-                                    throw new InvalidOperationException("Unknown error sending data to OpenFGA");
-                                }
-                                
-                            }
+                            ValidateResponse(x);
                         });
                     }
 
