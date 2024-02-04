@@ -85,6 +85,15 @@ namespace FlowtideDotNet.Connector.OpenFGA.Extensions
                 }
                 indices.Add(userIdIndex);
 
+                var userRelationIndex = readRelation.BaseSchema.Names.FindIndex(x => x.Equals("user_relation", StringComparison.OrdinalIgnoreCase));
+                if (userRelationIndex < 0)
+                {
+                    readRelation.BaseSchema.Names.Add("user_relation");
+                    readRelation.BaseSchema.Struct!.Types.Add(new AnyType() { Nullable = false });
+                    userRelationIndex = readRelation.BaseSchema.Names.Count - 1;
+                }
+                indices.Add(userRelationIndex);
+
                 var relationIndex = readRelation.BaseSchema.Names.FindIndex(x => x.Equals("relation", StringComparison.OrdinalIgnoreCase));
                 if (relationIndex < 0)
                 {
