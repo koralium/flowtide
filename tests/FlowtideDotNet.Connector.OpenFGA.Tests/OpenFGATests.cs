@@ -1016,8 +1016,10 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
             await stream.WaitForUpdate();
             var rows = stream.GetActualRowsAsVectors();
-
-            Assert.Equal(1, rows.Count);
+            stream.AssertCurrentDataEqual(new[]
+            {
+                new { user_type = "user", user_id = "1", relation = "can_read", object_type = "role_binding", object_id = "1_1" }
+            });
 
             // Remove the can_read access from the role
             await addTupleClient.Write(new ClientWriteRequest()
@@ -1228,13 +1230,146 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             await stream.WaitForUpdate();
             var rows = stream.GetActualRowsAsVectors();
 
-            var groups = await addTupleClient.ListObjects(new ClientListObjectsRequest()
+            stream.AssertCurrentDataEqual(new[]
             {
-                User = "user:1",
-                Relation = "can_read",
-                Type = "group"
+                new { user_type = "group", user_id = "1", relation = "can_read", object_type = "doc", object_id = "1" }
             });
-            
+        }
+
+        [Fact]
+        public async Task TestHashtagRelation()
+        {
+            //  model
+            //    schema 1.1
+            //
+            //  type user
+            //
+            //  type group
+            //    relations
+            //      define member: [user]
+            //
+            //  type doc
+            //    relations
+            //      define can_read: [group#member]
+
+            var config = openFGAFixture.Configuration;
+
+            var model = @"
+            {
+              ""schema_version"": ""1.1"",
+              ""type_definitions"": [
+                {
+                  ""type"": ""user"",
+                  ""relations"": {},
+                  ""metadata"": null
+                },
+                {
+                  ""type"": ""group"",
+                  ""relations"": {
+                    ""member"": {
+                      ""this"": {}
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""member"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""user""
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  ""type"": ""doc"",
+                  ""relations"": {
+                    ""can_read"": {
+                      ""this"": {}
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""can_read"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""group"",
+                            ""relation"": ""member""
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }";
+            var client = new OpenFgaClient(config);
+
+            var createStoreResponse = await client.CreateStore(new ClientCreateStoreRequest()
+            {
+                Name = "TestHashtagRelation"
+            });
+            var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+            Assert.NotNull(authModelRequest);
+            var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
+
+            var conf = openFGAFixture.Configuration;
+            conf.StoreId = createStoreResponse.Id;
+            conf.AuthorizationModelId = createModelResponse.AuthorizationModelId;
+
+            var addTupleClient = new OpenFgaClient(conf);
+
+            await addTupleClient.Write(new ClientWriteRequest()
+            {
+                Writes = new List<ClientTupleKey>()
+                {
+                    new ClientTupleKey()
+                    {
+                        User = $"user:1",
+                        Object = "group:1",
+                        Relation = "member"
+                    }
+                }
+            });
+
+            await addTupleClient.Write(new ClientWriteRequest()
+            {
+                Writes = new List<ClientTupleKey>()
+                {
+                    new ClientTupleKey()
+                    {
+                        User = $"group:1#member",
+                        Object = "doc:1",
+                        Relation = "can_read"
+                    }
+                }
+            });
+
+            var stream = new OpenFgaTestStream("TestHashtagRelation", conf);
+
+            var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
+            Assert.NotNull(parsedModel);
+            var modelPlan = OpenFgaToFlowtide.Convert(parsedModel, "doc", "can_read", "openfga", "group");
+
+            stream.SqlPlanBuilder.AddPlanAsView("authdata", modelPlan);
+
+            await stream.StartStream(@"
+                INSERT INTO testverify
+                SELECT 
+                    user_type,
+                    user_id,
+                    relation,
+                    object_type,
+                    object_id
+                FROM authdata
+            ");
+
+            await stream.WaitForUpdate();
+            stream.AssertCurrentDataEqual(new[]
+            {
+                new { user_type = "user", user_id = "1", relation = "can_read", object_type = "doc", object_id = "1" }
+            });
         }
     }
 }

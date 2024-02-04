@@ -18,6 +18,10 @@ These columns are required to insert data:
 * **object_type** - object type
 * **object_id** - identifier of the object. 
 
+Optional:
+
+* **user_relation** - optional user relation, example in OpenFGA: 'user:1#{userRelation}'
+
 To use the *OpenFGA Sink* add the following line to the *ReadWriteFactory*:
 
 ```csharp
@@ -73,6 +77,7 @@ This is done to reduce memory consumption in the system since there is a low car
 
 * **user_type** - user type
 * **user_id** - identifier of the user
+* **user_relation** - optional user relation, example in OpenFGA: 'user:1#{userRelation}', default is null if not set.
 * **relation** - relation name
 * **object_type** - object type
 * **object_id** - identifier of the object. 

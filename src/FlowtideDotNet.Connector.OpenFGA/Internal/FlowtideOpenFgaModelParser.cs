@@ -17,7 +17,6 @@ using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using OpenFga.Sdk.Model;
-using System.Transactions;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Internal
 {
@@ -75,9 +74,10 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         private const int UserTypeColumn = 0;
         private const int UserIdColumn = 1;
-        private const int RelationColumn = 2;
-        private const int ObjectTypeColumn = 3;
-        private const int ObjectIdColumn = 4;
+        private const int UserRelationColumn = 2;
+        private const int RelationColumn = 3;
+        private const int ObjectTypeColumn = 4;
+        private const int ObjectIdColumn = 5;
 
         private sealed class Result
         {
@@ -125,12 +125,12 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         {
             readRelation = new IterationReferenceReadRelation()
             {
-                ReferenceOutputLength = 5,
+                ReferenceOutputLength = 6,
                 IterationName = "auth"
             };
 
             typeReferences.Add(new TypeReference() { Type = type, Relation = relation });
-            var (loopPlan, nonComputedTuples) = Start(authorizationModel);
+            var (loopPlan, nonComputedTuples, userTypes) = Start(authorizationModel);
 
             var readRel = new ReadRelation()
             {
@@ -140,11 +140,19 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 },
                 BaseSchema = new NamedStruct()
                 {
-                    Names = new List<string>() { "user_type", "user_id", "relation", "object_type", "object_id" },
+                    Names = new List<string>() { 
+                        "user_type", 
+                        "user_id", 
+                        "user_relation", 
+                        "relation", 
+                        "object_type", 
+                        "object_id" 
+                    },
                     Struct = new Struct()
                     {
                         Types = new List<SubstraitBaseType>()
                         {
+                            new StringType(),
                             new StringType(),
                             new StringType(),
                             new StringType(),
@@ -254,12 +262,20 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 SkipIterateCondition = skipIterateCondition
             };
 
-            var filterRel = CreateRelationTypeFilter(iterationRel, relation, type);
+            var filterRel = CreateRelationTypeFilter(iterationRel, relation, type, userTypes);
 
             var rootRel = new RootRelation()
             {
                 Input = filterRel,
-                Names = new List<string>() { "user_type", "user_id", "relation", "object_type", "object_id" }
+                Names = new List<string>() 
+                { 
+                    "user_type", 
+                    "user_id", 
+                    "user_relation", 
+                    "relation", 
+                    "object_type", 
+                    "object_id" 
+                }
             };
 
             var plan = new Plan()
@@ -269,7 +285,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             return plan;
         }
 
-        private (Relation, HashSet<TupleReference>) Start(AuthorizationModel authorizationModel)
+        private (Relation, HashSet<TupleReference>, HashSet<ResultUserType>) Start(AuthorizationModel authorizationModel)
         {
             var union = new SetRelation()
             {
@@ -277,6 +293,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 Operation = SetOperation.UnionAll
             };
             HashSet<TupleReference> nonComputedTuples = new HashSet<TupleReference>();
+            HashSet<ResultUserType> resultUserTypes = new HashSet<ResultUserType>();
             while (true)
             {
                 if (typeReferences.Count == handledTypeReferences.Count)
@@ -305,6 +322,10 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 {
                     nonComputedTuples.Add(nonComputedType);
                 }
+                foreach(var userType in result.ResultUserType)
+                {
+                    resultUserTypes.Add(userType);
+                }
 
                 if (result.Relation is SetRelation setRel)
                 {
@@ -319,7 +340,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 }
             }
 
-            return (union, nonComputedTuples);
+            return (union, nonComputedTuples, resultUserTypes);
         }
 
         private Result VisitRelationDefinition(Userset relationDefinition, string relationName, TypeDefinition typeDefinition)
@@ -556,6 +577,10 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             List<ResultUserType> userTypes = new List<ResultUserType>();
             foreach (var t in thisRelation.DirectlyRelatedUserTypes)
             {
+                if (t.Relation != null)
+                {
+                    throw new NotImplementedException();
+                }
                 userTypes.Add(new ResultUserType() { TypeName = t.Type, Wildcard = t.Wildcard != null });
             }
             return userTypes;
@@ -588,6 +613,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                     {
                         UserTypeColumn,
                         UserIdColumn,
+                        UserRelationColumn,
                         tuplesetResult.Relation.OutputLength, // The new expression is added as relation name
                         ObjectTypeColumn,
                         ObjectIdColumn
@@ -697,6 +723,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 {
                     tuplesetResult.Relation.OutputLength + UserTypeColumn,
                     tuplesetResult.Relation.OutputLength + UserIdColumn,
+                    tuplesetResult.Relation.OutputLength + UserRelationColumn,
                     joinRel.OutputLength, // The new expression is added as relation name
                     ObjectTypeColumn, // Keep the object type from left
                     ObjectIdColumn // Keep the object id from left
@@ -753,7 +780,67 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 throw new InvalidOperationException("Read relation is null");
             }
 
-            // Create a filter that checks that the relation name is equal and the type is equal to the expected type.
+            // Contains the relations that builds up this data relation.
+            List<Relation> relations = new List<Relation>();
+            HashSet<TupleReference> nonModifiedTuples = new HashSet<TupleReference>();
+            List<TypeDefinition> types = new List<TypeDefinition>();
+            var userTypes = new List<ResultUserType>();
+            foreach (var t in thisRelation.DirectlyRelatedUserTypes)
+            {
+                var typeDef = authorizationModel.TypeDefinitions.Find(x => x.Type == t.Type);
+                if (typeDef == null)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                if (t.Relation != null)
+                {
+                    // if there is a relation, that data must be joined with the existing data.
+                    var typeResult = VisitUserRelation(t, relationName, typeDef, typeDefinition);
+                    relations.Add(typeResult.Relation);
+                    foreach(var nonModifiedTuple in typeResult.NonComputedTypes)
+                    {
+                        nonModifiedTuples.Add(nonModifiedTuple);
+                    }
+                    userTypes.AddRange(typeResult.ResultUserType);
+                }
+                else
+                {
+                    var typeResult = VisitDirectUser(t, typeDef, relationName, typeDefinition);
+                    relations.Add(typeResult.Relation);
+                    foreach (var nonModifiedTuple in typeResult.NonComputedTypes)
+                    {
+                        nonModifiedTuples.Add(nonModifiedTuple);
+                    }
+                    userTypes.AddRange(typeResult.ResultUserType);
+                }
+
+                types.Add(typeDef);
+            }
+
+            Relation? rel = default;
+            if (relations.Count > 1)
+            {
+                rel = new SetRelation()
+                {
+                    Inputs = relations,
+                    Operation = SetOperation.UnionAll
+                };
+            }
+            else
+            {
+                rel = relations[0];
+            }
+
+            return new Result() { Relation = rel, ResultTypes = types, ResultUserType = userTypes, NonComputedTypes = nonModifiedTuples };
+        }
+
+        private Result VisitDirectUser(RelationReference relationReference, TypeDefinition referenceType, string relationName, TypeDefinition objectType)
+        {
+            if (readRelation == null)
+            {
+                throw new InvalidOperationException("Read relation is null");
+            }
             var filterRel = new FilterRelation()
             {
                 Input = readRelation,
@@ -763,6 +850,25 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                     ExtensionUri = FunctionsBoolean.Uri,
                     Arguments = new List<Expression>()
                     {
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.Equal,
+                            Arguments = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = UserTypeColumn
+                                    }
+                                },
+                                new StringLiteral()
+                                {
+                                    Value = referenceType.Type
+                                }
+                            }
+                        },
                         new ScalarFunction()
                         {
                             ExtensionUri = FunctionsComparison.Uri,
@@ -797,7 +903,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                                 },
                                 new StringLiteral()
                                 {
-                                    Value = typeDefinition.Type
+                                    Value = objectType.Type
                                 }
                             }
                         }
@@ -805,22 +911,70 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 }
             };
 
-            HashSet<TupleReference> nonModifiedTuples = new HashSet<TupleReference>();
-            List<TypeDefinition> types = new List<TypeDefinition>();
-            var userTypes = new List<ResultUserType>();
-            foreach (var t in thisRelation.DirectlyRelatedUserTypes)
+            return new Result()
             {
-                var typeDef = authorizationModel.TypeDefinitions.Find(x => x.Type == t.Type);
-                if (typeDef == null)
+                NonComputedTypes = new HashSet<TupleReference>()
                 {
-                    throw new InvalidOperationException();
+                    new TupleReference()
+                    {
+                        UserType = referenceType.Type,
+                        Relation = relationName,
+                        ObjectType = objectType.Type
+                    }
+                },
+                Relation = filterRel,
+                ResultTypes = new List<TypeDefinition>() { referenceType },
+                ResultUserType = new List<ResultUserType>()
+                {
+                    new ResultUserType()
+                    {
+                        TypeName = relationReference.Type,
+                        Wildcard = relationReference.Wildcard != null
+                    }
                 }
-                types.Add(typeDef);
-                userTypes.Add(new ResultUserType() { TypeName = t.Type, Wildcard = t.Wildcard != null });
-                nonModifiedTuples.Add(new TupleReference() { UserType = t.Type, Relation = relationName, ObjectType = typeDefinition.Type });
+            };
+        }
+
+        private Result VisitUserRelation(RelationReference relationReference, string toRelationName, TypeDefinition referenceType, TypeDefinition objectType)
+        {
+            if (referenceType.Relations == null)
+            {
+                throw new InvalidOperationException($"Type {referenceType.Type} has no relations defined");
+            }
+            if (relationReference.Relation == null)
+            {
+                throw new InvalidOperationException("Relation is null in relation reference.");
+            }
+            if (!referenceType.Relations.TryGetValue(relationReference.Relation, out var relationDef))
+            {
+                throw new InvalidOperationException($"Relation {relationReference.Relation} not found in type {referenceType.Type}");
+            }
+            if (readRelation == null)
+            {
+                throw new InvalidOperationException("Read relation is null");
             }
 
-            return new Result() { Relation = filterRel, ResultTypes = types, ResultUserType = userTypes, NonComputedTypes = nonModifiedTuples };
+            // Filter relation for tuples that are of the correct type and relation
+            var filterRel = CreateUserRelationFilter(
+                readRelation, 
+                relationReference.Type, 
+                relationReference.Relation, 
+                toRelationName, 
+                objectType.Type);
+
+            // Get tuples of the referenced relation
+            var result = VisitRelationDefinition(relationDef, relationReference.Relation, referenceType);
+
+            // Join the filter relation with the relation of the referenced relation
+            var joinRelation = CreateUserRelationJoin(filterRel, result.Relation);
+
+            return new Result()
+            {
+                NonComputedTypes = new HashSet<TupleReference>(),
+                Relation = joinRelation,
+                ResultTypes = result.ResultTypes,
+                ResultUserType = result.ResultUserType
+            };
         }
 
         private Result VisitComputedUserset(ObjectRelation objectRelation, string toRelationName, TypeDefinition typeDefinition)
@@ -853,6 +1007,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 {
                     UserTypeColumn,
                     UserIdColumn,
+                    UserRelationColumn,
                     relation.Relation.OutputLength, // The new expression is added as relation name
                     ObjectTypeColumn,
                     ObjectIdColumn

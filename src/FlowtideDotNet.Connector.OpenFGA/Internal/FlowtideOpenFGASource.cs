@@ -33,6 +33,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
     }
     internal class FlowtideOpenFgaSource : ReadBaseOperator<FlowtideOpenFgaSourceState>
     {
+        private static readonly FlxValue nullValue = FlxValue.FromBytes(FlexBuffer.Null());
         private readonly OpenFgaSourceOptions m_options;
         private OpenFgaClient? m_client;
         private FlowtideOpenFgaSourceState? m_state;
@@ -78,9 +79,43 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                     case "user_id":
                         m_encoders.Add((tupleKey, i, arr) => {
                             flexBuffer.NewObject();
-                            flexBuffer.Add(tupleKey.User.Substring(tupleKey.User.IndexOf(':') + 1));
+                            var startIndex = tupleKey.User.IndexOf(':') + 1;
+                            var hashTagLocation = tupleKey.User.LastIndexOf('#');
+                            if (hashTagLocation > 0)
+                            {
+                                flexBuffer.Add(tupleKey.User.Substring(startIndex, hashTagLocation - startIndex));
+                            }
+                            else
+                            {
+                                flexBuffer.Add(tupleKey.User.Substring(startIndex));
+                            }
                             arr[i] = FlxValue.FromBytes(flexBuffer.Finish());
                             });
+                        break;
+                    case "user_relation":
+                        m_encoders.Add((tupleKey, i, arr) =>
+                        {
+                            var userRelationIndex = tupleKey.User.LastIndexOf('#');
+                            if (userRelationIndex > 0)
+                            {
+                                var userRelation = tupleKey.User.Substring(userRelationIndex + 1);
+                                if (_typesAndRelationValues.TryGetValue(userRelation, out var value))
+                                {
+                                    arr[i] = value;
+                                    return;
+                                }
+                                flexBuffer.NewObject();
+                                flexBuffer.Add(userRelation);
+                                var bytes = flexBuffer.Finish();
+                                var flxValue = FlxValue.FromBytes(bytes);
+                                _typesAndRelationValues.Add(userRelation, flxValue);
+                                arr[i] = flxValue;
+                            }
+                            else
+                            {
+                                arr[i] = nullValue;
+                            }
+                        });
                         break;
                     case "relation":
                         m_encoders.Add((tupleKey, i, arr) => {
