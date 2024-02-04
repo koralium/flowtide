@@ -837,6 +837,10 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         private Result VisitDirectUser(RelationReference relationReference, TypeDefinition referenceType, string relationName, TypeDefinition objectType)
         {
+            if (readRelation == null)
+            {
+                throw new InvalidOperationException("Read relation is null");
+            }
             var filterRel = new FilterRelation()
             {
                 Input = readRelation,
@@ -944,6 +948,10 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             if (!referenceType.Relations.TryGetValue(relationReference.Relation, out var relationDef))
             {
                 throw new InvalidOperationException($"Relation {relationReference.Relation} not found in type {referenceType.Type}");
+            }
+            if (readRelation == null)
+            {
+                throw new InvalidOperationException("Read relation is null");
             }
 
             // Filter relation for tuples that are of the correct type and relation

@@ -1311,7 +1311,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 Name = "TestHashtagRelation"
             });
             var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
-
+            Assert.NotNull(authModelRequest);
             var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
 
             var conf = openFGAFixture.Configuration;
@@ -1349,6 +1349,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             var stream = new OpenFgaTestStream("TestHashtagRelation", conf);
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
+            Assert.NotNull(parsedModel);
             var modelPlan = OpenFgaToFlowtide.Convert(parsedModel, "doc", "can_read", "openfga", "group");
 
             stream.SqlPlanBuilder.AddPlanAsView("authdata", modelPlan);
