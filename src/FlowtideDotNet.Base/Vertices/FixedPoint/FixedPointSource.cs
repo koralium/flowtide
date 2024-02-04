@@ -39,6 +39,8 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
 
         internal IEnumerable<ITargetBlock<IStreamEvent>> Links => _links.Select(x => x.Item1);
 
+        public int LinksCount => _links.Count;
+
         public string Name => throw new NotImplementedException();
 
         public string DisplayName => throw new NotImplementedException();
