@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql.Internal;
 using SqlParser;
 
@@ -38,6 +39,24 @@ namespace FlowtideDotNet.Substrait.Sql
         public void AddTableProvider(ITableProvider tableProvider)
         {
             _tablesMetadata.AddTableProvider(tableProvider);
+        }
+
+        public void AddPlanAsView(string viewName, Plan plan)
+        {
+            List<string>? names = default;
+            for(int i = 0; i < plan.Relations.Count; i++)
+            {
+                if (plan.Relations[i] is RootRelation rootRelation)
+                {
+                    names = rootRelation.Names;
+                }
+            }
+            if (names == null)
+            {
+                throw new InvalidOperationException("No root relation exists");
+            }
+            _planModifier.AddPlanAsView(viewName, plan);
+            _tablesMetadata.AddTable(viewName, names);
         }
 
         public void Sql(string sqlText)

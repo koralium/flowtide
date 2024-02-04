@@ -107,3 +107,30 @@ Example output:
 ```sql
 SELECT to_string(c1) FROM ... 
 ```
+
+## Starts with
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#starts_with) 
+
+Returns true or false if a string starts with another string.
+If the data type of either argument is not string, false will be returned.
+
+### SQL Usage
+
+```sql
+SELECT starts_with(c1, 'text') FROM ... 
+```
+
+## Substring
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#substring) 
+
+Returns a substring where the first argument is the input.
+The second argument is the start index, and an optional third argument is the length of the substring.
+
+### SQL Usage
+
+```sql
+SELECT substring(c1, 1) FROM ...
+SELECT substring(c1, 1, 5) FROM ...
+```

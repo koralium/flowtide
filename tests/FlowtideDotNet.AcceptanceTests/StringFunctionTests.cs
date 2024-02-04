@@ -103,5 +103,33 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(new[] { new { Name = string.Join(",", Users.Select(y => y.FirstName).OrderBy(x => x)) } });
         }
+
+        [Fact]
+        public async Task SelectWithStartsWith()
+        {
+            GenerateData();
+            var start = Users[0].FirstName!.Substring(0, 2);
+            await StartStream($"INSERT INTO output SELECT starts_with(firstName, '{start}') as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.StartsWith(start) }));
+        }
+
+        [Fact]
+        public async Task SelectWithSubstringNoLength()
+        {
+            GenerateData(1000);
+            await StartStream($"INSERT INTO output SELECT substring(firstName, 2) as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.Substring(2) }));
+        }
+
+        [Fact]
+        public async Task SelectWithSubstringWithLength()
+        {
+            GenerateData(1000);
+            await StartStream($"INSERT INTO output SELECT substring(firstName, 2, 2) as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.Substring(2, Math.Min(2, x.FirstName.Length - 2)) }));
+        }
     }
 }
