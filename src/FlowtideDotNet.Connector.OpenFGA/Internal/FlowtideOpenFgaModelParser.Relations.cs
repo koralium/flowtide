@@ -20,74 +20,66 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 {
     internal partial class FlowtideOpenFgaModelParser
     {
-        private static FilterRelation CreateRelationTypeFilter(Relation input, string relation, string type, HashSet<ResultUserType> userTypes)
+        private static FilterRelation CreateRelationTypeFilter(Relation input, string relation, string type, HashSet<ResultUserType>? userTypes = null)
         {
-            var orList = new SingularOrListExpression()
+            
+            var andArguments = new List<Expression>()
             {
-                Value = new DirectFieldReference()
+                new ScalarFunction()
                 {
-                    ReferenceSegment = new StructReferenceSegment()
-                    {
-                        Field = UserTypeColumn
-                    }
-                },
-                Options = userTypes.Select(x => (Expression)new StringLiteral() { Value = x.TypeName }).ToList()
-            };
-            return new FilterRelation()
-            {
-                Input = input,
-                Condition = new ScalarFunction()
-                {
-                    ExtensionName = FunctionsBoolean.And,
-                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionName = FunctionsComparison.Equal,
                     Arguments = new List<Expression>()
                     {
-                        orList,
-                        new ScalarFunction()
+                        new DirectFieldReference()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
-                            ExtensionName = FunctionsComparison.Equal,
-                            Arguments = new List<Expression>()
+                            ReferenceSegment = new StructReferenceSegment()
                             {
-                                new DirectFieldReference()
-                                {
-                                    ReferenceSegment = new StructReferenceSegment()
-                                    {
-                                        Field = RelationColumn // Field 1 is the relation field
-                                    }
-                                },
-                                new StringLiteral()
-                                {
-                                    Value = relation
-                                }
+                                Field = RelationColumn // Field 1 is the relation field
                             }
                         },
-                        new ScalarFunction()
+                        new StringLiteral()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
-                            ExtensionName = FunctionsComparison.Equal,
-                            Arguments = new List<Expression>()
+                            Value = relation
+                        }
+                    }
+                },
+                new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionName = FunctionsComparison.Equal,
+                    Arguments = new List<Expression>()
+                    {
+                        new DirectFieldReference()
+                        {
+                            ReferenceSegment = new StructReferenceSegment()
                             {
-                                new DirectFieldReference()
-                                {
-                                    ReferenceSegment = new StructReferenceSegment()
-                                    {
-                                        Field = ObjectTypeColumn
-                                    }
-                                },
-                                new StringLiteral()
-                                {
-                                    Value = type
-                                }
+                                Field = ObjectTypeColumn
                             }
+                        },
+                        new StringLiteral()
+                        {
+                            Value = type
                         }
                     }
                 }
             };
-        }
 
-        private static FilterRelation CreateRelationTypeFilter(Relation input, string relation, string type)
-        {
+            if (userTypes != null)
+            {
+                var orList = new SingularOrListExpression()
+                {
+                    Value = new DirectFieldReference()
+                    {
+                        ReferenceSegment = new StructReferenceSegment()
+                        {
+                            Field = UserTypeColumn
+                        }
+                    },
+                    Options = userTypes.Select(x => (Expression)new StringLiteral() { Value = x.TypeName }).ToList()
+                };
+                andArguments.Add(orList);
+            }
             return new FilterRelation()
             {
                 Input = input,
@@ -95,47 +87,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 {
                     ExtensionName = FunctionsBoolean.And,
                     ExtensionUri = FunctionsBoolean.Uri,
-                    Arguments = new List<Expression>()
-                    {
-                        new ScalarFunction()
-                        {
-                            ExtensionUri = FunctionsComparison.Uri,
-                            ExtensionName = FunctionsComparison.Equal,
-                            Arguments = new List<Expression>()
-                            {
-                                new DirectFieldReference()
-                                {
-                                    ReferenceSegment = new StructReferenceSegment()
-                                    {
-                                        Field = RelationColumn // Field 1 is the relation field
-                                    }
-                                },
-                                new StringLiteral()
-                                {
-                                    Value = relation
-                                }
-                            }
-                        },
-                        new ScalarFunction()
-                        {
-                            ExtensionUri = FunctionsComparison.Uri,
-                            ExtensionName = FunctionsComparison.Equal,
-                            Arguments = new List<Expression>()
-                            {
-                                new DirectFieldReference()
-                                {
-                                    ReferenceSegment = new StructReferenceSegment()
-                                    {
-                                        Field = ObjectTypeColumn
-                                    }
-                                },
-                                new StringLiteral()
-                                {
-                                    Value = type
-                                }
-                            }
-                        }
-                    }
+                    Arguments = andArguments
                 }
             };
         }
