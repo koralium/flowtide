@@ -4,7 +4,7 @@ sidebar_position: 8
 
 # OpenFGA Connector
 
-OpenFGA is a system that allows the implementation of fine grained authorization. This connector allows both sending and reading data into OpenFGA, with the addition of materializing permission tuples together with the data for use-cases that requires combining permissions with queries such as listing what a user has access to.
+[OpenFGA](https://openfga.dev/) is a system that allows the implementation of fine grained authorization. This connector allows both sending and reading data into OpenFGA, with the addition of materializing permission tuples together with the data for use-cases that requires combining permissions with queries such as listing what a user has access to.
 
 ## Sink
 
@@ -20,7 +20,7 @@ These columns are required to insert data:
 
 Optional:
 
-* **user_relation** - optional user relation, example in OpenFGA: 'user:1#{userRelation}'
+* **user_relation** - optional user relation, example in OpenFGA: 'user:1#\{userRelation\}'
 
 To use the *OpenFGA Sink* add the following line to the *ReadWriteFactory*:
 
@@ -77,7 +77,7 @@ This is done to reduce memory consumption in the system since there is a low car
 
 * **user_type** - user type
 * **user_id** - identifier of the user
-* **user_relation** - optional user relation, example in OpenFGA: 'user:1#{userRelation}', default is null if not set.
+* **user_relation** - optional user relation, example in OpenFGA: 'user:1#\{userRelation\}', default is null if not set.
 * **relation** - relation name
 * **object_type** - object type
 * **object_id** - identifier of the object. 
