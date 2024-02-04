@@ -186,7 +186,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
         private static string ConvertLikeToRegex(string pattern, char? escapeCharacter)
         {
             StringBuilder regexPattern = new StringBuilder();
-            regexPattern.Append("^"); // Add start anchor
+            regexPattern.Append('^'); // Add start anchor
             bool escapeNext = false; // Flag to indicate next character is escaped
             bool inCharSet = false; // Flag to indicate if currently parsing a character set
 
@@ -244,7 +244,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             }
 
             // Add start and end anchors to ensure the entire string is matched
-            regexPattern.Append("$"); // Add end anchor
+            regexPattern.Append('$'); // Add end anchor
             return regexPattern.ToString();
         }
 
