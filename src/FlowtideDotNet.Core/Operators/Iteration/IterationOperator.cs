@@ -13,7 +13,10 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.FixedPoint;
+using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -25,12 +28,27 @@ namespace FlowtideDotNet.Core.Operators.Iteration
     }
     internal class IterationOperator : FixedPointVertex<StreamEventBatch, IterationState>
     {
+        private readonly IterationRelation _iterationRelation;
         private ICounter<long>? _eventsProcessed;
-        public IterationOperator(ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
+        private readonly Func<RowEvent, bool>? _expression;
+        public IterationOperator(IterationRelation iterationRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
+            this._iterationRelation = iterationRelation;
+            if (iterationRelation.SkipIterateCondition != null)
+            {
+                _expression = BooleanCompiler.Compile<RowEvent>(iterationRelation.SkipIterateCondition, functionsRegister);
+            }
+            
         }
 
         public override string DisplayName => "Iteration Operator";
+
+        public override bool NoReadSourceInLoop()
+        {
+            var visitor = new ReadSourceLocateVisitor();
+            visitor.Visit(_iterationRelation, new object());
+            return visitor.ReadExists;
+        }
 
         protected override Task InitializeOrRestore(IterationState? state, IStateManagerClient stateManagerClient)
         {
@@ -50,14 +68,29 @@ namespace FlowtideDotNet.Core.Operators.Iteration
             List<RowEvent> egressOutput = new List<RowEvent>();
             foreach (var streamEvent in data.Events)
             {
+                // Stop iteration if the max iteration is reached.
+                if (_iterationRelation.MaxIterations != null && streamEvent.Iteration >= _iterationRelation.MaxIterations.Value)
+                {
+                    continue;
+                }
                 // Increase iteration counter for the loop output.
-                loopOutput.Add(new RowEvent(streamEvent.Weight, streamEvent.Iteration + 1, streamEvent.RowData));
+                if (_expression == null || !_expression(streamEvent))
+                {
+                    loopOutput.Add(new RowEvent(streamEvent.Weight, streamEvent.Iteration + 1, streamEvent.RowData));
+                }
+                
                 // Reset iteration counter for the egress output.
                 egressOutput.Add(new RowEvent(streamEvent.Weight, 0, streamEvent.RowData));
             }
 
-            yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(0, new StreamMessage<StreamEventBatch>(new StreamEventBatch(egressOutput), time));
-            yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(1, new StreamMessage<StreamEventBatch>(new StreamEventBatch(loopOutput), time));
+            if (egressOutput.Count > 0)
+            {
+                yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(0, new StreamMessage<StreamEventBatch>(new StreamEventBatch(egressOutput), time));
+            }
+            if (loopOutput.Count > 0)
+            {
+                yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(1, new StreamMessage<StreamEventBatch>(new StreamEventBatch(loopOutput), time));
+            }
         }
 
         protected override async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> OnIngressRecieve(StreamEventBatch data, long time)

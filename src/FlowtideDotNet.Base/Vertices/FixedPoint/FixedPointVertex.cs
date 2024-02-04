@@ -51,6 +51,9 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         private IMeter? _metrics;
         protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
         private bool _isHealthy = true;
+        private bool _sentLockingEvent;
+        private int _targetPrepareCount = 0;
+        private bool singleReadSource;
 
         public ITargetBlock<IStreamEvent> IngressTarget => _ingressTarget;
         public ITargetBlock<IStreamEvent> FeedbackTarget => _feedbackTarget;
@@ -68,6 +71,13 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _egressSource = new FixedPointSource(clone);
             _loopSource = new FixedPointSource(clone);
         }
+
+        /// <summary>
+        /// This method should return if there is any read source in the loop.
+        /// This affects how checkpointing performs for the loop, so it waits for read sources checkpoint.
+        /// </summary>
+        /// <returns></returns>
+        public abstract bool NoReadSourceInLoop();
 
         public Task Completion => _transformBlock?.Completion ?? throw new InvalidOperationException("Completion can only be fetched after create blocks method.");
 
@@ -92,7 +102,6 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             // recieved from the loop until the prepare message is recieved.
             _waitingLockingEvent = ev;
             _messageCountSinceLockingEventPrepare = 0;
-
             // Return a CheckpointPrepare message to the loop
             yield return new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(ev));
         }
@@ -103,6 +112,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _ingressTarget.ReleaseCheckpoint();
             _feedbackTarget.ReleaseCheckpoint();
 
+            _sentLockingEvent = false;
             if (ev is ICheckpointEvent checkpoint)
             {
                 _currentTime = checkpoint.NewTime;
@@ -121,15 +131,28 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
 
         private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> OnLockingPrepareEvent(LockingEventPrepare lockingEventPrepare)
         {
+            _targetPrepareCount++;
+
+            // Wait until all messages have been recieved from the loop
+            if (_targetPrepareCount < _loopSource.LinksCount)
+            {
+                yield break;
+            }
+            _targetPrepareCount = 0;
             // Check that no other messages have been recieved, and that there is no vertex that does not have a depedent input that is not yet in checkpoint.
-            if (_messageCountSinceLockingEventPrepare == 0 && !lockingEventPrepare.OtherInputsNotInCheckpoint)
+            if (_messageCountSinceLockingEventPrepare == 0 && (!lockingEventPrepare.OtherInputsNotInCheckpoint || singleReadSource))
             {
                 // Send out the locking event
                 if (_waitingLockingEvent == null)
                 {
                     throw new InvalidOperationException("Prepare locking event without a waiting checkpoint.");
                 }
-                yield return new KeyValuePair<int, IStreamEvent>(1, _waitingLockingEvent);
+                if (!_sentLockingEvent)
+                {
+                    _sentLockingEvent = true;
+                    yield return new KeyValuePair<int, IStreamEvent>(1, _waitingLockingEvent);
+                    _waitingLockingEvent = null;
+                }
             }
             else
             {
@@ -140,6 +163,8 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
 
         public void CreateBlock()
         {
+            singleReadSource = NoReadSourceInLoop();
+
             _transformBlock = new TransformManyBlock<KeyValuePair<int, IStreamEvent>, KeyValuePair<int, IStreamEvent>>((r) =>
             {
                 if (r.Value is ILockingEvent ev)
