@@ -88,7 +88,16 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitSubstring(substring, state);
             }
+            if (expression is Expression.Like like)
+            {
+                return VisitLike(like, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitLike(Expression.Like like, TState state)
+        {
+            throw new NotImplementedException($"The expression '{like.GetType().Name}' is not supported in SQL");
         }
 
         protected virtual TReturn VisitSubstring(Expression.Substring substring, TState state)

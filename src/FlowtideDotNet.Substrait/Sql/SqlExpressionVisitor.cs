@@ -661,5 +661,34 @@ namespace FlowtideDotNet.Substrait.Sql
                 return new ExpressionData(substringFunction, expr.Name);
             }
         }
+
+        protected override ExpressionData VisitLike(Like like, EmitData state)
+        {
+            if (like.Expression == null)
+            {
+                throw new InvalidOperationException("The like expression cannot be null.");
+            }
+            var expr = Visit(like.Expression, state);
+            var pattern = Visit(like.Pattern, state);
+
+            Expressions.Expression escapeChar = new NullLiteral();
+            if (like.EscapeChar != null)
+            {
+                escapeChar = new StringLiteral() { Value = like.EscapeChar.Value.ToString() };
+            }
+
+            var likeFunction = new ScalarFunction()
+            {
+                ExtensionUri = FunctionsString.Uri,
+                ExtensionName = FunctionsString.Like,
+                Arguments = new List<Expressions.Expression>()
+                {
+                    expr.Expr,
+                    pattern.Expr,
+                    escapeChar
+                }
+            };
+            return new ExpressionData(likeFunction, expr.Name);
+        }
     }
 }

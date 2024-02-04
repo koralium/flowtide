@@ -16,6 +16,7 @@ using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace FlowtideDotNet.Core.Compute.Internal
 {
@@ -53,6 +54,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.RTrim, (x) => RTrimImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.To_String, (x) => ToStringImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.StartsWith, (x, y) => StartsWithImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Like, (x, y, z) => LikeImplementation(x, y, z));
 
             functionsRegister.RegisterScalarFunction(FunctionsString.Uri, FunctionsString.Substring,
                 (scalarFunction, parametersInfo, visitor) =>
@@ -153,5 +155,96 @@ namespace FlowtideDotNet.Core.Compute.Internal
             }
             return FalseValue;
         }
+
+        private static FlxValue LikeImplementation(in FlxValue val1, in FlxValue val2, in FlxValue escapeChar)
+        {
+            if (val1.ValueType != FlexBuffers.Type.String || val2.ValueType != FlexBuffers.Type.String)
+            {
+                return FalseValue;
+            }
+            char? escapeCharacter = default;
+            // Check if escape char is set
+            if (escapeChar.ValueType == FlexBuffers.Type.String)
+            {
+                escapeCharacter = escapeChar.AsString[0];
+            }
+
+            var result = IsLike(val1.AsString, val2.AsString, escapeCharacter) ? TrueValue : FalseValue;
+            return result;
+        }
+
+        private static bool IsLike(string input, string pattern, char? escapeCharacter)
+        {
+            // Convert SQL LIKE pattern to regex pattern
+            string regexPattern = ConvertLikeToRegex(pattern, escapeCharacter);
+
+            // Perform regex match
+            return Regex.IsMatch(input, regexPattern, RegexOptions.IgnoreCase);
+        }
+
+        private static string ConvertLikeToRegex(string pattern, char? escapeCharacter)
+        {
+            var regexPattern = "";
+            bool escapeNext = false; // Flag to indicate next character is escaped
+            bool inCharSet = false; // Flag to indicate if currently parsing a character set
+
+            for (int i = 0; i < pattern.Length; i++)
+            {
+                char c = pattern[i];
+                if (escapeCharacter.HasValue && c == escapeCharacter && !escapeNext && !inCharSet)
+                {
+                    escapeNext = true; // Next character is escaped
+                    continue;
+                }
+
+                if (c == '[' && !escapeNext)
+                {
+                    inCharSet = true;
+                    regexPattern += c;
+                    continue;
+                }
+                else if (c == ']' && inCharSet)
+                {
+                    inCharSet = false;
+                    regexPattern += c;
+                    continue;
+                }
+
+                if (inCharSet)
+                {
+                    // Directly add character set contents to regex pattern
+                    regexPattern += c;
+                }
+                else
+                {
+                    switch (c)
+                    {
+                        case '%':
+                            regexPattern += escapeNext ? "%" : ".*";
+                            break;
+                        case '_':
+                            regexPattern += escapeNext ? "_" : ".";
+                            break;
+                        default:
+                            if ("+()^$.{}[]|\\".Contains(c))
+                            {
+                                regexPattern += "\\" + c; // Escape regex special characters
+                            }
+                            else
+                            {
+                                regexPattern += c;
+                            }
+                            break;
+                    }
+                }
+
+                if (escapeNext) escapeNext = false; // Reset escape flag if it was set
+            }
+
+            // Add start and end anchors to ensure the entire string is matched
+            regexPattern = "^" + regexPattern + "$";
+            return regexPattern;
+        }
+
     }
 }
