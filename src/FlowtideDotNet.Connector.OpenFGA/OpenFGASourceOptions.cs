@@ -10,7 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.OpenFGA")]
+namespace FlowtideDotNet.Connector.OpenFGA
+{
+    public class OpenFgaSourceOptions
+    {
+        /// <summary>
+        /// The OpenFGA client configuration.
+        /// Used to connect to the OpenFGA API.
+        /// </summary>
+        public required OpenFga.Sdk.Client.ClientConfiguration ClientConfiguration { get; set; }
+    }
+}
