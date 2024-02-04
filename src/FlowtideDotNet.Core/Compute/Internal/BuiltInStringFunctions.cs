@@ -16,6 +16,7 @@ using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace FlowtideDotNet.Core.Compute.Internal
@@ -179,12 +180,13 @@ namespace FlowtideDotNet.Core.Compute.Internal
             string regexPattern = ConvertLikeToRegex(pattern, escapeCharacter);
 
             // Perform regex match
-            return Regex.IsMatch(input, regexPattern, RegexOptions.IgnoreCase);
+            return Regex.IsMatch(input, regexPattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
         }
 
         private static string ConvertLikeToRegex(string pattern, char? escapeCharacter)
         {
-            var regexPattern = "";
+            StringBuilder regexPattern = new StringBuilder();
+            regexPattern.Append("^"); // Add start anchor
             bool escapeNext = false; // Flag to indicate next character is escaped
             bool inCharSet = false; // Flag to indicate if currently parsing a character set
 
@@ -200,39 +202,39 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 if (c == '[' && !escapeNext)
                 {
                     inCharSet = true;
-                    regexPattern += c;
+                    regexPattern.Append(c);
                     continue;
                 }
                 else if (c == ']' && inCharSet)
                 {
                     inCharSet = false;
-                    regexPattern += c;
+                    regexPattern.Append(c);
                     continue;
                 }
 
                 if (inCharSet)
                 {
                     // Directly add character set contents to regex pattern
-                    regexPattern += c;
+                    regexPattern.Append(c);
                 }
                 else
                 {
                     switch (c)
                     {
                         case '%':
-                            regexPattern += escapeNext ? "%" : ".*";
+                            regexPattern.Append(escapeNext ? "%" : ".*");
                             break;
                         case '_':
-                            regexPattern += escapeNext ? "_" : ".";
+                            regexPattern.Append(escapeNext ? "_" : ".");
                             break;
                         default:
                             if ("+()^$.{}[]|\\".Contains(c))
                             {
-                                regexPattern += "\\" + c; // Escape regex special characters
+                                regexPattern.Append("\\" + c); // Escape regex special characters
                             }
                             else
                             {
-                                regexPattern += c;
+                                regexPattern.Append(c);
                             }
                             break;
                     }
@@ -242,8 +244,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
             }
 
             // Add start and end anchors to ensure the entire string is matched
-            regexPattern = "^" + regexPattern + "$";
-            return regexPattern;
+            regexPattern.Append("$"); // Add end anchor
+            return regexPattern.ToString();
         }
 
     }
