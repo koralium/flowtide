@@ -70,7 +70,10 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                 using var memoryStream = new MemoryStream();
                 streamEventToJson.Write(memoryStream, row.Row);
                 memoryStream.Position = 0;
-                var obj = JsonSerializer.Deserialize<T>(memoryStream);
+                var obj = JsonSerializer.Deserialize<T>(memoryStream, new JsonSerializerOptions()
+                {
+                    PropertyNameCaseInsensitive = true
+                });
                 if (obj == null)
                 {
                     throw new InvalidOperationException("Could not convert row to generic object");

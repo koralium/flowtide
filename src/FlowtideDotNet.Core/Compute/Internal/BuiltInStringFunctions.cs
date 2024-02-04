@@ -14,6 +14,7 @@ using FlexBuffers;
 using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Diagnostics;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace FlowtideDotNet.Core.Compute.Internal
@@ -21,6 +22,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
     internal static class BuiltInStringFunctions
     {
         private static FlxValue NullValue = FlxValue.FromBytes(FlexBuffer.Null());
+        private static FlxValue TrueValue = FlxValue.FromBytes(FlexBuffer.SingleValue(true));
+        private static FlxValue FalseValue = FlxValue.FromBytes(FlexBuffer.SingleValue(false));
 
         private static System.Linq.Expressions.MethodCallExpression ConcatExpr(System.Linq.Expressions.Expression array)
         {
@@ -49,6 +52,31 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.LTrim, (x) => LTrimImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.RTrim, (x) => RTrimImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.To_String, (x) => ToStringImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.StartsWith, (x, y) => StartsWithImplementation(x, y));
+
+            functionsRegister.RegisterScalarFunction(FunctionsString.Uri, FunctionsString.Substring,
+                (scalarFunction, parametersInfo, visitor) =>
+                {
+                    if (scalarFunction.Arguments.Count < 2)
+                    {
+                        throw new InvalidOperationException("Substring function must have atleast 2 arguments");
+                    }
+                    var expr = visitor.Visit(scalarFunction.Arguments[0], parametersInfo)!;
+                    var start = visitor.Visit(scalarFunction.Arguments[1], parametersInfo)!;
+
+                    Expression? length = default;
+                    if (scalarFunction.Arguments.Count == 3)
+                    {
+                        length = visitor.Visit(scalarFunction.Arguments[2], parametersInfo)!;
+                    }
+                    else
+                    {
+                        length = Expression.Constant(FlxValue.FromBytes(FlexBuffer.SingleValue(-1)));
+                    }
+                    MethodInfo? toStringMethod = typeof(FlxValueStringFunctions).GetMethod("Substring", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                    Debug.Assert(toStringMethod != null);
+                    return System.Linq.Expressions.Expression.Call(toStringMethod, expr, start, length);
+                });
 
             StringAggAggregation.Register(functionsRegister);
         }
@@ -110,6 +138,20 @@ namespace FlowtideDotNet.Core.Compute.Internal
             }
 
             return FlxValue.FromBytes(FlexBuffer.SingleValue(val.AsString.TrimEnd()));
+        }
+
+        private static FlxValue StartsWithImplementation(in FlxValue val1, in FlxValue val2)
+        {
+            if (val1.ValueType != FlexBuffers.Type.String || val2.ValueType != FlexBuffers.Type.String)
+            {
+                return FalseValue;
+            }
+
+            if (val1.AsString.StartsWith(val2.AsString))
+            {
+                return TrueValue;
+            }
+            return FalseValue;
         }
     }
 }
