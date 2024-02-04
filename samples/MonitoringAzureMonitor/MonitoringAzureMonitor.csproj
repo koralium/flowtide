@@ -8,7 +8,7 @@
   
   <ItemGroup>
     <PackageReference Include="AspNetCore.HealthChecks.Publisher.ApplicationInsights" Version="8.0.0" />
-    <PackageReference Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.1.0" />
+    <PackageReference Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.2.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.7.0" />
   </ItemGroup>
 
