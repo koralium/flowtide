@@ -68,5 +68,18 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { Name = x.FirstName + " " + x.LastName }));
         }
+
+        [Fact]
+        public async Task SelectWithDistinct()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT DISTINCT
+                    userkey
+                FROM orders");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Orders.Select(x => new { x.UserKey }).Distinct());
+        }
     }
 }
