@@ -42,6 +42,12 @@ namespace SqlServerToOpenFga.Database
                 .HasOne(ug => ug.Group)
                 .WithMany(g => g!.UserGroups)
                 .HasForeignKey(ug => ug.GroupKey);
+
+            modelBuilder.Entity<User>()
+                .HasKey(x => x.UserKey);
+
+            modelBuilder.Entity<Group>()
+                .HasKey(x => x.GroupKey);
         }
     }
 }

@@ -1,5 +1,7 @@
 services:
   stream:
+    depends_on:
+      - sqlserver
     build: 
       context: ../../
       dockerfile: samples/SqlServerToOpenFga/Dockerfile
@@ -8,5 +10,9 @@ services:
   sqlserver:
     image: "mcr.microsoft.com/mssql/server:2022-latest"
     environment:
-      SA_PASSWORD: "demopassword123"
+      SA_PASSWORD: "demopassword123!"
       ACCEPT_EULA: "Y"
+    ports:
+    - "1433:1433"
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "http://localhost:1433", "-U", "sa", "-P", "demopassword123!", "-Q", "SELECT 1", "||", "exit 1"]
