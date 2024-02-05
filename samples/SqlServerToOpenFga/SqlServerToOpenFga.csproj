@@ -17,4 +17,10 @@
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FlowtideDotNet.AspNetCore\FlowtideDotNet.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\src\FlowtideDotNet.Connector.OpenFGA\FlowtideDotNet.Connector.OpenFGA.csproj" />
+    <ProjectReference Include="..\..\src\FlowtideDotNet.Connector.SqlServer\FlowtideDotNet.Connector.SqlServer.csproj" />
+  </ItemGroup>
+
 </Project>
