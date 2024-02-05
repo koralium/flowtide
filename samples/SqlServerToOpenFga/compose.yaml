@@ -1,0 +1,12 @@
+services:
+  stream:
+    build: 
+      context: ../../
+      dockerfile: samples/SqlServerToOpenFga/Dockerfile
+    ports:
+      - "8000:80"
+  sqlserver:
+    image: "mcr.microsoft.com/mssql/server:2022-latest"
+    environment:
+      SA_PASSWORD: "demopassword123"
+      ACCEPT_EULA: "Y"
