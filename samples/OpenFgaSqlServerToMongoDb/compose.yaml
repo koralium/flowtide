@@ -54,15 +54,7 @@
     command: "store import --api-url=\"http://openfga:8080\" --file /models/openfga.yaml"
   mongo:
     healthcheck:
-      test:
-        [
-          "CMD",
-          "mongo",
-          "--quiet",
-          "127.0.0.1/test",
-          "--eval",
-          "'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)'",
-        ]
+      test: ["CMD-SHELL", "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet"]
       interval: 10s
       retries: 3
       start_period: 10s
