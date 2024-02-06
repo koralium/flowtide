@@ -6,6 +6,8 @@ services:
     build: 
       context: ../../
       dockerfile: samples/SqlServerToOpenFga/Dockerfile
+    environment:
+      CUSTOMCONNSTR_SqlServer: "Server=sqlserver;Database=demo;User Id=sa;Password=yourStrong(!)Password;TrustServerCertificate=True"
     ports:
       - "8000:80"
   sqlserver:
