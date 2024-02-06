@@ -1,6 +1,9 @@
-CREATE DATABASE demo;
-ALTER DATABASE demo SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON);
+USE master;
+CREATE DATABASE [demo];
 
+GO
+
+USE demo;
 CREATE TABLE demo.dbo.users (
     userkey int primary key,
     userid nvarchar(50)
@@ -16,6 +19,8 @@ CREATE TABLE demo.dbo.groups (
     groupkey int primary key,
     groupid nvarchar(50)
 );
+
+ALTER DATABASE [demo] SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON);
 
 ALTER TABLE demo.dbo.users ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF);
 ALTER TABLE demo.dbo.usergroups ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF);

@@ -2,15 +2,11 @@
 
 This demo shows how to send data from sql server to openfga using a data stream.
 
-To run the demo, start the following docker containers:
+To run the demo, start the docker compose:
 
 ```
-docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=yourStrong(!)Password" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2022-latest
-docker run -p 8080:8080 -p 8081:8081 -p 3000:3000 -d openfga/openfga run
+docker compose up
 ```
-
-Connect to the sql server using the credentials and run the SQL in the bootstrap.sql file to create the demo database
-and tables.
 
 The demo selects data from three different tables using the following SQL statement:
 
