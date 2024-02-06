@@ -10,62 +10,38 @@ using FlowtideDotNet.Storage.StateManager;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var query = File.ReadAllText("query.sql");
-SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
-sqlPlanBuilder.AddSqlServerProvider(() => builder.Configuration.GetConnectionString("SqlServer")!);
-sqlPlanBuilder.Sql(query);
-var plan = sqlPlanBuilder.GetPlan();
-
 var openFgaConfig = new OpenFga.Sdk.Client.ClientConfiguration()
 {
     ApiUrl = builder.Configuration.GetValue<string>("openfga_url")!,
 };
 
 var openFgaClient = new OpenFgaClient(openFgaConfig);
+var stores = await openFgaClient.ListStores();
+var store = stores.Stores.Find(x => x.Name == "demo");
 
-var createStoreResponse = await openFgaClient.CreateStore(new OpenFga.Sdk.Client.Model.ClientCreateStoreRequest()
+if (store == null)
 {
-    Name = "demo"
+    throw new InvalidOperationException("Could not find store 'demo'");
+}
+
+var authModel = await openFgaClient.ReadLatestAuthorizationModel(new ClientListRelationsOptions()
+{
+    StoreId = store.Id
 });
 
-var createModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(@"
+if (authModel == null || authModel.AuthorizationModel == null)
 {
-  ""schema_version"": ""1.1"",
-  ""type_definitions"": [
-    {
-      ""type"": ""user"",
-      ""relations"": {},
-      ""metadata"": null
-    },
-    {
-      ""type"": ""group"",
-      ""relations"": {
-        ""member"": {
-          ""this"": {}
-        }
-      },
-      ""metadata"": {
-        ""relations"": {
-          ""member"": {
-            ""directly_related_user_types"": [
-              {
-                ""type"": ""user""
-              }
-            ]
-          }
-        }
-      }
-    }
-  ]
-}");
+    throw new InvalidOperationException("Could not find authorization model for store 'demo'");
+}
 
-var createModelResponse = await openFgaClient.WriteAuthorizationModel(createModelRequest!, new ClientWriteOptions()
-{
-    StoreId = createStoreResponse.Id
-});
+var query = File.ReadAllText("query.sql");
+SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+sqlPlanBuilder.AddSqlServerProvider(() => builder.Configuration.GetConnectionString("SqlServer")!);
+sqlPlanBuilder.Sql(query);
+var plan = sqlPlanBuilder.GetPlan();
 
-openFgaConfig.StoreId = createStoreResponse.Id;
-openFgaConfig.AuthorizationModelId = createModelResponse.AuthorizationModelId;
+openFgaConfig.StoreId = store.Id;
+openFgaConfig.AuthorizationModelId = authModel.AuthorizationModel.Id;
 
 ReadWriteFactory readWriteFactory = new ReadWriteFactory()
     .AddSqlServerSource("demo.*", () => builder.Configuration.GetConnectionString("SqlServer")!)
