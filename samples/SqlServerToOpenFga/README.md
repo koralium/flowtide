@@ -8,6 +8,8 @@ To run the demo, start the docker compose:
 docker compose up
 ```
 
+Visit http://localhost:8000/stream to see status of the stream, and http://localhost:3000/playground to see OpenFGA data.
+
 The demo selects data from three different tables using the following SQL statement:
 
 ```
