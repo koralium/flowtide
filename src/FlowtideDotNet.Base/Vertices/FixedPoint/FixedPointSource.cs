@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         private ISourceBlock<IStreamEvent>? _source;
         private readonly List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)> _links = new List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)>();
         private readonly ExecutionDataflowBlockOptions executionDataflowBlockOptions;
-        private string _operatorName;
+        private string? _operatorName;
 
         public Task Completion => _block?.Completion ?? throw new InvalidOperationException("Completion can only be fetched after create blocks method.");
 
@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
 
         public int LinksCount => _links.Count;
 
-        public string Name => _operatorName;
+        public string Name => _operatorName ?? throw new InvalidOperationException("Operator name must be set before use.");
 
         public string DisplayName => throw new NotImplementedException();
 
