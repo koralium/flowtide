@@ -1,12 +1,13 @@
-using FlowtideDotNet.Connector.OpenFGA.Extensions;
-using FlowtideDotNet.Core.Engine;
-using FlowtideDotNet.Substrait.Sql;
-using OpenFga.Sdk.Client;
+using FlowtideDotNet.Connector.OpenFGA;
 using OpenFga.Sdk.Client.Model;
-using System.Text.Json;
+using OpenFga.Sdk.Client;
+using FlowtideDotNet.Substrait.Sql;
+using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Connector.OpenFGA.Extensions;
 using FlowtideDotNet.AspNetCore.Extensions;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using FlowtideDotNet.Connector.MongoDB.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,11 +18,11 @@ var openFgaConfig = new OpenFga.Sdk.Client.ClientConfiguration()
 
 var openFgaClient = new OpenFgaClient(openFgaConfig);
 var stores = await openFgaClient.ListStores();
-var store = stores.Stores.Find(x => x.Name == "demo");
+var store = stores.Stores.Find(x => x.Name == "testrbac");
 
 if (store == null)
 {
-    throw new InvalidOperationException("Could not find store 'demo'");
+    throw new InvalidOperationException("Could not find store 'testrbac'");
 }
 
 var authModel = await openFgaClient.ReadLatestAuthorizationModel(new ClientListRelationsOptions()
@@ -31,23 +32,34 @@ var authModel = await openFgaClient.ReadLatestAuthorizationModel(new ClientListR
 
 if (authModel == null || authModel.AuthorizationModel == null)
 {
-    throw new InvalidOperationException("Could not find authorization model for store 'demo'");
+    throw new InvalidOperationException("Could not find authorization model for store 'testrbac'");
 }
-
-var query = File.ReadAllText("query.sql");
-SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
-sqlPlanBuilder.AddSqlServerProvider(() => builder.Configuration.GetConnectionString("SqlServer")!);
-sqlPlanBuilder.Sql(query);
-var plan = sqlPlanBuilder.GetPlan();
 
 openFgaConfig.StoreId = store.Id;
 openFgaConfig.AuthorizationModelId = authModel.AuthorizationModel.Id;
 
+var permissionViewPlan = OpenFgaToFlowtide.Convert(authModel.AuthorizationModel, "doc", "can_view", "openfga");
+
+var query = File.ReadAllText("query.sql");
+SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+sqlPlanBuilder.AddSqlServerProvider(() => builder.Configuration.GetConnectionString("SqlServer")!);
+sqlPlanBuilder.AddPlanAsView("permissionview", permissionViewPlan);
+sqlPlanBuilder.Sql(query);
+
+var plan = sqlPlanBuilder.GetPlan();
+
 ReadWriteFactory readWriteFactory = new ReadWriteFactory()
-    .AddSqlServerSource("demo.*", () => builder.Configuration.GetConnectionString("SqlServer")!)
-    .AddOpenFGASink("*", new FlowtideDotNet.Connector.OpenFGA.OpenFgaSinkOptions()
+    .AddOpenFGASource("openfga", new OpenFgaSourceOptions()
     {
         ClientConfiguration = openFgaConfig
+    })
+    .AddSqlServerSource("demo.*", () => builder.Configuration.GetConnectionString("SqlServer")!)
+    .AddMongoDbSink("*", new FlowtideDotNet.Connector.MongoDB.FlowtideMongoDBSinkOptions()
+    {
+        Collection = "demo",
+        ConnectionString = builder.Configuration.GetConnectionString("mongodb")!,
+        Database = "demo",
+        PrimaryKeys = new List<string>() { "docid" }
     });
 
 builder.Services.AddFlowtideStream(x =>
@@ -64,5 +76,8 @@ builder.Services.AddFlowtideStream(x =>
 });
 
 var app = builder.Build();
+
+// Configure the HTTP request pipeline.
 app.UseFlowtideUI("/stream");
+
 app.Run();
