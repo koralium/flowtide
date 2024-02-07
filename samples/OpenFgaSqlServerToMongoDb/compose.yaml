@@ -1,0 +1,64 @@
+﻿services:
+  stream:
+    depends_on:
+      sqlserver.configurator:
+        condition: service_completed_successfully
+      openfga.configurator:
+        condition: service_completed_successfully
+      mongo:
+        condition: service_healthy
+    build: 
+      context: ../../
+      dockerfile: samples/OpenFgaSqlServerToMongoDb/Dockerfile
+    environment:
+      CUSTOMCONNSTR_SqlServer: "Server=sqlserver;Database=demo;User Id=sa;Password=yourStrong(!)Password;TrustServerCertificate=True"
+      openfga_url: "http://openfga:8080"
+      CUSTOMCONNSTR_mongodb: "mongodb://mongo:27017"
+    ports:
+      - "8000:80"
+  sqlserver:
+    image: "mcr.microsoft.com/mssql/server:2022-latest"
+    ports:
+      - "1433:1433"
+    environment:
+      SA_PASSWORD: "yourStrong(!)Password"
+      ACCEPT_EULA: "Y"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'yourStrong(!)Password' -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      retries: 10
+      start_period: 10s
+      timeout: 3s
+  sqlserver.configurator:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    volumes:
+      - ./:/docker-entrypoint-initdb.d
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    command: "bash -c '/opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P \"yourStrong(!)Password\" -d master -i docker-entrypoint-initdb.d/bootstrap.sql'"
+  openfga:
+    image: "openfga/openfga"
+    command: "run"
+    ports:
+    - "8080:8080"
+    - "8081:8081"
+    - "3000:3000"
+  openfga.configurator:
+    image: "openfga/cli"
+    volumes:
+      - ./:/models
+    depends_on:
+      openfga:
+        condition: service_started
+    command: "store import --api-url=\"http://openfga:8080\" --file /models/openfga.yaml"
+  mongo:
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet"]
+      interval: 10s
+      retries: 3
+      start_period: 10s
+      timeout: 3s
+    image: mongo
+    ports:
+    - "27017:27017"

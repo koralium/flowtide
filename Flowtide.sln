@@ -61,9 +61,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Ka
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Sharepoint", "src\FlowtideDotNet.Connector.Sharepoint\FlowtideDotNet.Connector.Sharepoint.csproj", "{C371CB36-0122-4D6F-9DEF-8E8DE91ADD82}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.OpenFGA", "src\FlowtideDotNet.Connector.OpenFGA\FlowtideDotNet.Connector.OpenFGA.csproj", "{0EAFEAD0-07AF-4AA0-88E2-FCBF246711A5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.OpenFGA", "src\FlowtideDotNet.Connector.OpenFGA\FlowtideDotNet.Connector.OpenFGA.csproj", "{0EAFEAD0-07AF-4AA0-88E2-FCBF246711A5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.OpenFGA.Tests", "tests\FlowtideDotNet.Connector.OpenFGA.Tests\FlowtideDotNet.Connector.OpenFGA.Tests.csproj", "{8ABA2A72-D3A9-4585-AE49-213352271314}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.OpenFGA.Tests", "tests\FlowtideDotNet.Connector.OpenFGA.Tests\FlowtideDotNet.Connector.OpenFGA.Tests.csproj", "{8ABA2A72-D3A9-4585-AE49-213352271314}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlServerToOpenFga", "samples\SqlServerToOpenFga\SqlServerToOpenFga.csproj", "{E1848A11-8BE6-4E1B-AB46-0DC1C02C6E15}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenFgaSqlServerToMongoDb", "samples\OpenFgaSqlServerToMongoDb\OpenFgaSqlServerToMongoDb.csproj", "{3EE88AA7-7422-4941-B823-961EA28AF0A1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -183,6 +187,14 @@ Global
 		{8ABA2A72-D3A9-4585-AE49-213352271314}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8ABA2A72-D3A9-4585-AE49-213352271314}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8ABA2A72-D3A9-4585-AE49-213352271314}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E1848A11-8BE6-4E1B-AB46-0DC1C02C6E15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1848A11-8BE6-4E1B-AB46-0DC1C02C6E15}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1848A11-8BE6-4E1B-AB46-0DC1C02C6E15}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1848A11-8BE6-4E1B-AB46-0DC1C02C6E15}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3EE88AA7-7422-4941-B823-961EA28AF0A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3EE88AA7-7422-4941-B823-961EA28AF0A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3EE88AA7-7422-4941-B823-961EA28AF0A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3EE88AA7-7422-4941-B823-961EA28AF0A1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -216,6 +228,8 @@ Global
 		{C371CB36-0122-4D6F-9DEF-8E8DE91ADD82} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
 		{0EAFEAD0-07AF-4AA0-88E2-FCBF246711A5} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
 		{8ABA2A72-D3A9-4585-AE49-213352271314} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
+		{E1848A11-8BE6-4E1B-AB46-0DC1C02C6E15} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
+		{3EE88AA7-7422-4941-B823-961EA28AF0A1} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {314C9503-DE99-42AA-8FB0-E355C91986C4}

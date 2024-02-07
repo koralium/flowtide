@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
             if (!visitor.unknownCase)
             {
                 // Only fields from left is used
-                if (visitor.fieldInLeft && !visitor.fieldInRight)
+                if (visitor.fieldInLeft && !visitor.fieldInRight && joinRelation.Type != JoinType.Left)
                 {
                     joinRelation.Left = new FilterRelation()
                     {
@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                     var expr = andFunctionScalar.Arguments[i];
                     var andVisitor = new JoinExpressionVisitor(joinRelation.Left.OutputLength);
                     andVisitor.Visit(expr, state);
-                    if (andVisitor.fieldInLeft && !andVisitor.fieldInRight)
+                    if (andVisitor.fieldInLeft && !andVisitor.fieldInRight && joinRelation.Type != JoinType.Left)
                     {
                         leftPushDown.Add(expr);
                         andFunctionScalar.Arguments.RemoveAt(i);

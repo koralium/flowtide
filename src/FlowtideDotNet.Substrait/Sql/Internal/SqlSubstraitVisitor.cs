@@ -328,6 +328,23 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 outNode = VisitProjection(select.Projection, outNode);
             }
 
+            if (select.Distinct)
+            {
+                if (outNode == null)
+                {
+                    throw new InvalidOperationException("DISTINCT statement is not supported without a FROM statement");
+                }
+                var setRelation = new SetRelation()
+                {
+                    Operation = SetOperation.UnionDistinct,
+                    Inputs = new List<Relation>()
+                    {
+                        outNode.Relation
+                    }
+                };
+                outNode = new RelationData(setRelation, outNode.EmitData);
+            }
+
             if (select.Top != null)
             {
                 if (outNode == null)
