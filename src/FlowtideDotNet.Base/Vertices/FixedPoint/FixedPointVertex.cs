@@ -382,6 +382,10 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         {
             _streamName = streamName;
             _name = operatorName;
+            _ingressTarget.Setup(operatorName);
+            _egressSource.Setup(streamName, operatorName);
+            _loopSource.Setup(streamName, operatorName);
+            _feedbackTarget.Setup(operatorName);
         }
     }
 }

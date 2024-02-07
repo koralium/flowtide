@@ -4,12 +4,24 @@
   <h1 align="center">Flowtide.NET</h1>
 
   <p align="center">
-    Differential dataflow stream
+    Streaming integration engine
   <br />
     <a href="https://koralium.github.io/flowtide/docs/intro"><strong>Explore the docs »</strong></a>
   </p>
 </p>
 
+**Flowtide** is a data streaming and integration engine designed for seamless and efficient real-time data processing. It stands out by offering differential data computation, versatile connector support, SQL language support for data streams and integrations, and high-performance operations among other features. Flowtide is tailored for developers and companies looking to efficiently handle complex data transformations and integrations.
+
+## Key Features
+
+- **Differential Data Computation**: Processes data changes differentially, enabling the construction of the current state at any given time.
+- **Versatile Connector Support**: Ready-built connectors are available for databases such as SQL Server, MongoDB, CosmosDB, Elasticsearch, etc., with the possibility to build your own connectors.
+- **SQL Language Support**: Write your data streams and integrations using SQL, making complex data handling accessible and manageable.
+- **High-Performance Operations**: Supports various operations such as projection, filtering, joining, aggregation, and recursion, enabling complex data transformations.
+- **Integrated Checkpointing System**: Features a custom storage solution with a built-in checkpointing system to ensure data integrity and support full rollback capabilities on failure.
+- **Larger than RAM Support**: Writes data to temporary storage on disk to manage data streams larger than the system's memory.
+- **Materialize Data**: Easily materialize data from one or multiple sources into a destination, enabling architectures such as CQRS.
+- **Vector Clock Watermark System**: Notifies when rows from the source system have been processed by the stream, informing users when the data has been transferred.
 
 ## Getting started
 
@@ -61,7 +73,9 @@ Some examples of sinks and sources are:
 
 * MS SQL
 * Kafka
-* Postgres
+* MongoDB
+* Elasticsearch
+* And more
 
 This example will add a connection for SQL Server:
 

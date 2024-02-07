@@ -1,0 +1,58 @@
+﻿name: testrbac
+model: |
+  model
+    schema 1.1
+
+  type user
+
+  type role
+    relations
+      define can_view: [user:*]
+
+  type role_binding
+    relations
+      define can_view: user and can_view from role
+      define role: [role]
+      define user: [user]
+
+  type organization_group
+    relations
+      define can_view: can_view from role_bindings or can_view from parent
+      define parent: [organization_group]
+      define role_bindings: [role_binding]
+
+  type doc
+    relations
+      define can_view: can_view from organization
+      define organization: [organization_group]
+tuples:
+  - user: user:*
+    relation: can_view
+    object: role:1
+  - object: role_binding:1_1
+    user: user:user1
+    relation: user
+  - object: role_binding:1_1
+    user: role:1
+    relation: role
+  - object: role_binding:2_1
+    user: user:user2
+    relation: user
+  - object: role_binding:2_1
+    user: role:1
+    relation: role
+  - object: organization_group:1
+    user: role_binding:1_1
+    relation: role_bindings
+  - object: doc:1
+    user: organization_group:1
+    relation: organization
+  - object: organization_group:1
+    user: organization_group:2
+    relation: parent
+  - object: organization_group:2
+    user: role_binding:2_1
+    relation: role_bindings
+tests:
+  - name: Tests
+    check: []

@@ -501,7 +501,26 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             {
                 return (GetUserTypeFromTupleToUserset(userset.TupleToUserset, relationName, typeDefinition, visitedRelations), false);
             }
+            else if (userset.Intersection != null)
+            {
+                return (GetUserTypeFromIntersection(userset.Intersection, relationName, typeDefinition, visitedRelations), false);
+            }
             throw new NotImplementedException();
+        }
+
+        private List<ResultUserType> GetUserTypeFromIntersection(Usersets userset, string relationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
+        {
+            HashSet<ResultUserType> output = new HashSet<ResultUserType>();
+            foreach(var child in userset.Child)
+            {
+                var result = GetUserType(child, relationName, typeDefinition, visitedRelations);
+                foreach(var t in result.Item1)
+                {
+                    output.Add(t);
+                }
+            }
+
+            return output.ToList();
         }
 
         private List<ResultUserType> GetUserTypeFromTupleToUserset(TupleToUserset tupleToUserset, string toRelationName, TypeDefinition typeDefinition, HashSet<TypeReference> visitedRelations)
