@@ -343,5 +343,49 @@ namespace FlowtideDotNet.AcceptanceTests
             }
             AssertCurrentDataEqual(expected);
         }
+
+        [Fact]
+        public async Task LeftJoinWithConditionOnlyLeft()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey, c.name
+                FROM users u
+                LEFT JOIN companies c
+                ON u.companyid = '123123'");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from user in Users
+                select new
+                {
+                    user.UserKey,
+                    companyName = default(string)
+                });
+        }
+
+        [Fact]
+        public async Task LeftJoinWithConditionEqualsAndOnlyLeftCondition()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey, c.name
+                FROM users u
+                LEFT JOIN companies c
+                ON u.companyid = '123123' AND u.companyid = c.companyid");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from user in Users
+                select new
+                {
+                    user.UserKey,
+                    companyName = default(string)
+                });
+        }
     }
 }
