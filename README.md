@@ -10,11 +10,11 @@
   </p>
 </p>
 
-**Flowtide** is an innovative data streaming and integration engine designed for seamless and efficient real-time data processing. It stands out by offering differential data computation, versatile connector support, SQL language support for data streams and integrations, and high-performance operations among other features. Flowtide is tailored for developers and companies looking to efficiently handle complex data transformations and integrations with precision and minimal resource usage.
+**Flowtide** is a data streaming and integration engine designed for seamless and efficient real-time data processing. It stands out by offering differential data computation, versatile connector support, SQL language support for data streams and integrations, and high-performance operations among other features. Flowtide is tailored for developers and companies looking to efficiently handle complex data transformations and integrations.
 
 ## Key Features
 
-- **Differential Data Computation**: Processes data changes differentially, enabling the construction of the current state at any given time with precision and minimal resource usage.
+- **Differential Data Computation**: Processes data changes differentially, enabling the construction of the current state at any given time.
 - **Versatile Connector Support**: Ready-built connectors are available for databases such as SQL Server, MongoDB, CosmosDB, Elasticsearch, etc., with the possibility to build your own connectors.
 - **SQL Language Support**: Write your data streams and integrations using SQL, making complex data handling accessible and manageable.
 - **High-Performance Operations**: Supports various operations such as projection, filtering, joining, aggregation, and recursion, enabling complex data transformations.
