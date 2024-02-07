@@ -4,7 +4,7 @@
   <h1 align="center">Flowtide.NET</h1>
 
   <p align="center">
-    Differential dataflow stream
+    Streaming integration engine
   <br />
     <a href="https://koralium.github.io/flowtide/docs/intro"><strong>Explore the docs »</strong></a>
   </p>
