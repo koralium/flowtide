@@ -290,7 +290,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             var union = new SetRelation()
             {
                 Inputs = new List<Relation>(),
-                Operation = SetOperation.UnionAll
+                Operation = SetOperation.UnionDistinct
             };
             HashSet<TupleReference> nonComputedTuples = new HashSet<TupleReference>();
             HashSet<ResultUserType> resultUserTypes = new HashSet<ResultUserType>();
@@ -408,7 +408,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                     SetRelation setRelation = new SetRelation()
                     {
                         Inputs = new List<Relation>(),
-                        Operation = SetOperation.UnionAll
+                        Operation = SetOperation.UnionDistinct
                     };
 
                     // First join checks if the user field is equal with no wildcard check
@@ -843,7 +843,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 rel = new SetRelation()
                 {
                     Inputs = relations,
-                    Operation = SetOperation.UnionAll
+                    Operation = SetOperation.UnionDistinct
                 };
             }
             else
@@ -1049,7 +1049,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             var relation = new SetRelation()
             {
                 Inputs = new List<Relation>(),
-                Operation = SetOperation.UnionAll
+                Operation = SetOperation.UnionDistinct
             };
             HashSet<TupleReference> nonComputedTuples = new HashSet<TupleReference>();
             foreach (var child in usersets.Child)

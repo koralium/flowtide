@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Core.Operators.Project
                             newVector[i] = e.GetColumn(index);
                         }
                     }
-                    output.Add(new RowEvent(e.Weight, 0, new ArrayRowData(newVector)));
+                    output.Add(new RowEvent(e.Weight, e.Iteration, new ArrayRowData(newVector)));
                 }
                 else
                 {
@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Core.Operators.Project
                     {
                         newVector[i + e.Length] = extraFelds[i];
                     }
-                    output.Add(new RowEvent(e.Weight, 0, new ArrayRowData(newVector)));
+                    output.Add(new RowEvent(e.Weight, e.Iteration, new ArrayRowData(newVector)));
                 }
             }
 

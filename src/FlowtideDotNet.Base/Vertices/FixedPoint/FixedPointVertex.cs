@@ -40,6 +40,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         private readonly FixedPointSource _loopSource;
         private readonly ExecutionDataflowBlockOptions _executionDataflowBlockOptions;
         private TransformManyBlock<KeyValuePair<int, IStreamEvent>, KeyValuePair<int, IStreamEvent>>? _transformBlock;
+        private TransformBlock<KeyValuePair<int, IStreamEvent>, KeyValuePair<int, IStreamEvent>>? _ingressInputWaitBlock;
         private string? _name;
         private string? _streamName;
         private ILockingEvent? _waitingLockingEvent;
@@ -62,6 +63,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
 
         public FixedPointVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
+            executionDataflowBlockOptions.BoundedCapacity = executionDataflowBlockOptions.BoundedCapacity * 10;
             var clone = executionDataflowBlockOptions.DefaultOrClone();
             clone.EnsureOrdered = true;
             clone.MaxDegreeOfParallelism = 1;
@@ -228,14 +230,30 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                     return HandleWatermark(r.Key, watermark);
                 }
                 throw new NotSupportedException();
+            }, new ExecutionDataflowBlockOptions()
+            {
+                MaxDegreeOfParallelism = 1
+            });
+
+            _ingressInputWaitBlock = new TransformBlock<KeyValuePair<int, IStreamEvent>, KeyValuePair<int, IStreamEvent>>(async value =>
+            {
+                while (_transformBlock.InputCount > (0) ||
+                _transformBlock.OutputCount > (0))
+                {
+                    // Wait for some time to let the buffer clear
+                    await Task.Delay(10);
+                }
+                return value;
             }, _executionDataflowBlockOptions);
+            _ingressInputWaitBlock.LinkTo(_transformBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
             // Link targets
             _ingressTarget.Initialize();
             _feedbackTarget.Initialize();
-            _ingressTarget.LinkTo(_transformBlock, new DataflowLinkOptions() { PropagateCompletion = true });
+            _ingressTarget.LinkTo(_ingressInputWaitBlock, new DataflowLinkOptions() { PropagateCompletion = true });
             _feedbackTarget.LinkTo(_transformBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
+            
             // Create egress and loop source blocks
             _egressSource.Initialize();
             _loopSource.Initialize();

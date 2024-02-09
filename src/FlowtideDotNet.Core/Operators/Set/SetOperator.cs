@@ -130,7 +130,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                 // Check if there is a difference in weight
                 if (newWeight != previousWeight)
                 {
-                    output.Add(new RowEvent(newWeight - previousWeight, 0, e.RowData));
+                    output.Add(new RowEvent(newWeight - previousWeight, e.Iteration, e.RowData));
                 }
             }
 

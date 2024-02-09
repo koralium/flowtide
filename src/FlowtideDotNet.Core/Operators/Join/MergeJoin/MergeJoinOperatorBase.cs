@@ -104,14 +104,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             return new JoinState();
         }
 
-        protected RowEvent OnConditionSuccess(JoinStreamEvent left, JoinStreamEvent right, in int weight)
+        protected RowEvent OnConditionSuccess(JoinStreamEvent left, JoinStreamEvent right, in int weight, in uint iteration)
         {
-            return new RowEvent(weight, 0, ArrayRowData.Create(left.RowData, right.RowData, mergeJoinRelation.Emit));
+            return new RowEvent(weight, iteration, ArrayRowData.Create(left.RowData, right.RowData, mergeJoinRelation.Emit));
         }
 
-        protected RowEvent CreateLeftWithNullRightEvent(int weight, JoinStreamEvent e)
+        protected RowEvent CreateLeftWithNullRightEvent(int weight, JoinStreamEvent e, in uint iteration)
         {
-            return new RowEvent(weight, 0, ArrayRowData.Create(e.RowData, _rightNullData, mergeJoinRelation.Emit));
+            return new RowEvent(weight, iteration, ArrayRowData.Create(e.RowData, _rightNullData, mergeJoinRelation.Emit));
         }
 
         protected async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)
@@ -146,7 +146,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             if (_postCondition(joinEventCheck, kv.Key))
                             {
                                 int outputWeight = e.Weight * kv.Value.Weight;
-                                output.Add(OnConditionSuccess(joinEventCheck, kv.Key, outputWeight));
+                                output.Add(OnConditionSuccess(joinEventCheck, kv.Key, outputWeight, e.Iteration));
                                 joinWeight += outputWeight;
 
                                 if (output.Count > 100)
@@ -174,7 +174,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 if (joinWeight == 0 && mergeJoinRelation.Type == JoinType.Left)
                 {
                     // Emit null if left join or full outer join
-                    output.Add(CreateLeftWithNullRightEvent(e.Weight, joinEventCheck));
+                    output.Add(CreateLeftWithNullRightEvent(e.Weight, joinEventCheck, e.Iteration));
                     if (output.Count > 100)
                     {
                         _eventsCounter.Add(output.Count);
@@ -263,7 +263,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             if (_postCondition(kv.Key, joinEventCheck))
                             {
                                 int outputWeight = e.Weight * kv.Value.Weight;
-                                output.Add(OnConditionSuccess(kv.Key, joinEventCheck, outputWeight));
+                                output.Add(OnConditionSuccess(kv.Key, joinEventCheck, outputWeight, e.Iteration));
 
                                 
 
@@ -273,14 +273,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     if (kv.Value.JoinWeight == 0)
                                     {
                                         // If it was zero before, we must emit a left with right null to negate previous value
-                                        output.Add(CreateLeftWithNullRightEvent(-kv.Value.Weight, kv.Key));
+                                        output.Add(CreateLeftWithNullRightEvent(-kv.Value.Weight, kv.Key, e.Iteration));
                                     }
 
                                     kv.Value.JoinWeight += outputWeight;
 
                                     if (kv.Value.JoinWeight == 0)
                                     {
-                                        output.Add(CreateLeftWithNullRightEvent(kv.Value.Weight, kv.Key));
+                                        output.Add(CreateLeftWithNullRightEvent(kv.Value.Weight, kv.Key, e.Iteration));
                                     }
                                 }
 

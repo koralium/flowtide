@@ -85,6 +85,10 @@ namespace FlowtideDotNet.Substrait.Modifier
 
         public override Relation VisitSetRelation(SetRelation setRelation, object? state)
         {
+            for (int i = 0; i < setRelation.Inputs.Count; i++)
+            {
+                setRelation.Inputs[i] = Visit(setRelation.Inputs[i], state);
+            }
             return setRelation;
         }
 
