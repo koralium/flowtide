@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal.Models
 {
     internal class ZanzibarUnion : ZanzibarRelation
     {
-        public List<ZanzibarRelation>? Inputs { get; set; }
+        public required List<ZanzibarRelation> Inputs { get; set; }
 
         public override T Accept<T, TState>(ZanzibarVisitor<T, TState> visitor, TState state)
         {
