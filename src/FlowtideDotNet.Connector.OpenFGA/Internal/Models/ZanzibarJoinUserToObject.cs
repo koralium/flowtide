@@ -18,8 +18,14 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Internal.Models
 {
-    internal class Union : ZanzibarRelation
+    /// <summary>
+    /// Join that joins on "l.user_type = r.object_type AND l.user_id = r.object_id"
+    /// </summary>
+    internal class ZanzibarJoinUserToObject : ZanzibarJoin
     {
-        public List<ZanzibarRelation>? Inputs { get; set; }
+        public override T Accept<T, TState>(ZanzibarVisitor<T, TState> visitor, TState state)
+        {
+            return visitor.VisitZanzibarJoinUserToObject(this, state);
+        }
     }
 }

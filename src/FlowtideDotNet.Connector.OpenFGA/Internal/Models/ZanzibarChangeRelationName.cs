@@ -20,8 +20,13 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal.Models
 {
     internal class ZanzibarChangeRelationName : ZanzibarRelation
     {
-        public string NewRelationName { get; set; }
+        public required string NewRelationName { get; set; }
 
-        public ZanzibarRelation Input { get; set; }
+        public required ZanzibarRelation Input { get; set; }
+
+        public override T Accept<T, TState>(ZanzibarVisitor<T, TState> visitor, TState state)
+        {
+            return visitor.VisitZanzibarChangeRelationName(this, state);
+        }
     }
 }

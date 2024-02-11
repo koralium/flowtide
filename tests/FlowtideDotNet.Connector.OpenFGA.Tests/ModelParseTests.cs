@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
             var authModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
 
-            var parser = new FlowtideOpenFgaParser(authModel);
+            var parser = new FlowtideZanzibarConverter(authModel);
             parser.Parse("group", "member");
         }
 
@@ -165,8 +165,177 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
             var authModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
 
-            var parser = new FlowtideOpenFgaParser(authModel);
-            parser.Parse("group", "can_read");
+            var parser = new FlowtideZanzibarConverter(authModel);
+            parser.Parse("doc", "can_read");
+        }
+
+        [Fact]
+        public void TestIntersectionAndWildcard()
+        {
+            //  model
+            //    schema 1.1
+            //
+            //  type user
+            //
+            //  type role
+            //    relations
+            //      define can_read: [user:*]
+            //
+            //  type role_binding
+            //    relations
+            //      define role: [role]
+            //        define user: [user]
+            //        define can_read: user and can_read from role
+
+            var model = @"
+            {
+              ""schema_version"": ""1.1"",
+              ""type_definitions"": [
+                {
+                  ""type"": ""user"",
+                  ""relations"": {},
+                  ""metadata"": null
+                },
+                {
+                  ""type"": ""role"",
+                  ""relations"": {
+                    ""can_read"": {
+                      ""this"": {}
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""can_read"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""user"",
+                            ""wildcard"": {}
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  ""type"": ""role_binding"",
+                  ""relations"": {
+                    ""role"": {
+                      ""this"": {}
+                    },
+                    ""user"": {
+                      ""this"": {}
+                    },
+                    ""can_read"": {
+                      ""intersection"": {
+                        ""child"": [
+                          {
+                            ""computedUserset"": {
+                              ""relation"": ""user""
+                            }
+                          },
+                          {
+                            ""tupleToUserset"": {
+                              ""computedUserset"": {
+                                ""relation"": ""can_read""
+                              },
+                              ""tupleset"": {
+                                ""relation"": ""role""
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""role"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""role""
+                          }
+                        ]
+                      },
+                      ""user"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""user""
+                          }
+                        ]
+                      },
+                      ""can_read"": {
+                        ""directly_related_user_types"": []
+                      }
+                    }
+                  }
+                }
+              ]
+            }";
+
+            var authModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
+
+            var parser = new FlowtideZanzibarConverter(authModel);
+            parser.Parse("role_binding", "can_read");
+        }
+
+        [Fact]
+        public void TestHashtag()
+        {
+            var model = @"
+            {
+              ""schema_version"": ""1.1"",
+              ""type_definitions"": [
+                {
+                  ""type"": ""user"",
+                  ""relations"": {},
+                  ""metadata"": null
+                },
+                {
+                  ""type"": ""group"",
+                  ""relations"": {
+                    ""member"": {
+                      ""this"": {}
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""member"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""user""
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  ""type"": ""doc"",
+                  ""relations"": {
+                    ""can_read"": {
+                      ""this"": {}
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""can_read"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""group"",
+                            ""relation"": ""member""
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }";
+
+            var authModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
+
+            var parser = new FlowtideZanzibarConverter(authModel);
+            parser.Parse("doc", "can_read");
         }
     }
 }

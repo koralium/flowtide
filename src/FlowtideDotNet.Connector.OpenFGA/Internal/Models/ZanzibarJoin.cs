@@ -18,10 +18,10 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Internal.Models
 {
-    internal class ZanzibarJoin : ZanzibarRelation
+    internal abstract class ZanzibarJoin : ZanzibarRelation
     {
-        public ZanzibarRelation Left { get; set; }
+        public required ZanzibarRelation Left { get; set; }
 
-        public ZanzibarRelation Right { get; set; }
+        public required ZanzibarRelation Right { get; set; }
     }
 }

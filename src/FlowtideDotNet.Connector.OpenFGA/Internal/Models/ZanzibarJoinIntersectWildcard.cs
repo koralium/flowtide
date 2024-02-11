@@ -18,8 +18,13 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Internal.Models
 {
-    internal class Filter : ZanzibarRelation
+    internal class ZanzibarJoinIntersectWildcard : ZanzibarJoin
     {
+        public bool LeftWildcard { get; set; }
 
+        public override T Accept<T, TState>(ZanzibarVisitor<T, TState> visitor, TState state)
+        {
+            return visitor.VisitZanzibarJoinIntersectWildcard(this, state);
+        }
     }
 }

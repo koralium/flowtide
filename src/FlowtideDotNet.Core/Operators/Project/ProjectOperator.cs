@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Core.Operators.Project
             foreach (var e in msg.Events)
             {
 #if DEBUG_WRITE
-                allInput.WriteLine($"Input: {e.Weight} {e.Vector.ToJson}");
+                allInput.WriteLine($"Input: {e.Weight} {e.ToJson()}");
 #endif
                 FlxValue[] extraFelds = new FlxValue[_expressions.Length];
 

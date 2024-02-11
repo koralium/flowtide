@@ -833,7 +833,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             await stream.WaitForUpdate();
             var rows = stream.GetActualRowsAsVectors();
 
-            Assert.Equal(2, rows.Count);
+            Assert.Equal(1, rows.Count);
         }
 
         [Fact]

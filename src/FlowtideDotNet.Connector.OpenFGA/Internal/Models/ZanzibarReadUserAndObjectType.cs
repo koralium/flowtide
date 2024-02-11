@@ -20,10 +20,15 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal.Models
 {
     internal class ZanzibarReadUserAndObjectType : ZanzibarRelation
     {
-        public string UserType { get; set; }
+        public required string UserType { get; set; }
 
-        public string Relation { get; set; }
+        public required string Relation { get; set; }
 
-        public string ObjectType { get; set; }
+        public required string ObjectType { get; set; }
+
+        public override T Accept<T, TState>(ZanzibarVisitor<T, TState> visitor, TState state)
+        {
+            return visitor.VisitZanzibarReadUserAndObjectType(this, state);
+        }
     }
 }

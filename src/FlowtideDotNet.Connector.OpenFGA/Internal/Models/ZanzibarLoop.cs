@@ -18,10 +18,17 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Internal.Models
 {
-    internal class ZanzibarReadLookup : ZanzibarRelation
+    internal class ZanzibarLoop : ZanzibarRelation
     {
-        public string ObjectType { get; set; }
+        public required ZanzibarRelation LoopRelation { get; set; }
 
-        public string Relation { get; set; }
+        public required string Type { get; set; }
+
+        public required string Relation { get; set; }
+
+        public override T Accept<T, TState>(ZanzibarVisitor<T, TState> visitor, TState state)
+        {
+            return visitor.VisitZanzibarLoop(this, state);
+        }
     }
 }

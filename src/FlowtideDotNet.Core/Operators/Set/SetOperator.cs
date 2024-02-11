@@ -139,7 +139,7 @@ namespace FlowtideDotNet.Core.Operators.Set
 #if DEBUG_WRITE
                 foreach (var o in output)
                 {
-                    outputWriter.WriteLine($"{o.Weight} {o.Vector.ToJson}");
+                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
 #endif
                 Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
@@ -177,7 +177,7 @@ namespace FlowtideDotNet.Core.Operators.Set
             allInput.WriteLine("New batch");
             foreach (var e in msg.Events)
             {
-                allInput.WriteLine($"{targetId}, {e.Weight} {e.Vector.ToJson}");
+                allInput.WriteLine($"{targetId}, {e.Weight} {e.ToJson()}");
             }
             allInput.Flush();
 #endif

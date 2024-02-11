@@ -20,5 +20,6 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal.Models
 {
     internal abstract class ZanzibarRelation
     {
+        public abstract T Accept<T, TState>(ZanzibarVisitor<T, TState> visitor, TState state);
     }
 }

@@ -207,6 +207,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             {
                 return projectRelation;
             }
+            if (projectRelation.Input is IterationRelation)
+            {
+                return projectRelation;
+            }
             if (projectRelation.Input.OutputLength >= projectRelation.OutputLength)
             {
                 var input = projectRelation.Input;

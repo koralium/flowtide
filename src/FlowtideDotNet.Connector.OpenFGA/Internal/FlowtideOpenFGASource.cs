@@ -43,7 +43,8 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         private Task? _changesTask;
         private readonly string? m_objectTypeFilter;
 
-        private const string WatermarkName = "openfga";
+        private readonly string m_watermarkName = "openfga";
+        private readonly string m_displayName;
 
         /// <summary>
         /// Cache for types and relation values
@@ -161,12 +162,19 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             {
                 var filterVisitor = new OpenFgaFilterVisitor(readRelation);
                 m_objectTypeFilter = filterVisitor.Visit(readRelation.Filter, default);
+                m_displayName = $"OpenFGA(type={m_objectTypeFilter})";
+                m_watermarkName = $"openfga_{m_objectTypeFilter}";
+            }
+            else
+            {
+                m_displayName = "OpenFGA(type=all)";
+                m_watermarkName = "openfga";
             }
 
             this.m_options = openFgaOptions;
         }
 
-        public override string DisplayName => "OpenFGA Source";
+        public override string DisplayName => m_displayName;
 
         public override Task DeleteAsync()
         {
@@ -206,7 +214,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             {
                 await output.EnterCheckpointLock();
                 await SendChanges(request, changes, output);
-                await output.SendWatermark(new Watermark(WatermarkName, m_state.LastTimestamp));
+                await output.SendWatermark(new Watermark(m_watermarkName, m_state.LastTimestamp));
                 output.ExitCheckpointLock();
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }
@@ -214,7 +222,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
         {
-            return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { WatermarkName });
+            return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { m_watermarkName });
         }
 
         protected override Task InitializeOrRestore(long restoreTime, FlowtideOpenFgaSourceState? state, IStateManagerClient stateManagerClient)
@@ -301,7 +309,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
             await SendChanges(request, changes, output);
 
-            await output.SendWatermark(new Watermark(WatermarkName, m_state.LastTimestamp));
+            await output.SendWatermark(new Watermark(m_watermarkName, m_state.LastTimestamp));
             output.ExitCheckpointLock();
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             await RegisterTrigger("load_changes", TimeSpan.FromSeconds(1));
