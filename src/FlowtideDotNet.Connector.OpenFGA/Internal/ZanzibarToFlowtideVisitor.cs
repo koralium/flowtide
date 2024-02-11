@@ -424,19 +424,6 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                     }
                 }
             };
-
-            //var projectRel = new ProjectRelation()
-            //{
-            //    Input = join,
-            //    Expressions = new List<Expression>()
-            //    {
-            //        new StringLiteral()
-            //        {
-            //            Value = toRelationName
-            //        }
-            //    },
-                
-            //};
         }
 
         public override Relation VisitZanzibarLoop(ZanzibarLoop loop, object? state)

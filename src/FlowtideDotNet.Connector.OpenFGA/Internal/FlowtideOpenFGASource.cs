@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         private Task? _changesTask;
         private readonly string? m_objectTypeFilter;
 
-        private readonly string m_watermarkName = "openfga";
+        private readonly string m_watermarkName;
         private readonly string m_displayName;
 
         /// <summary>

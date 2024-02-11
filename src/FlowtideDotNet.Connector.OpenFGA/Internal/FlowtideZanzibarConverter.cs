@@ -66,10 +66,10 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             }
         }
 
-        private class Result
+        private sealed class Result
         {
-            public ZanzibarRelation Relation { get; set; }
-            public HashSet<ResultUserType> ResultTypes { get; set; }
+            public required ZanzibarRelation Relation { get; set; }
+            public required HashSet<ResultUserType> ResultTypes { get; set; }
         }
 
         private readonly AuthorizationModel authorizationModel;
@@ -474,7 +474,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             };
         }
 
-        private Result VisitDirectUser(RelationReference relationReference, TypeDefinition referenceType, string relationName, TypeDefinition objectType)
+        private static Result VisitDirectUser(RelationReference relationReference, TypeDefinition referenceType, string relationName, TypeDefinition objectType)
         {
             var rel = new ZanzibarReadUserAndObjectType()
             {
