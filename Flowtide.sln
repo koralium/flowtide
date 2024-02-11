@@ -67,9 +67,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Op
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlServerToOpenFga", "samples\SqlServerToOpenFga\SqlServerToOpenFga.csproj", "{E1848A11-8BE6-4E1B-AB46-0DC1C02C6E15}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenFgaSqlServerToMongoDb", "samples\OpenFgaSqlServerToMongoDb\OpenFgaSqlServerToMongoDb.csproj", "{3EE88AA7-7422-4941-B823-961EA28AF0A1}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DenormalizeProjectPermissions", "..\..\dev\DenormalizeProjectPermissions\DenormalizeProjectPermissions\DenormalizeProjectPermissions.csproj", "{CBCB4777-8D95-496E-8AAD-36C3B96F7A33}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenFgaSqlServerToMongoDb", "samples\OpenFgaSqlServerToMongoDb\OpenFgaSqlServerToMongoDb.csproj", "{3EE88AA7-7422-4941-B823-961EA28AF0A1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -197,10 +195,6 @@ Global
 		{3EE88AA7-7422-4941-B823-961EA28AF0A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3EE88AA7-7422-4941-B823-961EA28AF0A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3EE88AA7-7422-4941-B823-961EA28AF0A1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CBCB4777-8D95-496E-8AAD-36C3B96F7A33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CBCB4777-8D95-496E-8AAD-36C3B96F7A33}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CBCB4777-8D95-496E-8AAD-36C3B96F7A33}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CBCB4777-8D95-496E-8AAD-36C3B96F7A33}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
