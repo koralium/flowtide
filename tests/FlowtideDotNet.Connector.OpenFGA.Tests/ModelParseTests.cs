@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
             var authModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
 
-            var parser = new FlowtideZanzibarConverter(authModel);
+            var parser = new FlowtideZanzibarConverter(authModel, new HashSet<string>());
             parser.Parse("group", "member");
         }
 
@@ -165,7 +165,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
             var authModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
 
-            var parser = new FlowtideZanzibarConverter(authModel);
+            var parser = new FlowtideZanzibarConverter(authModel, new HashSet<string>());
             parser.Parse("doc", "can_read");
         }
 
@@ -274,7 +274,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
             var authModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
 
-            var parser = new FlowtideZanzibarConverter(authModel);
+            var parser = new FlowtideZanzibarConverter(authModel, new HashSet<string>());
             parser.Parse("role_binding", "can_read");
         }
 
@@ -334,7 +334,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
             var authModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
 
-            var parser = new FlowtideZanzibarConverter(authModel);
+            var parser = new FlowtideZanzibarConverter(authModel, new HashSet<string>());
             parser.Parse("doc", "can_read");
         }
     }

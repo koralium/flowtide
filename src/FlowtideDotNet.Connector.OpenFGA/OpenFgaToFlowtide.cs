@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
             }
 
-            var zanzibarRelation = new FlowtideZanzibarConverter(authorizationModel).Parse(type, relation);
+            var zanzibarRelation = new FlowtideZanzibarConverter(authorizationModel, stopTypes.ToHashSet()).Parse(type, relation);
             var visitor = new ZanzibarToFlowtideVisitor(inputTypeName);
             var flowtideRelation = visitor.Visit(zanzibarRelation, default);
 

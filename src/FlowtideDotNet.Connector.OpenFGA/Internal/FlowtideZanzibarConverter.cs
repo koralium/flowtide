@@ -73,16 +73,16 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         }
 
         private readonly AuthorizationModel authorizationModel;
+        private readonly HashSet<string> _stopTypes;
         private readonly HashSet<TypeReference> visitedTypes;
         private readonly HashSet<TypeReference> loopFoundTypes;
-        private readonly List<ZanzibarRelation> relations;
 
-        public FlowtideZanzibarConverter(AuthorizationModel authorizationModel)
+        public FlowtideZanzibarConverter(AuthorizationModel authorizationModel, HashSet<string> stopTypes)
         {
             this.authorizationModel = authorizationModel;
+            _stopTypes = stopTypes;
             visitedTypes = new HashSet<TypeReference>();
             loopFoundTypes = new HashSet<TypeReference>();
-            relations = new List<ZanzibarRelation>();
         }
 
         public ZanzibarRelation Parse(string type, string relation)
@@ -244,6 +244,20 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             if (resultTypeDefinition == null)
             {
                 throw new InvalidOperationException($"Type {resultType.TypeName} not found in authorization model");
+            }
+
+            if (_stopTypes.Contains(resultTypeDefinition.Type))
+            {
+                var changeNameRel = new ZanzibarChangeRelationName()
+                {
+                    Input = tuplesetResult.Relation,
+                    NewRelationName = toRelationName
+                };
+                return new Result()
+                {
+                    Relation = changeNameRel,
+                    ResultTypes = tuplesetResult.ResultTypes
+                };
             }
 
             var computedTypeResult = VisitComputedUserset(tupleToUserset.ComputedUserset, toRelationName, resultTypeDefinition);
