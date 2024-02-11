@@ -62,6 +62,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
 
         public FixedPointVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
+            executionDataflowBlockOptions.BoundedCapacity = executionDataflowBlockOptions.BoundedCapacity * 10;
             var clone = executionDataflowBlockOptions.DefaultOrClone();
             clone.EnsureOrdered = true;
             clone.MaxDegreeOfParallelism = 1;
@@ -228,7 +229,10 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                     return HandleWatermark(r.Key, watermark);
                 }
                 throw new NotSupportedException();
-            }, _executionDataflowBlockOptions);
+            }, new ExecutionDataflowBlockOptions()
+            {
+                MaxDegreeOfParallelism = 1
+            });
 
             // Link targets
             _ingressTarget.Initialize();
@@ -236,6 +240,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _ingressTarget.LinkTo(_transformBlock, new DataflowLinkOptions() { PropagateCompletion = true });
             _feedbackTarget.LinkTo(_transformBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
+            
             // Create egress and loop source blocks
             _egressSource.Initialize();
             _loopSource.Initialize();

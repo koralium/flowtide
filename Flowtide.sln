@@ -67,7 +67,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Op
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlServerToOpenFga", "samples\SqlServerToOpenFga\SqlServerToOpenFga.csproj", "{E1848A11-8BE6-4E1B-AB46-0DC1C02C6E15}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenFgaSqlServerToMongoDb", "samples\OpenFgaSqlServerToMongoDb\OpenFgaSqlServerToMongoDb.csproj", "{3EE88AA7-7422-4941-B823-961EA28AF0A1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenFgaSqlServerToMongoDb", "samples\OpenFgaSqlServerToMongoDb\OpenFgaSqlServerToMongoDb.csproj", "{3EE88AA7-7422-4941-B823-961EA28AF0A1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

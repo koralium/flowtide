@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.OpenFGA.Internal;
 using FlowtideDotNet.Substrait;
+using FlowtideDotNet.Substrait.Relations;
 using OpenFga.Sdk.Model;
 using System;
 using System.Collections.Generic;
@@ -34,8 +35,33 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
             }
 
-            var plan = new FlowtideOpenFgaModelParser(authorizationModel, stopTypes).Parse(type, relation, inputTypeName);
-            return plan;
+            var zanzibarRelation = new FlowtideZanzibarConverter(authorizationModel, stopTypes.ToHashSet()).Parse(type, relation);
+            var visitor = new ZanzibarToFlowtideVisitor(inputTypeName);
+            var flowtideRelation = visitor.Visit(zanzibarRelation, default);
+
+            var rootRelation = new RootRelation()
+            {
+                Input = flowtideRelation,
+                Names = new List<string>()
+                {
+                    "user_type",
+                    "user_id",
+                    "user_relation",
+                    "relation",
+                    "object_type",
+                    "object_id"
+                }
+            };
+
+            var outputPlan = new Plan()
+            {
+                Relations = new List<Substrait.Relations.Relation>()
+                {
+                    rootRelation
+                }
+            };
+
+            return outputPlan;
         }
     }
 }
