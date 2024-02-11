@@ -163,6 +163,52 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                                 },
                             }
                         },
+                        // l.object_type = r.object_type
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.Equal,
+                            Arguments = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = ObjectTypeColumn
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = left.OutputLength + ObjectTypeColumn
+                                    }
+                                },
+                            }
+                        },
+                        // l.object_id = r.object_id
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.Equal,
+                            Arguments = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = ObjectIdColumn
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = left.OutputLength + ObjectIdColumn
+                                    }
+                                },
+                            }
+                        },
                         // l.user_id = '*'
                         new ScalarFunction()
                         {

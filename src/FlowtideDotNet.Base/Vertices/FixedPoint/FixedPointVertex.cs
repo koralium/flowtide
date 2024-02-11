@@ -164,7 +164,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
 
         public void CreateBlock()
         {
-            singleReadSource = NoReadSourceInLoop();
+            singleReadSource = false;
 
             _transformBlock = new TransformManyBlock<KeyValuePair<int, IStreamEvent>, KeyValuePair<int, IStreamEvent>>((r) =>
             {
