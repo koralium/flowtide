@@ -677,5 +677,14 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
             return setRelation;
         }
+
+        public override Relation VisitZanzibarRelationReference(ZanzibarRelationReference relationReference, object? state)
+        {
+            return new ReferenceRelation()
+            {
+                ReferenceOutputLength = 6,
+                RelationId = relationReference.ReferenceId
+            };
+        }
     }
 }

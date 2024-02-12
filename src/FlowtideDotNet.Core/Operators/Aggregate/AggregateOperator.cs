@@ -196,6 +196,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                                 outputs.Add(new RowEvent(-1, 0, new CompactRowData(val.PreviousValue)));
                             }
                             await _tree.Delete(kv.Key);
+                            continue;
                         }
                         _flexBufferNewValue.NewObject();
                         var vectorStart = _flexBufferNewValue.StartVector();
@@ -312,6 +313,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                         {
                             val!.MeasureStates[i] = await _measures[i].Compute(key.Value, e, val!.MeasureStates[i], e.Weight);
                         }
+                        val.Weight += e.Weight;
                     }
                     else
                     {
