@@ -62,6 +62,15 @@ namespace FlowtideDotNet.Core.Operators.Set
             }
         }
 
+        private IRowData CreateOutputRowData(IRowData row)
+        {
+            if (setRelation.EmitSet)
+            {
+                return ArrayRowData.Create(row, setRelation.Emit);
+            }
+            return row;
+        }
+
         private static int UnionAllWeightFunction(int weight1, int weight2)
         {
             return Math.Max(weight1, weight2);
@@ -130,7 +139,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                 // Check if there is a difference in weight
                 if (newWeight != previousWeight)
                 {
-                    output.Add(new RowEvent(newWeight - previousWeight, e.Iteration, e.RowData));
+                    output.Add(new RowEvent(newWeight - previousWeight, e.Iteration, CreateOutputRowData(e.RowData)));
                 }
             }
 
