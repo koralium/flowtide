@@ -75,5 +75,10 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal.Models
         {
             throw new NotImplementedException();
         }
+
+        public virtual T VisitZanzibarRelationReference(ZanzibarRelationReference relationReference, TState state)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

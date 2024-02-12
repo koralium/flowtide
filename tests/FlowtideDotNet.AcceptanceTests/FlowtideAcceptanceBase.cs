@@ -71,6 +71,11 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.DeleteUser(user);
         }
 
+        public void DeleteOrder(Order order)
+        {
+            flowtideTestStream.DeleteOrder(order);
+        }
+
         public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper)
         {
             var baseType = this.GetType();
