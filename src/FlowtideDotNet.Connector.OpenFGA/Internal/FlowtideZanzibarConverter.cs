@@ -76,6 +76,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         private readonly HashSet<string> _stopTypes;
         private readonly HashSet<TypeReference> visitedTypes;
         private readonly HashSet<TypeReference> loopFoundTypes;
+        private readonly List<ZanzibarRelation> _relations;
 
         public FlowtideZanzibarConverter(AuthorizationModel authorizationModel, HashSet<string> stopTypes)
         {
@@ -83,9 +84,10 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             _stopTypes = stopTypes;
             visitedTypes = new HashSet<TypeReference>();
             loopFoundTypes = new HashSet<TypeReference>();
+            _relations = new List<ZanzibarRelation>();
         }
 
-        public ZanzibarRelation Parse(string type, string relation)
+        public List<ZanzibarRelation> Parse(string type, string relation)
         {
             var typeDefinition = authorizationModel.TypeDefinitions.Find(x => x.Type.Equals(type, StringComparison.OrdinalIgnoreCase));
 
@@ -104,7 +106,8 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             }
 
             var result = VisitRelationDefinition(relationDefinition, relation, typeDefinition);
-            return result.Relation;
+            _relations.Add(result.Relation);
+            return _relations;
         }
 
         private Result VisitRelationDefinition(Userset relationDefinition, string relationName, TypeDefinition typeDefinition)
@@ -168,12 +171,23 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 }
                 else
                 {
+                    var rootRelReference = new ZanzibarRelationReference()
+                    {
+                        ReferenceId = _relations.Count
+                    };
+                    _relations.Add(rootRel);
+                    var subRelReference = new ZanzibarRelationReference()
+                    {
+                        ReferenceId = _relations.Count
+                    };
+                    _relations.Add(subRel.Relation);
                     List<ZanzibarRelation> relations = new List<ZanzibarRelation>();
                     var joinEqual = new ZanzibarJoinOnUserTypeId()
                     {
-                        Left = rootRel,
-                        Right = subRel.Relation
+                        Left = rootRelReference,
+                        Right = subRelReference
                     };
+
                     relations.Add(joinEqual);
                     var leftHasWildcard = resultTypes.Any(x => x.Wildcard);
                     var rightHasWildcard = subRel.ResultTypes.Any(x => x.Wildcard);
@@ -182,8 +196,8 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                     {
                         relations.Add(new ZanzibarJoinIntersectWildcard()
                         {
-                            Left = rootRel,
-                            Right = subRel.Relation,
+                            Left = rootRelReference,
+                            Right = subRelReference,
                             LeftWildcard = true
                         });
                     }
@@ -192,8 +206,8 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                     {
                         relations.Add(new ZanzibarJoinIntersectWildcard()
                         {
-                            Left = rootRel,
-                            Right = subRel.Relation,
+                            Left = rootRelReference,
+                            Right = subRelReference,
                             LeftWildcard = false
                         });
                     }
