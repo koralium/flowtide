@@ -214,7 +214,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             }
 
             m_mapRowFunc = SqlServerUtils.GetDataRowMapFunc(dbSchema, m_primaryKeys);
-            var mergeIntoStatement = SqlServerUtils.CreateMergeIntoProcedure(tmpTableName, writeRelation.NamedObject.DotSeperated, m_primaryKeyNames.ToHashSet(), m_dataTable);
+            var mergeIntoStatement = SqlServerUtils.CreateMergeIntoProcedure(tmpTableName, string.Join(".", writeRelation.NamedObject.Names.Select(x => $"[{x}]")), m_primaryKeyNames.ToHashSet(), m_dataTable);
             m_sqlBulkCopy = new SqlBulkCopy(connection);
             m_sqlBulkCopy.DestinationTableName = tmpTableName;
 

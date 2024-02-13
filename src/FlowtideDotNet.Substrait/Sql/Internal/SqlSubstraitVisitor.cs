@@ -513,7 +513,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     NamedTable = new FlowtideDotNet.Substrait.Type.NamedTable()
                     {
-                        Names = new List<string>() { tableName }
+                        Names = table.Name.Values.Select(x => x.Value).ToList()
                     },
                     BaseSchema = new FlowtideDotNet.Substrait.Type.NamedStruct()
                     {

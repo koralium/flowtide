@@ -108,7 +108,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                             {
                                 NamedTable = new NamedTable()
                                 {
-                                    Names = new List<string>() { "tpch.dbo.orders" }
+                                    Names = new List<string>() { "tpch", "dbo", "orders" }
                                 },
                                 BaseSchema = new Substrait.Type.NamedStruct()
                                 {
@@ -194,7 +194,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                 },
                 NamedObject = new NamedTable()
                 {
-                    Names = new List<string>() { "tpch.dbo.notracking" }
+                    Names = new List<string>() { "tpch", "dbo", "notracking" }
                 },
                 TableSchema = new NamedStruct()
                 {
