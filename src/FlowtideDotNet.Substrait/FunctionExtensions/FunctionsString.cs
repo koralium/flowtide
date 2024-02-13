@@ -25,6 +25,7 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string StartsWith = "starts_with";
         public const string Substring = "substring";
         public const string Like = "like";
+        public const string Replace = "replace";
 
         public const string StringAgg = "string_agg";
     }

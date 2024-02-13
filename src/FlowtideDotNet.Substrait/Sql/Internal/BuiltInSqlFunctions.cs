@@ -541,6 +541,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "sign", FunctionsArithmetic.Uri, FunctionsArithmetic.Sign);
 
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "starts_with", FunctionsString.Uri, FunctionsString.StartsWith);
+            RegisterThreeVariableScalarFunction(sqlFunctionRegister, "replace", FunctionsString.Uri, FunctionsString.Replace);
         }
 
         private static void RegisterSingleVariableFunction(
@@ -636,6 +637,48 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     };
                 }
                 throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
+            });
+        }
+
+        private static void RegisterThreeVariableScalarFunction(
+            SqlFunctionRegister sqlFunctionRegister,
+            string functionName,
+            string extensionUri,
+            string extensionName)
+        {
+            sqlFunctionRegister.RegisterScalarFunction(functionName, (f, visitor, emitData) =>
+            {
+                if (f.Args == null || f.Args.Count != 3)
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly three arguments, and not be '*'");
+                }
+                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly three arguments, and not be '*'");
+                }
+                if ((f.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly three arguments, and not be '*'");
+                }
+                if ((f.Args[2] is FunctionArg.Unnamed unnamed3 && unnamed3.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly three arguments, and not be '*'");
+                }
+                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
+                f.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2 &&
+                f.Args[2] is FunctionArg.Unnamed arg3 && arg3.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr3)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+                    var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData).Expr;
+                    var argExpr3 = visitor.Visit(funcExpr3.Expression, emitData).Expr;
+                    return new ScalarFunction()
+                    {
+                        ExtensionUri = extensionUri,
+                        ExtensionName = extensionName,
+                        Arguments = new List<Expressions.Expression>() { argExpr, argExpr2, argExpr3 }
+                    };
+                }
+                throw new InvalidOperationException($"{functionName} must have exactly three arguments, and not be '*'");
             });
         }
 

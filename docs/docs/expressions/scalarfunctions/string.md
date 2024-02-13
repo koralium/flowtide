@@ -152,3 +152,16 @@ Implements sql like expression. This follows SQL Servers implementation of like:
 ... WHERE c1 LIKE '!_te' ESCAPE '!' -- set escape character, _ is escaped.
 ... WHERE c1 LIKE '[ab]te' -- match character a or b.
 ```
+
+## Replace
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#replace) 
+
+Replaces all occurences of the substring defined in the second variable with the value defined in the third argument for the string in the first argument.
+
+### SQL Usage
+
+```sql
+--- Replaces the word 'hello' with the word 'world' in the string c1. 
+SELECT replace(c1, 'hello', 'world') FROM ...
+```
