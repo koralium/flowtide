@@ -131,5 +131,15 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.Substring(2, Math.Min(2, x.FirstName.Length - 2)) }));
         }
+
+        [Fact]
+        public async Task SelectWithReplace()
+        {
+            GenerateData();
+            var start = Users[0].FirstName!.Substring(0, 1);
+            await StartStream($"INSERT INTO output SELECT replace(firstName, '{start}', '_') as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.Replace(start, "_") }));
+        }
     }
 }

@@ -56,6 +56,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.To_String, (x) => ToStringImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.StartsWith, (x, y) => StartsWithImplementation(x, y));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Like, (x, y, z) => LikeImplementation(x, y, z));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Replace, (x, y, z) => ReplaceImplementation(x, y, z));
 
             functionsRegister.RegisterScalarFunction(FunctionsString.Uri, FunctionsString.Substring,
                 (scalarFunction, parametersInfo, visitor) =>
@@ -155,6 +156,16 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 return TrueValue;
             }
             return FalseValue;
+        }
+
+        private static FlxValue ReplaceImplementation(in FlxValue val, in FlxValue substring, in FlxValue replacement)
+        {
+            if (val.ValueType != FlexBuffers.Type.String || substring.ValueType != FlexBuffers.Type.String || replacement.ValueType != FlexBuffers.Type.String)
+            {
+                return NullValue;
+            }
+
+            return FlxValue.FromBytes(FlexBuffer.SingleValue(val.AsString.Replace(substring.AsString, replacement.AsString)));
         }
 
         private static FlxValue LikeImplementation(in FlxValue val1, in FlxValue val2, in FlxValue escapeChar)
