@@ -81,5 +81,29 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(new[] { new { list = Orders.Select(x => new List<int>() { x.OrderKey, x.UserKey }).ToList() } });
         }
+
+        [Fact]
+        public async Task ListAggInsertThenDelete()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_agg(orderkey)
+                FROM orders
+                group by orderkey
+                ");
+            await WaitForUpdate();
+
+            var rows1 = GetActualRows();
+            Assert.Equal(1000, rows1.Count);
+            var order = Orders[0];
+            DeleteOrder(order);
+            await WaitForUpdate();
+
+            var rows2 = GetActualRows();
+
+            Assert.Equal(999, rows2.Count);
+        }
     }
 }

@@ -68,8 +68,12 @@ namespace FlowtideDotNet.Substrait
                 Relations = new List<FlowtideDotNet.Substrait.Relations.Relation>()
             };
             Dictionary<string, ReferenceInfo> subPlanNameToId = new Dictionary<string, ReferenceInfo>(StringComparer.OrdinalIgnoreCase);
-            foreach(var subplan in _subplans)
+            foreach (var subplan in _subplans)
             {
+                Dictionary<int, int> oldRelationToNewMap = new Dictionary<int, int>();
+                var referenceRemapVisitor = new ReferenceRemapVisitor(oldRelationToNewMap);
+
+                bool containsRootRelation = subplan.Value.Relations.Any(x => x is RootRelation);
                 // TODO: Must remap reference relations from sub plans to their new id.
                 for (int i = 0; i < subplan.Value.Relations.Count; i++)
                 {
@@ -95,14 +99,21 @@ namespace FlowtideDotNet.Substrait
                         else
                         {
                             var relationId = newPlan.Relations.Count;
+                            oldRelationToNewMap.Add(i, relationId);
                             subPlanNameToId.Add(subplan.Key, new ReferenceInfo(relationId, rootRelation.Input.OutputLength));
+                            referenceRemapVisitor.Visit(rootRelation.Input, default);
                             newPlan.Relations.Add(rootRelation.Input);
                         }
                     }
                     else
                     {
                         var relationId = newPlan.Relations.Count;
-                        subPlanNameToId.Add(subplan.Key, new ReferenceInfo(relationId, relation.OutputLength));
+                        oldRelationToNewMap.Add(i, relationId);
+                        if (!containsRootRelation)
+                        {
+                            subPlanNameToId.Add(subplan.Key, new ReferenceInfo(relationId, relation.OutputLength));
+                        }
+                        referenceRemapVisitor.Visit(relation, default);
                         newPlan.Relations.Add(relation);
                     }
                 }

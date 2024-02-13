@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Core.Operators.Set
         
         private readonly List<IBPlusTree<RowEvent, int>> _storages;
         private readonly Func<int, StreamEventBatch, long, IAsyncEnumerable<StreamEventBatch>> _operation;
+        private readonly Func<int, int, int> _unionWeightFunction;
 
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
@@ -48,6 +49,12 @@ namespace FlowtideDotNet.Core.Operators.Set
             if (setRelation.Operation == SetOperation.UnionAll)
             {
                 _operation = UnionAll;
+                _unionWeightFunction = UnionAllWeightFunction;
+            }
+            else if (setRelation.Operation == SetOperation.UnionDistinct)
+            {
+                _operation = UnionAll;
+                _unionWeightFunction = UnionDistinctWeightFunction;
             }
             else
             {
@@ -55,9 +62,28 @@ namespace FlowtideDotNet.Core.Operators.Set
             }
         }
 
+        private IRowData CreateOutputRowData(IRowData row)
+        {
+            if (setRelation.EmitSet)
+            {
+                return ArrayRowData.Create(row, setRelation.Emit);
+            }
+            return row;
+        }
+
         private static int UnionAllWeightFunction(int weight1, int weight2)
         {
             return Math.Max(weight1, weight2);
+        }
+
+        private static int UnionDistinctWeightFunction(int weight1, int weight2)
+        {
+            var weight = Math.Max(weight1, weight2);
+            if (weight > 1)
+            {
+                return 1;
+            }
+            return weight;
         }
 
         private async IAsyncEnumerable<StreamEventBatch> UnionAll(int targetId, StreamEventBatch msg, long time)
@@ -100,14 +126,20 @@ namespace FlowtideDotNet.Core.Operators.Set
                         otherWeight = otherWeightResult.value;
                     }
                     // Do weight operation
-                    previousWeight = UnionAllWeightFunction(previousWeight, otherWeight);
-                    newWeight = UnionAllWeightFunction(newWeight, otherWeight);
+                    previousWeight = _unionWeightFunction(previousWeight, otherWeight);
+                    newWeight = _unionWeightFunction(newWeight, otherWeight);
+                }
+
+                if (_storages.Count == 1)
+                {
+                    newWeight = _unionWeightFunction(newWeight, newWeight);
+                    previousWeight = _unionWeightFunction(previousWeight, previousWeight);
                 }
 
                 // Check if there is a difference in weight
                 if (newWeight != previousWeight)
                 {
-                    output.Add(new RowEvent(newWeight - previousWeight, 0, e.RowData));
+                    output.Add(new RowEvent(newWeight - previousWeight, e.Iteration, CreateOutputRowData(e.RowData)));
                 }
             }
 
@@ -116,7 +148,7 @@ namespace FlowtideDotNet.Core.Operators.Set
 #if DEBUG_WRITE
                 foreach (var o in output)
                 {
-                    outputWriter.WriteLine($"{o.Weight} {o.Vector.ToJson}");
+                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
 #endif
                 Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
@@ -154,7 +186,7 @@ namespace FlowtideDotNet.Core.Operators.Set
             allInput.WriteLine("New batch");
             foreach (var e in msg.Events)
             {
-                allInput.WriteLine($"{targetId}, {e.Weight} {e.Vector.ToJson}");
+                allInput.WriteLine($"{targetId}, {e.Weight} {e.ToJson()}");
             }
             allInput.Flush();
 #endif

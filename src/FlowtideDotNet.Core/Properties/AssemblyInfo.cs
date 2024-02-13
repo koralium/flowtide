@@ -13,3 +13,4 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.OpenFGA")]

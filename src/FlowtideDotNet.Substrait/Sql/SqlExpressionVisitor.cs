@@ -18,6 +18,7 @@ using FlowtideDotNet.Substrait.Sql.Internal;
 using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 using SqlParser.Ast;
+using System.Diagnostics;
 using static SqlParser.Ast.Expression;
 
 namespace FlowtideDotNet.Substrait.Sql
@@ -622,6 +623,72 @@ namespace FlowtideDotNet.Substrait.Sql
         protected override ExpressionData VisitNested(Nested nested, EmitData state)
         {
             return Visit(nested.Expression, state);
+        }
+
+        protected override ExpressionData VisitSubstring(Substring substring, EmitData state)
+        {
+            Debug.Assert(substring.SubstringFrom != null);
+            var expr = Visit(substring.Expression, state);
+            var from = Visit(substring.SubstringFrom, state);
+            if (substring.SubstringFor == null)
+            {
+                var substringFunction = new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsString.Uri,
+                    ExtensionName = FunctionsString.Substring,
+                    Arguments = new List<Expressions.Expression>()
+                    {
+                        expr.Expr,
+                        from.Expr
+                    }
+                };
+                return new ExpressionData(substringFunction, expr.Name);
+            }
+            else
+            {
+                var length = Visit(substring.SubstringFor, state);
+                var substringFunction = new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsString.Uri,
+                    ExtensionName = FunctionsString.Substring,
+                    Arguments = new List<Expressions.Expression>()
+                    {
+                        expr.Expr,
+                        from.Expr,
+                        length.Expr
+                    }
+                };
+                return new ExpressionData(substringFunction, expr.Name);
+            }
+        }
+
+        protected override ExpressionData VisitLike(Like like, EmitData state)
+        {
+            if (like.Expression == null)
+            {
+                throw new InvalidOperationException("The like expression cannot be null.");
+            }
+            var expr = Visit(like.Expression, state);
+            var pattern = Visit(like.Pattern, state);
+
+            Expressions.Expression escapeChar = new NullLiteral();
+            if (like.EscapeChar != null)
+            {
+                escapeChar = new StringLiteral() { Value = like.EscapeChar.Value.ToString() };
+            }
+
+            var likeFunction = new ScalarFunction()
+            {
+                ExtensionUri = FunctionsString.Uri,
+                ExtensionName = FunctionsString.Like,
+                Arguments = new List<Expressions.Expression>()
+                {
+                    expr.Expr,
+                    pattern.Expr,
+                    escapeChar
+                }
+            };
+            return new ExpressionData(likeFunction, expr.Name);
         }
     }
 }

@@ -159,5 +159,26 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             return Visit(cast.Expression, state);
         }
+
+        protected override bool VisitSubstring(Expression.Substring substring, object? state)
+        {
+            return Visit(substring.Expression, state);
+        }
+
+        protected override bool VisitNested(Expression.Nested nested, object? state)
+        {
+            return Visit(nested.Expression, state);
+        }
+
+        protected override bool VisitLike(Expression.Like like, object? state)
+        {
+            bool containsAggregate = false;
+            if (like.Expression != null)
+            {
+                containsAggregate |= Visit(like.Expression, state);
+            }
+            containsAggregate |= Visit(like.Pattern, state);
+            return containsAggregate;
+        }
     }
 }

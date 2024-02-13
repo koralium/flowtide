@@ -107,3 +107,61 @@ Example output:
 ```sql
 SELECT to_string(c1) FROM ... 
 ```
+
+## Starts with
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#starts_with) 
+
+Returns true or false if a string starts with another string.
+If the data type of either argument is not string, false will be returned.
+
+### SQL Usage
+
+```sql
+SELECT starts_with(c1, 'text') FROM ... 
+```
+
+## Substring
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#substring) 
+
+Returns a substring where the first argument is the input.
+The second argument is the start index, and an optional third argument is the length of the substring.
+
+### SQL Usage
+
+```sql
+SELECT substring(c1, 1) FROM ...
+SELECT substring(c1, 1, 5) FROM ...
+```
+
+## Like
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#like) 
+
+Implements sql like expression. This follows SQL Servers implementation of like:
+[SQL Server Like](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/like-transact-sql?view=sql-server-ver16).
+
+### SQL Usage
+
+```sql
+... WHERE c1 LIKE '%te' -- starts with
+... WHERE c1 LIKE 'te%' -- ends with
+... WHERE c1 LIKE '%te%' -- contains
+... WHERE c1 LIKE '_te' -- any character
+... WHERE c1 LIKE '!_te' ESCAPE '!' -- set escape character, _ is escaped.
+... WHERE c1 LIKE '[ab]te' -- match character a or b.
+```
+
+## Replace
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#replace) 
+
+Replaces all occurences of the substring defined in the second variable with the value defined in the third argument for the string in the first argument.
+
+### SQL Usage
+
+```sql
+--- Replaces the word 'hello' with the word 'world' in the string c1. 
+SELECT replace(c1, 'hello', 'world') FROM ...
+```

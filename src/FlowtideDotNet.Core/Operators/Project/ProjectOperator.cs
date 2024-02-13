@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Core.Operators.Project
             foreach (var e in msg.Events)
             {
 #if DEBUG_WRITE
-                allInput.WriteLine($"Input: {e.Weight} {e.Vector.ToJson}");
+                allInput.WriteLine($"Input: {e.Weight} {e.ToJson()}");
 #endif
                 FlxValue[] extraFelds = new FlxValue[_expressions.Length];
 
@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Core.Operators.Project
                             newVector[i] = e.GetColumn(index);
                         }
                     }
-                    output.Add(new RowEvent(e.Weight, 0, new ArrayRowData(newVector)));
+                    output.Add(new RowEvent(e.Weight, e.Iteration, new ArrayRowData(newVector)));
                 }
                 else
                 {
@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Core.Operators.Project
                     {
                         newVector[i + e.Length] = extraFelds[i];
                     }
-                    output.Add(new RowEvent(e.Weight, 0, new ArrayRowData(newVector)));
+                    output.Add(new RowEvent(e.Weight, e.Iteration, new ArrayRowData(newVector)));
                 }
             }
 

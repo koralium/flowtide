@@ -17,6 +17,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
 {
     internal static class FlxValueStringFunctions
     {
+        private static FlxValue NullValue = FlxValue.FromBytes(FlexBuffer.Null());
+
         /// <summary>
         /// Converts values to string and also concatinates the values together to one single string.
         /// This function is used to concatinate permission ids together
@@ -81,6 +83,39 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 return value.AsDecimal.ToString();
             }
             throw new NotImplementedException();
+        }
+
+        public static FlxValue Substring(FlxValue value, FlxValue start, FlxValue length)
+        {
+            if (value.ValueType != FlexBuffers.Type.String)
+            {
+                return NullValue;
+            }
+            if (start.ValueType != FlexBuffers.Type.Int)
+            {
+                return NullValue;
+            }
+            if (length.ValueType != FlexBuffers.Type.Int)
+            {
+                return NullValue;
+            }
+            var str = value.AsString;
+            var startInt = (int)start.AsLong;
+            var lengthInt = (int)length.AsLong;
+
+            if (startInt > str.Length)
+            {
+                return NullValue;
+            }
+            if (lengthInt == -1)
+            {
+                lengthInt = str.Length - startInt;
+            }
+            else
+            {
+                lengthInt = Math.Min(lengthInt, str.Length - startInt);
+            }
+            return FlxValue.FromMemory(FlexBuffer.SingleValue(str.Substring(startInt, lengthInt)));
         }
     }
 }

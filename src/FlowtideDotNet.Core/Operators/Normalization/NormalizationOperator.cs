@@ -109,7 +109,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 #if DEBUG_WRITE
             foreach(var e in output)
             {
-                allOutput.WriteLine($"{e.Weight} {e.Vector.ToJson}");
+                allOutput.WriteLine($"{e.Weight} {e.ToJson()}");
             }
             await allOutput.FlushAsync();
 #endif
