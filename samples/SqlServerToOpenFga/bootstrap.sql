@@ -6,7 +6,7 @@ GO
 USE demo;
 CREATE TABLE demo.dbo.users (
     userkey int primary key,
-    userid nvarchar(50)
+    userid uniqueidentifier
 );
 
 CREATE TABLE demo.dbo.usergroups (
@@ -28,11 +28,11 @@ ALTER TABLE demo.dbo.groups ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED =
 
 INSERT INTO demo.dbo.users (userkey, userid)
 VALUES 
-(1, 'user1'),
-(2, 'user2'),
-(3, 'user3'),
-(4, 'user4'),
-(5, 'user5');
+(1, '57f20bbe-3a17-45a7-bacc-614d89bde120'),
+(2, '6c2aa4a7-1cfa-4fb3-84d2-45af79a9ae65'),
+(3, 'cc1aa2df-9e85-487b-96b2-4bf95d3d291c'),
+(4, '5b47faac-d36d-4c73-9685-6d3beda97760'),
+(5, 'c6bec31e-03fc-4202-90fa-8fcfe024ae0c');
 
 INSERT INTO demo.dbo.groups (groupkey, groupid)
 VALUES 
