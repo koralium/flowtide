@@ -252,8 +252,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             }
 
                             var guid = reader.GetGuid(index);
-                            var bytes = guid.ToByteArray();
-                            builder.Add(bytes);
+                            builder.Add(guid.ToString());
                         });
                         break;
                     case "binary":
@@ -883,8 +882,15 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     {
                         return null;
                     }
-                    var blob = c.AsBlob;
-                    return new Guid(blob);
+                    if (c.ValueType == FlexBuffers.Type.String)
+                    {
+                        return new Guid(c.AsString);
+                    }
+                    else
+                    {
+                        var blob = c.AsBlob;
+                        return new Guid(blob);
+                    }
                 };
             }
             if (t.Equals(typeof(byte))) // tiny int
