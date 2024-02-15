@@ -19,12 +19,10 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.SpiceDB
 {
-    public class SpiceDbSinkOptions
+    public class SpiceDbSourceOptions
     {
         public required ChannelBase Channel { get; set; }
 
         public Func<Metadata>? GetMetadata { get; set; }
-
-        public int BatchSize { get; set; } = 50;
     }
 }

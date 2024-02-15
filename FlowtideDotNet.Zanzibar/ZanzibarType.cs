@@ -10,21 +10,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Grpc.Core;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.SpiceDB
+namespace FlowtideDotNet.Zanzibar
 {
-    public class SpiceDbSinkOptions
+    [DebuggerDisplay("{DebuggerDisplay,nq}")]
+    public class ZanzibarType
     {
-        public required ChannelBase Channel { get; set; }
+        public string Name { get; }
 
-        public Func<Metadata>? GetMetadata { get; set; }
+        public IReadOnlyDictionary<string, ZanzibarTypeRelation> Relations { get; }
 
-        public int BatchSize { get; set; } = 50;
+        public ZanzibarType(string name, IReadOnlyDictionary<string, ZanzibarTypeRelation> relations)
+        {
+            Name = name;
+            Relations = relations;
+        }
+
+        private string DebuggerDisplay
+        {
+            get
+            {
+                return string.Format("Type = {0}", Name);
+            }
+        }
     }
 }

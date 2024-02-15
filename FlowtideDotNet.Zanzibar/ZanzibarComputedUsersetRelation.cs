@@ -10,21 +10,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Grpc.Core;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.SpiceDB
+namespace FlowtideDotNet.Zanzibar
 {
-    public class SpiceDbSinkOptions
+    [DebuggerDisplay("{DebuggerDisplay,nq}")]
+    public class ZanzibarComputedUsersetRelation : ZanzibarTypeRelation
     {
-        public required ChannelBase Channel { get; set; }
+        public ZanzibarComputedUsersetRelation(string referenceRelation)
+        {
+            ReferenceRelation = referenceRelation;
+        }
 
-        public Func<Metadata>? GetMetadata { get; set; }
+        public string ReferenceRelation { get; set; }
 
-        public int BatchSize { get; set; } = 50;
+        internal override string DebuggerDisplay => $"{ReferenceRelation}";
+
+        public override T Accept<T, TState>(ZanzibarTypeRelationVisitor<T, TState> visitor, TState state)
+        {
+            return visitor.VisitComputedUserset(this, state);
+        }
     }
 }

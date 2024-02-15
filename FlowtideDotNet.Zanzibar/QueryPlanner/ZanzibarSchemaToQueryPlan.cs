@@ -10,21 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Grpc.Core;
+using FlowtideDotNet.Zanzibar.QueryPlanner.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.SpiceDB
+namespace FlowtideDotNet.Zanzibar.QueryPlanner
 {
-    public class SpiceDbSinkOptions
+    public static class ZanzibarSchemaToQueryPlan
     {
-        public required ChannelBase Channel { get; set; }
-
-        public Func<Metadata>? GetMetadata { get; set; }
-
-        public int BatchSize { get; set; } = 50;
+        public static List<ZanzibarRelation> GenerateQueryPlan(ZanzibarSchema schema, string type, string relation, HashSet<string> stopTypes)
+        {
+            return new ZanzibarFlowtideConvertVisitor(schema, stopTypes).Parse(type, relation);
+        }
     }
 }

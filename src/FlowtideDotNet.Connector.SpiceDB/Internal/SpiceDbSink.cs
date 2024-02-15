@@ -14,7 +14,9 @@ using Authzed.Api.V1;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Core.Operators.Write;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
+using Grpc.Core;
 using Grpc.Net.Client;
 using System;
 using System.Collections.Generic;
@@ -42,30 +44,30 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
 
         public SpiceDbSink(SpiceDbSinkOptions spiceDbSinkOptions, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
         {
-            m_resourceObjectTypeIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("object_type", StringComparison.OrdinalIgnoreCase));
+            m_resourceObjectTypeIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("resource_type", StringComparison.OrdinalIgnoreCase));
             if (m_resourceObjectTypeIndex == -1)
             {
-                throw new InvalidOperationException("SpiceDB sink requires object_type column");
+                throw new InvalidOperationException("SpiceDB sink requires resource_type column");
             }
-            m_resourceObjectIdIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("object_id", StringComparison.OrdinalIgnoreCase));
+            m_resourceObjectIdIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("resource_id", StringComparison.OrdinalIgnoreCase));
             if (m_resourceObjectIdIndex == -1)
             {
-                throw new InvalidOperationException("SpiceDB sink requires object_id column");
+                throw new InvalidOperationException("SpiceDB sink requires resource_id column");
             }
             m_relationIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("relation", StringComparison.OrdinalIgnoreCase));
             if (m_relationIndex == -1)
             {
                 throw new InvalidOperationException("SpiceDB sink requires relation column");
             }
-            m_subjectObjectTypeIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("subject_object_type", StringComparison.OrdinalIgnoreCase));
+            m_subjectObjectTypeIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("subject_type", StringComparison.OrdinalIgnoreCase));
             if (m_subjectObjectTypeIndex == -1)
             {
-                throw new InvalidOperationException("SpiceDB sink requires subject_object_type column");
+                throw new InvalidOperationException("SpiceDB sink requires subject_type column");
             }
-            m_subjectObjectIdIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("subject_object_id", StringComparison.OrdinalIgnoreCase));
+            m_subjectObjectIdIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("subject_id", StringComparison.OrdinalIgnoreCase));
             if (m_subjectObjectIdIndex == -1)
             {
-                throw new InvalidOperationException("SpiceDB sink requires subject_object_id column");
+                throw new InvalidOperationException("SpiceDB sink requires subject_id column");
             }
             m_subjectRelationIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("subject_relation", StringComparison.OrdinalIgnoreCase));
 
@@ -111,7 +113,12 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             var relation = row.Row.GetColumnRef(m_relationIndex);
             var subjectObjectType = row.Row.GetColumnRef(m_subjectObjectTypeIndex);
             var subjectObjectId = row.Row.GetColumnRef(m_subjectObjectIdIndex);
-            var subjectRelation = row.Row.GetColumnRef(m_subjectRelationIndex);
+
+            string? subjectOptionalRelation = null;
+            if (m_subjectRelationIndex >= 0)
+            {
+                subjectOptionalRelation = ColumnToString(row.Row.GetColumnRef(m_subjectRelationIndex));
+            }
 
             var resource = new ObjectReference()
             {
@@ -125,9 +132,13 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             };
             var subject = new SubjectReference()
             {
-                Object = subjectObject,
-                OptionalRelation = ColumnToString(subjectRelation)
+                Object = subjectObject
             };
+
+            if (subjectOptionalRelation != null)
+            {
+                subject.OptionalRelation = subjectOptionalRelation;
+            }
 
             return new Relationship()
             {
@@ -141,6 +152,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         {
             Debug.Assert(m_client != null);
             var request = new WriteRelationshipsRequest();
+            var watch = Stopwatch.StartNew();
             await foreach(var row in rows)
             {
                 var relationship = GetRelationship(row);
@@ -163,13 +175,24 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 }
                 if (request.Updates.Count >= m_spiceDbSinkOptions.BatchSize)
                 {
-                    await m_client.WriteRelationshipsAsync(request);
+                    Metadata? metadata = default;
+                    if (m_spiceDbSinkOptions.GetMetadata != null)
+                    {
+                        metadata = m_spiceDbSinkOptions.GetMetadata();
+                    }
+                    var response = await m_client.WriteRelationshipsAsync(request, metadata);
                     request = new WriteRelationshipsRequest();
                 }
             }
+            watch.Stop();
             if (request.Updates.Count > 0)
             {
-                await m_client.WriteRelationshipsAsync(request);
+                Metadata? metadata = default;
+                if (m_spiceDbSinkOptions.GetMetadata != null)
+                {
+                    metadata = m_spiceDbSinkOptions.GetMetadata();
+                }
+                var response = await m_client.WriteRelationshipsAsync(request, metadata);
             }
         }
     }

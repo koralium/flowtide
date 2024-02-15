@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\FlowtideDotNet.Zanzibar\FlowtideDotNet.Zanzibar.csproj" />
     <ProjectReference Include="..\FlowtideDotNet.Core\FlowtideDotNet.Core.csproj" />
   </ItemGroup>
 

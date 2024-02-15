@@ -11,10 +11,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\FlowtideDotNet.Zanzibar\FlowtideDotNet.Zanzibar.csproj" />
     <ProjectReference Include="..\FlowtideDotNet.Core\FlowtideDotNet.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
     <PackageReference Include="Grpc.Net.Client" Version="2.60.0" />
     <PackageReference Include="Grpc.Tools" Version="2.60.0">
       <PrivateAssets>all</PrivateAssets>
@@ -24,6 +26,19 @@
 
 	<ItemGroup>
 		<Protobuf Include="Internal\proto\**\*.proto" ProtoRoot="Internal\proto" Access="internal" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Remove="Internal\proto\authzed\zedtoken.proto" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Internal\SchemaParser\g4\" />
+	  <Folder Include="Internal\SchemaParser\Generated\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Protobuf Update="Internal\proto\authzed\zedtoken.proto" GrpcServices="None" />
 	</ItemGroup>
 
 </Project>
