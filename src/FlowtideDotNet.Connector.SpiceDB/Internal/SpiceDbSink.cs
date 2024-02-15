@@ -148,11 +148,21 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             };
         }
 
+        protected override async Task OnInitialDataSent()
+        {
+            if (m_spiceDbSinkOptions.OnInitialDataSentFunc != null)
+            {
+                await m_spiceDbSinkOptions.OnInitialDataSentFunc();
+            }
+            await base.OnInitialDataSent();
+        }
+
         protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
         {
             Debug.Assert(m_client != null);
             var request = new WriteRelationshipsRequest();
             var watch = Stopwatch.StartNew();
+            string? lastToken = default;
             await foreach(var row in rows)
             {
                 var relationship = GetRelationship(row);
@@ -180,7 +190,12 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     {
                         metadata = m_spiceDbSinkOptions.GetMetadata();
                     }
-                    await m_client.WriteRelationshipsAsync(request, metadata, cancellationToken: cancellationToken);
+                    if (m_spiceDbSinkOptions.BeforeWriteRequestFunc != null)
+                    {
+                        await m_spiceDbSinkOptions.BeforeWriteRequestFunc(request);
+                    }
+                    var response = await m_client.WriteRelationshipsAsync(request, metadata, cancellationToken: cancellationToken);
+                    lastToken = response.WrittenAt.Token;
                     request = new WriteRelationshipsRequest();
                 }
             }
@@ -192,7 +207,16 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 {
                     metadata = m_spiceDbSinkOptions.GetMetadata();
                 }
-                await m_client.WriteRelationshipsAsync(request, metadata, cancellationToken: cancellationToken);
+                if (m_spiceDbSinkOptions.BeforeWriteRequestFunc != null)
+                {
+                    await m_spiceDbSinkOptions.BeforeWriteRequestFunc(request);
+                }
+                var response = await m_client.WriteRelationshipsAsync(request, metadata, cancellationToken: cancellationToken);
+                lastToken = response.WrittenAt.Token;
+            }
+            if (m_spiceDbSinkOptions.OnWatermarkFunc != null && lastToken != null)
+            {
+                await m_spiceDbSinkOptions.OnWatermarkFunc(watermark, lastToken);
             }
         }
     }
