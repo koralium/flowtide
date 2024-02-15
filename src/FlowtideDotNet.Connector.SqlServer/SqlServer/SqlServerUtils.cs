@@ -18,6 +18,7 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Text;
+using Microsoft.Extensions.Primitives;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
@@ -252,8 +253,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             }
 
                             var guid = reader.GetGuid(index);
-                            var bytes = guid.ToByteArray();
-                            builder.Add(bytes);
+                            builder.Add(guid.ToString());
                         });
                         break;
                     case "binary":
@@ -308,7 +308,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             stringBuilder.Append(string.Join(", ", readRelation.BaseSchema.Names.Select(x => $"[{x}]")));
 
             stringBuilder.Append(" FROM ");
-            stringBuilder.Append(readRelation.NamedTable.DotSeperated);
+            stringBuilder.Append(string.Join(".", readRelation.NamedTable.Names.Select(x => $"[{x}]")));
 
             return stringBuilder.ToString();
         }
@@ -322,7 +322,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             stringBuilder.Append(string.Join(", ", readRelation.BaseSchema.Names.Select(x => $"[{x}]")));
 
             stringBuilder.Append(" FROM ");
-            stringBuilder.Append(readRelation.NamedTable.DotSeperated);
+            stringBuilder.Append(string.Join(".", readRelation.NamedTable.Names.Select(x => $"[{x}]")));
 
             return stringBuilder.ToString();
         }
@@ -336,7 +336,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             stringBuilder.Append(string.Join(", ", readRelation.BaseSchema.Names.Select(x => $"[{x}]")));
 
             stringBuilder.Append(" FROM ");
-            stringBuilder.AppendLine(readRelation.NamedTable.DotSeperated);
+            stringBuilder.AppendLine(string.Join(".", readRelation.NamedTable.Names.Select(x => $"[{x}]")));
 
             string? filters = filter;
             if (includePkParameters)
@@ -375,7 +375,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             stringBuilder.Append(string.Join(", ", writeRelation.TableSchema.Names.Select(x => $"[{x}]")));
 
             stringBuilder.Append(" FROM ");
-            stringBuilder.Append(writeRelation.NamedObject.DotSeperated);
+            stringBuilder.Append(string.Join(".", writeRelation.NamedObject.Names.Select(x => $"[{x}]")));
 
             var cmd = stringBuilder.ToString();
             using var command = connection.CreateCommand();
@@ -411,10 +411,10 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             stringBuilder.Append(string.Join(", ", columnSelects));
 
             stringBuilder.Append(", c.SYS_CHANGE_VERSION, c.SYS_CHANGE_OPERATION from CHANGETABLE(CHANGES ");
-            stringBuilder.Append(readRelation.NamedTable.DotSeperated);
+            stringBuilder.Append(string.Join(".", readRelation.NamedTable.Names.Select(x => $"[{x}]")));
             stringBuilder.AppendLine(", @ChangeVersion) as c");
             stringBuilder.Append("LEFT JOIN ");
-            stringBuilder.Append(readRelation.NamedTable.DotSeperated);
+            stringBuilder.Append(string.Join(".", readRelation.NamedTable.Names.Select(x => $"[{x}]")));
             stringBuilder.AppendLine(" t");
             stringBuilder.Append("ON ");
             stringBuilder.AppendLine(joinCondition);
@@ -440,7 +440,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             List<string> pkComparisons = new List<string>();
             foreach (var pkColumn in primaryKeys)
             {
-                pkComparisons.Add($"src.{pkColumn} = tgt.{pkColumn}");
+                pkComparisons.Add($"src.[{pkColumn}] = tgt.[{pkColumn}]");
             }
 
             stringBuilder.AppendLine(string.Join(" AND ", pkComparisons));
@@ -454,7 +454,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     continue;
                 }
 
-                updateNotEquals.Add($"src.{col.ColumnName} != tgt.{col.ColumnName}");
+                updateNotEquals.Add($"src.[{col.ColumnName}] != tgt.[{col.ColumnName}]");
             }
 
             // Add update statement
@@ -474,7 +474,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         continue;
                     }
 
-                    updateSets.Add($"tgt.{col.ColumnName} = src.{col.ColumnName}");
+                    updateSets.Add($"tgt.[{col.ColumnName}] = src.[{col.ColumnName}]");
                 }
                 stringBuilder.AppendLine(string.Join(", ", updateSets));
             }
@@ -493,8 +493,8 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 columnNames.Add(col.ColumnName);
             }
 
-            stringBuilder.AppendLine($"INSERT ({string.Join(", ", columnNames)})");
-            stringBuilder.AppendLine($"VALUES ({string.Join(", ", columnNames)});");
+            stringBuilder.AppendLine($"INSERT ({string.Join(", ", columnNames.Select(x => $"[{x}]"))})");
+            stringBuilder.AppendLine($"VALUES ({string.Join(", ", columnNames.Select(x => $"[{x}]"))});");
 
             stringBuilder.Append("DELETE FROM ");
             stringBuilder.Append(tmpTableName);
@@ -578,7 +578,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     columnType = $"{columnType}({column.NumericPrecision}, {column.NumericScale})";
                 }
 
-                columnsData.Add($"{column.ColumnName} {columnType}");
+                columnsData.Add($"[{column.ColumnName}] {columnType}");
             }
             stringBuilder.AppendLine("(");
             stringBuilder.AppendLine(string.Join(",\r\n", columnsData));
@@ -883,8 +883,15 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     {
                         return null;
                     }
-                    var blob = c.AsBlob;
-                    return new Guid(blob);
+                    if (c.ValueType == FlexBuffers.Type.String)
+                    {
+                        return new Guid(c.AsString);
+                    }
+                    else
+                    {
+                        var blob = c.AsBlob;
+                        return new Guid(blob);
+                    }
                 };
             }
             if (t.Equals(typeof(byte))) // tiny int
