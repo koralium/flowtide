@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal.SchemaParser.Internal
 {
     internal class SpicedbVisitor : SpicedbParserBaseVisitor<object>
     {
-        private class RelationContainer
+        private sealed class RelationContainer
         {
             public string Name { get; }
             public ZanzibarTypeRelation Relation { get; }

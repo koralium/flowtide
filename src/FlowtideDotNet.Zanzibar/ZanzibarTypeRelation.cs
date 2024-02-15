@@ -2,7 +2,7 @@
 {
     public abstract class ZanzibarTypeRelation
     {
-        public ZanzibarTypeRelation()
+        protected ZanzibarTypeRelation()
         {
         }
 

@@ -15,7 +15,7 @@ using OpenFga.Sdk.Model;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Internal
 {
-    internal class OpenFgaToZanzibarSchema
+    internal static class OpenFgaToZanzibarSchema
     {
         public static ZanzibarSchema Convert(AuthorizationModel authorizationModel)
         {
@@ -33,8 +33,12 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         private static ZanzibarType ConvertType(TypeDefinition type)
         {
+            if (type.Relations == null)
+            {
+                throw new InvalidOperationException($"Type {type.Type} has no relations defined");
+            }
             Dictionary<string, ZanzibarTypeRelation> relations = new Dictionary<string, ZanzibarTypeRelation>();
-
+            
             foreach(var kv in type.Relations)
             {
                 relations.Add(kv.Key, ConvertRelation(kv.Value, kv.Key, type));
@@ -51,11 +55,11 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             }
             if (userset.ComputedUserset != null)
             {
-                return ConvertComputedUserset(userset.ComputedUserset, relationName, typeDefinition);
+                return ConvertComputedUserset(userset.ComputedUserset, relationName);
             }
             if (userset.TupleToUserset != null)
             {
-                return ConvertTupleToUserset(userset.TupleToUserset, relationName, typeDefinition);
+                return ConvertTupleToUserset(userset.TupleToUserset, relationName);
             }
             if (userset.Intersection != null)
             {
@@ -88,7 +92,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             return new ZanzibarIntersectRelation(types);
         }
 
-        private static ZanzibarTypeRelation ConvertTupleToUserset(TupleToUserset tupleToUserset, string relationName, TypeDefinition typeDefinition)
+        private static ZanzibarTypeRelation ConvertTupleToUserset(TupleToUserset tupleToUserset, string relationName)
         {
             if (tupleToUserset.Tupleset.Relation == null)
             {
@@ -101,7 +105,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             return new ZanzibarTupleToUsersetRelation(tupleToUserset.Tupleset.Relation, tupleToUserset.ComputedUserset.Relation);
         }
 
-        private static ZanzibarTypeRelation ConvertComputedUserset(ObjectRelation objectRelation, string toRelationName, TypeDefinition typeDefinition)
+        private static ZanzibarTypeRelation ConvertComputedUserset(ObjectRelation objectRelation, string toRelationName)
         {
             if (objectRelation.Relation == null)
             {

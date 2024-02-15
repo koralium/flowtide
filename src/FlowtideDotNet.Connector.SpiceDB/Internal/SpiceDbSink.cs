@@ -83,7 +83,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             return Task.FromResult(new MetadataResult(m_primaryKeys));
         }
 
-        private string ColumnToString(scoped in FlxValueRef flxValue)
+        private static string ColumnToString(scoped in FlxValueRef flxValue)
         {
             switch (flxValue.ValueType)
             {

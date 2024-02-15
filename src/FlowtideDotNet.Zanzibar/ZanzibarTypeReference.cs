@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Zanzibar
                 }
                 if (Relation != null)
                 {
-                    sb.Append("#");
+                    sb.Append('#');
                     sb.Append(Relation);
                 }
                 if (Caveat != null)
