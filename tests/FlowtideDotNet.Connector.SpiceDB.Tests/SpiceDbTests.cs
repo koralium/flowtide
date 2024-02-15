@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
         }
 
         [Fact]
-        public async Task Test1()
+        public async Task TestInsert()
         {
             var schemaText = File.ReadAllText("schema.txt");
             SchemaService.SchemaServiceClient schemaServiceClient = new SchemaService.SchemaServiceClient(spiceDbFixture.GetChannel());
@@ -263,6 +263,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             
             await stream.WaitForUpdate();
             var actual = stream.GetActualRowsAsVectors();
+            Assert.Equal(2, actual.Count);
         }
 
         [Fact]

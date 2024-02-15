@@ -180,7 +180,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     {
                         metadata = m_spiceDbSinkOptions.GetMetadata();
                     }
-                    var response = await m_client.WriteRelationshipsAsync(request, metadata);
+                    await m_client.WriteRelationshipsAsync(request, metadata, cancellationToken: cancellationToken);
                     request = new WriteRelationshipsRequest();
                 }
             }
@@ -192,7 +192,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 {
                     metadata = m_spiceDbSinkOptions.GetMetadata();
                 }
-                var response = await m_client.WriteRelationshipsAsync(request, metadata);
+                await m_client.WriteRelationshipsAsync(request, metadata, cancellationToken: cancellationToken);
             }
         }
     }

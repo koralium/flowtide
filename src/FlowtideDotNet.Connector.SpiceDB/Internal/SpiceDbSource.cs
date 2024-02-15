@@ -43,25 +43,23 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
     {
         private PermissionsService.PermissionsServiceClient? m_client;
         private readonly SpiceDbSourceOptions m_spiceDbSourceOptions;
-        private readonly ReadRelation readRelation;
         private FlowtideSpiceDbSourceState? m_state;
         private readonly List<Action<Relationship, int, FlxValue[]>> m_encoders;
         private readonly FlexBuffer flexBuffer;
         private readonly Dictionary<string, FlxValue> _typesAndRelationValues = new Dictionary<string, FlxValue>();
         private WatchService.WatchServiceClient? m_watchClient;
         private List<string> readTypes = new List<string>();
-        private bool readAllTypes = true;
+        private readonly bool readAllTypes = true;
         private AsyncServerStreamingCall<WatchResponse>? watchStream;
         private HashSet<string>? watermarkNames;
-        private string? _relationFilter;
-        private string? _subjectTypeFilter;
+        private readonly string? _relationFilter;
+        private readonly string? _subjectTypeFilter;
 
         public SpiceDbSource(SpiceDbSourceOptions spiceDbSourceOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
             flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
             m_encoders = new List<Action<Relationship, int, FlxValue[]>>();
             this.m_spiceDbSourceOptions = spiceDbSourceOptions;
-            this.readRelation = readRelation;
 
             for (int i = 0; i < readRelation.BaseSchema.Names.Count; i++)
             {
@@ -240,7 +238,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             return Task.FromResult(m_state);
         }
 
-        private long GetRevision(string token)
+        private static long GetRevision(string token)
         {
             var bytes = Convert.FromBase64String(token);
             var decodedToken = DecodedZedToken.Parser.ParseFrom(bytes);
