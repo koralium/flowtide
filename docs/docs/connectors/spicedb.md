@@ -53,6 +53,14 @@ SELECT
 FROM orders o
 ```
 
+### Events
+
+The following event listeners exist that can be used to modify or get the current watermark of the stream that has been sent to SpiceDB:
+
+* **BeforeWriteRequestFunc** - Called before each write, its possible to modify the data before it gets sent here.
+* **OnWatermarkFunc** - Called after a watermark is recieved and the data has been added to SpiceDB, also contains the last recieved zedtoken from SpiceDB.
+* **OnInitialDataSentFunc** - Called the first time data has been written to SpiceDB.
+
 ## Source
 
 The source allows reading data from SpiceDB. The following columns are returned:
