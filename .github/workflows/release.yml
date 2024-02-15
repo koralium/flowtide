@@ -54,7 +54,11 @@ jobs:
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.Kafka/FlowtideDotNet.Connector.Kafka.csproj
     - name: Package Sharepoint
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.Sharepoint/FlowtideDotNet.Connector.Sharepoint.csproj
+    - name: Package Zanzibar
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Zanzibar/FlowtideDotNet.Zanzibar.csproj
     - name: Package OpenFGA
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.OpenFGA/FlowtideDotNet.Connector.OpenFGA.csproj
+    - name: Package SpiceDB
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.SpiceDB/FlowtideDotNet.Connector.SpiceDB.csproj
     - name: Publish
       run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_KEY }} -s https://api.nuget.org/v3/index.json
