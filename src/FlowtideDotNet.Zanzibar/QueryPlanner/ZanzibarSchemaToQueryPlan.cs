@@ -10,8 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+using FlowtideDotNet.Zanzibar.QueryPlanner.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.OpenFGA")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.SpiceDB")]
+namespace FlowtideDotNet.Zanzibar.QueryPlanner
+{
+    public static class ZanzibarSchemaToQueryPlan
+    {
+        public static List<ZanzibarRelation> GenerateQueryPlan(ZanzibarSchema schema, string type, string relation, HashSet<string> stopTypes)
+        {
+            return new ZanzibarFlowtideConvertVisitor(schema, stopTypes).Parse(type, relation);
+        }
+    }
+}

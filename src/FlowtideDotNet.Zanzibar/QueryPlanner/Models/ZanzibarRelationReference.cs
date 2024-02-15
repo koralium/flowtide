@@ -10,8 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.OpenFGA")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.SpiceDB")]
+namespace FlowtideDotNet.Zanzibar.QueryPlanner.Models
+{
+    public class ZanzibarRelationReference : ZanzibarRelation
+    {
+        public int ReferenceId { get; set; }
+        public override T Accept<T, TState>(ZanzibarVisitor<T, TState> visitor, TState state)
+        {
+            return visitor.VisitZanzibarRelationReference(this, state);
+        }
+    }
+}

@@ -10,17 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.OpenFGA.Internal;
+using FlowtideDotNet.Connector.SpiceDB.Internal.SchemaParser;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Zanzibar.QueryPlanner;
-using OpenFga.Sdk.Model;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.OpenFGA
+namespace FlowtideDotNet.Connector.SpiceDB
 {
-    public static class OpenFgaToFlowtide
+    public static class SpiceDbToFlowtide
     {
-        public static Plan Convert(AuthorizationModel authorizationModel, string type, string relation, string inputTypeName, params string[]? stopAtTypes)
+        public static Plan Convert(string schemaText, string type, string relation, string inputTypeName, params string[]? stopAtTypes)
         {
             HashSet<string> stopTypes = new HashSet<string>();
             if (stopAtTypes != null)
@@ -31,24 +35,24 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
             }
 
+            var schema = SpiceDbParser.ParseSchema(schemaText);
+            var zanzibarRelations = ZanzibarSchemaToQueryPlan.GenerateQueryPlan(schema, type, relation, stopTypes);
+
+            var visitor = new ZanzibarToFlowtideVisitor(
+                inputTypeName,
+                "subject_type",
+                "subject_id",
+                "subject_relation",
+                "relation",
+                "resource_type",
+                "resource_id");
+
             var outputPlan = new Plan()
             {
                 Relations = new List<Relation>()
             };
 
-            var convertedSchema = OpenFgaToZanzibarSchema.Convert(authorizationModel);
-            var zanzibarRelations = ZanzibarSchemaToQueryPlan.GenerateQueryPlan(convertedSchema, type, relation, stopTypes.ToHashSet());
-
-            var visitor = new ZanzibarToFlowtideVisitor(
-                inputTypeName,
-                "user_type",
-                "user_id",
-                "user_relation",
-                "relation",
-                "object_type",
-                "object_id");
-            
-            for (int i  = 0; i < zanzibarRelations.Count - 1; i++)
+            for (int i = 0; i < zanzibarRelations.Count - 1; i++)
             {
                 var flowtideReferenceRelation = visitor.Visit(zanzibarRelations[i], default);
                 outputPlan.Relations.Add(flowtideReferenceRelation);
@@ -60,16 +64,16 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 Input = flowtideRelation,
                 Names = new List<string>()
                 {
-                    "user_type",
-                    "user_id",
-                    "user_relation",
+                    "subject_type",
+                    "subject_id",
+                    "subject_relation",
                     "relation",
-                    "object_type",
-                    "object_id"
+                    "resource_type",
+                    "resource_id"
                 }
             };
+
             outputPlan.Relations.Add(rootRelation);
-            
 
             return outputPlan;
         }

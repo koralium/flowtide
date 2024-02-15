@@ -1,0 +1,19 @@
+﻿definition user {}
+
+definition role {
+  relation can_view: user:*
+}
+
+definition role_binding {
+  relation user: user
+  relation role: role
+
+  permission can_view = user & role->can_view 
+}
+
+definition organization {
+  relation role_binding: role_binding
+  relation parent: organization
+
+  permission can_view = role_binding->can_view + parent->can_view
+}

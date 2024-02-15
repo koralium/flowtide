@@ -1,0 +1,135 @@
+syntax = "proto3";
+package authzed.api.v1;
+
+option go_package = "github.com/authzed/authzed-go/proto/authzed/api/v1";
+option java_package = "com.authzed.api.v1";
+
+import "google/api/annotations.proto";
+import "validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "google/rpc/status.proto";
+
+import "authzed/api/v1/core.proto";
+import "authzed/api/v1/permission_service.proto";
+
+// ExperimentalService exposes a number of APIs that are currently being
+// prototyped and tested for future inclusion in the stable API.
+service ExperimentalService {
+
+  // BulkImportRelationships is a faster path to writing a large number of
+  // relationships at once. It is both batched and streaming. For maximum
+  // performance, the caller should attempt to write relationships in as close
+  // to relationship sort order as possible: (resource.object_type,
+  // resource.object_id, relation, subject.object.object_type,
+  // subject.object.object_id, subject.optional_relation)
+  // 
+  // EXPERIMENTAL
+  // https://github.com/authzed/spicedb/issues/1303
+  rpc BulkImportRelationships(stream BulkImportRelationshipsRequest)
+    returns (BulkImportRelationshipsResponse) {
+      option (google.api.http) = {
+        post: "/v1/experimental/relationships/bulkimport"
+        body: "*"
+      };
+    }
+
+  // BulkExportRelationships is the fastest path available to exporting
+  // relationships from the server. It is resumable, and will return results
+  // in an order determined by the server.
+  rpc BulkExportRelationships(BulkExportRelationshipsRequest)
+    returns (stream BulkExportRelationshipsResponse) {
+      option (google.api.http) = {
+        post: "/v1/experimental/relationships/bulkexport"
+        body: "*"
+      };
+    }
+
+  rpc BulkCheckPermission(BulkCheckPermissionRequest)
+      returns (BulkCheckPermissionResponse) {
+    option (google.api.http) = {
+      post: "/v1/experimental/permissions/bulkcheckpermission"
+      body: "*"
+    };
+  }
+}
+
+message BulkCheckPermissionRequest {
+  Consistency consistency = 1;
+
+  repeated BulkCheckPermissionRequestItem items = 2 [ (validate.rules).repeated .items.message.required = true ];
+}
+
+message BulkCheckPermissionRequestItem {
+  ObjectReference resource = 1 [ (validate.rules).message.required = true ];
+
+  string permission = 2 [ (validate.rules).string = {
+    pattern : "^([a-z][a-z0-9_]{1,62}[a-z0-9])?$",
+    max_bytes : 64,
+  } ];
+
+  SubjectReference subject = 3 [ (validate.rules).message.required = true ];
+
+  google.protobuf.Struct context = 4 [ (validate.rules).message.required = false ];
+}
+
+message BulkCheckPermissionResponse {
+  ZedToken checked_at = 1 [ (validate.rules).message.required = false ];
+
+  repeated BulkCheckPermissionPair pairs = 2 [ (validate.rules).repeated .items.message.required = true ];
+}
+
+message BulkCheckPermissionPair {
+  BulkCheckPermissionRequestItem request = 1;
+  oneof response {
+    BulkCheckPermissionResponseItem item = 2;
+    google.rpc.Status error = 3;
+  }
+}
+
+message BulkCheckPermissionResponseItem {
+
+  CheckPermissionResponse.Permissionship permissionship = 1 [ (validate.rules).enum = {defined_only: true, not_in: [0]} ];
+
+  PartialCaveatInfo partial_caveat_info = 2 [ (validate.rules).message.required = false ];
+}
+
+// BulkImportRelationshipsRequest represents one batch of the streaming
+// BulkImportRelationships API. The maximum size is only limited by the backing
+// datastore, and optimal size should be determined by the calling client
+// experimentally.
+message BulkImportRelationshipsRequest {
+  repeated Relationship relationships = 1
+      [ (validate.rules).repeated .items.message.required = true ];
+}
+
+// BulkImportRelationshipsResponse is returned on successful completion of the
+// bulk load stream, and contains the total number of relationships loaded.
+message BulkImportRelationshipsResponse {
+  uint64 num_loaded = 1;
+}
+
+// BulkExportRelationshipsRequest represents a resumable request for
+// all relationships from the server.
+message BulkExportRelationshipsRequest {
+  Consistency consistency = 1;
+
+  // optional_limit, if non-zero, specifies the limit on the number of
+  // relationships the server can return in one page. By default, the server
+  // will pick a page size, and the server is free to choose a smaller size
+  // at will.
+  uint32 optional_limit = 2 [(validate.rules).uint32 = {gte:0, lte: 10000}];
+
+  // optional_cursor, if specified, indicates the cursor after which results
+  // should resume being returned. The cursor can be found on the
+  // BulkExportRelationshipsResponse object.
+  Cursor optional_cursor = 3;
+}
+
+// BulkExportRelationshipsResponse is one page in a stream of relationship
+// groups that meet the criteria specified by the originating request. The
+// server will continue to stream back relationship groups as quickly as it can
+// until all relationships have been transmitted back.
+message BulkExportRelationshipsResponse {
+  Cursor after_result_cursor  = 1;
+  repeated Relationship relationships = 2;
+}
