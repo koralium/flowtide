@@ -1445,7 +1445,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 }
             });
 
-            var stream = new OpenFgaTestStream("test", conf, FetchRows);
+            var stream = new OpenFgaTestStream("testinsertdeleteexisting", conf, FetchRows);
             stream.Generate(10);
             await stream.StartStream(@"
                 INSERT INTO openfga
