@@ -12,6 +12,7 @@
 
 using Authzed.Api.V1;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.StateManager;
@@ -41,6 +42,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         private readonly List<int> m_primaryKeys;
         private readonly SpiceDbSinkOptions m_spiceDbSinkOptions;
         private PermissionsService.PermissionsServiceClient? m_client;
+        private readonly SpiceDbRowEncoder? m_existingDataEncoder;
 
         public SpiceDbSink(SpiceDbSinkOptions spiceDbSinkOptions, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
         {
@@ -73,14 +75,39 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
 
             m_primaryKeys = new List<int>() { m_resourceObjectTypeIndex, m_resourceObjectIdIndex, m_relationIndex, m_subjectObjectTypeIndex, m_subjectObjectIdIndex };
             this.m_spiceDbSinkOptions = spiceDbSinkOptions;
+
+            if (m_spiceDbSinkOptions.DeleteExistingDataFilter != null)
+            {
+                m_existingDataEncoder = SpiceDbRowEncoder.Create(writeRelation.TableSchema.Names);
+            }
         }
 
         public override string DisplayName => "SpiceDB Sink";
+
+        protected override bool FetchExistingData => m_spiceDbSinkOptions.DeleteExistingDataFilter != null;
 
         protected override Task<MetadataResult> SetupAndLoadMetadataAsync()
         {
             m_client = new PermissionsService.PermissionsServiceClient(m_spiceDbSinkOptions.Channel);
             return Task.FromResult(new MetadataResult(m_primaryKeys));
+        }
+
+        protected override async IAsyncEnumerable<RowEvent> GetExistingData()
+        {
+            Debug.Assert(m_client != null);
+            Debug.Assert(m_existingDataEncoder != null);
+            Metadata? metadata = default;
+            if (m_spiceDbSinkOptions.GetMetadata != null)
+            {
+                metadata = m_spiceDbSinkOptions.GetMetadata();
+            }
+            var relationshipsStream = m_client.ReadRelationships(m_spiceDbSinkOptions.DeleteExistingDataFilter, metadata);
+            var readAllEnumerable = relationshipsStream.ResponseStream.ReadAllAsync();
+
+            await foreach(var rel in readAllEnumerable)
+            {
+                yield return m_existingDataEncoder.Encode(rel.Relationship, 1);
+            }
         }
 
         private static string ColumnToString(scoped in FlxValueRef flxValue)

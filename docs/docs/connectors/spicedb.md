@@ -61,6 +61,15 @@ The following event listeners exist that can be used to modify or get the curren
 * **OnWatermarkFunc** - Called after a watermark is recieved and the data has been added to SpiceDB, also contains the last recieved zedtoken from SpiceDB.
 * **OnInitialDataSentFunc** - Called the first time data has been written to SpiceDB.
 
+### Delete existing data if not updated
+
+It is possible to delete existing data in SpiceDB if it is not in the result set of the stream.
+This is done by passing in the property *DeleteExistingDataFilter* which is the filter of what data to fetch.
+If your stream say updates resource type *document* and relation *reader* you should pass that in as the filter if you wish
+to delete existing data that is not from the current stream.
+
+This will cause all data to be downloaded into the stream which will cause a slower performance to read the initial data.
+
 ## Source
 
 The source allows reading data from SpiceDB. The following columns are returned:

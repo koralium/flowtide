@@ -44,9 +44,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         private PermissionsService.PermissionsServiceClient? m_client;
         private readonly SpiceDbSourceOptions m_spiceDbSourceOptions;
         private FlowtideSpiceDbSourceState? m_state;
-        private readonly List<Action<Relationship, int, FlxValue[]>> m_encoders;
-        private readonly FlexBuffer flexBuffer;
-        private readonly Dictionary<string, FlxValue> _typesAndRelationValues = new Dictionary<string, FlxValue>();
+        private readonly SpiceDbRowEncoder m_rowEncoder;
         private WatchService.WatchServiceClient? m_watchClient;
         private List<string> readTypes = new List<string>();
         private readonly bool readAllTypes = true;
@@ -57,101 +55,8 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
 
         public SpiceDbSource(SpiceDbSourceOptions spiceDbSourceOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
-            flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
-            m_encoders = new List<Action<Relationship, int, FlxValue[]>>();
             this.m_spiceDbSourceOptions = spiceDbSourceOptions;
-
-            for (int i = 0; i < readRelation.BaseSchema.Names.Count; i++)
-            {
-                var name = readRelation.BaseSchema.Names[i];
-                switch (name.ToLower())
-                {
-                    case "subject_type":
-                        m_encoders.Add((r, i, v) =>
-                        {
-                            if (_typesAndRelationValues.TryGetValue(r.Subject.Object.ObjectType, out var value))
-                            {
-                                v[i] = value;
-                                return;
-                            }
-                            flexBuffer.NewObject();
-                            flexBuffer.Add(r.Subject.Object.ObjectType);
-                            var bytes = flexBuffer.Finish();
-                            var flxValue = FlxValue.FromBytes(bytes);
-                            _typesAndRelationValues.Add(r.Subject.Object.ObjectType, flxValue);
-                            v[i] = flxValue;
-                        });
-                        break;
-                    case "subject_id":
-                        m_encoders.Add((r, i, v) =>
-                        {
-                            flexBuffer.NewObject();
-                            flexBuffer.Add(r.Subject.Object.ObjectId);
-                            var bytes = flexBuffer.Finish();
-                            var flxValue = FlxValue.FromBytes(bytes);
-                            v[i] = flxValue;
-                        });
-                        break;
-                    case "subject_relation":
-                        m_encoders.Add((r, i, v) =>
-                        {
-                            if (_typesAndRelationValues.TryGetValue(r.Subject.OptionalRelation, out var value))
-                            {
-                                v[i] = value;
-                                return;
-                            }
-                            flexBuffer.NewObject();
-                            flexBuffer.Add(r.Subject.OptionalRelation);
-                            var bytes = flexBuffer.Finish();
-                            var flxValue = FlxValue.FromBytes(bytes);
-                            _typesAndRelationValues.Add(r.Subject.OptionalRelation, flxValue);
-                            v[i] = flxValue;
-                        });
-                        break;
-                    case "relation":
-                        m_encoders.Add((r, i, v) =>
-                        {
-                            if (_typesAndRelationValues.TryGetValue(r.Relation, out var value))
-                            {
-                                v[i] = value;
-                                return;
-                            }
-                            flexBuffer.NewObject();
-                            flexBuffer.Add(r.Relation);
-                            var bytes = flexBuffer.Finish();
-                            var flxValue = FlxValue.FromBytes(bytes);
-                            _typesAndRelationValues.Add(r.Relation, flxValue);
-                            v[i] = flxValue;
-                        });
-                        break;
-                    case "resource_type":
-                        m_encoders.Add((r, i, v) =>
-                        {
-                            if (_typesAndRelationValues.TryGetValue(r.Resource.ObjectType, out var value))
-                            {
-                                v[i] = value;
-                                return;
-                            }
-                            flexBuffer.NewObject();
-                            flexBuffer.Add(r.Resource.ObjectType);
-                            var bytes = flexBuffer.Finish();
-                            var flxValue = FlxValue.FromBytes(bytes);
-                            _typesAndRelationValues.Add(r.Resource.ObjectType, flxValue);
-                            v[i] = flxValue;
-                        });
-                        break;
-                    case "resource_id":
-                        m_encoders.Add((r, i, v) =>
-                        {
-                            flexBuffer.NewObject();
-                            flexBuffer.Add(r.Resource.ObjectId);
-                            var bytes = flexBuffer.Finish();
-                            var flxValue = FlxValue.FromBytes(bytes);
-                            v[i] = flxValue;
-                        });
-                        break;
-                }
-            }
+            m_rowEncoder = SpiceDbRowEncoder.Create(readRelation.BaseSchema.Names);
 
             if (readRelation.Filter != null)
             {
@@ -289,13 +194,8 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                         {
                             continue;
                         }
-                        FlxValue[] arr = new FlxValue[m_encoders.Count];
-                        for (int i = 0; i < m_encoders.Count; i++)
-                        {
-                            m_encoders[i](update.Relationship, i, arr);
-                        }
                         var weight = update.Operation == RelationshipUpdate.Types.Operation.Delete ? -1 : 1;
-                        outputData.Add(new RowEvent(weight, 0, new ArrayRowData(arr)));
+                        outputData.Add(m_rowEncoder.Encode(update.Relationship, weight));
                         m_state.TypeTimestamps[update.Relationship.Resource.ObjectType] = revision;
                     }
                     if (outputData.Count > 0)
@@ -370,13 +270,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     List<RowEvent> outputData = new List<RowEvent>();
                     await foreach (var r in stream.ResponseStream.ReadAllAsync())
                     {
-                        FlxValue[] arr = new FlxValue[m_encoders.Count];
-                        for (int i = 0; i < m_encoders.Count; i++)
-                        {
-                            m_encoders[i](r.Relationship, i, arr);
-                        }
-
-                        outputData.Add(new RowEvent(1, 0, new ArrayRowData(arr)));
+                        outputData.Add(m_rowEncoder.Encode(r.Relationship, 1));
 
                         if (outputData.Count >= 100)
                         {
