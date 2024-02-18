@@ -437,5 +437,94 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             var actual2 = stream.GetActualRowsAsVectors();
             Assert.Single(actual2);
         }
+
+        [Fact]
+        public async Task TestInsertDeleteExisting()
+        {
+            var schemaText = File.ReadAllText("schema.txt");
+            SchemaService.SchemaServiceClient schemaServiceClient = new SchemaService.SchemaServiceClient(spiceDbFixture.GetChannel());
+
+            var metadata = new Metadata();
+            metadata.Add("Authorization", "Bearer somerandomkeyhere");
+            var res = await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
+            {
+                Schema = schemaText
+            }, metadata);
+
+            var permissionClient = new PermissionsService.PermissionsServiceClient(spiceDbFixture.GetChannel());
+
+            var writeRequest = new WriteRelationshipsRequest();
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "user",
+                            ObjectId = "9999"
+                        }
+                    },
+                    Relation = "reader",
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "document",
+                        ObjectId = "9999"
+                    }
+                }
+            });
+            await permissionClient.WriteRelationshipsAsync(writeRequest, metadata);
+
+            var stream = new SpiceDbTestStream(
+                "testinsertdeleteexisting", 
+                spiceDbFixture.GetChannel(), 
+                true, 
+                false,
+                new ReadRelationshipsRequest()
+                {
+                    RelationshipFilter = new RelationshipFilter()
+                    {
+                        ResourceType = "document",
+                        OptionalRelation = "reader"
+                    }
+                });
+            stream.Generate(10);
+            await stream.StartStream(@"
+                INSERT INTO spicedb
+                SELECT
+                'user' as subject_type,
+                userkey as subject_id,
+                'reader' as relation,
+                'document' as resource_type,
+                orderkey as resource_id
+                FROM orders
+            ");
+
+            List<ReadRelationshipsResponse>? existing;
+            while (true)
+            {
+                existing = await permissionClient.ReadRelationships(new ReadRelationshipsRequest()
+                {
+                    RelationshipFilter = new RelationshipFilter()
+                    {
+                        ResourceType = "document"
+                    },
+                    Consistency = new Consistency()
+                    {
+                        FullyConsistent = true
+                    }
+                }, metadata).ResponseStream.ReadAllAsync().ToListAsync();
+
+                if (existing.Count == 10)
+                {
+                    break;
+                }
+                await Task.Delay(10);
+            }
+            Assert.Equal(10, existing.Count);
+
+        }
     }
 }

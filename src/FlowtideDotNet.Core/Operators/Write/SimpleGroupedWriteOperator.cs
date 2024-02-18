@@ -66,8 +66,9 @@ namespace FlowtideDotNet.Core.Operators.Write
         private bool m_hasModified;
         private readonly ExecutionMode m_executionMode;
         private SimpleWriteState? _state;
-        private Watermark _latestWatermark;
+        private Watermark? _latestWatermark;
         private ICounter<long>? _eventsProcessed;
+        private IBPlusTree<RowEvent, int>? m_existingData;
 
         protected SimpleGroupedWriteOperator(ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -86,6 +87,7 @@ namespace FlowtideDotNet.Core.Operators.Write
 
         private async Task SendData()
         {
+            Debug.Assert(_latestWatermark != null);
             Debug.Assert(m_modified != null);
             if (m_hasModified)
             {
@@ -99,6 +101,62 @@ namespace FlowtideDotNet.Core.Operators.Write
                 await OnInitialDataSent();
                 _state.SentInitialData = true;
             }
+        }
+
+        private static async IAsyncEnumerable<KeyValuePair<RowEvent, int>> IteratePerRow(IBPlusTreeIterator<RowEvent, int> iterator)
+        {
+            await foreach (var page in iterator)
+            {
+                foreach (var kv in page)
+                {
+                    yield return kv;
+                }
+            }
+        }
+
+        private async IAsyncEnumerable<SimpleChangeEvent> DeleteExistingData()
+        {
+            Debug.Assert(m_modified != null);
+            Debug.Assert(m_existingData != null);
+            Debug.Assert(PrimaryKeyComparer != null);
+            
+            var treeIterator = m_modified.CreateIterator();
+            var existingIterator = m_existingData.CreateIterator();
+            await treeIterator.SeekFirst();
+            await existingIterator.SeekFirst();
+
+            var tmpEnumerator = IteratePerRow(treeIterator).GetAsyncEnumerator();
+            var persistentEnumerator = IteratePerRow(existingIterator).GetAsyncEnumerator();
+
+            var hasNew = await tmpEnumerator.MoveNextAsync();
+            var hasOld = await persistentEnumerator.MoveNextAsync();
+
+            // Go through both trees and find deletions
+            while (hasNew || hasOld)
+            {
+                int comparison = hasNew && hasOld ? PrimaryKeyComparer.Compare(tmpEnumerator.Current.Key, persistentEnumerator.Current.Key) : 0;
+
+                // If there is no more old data, then we are done
+                if (!hasOld)
+                {
+                    break;
+                }
+                if (hasNew && comparison < 0)
+                {
+                    hasNew = await tmpEnumerator.MoveNextAsync();
+                }
+                else if (!hasNew || comparison > 0)
+                {
+                    yield return new SimpleChangeEvent(new RowEvent(-1, 0, persistentEnumerator.Current.Key.RowData), true);
+                    hasOld = await persistentEnumerator.MoveNextAsync();
+                }
+                else
+                {
+                    hasNew = await tmpEnumerator.MoveNextAsync();
+                    hasOld = await persistentEnumerator.MoveNextAsync();
+                }
+            }
+            await m_existingData.Clear();
         }
 
         protected virtual Task OnInitialDataSent()
@@ -134,6 +192,22 @@ namespace FlowtideDotNet.Core.Operators.Write
                     }
                 }
             }
+
+            if (_state!.SentInitialData == false &&
+                FetchExistingData)
+            {
+                await foreach (var row in DeleteExistingData())
+                {
+                    yield return row;
+                }
+            }
+        }
+
+        protected virtual bool FetchExistingData => false;
+
+        protected virtual async IAsyncEnumerable<RowEvent> GetExistingData()
+        {
+            yield break;
         }
 
         protected override Task OnWatermark(Watermark watermark)
@@ -159,6 +233,7 @@ namespace FlowtideDotNet.Core.Operators.Write
 
         protected override async Task Initialize(long restoreTime, SimpleWriteState? state, IStateManagerClient stateManagerClient)
         {
+            Debug.Assert(PrimaryKeyComparer != null);
             if (m_metadataResult == null)
             {
                 m_metadataResult = await SetupAndLoadMetadataAsync();
@@ -185,6 +260,23 @@ namespace FlowtideDotNet.Core.Operators.Write
                 KeySerializer = new StreamEventBPlusTreeSerializer()
             });
             await m_modified.Clear();
+
+            if (FetchExistingData)
+            {
+                // Create a tree to store existing data in the destination
+                // This will be used to check written data to existing data if it should be removed from the destination.
+                m_existingData = await stateManagerClient.GetOrCreateTree("existing_data", new BPlusTreeOptions<RowEvent, int>()
+                {
+                    Comparer = PrimaryKeyComparer,
+                    ValueSerializer = new IntSerializer(),
+                    KeySerializer = new StreamEventBPlusTreeSerializer()
+                });
+
+                await foreach(var row in GetExistingData())
+                {
+                    await m_existingData.Upsert(row, 1);
+                }
+            }
         }
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)

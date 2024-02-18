@@ -10,16 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Authzed.Api.V1;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.SpiceDB.Extensions;
 using FlowtideDotNet.Core.Engine;
 using Grpc.Core;
 using Grpc.Net.Client;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Tests
 {
@@ -28,16 +24,19 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
         private readonly GrpcChannel grpcChannel;
         private readonly bool addWriteResolver;
         private readonly bool addReadResolver;
+        private readonly ReadRelationshipsRequest? deleteExistingFilter;
 
         public SpiceDbTestStream(
             string testName, 
             GrpcChannel grpcChannel,
             bool addWriteResolver,
-            bool addReadResolver) : base(testName)
+            bool addReadResolver,
+            ReadRelationshipsRequest? deleteExistingFilter = null) : base(testName)
         {
             this.grpcChannel = grpcChannel;
             this.addWriteResolver = addWriteResolver;
             this.addReadResolver = addReadResolver;
+            this.deleteExistingFilter = deleteExistingFilter;
         }
 
         protected override void AddWriteResolvers(ReadWriteFactory factory)
@@ -47,6 +46,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                 factory.AddSpiceDbSink("*", new SpiceDbSinkOptions()
                 {
                     Channel = grpcChannel,
+                    DeleteExistingDataFilter = deleteExistingFilter,
                     GetMetadata = () =>
                     {
                         var metadata = new Metadata();

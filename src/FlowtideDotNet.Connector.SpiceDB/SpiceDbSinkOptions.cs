@@ -30,6 +30,12 @@ namespace FlowtideDotNet.Connector.SpiceDB
         public int BatchSize { get; set; } = 50;
 
         /// <summary>
+        /// If set, all relationships returned by this filter that are not in the result set
+        /// will be deleted after the initial loading of data has completed.
+        /// </summary>
+        public ReadRelationshipsRequest? DeleteExistingDataFilter { get; set; }
+
+        /// <summary>
         /// Called before each write to SpiceDB.
         /// Makes it possible to modify any data before it is sent.
         /// </summary>

@@ -286,7 +286,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                 {
                     hasNew = await tmpEnumerator.MoveNextAsync();
                 }
-                if (!hasNew || comparison > 0)
+                else if (!hasNew || comparison > 0)
                 {
                     await _deletionsTree.Upsert(persistentEnumerator.Current.Key, 1);
                     // Deletion
