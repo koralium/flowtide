@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
@@ -194,7 +195,7 @@ namespace FlowtideDotNet.Core.Operators.Write
                 }
             }
 
-            if (_state!.SentInitialData == false &&
+            if (!_state!.SentInitialData &&
                 FetchExistingData)
             {
                 await foreach (var row in DeleteExistingData())
@@ -206,9 +207,9 @@ namespace FlowtideDotNet.Core.Operators.Write
 
         protected virtual bool FetchExistingData => false;
 
-        protected virtual async IAsyncEnumerable<RowEvent> GetExistingData()
+        protected virtual IAsyncEnumerable<RowEvent> GetExistingData()
         {
-            yield break;
+            return new EmptyAsyncEnumerable<RowEvent>();
         }
 
         protected override Task OnWatermark(Watermark watermark)

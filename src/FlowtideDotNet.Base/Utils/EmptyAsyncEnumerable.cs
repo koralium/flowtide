@@ -12,7 +12,7 @@
 
 namespace FlowtideDotNet.Base.Utils
 {
-    internal class EmptyAsyncEnumerable<T> : IAsyncEnumerable<T>
+    public class EmptyAsyncEnumerable<T> : IAsyncEnumerable<T>
     {
         public static readonly EmptyAsyncEnumerable<T> Instance = new EmptyAsyncEnumerable<T>();
         private static readonly IAsyncEnumerator<T> EnumeratorInstance = new Enumerator();

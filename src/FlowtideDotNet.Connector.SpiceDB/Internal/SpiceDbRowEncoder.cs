@@ -25,19 +25,19 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
 {
     internal class SpiceDbRowEncoder
     {
-        private readonly List<Action<Relationship, int, FlxValue[]>> encoders;
+        private readonly List<Action<Relationship, int, FlxValue[]>> m_encoders;
 
         public SpiceDbRowEncoder(List<Action<Relationship, int, FlxValue[]>> encoders)
         {
-            this.encoders = encoders;
+            this.m_encoders = encoders;
         }
 
         public RowEvent Encode(Relationship relationship, int weight)
         {
-            FlxValue[] values = new FlxValue[encoders.Count];
-            for (int i = 0; i < encoders.Count; i++)
+            FlxValue[] values = new FlxValue[m_encoders.Count];
+            for (int i = 0; i < m_encoders.Count; i++)
             {
-                encoders[i](relationship, i, values);
+                m_encoders[i](relationship, i, values);
             }
             return new RowEvent(weight, 0, new ArrayRowData(values));
         }

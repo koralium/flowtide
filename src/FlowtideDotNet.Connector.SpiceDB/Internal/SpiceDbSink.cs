@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         private readonly List<int> m_primaryKeys;
         private readonly SpiceDbSinkOptions m_spiceDbSinkOptions;
         private PermissionsService.PermissionsServiceClient? m_client;
-        private SpiceDbRowEncoder? m_existingDataEncoder;
+        private readonly SpiceDbRowEncoder? m_existingDataEncoder;
 
         public SpiceDbSink(SpiceDbSinkOptions spiceDbSinkOptions, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
         {
