@@ -1371,5 +1371,107 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 new { user_type = "user", user_id = "1", relation = "can_read", object_type = "doc", object_id = "1" }
             });
         }
+
+        private static async IAsyncEnumerable<TupleKey> FetchRows(OpenFgaClient client)
+        {
+            var response = await client.Read(new ClientReadRequest());
+
+            foreach (var v in response.Tuples)
+            {
+                yield return v.Key;
+            }
+        }
+
+        [Fact]
+        public async Task TestInsertDeleteExisting()
+        {
+            var config = openFGAFixture.Configuration;
+
+            var model = @"
+            {
+              ""schema_version"": ""1.1"",
+              ""type_definitions"": [
+                {
+                  ""type"": ""user"",
+                  ""relations"": {},
+                  ""metadata"": null
+                },
+                {
+                  ""type"": ""doc"",
+                  ""relations"": {
+                    ""member"": {
+                      ""this"": {}
+                    }
+                  },
+                  ""metadata"": {
+                    ""relations"": {
+                      ""member"": {
+                        ""directly_related_user_types"": [
+                          {
+                            ""type"": ""user""
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }";
+            var client = new OpenFgaClient(config);
+
+            var createStoreResponse = await client.CreateStore(new ClientCreateStoreRequest()
+            {
+                Name = "teststore1"
+            });
+            var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+            Assert.NotNull(authModelRequest);
+            var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
+
+            var conf = openFGAFixture.Configuration;
+            conf.StoreId = createStoreResponse.Id;
+            conf.AuthorizationModelId = createModelResponse.AuthorizationModelId;
+
+            var inesrtClient = new OpenFgaClient(conf);
+            await inesrtClient.Write(new ClientWriteRequest()
+            {
+                Writes = new List<ClientTupleKey>()
+                {
+                    new ClientTupleKey()
+                    {
+                        User = "user:9999",
+                        Relation = "member",
+                        Object = "doc:9999"
+                    }
+                }
+            });
+
+            var stream = new OpenFgaTestStream("test", conf, FetchRows);
+            stream.Generate(10);
+            await stream.StartStream(@"
+                INSERT INTO openfga
+                SELECT 
+                    'user' as user_type,
+                    o.userkey as user_id,
+                    'member' as relation,
+                    'doc' as object_type,
+                    o.orderkey as object_id
+                FROM orders o
+            ");
+
+            var postClient = new OpenFgaClient(conf);
+
+            ReadResponse? readResp = default;
+            while (true)
+            {
+                readResp = await postClient.Read(options: new ClientReadOptions() { PageSize = 100 });
+                if (readResp.Tuples.Count == 10)
+                {
+                    break;
+                }
+                await Task.Delay(10);
+            }
+
+            Assert.Equal(10, readResp.Tuples.Count);
+        }
     }
 }

@@ -14,6 +14,8 @@ using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.OpenFGA.Extensions;
 using FlowtideDotNet.Core.Engine;
 using OpenFga.Sdk.Client;
+using OpenFga.Sdk.Client.Model;
+using OpenFga.Sdk.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,17 +27,20 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
     internal class OpenFgaTestStream : FlowtideTestStream
     {
         private readonly ClientConfiguration clientConfiguration;
+        private readonly Func<OpenFgaClient, IAsyncEnumerable<TupleKey>>? deleteFilter;
 
-        public OpenFgaTestStream(string testName, ClientConfiguration clientConfiguration) : base(testName)
+        public OpenFgaTestStream(string testName, ClientConfiguration clientConfiguration, Func<OpenFgaClient, IAsyncEnumerable<TupleKey>>? deleteFilter = null) : base(testName)
         {
             this.clientConfiguration = clientConfiguration;
+            this.deleteFilter = deleteFilter;
         }
 
         protected override void AddWriteResolvers(ReadWriteFactory factory)
         {
             factory.AddOpenFGASink("openfga", new OpenFgaSinkOptions
             {
-                ClientConfiguration = clientConfiguration
+                ClientConfiguration = clientConfiguration,
+                DeleteExistingDataFetcher = deleteFilter
             });
             base.AddWriteResolvers(factory);
         }

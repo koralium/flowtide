@@ -39,6 +39,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         private readonly int m_authorizationModelIdIndex;
         private readonly List<int> m_primaryKeys;
         private readonly OpenFgaSinkOptions m_openFGASinkOptions;
+        private readonly OpenFgaRowEncoder? m_existingDataRowEncoder;
         private OpenFgaClient? m_openFgaClient;
 
         public FlowtideOpenFgaSink(OpenFgaSinkOptions openFGASinkOptions, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
@@ -71,14 +72,35 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             m_authorizationModelIdIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("authorizationModelId", StringComparison.OrdinalIgnoreCase));
             m_primaryKeys = new List<int>() { m_userTypeIndex, m_userIdIndex, m_relationIndex, m_objectTypeIndex, m_objectIdIndex };
             this.m_openFGASinkOptions = openFGASinkOptions;
+
+            if (openFGASinkOptions.DeleteExistingDataFetcher != null)
+            {
+                m_existingDataRowEncoder = OpenFgaRowEncoder.Create(writeRelation.TableSchema.Names);
+            }
         }
 
         public override string DisplayName => "OpenFGASink";
+
+        protected override bool FetchExistingData => m_openFGASinkOptions.DeleteExistingDataFetcher != null;
 
         protected override Task<MetadataResult> SetupAndLoadMetadataAsync()
         {
             m_openFgaClient = new OpenFgaClient(m_openFGASinkOptions.ClientConfiguration);
             return Task.FromResult(new MetadataResult(m_primaryKeys));
+        }
+
+        protected override async IAsyncEnumerable<RowEvent> GetExistingData()
+        {
+            Debug.Assert(m_openFgaClient != null);
+            Debug.Assert(m_existingDataRowEncoder != null);
+            Debug.Assert(m_openFGASinkOptions.DeleteExistingDataFetcher != null);
+
+            var result = m_openFGASinkOptions.DeleteExistingDataFetcher(m_openFgaClient);
+
+            await foreach(var tuple in result)
+            {
+                yield return m_existingDataRowEncoder.Encode(tuple, 1);
+            }
         }
 
         private static string ColumnToString(scoped in FlxValueRef flxValue)

@@ -50,5 +50,17 @@ namespace FlowtideDotNet.Core.Utils
            Level = LogLevel.Warning,
            Message = "Block nested loop join in use, it will severely impact performance of the stream, in stream: `{stream}`, operator: `{operatorId}`")]
         public static partial void BlockNestedLoopInUse(this ILogger logger, string stream, string operatorId);
+
+        [LoggerMessage(
+           EventId = 6,
+           Level = LogLevel.Information,
+           Message = "Fetching existing data from data source, in stream: `{stream}`, operator: `{operatorId}`")]
+        public static partial void FetchingExistingDataInDataSource(this ILogger logger, string stream, string operatorId);
+
+        [LoggerMessage(
+           EventId = 7,
+           Level = LogLevel.Information,
+           Message = "Done fetching existing data, in stream: `{stream}`, operator: `{operatorId}`")]
+        public static partial void DoneFetchingExistingData(this ILogger logger, string stream, string operatorId);
     }
 }
