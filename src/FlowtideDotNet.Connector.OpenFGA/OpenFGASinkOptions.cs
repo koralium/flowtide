@@ -11,7 +11,9 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using OpenFga.Sdk.Client;
 using OpenFga.Sdk.Client.Model;
+using OpenFga.Sdk.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -64,5 +66,11 @@ namespace FlowtideDotNet.Connector.OpenFGA
         /// Can be used to keep track what data has been sent to OpenFGA from the sources.
         /// </summary>
         public Func<Watermark, Task>? OnWatermarkFunc { get; set; }
+
+        /// <summary>
+        /// If set, all relationships returned by this query that are not in the result set
+        /// will be deleted after the initial loading of data has completed.
+        /// </summary>
+        public Func<OpenFgaClient, IAsyncEnumerable<TupleKey>>? DeleteExistingDataFetcher { get; set; }
     }
 }

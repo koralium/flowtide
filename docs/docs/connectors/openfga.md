@@ -55,6 +55,15 @@ what was written from a stream.
 * **OnInitialDataSentFunc** - Called after all initial data has been written for the first time of a stream.
 * **OnWatermarkFunc** - Called after a write with the new watermarks of the source systems that have contributed to the data written.
 
+### Delete existing data if not updated
+
+It is possible to delete existing data in OpenFGA if it is not in the result set of the stream.
+This is done by passing in the property *DeleteExistingDataFetcher* which should fetch existing data from OpenFGA to compare against.
+If your stream say updates object type *document* and relation *reader* you should return that from the fetcher if you wish
+to delete existing data that is not from the current stream.
+
+This will cause all data to be downloaded into the stream which will cause a slower performance to read the initial data.
+
 ## Source
 
 The OpenFGA source allows you to read data from OpenFGA, which can be useful to combine with other data.
