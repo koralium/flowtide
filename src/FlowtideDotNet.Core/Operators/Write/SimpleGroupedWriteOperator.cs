@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -272,10 +273,12 @@ namespace FlowtideDotNet.Core.Operators.Write
                     KeySerializer = new StreamEventBPlusTreeSerializer()
                 });
 
+                Logger.LogInformation("Fetching existing data in SpiceDB");
                 await foreach(var row in GetExistingData())
                 {
                     await m_existingData.Upsert(row, 1);
                 }
+                Logger.LogInformation("Done fetching existing data");
             }
         }
 
