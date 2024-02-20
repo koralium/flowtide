@@ -52,6 +52,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         private HashSet<string>? watermarkNames;
         private readonly string? _relationFilter;
         private readonly string? _subjectTypeFilter;
+        private readonly string _displayName;
 
         public SpiceDbSource(SpiceDbSourceOptions spiceDbSourceOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
@@ -71,11 +72,39 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     }
                     _relationFilter = filterVisitor.Relation;
                     _subjectTypeFilter = filterVisitor.SubjectType;
+
+                    StringBuilder displayBuilder = new StringBuilder("SpiceDB(");
+                    if (filterVisitor.ResourceType != null)
+                    {
+                        displayBuilder.Append(filterVisitor.ResourceType);
+                    }
+                    else
+                    {
+                        displayBuilder.Append("all");
+                    }
+                    if (filterVisitor.Relation != null)
+                    {
+                        displayBuilder.Append($", {filterVisitor.Relation}");
+                    }
+                    if (filterVisitor.SubjectType != null)
+                    {
+                        displayBuilder.Append($", {filterVisitor.SubjectType}");
+                    }
+                    displayBuilder.Append(")");
+                    _displayName = displayBuilder.ToString();
                 }
+                else
+                {
+                    _displayName = "SpiceDB(all)";
+                }
+            }
+            else
+            {
+                _displayName = "SpiceDB(all)";
             }
         }
 
-        public override string DisplayName => "SpiceDB";
+        public override string DisplayName => _displayName;
 
         public override Task DeleteAsync()
         {
@@ -124,7 +153,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 foreach (var type in schema.Types)
                 {
                     readTypes.Add(type.Key);
-                }
+                }           
                 watermarkNames = new HashSet<string>();
                 foreach (var type in readTypes)
                 {
@@ -149,7 +178,16 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             var decodedToken = DecodedZedToken.Parser.ParseFrom(bytes);
             if (!long.TryParse(decodedToken.V1.Revision, out var result))
             {
-                throw new InvalidOperationException("Could not parse revision from token");
+                try
+                {
+                    var postgresRevisionBytes = Convert.FromBase64String(decodedToken.V1.Revision);
+                    var postgresRevision = PostgresRevision.Parser.ParseFrom(postgresRevisionBytes);
+                    return (long)postgresRevision.Xmin;
+                }
+                catch
+                {
+                    throw new InvalidOperationException("Could not parse revision from token");
+                }
             }
             return result;
         }

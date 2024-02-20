@@ -1,0 +1,9 @@
+﻿syntax = "proto3";
+
+package authzed.internal;
+
+message PostgresRevision {
+  uint64 xmin = 1;
+  int64 relative_xmax = 2;
+  repeated int64 relative_xips = 3;
+}
