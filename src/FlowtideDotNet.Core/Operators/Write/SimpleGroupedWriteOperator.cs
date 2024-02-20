@@ -234,6 +234,12 @@ namespace FlowtideDotNet.Core.Operators.Write
             return m_metadataResult.PrimaryKeyColumns;
         }
 
+        protected ValueTask<(bool found, RowEvent key)> GetExistingData(RowEvent e)
+        {
+            Debug.Assert(m_existingData != null);
+            return m_existingData.GetKey(e);
+        }
+
         protected override async Task Initialize(long restoreTime, SimpleWriteState? state, IStateManagerClient stateManagerClient)
         {
             Debug.Assert(PrimaryKeyComparer != null);
