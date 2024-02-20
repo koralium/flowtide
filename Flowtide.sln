@@ -75,10 +75,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Sp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Zanzibar", "src\FlowtideDotNet.Zanzibar\FlowtideDotNet.Zanzibar.csproj", "{B5F9197F-149B-48DD-A3B3-7271C85DD6E9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProjectMemberPermissions", "..\..\dev\AppDev-ProjectMemberPermissions\ProjectMemberPermissions\ProjectMemberPermissions.csproj", "{57201FBE-33AC-46BB-8DB0-2A2D6EE03CE0}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DenormalizeProjectPermissions", "..\..\dev\DenormalizeProjectPermissions\DenormalizeProjectPermissions\DenormalizeProjectPermissions.csproj", "{BC8F81DD-FFD4-4C82-9D9B-7BE82B847422}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -217,14 +213,6 @@ Global
 		{B5F9197F-149B-48DD-A3B3-7271C85DD6E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B5F9197F-149B-48DD-A3B3-7271C85DD6E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B5F9197F-149B-48DD-A3B3-7271C85DD6E9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{57201FBE-33AC-46BB-8DB0-2A2D6EE03CE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{57201FBE-33AC-46BB-8DB0-2A2D6EE03CE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{57201FBE-33AC-46BB-8DB0-2A2D6EE03CE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{57201FBE-33AC-46BB-8DB0-2A2D6EE03CE0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BC8F81DD-FFD4-4C82-9D9B-7BE82B847422}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BC8F81DD-FFD4-4C82-9D9B-7BE82B847422}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BC8F81DD-FFD4-4C82-9D9B-7BE82B847422}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BC8F81DD-FFD4-4C82-9D9B-7BE82B847422}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
