@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     {
                         displayBuilder.Append($", {filterVisitor.SubjectType}");
                     }
-                    displayBuilder.Append(")");
+                    displayBuilder.Append(')');
                     _displayName = displayBuilder.ToString();
                 }
                 else
