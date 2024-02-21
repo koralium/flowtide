@@ -209,24 +209,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             Debug.Assert(_eventsProcessed != null);
 
             await output.EnterCheckpointLock();
-            Dictionary<int, long> beforeStartOffsets = new Dictionary<int, long>();
-            //Dictionary<int, long> currentOffsets = new Dictionary<int, long>();
-            foreach(var topicPartition in _topicPartitions)
-            {
-                var offsets = _consumer.QueryWatermarkOffsets(topicPartition, TimeSpan.FromSeconds(10));
-                var offset = offsets.High.Value - 1;
-                if (beforeStartOffsets.TryGetValue(topicPartition.Partition.Value, out var currentOffset))
-                {
-                    if (currentOffset < offset)
-                    {
-                        beforeStartOffsets[topicPartition.Partition.Value] = offset;
-                    }
-                }
-                else
-                {
-                    beforeStartOffsets.Add(topicPartition.Partition.Value, offset);
-                }
-            }
+            Dictionary<int, long> beforeStartOffsets = KafkaReadClient.GetCurrentWatermarks(_consumer, _topicPartitions);
 
             List<RowEvent> rows = new List<RowEvent>();
             while (true)

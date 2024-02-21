@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core.Engine;
+using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 
 namespace FlowtideDotNet.Connector.Kafka.Tests
 {
@@ -19,18 +20,22 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
     {
         private readonly KafkaFixture kafkaFixture;
         private readonly string topic;
+        private readonly string testName;
+        private readonly bool fetchExisting;
 
-        public KafkaTestStream(KafkaFixture kafkaFixture, string topic, string testName) : base(testName)
+        public KafkaTestStream(KafkaFixture kafkaFixture, string topic, string testName, bool fetchExisting) : base(testName)
         {
             this.kafkaFixture = kafkaFixture;
             this.topic = topic;
+            this.testName = testName;
+            this.fetchExisting = fetchExisting;
         }
 
         protected override void AddReadResolvers(ReadWriteFactory factory)
         {
             factory.AddKafkaSource("*", new FlowtideKafkaSourceOptions()
             {
-                ConsumerConfig = kafkaFixture.GetConsumerConfig(),
+                ConsumerConfig = kafkaFixture.GetConsumerConfig(testName),
                 KeyDeserializer = new FlowtidekafkaStringKeyDeserializer(),
                 ValueDeserializer = new FlowtideKafkaUpsertJsonDeserializer()
             });
@@ -38,7 +43,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
 
         protected override void AddWriteResolvers(ReadWriteFactory factory)
         {
-            factory.AddKafkaSink("*", new FlowtideKafkaSinkOptions()
+            var opt = new FlowtideKafkaSinkOptions()
             {
                 KeySerializer = new FlowtideKafkaStringKeySerializer(),
                 ProducerConfig = kafkaFixture.GetProducerConfig(),
@@ -51,7 +56,15 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
                 {
                     return Task.CompletedTask;
                 }
-            });
+            };
+            if (fetchExisting)
+            {
+                opt.FetchExistingConfig = kafkaFixture.GetConsumerConfig(testName);
+                opt.FetchExistingValueDeserializer = new FlowtideKafkaUpsertJsonDeserializer();
+                opt.FetchExistingKeyDeserializer = new FlowtidekafkaStringKeyDeserializer();
+            }
+
+            factory.AddKafkaSink("*", opt);
         }
     }
 }

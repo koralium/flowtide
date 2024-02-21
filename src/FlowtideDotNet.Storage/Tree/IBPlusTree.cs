@@ -37,6 +37,8 @@ namespace FlowtideDotNet.Storage.Tree
 
         ValueTask<(bool found, V? value)> GetValue(in K key);
 
+        ValueTask<(bool found, K? key)> GetKey(in K key);
+
         IBPlusTreeIterator<K, V> CreateIterator();
 
         /// <summary>
