@@ -90,9 +90,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Encoders
                         obj[$"{columnName}LookupId"] = id;
                     }
                 }
-                
+                return;
             }
-            throw new NotSupportedException("GroupPerson columns should be a string value and a UPN.");
+            throw new NotSupportedException("GroupPerson columns should be a string or vector value and consist of UPN.");
         }
 
         public Task Initialize(string name, SharepointGraphListClient client, IStateManagerClient stateManagerClient, ColumnDefinition columnDefinition)
