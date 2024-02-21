@@ -270,7 +270,7 @@ namespace FlowtideDotNet.Core.Operators.Write
             });
             await m_modified.Clear();
 
-            if (FetchExistingData)
+            if (FetchExistingData && _state!.SentInitialData == false)
             {
                 // Create a tree to store existing data in the destination
                 // This will be used to check written data to existing data if it should be removed from the destination.

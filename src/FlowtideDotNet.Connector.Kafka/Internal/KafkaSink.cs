@@ -31,10 +31,14 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
         public KafkaSink(WriteRelation writeRelation, FlowtideKafkaSinkOptions flowtideKafkaSinkOptions, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
         {
-            if ((flowtideKafkaSinkOptions.FetchExistingKeyDeserializer != null || flowtideKafkaSinkOptions.FetchExistingValueDeserializer != null) &&
-                (flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null || flowtideKafkaSinkOptions.FetchExistingKeyDeserializer == null))
+            if ((flowtideKafkaSinkOptions.FetchExistingKeyDeserializer != null || 
+                flowtideKafkaSinkOptions.FetchExistingValueDeserializer != null ||
+                flowtideKafkaSinkOptions.FetchExistingConfig != null) &&
+                (flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null || 
+                flowtideKafkaSinkOptions.FetchExistingKeyDeserializer == null ||
+                flowtideKafkaSinkOptions.FetchExistingConfig == null))
             {
-                throw new InvalidOperationException("Both FetchExistingKeyDeserializer and FetchExistingValueDeserializer must be set or both must be null");
+                throw new InvalidOperationException("FetchExistingConfig, FetchExistingKeyDeserializer and FetchExistingValueDeserializer must be set or all must be null");
             }
             int keyIndex = -1;
             topicName = writeRelation.NamedObject.DotSeperated;
