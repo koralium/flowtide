@@ -55,13 +55,12 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             this.keyDeserializer = keyDeserializer;
         }
 
-        public IEnumerable<RowEvent> ReadInitial()
+        internal static Dictionary<int, long> GetCurrentWatermarks(IConsumer<byte[], byte[]> consumer, List<TopicPartition> topicPartitions)
         {
-            Dictionary<int, long> currentOffsets = new Dictionary<int, long>();
             Dictionary<int, long> beforeStartOffsets = new Dictionary<int, long>();
-            foreach (var topicPartition in _topicPartitions)
+            foreach (var topicPartition in topicPartitions)
             {
-                var offsets = _consumer.QueryWatermarkOffsets(topicPartition, TimeSpan.FromSeconds(10));
+                var offsets = consumer.QueryWatermarkOffsets(topicPartition, TimeSpan.FromSeconds(10));
                 var offset = offsets.High.Value - 1;
                 if (beforeStartOffsets.TryGetValue(topicPartition.Partition.Value, out var currentOffset))
                 {
@@ -75,6 +74,13 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                     beforeStartOffsets.Add(topicPartition.Partition.Value, offset);
                 }
             }
+            return beforeStartOffsets;
+        }
+
+        public IEnumerable<RowEvent> ReadInitial()
+        {
+            Dictionary<int, long> currentOffsets = new Dictionary<int, long>();
+            Dictionary<int, long> beforeStartOffsets = GetCurrentWatermarks(_consumer, _topicPartitions);
 
             while (true)
             {

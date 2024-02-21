@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
             // Create the output topic
             await new AdminClientBuilder(new AdminClientConfig(kafkaFixture.GetConfig())).Build().CreateTopicsAsync(new List<TopicSpecification>() { new TopicSpecification() { Name = "output", NumPartitions = 1, ReplicationFactor = 1 } });
 
-            var consumer = new ConsumerBuilder<string, string>(kafkaFixture.GetConsumerConfig()).Build();
+            var consumer = new ConsumerBuilder<string, string>(kafkaFixture.GetConsumerConfig("testkafka")).Build();
 
             KafkaTestStream kafkaTestStream = new KafkaTestStream(kafkaFixture, topic, "testkafka", false);
 
@@ -96,7 +96,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
         {
             var producer = new ProducerBuilder<string, string>(kafkaFixture.GetProducerConfig()).Build();
 
-            var topic = "test-topic";
+            var topic = "test-topic2";
 
             var jsonData = @"{""firstName"":""testFirst"",""lastName"":""testLast""}";
 
@@ -107,43 +107,43 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
             });
 
             // Create the output topic
-            await new AdminClientBuilder(new AdminClientConfig(kafkaFixture.GetConfig())).Build().CreateTopicsAsync(new List<TopicSpecification>() { new TopicSpecification() { Name = "output", NumPartitions = 1, ReplicationFactor = 1 } });
+            await new AdminClientBuilder(new AdminClientConfig(kafkaFixture.GetConfig())).Build().CreateTopicsAsync(new List<TopicSpecification>() { new TopicSpecification() { Name = "output2", NumPartitions = 1, ReplicationFactor = 1 } });
 
 
-            await producer.ProduceAsync("output", new Message<string, string>()
+            await producer.ProduceAsync("output2", new Message<string, string>()
             {
                 Key = "key",
                 Value = jsonData
             });
 
-            await producer.ProduceAsync("output", new Message<string, string>()
+            await producer.ProduceAsync("output2", new Message<string, string>()
             {
                 Key = "key2",
                 Value = @"{""firstName"":""testSecond"",""lastName"":""testSecond""}"
             });
 
             
-            var consumer = new ConsumerBuilder<string, string>(kafkaFixture.GetConsumerConfig()).Build();
+            var consumer = new ConsumerBuilder<string, string>(kafkaFixture.GetConsumerConfig("testwithexistingdata")).Build();
 
-            KafkaTestStream kafkaTestStream = new KafkaTestStream(kafkaFixture, topic, "testkafka", true);
+            KafkaTestStream kafkaTestStream = new KafkaTestStream(kafkaFixture, topic, "testwithexistingdata", true);
 
             await kafkaTestStream.StartStream(@"
-                CREATE TABLE [test-topic] (
+                CREATE TABLE [test-topic2] (
                     _key,
                     firstName,
                     lastName
                 );
 
-                INSERT INTO output
+                INSERT INTO output2
                 SELECT 
                     _key,
                     firstName,
                     lastName
-                FROM [test-topic]
+                FROM [test-topic2]
             ");
 
 
-            consumer.Subscribe("output");
+            consumer.Subscribe("output2");
 
             var msg1 = consumer.Consume();
 
