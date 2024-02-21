@@ -38,14 +38,11 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
             var adminClient = new AdminClientBuilder(adminConf).Build();
             var metadata = adminClient.GetMetadata(topicName, TimeSpan.FromSeconds(10));
-            HashSet<string> watermarkNames = new HashSet<string>();
-            var topic = metadata.Topics.First();
-            var partitions = metadata.Topics.First().Partitions;
+            var topic = metadata.Topics[0];
+            var partitions = metadata.Topics[0].Partitions;
             List<TopicPartitionOffset> topicPartitionOffsets = new List<TopicPartitionOffset>();
             foreach (var partition in partitions)
             {
-                watermarkNames.Add(topicName + "_" + partition.PartitionId);
-
                 var topicPartition = new TopicPartition(topic.Topic, new Partition(partition.PartitionId));
                 _topicPartitions.Add(topicPartition);
                 topicPartitionOffsets.Add(new TopicPartitionOffset(topicPartition, new Offset(0)));
@@ -58,11 +55,10 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             this.keyDeserializer = keyDeserializer;
         }
 
-        public async IAsyncEnumerable<RowEvent> ReadInitial()
+        public IEnumerable<RowEvent> ReadInitial()
         {
             Dictionary<int, long> currentOffsets = new Dictionary<int, long>();
             Dictionary<int, long> beforeStartOffsets = new Dictionary<int, long>();
-            //Dictionary<int, long> currentOffsets = new Dictionary<int, long>();
             foreach (var topicPartition in _topicPartitions)
             {
                 var offsets = _consumer.QueryWatermarkOffsets(topicPartition, TimeSpan.FromSeconds(10));

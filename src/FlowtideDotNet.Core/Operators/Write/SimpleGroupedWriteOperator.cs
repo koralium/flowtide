@@ -234,7 +234,7 @@ namespace FlowtideDotNet.Core.Operators.Write
             return m_metadataResult.PrimaryKeyColumns;
         }
 
-        protected ValueTask<(bool found, RowEvent key)> GetExistingData(RowEvent e)
+        protected ValueTask<(bool found, RowEvent key)> GetExistingDataRow(RowEvent e)
         {
             Debug.Assert(m_existingData != null);
             return m_existingData.GetKey(e);

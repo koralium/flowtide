@@ -65,6 +65,10 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
             if (flowtideKafkaSinkOptions.FetchExistingConfig != null)
             {
+                if (flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null)
+                {
+                    throw new InvalidOperationException("FetchExistingValueDeserializer must be set for the kafka sink");
+                }
                 var readRel = new ReadRelation()
                 {
                     BaseSchema = _writeRelation.TableSchema,
@@ -108,7 +112,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 flowtideKafkaSinkOptions.FetchExistingValueDeserializer,
                 flowtideKafkaSinkOptions.FetchExistingKeyDeserializer);
 
-            return client.ReadInitial();
+            return client.ReadInitial().ToAsyncEnumerable();
         }
 
         protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
@@ -132,9 +136,9 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 if (FetchExistingData && !row.IsDeleted)
                 {
                     // Compare against existing
-                    var (exist, existingVal) = await GetExistingData(row.Row);
+                    var (exist, existingVal) = await GetExistingDataRow(row.Row);
                     // Check if the rows completely match, then do nothing since the data is already in the stream
-                    if (RowEvent.Compare(existingVal, row.Row) == 0)
+                    if (exist && RowEvent.Compare(existingVal, row.Row) == 0)
                     {
                         continue;
                     }
