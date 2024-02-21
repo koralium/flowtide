@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Text;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -140,6 +141,24 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream($"INSERT INTO output SELECT replace(firstName, '{start}', '_') as Name FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.Replace(start, "_") }));
+        }
+
+        [Fact]
+        public async Task StringBase64Encode()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT string_base64_encode(firstName) as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { Name = Convert.ToBase64String(Encoding.UTF8.GetBytes(x.FirstName ?? "")) }));
+        }
+
+        [Fact]
+        public async Task StringBase64Decode()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT string_base64_decode(string_base64_encode(firstName)) as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { Name = x.FirstName }));
         }
     }
 }

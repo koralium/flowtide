@@ -57,6 +57,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.StartsWith, (x, y) => StartsWithImplementation(x, y));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Like, (x, y, z) => LikeImplementation(x, y, z));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Replace, (x, y, z) => ReplaceImplementation(x, y, z));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.StringBase64Encode, (x) => StringBase64EncodeImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.StringBase64Decode, (x) => StringBase64DecodeImplementation(x));
 
             functionsRegister.RegisterScalarFunction(FunctionsString.Uri, FunctionsString.Substring,
                 (scalarFunction, parametersInfo, visitor) =>
@@ -259,5 +261,26 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return regexPattern.ToString();
         }
 
+        private static FlxValue StringBase64EncodeImplementation(in FlxValue val)
+        {
+            if (val.ValueType != FlexBuffers.Type.String)
+            {
+                return NullValue;
+            }
+
+            return FlxValue.FromBytes(FlexBuffer.SingleValue(Convert.ToBase64String(val.AsFlxString.Span)));
+        }
+
+        private static FlxValue StringBase64DecodeImplementation(in FlxValue val)
+        {
+            if (val.ValueType != FlexBuffers.Type.String)
+            {
+                return NullValue;
+            }
+
+            var bytes = Convert.FromBase64String(val.AsString);
+            var str = Encoding.UTF8.GetString(bytes);
+            return FlxValue.FromBytes(FlexBuffer.SingleValue(str));
+        }
     }
 }

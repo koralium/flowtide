@@ -165,3 +165,23 @@ Replaces all occurences of the substring defined in the second variable with the
 --- Replaces the word 'hello' with the word 'world' in the string c1. 
 SELECT replace(c1, 'hello', 'world') FROM ...
 ```
+
+## String Base64 Encode
+
+Accepts a string as a parameter and will return the base64 encoding as a string.
+
+### SQL Usage
+
+```sql
+SELECT string_base64_encode(c1) FROM ...
+```
+
+## String Base64 Decode
+
+Accepts a string in base64 encoding and will return a decoded string.
+
+### SQL Usage
+
+```sql
+SELECT string_base64_decode(c1) FROM ...
+```
