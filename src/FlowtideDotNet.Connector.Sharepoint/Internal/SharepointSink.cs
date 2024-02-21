@@ -196,7 +196,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                             statusCode != System.Net.HttpStatusCode.Created)
                         {
                             var resp = await batchResponse.GetResponseByIdAsync(req.batchId);
-                            var respString = await resp.Content.ReadAsStringAsync();
+                            var respString = await resp.Content.ReadAsStringAsync(cancellationToken);
                             throw new InvalidOperationException($"Failed to execute batch request {req.batchId}, message: {respString}");   
                         }
                         if (req.operation == Operation.Insert)
