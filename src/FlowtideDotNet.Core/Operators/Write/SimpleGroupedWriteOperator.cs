@@ -234,6 +234,12 @@ namespace FlowtideDotNet.Core.Operators.Write
             return m_metadataResult.PrimaryKeyColumns;
         }
 
+        protected ValueTask<(bool found, RowEvent key)> GetExistingDataRow(RowEvent e)
+        {
+            Debug.Assert(m_existingData != null);
+            return m_existingData.GetKey(e);
+        }
+
         protected override async Task Initialize(long restoreTime, SimpleWriteState? state, IStateManagerClient stateManagerClient)
         {
             Debug.Assert(PrimaryKeyComparer != null);
@@ -264,7 +270,7 @@ namespace FlowtideDotNet.Core.Operators.Write
             });
             await m_modified.Clear();
 
-            if (FetchExistingData)
+            if (FetchExistingData && !_state!.SentInitialData)
             {
                 // Create a tree to store existing data in the destination
                 // This will be used to check written data to existing data if it should be removed from the destination.
