@@ -20,6 +20,13 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Encoders
     internal class GroupPersonEncoder : IColumnEncoder
     {
         private SharepointGraphListClient? _client;
+        private readonly bool allowMultiple;
+
+        public GroupPersonEncoder(bool allowMultiple)
+        {
+            this.allowMultiple = allowMultiple;
+        }
+
         public string GetKeyValueFromColumn(FlxValue flxValue)
         {
             throw new NotImplementedException();
@@ -38,9 +45,52 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Encoders
                 var id = await _client.EnsureUser(upn);
                 if (id != null)
                 {
-                    obj[$"{columnName}LookupId"] = id;
+                    if (allowMultiple)
+                    {
+                        obj[$"{columnName}LookupId@odata.type"] = "Collection(Edm.String)";
+                        obj[$"{columnName}LookupId"] = new List<string>()
+                        {
+                            id.Value.ToString()
+                        };
+                    }
+                    else
+                    {
+                        obj[$"{columnName}LookupId"] = id;
+                    }
                 }
                 return;
+            }
+            else if (flxValue.ValueType == FlexBuffers.Type.Vector)
+            {
+                var vec = flxValue.AsVector;
+                if (allowMultiple)
+                {
+                    List<string> ids = new List<string>();
+                    for (int i = 0; i < vec.Length; i++)
+                    {
+                        var row = vec[i];
+                        if (row.ValueType == FlexBuffers.Type.String)
+                        {
+                            var id = await _client.EnsureUser(row.AsString);
+                            if (id.HasValue)
+                            {
+                                ids.Add(id.Value.ToString());
+                            }
+                        }
+                    }
+                    obj[$"{columnName}LookupId@odata.type"] = "Collection(Edm.String)";
+                    obj[$"{columnName}LookupId"] = ids;
+                }
+                else if (vec.Length > 0)
+                {
+                    var first = vec[0];
+                    if (first.ValueType == FlexBuffers.Type.String)
+                    {
+                        var id = await _client.EnsureUser(first.AsString);
+                        obj[$"{columnName}LookupId"] = id;
+                    }
+                }
+                
             }
             throw new NotSupportedException("GroupPerson columns should be a string value and a UPN.");
         }

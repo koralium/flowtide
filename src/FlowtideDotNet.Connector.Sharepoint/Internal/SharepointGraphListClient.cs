@@ -162,7 +162,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
             if (columnDefinition.PersonOrGroup != null)
             {
-                return new GroupPersonEncoder();
+                return new GroupPersonEncoder(columnDefinition.PersonOrGroup.AllowMultipleSelection ?? false);
             }
             if (columnDefinition.Boolean != null)
             {
