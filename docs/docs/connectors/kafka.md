@@ -72,6 +72,19 @@ Available value serializers:
 
 * **FlowtideKafkaUpsertJsonSerializer** - Outputs the value as json, if it is a delete, it outputs null as the value.
 
+### Compare against existing data in Kafka
+
+It is possible to fetch all existing data in Kafka when a new stream is starting. This data will be used on the initial result set
+to compare against to see if the data is already in kafka (the lateset message on a key).
+
+It will also send delete operations for any keys that no longer exist in the result set.
+
+To use this feature you must set the following properties:
+
+* **FetchExistingConfig** - Consumer config that will be used when fetching existing data.
+* **FetchExistingValueDeserializer** - Deserializer that will be used, when deserializing existing data.
+* **FetchExistingKeyDeserializer** - Deserializer for the key field in a kafka message.
+
 ### Extend event processing logic
 
 There are two properties in the options that can help add extra logic to the kafka sink.

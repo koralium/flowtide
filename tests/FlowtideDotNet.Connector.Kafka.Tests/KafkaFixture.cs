@@ -32,12 +32,12 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
             };
         }
 
-        public ConsumerConfig GetConsumerConfig()
+        public ConsumerConfig GetConsumerConfig(string groupId)
         {
             return new ConsumerConfig()
             {
                 BootstrapServers = _container.GetBootstrapAddress(),
-                GroupId = "test-group",
+                GroupId = groupId,
                 AutoOffsetReset = AutoOffsetReset.Earliest,
                 EnableAutoCommit = false
             };

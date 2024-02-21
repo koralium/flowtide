@@ -125,6 +125,22 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return (true, leaf.values[index]);
         }
 
+        public ValueTask<(bool found, K? key)> GetKey(in K key)
+        {
+            return GetKey_Internal(key);
+        }
+
+        private async ValueTask<(bool found, K? key)> GetKey_Internal(K key)
+        {
+            var leaf = await SearchRoot(key, m_keyComparer);
+            var index = leaf.keys.BinarySearch(key, m_keyComparer);
+            if (index < 0)
+            {
+                return (false, default);
+            }
+            return (true, leaf.keys[index]);
+        }
+
         public IBPlusTreeIterator<K, V> CreateIterator()
         {
             return new BPlusTreeIterator<K, V>(this);

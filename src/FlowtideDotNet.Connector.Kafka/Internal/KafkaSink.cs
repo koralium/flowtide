@@ -12,6 +12,7 @@
 
 using Confluent.Kafka;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
@@ -30,6 +31,15 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
         public KafkaSink(WriteRelation writeRelation, FlowtideKafkaSinkOptions flowtideKafkaSinkOptions, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
         {
+            if ((flowtideKafkaSinkOptions.FetchExistingKeyDeserializer != null || 
+                flowtideKafkaSinkOptions.FetchExistingValueDeserializer != null ||
+                flowtideKafkaSinkOptions.FetchExistingConfig != null) &&
+                (flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null || 
+                flowtideKafkaSinkOptions.FetchExistingKeyDeserializer == null ||
+                flowtideKafkaSinkOptions.FetchExistingConfig == null))
+            {
+                throw new InvalidOperationException("FetchExistingConfig, FetchExistingKeyDeserializer and FetchExistingValueDeserializer must be set or all must be null");
+            }
             int keyIndex = -1;
             topicName = writeRelation.NamedObject.DotSeperated;
             for (int i = 0; i < writeRelation.TableSchema.Names.Count; i++)
@@ -56,6 +66,21 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
         {
             await flowtideKafkaSinkOptions.ValueSerializer.Initialize(_writeRelation);
             _producer = new ProducerBuilder<byte[], byte[]?>(flowtideKafkaSinkOptions.ProducerConfig).Build();
+
+            if (flowtideKafkaSinkOptions.FetchExistingConfig != null)
+            {
+                if (flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null)
+                {
+                    throw new InvalidOperationException("FetchExistingValueDeserializer must be set for the kafka sink");
+                }
+                var readRel = new ReadRelation()
+                {
+                    BaseSchema = _writeRelation.TableSchema,
+                    NamedTable = _writeRelation.NamedObject
+                };
+                await flowtideKafkaSinkOptions.FetchExistingValueDeserializer.Initialize(readRel);
+            }
+
             return new MetadataResult(_primaryKeys);
         }
 
@@ -66,6 +91,32 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             {
                 await flowtideKafkaSinkOptions.OnInitialDataSent(_producer, _writeRelation, topicName);
             }
+        }
+
+        protected override bool FetchExistingData => flowtideKafkaSinkOptions.FetchExistingConfig != null;
+
+        protected override IAsyncEnumerable<RowEvent> GetExistingData()
+        {
+            if (flowtideKafkaSinkOptions.FetchExistingConfig == null)
+            {
+                throw new InvalidOperationException("FetchExistingConfig must be set for the kafka sink");
+            }
+            if (flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null)
+            {
+                throw new InvalidOperationException("FetchExistingValueDeserializer must be set for the kafka sink");
+            }
+            if (flowtideKafkaSinkOptions.FetchExistingKeyDeserializer == null)
+            {
+                throw new InvalidOperationException("FetchExistingKeyDeserializer must be set for the kafka sink");
+            }
+
+            var client = new KafkaReadClient(
+                flowtideKafkaSinkOptions.FetchExistingConfig,
+                topicName,
+                flowtideKafkaSinkOptions.FetchExistingValueDeserializer,
+                flowtideKafkaSinkOptions.FetchExistingKeyDeserializer);
+
+            return client.ReadInitial().ToAsyncEnumerable();
         }
 
         protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
@@ -86,6 +137,16 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             List<KeyValuePair<byte[], byte[]?>> output = new List<KeyValuePair<byte[], byte[]?>>();
             await foreach(var row in rows)
             {
+                if (FetchExistingData && !row.IsDeleted)
+                {
+                    // Compare against existing
+                    var (exist, existingVal) = await GetExistingDataRow(row.Row);
+                    // Check if the rows completely match, then do nothing since the data is already in the stream
+                    if (exist && RowEvent.Compare(existingVal, row.Row) == 0)
+                    {
+                        continue;
+                    }
+                }
                 var key = flowtideKafkaSinkOptions.KeySerializer.Serialize(row.Row.GetColumn(_primaryKeyIndex));
                 var val = flowtideKafkaSinkOptions.ValueSerializer.Serialize(row.Row, row.IsDeleted);
 

@@ -23,6 +23,22 @@ namespace FlowtideDotNet.Connector.Kafka
 
         public required IFlowtideKafkaValueSerializer ValueSerializer { get; set; }
 
+
+        public ConsumerConfig? FetchExistingConfig { get; set; }
+
+        /// <summary>
+        /// If set will fetch existing data before starting which will be used to compare the
+        /// result of the stream against.
+        /// 
+        /// If set, FetchExistingValueDeserializer must also be set.
+        /// </summary>
+        public IFlowtideKafkaKeyDeserializer? FetchExistingKeyDeserializer { get; set; }
+
+        /// <summary>
+        /// If set, FetchExistingKeyDeserializer must also be set.
+        /// </summary>
+        public IFlowtideKafkaDeserializer? FetchExistingValueDeserializer { get; set; }
+
         /// <summary>
         /// A method that gets called before events are sent to kafka.
         /// It is possible here to remove or add events from the list before they are sent to kafka.

@@ -29,6 +29,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <None Remove="Internal\proto\authzed\pgrevision.proto" />
 	  <None Remove="Internal\proto\authzed\zedtoken.proto" />
 	</ItemGroup>
 
@@ -38,6 +39,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Protobuf Update="Internal\proto\authzed\pgrevision.proto" GrpcServices="None" />
 	  <Protobuf Update="Internal\proto\authzed\zedtoken.proto" GrpcServices="None" />
 	</ItemGroup>
 
