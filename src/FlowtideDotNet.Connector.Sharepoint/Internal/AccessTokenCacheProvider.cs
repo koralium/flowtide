@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
     internal class AccessTokenCacheProvider : TokenCredential
     {
         private readonly TokenCredential tokenCredential;
-        private ConcurrentDictionary<string, AccessToken> accessTokens = new ConcurrentDictionary<string, AccessToken>();
+        private readonly ConcurrentDictionary<string, AccessToken> accessTokens = new ConcurrentDictionary<string, AccessToken>();
 
         public AccessTokenCacheProvider(TokenCredential tokenCredential)
         {
@@ -36,7 +36,12 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             {
                 return cachedToken;
             }
-            return GetTokenAsync(requestContext, cancellationToken).GetAwaiter().GetResult();
+            var fetchTokenTask = GetTokenAsync(requestContext, cancellationToken);
+            if (fetchTokenTask.IsCompleted)
+            {
+                return fetchTokenTask.Result;
+            }
+            return fetchTokenTask.GetAwaiter().GetResult();
         }
 
         public override ValueTask<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken)

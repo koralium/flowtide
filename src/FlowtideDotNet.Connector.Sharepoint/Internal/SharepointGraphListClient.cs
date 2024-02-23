@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     {
                         return false;
                     }
-                    logger.LogWarning("Error in Sharepoint Graph API: {0}", message.StatusCode.ToString());
+                    logger.LogWarning("Error in Sharepoint Graph API: {statusCode}", message.StatusCode.ToString());
                     return true;
                 }
             });
