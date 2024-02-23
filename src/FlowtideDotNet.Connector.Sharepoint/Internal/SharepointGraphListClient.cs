@@ -58,9 +58,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     return true;
                 }
             });
-            var httpClient = GraphClientFactory.Create(handlers);
+            var graphHttpClient = GraphClientFactory.Create(handlers);
 
-            graphClient = new GraphServiceClient(httpClient, tokenCredential);
+            graphClient = new GraphServiceClient(graphHttpClient, tokenCredential);
             this.sharepointSinkOptions = sharepointSinkOptions;
             this.streamName = streamName;
             this.operatorId = operatorId;
