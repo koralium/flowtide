@@ -18,6 +18,7 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
 using System.Diagnostics;
 using System.Text;
@@ -87,6 +88,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
 
             // Fetch all items from sharepoint to get their ids
+            Logger.LogInformation("Fetching data from sharepoint.");
             await sharepointGraphListClient.IterateList(writeRelation.NamedObject.DotSeperated, primaryKeys, async (item) =>
             {
                 if (item.Id == null)
@@ -110,6 +112,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 await _existingObjectsTree.Upsert(stringBuilder.ToString(), id);
                 return true;
             });
+            Logger.LogInformation("Done fetching data from sharepoint");
         }
 
         private string GetKeyFromRow(RowEvent row)
