@@ -18,6 +18,7 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
 using System.Diagnostics;
 using System.Text;
@@ -187,29 +188,55 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
                 if (requests.Count >= 20)
                 {
-                    var batchResponse = await sharepointGraphListClient.ExecuteBatch(batch);
-                    var statusCodes = await batchResponse.GetResponsesStatusCodesAsync();
-                    foreach(var req in requests)
+                    int retry = 0;
+                    while (retry < 10)
                     {
-                        if (statusCodes.TryGetValue(req.batchId, out var statusCode) &&
-                            statusCode != System.Net.HttpStatusCode.OK &&
-                            statusCode != System.Net.HttpStatusCode.Created)
+                        var batchResponse = await sharepointGraphListClient.ExecuteBatch(batch);
+                        var statusCodes = await batchResponse.GetResponsesStatusCodesAsync();
+                        foreach (var req in requests)
                         {
-                            var resp = await batchResponse.GetResponseByIdAsync(req.batchId);
-                            var respString = await resp.Content.ReadAsStringAsync(cancellationToken);
-                            throw new InvalidOperationException($"Failed to execute batch request {req.batchId}, message: {respString}");   
-                        }
-                        if (req.operation == Operation.Insert)
-                        {
-                            var listItem = await batchResponse.GetResponseByIdAsync<ListItem>(req.batchId);
-                            var listItemId = listItem.Id;
-                            if (listItemId == null)
+                            if (statusCodes.TryGetValue(req.batchId, out var statusCode) &&
+                                statusCode != System.Net.HttpStatusCode.OK &&
+                                statusCode != System.Net.HttpStatusCode.Created)
                             {
-                                throw new InvalidOperationException($"Failed to get list item id from batch response {req.batchId}");
+                                var resp = await batchResponse.GetResponseByIdAsync(req.batchId);
+                                if (statusCode == System.Net.HttpStatusCode.TooManyRequests) // 429
+                                {
+                                    
+                                    TimeSpan waitDelay = TimeSpan.FromSeconds(Math.Pow(2, retry) * 3);
+                                    if (resp.Headers.RetryAfter != null)
+                                    {
+                                        if (resp.Headers.RetryAfter.Delta.HasValue)
+                                        {
+                                            waitDelay = resp.Headers.RetryAfter.Delta.Value;
+                                        }
+                                        else if (resp.Headers.RetryAfter.Date.HasValue)
+                                        {
+                                            waitDelay = resp.Headers.RetryAfter.Date.Value - DateTime.UtcNow;
+                                        }
+                                    }
+                                    Logger.LogWarning("Throttling response, waiting {time} seconds", waitDelay.Seconds);
+                                    await Task.Delay(waitDelay, cancellationToken);
+                                    retry++;
+                                    continue;
+                                }
+                                var respString = await resp.Content.ReadAsStringAsync(cancellationToken);
+                                throw new InvalidOperationException($"Failed to execute batch request {req.batchId}, message: {respString}");
                             }
-                            await _existingObjectsTree.Upsert(req.key, listItemId);
+                            if (req.operation == Operation.Insert)
+                            {
+                                var listItem = await batchResponse.GetResponseByIdAsync<ListItem>(req.batchId);
+                                var listItemId = listItem.Id;
+                                if (listItemId == null)
+                                {
+                                    throw new InvalidOperationException($"Failed to get list item id from batch response {req.batchId}");
+                                }
+                                await _existingObjectsTree.Upsert(req.key, listItemId);
+                            }
                         }
+                        break;
                     }
+                    
                     requests.Clear();
                     batch = sharepointGraphListClient.NewBatch();
                 }

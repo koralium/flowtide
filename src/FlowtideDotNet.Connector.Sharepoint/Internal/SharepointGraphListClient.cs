@@ -47,20 +47,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             this.site = sharepointSinkOptions.Site;
             this.tokenCredential = sharepointSinkOptions.TokenCredential;
 
-            var handlers = GraphClientFactory.CreateDefaultHandlers();
-            var retryHandler = handlers.FirstOrDefault(x => x is RetryHandler);
-            var index = handlers.IndexOf(retryHandler);
-            handlers[index] = new RetryHandler(new RetryHandlerOption()
-            {
-                MaxRetry = 10,
-                ShouldRetry = (int delay, int attempt, HttpResponseMessage message) =>
-                {
-                    return true;
-                }
-            });
-            var graphHttpClient = GraphClientFactory.Create(handlers);
-
-            graphClient = new GraphServiceClient(graphHttpClient, tokenCredential);
+            graphClient = new GraphServiceClient(tokenCredential);
             this.sharepointSinkOptions = sharepointSinkOptions;
             this.streamName = streamName;
             this.operatorId = operatorId;
