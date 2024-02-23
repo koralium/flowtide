@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             this.graphSite = $"{sharepointSinkOptions.SharepointUrl}:/sites/{sharepointSinkOptions.Site}:";
             this.sharepointUrl = sharepointSinkOptions.SharepointUrl;
             this.site = sharepointSinkOptions.Site;
-            this.tokenCredential = sharepointSinkOptions.TokenCredential;
+            this.tokenCredential = new AccessTokenCacheProvider(sharepointSinkOptions.TokenCredential);
 
             graphClient = new GraphServiceClient(tokenCredential);
             this.sharepointSinkOptions = sharepointSinkOptions;

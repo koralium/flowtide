@@ -88,6 +88,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
 
             // Fetch all items from sharepoint to get their ids
+            Logger.LogInformation("Fetching data from sharepoint.");
             await sharepointGraphListClient.IterateList(writeRelation.NamedObject.DotSeperated, primaryKeys, async (item) =>
             {
                 if (item.Id == null)
@@ -111,6 +112,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 await _existingObjectsTree.Upsert(stringBuilder.ToString(), id);
                 return true;
             });
+            Logger.LogInformation("Done fetching data from sharepoint");
         }
 
         private string GetKeyFromRow(RowEvent row)
