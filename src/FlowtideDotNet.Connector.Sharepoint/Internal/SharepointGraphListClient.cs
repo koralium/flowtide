@@ -17,6 +17,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
+using Microsoft.Kiota.Http.HttpClientLibrary.Middleware;
+using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using System.Net.Http.Json;
 using System.Text;
 
@@ -44,11 +46,26 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             this.sharepointUrl = sharepointSinkOptions.SharepointUrl;
             this.site = sharepointSinkOptions.Site;
             this.tokenCredential = sharepointSinkOptions.TokenCredential;
-            graphClient = new GraphServiceClient(tokenCredential);
+
+            var handlers = GraphClientFactory.CreateDefaultHandlers();
+            var retryHandler = handlers.FirstOrDefault(x => x is RetryHandler);
+            var index = handlers.IndexOf(retryHandler);
+            handlers[index] = new RetryHandler(new RetryHandlerOption()
+            {
+                MaxRetry = 10,
+                ShouldRetry = (int delay, int attempt, HttpResponseMessage message) =>
+                {
+                    return true;
+                }
+            });
+            var graphHttpClient = GraphClientFactory.Create(handlers);
+
+            graphClient = new GraphServiceClient(graphHttpClient, tokenCredential);
             this.sharepointSinkOptions = sharepointSinkOptions;
             this.streamName = streamName;
             this.operatorId = operatorId;
             this.logger = logger;
+            
         }
 
         public async Task Initialize()
