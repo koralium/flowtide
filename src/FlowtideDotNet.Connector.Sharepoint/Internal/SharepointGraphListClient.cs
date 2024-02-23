@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             this.graphSite = $"{sharepointSinkOptions.SharepointUrl}:/sites/{sharepointSinkOptions.Site}:";
             this.sharepointUrl = sharepointSinkOptions.SharepointUrl;
             this.site = sharepointSinkOptions.Site;
-            this.tokenCredential = sharepointSinkOptions.TokenCredential;
+            this.tokenCredential = new AccessTokenCacheProvider(sharepointSinkOptions.TokenCredential);
 
             var handlers = GraphClientFactory.CreateDefaultHandlers();
             var retryHandler = handlers.FirstOrDefault(x => x is RetryHandler);
@@ -55,6 +55,13 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 MaxRetry = 10,
                 ShouldRetry = (int delay, int attempt, HttpResponseMessage message) =>
                 {
+                    if (message.StatusCode == System.Net.HttpStatusCode.OK || 
+                    message.StatusCode == System.Net.HttpStatusCode.Created ||
+                    message.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                    {
+                        return false;
+                    }
+                    logger.LogWarning("Error in Sharepoint Graph API: {statusCode}", message.StatusCode.ToString());
                     return true;
                 }
             });
