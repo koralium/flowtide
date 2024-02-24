@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         private readonly TokenCredential tokenCredential;
         private readonly GraphServiceClient graphClient;
         private string? siteId;
-        private readonly HttpClient httpClient = new HttpClient();
+        private readonly HttpClient httpClient;
         private AccessToken? ensureUserToken;
         private readonly Dictionary<string, int> _userIds = new Dictionary<string, int>();
         private readonly SharepointSinkOptions sharepointSinkOptions;
@@ -47,6 +47,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             this.site = sharepointSinkOptions.Site;
             this.tokenCredential = new AccessTokenCacheProvider(sharepointSinkOptions.TokenCredential);
 
+            httpClient = GraphClientFactory.Create(GraphClientFactory.CreateDefaultHandlers());
             graphClient = new GraphServiceClient(tokenCredential);
             this.sharepointSinkOptions = sharepointSinkOptions;
             this.streamName = streamName;
@@ -97,6 +98,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     throw new InvalidOperationException($"Person or group not found: {err}");
                 }
                 logger.PersonOrGroupNotFound(err, streamName, operatorId);
+                _userIds[upn] = default;
                 return default;
             }
             var ensureUserResult = await response.Content.ReadFromJsonAsync<EnsureUserResult>();
