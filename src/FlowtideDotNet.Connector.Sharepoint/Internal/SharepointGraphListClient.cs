@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         private readonly TokenCredential tokenCredential;
         private readonly GraphServiceClient graphClient;
         private string? siteId;
-        private readonly HttpClient httpClient = new HttpClient();
+        private readonly HttpClient httpClient;
         private AccessToken? ensureUserToken;
         private readonly Dictionary<string, int> _userIds = new Dictionary<string, int>();
         private readonly SharepointSinkOptions sharepointSinkOptions;
@@ -47,27 +47,8 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             this.site = sharepointSinkOptions.Site;
             this.tokenCredential = new AccessTokenCacheProvider(sharepointSinkOptions.TokenCredential);
 
-            var handlers = GraphClientFactory.CreateDefaultHandlers();
-            var retryHandler = handlers.FirstOrDefault(x => x is RetryHandler);
-            var index = handlers.IndexOf(retryHandler);
-            handlers[index] = new RetryHandler(new RetryHandlerOption()
-            {
-                MaxRetry = 10,
-                ShouldRetry = (int delay, int attempt, HttpResponseMessage message) =>
-                {
-                    if (message.StatusCode == System.Net.HttpStatusCode.OK || 
-                    message.StatusCode == System.Net.HttpStatusCode.Created ||
-                    message.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                    {
-                        return false;
-                    }
-                    logger.LogWarning("Error in Sharepoint Graph API: {statusCode}", message.StatusCode.ToString());
-                    return true;
-                }
-            });
-            var graphHttpClient = GraphClientFactory.Create(handlers);
-
-            graphClient = new GraphServiceClient(graphHttpClient, tokenCredential);
+            httpClient = GraphClientFactory.Create(GraphClientFactory.CreateDefaultHandlers());
+            graphClient = new GraphServiceClient(tokenCredential);
             this.sharepointSinkOptions = sharepointSinkOptions;
             this.streamName = streamName;
             this.operatorId = operatorId;
@@ -117,6 +98,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     throw new InvalidOperationException($"Person or group not found: {err}");
                 }
                 logger.PersonOrGroupNotFound(err, streamName, operatorId);
+                _userIds[upn] = default;
                 return default;
             }
             var ensureUserResult = await response.Content.ReadFromJsonAsync<EnsureUserResult>();
