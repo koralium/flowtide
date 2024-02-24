@@ -17,6 +17,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
+using Microsoft.Kiota.Http.HttpClientLibrary.Middleware;
+using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using System.Net.Http.Json;
 using System.Text;
 
@@ -30,7 +32,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         private readonly TokenCredential tokenCredential;
         private readonly GraphServiceClient graphClient;
         private string? siteId;
-        private readonly HttpClient httpClient = new HttpClient();
+        private readonly HttpClient httpClient;
         private AccessToken? ensureUserToken;
         private readonly Dictionary<string, int> _userIds = new Dictionary<string, int>();
         private readonly SharepointSinkOptions sharepointSinkOptions;
@@ -43,12 +45,15 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             this.graphSite = $"{sharepointSinkOptions.SharepointUrl}:/sites/{sharepointSinkOptions.Site}:";
             this.sharepointUrl = sharepointSinkOptions.SharepointUrl;
             this.site = sharepointSinkOptions.Site;
-            this.tokenCredential = sharepointSinkOptions.TokenCredential;
+            this.tokenCredential = new AccessTokenCacheProvider(sharepointSinkOptions.TokenCredential);
+
+            httpClient = GraphClientFactory.Create(GraphClientFactory.CreateDefaultHandlers());
             graphClient = new GraphServiceClient(tokenCredential);
             this.sharepointSinkOptions = sharepointSinkOptions;
             this.streamName = streamName;
             this.operatorId = operatorId;
             this.logger = logger;
+            
         }
 
         public async Task Initialize()
@@ -93,6 +98,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     throw new InvalidOperationException($"Person or group not found: {err}");
                 }
                 logger.PersonOrGroupNotFound(err, streamName, operatorId);
+                _userIds[upn] = default;
                 return default;
             }
             var ensureUserResult = await response.Content.ReadFromJsonAsync<EnsureUserResult>();
@@ -162,7 +168,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
             if (columnDefinition.PersonOrGroup != null)
             {
-                return new GroupPersonEncoder();
+                return new GroupPersonEncoder(columnDefinition.PersonOrGroup.AllowMultipleSelection ?? false);
             }
             if (columnDefinition.Boolean != null)
             {
