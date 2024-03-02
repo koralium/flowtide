@@ -8,8 +8,17 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Logging.Console;
 using Nest;
+using OpenTelemetry.Metrics;
+using System.IO.Compression;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(builder =>
+    {
+        builder.AddPrometheusExporter();
+        builder.AddMeter("flowtide.*");
+    });
 
 // Stream version is used to create a unique stream, and create new elasticsearch indices if required.
 var streamVersion = builder.Configuration.GetValue<string>("StreamVersion") ?? throw new InvalidOperationException("StreamVersion not found");
@@ -84,12 +93,24 @@ builder.Services.AddFlowtideStream(x =>
             PageSize = 1024 * 1024 * 16,
             CheckpointManager = checkpointManager,
             LogDevice = log
-        })
+        }),
+        SerializeOptions = new FlowtideDotNet.Storage.StateSerializeOptions()
+        {
+            CompressFunc = (stream) =>
+            {
+                return new System.IO.Compression.ZLibStream(stream, CompressionMode.Compress);
+            },
+            DecompressFunc = (stream) =>
+            {
+                return new System.IO.Compression.ZLibStream(stream, CompressionMode.Decompress);
+            }
+        }
     });
 }, "sqlservertoelastic");
 
 var app = builder.Build();
 
 app.UseFlowtideUI("/stream");
+app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 app.Run();
