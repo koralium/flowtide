@@ -282,7 +282,14 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                             var delay = TimeSpan.FromSeconds(Math.Max(300, Math.Pow(2, retry) * 3));
                             await Task.Delay(delay, cancellationToken);
                             retry++;
-                            batch = batch.NewBatchWithFailedRequests(statusCodes);
+                            if (statusCodes == null)
+                            {
+                                batch = batch.NewBatchWithFailedRequests(requests.Select(x => x.batchId).ToDictionary(x => x, x => System.Net.HttpStatusCode.InternalServerError));
+                            }
+                            else
+                            {
+                                batch = batch.NewBatchWithFailedRequests(statusCodes);
+                            }
                             if (retry >= 10)
                             {
                                 throw;
