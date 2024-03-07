@@ -151,7 +151,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             Debug.Assert(_eventsCounter != null);
 
             var batch = sharepointGraphListClient.NewBatch();
-            List<(string key, string batchId, Operation operation)> requests = new List<(string key, string batchId, Operation operation)>();
+            List<(string key, string batchId, Operation operation, string content)> requests = new List<(string key, string batchId, Operation operation, string content)>();
 
             int rowCounter = 0;
             await foreach(var row in rows)
@@ -177,16 +177,16 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     if (found)
                     {
                         // Update
-                        var req = sharepointGraphListClient.UpdateItemBatchHttpRequest(writeRelation.NamedObject.DotSeperated, id!, obj);
+                        var (req, content) = sharepointGraphListClient.UpdateItemBatchHttpRequest(writeRelation.NamedObject.DotSeperated, id!, obj);
                         var batchId = batch.AddBatchRequestStep(req);
-                        requests.Add((pkVal, batchId, Operation.Update));
+                        requests.Add((pkVal, batchId, Operation.Update, content));
                     }
                     else
                     {
                         // Insert
-                        var batchReq = sharepointGraphListClient.CreateItemBatchHttpRequest(listId, obj);
+                        var (batchReq, content) = sharepointGraphListClient.CreateItemBatchHttpRequest(listId, obj);
                         var batchId = batch.AddBatchRequestStep(batchReq);
-                        requests.Add((pkVal, batchId, Operation.Insert));
+                        requests.Add((pkVal, batchId, Operation.Insert, content));
                     }
                 }
                 else
@@ -194,9 +194,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     //Delete
                     if (found && !sinkOptions.DisableDelete)
                     {
-                        var req = sharepointGraphListClient.DeleteItemBatchHttpRequest(writeRelation.NamedObject.DotSeperated, id!);
+                        var (req, content) = sharepointGraphListClient.DeleteItemBatchHttpRequest(writeRelation.NamedObject.DotSeperated, id!);
                         var batchId = batch.AddBatchRequestStep(req);
-                        requests.Add((pkVal, batchId, Operation.Delete));
+                        requests.Add((pkVal, batchId, Operation.Delete, content));
                     }
                 }
 
@@ -223,7 +223,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                                     statusCode == System.Net.HttpStatusCode.ServiceUnavailable)
                                     {
                                         var resp = await batchResponse.GetResponseByIdAsync(req.batchId);
-                                        var delay = TimeSpan.FromSeconds(Math.Max(300, Math.Pow(2, retry) * 3));
+                                        var delay = TimeSpan.FromSeconds(Math.Min(300, Math.Pow(2, retry) * 3));
                                         if (resp.Headers.RetryAfter != null)
                                         {
                                             if (resp.Headers.RetryAfter.Delta.HasValue)
@@ -278,8 +278,15 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                         }
                         catch(Exception e)
                         {
-                            Logger.LogError(e, "Failed to execute batch request, retrying");
-                            var delay = TimeSpan.FromSeconds(Math.Max(300, Math.Pow(2, retry) * 3));
+                            
+                            var delay = TimeSpan.FromSeconds(Math.Min(300, Math.Pow(2, retry) * 3));
+                            Logger.LogError(e, "Failed to execute batch request, retrying in {time} seconds", delay.TotalSeconds);
+                            //Log sent data
+                            for (int i = 0; i < requests.Count; i++)
+                            {
+                                Logger.LogError("Request {i}: {request}", i, requests[i].content);
+                            }
+
                             await Task.Delay(delay, cancellationToken);
                             retry++;
                             if (statusCodes == null)
