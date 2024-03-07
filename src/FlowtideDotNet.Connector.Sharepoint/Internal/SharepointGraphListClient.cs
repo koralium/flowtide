@@ -252,7 +252,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             });
         }
 
-        public HttpRequestMessage CreateItemBatchHttpRequest(string list, Dictionary<string, object> obj)
+        public (HttpRequestMessage, string) CreateItemBatchHttpRequest(string list, Dictionary<string, object> obj)
         {
             var req = graphClient.Sites[siteId].Lists[list].Items.ToPostRequestInformation(new ListItem()
             {
@@ -264,10 +264,10 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
             using var reader = new StreamReader(req.Content);
             var content = reader.ReadToEnd();
-            return new HttpRequestMessage(HttpMethod.Post, req.URI)
+            return (new HttpRequestMessage(HttpMethod.Post, req.URI)
             {
                 Content = new StringContent(content, Encoding.UTF8, "application/json")
-            };
+            }, content);
         }
 
         public RequestInformation UpdateItemBatch(string list, string id, Dictionary<string, object> obj)
@@ -278,7 +278,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             });
         }
 
-        public HttpRequestMessage UpdateItemBatchHttpRequest(string list, string id, Dictionary<string, object> obj)
+        public (HttpRequestMessage, string) UpdateItemBatchHttpRequest(string list, string id, Dictionary<string, object> obj)
         {
             var req = graphClient.Sites[siteId].Lists[list].Items[id].Fields.ToPatchRequestInformation(new FieldValueSet()
             {
@@ -287,10 +287,10 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
             using var reader = new StreamReader(req.Content);
             var content = reader.ReadToEnd();
-            return new HttpRequestMessage(HttpMethod.Patch, req.URI)
+            return (new HttpRequestMessage(HttpMethod.Patch, req.URI)
             {
                 Content = new StringContent(content, Encoding.UTF8, "application/json")
-            };
+            }, content);
         }
 
         public async Task UpdateItemAsync(string list, string id, Dictionary<string, object> obj)
@@ -301,16 +301,16 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             });
         }
 
-        public HttpRequestMessage DeleteItemBatchHttpRequest(string list, string id)
+        public (HttpRequestMessage, string) DeleteItemBatchHttpRequest(string list, string id)
         {
             var req = graphClient.Sites[siteId].Lists[list].Items[id].ToDeleteRequestInformation();
 
             using var reader = new StreamReader(req.Content);
             var content = reader.ReadToEnd();
-            return new HttpRequestMessage(HttpMethod.Delete, req.URI)
+            return (new HttpRequestMessage(HttpMethod.Delete, req.URI)
             {
                 Content = new StringContent(content, Encoding.UTF8, "application/json")
-            };
+            }, content);
         }
 
         public async Task IterateList(string list, List<string> columns, Func<ListItem, Task<bool>> onItem)
