@@ -22,6 +22,10 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             get
             {
+                if (EmitSet)
+                {
+                    return Emit!.Count;
+                }
                 return Inputs[0].OutputLength;
             }
         }
