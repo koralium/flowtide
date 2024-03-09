@@ -56,5 +56,7 @@ namespace FlowtideDotNet.Connector.SpiceDB
         /// It can then delete old tuples that was not present in the initial data.
         /// </summary>
         public Func<Task>? OnInitialDataSentFunc { get; set; }
+
+        public int MaxParallellCalls { get; set; } = 4;
     }
 }
