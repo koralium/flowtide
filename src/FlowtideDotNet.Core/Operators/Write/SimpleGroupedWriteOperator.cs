@@ -236,8 +236,11 @@ namespace FlowtideDotNet.Core.Operators.Write
 
         protected ValueTask<(bool found, RowEvent key)> GetExistingDataRow(RowEvent e)
         {
-            Debug.Assert(m_existingData != null);
-            return m_existingData.GetKey(e);
+            if (m_existingData != null && !_state!.SentInitialData && FetchExistingData)
+            {
+                return m_existingData.GetKey(e);
+            }
+            return ValueTask.FromResult((false, default(RowEvent)));
         }
 
         protected override async Task Initialize(long restoreTime, SimpleWriteState? state, IStateManagerClient stateManagerClient)

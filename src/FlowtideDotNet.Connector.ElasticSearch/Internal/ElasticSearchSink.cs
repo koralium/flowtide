@@ -193,16 +193,13 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                     }
                     throw new InvalidOperationException("Error in elasticsearch sink");
                 }
-                if (!response.IsValid)
+                if (response.OriginalException != null)
                 {
-                    if (response.OriginalException != null)
-                    {
-                        throw response.OriginalException;
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Error in elasticsearch sink");
-                    }
+                    throw response.OriginalException;
+                }
+                if (!response.ApiCall.Success)
+                {
+                    throw new InvalidOperationException("Error in elasticsearch sink");
                 }
             }
         }
