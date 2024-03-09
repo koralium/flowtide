@@ -12,22 +12,28 @@
 
 using Authzed.Api.V1;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Grpc.Core;
+using Grpc.Gateway.ProtocGenOpenapiv2.Options;
 using Grpc.Net.Client;
+using Microsoft.Extensions.Logging;
+using Substrait.Protobuf;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Tracing;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using static Grpc.Core.Metadata;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Internal
 {
@@ -43,6 +49,8 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         private readonly SpiceDbSinkOptions m_spiceDbSinkOptions;
         private PermissionsService.PermissionsServiceClient? m_client;
         private readonly SpiceDbRowEncoder? m_existingDataEncoder;
+        private ICounter<long>? _eventsCounter;
+        private readonly string m_displayName;
 
         public SpiceDbSink(SpiceDbSinkOptions spiceDbSinkOptions, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
         {
@@ -80,9 +88,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             {
                 m_existingDataEncoder = SpiceDbRowEncoder.Create(writeRelation.TableSchema.Names);
             }
+            m_displayName = $"SpiceDB Sink(Name={writeRelation.NamedObject.DotSeperated})";
         }
 
-        public override string DisplayName => "SpiceDB Sink";
+        public override string DisplayName => m_displayName;
 
         protected override bool FetchExistingData => m_spiceDbSinkOptions.DeleteExistingDataFilter != null;
 
@@ -92,22 +101,65 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             return Task.FromResult(new MetadataResult(m_primaryKeys));
         }
 
+        protected override Task InitializeOrRestore(long restoreTime, SimpleWriteState? state, IStateManagerClient stateManagerClient)
+        {
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            return base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+        }
+
         protected override async IAsyncEnumerable<RowEvent> GetExistingData()
         {
             Debug.Assert(m_client != null);
             Debug.Assert(m_existingDataEncoder != null);
+            Debug.Assert(m_spiceDbSinkOptions.DeleteExistingDataFilter != null);
             Metadata? metadata = default;
             if (m_spiceDbSinkOptions.GetMetadata != null)
             {
                 metadata = m_spiceDbSinkOptions.GetMetadata();
             }
-            var relationshipsStream = m_client.ReadRelationships(m_spiceDbSinkOptions.DeleteExistingDataFilter, metadata);
-            var readAllEnumerable = relationshipsStream.ResponseStream.ReadAllAsync();
-
-            await foreach(var rel in readAllEnumerable)
+            Cursor? cursor = default;
+            bool run = true;
+            while (run)
             {
-                yield return m_existingDataEncoder.Encode(rel.Relationship, 1);
-            }
+                if (cursor != null)
+                {
+                    m_spiceDbSinkOptions.DeleteExistingDataFilter.OptionalCursor = cursor;
+                }
+                
+                var relationshipsStream = m_client.ReadRelationships(m_spiceDbSinkOptions.DeleteExistingDataFilter, metadata);
+                var readAllEnumerable = relationshipsStream.ResponseStream;
+
+                while (run)
+                {
+                    try
+                    {
+                        if(!await readAllEnumerable.MoveNext())
+                        {
+                            run = false;
+                            break;
+                        }
+                    }
+                    catch(Exception e)
+                    {
+                        if (e is RpcException rpcException &&
+                            rpcException.InnerException is HttpProtocolException protocolException &&
+                            protocolException.ErrorCode == 0)
+                        {
+                            Logger.RecievedGrpcNoErrorRetry(StreamName, Name);
+                            break;
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    }
+                    yield return m_existingDataEncoder.Encode(readAllEnumerable.Current.Relationship, 1);
+                    cursor = readAllEnumerable.Current.AfterResultCursor;
+                }
+            }   
         }
 
         private static string ColumnToString(scoped in FlxValueRef flxValue)
@@ -187,9 +239,12 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
         {
             Debug.Assert(m_client != null);
+            Debug.Assert(_eventsCounter != null);
+
             var request = new WriteRelationshipsRequest();
             var watch = Stopwatch.StartNew();
             string? lastToken = default;
+            List<Task<string>> uploadTasks = new List<Task<string>>();
             await foreach(var row in rows)
             {
                 var relationship = GetRelationship(row);
@@ -221,11 +276,59 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     {
                         await m_spiceDbSinkOptions.BeforeWriteRequestFunc(request);
                     }
-                    var response = await m_client.WriteRelationshipsAsync(request, metadata, cancellationToken: cancellationToken);
-                    lastToken = response.WrittenAt.Token;
+                    _eventsCounter.Add(request.Updates.Count);
+                    uploadTasks.Add(Task.Factory.StartNew(async (obj) =>
+                    {
+                        var req = (WriteRelationshipsRequest)obj!;
+                        int retries = 0;
+                        WriteRelationshipsResponse? response = default;
+                        while (true)
+                        {
+                            try
+                            {
+                                response = await m_client.WriteRelationshipsAsync(req, metadata, cancellationToken: cancellationToken);
+                                break;
+                            }
+                            catch(Exception e)
+                            {
+                                retries++;
+                                if (retries < 5)
+                                {
+                                    var delay = TimeSpan.FromSeconds(Math.Min(300, Math.Pow(2, retries) * 3));
+                                    Logger.FailedToWriteRelationships(e, delay, StreamName, Name);
+                                    await Task.Delay(delay, cancellationToken);
+                                }
+                                else
+                                {
+                                    throw;
+                                }
+                            }
+                        }
+                        return response.WrittenAt.Token;
+                    }, request, cancellationToken)
+                        .Unwrap()
+                        );
                     request = new WriteRelationshipsRequest();
+
+                    while (uploadTasks.Count > m_spiceDbSinkOptions.MaxParallellCalls)
+                    {
+                        for (int i = 0; i < uploadTasks.Count; i++)
+                        {
+                            if (uploadTasks[i].IsCompleted)
+                            {
+                                lastToken = uploadTasks[i].Result;
+                                uploadTasks.RemoveAt(i);
+                            }
+                        }
+                        if (uploadTasks.Count > m_spiceDbSinkOptions.MaxParallellCalls)
+                        {
+                            await Task.WhenAny(uploadTasks);
+                        }
+                    }
                 }
             }
+
+            await Task.WhenAll(uploadTasks);
             watch.Stop();
             if (request.Updates.Count > 0)
             {

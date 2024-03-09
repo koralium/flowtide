@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             var schema = await schemaServiceClient.ReadSchemaAsync(new ReadSchemaRequest(), metadata);
 
             var stream = new SpiceDbTestStream("testinsert", spiceDbFixture.GetChannel(), true, false);
-            stream.Generate(10);
+            stream.Generate(1000);
             await stream.StartStream(@"
                 INSERT INTO spicedb
                 SELECT
@@ -64,13 +64,13 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                     }
                 }, metadata).ResponseStream.ReadAllAsync().ToListAsync();
 
-                if (existing.Count > 0)
+                if (existing.Count >= 1000)
                 {
                     break;
                 }
                 await Task.Delay(10);
             }
-            Assert.Equal(10, existing.Count);
+            Assert.Equal(1000, existing.Count);
             
         }
 
