@@ -204,12 +204,15 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 if (requests.Count >= 20)
                 {
                     await SendData(requests, batch, cancellationToken);
+                    requests.Clear();
+                    batch = sharepointGraphListClient.NewBatch();
                 }
             }
 
             if (requests.Count > 0)
             {
                 await SendData(requests, batch, cancellationToken);
+                requests.Clear();
             }
         }
 
@@ -326,9 +329,6 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     }
                 }
             }
-
-            requests.Clear();
-            batch = sharepointGraphListClient.NewBatch();
         }
     }
 }
