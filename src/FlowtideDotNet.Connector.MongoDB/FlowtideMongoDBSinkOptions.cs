@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Core.Operators.Write;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -41,5 +42,7 @@ namespace FlowtideDotNet.Connector.MongoDB
         /// Set the amount of batches that will be sent in parallel to mongodb.
         /// </summary>
         public int ParallelBatches { get; set; } = 10;
+
+        public ExecutionMode ExecutionMode { get; set; } = ExecutionMode.Hybrid;
     }
 }

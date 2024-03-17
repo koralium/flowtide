@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Extensions
                     return null;
                 }
                 transform?.Invoke(writeRel);
-                return new SpiceDbSink(spiceDbSinkOptions, writeRel, Core.Operators.Write.ExecutionMode.OnCheckpoint, opt);
+                return new SpiceDbSink(spiceDbSinkOptions, writeRel, spiceDbSinkOptions.ExecutionMode, opt);
             });
             return factory;
         }
