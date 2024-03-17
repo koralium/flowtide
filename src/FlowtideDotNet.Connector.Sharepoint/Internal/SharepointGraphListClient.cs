@@ -307,10 +307,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
             using var reader = new StreamReader(req.Content);
             var content = reader.ReadToEnd();
-            return (new HttpRequestMessage(HttpMethod.Delete, req.URI)
-            {
-                Content = new StringContent(content, Encoding.UTF8, "application/json")
-            }, content);
+            return (new HttpRequestMessage(HttpMethod.Delete, req.URI), content);
         }
 
         public async Task IterateList(string list, List<string> columns, Func<ListItem, Task<bool>> onItem)

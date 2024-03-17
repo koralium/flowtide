@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core.Engine
                 }
                 transform?.Invoke(writeRel);
 
-                var sink = new ElasticSearchSink(writeRel, options, Operators.Write.ExecutionMode.OnCheckpoint, opt);
+                var sink = new ElasticSearchSink(writeRel, options, options.ExecutionMode, opt);
                 sink.CreateIndexAndMappings();
                 return sink;
             });
