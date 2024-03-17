@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Extensions
                 }
                 transform?.Invoke(writeRel);
 
-                var sink = new FlowtideOpenFgaSink(options, writeRel, ExecutionMode.OnCheckpoint, opt);
+                var sink = new FlowtideOpenFgaSink(options, writeRel, options.ExecutionMode, opt);
                 return sink;
             });
             return factory;

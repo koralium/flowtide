@@ -1,4 +1,5 @@
-﻿using FlowtideDotNet.Substrait.Relations;
+﻿using FlowtideDotNet.Core.Operators.Write;
+using FlowtideDotNet.Substrait.Relations;
 using Nest;
 
 namespace FlowtideDotNet.Connector.ElasticSearch
@@ -24,5 +25,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch
         /// This function can be used for instance to create an alias to the index.
         /// </summary>
         public Func<IElasticClient, WriteRelation, string, Task>? OnInitialDataSent { get; set; }
+
+        public ExecutionMode ExecutionMode { get; set; } = ExecutionMode.Hybrid;
     }
 }

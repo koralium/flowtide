@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Core.Operators.Write;
 using OpenFga.Sdk.Client;
 using OpenFga.Sdk.Client.Model;
 using OpenFga.Sdk.Model;
@@ -72,5 +73,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
         /// will be deleted after the initial loading of data has completed.
         /// </summary>
         public Func<OpenFgaClient, IAsyncEnumerable<TupleKey>>? DeleteExistingDataFetcher { get; set; }
+
+        public ExecutionMode ExecutionMode { get; set; } = ExecutionMode.Hybrid;
     }
 }
