@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager.Internal;
+using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Text;
 
@@ -25,14 +26,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V> options) 
         {
+            Debug.Assert(options.BucketSize.HasValue);
             this.m_stateClient = stateClient;
             this.m_options = options;
-            minSize = options.BucketSize / 3;
+            minSize = options.BucketSize.Value / 3;
             this.m_keyComparer = options.Comparer;
         }
 
         public Task InitializeAsync()
         {
+            Debug.Assert(m_options.BucketSize.HasValue);
             if (m_stateClient.Metadata == null)
             {
                 var rootId = m_stateClient.GetNewPageId();
@@ -40,7 +43,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 m_stateClient.Metadata = new BPlusTreeMetadata()
                 {
                     Root = rootId,
-                    BucketLength = m_options.BucketSize,
+                    BucketLength = m_options.BucketSize.Value,
                     Left = rootId
                 };
                 m_stateClient.AddOrUpdate(rootId, root);
@@ -172,6 +175,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public async ValueTask Clear()
         {
+            Debug.Assert(m_options.BucketSize.HasValue);
             // Clear the current state from the state storage
             await m_stateClient.Reset(true);
 
@@ -181,7 +185,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             m_stateClient.Metadata = new BPlusTreeMetadata()
             {
                 Root = rootId,
-                BucketLength = m_options.BucketSize,
+                BucketLength = m_options.BucketSize.Value,
                 Left = rootId
             };
             m_stateClient.AddOrUpdate(rootId, root);
