@@ -21,5 +21,7 @@ namespace FlowtideDotNet.Base.Engine.Internal
     internal class DataflowStreamOptions
     {
         public bool WaitForCheckpointAfterInitialData { get; set; } = true;
+
+        public TimeSpan? MinimumTimeBetweenCheckpoints { get; set; }
     }
 }
