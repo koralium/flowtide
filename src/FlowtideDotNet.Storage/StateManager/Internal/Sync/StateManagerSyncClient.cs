@@ -37,6 +37,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public async ValueTask<IBPlusTree<K, V>> GetOrCreateTree<K, V>(string name, BPlusTreeOptions<K, V> options)
         {
             var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, new BPlusTreeSerializer<K, V>(options.KeySerializer, options.ValueSerializer));
+
+            if (options.BucketSize == null)
+            {
+                options.BucketSize = stateClient.BPlusTreePageSize;
+            }
+
             var tree = new BPlusTree<K, V>(stateClient, options);
             await tree.InitializeAsync();
             return tree;
