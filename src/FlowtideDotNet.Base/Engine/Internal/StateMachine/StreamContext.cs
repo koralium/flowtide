@@ -81,6 +81,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState> _stateManager;
         internal readonly ILogger<StreamContext> _logger;
+
+        internal bool _initialCheckpointTaken = false;
         
 
         public StreamContext(
@@ -339,6 +341,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             // Check if minimum time has been set, if so default it to the minimum time.
             if (_dataflowStreamOptions.MinimumTimeBetweenCheckpoints != null &&
+                _initialCheckpointTaken &&
                 _dataflowStreamOptions.MinimumTimeBetweenCheckpoints.Value.CompareTo(timeSpan) > 0)
             {
                 timeSpan = _dataflowStreamOptions.MinimumTimeBetweenCheckpoints.Value;

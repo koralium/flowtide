@@ -128,6 +128,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             lock (_context._checkpointLock)
             {
+                _context._initialCheckpointTaken = true;
                 if (_context.checkpointTask != null)
                 {
                     _context._scheduleCheckpointTask = null;
