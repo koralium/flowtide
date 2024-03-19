@@ -338,12 +338,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             Debug.Assert(Monitor.IsEntered(_checkpointLock));
 
             // Check if minimum time has been set, if so default it to the minimum time.
-            if (_dataflowStreamOptions.MinimumTimeBetweenCheckpoints != null)
+            if (_dataflowStreamOptions.MinimumTimeBetweenCheckpoints != null &&
+                _dataflowStreamOptions.MinimumTimeBetweenCheckpoints.Value.CompareTo(timeSpan) > 0)
             {
-                if (_dataflowStreamOptions.MinimumTimeBetweenCheckpoints.Value.CompareTo(timeSpan) > 0)
-                {
-                    timeSpan = _dataflowStreamOptions.MinimumTimeBetweenCheckpoints.Value;
-                }
+                timeSpan = _dataflowStreamOptions.MinimumTimeBetweenCheckpoints.Value;
             }
 
             var triggerTime = DateTime.Now.Add(timeSpan);
