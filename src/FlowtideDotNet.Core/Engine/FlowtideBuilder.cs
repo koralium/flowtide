@@ -110,6 +110,12 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder SetMinimumTimeBetweenCheckpoint(TimeSpan timeSpan)
+        {
+            dataflowStreamBuilder.SetMinimumTimeBetweenCheckpoint(timeSpan);
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
