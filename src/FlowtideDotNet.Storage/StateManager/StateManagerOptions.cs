@@ -61,6 +61,6 @@ namespace FlowtideDotNet.Storage.StateManager
         /// </summary>
         public bool UseReadCache { get; set; } = false;
 
-        public int DefaultBPlusTreePageSize { get; set; } = 64;
+        public int DefaultBPlusTreePageSize { get; set; } = 1024;
     }
 }
