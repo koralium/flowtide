@@ -276,7 +276,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                                 if (listItemId == null)
                                 {
                                     hasError = true;
-                                    Logger.LogError($"Failed to get list item id from batch response {req.batchId}");
+                                    Logger.LogError("Failed to get list item id from batch response {batchId}", req.batchId);
                                     continue;
                                 }
                                 await _existingObjectsTree.Upsert(req.key, listItemId);
@@ -287,8 +287,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                             var resp = await batchResponse.GetResponseByIdAsync(req.batchId);
                             var respString = await resp.Content.ReadAsStringAsync(cancellationToken);
                             hasError = true;
-                            Logger.LogError($"Failed to execute batch request {req.batchId}, statusCode: {statusCode.ToString()}, message: {respString}");
-                            continue;
+                            Logger.LogError("Failed to execute batch request {batchId}, statusCode: {statusCode}, message: {respString}", req.batchId, statusCode.ToString(), respString);
                         }
                     }
                 }
