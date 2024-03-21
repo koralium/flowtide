@@ -230,83 +230,71 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
             while (true)
             {
+                bool hasError = false;
                 Dictionary<string, System.Net.HttpStatusCode>? statusCodes = default;
-                try
+                var batchResponse = await sharepointGraphListClient.ExecuteBatch(batch);
+                statusCodes = await batchResponse.GetResponsesStatusCodesAsync();
+                TimeSpan? retryTime = default;
+                foreach (var req in requests)
                 {
-                    var batchResponse = await sharepointGraphListClient.ExecuteBatch(batch);
-                    statusCodes = await batchResponse.GetResponsesStatusCodesAsync();
-                    TimeSpan? retryTime = default;
-                    foreach (var req in requests)
+                    // If status code does not exist, the call has been removed from the batch
+                    if (statusCodes.TryGetValue(req.batchId, out var statusCode))
                     {
-                        // If status code does not exist, the call has been removed from the batch
-                        if (statusCodes.TryGetValue(req.batchId, out var statusCode))
+                        // Check if there is any throttling response, if so, find the largest delay
+                        if (statusCode == System.Net.HttpStatusCode.TooManyRequests ||
+                        statusCode == System.Net.HttpStatusCode.ServiceUnavailable)
                         {
-                            // Check if there is any throttling response, if so, find the largest delay
-                            if (statusCode == System.Net.HttpStatusCode.TooManyRequests ||
-                            statusCode == System.Net.HttpStatusCode.ServiceUnavailable)
+                            var resp = await batchResponse.GetResponseByIdAsync(req.batchId);
+                            var delay = TimeSpan.FromSeconds(Math.Min(300, Math.Pow(2, retry) * 3));
+                            if (resp.Headers.RetryAfter != null)
                             {
-                                var resp = await batchResponse.GetResponseByIdAsync(req.batchId);
-                                var delay = TimeSpan.FromSeconds(Math.Min(300, Math.Pow(2, retry) * 3));
-                                if (resp.Headers.RetryAfter != null)
+                                if (resp.Headers.RetryAfter.Delta.HasValue)
                                 {
-                                    if (resp.Headers.RetryAfter.Delta.HasValue)
-                                    {
-                                        delay = resp.Headers.RetryAfter.Delta.Value;
-                                    }
-                                    else if (resp.Headers.RetryAfter.Date.HasValue)
-                                    {
-                                        delay = resp.Headers.RetryAfter.Date.Value - DateTime.UtcNow;
-                                    }
+                                    delay = resp.Headers.RetryAfter.Delta.Value;
                                 }
-                                // Pick the largest delay
-                                if (!retryTime.HasValue || delay.CompareTo(retryTime.Value) > 0)
+                                else if (resp.Headers.RetryAfter.Date.HasValue)
                                 {
-                                    retryTime = delay;
+                                    delay = resp.Headers.RetryAfter.Date.Value - DateTime.UtcNow;
                                 }
                             }
-                            else if (statusCode == System.Net.HttpStatusCode.OK ||
-                                statusCode == System.Net.HttpStatusCode.Created ||
-                                statusCode == System.Net.HttpStatusCode.NoContent ||
-                                statusCode == System.Net.HttpStatusCode.NotModified ||
-                                statusCode == System.Net.HttpStatusCode.Accepted)
+                            // Pick the largest delay
+                            if (!retryTime.HasValue || delay.CompareTo(retryTime.Value) > 0)
                             {
-                                if (req.operation == Operation.Insert)
-                                {
-                                    var listItem = await batchResponse.GetResponseByIdAsync<ListItem>(req.batchId);
-                                    var listItemId = listItem.Id;
-                                    if (listItemId == null)
-                                    {
-                                        throw new InvalidOperationException($"Failed to get list item id from batch response {req.batchId}");
-                                    }
-                                    await _existingObjectsTree.Upsert(req.key, listItemId);
-                                }
-                            }
-                            else
-                            {
-                                var resp = await batchResponse.GetResponseByIdAsync(req.batchId);
-                                var respString = await resp.Content.ReadAsStringAsync(cancellationToken);
-                                throw new InvalidOperationException($"Failed to execute batch request {req.batchId}, statusCode: {statusCode.ToString()}, message: {respString}");
+                                retryTime = delay;
                             }
                         }
-                    }
-
-                    if (retryTime.HasValue)
-                    {
-                        Logger.LogWarning("Throttling response, waiting {time} seconds", retryTime.Value.TotalSeconds);
-                        await Task.Delay(retryTime.Value, cancellationToken);
-                        retry++;
-                        batch = batch.NewBatchWithFailedRequests(statusCodes);
-                    }
-                    else
-                    {
-                        break;
+                        else if (statusCode == System.Net.HttpStatusCode.OK ||
+                            statusCode == System.Net.HttpStatusCode.Created ||
+                            statusCode == System.Net.HttpStatusCode.NoContent ||
+                            statusCode == System.Net.HttpStatusCode.NotModified ||
+                            statusCode == System.Net.HttpStatusCode.Accepted)
+                        {
+                            if (req.operation == Operation.Insert)
+                            {
+                                var listItem = await batchResponse.GetResponseByIdAsync<ListItem>(req.batchId);
+                                var listItemId = listItem.Id;
+                                if (listItemId == null)
+                                {
+                                    hasError = true;
+                                    Logger.LogError("Failed to get list item id from batch response {batchId}", req.batchId);
+                                    continue;
+                                }
+                                await _existingObjectsTree.Upsert(req.key, listItemId);
+                            }
+                        }
+                        else
+                        {
+                            var resp = await batchResponse.GetResponseByIdAsync(req.batchId);
+                            var respString = await resp.Content.ReadAsStringAsync(cancellationToken);
+                            hasError = true;
+                            Logger.LogError("Failed to execute batch request {batchId}, statusCode: {statusCode}, message: {respString}", req.batchId, statusCode.ToString(), respString);
+                        }
                     }
                 }
-                catch (Exception e)
-                {
 
+                if (hasError)
+                {
                     var delay = TimeSpan.FromSeconds(Math.Min(300, Math.Pow(2, retry) * 3));
-                    Logger.LogError(e, "Failed to execute batch request, retrying in {time} seconds", delay.TotalSeconds);
                     //Log sent data
                     for (int i = 0; i < requests.Count; i++)
                     {
@@ -325,8 +313,21 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     }
                     if (retry >= 10)
                     {
-                        throw;
+                        throw new InvalidOperationException("Failed after too many retries.");
                     }
+                    continue;
+                }
+
+                if (retryTime.HasValue)
+                {
+                    Logger.LogWarning("Throttling response, waiting {time} seconds", retryTime.Value.TotalSeconds);
+                    await Task.Delay(retryTime.Value, cancellationToken);
+                    retry++;
+                    batch = batch.NewBatchWithFailedRequests(statusCodes);
+                }
+                else
+                {
+                    break;
                 }
             }
         }
