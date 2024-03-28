@@ -81,6 +81,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState> _stateManager;
         internal readonly ILogger<StreamContext> _logger;
+
+        internal bool _initialCheckpointTaken = false;
         
 
         public StreamContext(
@@ -336,6 +338,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal bool TryScheduleCheckpointIn_NoLock(TimeSpan timeSpan)
         {
             Debug.Assert(Monitor.IsEntered(_checkpointLock));
+
+            // Check if minimum time has been set, if so default it to the minimum time.
+            if (_dataflowStreamOptions.MinimumTimeBetweenCheckpoints != null &&
+                _initialCheckpointTaken &&
+                _dataflowStreamOptions.MinimumTimeBetweenCheckpoints.Value.CompareTo(timeSpan) > 0)
+            {
+                timeSpan = _dataflowStreamOptions.MinimumTimeBetweenCheckpoints.Value;
+            }
+
             var triggerTime = DateTime.Now.Add(timeSpan);
 
             // Check if a checkpoint is already running, if so, add that a checkpoint is waiting
