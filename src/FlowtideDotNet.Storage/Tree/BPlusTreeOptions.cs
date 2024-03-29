@@ -14,7 +14,10 @@ namespace FlowtideDotNet.Storage.Tree
 {
     public class BPlusTreeOptions<K, V>
     {
-        public int BucketSize { get; set; } = 64;
+        /// <summary>
+        /// Override the default page size. This should only be set if the operator works best with a specific size.
+        /// </summary>
+        public int? BucketSize { get; set; }
 
         public required IComparer<K> Comparer { get; set; }
 

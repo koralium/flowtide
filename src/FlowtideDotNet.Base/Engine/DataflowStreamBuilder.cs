@@ -110,6 +110,12 @@ namespace FlowtideDotNet.Base.Engine
             return this;
         }
 
+        public DataflowStreamBuilder SetMinimumTimeBetweenCheckpoint(TimeSpan timeSpan)
+        {
+            _dataflowStreamOptions.MinimumTimeBetweenCheckpoints = timeSpan;
+            return this;
+        }
+
         public DataflowStream Build()
         {
             if (_stateManagerOptions == null)

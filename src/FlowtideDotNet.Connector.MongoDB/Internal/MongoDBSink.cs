@@ -11,12 +11,14 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.MongoDB.Internal
@@ -27,6 +29,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         private readonly StreamEventToBson streamEventToBson;
         private IMongoCollection<BsonDocument>? collection;
         private readonly List<int> primaryKeys;
+        private ICounter<long>? _eventsCounter;
 
         public MongoDBSink(FlowtideMongoDBSinkOptions options, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
         {
@@ -61,6 +64,11 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         protected override Task<MetadataResult> SetupAndLoadMetadataAsync()
         {
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+
             var urlBuilder = new MongoUrlBuilder(options.ConnectionString);
             var connection = urlBuilder.ToMongoUrl();
             var client = new MongoClient(connection);
@@ -88,6 +96,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         private async Task WriteDataTask(List<WriteModel<BsonDocument>> writes, CancellationToken cancellationToken)
         {
+            Debug.Assert(writes != null);
             Debug.Assert(collection != null);
             if (writes.Count > 0)
             {
@@ -116,6 +125,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
         {
             Debug.Assert(collection != null);
+            Debug.Assert(_eventsCounter != null);
 
             List<WriteModel<BsonDocument>> writes = new List<WriteModel<BsonDocument>>();
             List<Task> writeTasks = new List<Task>();
@@ -126,7 +136,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 for (int i = 0; i < primaryKeys.Count; i++)
                 {
                     var pkname = options.PrimaryKeys[i];
-                    var col = row.Row.GetColumn(i);
+                    var col = row.Row.GetColumn(primaryKeys[i]);
                     // Need to take the row value into a bson value
                     filters[i] = Builders<BsonDocument>.Filter.Eq(pkname, StreamEventToBson.ToBsonValue(col));
                 }
@@ -181,7 +191,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                             await Task.WhenAny(writeTasks);
                         }
                     }
-
+                    _eventsCounter.Add(writes.Count);
                     writeTasks.Add(WriteData(writes, cancellationToken));
                     writes = new List<WriteModel<BsonDocument>>();
                 }
@@ -189,6 +199,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
             if (writes.Count > 0)
             {
+                _eventsCounter.Add(writes.Count);
                 writeTasks.Add(collection.BulkWriteAsync(writes, cancellationToken: cancellationToken));
             }
 

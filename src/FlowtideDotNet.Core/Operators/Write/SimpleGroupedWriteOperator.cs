@@ -43,7 +43,11 @@ namespace FlowtideDotNet.Core.Operators.Write
     public enum ExecutionMode
     {
         OnCheckpoint = 0,
-        OnWatermark = 1
+        OnWatermark = 1,
+        /// <summary>
+        /// Hybrid mode starts with on checkpoint and then switches to on watermark after initial data
+        /// </summary>
+        Hybrid = 2
     }
 
     public readonly struct SimpleChangeEvent
@@ -81,7 +85,8 @@ namespace FlowtideDotNet.Core.Operators.Write
         protected override async Task<SimpleWriteState> Checkpoint(long checkpointTime)
         {
             Debug.Assert(_state != null);
-            if (m_executionMode == ExecutionMode.OnCheckpoint)
+            if (m_executionMode == ExecutionMode.OnCheckpoint ||
+                (m_executionMode == ExecutionMode.Hybrid && !_state.SentInitialData))
             {
                 await SendData();
             }
@@ -215,8 +220,10 @@ namespace FlowtideDotNet.Core.Operators.Write
 
         protected override Task OnWatermark(Watermark watermark)
         {
+            Debug.Assert(_state != null);
             _latestWatermark = watermark;
-            if (m_executionMode == ExecutionMode.OnWatermark)
+            if (m_executionMode == ExecutionMode.OnWatermark ||
+                (m_executionMode == ExecutionMode.Hybrid && _state.SentInitialData))
             {
                 return SendData();
             }

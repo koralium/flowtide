@@ -279,7 +279,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 int batchSize = 10000;
                 List<RowEvent> cache = new List<RowEvent>();
                 int retryCount = 0;
-                do
+                while(true)
                 {
                     try
                     {
@@ -307,6 +307,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         }
                         retryCount = 0;
                         SetHealth(true);
+
+                        if (cache.Count != batchSize)
+                        {
+                            break;
+                        }
                     }
                     catch(Exception e)
                     {
@@ -331,7 +336,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             throw;
                         }
                     }
-                } while (cache.Count == batchSize);
+                }
 #if DEBUG_WRITE
                 allInput.WriteLine($"Initial Done");
                 await allInput.FlushAsync();
