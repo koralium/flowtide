@@ -64,9 +64,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 long changesSinceLastCompaction = run._context._stateManager.PageCommitsSinceLastCompaction;
                 var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
 
+                // Compaction: if more than 30% of the pages has been changed since last compaction, do compaction
+                if (changesSinceLastCompaction > compactionThreshold)
+                {
+                    await run._context._stateManager.Compact();
+                }
+
                 // Take state checkpoint
                 _context._logger.StartingStateManagerCheckpoint(_context.streamName);
-                await run._context._stateManager.CheckpointAsync(changesSinceLastCompaction > compactionThreshold);
+                await run._context._stateManager.CheckpointAsync(false);
                 _context._logger.StateManagerCheckpointDone(_context.streamName);
 
                 await run._context.stateHandler.WriteLatestState(run._context.streamName, run._context._lastState);
@@ -79,12 +85,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     }
                     return Task.CompletedTask;
                 });
-
-                // Compaction: if more than 30% of the pages has been changed since last compaction, do compaction
-                if (changesSinceLastCompaction > compactionThreshold)
-                {
-                    await run._context._stateManager.Compact();
-                }
 
 
                 // After writing do compaction
