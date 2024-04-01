@@ -63,14 +63,20 @@ builder.Services.AddFlowtideStream(b =>
     });
 });
 
+builder.Services.AddCors();
+
 builder.Services.AddHealthChecks()
     .AddFlowtideCheck();
 
 var app = builder.Build();
+app.UseCors(b =>
+{
+    b.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+});
+
 app.UseHealthChecks("/health");
 
 app.UseFlowtideUI("/");
-
 
 
 app.Run();
