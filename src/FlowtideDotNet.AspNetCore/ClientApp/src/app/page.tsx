@@ -1,14 +1,15 @@
-import React from 'react';
-import 'reactflow/dist/style.css';
+"use client"
+import Image from "next/image";
 import useSWR from 'swr';
-import { StreamGraph, StreamGraphEdge, StreamGraphNode } from '../components/streamgraph/streamgraph';
-import { Card } from '../components/card';
-import { NodeTable } from '../components/nodetable';
-import Header from '../components/header';
+import { StreamGraph, StreamGraphEdge, StreamGraphNode } from "./components/streamgraph/streamgraph";
+import Header from "./components/header";
+import { Card } from "./components/card";
+import { NodeTable } from "./components/nodetable";
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
-function App() {
+export default function Home() {
+
   const { data } = useSWR('@(rootpath)api/diagnostics', fetcher, { refreshInterval: 1000 })
 
   let graph = <div></div>
@@ -76,5 +77,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
