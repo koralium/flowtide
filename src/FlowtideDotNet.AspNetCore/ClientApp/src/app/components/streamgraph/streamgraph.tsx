@@ -1,3 +1,4 @@
+"use client"
 import React, { useEffect, useState } from 'react';
 import {ReactFlow, Node, Position, Edge, Background, Controls} from 'reactflow';
 import dagre from '@dagrejs/dagre';
