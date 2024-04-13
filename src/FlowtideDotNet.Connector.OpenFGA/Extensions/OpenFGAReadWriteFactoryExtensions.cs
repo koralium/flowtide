@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Extensions
                 regexPattern = ".*";
             }
 
-            readWriteFactory.AddReadResolver((readRelation, opt) =>
+            readWriteFactory.AddReadResolver((readRelation, functionsRegister, opt) =>
             {
                 var regexResult = Regex.Match(readRelation.NamedTable.DotSeperated, regexPattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
                 if (!regexResult.Success)

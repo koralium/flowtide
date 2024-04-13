@@ -25,7 +25,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 regexPattern = ".*";
             }
 
-            return readWriteFactory.AddReadResolver((readRel, opt) =>
+            return readWriteFactory.AddReadResolver((readRel, functionsRegister, opt) =>
             {
                 var regexResult = Regex.Match(readRel.NamedTable.DotSeperated, regexPattern, RegexOptions.IgnoreCase);
                 if (!regexResult.Success)

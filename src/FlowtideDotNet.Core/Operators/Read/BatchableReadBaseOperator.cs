@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
@@ -52,9 +54,18 @@ namespace FlowtideDotNet.Core.Operators.Read
         private IBPlusTree<string, int>? _deletionsTree;
         private BatchableReadOperatorState? _state;
         private readonly string _watermarkName;
-        protected BatchableReadBaseOperator(ReadRelation readRelation, DataflowBlockOptions options) : base(options)
+        private readonly ReadRelation readRelation;
+        private Func<RowEvent, bool>? _filter;
+
+        protected BatchableReadBaseOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(options)
         {
             _watermarkName = readRelation.NamedTable.DotSeperated;
+            this.readRelation = readRelation;
+
+            if (readRelation.Filter != null)
+            {
+                _filter = BooleanCompiler.Compile<RowEvent>(readRelation.Filter, functionsRegister);
+            }
         }
 
         public override string DisplayName => "Generic";
@@ -162,7 +173,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                     {
                         if (exists)
                         {
-                            outputList.Add(new RowEvent(-1, 0, current.RowData));
+                            outputList.Add(new RowEvent(-1, 0, ArrayRowData.Create(current.RowData, readRelation.Emit)));
                             return (current, GenericWriteOperation.Delete);
                         }
                         return (input, GenericWriteOperation.None);
@@ -174,12 +185,38 @@ namespace FlowtideDotNet.Core.Operators.Read
                     {
                         if (exists)
                         {
-                            outputList.Add(new RowEvent(-1, 0, current.RowData));
-                            outputList.Add(new RowEvent(1, 0, input.RowData));
+                            bool updated = false;
+                            if (_filter != null)
+                            {
+                                if (_filter(e.RowEvent))
+                                {
+                                    outputList.Add(new RowEvent(1, 0, ArrayRowData.Create(input.RowData, readRelation.Emit)));
+                                    updated = true;
+                                }
+                            }
+                            else
+                            {
+                                outputList.Add(new RowEvent(1, 0, ArrayRowData.Create(input.RowData, readRelation.Emit)));
+                                updated = true;
+                            }
+                            outputList.Add(new RowEvent(-1, 0, ArrayRowData.Create(current.RowData, readRelation.Emit)));
+                            
+                            return (input, updated ? GenericWriteOperation.Upsert : GenericWriteOperation.Delete);
+                        }
+                        if (_filter != null)
+                        {
+                            if (_filter(e.RowEvent))
+                            {
+                                outputList.Add(new RowEvent(1, 0, ArrayRowData.Create(input.RowData, readRelation.Emit)));
+                                return (input, GenericWriteOperation.Upsert);
+                            }
+                            return (input, GenericWriteOperation.None);
+                        }
+                        else
+                        {
+                            outputList.Add(new RowEvent(1, 0, ArrayRowData.Create(input.RowData, readRelation.Emit)));
                             return (input, GenericWriteOperation.Upsert);
                         }
-                        outputList.Add(new RowEvent(1, 0, input.RowData));
-                        return (input, GenericWriteOperation.Upsert);
                     });
                 }
 
@@ -225,6 +262,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                 {
                     throw new NotSupportedException("Full load does not support deletions");
                 }
+
+                
                 var key = e.Key;
                 await _fullLoadTempTree.Upsert(key, e.RowEvent);
                 await _persistentTree.RMW(key, e.RowEvent, (input, current, exist) =>
@@ -233,17 +272,43 @@ namespace FlowtideDotNet.Core.Operators.Read
                     {
                         if (RowEvent.Compare(input, current) != 0)
                         {
-                            outputList.Add(new RowEvent(1, 0, input.RowData));
-                            outputList.Add(new RowEvent(-1, 0, current.RowData));
-                            return (input, GenericWriteOperation.Upsert);
+                            bool updated = false;
+                            if (_filter != null)
+                            {
+                                if (_filter(e.RowEvent))
+                                {
+                                    outputList.Add(new RowEvent(1, 0, ArrayRowData.Create(input.RowData, readRelation.Emit)));
+                                    updated = true;
+                                }
+                            }
+                            else
+                            {
+                                outputList.Add(new RowEvent(1, 0, ArrayRowData.Create(input.RowData, readRelation.Emit)));
+                                updated = true;
+                            }
+                            outputList.Add(new RowEvent(-1, 0, ArrayRowData.Create(current.RowData, readRelation.Emit)));
+                            return (input, updated ? GenericWriteOperation.Upsert : GenericWriteOperation.Delete);
                         }
                         else
                         {
                             return (current, GenericWriteOperation.None);
                         }
                     }
-                    outputList.Add(new RowEvent(1, 0, input.RowData));
-                    return (input, GenericWriteOperation.Upsert);
+
+                    if (_filter != null)
+                    {
+                        if (_filter(e.RowEvent))
+                        {
+                            outputList.Add(new RowEvent(1, 0, ArrayRowData.Create(input.RowData, readRelation.Emit)));
+                            return (input, GenericWriteOperation.Upsert);
+                        }
+                        return (input, GenericWriteOperation.None);
+                    }
+                    else
+                    {
+                        outputList.Add(new RowEvent(1, 0, ArrayRowData.Create(input.RowData, readRelation.Emit)));
+                        return (input, GenericWriteOperation.Upsert);
+                    }
                 });
 
                 maxWatermark = Math.Max(maxWatermark, e.Watermark);
@@ -288,9 +353,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                 }
                 else if (!hasNew || comparison > 0)
                 {
-                    await _deletionsTree.Upsert(persistentEnumerator.Current.Key, 1);
                     // Deletion
-                    outputList.Add(new RowEvent(-1, 0, persistentEnumerator.Current.Value.RowData));
+                    await _deletionsTree.Upsert(persistentEnumerator.Current.Key, 1);
                     hasOld = await persistentEnumerator.MoveNextAsync();
                 }
                 else
@@ -316,7 +380,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                         if (exists)
                         {
                             // Output delete event
-                            outputList.Add(new RowEvent(-1, 0, current.RowData));
+                            outputList.Add(new RowEvent(-1, 0, ArrayRowData.Create(current.RowData, readRelation.Emit)));
                             return (current, GenericWriteOperation.Delete);
                         }
                         return (current, GenericWriteOperation.None);

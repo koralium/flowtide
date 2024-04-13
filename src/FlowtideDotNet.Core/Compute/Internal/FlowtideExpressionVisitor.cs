@@ -24,10 +24,10 @@ namespace FlowtideDotNet.Core.Compute.Internal
 {
     internal class FlowtideExpressionVisitor : ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>
     {
-        private readonly FunctionsRegister functionsRegister;
+        private readonly IFunctionsRegister functionsRegister;
         private readonly System.Type inputType;
 
-        public FlowtideExpressionVisitor(FunctionsRegister functionsRegister, System.Type inputType)
+        public FlowtideExpressionVisitor(IFunctionsRegister functionsRegister, System.Type inputType)
         {
             this.functionsRegister = functionsRegister;
             this.inputType = inputType;

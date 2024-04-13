@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
@@ -29,12 +30,12 @@ namespace FlowtideDotNet.Core.Tests.Failure
             this.egressFunc = egressFunc;
         }
 
-        public ReadOperatorInfo GetReadOperator(ReadRelation readRelation, DataflowBlockOptions dataflowBlockOptions)
+        public ReadOperatorInfo GetReadOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
             return new ReadOperatorInfo(ingressFunc(readRelation, dataflowBlockOptions));
         }
 
-        public IStreamEgressVertex GetWriteOperator(WriteRelation readRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
+        public IStreamEgressVertex GetWriteOperator(WriteRelation readRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
             return egressFunc(readRelation, executionDataflowBlockOptions);
         }

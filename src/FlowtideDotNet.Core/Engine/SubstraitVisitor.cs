@@ -383,7 +383,7 @@ namespace FlowtideDotNet.Core.Engine
                 return VisitGetTimestampTable(state);
             }
 
-            var info = readFactory.GetReadOperator(readRelation, new DataflowBlockOptions() { BoundedCapacity = queueSize });
+            var info = readFactory.GetReadOperator(readRelation, functionsRegister, new DataflowBlockOptions() { BoundedCapacity = queueSize });
 
             var previousState = state;
             if (info.NormalizationRelation != null)
@@ -419,7 +419,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitWriteRelation(WriteRelation writeRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = readFactory.GetWriteOperator(writeRelation, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            var op = readFactory.GetWriteOperator(writeRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
 
             if (op is ITargetBlock<IStreamEvent> target)
             {

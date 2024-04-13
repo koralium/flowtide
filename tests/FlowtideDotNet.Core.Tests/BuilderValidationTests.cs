@@ -78,7 +78,7 @@ namespace FlowtideDotNet.Core.Tests
             var plan = builder.GetPlan();
 
             var factory = new ReadWriteFactory();
-            factory.AddReadResolver((rel, opt) =>
+            factory.AddReadResolver((rel, functionsRegister, opt) =>
             {
                 return new ReadOperatorInfo(new FailureIngress(opt));
             });
@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Core.Tests
                     }
                 });
             });
-            factory.AddReadResolver((rel, opt) =>
+            factory.AddReadResolver((rel, functionsRegister, opt) =>
             {
                 return new ReadOperatorInfo(new TestIngress(opt));
             });

@@ -22,7 +22,7 @@ SubstraitDeserializer substraitDeserializer = new SubstraitDeserializer();
 var plan = substraitDeserializer.Deserialize(File.ReadAllText("queryplan.json"));
 
 var factory = new ReadWriteFactory();
-factory.AddReadResolver((readRel, opt) =>
+factory.AddReadResolver((readRel, functionsRegister, opt) =>
 {
     return new ReadOperatorInfo(new DummyReadOperator(opt));
 });
