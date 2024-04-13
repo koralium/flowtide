@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
         /// <param name="functionsRegister"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        public static Func<T, bool> Compile<T>(Substrait.Expressions.Expression expression, FunctionsRegister functionsRegister)
+        public static Func<T, bool> Compile<T>(Substrait.Expressions.Expression expression, IFunctionsRegister functionsRegister)
         {
             var param = Expression.Parameter(typeof(T));
 

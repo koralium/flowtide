@@ -11,8 +11,10 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 
 namespace FlowtideDotNet.Core.Compute
@@ -80,5 +82,9 @@ namespace FlowtideDotNet.Core.Compute
             Func<T, Task> commitFunction,
             AggregateMapFunction mapFunc,
             AggregateStateToValueFunction<T> stateToValueFunc);
+
+        bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition);
+
+        bool TryGetAggregateFunction(string uri, string name, [NotNullWhen(true)] out AggregateFunctionDefinition? aggregateFunctionDefinition);
     }
 }

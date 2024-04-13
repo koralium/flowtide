@@ -14,7 +14,7 @@ using FlexBuffers;
 
 namespace FlowtideDotNet.Core.Compute.Internal
 {
-    internal interface IAggregateContainer
+    public interface IAggregateContainer
     {
         ValueTask<byte[]> Compute(RowEvent key, RowEvent row, byte[]? state, long weight);
 

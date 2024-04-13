@@ -48,6 +48,12 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
         {
             _changes.Add(change);
         }
+
+        public void ClearChanges()
+        {
+            _changes.Clear();
+        }
+
         public override TimeSpan? DeltaLoadInterval => deltaTime;
 
         protected override IEnumerable<FlowtideGenericObject<User>> DeltaLoad(long lastWatermark)
@@ -146,6 +152,54 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             await stream.Trigger("delta_load_users");
             await stream.WaitForUpdate();
             stream.AssertCurrentDataEqual(new List<User>() { new User { UserKey = 2, FirstName = "Test3" } }.Select(x => new { x.UserKey, x.FirstName }));
+
+        }
+
+        [Fact]
+        public async Task TestEmit()
+        {
+            var source = new TestDataSource(default);
+            source.AddChange(new FlowtideGenericObject<User>("1", new User { UserKey = 1, FirstName = "Test", LastName = "last1" }, 1, false));
+            source.AddChange(new FlowtideGenericObject<User>("3", new User { UserKey = 3, FirstName = "Test3", LastName = "last3" }, 1, false));
+
+            var stream = new GenericDataTestStream(source, "TestEmit");
+            stream.RegisterTableProviders(builder =>
+            {
+                builder.AddGenericDataTable<User>("users");
+            });
+
+            await stream.StartStream(@"
+                CREATE VIEW v AS
+                SELECT 
+                    FirstName,
+                    LastName
+                FROM users
+                WHERE UserKey = 1;
+
+                INSERT INTO output
+                SELECT 
+                    FirstName,
+                    LastName
+                FROM v
+            ");
+            await stream.WaitForUpdate();
+
+            var act = stream.GetActualRowsAsVectors();
+            stream.AssertCurrentDataEqual(new List<User>() { new User { FirstName = "Test", LastName = "last1" } }.Select(x => new { x.FirstName, x.LastName }));
+
+            // Update user 1
+            source.AddChange(new FlowtideGenericObject<User>("1", new User { UserKey = 1, FirstName = "Test2", LastName = "last1" }, 2, false));
+            source.AddChange(new FlowtideGenericObject<User>("2", new User { UserKey = 2, FirstName = "Test3", LastName = "last2" }, 3, false));
+
+            await stream.Trigger("delta_load");
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual(new List<User>() { new User { FirstName = "Test2", LastName = "last1" } }.Select(x => new { x.FirstName, x.LastName }));
+
+            source.ClearChanges();
+            await stream.Trigger("full_load");
+            await stream.WaitForUpdate();
+            stream.AssertCurrentDataEqual(new List<User>().Select(x => new { x.FirstName, x.LastName }));
 
         }
     }

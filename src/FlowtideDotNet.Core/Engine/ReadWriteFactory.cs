@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
@@ -19,10 +20,10 @@ namespace FlowtideDotNet.Core.Engine
 {
     public class ReadWriteFactory : IReadWriteFactory
     {
-        private List<Func<ReadRelation, DataflowBlockOptions, ReadOperatorInfo?>> _readFuncs = new List<Func<ReadRelation, DataflowBlockOptions, ReadOperatorInfo?>>();
+        private List<Func<ReadRelation, IFunctionsRegister, DataflowBlockOptions, ReadOperatorInfo?>> _readFuncs = new List<Func<ReadRelation, IFunctionsRegister, DataflowBlockOptions, ReadOperatorInfo?>>();
         private List<Func<WriteRelation, ExecutionDataflowBlockOptions, IStreamEgressVertex?>> _writeFuncs = new List<Func<WriteRelation, ExecutionDataflowBlockOptions, IStreamEgressVertex?>>();
 
-        public ReadWriteFactory AddReadResolver(Func<ReadRelation, DataflowBlockOptions, ReadOperatorInfo?> resolveFunction)
+        public ReadWriteFactory AddReadResolver(Func<ReadRelation, IFunctionsRegister, DataflowBlockOptions, ReadOperatorInfo?> resolveFunction)
         {
             _readFuncs.Add(resolveFunction);
             return this;
@@ -34,11 +35,11 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
-        public ReadOperatorInfo GetReadOperator(ReadRelation readRelation, DataflowBlockOptions dataflowBlockOptions)
+        public ReadOperatorInfo GetReadOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
             foreach(var readfunc in _readFuncs)
             {
-                var result = readfunc(readRelation, dataflowBlockOptions);
+                var result = readfunc(readRelation, functionsRegister, dataflowBlockOptions);
                 if (result != null) 
                 {
                     return result;
@@ -47,7 +48,7 @@ namespace FlowtideDotNet.Core.Engine
             throw new FlowtideException($"No read resolver matched the read relation for table: '{readRelation.NamedTable.DotSeperated}'.");
         }
 
-        public IStreamEgressVertex GetWriteOperator(WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
+        public IStreamEgressVertex GetWriteOperator(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
             foreach(var writefunc in _writeFuncs)
             {

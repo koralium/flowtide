@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
@@ -27,7 +28,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             this.connectionString = connectionString;
         }
 
-        public ReadOperatorInfo GetReadOperator(ReadRelation readRelation, DataflowBlockOptions dataflowBlockOptions)
+        public ReadOperatorInfo GetReadOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
             int keyIndex = -1;
             for (int i = 0; i < readRelation.BaseSchema.Struct.Types.Count; i++)
@@ -52,7 +53,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             });
         }
 
-        public IStreamEgressVertex GetWriteOperator(WriteRelation readRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
+        public IStreamEgressVertex GetWriteOperator(WriteRelation readRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
             return new SqlServerSink(() => connectionString, readRelation, executionDataflowBlockOptions);
         }
