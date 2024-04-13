@@ -21,6 +21,7 @@ using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using SqlParser;
 using System;
 using System.Buffers;
@@ -208,42 +209,90 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         private async Task LoadChangesTask(IngressOutput<StreamEventBatch> output, object? state)
         {
             Debug.Assert(watchStream != null);
+            Debug.Assert(m_watchClient != null);
             Debug.Assert(m_state != null);
             Debug.Assert(m_state.TypeTimestamps != null);
+
+            bool initWatch = false;
 
             while (!output.CancellationToken.IsCancellationRequested)
             {
                 output.CancellationToken.ThrowIfCancellationRequested();
-                if (await watchStream.ResponseStream.MoveNext(output.CancellationToken))
+                try
                 {
-                    await output.EnterCheckpointLock();
-                    var current = watchStream.ResponseStream.Current;
-                    m_state.ContinuationToken = current.ChangesThrough.Token;
-                    var revision = GetRevision(current.ChangesThrough.Token);
+                    if (initWatch)
+                    {
+                        Metadata? metadata = default;
+                        if (m_spiceDbSourceOptions.GetMetadata != null)
+                        {
+                            metadata = m_spiceDbSourceOptions.GetMetadata();
+                        }
+                        var watchRequest = new WatchRequest();
+                        if (m_state.ContinuationToken != null)
+                        {
+                            watchRequest.OptionalStartCursor = new ZedToken
+                            {
+                                Token = m_state.ContinuationToken
+                            };
+                        }
+                        if (!readAllTypes)
+                        {
+                            foreach (var readType in readTypes)
+                            {
+                                watchRequest.OptionalObjectTypes.Add(readType);
+                            }
+                        }
+                        watchStream = m_watchClient.Watch(watchRequest, metadata);
+                        initWatch = false;
+                    }
+                    // If we managed to start watching again, set health to true
+                    SetHealth(true);
+                    if (await watchStream.ResponseStream.MoveNext(output.CancellationToken))
+                    {
+                        await output.EnterCheckpointLock();
+                        var current = watchStream.ResponseStream.Current;
+                        m_state.ContinuationToken = current.ChangesThrough.Token;
+                        var revision = GetRevision(current.ChangesThrough.Token);
 
-                    List<RowEvent> outputData = new List<RowEvent>();
-                    foreach(var update in current.Updates)
-                    {
-                        if (update.Relationship == null)
+                        List<RowEvent> outputData = new List<RowEvent>();
+                        foreach (var update in current.Updates)
                         {
-                            continue;
+                            if (update.Relationship == null)
+                            {
+                                continue;
+                            }
+                            if (!readAllTypes && !readTypes.Contains(update.Relationship.Resource.ObjectType))
+                            {
+                                continue;
+                            }
+                            var weight = update.Operation == RelationshipUpdate.Types.Operation.Delete ? -1 : 1;
+                            outputData.Add(m_rowEncoder.Encode(update.Relationship, weight));
+                            m_state.TypeTimestamps[update.Relationship.Resource.ObjectType] = revision;
                         }
-                        if (!readAllTypes && !readTypes.Contains(update.Relationship.Resource.ObjectType))
+                        if (outputData.Count > 0)
                         {
-                            continue;
+                            await output.SendAsync(new StreamEventBatch(outputData));
+                            await output.SendWatermark(GetCurrentWatermark());
+                            ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                         }
-                        var weight = update.Operation == RelationshipUpdate.Types.Operation.Delete ? -1 : 1;
-                        outputData.Add(m_rowEncoder.Encode(update.Relationship, weight));
-                        m_state.TypeTimestamps[update.Relationship.Resource.ObjectType] = revision;
+                        output.ExitCheckpointLock();
                     }
-                    if (outputData.Count > 0)
-                    {
-                        await output.SendAsync(new StreamEventBatch(outputData));
-                        await output.SendWatermark(GetCurrentWatermark());
-                        ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
-                    }
-                    output.ExitCheckpointLock();
                 }
+                catch(Exception e)
+                {
+                    if (e is RpcException rpcException &&
+                        rpcException.Status.StatusCode == StatusCode.Unavailable)
+                    {
+                        Logger.RecievedGrpcNoErrorRetry(StreamName, Name);
+                    }
+                    else
+                    {
+                        SetHealth(false);
+                        Logger.ErrorInSpiceDb(e, StreamName, Name);
+                    }
+                    initWatch = true;
+                }
+               
                 
             }
         }
@@ -285,47 +334,82 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
 
                 long minRevision = long.MaxValue;
                 string? firstToken = default;
+                Cursor? cursor = default;
+                int retries = 0;
                 foreach (var readType in readTypes)
                 {
-                    var readRequest = new ReadRelationshipsRequest();
-                    readRequest.RelationshipFilter = new RelationshipFilter()
+                    while (true)
                     {
-                        ResourceType = readType
-                    };
-                    if (_relationFilter != null)
-                    {
-                        readRequest.RelationshipFilter.OptionalRelation = _relationFilter;
-                    }
-                    if (_subjectTypeFilter != null)
-                    {
-                        readRequest.RelationshipFilter.OptionalSubjectFilter = new SubjectFilter()
+                        try
                         {
-                            SubjectType = _subjectTypeFilter
-                        };
-                    }
-                    var stream = m_client.ReadRelationships(readRequest, metadata);
-                
-                    List<RowEvent> outputData = new List<RowEvent>();
-                    await foreach (var r in stream.ResponseStream.ReadAllAsync())
-                    {
-                        outputData.Add(m_rowEncoder.Encode(r.Relationship, 1));
+                            var readRequest = new ReadRelationshipsRequest();
+                            readRequest.RelationshipFilter = new RelationshipFilter()
+                            {
+                                ResourceType = readType
+                            };
+                            if (cursor != null)
+                            {
+                                readRequest.OptionalCursor = cursor;
+                            }
+                            if (_relationFilter != null)
+                            {
+                                readRequest.RelationshipFilter.OptionalRelation = _relationFilter;
+                            }
+                            if (_subjectTypeFilter != null)
+                            {
+                                readRequest.RelationshipFilter.OptionalSubjectFilter = new SubjectFilter()
+                                {
+                                    SubjectType = _subjectTypeFilter
+                                };
+                            }
+                            var stream = m_client.ReadRelationships(readRequest, metadata);
 
-                        if (outputData.Count >= 100)
-                        {
-                            await output.SendAsync(new StreamEventBatch(outputData));
-                            outputData = new List<RowEvent>();
+                            List<RowEvent> outputData = new List<RowEvent>();
+                            await foreach (var r in stream.ResponseStream.ReadAllAsync())
+                            {
+                                outputData.Add(m_rowEncoder.Encode(r.Relationship, 1));
+
+                                if (outputData.Count >= 100)
+                                {
+                                    retries = 0;
+                                    cursor = r.AfterResultCursor;
+                                    await output.SendAsync(new StreamEventBatch(outputData));
+                                    outputData = new List<RowEvent>();
+                                }
+                                if (firstToken == null)
+                                {
+                                    firstToken = r.ReadAt.Token;
+                                    minRevision = GetRevision(r.ReadAt.Token);
+                                }
+                            }
+                            if (outputData.Count > 0)
+                            {
+                                await output.SendAsync(new StreamEventBatch(outputData));
+                            }
+                            m_state.TypeTimestamps[readType] = minRevision;
+                            break;
                         }
-                        if (firstToken == null)
+                        catch(Exception e)
                         {
-                            firstToken = r.ReadAt.Token;
-                            minRevision = GetRevision(r.ReadAt.Token);
+                            if (e is RpcException rpcException && 
+                                rpcException.InnerException != null &&
+                                rpcException.InnerException is HttpProtocolException httpProtocolException &&
+                                httpProtocolException.ErrorCode == 0)
+                            {
+                                Logger.RecievedGrpcNoErrorRetry(StreamName, Name);
+                            }
+                            else
+                            {
+                                Logger.ErrorInSpiceDbWithRetry(e, retries, StreamName, Name);
+                                retries++;
+                                if (retries > 3)
+                                {
+                                    throw;
+                                }
+                            }
                         }
                     }
-                    if (outputData.Count > 0)
-                    {
-                        await output.SendAsync(new StreamEventBatch(outputData));
-                    }
-                    m_state.TypeTimestamps[readType] = minRevision;
+                    
                 }
                 m_state.ContinuationToken = firstToken;
                 await output.SendWatermark(GetCurrentWatermark());

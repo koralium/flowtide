@@ -138,7 +138,15 @@ namespace FlowtideDotNet.AspNetCore
 
             var translatedPath = TranslatePath(remain);
             using var stream = typeof(ReactEndpoint).Assembly
-                .GetManifestResourceStream($"FlowtideDotNet.AspNetCore.ClientApp.public.{translatedPath}")!;
+                .GetManifestResourceStream($"FlowtideDotNet.AspNetCore.ClientApp.out.{translatedPath}")!;
+
+            if (stream == null)
+            {
+                httpContext.Response.StatusCode = 404;
+                httpContext.Response.ContentType = "text/html";
+                byte[] outputBytes = Encoding.UTF8.GetBytes("404 - Not Found");
+                return httpContext.Response.Body.WriteAsync(outputBytes, 0, outputBytes.Length);
+            }
 
             if (isText)
             {

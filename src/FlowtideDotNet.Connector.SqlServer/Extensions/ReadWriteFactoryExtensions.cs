@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.Engine
             {
                 regexPattern = ".*";
             }
-            readWriteFactory.AddReadResolver((relation, dataflowopt) =>
+            readWriteFactory.AddReadResolver((relation, functionsRegister, dataflowopt) =>
             {
                 var regexResult = Regex.Match(relation.NamedTable.DotSeperated, regexPattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
                 if (!regexResult.Success)

@@ -60,5 +60,7 @@ namespace FlowtideDotNet.Storage.StateManager
         /// Useful if persistent storage is not on disk and instead in a remote location.
         /// </summary>
         public bool UseReadCache { get; set; } = false;
+
+        public int DefaultBPlusTreePageSize { get; set; } = 1024;
     }
 }

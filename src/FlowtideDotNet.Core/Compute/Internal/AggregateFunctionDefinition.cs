@@ -16,7 +16,7 @@ using System.Linq.Expressions;
 
 namespace FlowtideDotNet.Core.Compute.Internal
 {
-    internal abstract class AggregateFunctionDefinition
+    public abstract class AggregateFunctionDefinition
     {
         public abstract Task<IAggregateContainer> CreateContainer(
             int groupingLength,

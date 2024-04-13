@@ -12,6 +12,7 @@
 
 using Authzed.Api.V1;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Core.Operators.Write;
 using Grpc.Core;
 using System;
 using System.Collections.Generic;
@@ -56,5 +57,9 @@ namespace FlowtideDotNet.Connector.SpiceDB
         /// It can then delete old tuples that was not present in the initial data.
         /// </summary>
         public Func<Task>? OnInitialDataSentFunc { get; set; }
+
+        public int MaxParallellCalls { get; set; } = 4;
+
+        public ExecutionMode ExecutionMode { get; set; } = ExecutionMode.Hybrid;
     }
 }

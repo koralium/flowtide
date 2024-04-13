@@ -40,7 +40,7 @@ var plan = sqlBuilder.GetPlan();
 
 var factory = new ReadWriteFactory();
 // Add connections here to your real data sources, such as SQL Server, Kafka or similar.
-factory.AddReadResolver((readRel, opt) =>
+factory.AddReadResolver((readRel, functionsRegister, opt) =>
 {
     return new ReadOperatorInfo(new DummyReadOperator(opt));
 });

@@ -12,6 +12,7 @@
 
 using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Substrait.Relations;
 
@@ -23,7 +24,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         private readonly GenericDataSourceAsync<T> genericDataSource;
         private readonly ObjectToRowEvent objectToRowEvent;
 
-        public GenericReadOperator(ReadRelation readRelation, GenericDataSourceAsync<T> genericDataSource, DataflowBlockOptions options) : base(readRelation, options)
+        public GenericReadOperator(ReadRelation readRelation, GenericDataSourceAsync<T> genericDataSource, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(readRelation, functionsRegister, options)
         {
             this.genericDataSource = genericDataSource;
             objectToRowEvent = new ObjectToRowEvent(readRelation);

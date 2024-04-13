@@ -126,7 +126,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StrftimeImpl
                     directive: specifier.Groups[GROUP_DIRECTIVE].Captures.Cast<Capture>().Select(capture => capture.Value).FirstOrDefault(),
                     source: dateTime,
                     culture: culture
-                    ), RegexOptions.None, TimeSpan.FromSeconds(5));
+                    ), RegexOptions.None, Regex.InfiniteMatchTimeout);
         }
 
         /// <summary>
@@ -147,7 +147,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StrftimeImpl
                     directive: specifier.Groups[GROUP_DIRECTIVE].Captures.Cast<Capture>().Select(capture => capture.Value).FirstOrDefault(),
                     source: dateTimeOffset,
                     culture: culture
-                    ), RegexOptions.None, TimeSpan.FromSeconds(5));
+                    ), RegexOptions.None, Regex.InfiniteMatchTimeout);
         }
 
         /// <summary>

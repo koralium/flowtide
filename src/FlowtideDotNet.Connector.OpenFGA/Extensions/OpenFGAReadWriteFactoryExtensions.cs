@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Extensions
                 }
                 transform?.Invoke(writeRel);
 
-                var sink = new FlowtideOpenFgaSink(options, writeRel, ExecutionMode.OnCheckpoint, opt);
+                var sink = new FlowtideOpenFgaSink(options, writeRel, options.ExecutionMode, opt);
                 return sink;
             });
             return factory;
@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Extensions
                 regexPattern = ".*";
             }
 
-            readWriteFactory.AddReadResolver((readRelation, opt) =>
+            readWriteFactory.AddReadResolver((readRelation, functionsRegister, opt) =>
             {
                 var regexResult = Regex.Match(readRelation.NamedTable.DotSeperated, regexPattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
                 if (!regexResult.Success)

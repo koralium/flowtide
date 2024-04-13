@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Core.Sources.Generic
         /// <returns></returns>
         public abstract IAsyncEnumerable<FlowtideGenericObject<T>> DeltaLoadAsync(long lastWatermark);
 
-        /// <summary>
+        /// <summary> 
         /// Interval between delta loads, set to null to disable delta loads
         /// </summary>
         public abstract TimeSpan? DeltaLoadInterval { get; }

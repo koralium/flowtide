@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Core.Compute.Internal
 {
-    internal class FunctionDefinition
+    public class FunctionDefinition
     {
         public FunctionDefinition(
             string uri, 

@@ -41,7 +41,7 @@ var plan = sqlBuilder.GetPlan();
 
 var factory = new ReadWriteFactory();
 // Add connections here to your real data sources, such as SQL Server, Kafka or similar.
-factory.AddReadResolver((readRel, opt) =>
+factory.AddReadResolver((readRel, functionsRegister, opt) =>
 {
     return new ReadOperatorInfo(new DummyReadOperator(opt));
 });
@@ -63,14 +63,20 @@ builder.Services.AddFlowtideStream(b =>
     });
 });
 
+builder.Services.AddCors();
+
 builder.Services.AddHealthChecks()
     .AddFlowtideCheck();
 
 var app = builder.Build();
+app.UseCors(b =>
+{
+    b.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+});
+
 app.UseHealthChecks("/health");
 
 app.UseFlowtideUI("/");
-
 
 
 app.Run();
