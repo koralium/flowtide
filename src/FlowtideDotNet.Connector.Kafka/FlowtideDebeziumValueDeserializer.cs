@@ -16,6 +16,7 @@ using FlowtideDotNet.Substrait.Relations;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -23,36 +24,59 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.Kafka
 {
-    internal class FlowtideDebeziumValueDeserializer : IFlowtideKafkaDeserializer
+    public class FlowtideDebeziumValueDeserializer : IFlowtideKafkaDeserializer
     {
         private List<string>? _names;
+
+        private RowEvent GetRowEvent(IFlowtideKafkaKeyDeserializer keyDeserializer, byte[]? keyBytes, JsonElement data, int weight)
+        {
+            Debug.Assert(_names != null);
+
+            return RowEvent.Create(weight, 0, b =>
+            {
+                for (int i = 0; i < _names.Count; i++)
+                {
+                    if (_names[i] == "_key")
+                    {
+                        if (keyBytes != null)
+                        {
+                            b.Add(keyDeserializer.Deserialize(keyBytes));
+                        }
+                        else
+                        {
+                            b.AddNull();
+                        }
+                    }
+                    else if (data.TryGetProperty(_names[i], out var property))
+                    {
+                        b.Add(JsonSerializerUtils.JsonElementToValue(property));
+                    }
+                    else
+                    {
+                        b.AddNull();
+                    }
+                }
+            });
+        }
 
         public RowEvent Deserialize(IFlowtideKafkaKeyDeserializer keyDeserializer, byte[]? valueBytes, byte[]? keyBytes)
         {
             Debug.Assert(_names != null);
-
-            var jsonDocument = JsonSerializer.Deserialize<JsonElement>(valueBytes);
-
-            if (jsonDocument.TryGetProperty("after", out var after))
+            
+            if (keyBytes == null)
             {
-                return RowEvent.Create(1, 0, b =>
+                throw new InvalidOperationException("Key bytes cannot be null");
+            }
+
+            if (valueBytes == null)
+            {
+                return RowEvent.Create(-1, 0, b =>
                 {
                     for (int i = 0; i < _names.Count; i++)
                     {
                         if (_names[i] == "_key")
                         {
-                            if (keyBytes != null)
-                            {
-                                b.Add(keyDeserializer.Deserialize(keyBytes));
-                            }
-                            else
-                            {
-                                b.AddNull();
-                            }
-                        }
-                        else if (after.TryGetProperty(_names[i], out var property))
-                        {
-                            b.Add(JsonSerializerUtils.JsonElementToValue(property));
+                            b.Add(keyDeserializer.Deserialize(keyBytes));
                         }
                         else
                         {
@@ -61,7 +85,27 @@ namespace FlowtideDotNet.Connector.Kafka
                     }
                 });
             }
-            throw new NotImplementedException();
+
+            var jsonDocument = JsonSerializer.Deserialize<JsonElement>(valueBytes);
+            var payload = jsonDocument.GetProperty("payload");
+            var op = payload.GetProperty("op").GetString();
+
+            if (op == "d")
+            {
+                var before = payload.GetProperty("before");
+                return GetRowEvent(keyDeserializer, keyBytes, before, -1);
+            }
+            else if (op == "c" ||
+                op == "u" ||
+                op == "r")
+            {
+                var after = payload.GetProperty("after");
+                return GetRowEvent(keyDeserializer, keyBytes, after, 1);
+            }
+            else
+            {
+                return new RowEvent();
+            }
         }
 
         public Task Initialize(ReadRelation readRelation)

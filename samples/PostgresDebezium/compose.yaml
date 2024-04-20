@@ -52,9 +52,6 @@
       retries: 5
     ports:
      - 8083:8083
-    links:
-     - kafka
-     - postgres
     environment:
      - BOOTSTRAP_SERVERS=kafka:9092
      - GROUP_ID=1

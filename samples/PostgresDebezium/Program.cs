@@ -24,7 +24,7 @@ ReadWriteFactory readWriteFactory = new ReadWriteFactory()
             GroupId = "flowtide"
         },
         KeyDeserializer = new FlowtideDebeziumKeyDeserializer(),
-        ValueDeserializer = new FlowtideKafkaUpsertJsonDeserializer()
+        ValueDeserializer = new FlowtideDebeziumValueDeserializer()
     })
     .AddConsoleSink(".*");
 
