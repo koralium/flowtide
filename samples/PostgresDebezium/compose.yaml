@@ -1,4 +1,15 @@
 ﻿services:
+  stream:
+    depends_on:
+      connect.configurator:
+        condition: service_completed_successfully
+    build: 
+      context: ../../
+      dockerfile: samples/PostgresDebezium/Dockerfile
+    environment:
+      bootstrapServers: "kafka:9092"
+    ports:
+      - "8000:80"
   zookeeper:
     image: quay.io/debezium/zookeeper:2.1
     ports:
@@ -20,15 +31,6 @@
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=CLIENT
     depends_on:
       - zookeeper
-  # kafka:
-  #   image: quay.io/debezium/kafka:2.1
-  #   ports:
-  #    - 9092:9092
-  #   links:
-  #    - zookeeper
-  #   environment:
-  #    - ZOOKEEPER_CONNECT=zookeeper:2181
-  #    - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
   postgres:
     image: quay.io/debezium/example-postgres:2.1
     healthcheck:

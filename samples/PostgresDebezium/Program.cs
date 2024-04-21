@@ -20,7 +20,7 @@ ReadWriteFactory readWriteFactory = new ReadWriteFactory()
     {
         ConsumerConfig = new ConsumerConfig
         {
-            BootstrapServers = "localhost:9093",
+            BootstrapServers = builder.Configuration.GetValue<string>("bootstrapServers"),
             GroupId = "flowtide"
         },
         KeyDeserializer = new FlowtideDebeziumKeyDeserializer(),
