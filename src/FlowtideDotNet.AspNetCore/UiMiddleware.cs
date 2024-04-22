@@ -18,21 +18,9 @@ namespace FlowtideDotNet.AspNetCore
     {
         private readonly RequestDelegate _next;
         private readonly UiMiddlewareState uiMiddlewareState;
-        
-        private sealed class PageCache
-        {
-            public PageCache(string contentType, byte[] bytes)
-            {
-                ContentType = contentType;
-                Bytes = bytes;
-            }
 
-            public string ContentType { get; }
-            public byte[] Bytes { get; }
-        }
-
-        private readonly Dictionary<string, PageCache> _pathCache;
-        private string _comparePath;
+        private readonly string _comparePath;
+        private readonly string _nextComparePath;
 
         public UiMiddleware(RequestDelegate next, UiMiddlewareState uiMiddlewareState) 
         {
@@ -44,8 +32,7 @@ namespace FlowtideDotNet.AspNetCore
             {
                 _comparePath = _comparePath.Substring(0, _comparePath.Length - 1);
             }
-
-            _pathCache = new Dictionary<string, PageCache>();
+            _nextComparePath = $"/_next{_comparePath}";
         }
 
         public Task Invoke(HttpContext httpContext)
@@ -64,16 +51,16 @@ namespace FlowtideDotNet.AspNetCore
                 }
                 return uiMiddlewareState.ReactEndpoint.Invoke(httpContext);
             }
+            else if (requestPath.StartsWith(_nextComparePath))
+            {
+                var file = requestPath.Substring(_nextComparePath.Length);
+                httpContext.Request.Path = $"{_comparePath}/_next{file}";
+                return uiMiddlewareState.ReactEndpoint.Invoke(httpContext);
+            }
             else
             {
                 return _next(httpContext);
             }
         }
-
-        private string FormatToManifest(string path)
-        {
-            return path.Replace("/", ".");
-        }
-
     }
 }
