@@ -18,18 +18,6 @@ namespace FlowtideDotNet.AspNetCore
     {
         private readonly RequestDelegate _next;
         private readonly UiMiddlewareState uiMiddlewareState;
-        
-        private sealed class PageCache
-        {
-            public PageCache(string contentType, byte[] bytes)
-            {
-                ContentType = contentType;
-                Bytes = bytes;
-            }
-
-            public string ContentType { get; }
-            public byte[] Bytes { get; }
-        }
 
         private readonly string _comparePath;
         private readonly string _nextComparePath;
