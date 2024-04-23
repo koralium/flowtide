@@ -161,7 +161,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
         {
             var producer = new ProducerBuilder<string, string>(kafkaFixture.GetProducerConfig()).Build();
 
-            var topic = "test-topic2";
+            var topic = "test-topic3";
 
             var jsonData = @"{""firstName"":""testFirst"",""lastName"":""testLast""}";
 
@@ -172,30 +172,30 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
             });
 
             // Create the output topic
-            await new AdminClientBuilder(new AdminClientConfig(kafkaFixture.GetConfig())).Build().CreateTopicsAsync(new List<TopicSpecification>() { new TopicSpecification() { Name = "output2", NumPartitions = 1, ReplicationFactor = 1 } });
+            await new AdminClientBuilder(new AdminClientConfig(kafkaFixture.GetConfig())).Build().CreateTopicsAsync(new List<TopicSpecification>() { new TopicSpecification() { Name = "output3", NumPartitions = 1, ReplicationFactor = 1 } });
 
 
-            var consumer = new ConsumerBuilder<string, string>(kafkaFixture.GetConsumerConfig("testwithexistingdata")).Build();
+            var consumer = new ConsumerBuilder<string, string>(kafkaFixture.GetConsumerConfig("Testfetchexistingwithnodata")).Build();
 
-            KafkaTestStream kafkaTestStream = new KafkaTestStream(kafkaFixture, topic, "testwithexistingdata", true);
+            KafkaTestStream kafkaTestStream = new KafkaTestStream(kafkaFixture, topic, "TestFetchExistingWithNoData", true);
 
             await kafkaTestStream.StartStream(@"
-                CREATE TABLE [test-topic2] (
+                CREATE TABLE [test-topic3] (
                     _key,
                     firstName,
                     lastName
                 );
 
-                INSERT INTO output2
+                INSERT INTO output3
                 SELECT 
                     _key,
                     firstName,
                     lastName
-                FROM [test-topic2]
+                FROM [test-topic3]
             ");
 
 
-            consumer.Subscribe("output2");
+            consumer.Subscribe("output3");
 
             var msg1 = consumer.Consume();
 
