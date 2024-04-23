@@ -82,6 +82,12 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             Dictionary<int, long> currentOffsets = new Dictionary<int, long>();
             Dictionary<int, long> beforeStartOffsets = GetCurrentWatermarks(_consumer, _topicPartitions);
 
+            // Set all the partition offsets to start at -1 incase there is no data.
+            foreach(var kv in beforeStartOffsets)
+            {
+                currentOffsets[kv.Key] = -1;
+            }
+
             while (true)
             {
                 var result = _consumer.Consume(TimeSpan.FromMilliseconds(100));
