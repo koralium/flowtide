@@ -155,5 +155,52 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
             Assert.Equal("key2", msg3.Message.Key);
             Assert.Null(msg3.Message.Value);
         }
+
+        [Fact]
+        public async Task TestFetchExistingWithNoData()
+        {
+            var producer = new ProducerBuilder<string, string>(kafkaFixture.GetProducerConfig()).Build();
+
+            var topic = "test-topic3";
+
+            var jsonData = @"{""firstName"":""testFirst"",""lastName"":""testLast""}";
+
+            await producer.ProduceAsync(topic, new Message<string, string>()
+            {
+                Key = "key",
+                Value = jsonData
+            });
+
+            // Create the output topic
+            await new AdminClientBuilder(new AdminClientConfig(kafkaFixture.GetConfig())).Build().CreateTopicsAsync(new List<TopicSpecification>() { new TopicSpecification() { Name = "output3", NumPartitions = 1, ReplicationFactor = 1 } });
+
+
+            var consumer = new ConsumerBuilder<string, string>(kafkaFixture.GetConsumerConfig("Testfetchexistingwithnodata")).Build();
+
+            KafkaTestStream kafkaTestStream = new KafkaTestStream(kafkaFixture, topic, "TestFetchExistingWithNoData", true);
+
+            await kafkaTestStream.StartStream(@"
+                CREATE TABLE [test-topic3] (
+                    _key,
+                    firstName,
+                    lastName
+                );
+
+                INSERT INTO output3
+                SELECT 
+                    _key,
+                    firstName,
+                    lastName
+                FROM [test-topic3]
+            ");
+
+
+            consumer.Subscribe("output3");
+
+            var msg1 = consumer.Consume();
+
+            Assert.Equal("key", msg1.Message.Key);
+            Assert.Equal("{\"firstName\":\"testFirst\",\"lastName\":\"testLast\"}", msg1.Message.Value);
+        }
     }
 }
