@@ -55,7 +55,10 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
         public IStreamEgressVertex GetWriteOperator(WriteRelation readRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
-            return new SqlServerSink(() => connectionString, readRelation, executionDataflowBlockOptions);
+            return new SqlServerSink(new Connector.SqlServer.SqlServerSinkOptions()
+            {
+                ConnectionStringFunc = () => connectionString,
+            }, readRelation, executionDataflowBlockOptions);
         }
     }
 }

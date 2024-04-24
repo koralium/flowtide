@@ -83,5 +83,63 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             }
             Assert.Equal(1, count);
         }
+
+        [Fact]
+        public async Task CustomPrimaryKeys()
+        {
+            var testName = "CustomPrimaryKeys";
+
+
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-table2] (
+                [id] [int] primary key,
+                [name] [nvarchar](50) NOT NULL,
+                [guid-dash] [uniqueidentifier] NOT NULL
+            )");
+            await _fixture.RunCommand("ALTER TABLE [test-db].[dbo].[test-table2] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-dest2] (
+                [id] [int] IDENTITY(1,1) PRIMARY KEY,
+                [name] [nvarchar](50) NOT NULL,
+                [guid-dash] [uniqueidentifier] NOT NULL
+            )");
+
+            // Insert some data
+            await _fixture.RunCommand(@"
+            INSERT INTO [test-db].[dbo].[test-table2] ([id], [name], [guid-dash]) VALUES (1, 'test1', '57f20bbe-3a17-45a7-bacc-614d89bde120');
+            ");
+
+            var testStream = new SqlServerTestStream(testName, _fixture.ConnectionString, new List<string>()
+            {
+                "name"
+            });
+            testStream.RegisterTableProviders((builder) =>
+            {
+                builder.AddSqlServerProvider(() => _fixture.ConnectionString);
+            });
+            await testStream.StartStream(@"
+                INSERT INTO [test-db].[dbo].[test-dest2]
+                SELECT
+                    [name],
+                    [guid-dash] 
+                FROM [test-db].[dbo].[test-table2]
+            ");
+
+            var count = 0;
+            while (true)
+            {
+                await testStream.SchedulerTick();
+                count = await _fixture.ExecuteReader("SELECT count(*) from [test-db].[dbo].[test-dest2]", (reader) =>
+                {
+                    reader.Read();
+                    return reader.GetInt32(0);
+                });
+                if (count > 0)
+                {
+                    break;
+                }
+            }
+            Assert.Equal(1, count);
+        }
     }
 }
