@@ -5,12 +5,13 @@ import { StreamGraph, StreamGraphEdge, StreamGraphNode } from "./components/stre
 import Header from "./components/header";
 import { Card } from "./components/card";
 import { NodeTable } from "./components/nodetable";
+import { StreamStatus } from "./components/streamstatus";
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 export default function Home() {
 
-  const { data } = useSWR('@(rootpath)api/diagnostics', fetcher, { refreshInterval: 1000 })
+  const { data } = useSWR(`${process.env.NEXT_PUBLIC_ROOT_PATH}api/diagnostics`, fetcher, { refreshInterval: 1000 })
 
   let graph = <div></div>
  
@@ -64,6 +65,10 @@ export default function Home() {
   return (
     <div className="App">
        <Header />
+       <div className="mx-auto max-w-7xl pt-6 sm:px-6 lg:px-8"> 
+          <StreamStatus status="running" align="right" />
+       </div>
+         
         <div className="mx-auto max-w-7xl pt-6 sm:px-6 lg:px-8">
           <Card>
             {graph}
