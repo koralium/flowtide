@@ -127,7 +127,7 @@ If there are multiple rows in the result with the same primary key, only the lat
 ### Custom Primary Keys
 
 In some scenarios you may want to override the tables primary keys or the table might not have a primary key configured.
-In this scenario you can provide column names if the columns you want Flowtide to use as primary keys.
+In this scenario you can provide column names for the columns you want Flowtide to use as primary keys.
 
 Ex:
 
