@@ -124,6 +124,20 @@ If there are multiple rows in the result with the same primary key, only the lat
 
 :::
 
+### Custom Primary Keys
+
+In some scenarios you may want to override the tables primary keys or the table might not have a primary key configured.
+In this scenario you can provide column names if the columns you want Flowtide to use as primary keys.
+
+Ex:
+
+```csharp
+factory.AddSqlServerSink("your regexp on table names", new SqlServerSinkOptions() {
+  ConnectionStringFunc = () => connectionString,
+  CustomPrimaryKeys = new List<string>() { "my_column1", "my_column2" }
+});
+```
+
 ## SQL Table Provider
 
 The SQL table provider is added to the *SQL plan builder* which will try and look after used tables in its configured *SQL Server*.
