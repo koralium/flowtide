@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.SqlServer;
 using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
@@ -85,7 +86,30 @@ namespace FlowtideDotNet.Core.Engine
                     return null;
                 }
                 transform?.Invoke(relation);
-                return new SqlServerSink(connectionStringFunc, relation, dataflowopts);
+                return new SqlServerSink(new Connector.SqlServer.SqlServerSinkOptions()
+                {
+                    ConnectionStringFunc = connectionStringFunc
+                }, relation, dataflowopts);
+            });
+            return readWriteFactory;
+        }
+
+        public static ReadWriteFactory AddSqlServerSink(this ReadWriteFactory readWriteFactory, string regexPattern, SqlServerSinkOptions sqlServerSinkOptions, Action<WriteRelation>? transform = null)
+        {
+            if (regexPattern == "*")
+            {
+                regexPattern = ".*";
+            }
+
+            readWriteFactory.AddWriteResolver((relation, dataflowopts) =>
+            {
+                var regexResult = Regex.Match(relation.NamedObject.DotSeperated, regexPattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
+                if (!regexResult.Success)
+                {
+                    return null;
+                }
+                transform?.Invoke(relation);
+                return new SqlServerSink(sqlServerSinkOptions, relation, dataflowopts);
             });
             return readWriteFactory;
         }
