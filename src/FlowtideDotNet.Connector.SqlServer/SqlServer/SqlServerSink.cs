@@ -24,6 +24,7 @@ using System.Threading.Tasks.Dataflow;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using FlowtideDotNet.Connector.SqlServer.SqlServer;
+using FlowtideDotNet.Connector.SqlServer;
 
 namespace FlowtideDotNet.SqlServer.SqlServer
 {
@@ -35,6 +36,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
     {
         private readonly string tmpTableName;
         private readonly Func<string> connectionStringFunc;
+        private readonly SqlServerSinkOptions sqlServerSinkOptions;
         private readonly WriteRelation writeRelation;
         private IBPlusTree<RowEvent, int>? m_modified;
         private bool m_hasModified;
@@ -45,9 +47,10 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         private SqlBulkCopy? m_sqlBulkCopy;
         private SqlCommand? m_mergeIntoCommand;
 
-        public SqlServerSink(Func<string> connectionStringFunc, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
+        public SqlServerSink(SqlServerSinkOptions sqlServerSinkOptions, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
-            this.connectionStringFunc = connectionStringFunc;
+            this.connectionStringFunc = sqlServerSinkOptions.ConnectionStringFunc;
+            this.sqlServerSinkOptions = sqlServerSinkOptions;
             this.writeRelation = writeRelation;
             tmpTableName = GetTmpTableName();
         }
@@ -125,7 +128,15 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         {
             using var conn = new SqlConnection(connectionStringFunc());
             await conn.OpenAsync();
-            var m_primaryKeyNames = await SqlServerUtils.GetPrimaryKeys(conn, writeRelation.NamedObject.DotSeperated);
+            List<string>? m_primaryKeyNames = null;
+            if (sqlServerSinkOptions.CustomPrimaryKeys != null)
+            {
+                m_primaryKeyNames = sqlServerSinkOptions.CustomPrimaryKeys;
+            }
+            else
+            {
+                m_primaryKeyNames = await SqlServerUtils.GetPrimaryKeys(conn, writeRelation.NamedObject.DotSeperated);
+            }
             var dbSchema = await SqlServerUtils.GetWriteTableSchema(conn, writeRelation);
 
             List<int> primaryKeyIndices = new List<int>();
@@ -162,7 +173,16 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 await connection.OpenAsync();
             }
 
-            var m_primaryKeyNames = await SqlServerUtils.GetPrimaryKeys(connection, writeRelation.NamedObject.DotSeperated);
+            List<string>? m_primaryKeyNames = null;
+            if (sqlServerSinkOptions.CustomPrimaryKeys != null)
+            {
+                m_primaryKeyNames = sqlServerSinkOptions.CustomPrimaryKeys;
+            }
+            else
+            {
+                m_primaryKeyNames = await SqlServerUtils.GetPrimaryKeys(connection, writeRelation.NamedObject.DotSeperated);
+            }
+
             var dbSchema = await SqlServerUtils.GetWriteTableSchema(connection, writeRelation);
 
             List<int> primaryKeyIndices = new List<int>();

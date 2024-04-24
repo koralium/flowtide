@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Connector.SqlServer;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Substrait.Sql;
 using System;
@@ -24,10 +25,12 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
     internal class SqlServerTestStream : FlowtideTestStream
     {
         private readonly string connectionString;
+        private readonly List<string>? customPrimaryKeys;
 
-        public SqlServerTestStream(string testName, string connectionString) : base(testName)
+        public SqlServerTestStream(string testName, string connectionString, List<string>? customPrimaryKeys = null) : base(testName)
         {
             this.connectionString = connectionString;
+            this.customPrimaryKeys = customPrimaryKeys;
         }
 
         protected override void AddReadResolvers(ReadWriteFactory factory)
@@ -37,7 +40,11 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
 
         protected override void AddWriteResolvers(ReadWriteFactory factory)
         {
-            factory.AddSqlServerSink("*", () => connectionString);
+            factory.AddSqlServerSink("*", new SqlServerSinkOptions()
+            {
+                ConnectionStringFunc = () => connectionString,
+                CustomPrimaryKeys = customPrimaryKeys
+            });
         }
     }
 }

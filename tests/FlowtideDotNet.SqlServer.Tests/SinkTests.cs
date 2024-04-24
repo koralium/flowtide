@@ -23,7 +23,7 @@ namespace FlowtideDotNet.SqlServer.Tests
         [Fact]
         public void TempTableIsTemporary()
         {
-            var sink = new SqlServerSink(() => "", new Substrait.Relations.WriteRelation()
+            var sink = new SqlServerSink(new Connector.SqlServer.SqlServerSinkOptions() { ConnectionStringFunc = () => "" }, new Substrait.Relations.WriteRelation()
             {
                 Input = new ReadRelation()
                 {
