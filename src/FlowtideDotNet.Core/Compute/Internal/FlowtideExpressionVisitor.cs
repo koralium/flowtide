@@ -91,6 +91,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     }
                 }
                 var method = inputType.GetMethod("GetColumn");
+                Debug.Assert(method != null);
                 System.Linq.Expressions.Expression expr = System.Linq.Expressions.Expression.Call(state.Parameters[parameterIndex], method, System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field - relativeIndex));
                 if (structReferenceSegment.Child != null)
                 {

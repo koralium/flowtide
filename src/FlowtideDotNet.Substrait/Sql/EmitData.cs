@@ -140,9 +140,9 @@ namespace FlowtideDotNet.Substrait.Sql
                 }
                 segment = new Expressions.StructReferenceSegment()
                 {
-                    Field = emitInfo.Index.First()
+                    Field = emitInfo.Index[0]
                 };
-                name = GetName(emitInfo.Index.First());
+                name = GetName(emitInfo.Index[0]);
                 return true;
             }
 
@@ -150,56 +150,51 @@ namespace FlowtideDotNet.Substrait.Sql
             if (expression is Expression.CompoundIdentifier compoundIndentifier)
             {
                 var textString = compoundIndentifier.ToSql();
-                if (compundIdentifiers.TryGetValue(textString, out var compoundIdentifierResult))
+                if (compundIdentifiers.TryGetValue(textString, out var compoundIdentifierResult) &&
+                    emitList.TryGetValue(compoundIdentifierResult, out var emitInfo2))
                 {
-                    if (emitList.TryGetValue(compoundIdentifierResult, out var emitInfo2))
+                    if (emitInfo2.Index.Count > 1)
                     {
-                        if (emitInfo2.Index.Count > 1)
-                        {
-                            throw new InvalidOperationException($"Multiple matches for expression: '{expression.ToSql()}'");
-                        }
-                        segment = new Expressions.StructReferenceSegment()
-                        {
-                            Field = emitInfo2.Index.First()
-                        };
-                        name = GetName(emitInfo2.Index.First());
-                        return true;
+                        throw new InvalidOperationException($"Multiple matches for expression: '{expression.ToSql()}'");
                     }
+                    segment = new Expressions.StructReferenceSegment()
+                    {
+                        Field = emitInfo2.Index[0]
+                    };
+                    name = GetName(emitInfo2.Index[0]);
+                    return true;
                 }
                 // Try and iterate each property of the compound identifier, if found add remainder as map key reference
                 for (int i = compoundIndentifier.Idents.Count; i >= 0; i--)
                 {
                     var txt = string.Join(".", compoundIndentifier.Idents.Take(i).Select(x => x.Value));
-                    if (compundIdentifiers.TryGetValue(txt, out var indentifier))
+                    if (compundIdentifiers.TryGetValue(txt, out var indentifier) &&
+                        emitList.TryGetValue(indentifier, out var emitInfoPartial))
                     {
-                        if (emitList.TryGetValue(indentifier, out var emitInfoPartial))
+                        if (emitInfoPartial.Index.Count > 1)
                         {
-                            if (emitInfoPartial.Index.Count > 1)
-                            {
-                                throw new InvalidOperationException($"Multiple matches for expression: '{expression.ToSql()}'");
-                            }
-                            segment = new Expressions.StructReferenceSegment()
-                            {
-                                Field = emitInfoPartial.Index.First()
-                            };
-
-                            Expressions.ReferenceSegment seg = segment;
-                            List<string> mapIdentifiers = new List<string>();
-                            for (int k = i; k < compoundIndentifier.Idents.Count; k++)
-                            {
-                                var newSegment = new Expressions.MapKeyReferenceSegment()
-                                {
-                                    Key = compoundIndentifier.Idents[k].Value,
-                                };
-                                mapIdentifiers.Add(compoundIndentifier.Idents[k].Value);
-                                seg.Child = newSegment;
-                                seg = newSegment;
-                            }
-
-
-                            name = $"{GetName(emitInfoPartial.Index.First())}.{string.Join('.', mapIdentifiers)}";
-                            return true;
+                            throw new InvalidOperationException($"Multiple matches for expression: '{expression.ToSql()}'");
                         }
+                        segment = new Expressions.StructReferenceSegment()
+                        {
+                            Field = emitInfoPartial.Index[0]
+                        };
+
+                        Expressions.ReferenceSegment seg = segment;
+                        List<string> mapIdentifiers = new List<string>();
+                        for (int k = i; k < compoundIndentifier.Idents.Count; k++)
+                        {
+                            var newSegment = new Expressions.MapKeyReferenceSegment()
+                            {
+                                Key = compoundIndentifier.Idents[k].Value,
+                            };
+                            mapIdentifiers.Add(compoundIndentifier.Idents[k].Value);
+                            seg.Child = newSegment;
+                            seg = newSegment;
+                        }
+
+                        name = $"{GetName(emitInfoPartial.Index[0])}.{string.Join('.', mapIdentifiers)}";
+                        return true;
                     }
                 }
             }
