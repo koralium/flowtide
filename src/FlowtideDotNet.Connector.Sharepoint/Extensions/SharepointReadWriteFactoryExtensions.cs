@@ -39,5 +39,25 @@ namespace FlowtideDotNet.Core.Engine
             });
             return factory;
         }
+
+        public static ReadWriteFactory AddSharepointListSource(this ReadWriteFactory factory, string regexPattern, Func<ReadRelation, SharepointSourceOptions> optionsFactory, Action<ReadRelation>? transform = null)
+        {
+            if (regexPattern == "*")
+            {
+                regexPattern = ".*";
+            }
+            factory.AddReadResolver((readRel, functionRegister, opt) =>
+            {
+                var regexResult = Regex.Match(readRel.NamedTable.DotSeperated, regexPattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
+                if (!regexResult.Success)
+                {
+                    return null;
+                }
+                transform?.Invoke(readRel);
+                var options = optionsFactory(readRel);
+                return new ReadOperatorInfo(new SharepointSource(options, readRel, opt));
+            });
+            return factory;
+        }
     }
 }

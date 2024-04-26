@@ -35,12 +35,12 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         private readonly HttpClient httpClient;
         private AccessToken? ensureUserToken;
         private readonly Dictionary<string, int> _userIds = new Dictionary<string, int>();
-        private readonly SharepointSinkOptions sharepointSinkOptions;
+        private readonly SharepointOptions sharepointSinkOptions;
         private readonly string streamName;
         private readonly string operatorId;
         private readonly ILogger logger;
 
-        public SharepointGraphListClient(SharepointSinkOptions sharepointSinkOptions, string streamName, string operatorId, ILogger logger)
+        public SharepointGraphListClient(SharepointOptions sharepointSinkOptions, string streamName, string operatorId, ILogger logger)
         {
             this.graphSite = $"{sharepointSinkOptions.SharepointUrl}:/sites/{sharepointSinkOptions.Site}:";
             this.sharepointUrl = sharepointSinkOptions.SharepointUrl;
@@ -326,6 +326,23 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
             var iterator = PageIterator<ListItem, ListItemCollectionResponse>.CreatePageIterator(graphClient, getListReq, onItem);
             await iterator.IterateAsync();
+        }
+
+        public async IAsyncEnumerable<Microsoft.Graph.Sites.Item.Lists.Item.Items.Delta.DeltaGetResponse?> GetDeltaFromList(string list)
+        {
+            var resp = await graphClient.Sites[siteId].Lists[list].Items.Delta.GetAsDeltaGetResponseAsync();
+            yield return resp;
+
+            if (resp == null)
+            {
+                yield break;
+            }
+
+            while (resp.OdataNextLink != null)
+            {
+                resp = await graphClient.Sites[siteId].Lists[list].Items.Delta.WithUrl(resp.OdataNextLink).GetAsDeltaGetResponseAsync();
+                yield return resp;
+            }
         }
     }
 }

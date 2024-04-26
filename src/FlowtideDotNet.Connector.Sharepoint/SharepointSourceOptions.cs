@@ -11,25 +11,15 @@
 // limitations under the License.
 
 using Azure.Core;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.Sharepoint
 {
-    public class SharepointSinkOptions : SharepointOptions
+    public class SharepointSourceOptions : SharepointOptions
     {
-        /// <summary>
-        /// Do not delete items from Sharepoint
-        /// </summary>
-        public bool DisableDelete { get; set; }
-
-        /// <summary>
-        /// Stop the stream if a UPN is not found
-        /// </summary>
-        public bool ThrowOnPersonOrGroupNotFound { get; set; }
-
-        /// <summary>
-        /// Preprocess the row before it is sent to Sharepoint.
-        /// Allows addition of metadata columns.
-        /// </summary>
-        public Action<Dictionary<string, object>>? PreprocessRow { get; set; }
     }
 }
