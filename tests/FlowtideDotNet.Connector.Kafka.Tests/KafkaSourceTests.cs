@@ -92,6 +92,74 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
         }
 
         [Fact]
+        public async Task TestIngestDataStartEmpty()
+        {
+            var producer = new ProducerBuilder<string, string>(kafkaFixture.GetProducerConfig()).Build();
+
+            var topic = "test-topic";
+
+            var jsonData = @"
+                {
+                    ""firstName"": ""testFirst"",
+                    ""lastName"": ""testLast""  
+                }
+            ";
+
+            // Create the output topic
+            await new AdminClientBuilder(new AdminClientConfig(kafkaFixture.GetConfig())).Build().CreateTopicsAsync(new List<TopicSpecification>() { new TopicSpecification() { Name = "output", NumPartitions = 1, ReplicationFactor = 1 } });
+
+            var consumer = new ConsumerBuilder<string, string>(kafkaFixture.GetConsumerConfig("testkafka")).Build();
+
+            KafkaTestStream kafkaTestStream = new KafkaTestStream(kafkaFixture, topic, "testkafka", false);
+
+            await kafkaTestStream.StartStream(@"
+                CREATE TABLE [test-topic] (
+                    _key,
+                    firstName,
+                    lastName
+                );
+
+                INSERT INTO output
+                SELECT 
+                    _key,
+                    firstName,
+                    lastName
+                FROM [test-topic]
+            ");
+
+
+            consumer.Subscribe("output");
+
+            var jsonData2 = @"
+                {
+                    ""firstName"": ""testFirst2"",
+                    ""lastName"": ""testLast2""  
+                }
+            ";
+
+            await producer.ProduceAsync(topic, new Message<string, string>()
+            {
+                Key = "key2",
+                Value = jsonData2
+            });
+
+            var msg2 = consumer.Consume();
+
+            Assert.Equal("key2", msg2.Message.Key);
+            Assert.Equal("{\"firstName\":\"testFirst2\",\"lastName\":\"testLast2\"}", msg2.Message.Value);
+
+            await producer.ProduceAsync(topic, new Message<string, string>()
+            {
+                Key = "key2"
+            });
+
+            var msg3 = consumer.Consume();
+
+            Assert.Equal("key2", msg3.Message.Key);
+            Assert.Null(msg3.Message.Value);
+        }
+
+        [Fact]
         public async Task TestWithExistingData()
         {
             var producer = new ProducerBuilder<string, string>(kafkaFixture.GetProducerConfig()).Build();

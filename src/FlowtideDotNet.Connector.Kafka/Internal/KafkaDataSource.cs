@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
             var adminConf = new AdminClientConfig(flowtideKafkaOptions.ConsumerConfig);
 
-            var adminClient = new AdminClientBuilder(adminConf).Build();
+            using var adminClient = new AdminClientBuilder(adminConf).Build();
             var metadata = adminClient.GetMetadata(topicName, TimeSpan.FromSeconds(10));
             HashSet<string> watermarkNames = new HashSet<string>();
             var topic = metadata.Topics.First();
@@ -124,6 +124,36 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             _consumer.Assign(topicPartitionOffsets);
         }
 
+        private void TryAssignOffsets()
+        {
+            Debug.Assert(_state != null);
+            Debug.Assert(_consumer != null);
+            Debug.Assert(_topicPartitions != null);
+
+            var adminConf = new AdminClientConfig(flowtideKafkaOptions.ConsumerConfig);
+
+            using var adminClient = new AdminClientBuilder(adminConf).Build();
+            var metadata = adminClient.GetMetadata(topicName, TimeSpan.FromSeconds(10));
+
+            var topic = metadata.Topics.First();
+            var partitions = metadata.Topics.First().Partitions;
+
+            List<TopicPartitionOffset> topicPartitionOffsets = new List<TopicPartitionOffset>();
+            foreach (var partition in partitions)
+            {
+                var topicPartition = new TopicPartition(topic.Topic, new Partition(partition.PartitionId));
+                if (_state.PartitionOffsets.TryGetValue(partition.PartitionId, out var offset))
+                {
+                    topicPartitionOffsets.Add(new TopicPartitionOffset(topicPartition, new Offset(offset)));
+                }
+                else
+                {
+                    topicPartitionOffsets.Add(new TopicPartitionOffset(topicPartition, new Offset(0)));
+                }
+            }
+            _consumer.Assign(topicPartitionOffsets);
+        }
+
         protected override Task<KafkaDataSourceState> OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(_state != null);
@@ -144,12 +174,20 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             {
                 output.CancellationToken.ThrowIfCancellationRequested();
 
+                if (_consumer.Assignment.Count == 0)
+                {
+                    TryAssignOffsets();
+                }
                 var result = _consumer.Consume(TimeSpan.FromMilliseconds(waitTimeMs));
 
                 if (result != null)
                 {
-                    await output.EnterCheckpointLock();
-                    inLock = true;
+                    if (!inLock)
+                    {
+                        await output.EnterCheckpointLock();
+                        inLock = true;
+                    }
+                    
                     _state.PartitionOffsets[result.Partition.Value] = result.Offset.Value;
 
                     // Parse the result
