@@ -81,5 +81,22 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Orders.Select(x => new { x.UserKey }).Distinct());
         }
+
+        [Fact]
+        public async Task SelectSubProperty()
+        {
+            GenerateData();
+            await StartStream(@"
+                CREATE VIEW test AS
+                SELECT map('userkey', userkey) AS user 
+                FROM orders;
+
+                INSERT INTO output 
+                SELECT
+                    user.userkey
+                FROM test");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Orders.Select(x => new { x.UserKey }));
+        }
     }
 }

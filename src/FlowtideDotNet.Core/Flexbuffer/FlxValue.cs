@@ -23,6 +23,7 @@ namespace FlexBuffers
 {
     public struct FlxValue
     {
+        public static readonly FlxValue Null = FlxValue.FromBytes(FlexBuffer.Null());
         private readonly Memory<byte> _buffer;
         internal readonly int _offset;
         internal readonly byte _parentWidth;
@@ -171,6 +172,32 @@ namespace FlexBuffers
             xxHash.Append(span.Slice(indirectOffset, size));
         }
 
+        public FlxValue GetMapValue(in string key)
+        {
+            if (this.ValueType == Type.Map)
+            {
+                var map = AsMap;
+                var index = map.KeyIndex(key);
+                if (index >= 0)
+                {
+                    return map.ValueByIndex(index);
+                }
+            }
+            return Null;
+        }
+
+        public FlxValue GetVectorValue(in int index)
+        {
+            if (this.ValueType == Type.Vector)
+            {
+                var vec = AsVector;
+                if (index < vec.Length)
+                {
+                    return vec.Get(index);
+                }
+            }
+            return Null;
+        }
 
         public long AsLong
         {

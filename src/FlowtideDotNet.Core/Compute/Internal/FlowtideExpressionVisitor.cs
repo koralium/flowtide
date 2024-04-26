@@ -45,8 +45,35 @@ namespace FlowtideDotNet.Core.Compute.Internal
             }
         }
 
+        public static System.Linq.Expressions.Expression VisitInnerReferenceSegment(ReferenceSegment referenceSegment, System.Linq.Expressions.Expression expression)
+        {
+            System.Linq.Expressions.Expression? expr = null;
+            if (referenceSegment is StructReferenceSegment structReferenceSegment)
+            {
+                var method = expression.Type.GetMethod("GetVectorValue");
+                Debug.Assert(method != null);
+                expr = System.Linq.Expressions.Expression.Call(expression, method, System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field));
+            }
+            if (referenceSegment is MapKeyReferenceSegment mapKeyReferenceSegment)
+            {
+                var method = expression.Type.GetMethod("GetMapValue");
+                Debug.Assert(method != null);
+                expr = System.Linq.Expressions.Expression.Call(expression, method, System.Linq.Expressions.Expression.Constant(mapKeyReferenceSegment.Key));
+            }
+            if (expr == null)
+            {
+                throw new NotImplementedException();
+            }
+            if (referenceSegment.Child != null)
+            {
+                return VisitInnerReferenceSegment(referenceSegment.Child, expr);
+            }
+            return expr;
+        }
+
         public override System.Linq.Expressions.Expression? VisitDirectFieldReference(DirectFieldReference directFieldReference, ParametersInfo state)
         {
+            // We must first check that it is a reference segment to find the relative index in case of a join
             if (directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
                 int parameterIndex = 0;
@@ -55,7 +82,6 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 {
                     if (structReferenceSegment.Field < state.RelativeIndices[i])
                     {
-
                         break;
                     }
                     else
@@ -65,7 +91,12 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     }
                 }
                 var method = inputType.GetMethod("GetColumn");
-                return System.Linq.Expressions.Expression.Call(state.Parameters[parameterIndex], method, System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field - relativeIndex));
+                System.Linq.Expressions.Expression expr = System.Linq.Expressions.Expression.Call(state.Parameters[parameterIndex], method, System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field - relativeIndex));
+                if (structReferenceSegment.Child != null)
+                {
+                    expr = VisitInnerReferenceSegment(structReferenceSegment.Child, expr);
+                }
+                return expr;
             }
             return base.VisitDirectFieldReference(directFieldReference, state);
         }
