@@ -98,5 +98,23 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Orders.Select(x => new { x.UserKey }));
         }
+
+        [Fact]
+        public async Task SelectSubPropertyDifferentCase()
+        {
+            GenerateData();
+            await StartStream(@"
+                CREATE VIEW test AS
+                SELECT map('userkey', userkey) AS user 
+                FROM orders;
+
+                INSERT INTO output 
+                SELECT
+                    user.userKey
+                FROM test");
+            await WaitForUpdate();
+            // Expect an array where all columns are null since the field was not found in the map
+            AssertCurrentDataEqual(Orders.Select(x => new { UserKey = default(int?) }));
+        }
     }
 }
