@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Expressions;
+using SqlParser;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {
@@ -18,18 +19,21 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
     {
         NotExist = 0,
         Scalar = 1,
-        Aggregate = 2
+        Aggregate = 2,
+        Table = 3
     }
 
     internal class SqlFunctionRegister : ISqlFunctionRegister
     {
         private readonly Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression>> _scalarFunctions;
         private readonly Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction>> _aggregateFunctions;
+        private readonly Dictionary<string, Func<SqlTableFunctionArgument, SqlTableFunctionResult>> _tableFunctions;
 
         public SqlFunctionRegister()
         {
             _scalarFunctions = new Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression>>(StringComparer.OrdinalIgnoreCase);
             _aggregateFunctions = new Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction>>(StringComparer.OrdinalIgnoreCase);
+            _tableFunctions = new Dictionary<string, Func<SqlTableFunctionArgument, SqlTableFunctionResult>>(StringComparer.OrdinalIgnoreCase);
         }
 
         public void RegisterScalarFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression> mapFunc)
@@ -47,6 +51,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return _aggregateFunctions[name];
         }
 
+        public Func<SqlTableFunctionArgument, SqlTableFunctionResult> GetTableMapper(string name)
+        {
+            if (!_tableFunctions.ContainsKey(name))
+            {
+                throw new InvalidOperationException($"Table function '{name}' not found");
+            }
+            return _tableFunctions[name];
+        }
+
         public FunctionType GetFunctionType(string name)
         {
             if (_scalarFunctions.ContainsKey(name))
@@ -57,12 +70,21 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 return FunctionType.Aggregate;
             }
+            if (_tableFunctions.ContainsKey(name))
+            {
+                return FunctionType.Table;
+            }
             return FunctionType.NotExist;
         }
 
         public void RegisterAggregateFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction> mapFunc)
         {
             _aggregateFunctions.Add(name, mapFunc);
+        }
+
+        public void RegisterTableFunction(string name, Func<SqlTableFunctionArgument, SqlTableFunctionResult> mapFunc)
+        {
+            _tableFunctions.Add(name, mapFunc);
         }
     }
 }

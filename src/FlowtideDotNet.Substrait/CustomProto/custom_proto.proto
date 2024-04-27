@@ -3,6 +3,7 @@
 package flowtide;
 
 import "substrait/algebra.proto";
+import "substrait/type.proto";
 option csharp_namespace = "FlowtideDotNet.Substrait.CustomProtobuf";
 
 message IterationRelation {
@@ -31,4 +32,35 @@ message TopNRelation {
     repeated substrait.SortField sorts = 1;
     int32 offset = 2;
     int32 count = 3;
+}
+
+message TableFunction {
+    // Points to a function_anchor defined in this plan, which must refer
+    // to a table function in the associated YAML file. Required; 0 is
+    // considered to be a valid anchor/reference.
+    uint32 function_reference = 1;
+
+    // Arguments for the table function
+    repeated substrait.FunctionArgument arguments = 7;
+}
+
+message TableFunctionRelation {
+    // Table function to use
+    TableFunction table_function = 1;
+
+    // Schema of the output table from the function
+    substrait.NamedStruct table_schema = 2;
+
+    // Only required if used with an input.
+    // Only left and inner join supported at this time.
+    JoinType type = 6;
+
+    // Optional, but only usable with an input.
+    substrait.Expression join_condition = 4;
+
+    enum JoinType {
+      JOIN_TYPE_UNSPECIFIED = 0;
+      JOIN_TYPE_INNER = 1;
+      JOIN_TYPE_LEFT = 3;
+    }
 }

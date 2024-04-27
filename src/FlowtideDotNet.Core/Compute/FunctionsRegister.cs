@@ -20,13 +20,15 @@ namespace FlowtideDotNet.Core.Compute
 {
     internal class FunctionsRegister : IFunctionsRegister
     {
-        private Dictionary<string, FunctionDefinition> _scalarFunctions;
-        private Dictionary<string, AggregateFunctionDefinition> _aggregateFunctions;
+        private readonly Dictionary<string, FunctionDefinition> _scalarFunctions;
+        private readonly Dictionary<string, AggregateFunctionDefinition> _aggregateFunctions;
+        private readonly Dictionary<string, TableFunctionDefinition> _tableFunctions;
 
         public FunctionsRegister()
         {
             _scalarFunctions = new Dictionary<string, FunctionDefinition>(StringComparer.OrdinalIgnoreCase);
             _aggregateFunctions = new Dictionary<string, AggregateFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
+            _tableFunctions = new Dictionary<string, TableFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
         }
 
         public bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition)
@@ -135,6 +137,16 @@ namespace FlowtideDotNet.Core.Compute
                 commitFunction,
                 mapFunc,
                 stateToValueFunc));
+        }
+
+        public void RegisterTableFunction(string uri, string name, Func<TableFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc)
+        {
+            _tableFunctions.Add($"{uri}:{name}", new TableFunctionDefinition(uri, name, mapFunc));
+        }
+
+        public bool TryGetTableFunction(string uri, string name, [NotNullWhen(true)] out TableFunctionDefinition? tableFunctionDefinition)
+        {
+            return _tableFunctions.TryGetValue($"{uri}:{name}", out tableFunctionDefinition);
         }
     }
 }

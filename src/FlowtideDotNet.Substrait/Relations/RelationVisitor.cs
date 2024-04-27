@@ -118,5 +118,10 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             throw new NotImplementedException("Fetch relation is not implemented");
         }
+
+        public virtual TReturn VisitTableFunctionRelation(TableFunctionRelation tableFunctionRelation, TState state)
+        {
+            throw new NotImplementedException("Table function relation is not implemented");
+        }
     }
 }

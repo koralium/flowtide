@@ -10,17 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
-using FlowtideDotNet.Core.Compute.Internal.TableFunctions;
+using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Type;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Compute.Internal
+namespace FlowtideDotNet.Substrait.Sql
 {
-    internal static class BuiltInListFunctions
+    public class SqlTableFunctionResult
     {
-        public static void AddListFunctions(FunctionsRegister functionsRegister)
+        public TableFunction TableFunction { get; }
+
+        public NamedStruct TableSchema { get; }
+
+        public SqlTableFunctionResult(TableFunction tableFunction, NamedStruct tableSchema)
         {
-            ListAggAggregation.Register(functionsRegister);
-            UnnestTableFunction.AddBuiltInUnnestFunction(functionsRegister);
+            TableFunction = tableFunction;
+            TableSchema = tableSchema;
         }
     }
 }

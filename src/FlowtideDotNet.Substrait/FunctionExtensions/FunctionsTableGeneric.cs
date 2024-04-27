@@ -10,17 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
-using FlowtideDotNet.Core.Compute.Internal.TableFunctions;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Compute.Internal
+namespace FlowtideDotNet.Substrait.FunctionExtensions
 {
-    internal static class BuiltInListFunctions
+    public static class FunctionsTableGeneric
     {
-        public static void AddListFunctions(FunctionsRegister functionsRegister)
-        {
-            ListAggAggregation.Register(functionsRegister);
-            UnnestTableFunction.AddBuiltInUnnestFunction(functionsRegister);
-        }
+        public const string Uri = "/functions_table_generic.yaml";
+        public const string Unnest = "unnest";
     }
 }

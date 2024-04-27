@@ -24,7 +24,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Protobuf Include="CustomProto\custom_proto.proto" AdditionalImportDirs="proto/"   />
+	  <Protobuf Include="CustomProto\custom_proto.proto" AdditionalImportDirs="proto/" />
 	</ItemGroup>
 
 </Project>

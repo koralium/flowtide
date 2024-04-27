@@ -10,17 +10,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
-using FlowtideDotNet.Core.Compute.Internal.TableFunctions;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Compute.Internal
+namespace FlowtideDotNet.Substrait.Expressions
 {
-    internal static class BuiltInListFunctions
+    /// <summary>
+    /// Represents a table function.
+    /// A table function can only be used in the FROM clause or in joins.
+    /// </summary>
+    public class TableFunction
     {
-        public static void AddListFunctions(FunctionsRegister functionsRegister)
-        {
-            ListAggAggregation.Register(functionsRegister);
-            UnnestTableFunction.AddBuiltInUnnestFunction(functionsRegister);
-        }
+        public required string ExtensionUri { get; set; }
+        public required string ExtensionName { get; set; }
+
+        public required List<Expression> Arguments { get; set; }
     }
 }

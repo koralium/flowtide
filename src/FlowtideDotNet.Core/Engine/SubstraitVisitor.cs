@@ -33,6 +33,7 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Core.Operators.TimestampProvider;
 using FlowtideDotNet.Core.Operators.Buffer;
 using FlowtideDotNet.Core.Operators.TopN;
+using FlowtideDotNet.Core.Operators.TableFunction;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -551,6 +552,39 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitFetchRelation(FetchRelation fetchRelation, ITargetBlock<IStreamEvent>? state)
         {
             throw new NotSupportedException("Fetch operation (top or limit) is not supported without an order by");
+        }
+
+        public override IStreamVertex VisitTableFunctionRelation(TableFunctionRelation tableFunctionRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            var id = _operatorId++;
+
+            if (tableFunctionRelation.Input == null)
+            {
+                // Used as a root for data such as in FROM func()
+                var op = new TableFunctionReadOperator(tableFunctionRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                if (state != null)
+                {
+                    op.LinkTo(state);
+                }
+
+                dataflowStreamBuilder.AddIngressBlock(id.ToString(), op);
+                return op;
+            }
+            else
+            {
+                // Used in a join or similar
+                var op = new TableFunctionJoinOperator(tableFunctionRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+
+                if (state != null)
+                {
+                    op.LinkTo(state);
+                }
+
+                tableFunctionRelation.Input.Accept(this, op);
+                dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
+                return op;
+            }
+           
         }
     }
 }
