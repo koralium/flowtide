@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Internal.TableFunctions
 {
-    internal class UnnestTableFunction
+    internal static class UnnestTableFunction
     {
         private static MethodInfo _unnestMethod = GetUnnestMethod();
         private static MethodInfo GetUnnestMethod()

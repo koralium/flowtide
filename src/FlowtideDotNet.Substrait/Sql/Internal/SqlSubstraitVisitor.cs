@@ -487,7 +487,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return parent;
         }
 
-        private bool IsTableFunction(TableFactor? tableFactor)
+        private static bool IsTableFunction(TableFactor? tableFactor)
         {
             if (tableFactor is TableFactor.Table table &&
                 table.Args != null)
@@ -497,7 +497,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return false;
         }
 
-        private void GetTableFunctionNameAndArgs(TableFactor? tableFactor, out string name, out Sequence<FunctionArg> args)
+        private static void GetTableFunctionNameAndArgs(TableFactor? tableFactor, out string name, out Sequence<FunctionArg> args)
         {
             if (tableFactor is TableFactor.Table table &&
                 table.Args != null)

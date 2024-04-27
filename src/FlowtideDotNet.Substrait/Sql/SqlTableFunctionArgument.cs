@@ -24,9 +24,9 @@ namespace FlowtideDotNet.Substrait.Sql
         public Sequence<SqlParser.Ast.FunctionArg> Arguments { get; }
         public string? TableAlias { get; }
         public SqlExpressionVisitor ExpressionVisitor { get; }
-        public EmitData? EmitData { get; }
+        public EmitData EmitData { get; }
 
-        internal SqlTableFunctionArgument(Sequence<SqlParser.Ast.FunctionArg> arguments, string? tableAlias, SqlExpressionVisitor expressionVisitor, EmitData? emitData)
+        internal SqlTableFunctionArgument(Sequence<SqlParser.Ast.FunctionArg> arguments, string? tableAlias, SqlExpressionVisitor expressionVisitor, EmitData emitData)
         {
             Arguments = arguments;
             TableAlias = tableAlias;

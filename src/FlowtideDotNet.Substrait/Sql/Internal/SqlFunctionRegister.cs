@@ -53,11 +53,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         public Func<SqlTableFunctionArgument, SqlTableFunctionResult> GetTableMapper(string name)
         {
-            if (!_tableFunctions.ContainsKey(name))
+            if (!_tableFunctions.TryGetValue(name, out var def))
             {
                 throw new InvalidOperationException($"Table function '{name}' not found");
             }
-            return _tableFunctions[name];
+            return def;
         }
 
         public FunctionType GetFunctionType(string name)
