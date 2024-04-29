@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Type;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,5 +29,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         public required string ExtensionName { get; set; }
 
         public required List<Expression> Arguments { get; set; }
+
+        public required NamedStruct TableSchema { get; set; }
     }
 }

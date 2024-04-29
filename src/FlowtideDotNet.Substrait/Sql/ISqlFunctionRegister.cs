@@ -20,6 +20,6 @@ namespace FlowtideDotNet.Substrait.Sql
 
         void RegisterAggregateFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction> mapFunc);
 
-        void RegisterTableFunction(string name, Func<SqlTableFunctionArgument, SqlTableFunctionResult> mapFunc);
+        void RegisterTableFunction(string name, Func<SqlTableFunctionArgument, TableFunction> mapFunc);
     }
 }

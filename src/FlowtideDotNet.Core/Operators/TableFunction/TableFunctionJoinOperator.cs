@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
 
             _rightNullData = RowEvent.Create(0, 0, v =>
             {
-                for (int i = 0; i < tableFunctionRelation.TableSchema.Names.Count; i++)
+                for (int i = 0; i < tableFunctionRelation.TableFunction.TableSchema.Names.Count; i++)
                 {
                     v.AddNull();
                 }

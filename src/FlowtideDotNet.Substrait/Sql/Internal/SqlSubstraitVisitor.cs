@@ -516,8 +516,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 );
             var rel = new TableFunctionRelation()
             {
-                TableFunction = tableFunction.TableFunction,
-                TableSchema = tableFunction.TableSchema
+                TableFunction = tableFunction
             };
 
             EmitData emitData = new EmitData();
@@ -554,8 +553,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             joinEmitData.Add(tableFuncEmitData, parent.Relation.OutputLength);
             var rel = new TableFunctionRelation()
             {
-                TableFunction = tableFunction.TableFunction,
-                TableSchema = tableFunction.TableSchema,
+                TableFunction = tableFunction,
                 Input = parent.Relation
             };
 

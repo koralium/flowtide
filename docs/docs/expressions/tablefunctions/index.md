@@ -30,6 +30,9 @@ message TableFunction {
     // considered to be a valid anchor/reference.
     uint32 function_reference = 1;
 
+    // Schema of the output table from the function
+    substrait.NamedStruct table_schema = 2;
+
     // Arguments for the table function
     repeated substrait.FunctionArgument arguments = 7;
 }
@@ -37,9 +40,6 @@ message TableFunction {
 message TableFunctionRelation {
     // Table function to use
     TableFunction table_function = 1;
-
-    // Schema of the output table from the function
-    substrait.NamedStruct table_schema = 2;
 
     // Only required if used with an input.
     // Only left and inner join supported at this time.

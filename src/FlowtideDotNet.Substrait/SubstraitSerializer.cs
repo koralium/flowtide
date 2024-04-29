@@ -925,20 +925,23 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
-            private static CustomProtobuf.TableFunctionRelation CreateTableFunctionProtoDefintion(TableFunctionRelation tableFunctionRelation, SerializerVisitorState state)
+            private static CustomProtobuf.TableFunction CreateTableFunctionProtoDefintion(TableFunction tableFunction, SerializerVisitorState state)
             {
-                var protoDef = new CustomProtobuf.TableFunctionRelation();
+                var protoDef = new CustomProtobuf.TableFunction();
+
+                // Serialize the table function
+                protoDef.FunctionReference = state.GetFunctionExtensionAnchor(tableFunction.ExtensionUri, tableFunction.ExtensionName);
 
                 // Serialize the table schema if it exists
-                if (tableFunctionRelation.TableSchema != null)
+                if (tableFunction.TableSchema != null)
                 {
                     protoDef.TableSchema = new Protobuf.NamedStruct();
-                    protoDef.TableSchema.Names.AddRange(tableFunctionRelation.TableSchema.Names);
-                    if (tableFunctionRelation.TableSchema.Struct != null)
+                    protoDef.TableSchema.Names.AddRange(tableFunction.TableSchema.Names);
+                    if (tableFunction.TableSchema.Struct != null)
                     {
                         var anyTypeAnchor = GetAnyTypeId(state);
                         protoDef.TableSchema.Struct = new Protobuf.Type.Types.Struct();
-                        foreach (var t in tableFunctionRelation.TableSchema.Struct.Types)
+                        foreach (var t in tableFunction.TableSchema.Struct.Types)
                         {
                             protoDef.TableSchema.Struct.Types_.Add(new Protobuf.Type()
                             {
@@ -951,23 +954,29 @@ namespace FlowtideDotNet.Substrait
                     }
                 }
 
-                // Serialize the table function
-                protoDef.TableFunction = new CustomProtobuf.TableFunction()
-                {
-                    FunctionReference = state.GetFunctionExtensionAnchor(tableFunctionRelation.TableFunction.ExtensionUri, tableFunctionRelation.TableFunction.ExtensionName)
-                };
                 // Serialize function arguments
-                if (tableFunctionRelation.TableFunction.Arguments != null)
+                if (tableFunction.Arguments != null)
                 {
                     var exprVisitor = new SerializerExpressionVisitor();
-                    foreach (var arg in tableFunctionRelation.TableFunction.Arguments)
+                    foreach (var arg in tableFunction.Arguments)
                     {
-                        protoDef.TableFunction.Arguments.Add(new Protobuf.FunctionArgument()
+                        protoDef.Arguments.Add(new Protobuf.FunctionArgument()
                         {
                             Value = exprVisitor.Visit(arg, state)
                         });
                     }
                 }
+
+                return protoDef;
+            }
+
+            private static CustomProtobuf.TableFunctionRelation CreateTableFunctionRelationProtoDefintion(TableFunctionRelation tableFunctionRelation, SerializerVisitorState state)
+            {
+                var protoDef = new CustomProtobuf.TableFunctionRelation
+                {
+                    // Serialize the table function
+                    TableFunction = CreateTableFunctionProtoDefintion(tableFunctionRelation.TableFunction, state)
+                };
 
                 // Set join type
                 switch (tableFunctionRelation.Type)
@@ -993,7 +1002,7 @@ namespace FlowtideDotNet.Substrait
 
             public override Rel VisitTableFunctionRelation(TableFunctionRelation tableFunctionRelation, SerializerVisitorState state)
             {
-                var protoDef = CreateTableFunctionProtoDefintion(tableFunctionRelation, state);
+                var protoDef = CreateTableFunctionRelationProtoDefintion(tableFunctionRelation, state);
 
                 // Check if it has an input, then we will use extension single rel, otherwise leaf.
                 if (tableFunctionRelation.Input != null)

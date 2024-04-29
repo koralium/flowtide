@@ -38,13 +38,6 @@ namespace FlowtideDotNet.Substrait.Sql.Internal.TableFunctions
                 {
                     var result = arg.ExpressionVisitor.Visit(funcArg.Expression, arg.EmitData);
 
-                    var tableFunction = new TableFunction()
-                    {
-                        ExtensionName = FunctionsTableGeneric.Unnest,
-                        ExtensionUri = FunctionsTableGeneric.Uri,
-                        Arguments = new List<Expressions.Expression>() { result.Expr }
-                    };
-
                     var columnName = $"{result.Expr}_value";
                     if (arg.TableAlias != null)
                     {
@@ -63,7 +56,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal.TableFunctions
                         }
                     };
 
-                    return new SqlTableFunctionResult(tableFunction, outputSchema);
+                    var tableFunction = new TableFunction()
+                    {
+                        ExtensionName = FunctionsTableGeneric.Unnest,
+                        ExtensionUri = FunctionsTableGeneric.Uri,
+                        Arguments = new List<Expressions.Expression>() { result.Expr },
+                        TableSchema = outputSchema
+                    };
+
+                    return tableFunction;
                 }
 
                 throw new ArgumentException("Unnest function requires a function argument");

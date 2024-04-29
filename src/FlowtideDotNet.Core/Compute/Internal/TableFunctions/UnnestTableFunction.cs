@@ -44,6 +44,11 @@ namespace FlowtideDotNet.Core.Compute.Internal.TableFunctions
                     {
                         throw new ArgumentException("Unnest function requires exactly one argument");
                     }
+                    if (tableFunc.TableSchema.Names.Count != 1)
+                    {
+                        throw new ArgumentException("Unnest function requires exactly one column in the schema");
+                    }
+
                     var expr = visitor.Visit(tableFunc.Arguments[0], parameterInfo);
 
                     if (expr == null)

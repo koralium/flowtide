@@ -27,13 +27,13 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
     {
         private readonly Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression>> _scalarFunctions;
         private readonly Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction>> _aggregateFunctions;
-        private readonly Dictionary<string, Func<SqlTableFunctionArgument, SqlTableFunctionResult>> _tableFunctions;
+        private readonly Dictionary<string, Func<SqlTableFunctionArgument, TableFunction>> _tableFunctions;
 
         public SqlFunctionRegister()
         {
             _scalarFunctions = new Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression>>(StringComparer.OrdinalIgnoreCase);
             _aggregateFunctions = new Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction>>(StringComparer.OrdinalIgnoreCase);
-            _tableFunctions = new Dictionary<string, Func<SqlTableFunctionArgument, SqlTableFunctionResult>>(StringComparer.OrdinalIgnoreCase);
+            _tableFunctions = new Dictionary<string, Func<SqlTableFunctionArgument, TableFunction>>(StringComparer.OrdinalIgnoreCase);
         }
 
         public void RegisterScalarFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression> mapFunc)
@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return _aggregateFunctions[name];
         }
 
-        public Func<SqlTableFunctionArgument, SqlTableFunctionResult> GetTableMapper(string name)
+        public Func<SqlTableFunctionArgument, TableFunction> GetTableMapper(string name)
         {
             if (!_tableFunctions.TryGetValue(name, out var def))
             {
@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             _aggregateFunctions.Add(name, mapFunc);
         }
 
-        public void RegisterTableFunction(string name, Func<SqlTableFunctionArgument, SqlTableFunctionResult> mapFunc)
+        public void RegisterTableFunction(string name, Func<SqlTableFunctionArgument, TableFunction> mapFunc)
         {
             _tableFunctions.Add(name, mapFunc);
         }

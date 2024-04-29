@@ -24,8 +24,6 @@ namespace FlowtideDotNet.Substrait.Relations
     {
         public required TableFunction TableFunction { get; set; }
 
-        public required NamedStruct TableSchema { get; set; }
-
         public Relation? Input { get; set; }
 
         public JoinType Type { get; set; }
@@ -42,9 +40,9 @@ namespace FlowtideDotNet.Substrait.Relations
                 }
                 if (Input == null)
                 {
-                    return TableSchema.Names.Count;
+                    return TableFunction.TableSchema.Names.Count;
                 }
-                return Input.OutputLength + TableSchema.Names.Count;
+                return Input.OutputLength + TableFunction.TableSchema.Names.Count;
             }
         }
 
