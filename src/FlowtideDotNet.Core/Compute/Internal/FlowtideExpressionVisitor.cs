@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             }
             else if (referenceSegment is MapKeyReferenceSegment mapKeyReferenceSegment)
             {
-                var method = expression.Type.GetMethod("GetMapValue");
+                var method = expression.Type.GetMethod(nameof(FlxValue.GetMapValue));
                 Debug.Assert(method != null);
                 expr = System.Linq.Expressions.Expression.Call(expression, method, System.Linq.Expressions.Expression.Constant(mapKeyReferenceSegment.Key));
             }
