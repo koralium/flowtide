@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
@@ -81,7 +82,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             return Task.FromResult<object?>(null);
         }
 
-        public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
             Debug.Assert(_eventsProcessed != null);
             Debug.Assert(_eventsCounter != null);
@@ -116,7 +117,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             }
 
             _eventsCounter.Add(output.Count);
-            yield return new StreamEventBatch(output);
+            return new SingleAsyncEnumerable<StreamEventBatch>(new StreamEventBatch(output));
         }
 
         protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)

@@ -65,7 +65,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.TableFunctions
         /// </summary>
         /// <param name="flxValue"></param>
         /// <returns></returns>
-        private static IEnumerable<RowEvent> DoUnnest(FlxValue flxValue)
+        public static IEnumerable<RowEvent> DoUnnest(FlxValue flxValue)
         {
             List<RowEvent> output = new List<RowEvent>();
 
