@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             System.Linq.Expressions.Expression? expr = null;
             if (referenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var method = expression.Type.GetMethod("GetVectorValue");
+                var method = expression.Type.GetMethod(nameof(FlxValue.GetVectorValue));
                 Debug.Assert(method != null);
                 expr = System.Linq.Expressions.Expression.Call(expression, method, System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field));
             }
