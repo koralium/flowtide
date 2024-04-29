@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
                         parameterIndex = i;
                     }
                 }
-                var method = inputType.GetMethod("GetColumn");
+                var method = inputType.GetMethod(nameof(FlxValue.GetColumn));
                 Debug.Assert(method != null);
                 System.Linq.Expressions.Expression expr = System.Linq.Expressions.Expression.Call(state.Parameters[parameterIndex], method, System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field - relativeIndex));
                 if (structReferenceSegment.Child != null)
