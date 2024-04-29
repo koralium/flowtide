@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 Debug.Assert(method != null);
                 expr = System.Linq.Expressions.Expression.Call(expression, method, System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field));
             }
-            if (referenceSegment is MapKeyReferenceSegment mapKeyReferenceSegment)
+            else if (referenceSegment is MapKeyReferenceSegment mapKeyReferenceSegment)
             {
                 var method = expression.Type.GetMethod("GetMapValue");
                 Debug.Assert(method != null);
