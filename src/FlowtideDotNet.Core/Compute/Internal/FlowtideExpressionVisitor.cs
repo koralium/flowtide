@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
@@ -47,23 +48,27 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         public static System.Linq.Expressions.Expression VisitInnerReferenceSegment(ReferenceSegment referenceSegment, System.Linq.Expressions.Expression expression)
         {
-            System.Linq.Expressions.Expression? expr = null;
-            if (referenceSegment is StructReferenceSegment structReferenceSegment)
+            // Since ref structs cant implement interfaces, check that methods exist in both flx value types
+            Debug.Assert(nameof(FlxValue.GetVectorValue) != null);
+            Debug.Assert(nameof(FlxValueRef.GetVectorValue) != null);
+            Debug.Assert(nameof(FlxValue.GetMapValue) != null);
+            Debug.Assert(nameof(FlxValueRef.GetMapValue) != null);
+
+            var expr = referenceSegment switch
             {
-                var method = expression.Type.GetMethod(nameof(FlxValue.GetVectorValue));
-                Debug.Assert(method != null);
-                expr = System.Linq.Expressions.Expression.Call(expression, method, System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field));
-            }
-            else if (referenceSegment is MapKeyReferenceSegment mapKeyReferenceSegment)
-            {
-                var method = expression.Type.GetMethod(nameof(FlxValue.GetMapValue));
-                Debug.Assert(method != null);
-                expr = System.Linq.Expressions.Expression.Call(expression, method, System.Linq.Expressions.Expression.Constant(mapKeyReferenceSegment.Key));
-            }
-            if (expr == null)
-            {
-                throw new NotImplementedException();
-            }
+                StructReferenceSegment structReferenceSegment => 
+                    System.Linq.Expressions.Expression.Call(
+                        expression, 
+                        expression.Type.GetMethod(nameof(FlxValue.GetVectorValue)) ?? throw new MissingMethodException(nameof(FlxValue)), 
+                        System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field)),
+                MapKeyReferenceSegment mapKeyReferenceSegment => 
+                    System.Linq.Expressions.Expression.Call(
+                        expression, 
+                        expression.Type.GetMethod(nameof(FlxValue.GetMapValue)) ?? throw new MissingMethodException(nameof(FlxValue)), 
+                        System.Linq.Expressions.Expression.Constant(mapKeyReferenceSegment.Key)),
+                _ => throw new NotImplementedException(),
+            };
+
             if (referenceSegment.Child != null)
             {
                 return VisitInnerReferenceSegment(referenceSegment.Child, expr);
@@ -90,7 +95,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
                         parameterIndex = i;
                     }
                 }
-                var method = inputType.GetMethod(nameof(FlxValue.GetColumn));
+                var method = inputType.GetMethod(nameof(RowEvent.GetColumn));
                 Debug.Assert(method != null);
                 System.Linq.Expressions.Expression expr = System.Linq.Expressions.Expression.Call(state.Parameters[parameterIndex], method, System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field - relativeIndex));
                 if (structReferenceSegment.Child != null)
