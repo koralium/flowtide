@@ -56,12 +56,12 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
             var expr = referenceSegment switch
             {
-                StructReferenceSegment structReferenceSegment => 
+                StructReferenceSegment { Field: >= 0 } structReferenceSegment => 
                     System.Linq.Expressions.Expression.Call(
                         expression, 
                         expression.Type.GetMethod(nameof(FlxValue.GetVectorValue)) ?? throw new MissingMethodException(nameof(FlxValue)), 
                         System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field)),
-                MapKeyReferenceSegment mapKeyReferenceSegment => 
+                MapKeyReferenceSegment { Key: not null } mapKeyReferenceSegment => 
                     System.Linq.Expressions.Expression.Call(
                         expression, 
                         expression.Type.GetMethod(nameof(FlxValue.GetMapValue)) ?? throw new MissingMethodException(nameof(FlxValue)), 
