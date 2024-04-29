@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Substrait.Sql
             return clone;
         }
 
-        public EmitData ClonewithAlias(string alias)
+        public EmitData CloneWithAlias(string alias)
         {
             var clone = new EmitData();
             foreach (var kv in emitList)

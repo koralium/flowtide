@@ -80,7 +80,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task UnnestLeftJoinWithCondition()
+        public async Task UnnestLeftJoinWithStaticCondition()
         {
             GenerateData(100);
             await StartStream(@"
@@ -98,6 +98,28 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, x.FirstOrDefault(y => y.OrderKey == 105)?.OrderKey }));
+        }
+
+        [Fact]
+        public async Task UnnestLeftJoinWithDynamicCondition()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                CREATE VIEW test AS
+                SELECT 
+                    userkey, list_agg(orderkey) as orders
+                FROM orders
+                GROUP BY userkey;
+
+                INSERT INTO output 
+                SELECT 
+                    userkey, order_item
+                FROM test
+                LEFT JOIN unnest(orders) order_item ON order_item = userkey + 100;");
+            await WaitForUpdate();
+
+            // One row will have a match, the rest will be null in this result
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, x.FirstOrDefault(y => y.OrderKey == x.Key + 100)?.OrderKey }));
         }
 
         [Fact]

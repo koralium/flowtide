@@ -925,7 +925,7 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
-            public override Rel VisitTableFunctionRelation(TableFunctionRelation tableFunctionRelation, SerializerVisitorState state)
+            private static CustomProtobuf.TableFunctionRelation CreateTableFunctionProtoDefintion(TableFunctionRelation tableFunctionRelation, SerializerVisitorState state)
             {
                 var protoDef = new CustomProtobuf.TableFunctionRelation();
 
@@ -988,6 +988,12 @@ namespace FlowtideDotNet.Substrait
                     var exprVisitor = new SerializerExpressionVisitor();
                     protoDef.JoinCondition = exprVisitor.Visit(tableFunctionRelation.JoinCondition, state);
                 }
+                return protoDef;
+            }
+
+            public override Rel VisitTableFunctionRelation(TableFunctionRelation tableFunctionRelation, SerializerVisitorState state)
+            {
+                var protoDef = CreateTableFunctionProtoDefintion(tableFunctionRelation, state);
 
                 // Check if it has an input, then we will use extension single rel, otherwise leaf.
                 if (tableFunctionRelation.Input != null)

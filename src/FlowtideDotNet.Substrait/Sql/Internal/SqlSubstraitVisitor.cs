@@ -15,6 +15,7 @@ using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 using SqlParser.Ast;
 using SqlParser.Tokens;
+using System;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
@@ -461,6 +462,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override RelationData? VisitTableWithJoins(TableWithJoins tableWithJoins, object? state)
         {
+            ArgumentNullException.ThrowIfNull(tableWithJoins.Relation);
+
             RelationData? parent = null;
             if (IsTableFunction(tableWithJoins.Relation))
             {
@@ -468,7 +471,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
             else
             {
-                parent = Visit(tableWithJoins.Relation!, state);
+                parent = Visit(tableWithJoins.Relation, state);
             }
             
             Debug.Assert(parent != null);
@@ -488,16 +491,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         }
 
         private static bool IsTableFunction(TableFactor? tableFactor)
-        {
-            if (tableFactor is TableFactor.Table table &&
-                table.Args != null)
-            {
-                return true;
-            }
-            return false;
-        }
+            => tableFactor is TableFactor.Table table && table.Args != null;
 
-        private static void GetTableFunctionNameAndArgs(TableFactor? tableFactor, out string name, out Sequence<FunctionArg> args)
+        private static void GetTableFunctionNameAndArgs(TableFactor tableFactor, out string name, out Sequence<FunctionArg> args)
         {
             if (tableFactor is TableFactor.Table table &&
                 table.Args != null)
@@ -509,9 +505,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             throw new InvalidOperationException("Table factor is not a table function");
         }
 
-        private RelationData VisitTableFunctionRoot(TableFactor? tableFactor)
+        private RelationData VisitTableFunctionRoot(TableFactor tableFactor)
         {
-            Debug.Assert(tableFactor != null);
             GetTableFunctionNameAndArgs(tableFactor, out var name, out var args);
             var tableFunctionMapper = sqlFunctionRegister.GetTableMapper(name);
             var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
@@ -536,6 +531,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         private RelationData VisitTableFunctionJoin(Join join, RelationData parent)
         {
+            ArgumentNullException.ThrowIfNull(join.Relation);
+
             GetTableFunctionNameAndArgs(join.Relation, out var name, out var args);
 
             var tableFunctionMapper = sqlFunctionRegister.GetTableMapper(name);
@@ -599,7 +596,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 cteContainer.UsageCounter++;
                 if (table.Alias != null)
                 {
-                    emitData = emitData.ClonewithAlias(table.Alias.Name.Value);
+                    emitData = emitData.CloneWithAlias(table.Alias.Name.Value);
                 }
                 return new RelationData(new IterationReferenceReadRelation()
                 {
@@ -706,7 +703,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             if (derived.Alias != null)
             {
                 // Append the alias to the emit data so its possible to find columns from the emit data
-                var newEmitData = relationData.EmitData.ClonewithAlias(derived.Alias.Name.Value);
+                var newEmitData = relationData.EmitData.CloneWithAlias(derived.Alias.Name.Value);
                 return new RelationData(relationData.Relation, newEmitData);
             }
 

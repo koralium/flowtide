@@ -19,7 +19,7 @@ If the table function is a root, for instance in SQL:
 ```sql
 ... FROM func(arg)
 ```
-No input is not required.
+No input is required.
 
 The following proto definition is used to define the *TableFunctionRelation*:
 

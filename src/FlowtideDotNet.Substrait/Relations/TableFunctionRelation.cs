@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Substrait.Relations
             {
                 if (EmitSet)
                 {
-                    return Emit!.Count;
+                    return Emit.Count;
                 }
                 if (Input == null)
                 {
