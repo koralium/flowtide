@@ -146,5 +146,15 @@ namespace FlowtideDotNet.Substrait.Modifier
             topNRelation.Input = Visit(topNRelation.Input, state);
             return topNRelation;
         }
+
+        public override Relation VisitTableFunctionRelation(TableFunctionRelation tableFunctionRelation, object? state)
+        {
+            if (tableFunctionRelation.Input != null)
+            {
+                tableFunctionRelation.Input = Visit(tableFunctionRelation.Input, state);
+            }
+            
+            return tableFunctionRelation;
+        }
     }
 }

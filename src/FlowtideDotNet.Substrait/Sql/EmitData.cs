@@ -39,7 +39,25 @@ namespace FlowtideDotNet.Substrait.Sql
             _names = new List<string>();
         }
 
-        public EmitData ClonewithAlias(string alias)
+        public EmitData Clone()
+        {
+            var clone = new EmitData();
+            foreach (var kv in emitList)
+            {
+                clone.emitList.Add(kv.Key, kv.Value);
+            }
+            foreach (var kv in compundIdentifiers)
+            {
+                clone.compundIdentifiers.Add(kv.Key, kv.Value);
+            }
+            foreach (var name in _names)
+            {
+                clone._names.Add(name);
+            }
+            return clone;
+        }
+
+        public EmitData CloneWithAlias(string alias)
         {
             var clone = new EmitData();
             foreach (var kv in emitList)
@@ -213,5 +231,7 @@ namespace FlowtideDotNet.Substrait.Sql
         {
             return _names.ToList();
         }
+
+        public int Count => _names.Count;
     }
 }

@@ -14,6 +14,8 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 using SqlParser.Ast;
+using SqlParser.Tokens;
+using System;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
@@ -460,17 +462,126 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override RelationData? VisitTableWithJoins(TableWithJoins tableWithJoins, object? state)
         {
-            var parent = Visit(tableWithJoins.Relation!, state);
+            ArgumentNullException.ThrowIfNull(tableWithJoins.Relation);
+
+            RelationData? parent = null;
+            if (IsTableFunction(tableWithJoins.Relation))
+            {
+                parent = VisitTableFunctionRoot(tableWithJoins.Relation);
+            }
+            else
+            {
+                parent = Visit(tableWithJoins.Relation, state);
+            }
+            
             Debug.Assert(parent != null);
             if (tableWithJoins.Joins != null)
             {
                 foreach (var join in tableWithJoins.Joins)
                 {
+                    if (IsTableFunction(join.Relation))
+                    {
+                        return VisitTableFunctionJoin(join, parent);
+                    }
                     parent = VisitJoin(join, parent, state);
                     Debug.Assert(parent != null);
                 }
             }
             return parent;
+        }
+
+        private static bool IsTableFunction(TableFactor? tableFactor)
+            => tableFactor is TableFactor.Table table && table.Args != null;
+
+        private static void GetTableFunctionNameAndArgs(TableFactor tableFactor, out string name, out Sequence<FunctionArg> args)
+        {
+            if (tableFactor is TableFactor.Table table &&
+                table.Args != null)
+            {
+                name = string.Join('.', table.Name.Values.Select(x => x.Value));
+                args = table.Args;
+                return;
+            }
+            throw new InvalidOperationException("Table factor is not a table function");
+        }
+
+        private RelationData VisitTableFunctionRoot(TableFactor tableFactor)
+        {
+            GetTableFunctionNameAndArgs(tableFactor, out var name, out var args);
+            var tableFunctionMapper = sqlFunctionRegister.GetTableMapper(name);
+            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+
+            var tableFunction = tableFunctionMapper(
+                new SqlTableFunctionArgument(args, tableFactor.Alias?.Name.Value, exprVisitor, new EmitData())
+                );
+            var rel = new TableFunctionRelation()
+            {
+                TableFunction = tableFunction
+            };
+
+            EmitData emitData = new EmitData();
+            foreach(var column in tableFunction.TableSchema.Names)
+            {
+                emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(column) })), emitData.Count, column);
+            }
+
+            return new RelationData(rel, emitData);
+        }
+
+        private RelationData VisitTableFunctionJoin(Join join, RelationData parent)
+        {
+            ArgumentNullException.ThrowIfNull(join.Relation);
+
+            GetTableFunctionNameAndArgs(join.Relation, out var name, out var args);
+
+            var tableFunctionMapper = sqlFunctionRegister.GetTableMapper(name);
+            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+
+            var tableFunction = tableFunctionMapper(
+                new SqlTableFunctionArgument(args, join.Relation?.Alias?.Name.Value, exprVisitor, parent.EmitData)
+                );
+
+            EmitData tableFuncEmitData = new EmitData();
+            foreach (var column in tableFunction.TableSchema.Names)
+            {
+                tableFuncEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(column) })), tableFuncEmitData.Count, column);
+            }
+
+            // Create the emit data for the table function with the parent data
+            EmitData joinEmitData = new EmitData();
+            joinEmitData.Add(parent.EmitData, 0);
+            joinEmitData.Add(tableFuncEmitData, parent.Relation.OutputLength);
+            var rel = new TableFunctionRelation()
+            {
+                TableFunction = tableFunction,
+                Input = parent.Relation
+            };
+
+            if (join.JoinOperator is JoinOperator.LeftOuter leftOuter)
+            {
+                rel.Type = JoinType.Left;
+
+                if (leftOuter.JoinConstraint is JoinConstraint.On on)
+                {
+                    var condition = exprVisitor.Visit(on.Expression, joinEmitData);
+                    rel.JoinCondition = condition.Expr;
+                }
+            }
+            else if (join.JoinOperator is JoinOperator.Inner inner)
+            {
+                rel.Type = JoinType.Inner;
+
+                if (inner.JoinConstraint is JoinConstraint.On on)
+                {
+                    var condition = exprVisitor.Visit(on.Expression, joinEmitData);
+                    rel.JoinCondition = condition.Expr;
+                }
+            }
+            else
+            {
+                throw new NotImplementedException($"Join type '{join.JoinOperator!.GetType().Name}' is not yet supported for table function with joins in SQL mode.");
+            }
+            return new RelationData(rel, joinEmitData);
         }
 
         protected override RelationData? VisitTable(TableFactor.Table table, object? state)
@@ -483,7 +594,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 cteContainer.UsageCounter++;
                 if (table.Alias != null)
                 {
-                    emitData = emitData.ClonewithAlias(table.Alias.Name.Value);
+                    emitData = emitData.CloneWithAlias(table.Alias.Name.Value);
                 }
                 return new RelationData(new IterationReferenceReadRelation()
                 {
@@ -590,7 +701,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             if (derived.Alias != null)
             {
                 // Append the alias to the emit data so its possible to find columns from the emit data
-                var newEmitData = relationData.EmitData.ClonewithAlias(derived.Alias.Name.Value);
+                var newEmitData = relationData.EmitData.CloneWithAlias(derived.Alias.Name.Value);
                 return new RelationData(relationData.Relation, newEmitData);
             }
 

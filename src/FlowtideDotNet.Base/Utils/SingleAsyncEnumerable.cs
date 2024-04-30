@@ -12,7 +12,7 @@
 
 namespace FlowtideDotNet.Base.Utils
 {
-    internal class SingleAsyncEnumerable<T> : IAsyncEnumerable<T>, IAsyncEnumerator<T>
+    public class SingleAsyncEnumerable<T> : IAsyncEnumerable<T>, IAsyncEnumerator<T>
     {
         private readonly T value;
         private bool hasMovedNext;
