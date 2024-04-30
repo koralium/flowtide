@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
@@ -41,7 +42,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     throw new InvalidOperationException("Method GetRef could not be found");
                 }
 
-                return System.Linq.Expressions.Expression.Call(parameter, method, System.Linq.Expressions.Expression.Constant(referenceSegment.Field - relativeIndex));
+                System.Linq.Expressions.Expression expr = System.Linq.Expressions.Expression.Call(parameter, method, System.Linq.Expressions.Expression.Constant(referenceSegment.Field - relativeIndex));
+
+                if (referenceSegment.Child != null)
+                {
+                    return FlowtideExpressionVisitor.VisitInnerReferenceSegment(referenceSegment.Child, expr);
+                }
+                return expr;
             }
             throw new NotSupportedException("Only direct field references are supported in merge join keys");
         }
