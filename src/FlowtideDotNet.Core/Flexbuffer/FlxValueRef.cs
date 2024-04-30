@@ -77,6 +77,33 @@ namespace FlowtideDotNet.Core.Flexbuffer
             return new FlxValue(memory, offset, byteWidth, packedType);
         }
 
+        public FlxValueRef GetMapValue(in string key)
+        {
+            if (this.ValueType == Type.Map)
+            {
+                var map = AsMap;
+                var index = map.KeyIndex(key);
+                if (index >= 0)
+                {
+                    return map.ValueByIndex(index);
+                }
+            }
+            return FlxValue.Null.GetRef();
+        }
+
+        public FlxValueRef GetVectorValue(in int index)
+        {
+            if (this.ValueType == Type.Vector)
+            {
+                var vec = AsVector;
+                if (index < vec.Length)
+                {
+                    return vec.Get(index);
+                }
+            }
+            return FlxValue.Null.GetRef();
+        }
+
         public Type ValueType => _type;
         public int BufferOffset => _offset;
 
@@ -610,7 +637,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public FlxValueRef Get(in int index)
+        public FlxValueRef Get(scoped in int index)
         {
             //Debug.Assert(index < 0 || index >= _length, $"Bad index {index}, should be 0...{_length}");
             if (index < 0 || index >= _length)
@@ -726,7 +753,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
 
         public FlxVectorRef Values => new FlxVectorRef(_buffer, _offset, _byteWidth, Type.Vector, _length);
 
-        public FlxValueRef ValueByIndex(in int keyIndex)
+        public FlxValueRef ValueByIndex(scoped in int keyIndex)
         {
             if (keyIndex < 0 || keyIndex >= Length)
             {
