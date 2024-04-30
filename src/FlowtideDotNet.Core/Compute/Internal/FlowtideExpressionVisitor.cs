@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
                         expression, 
                         expression.Type.GetMethod(nameof(FlxValue.GetMapValue)) ?? throw new MissingMethodException(nameof(FlxValue)), 
                         System.Linq.Expressions.Expression.Constant(mapKeyReferenceSegment.Key)),
-                _ => throw new NotImplementedException("The ${nameof(referenceSegment)} must be a {nameof(StructReferenceSegment)} with a positive {nameof(StructReferenceSegment.Field}" or a ${nameof(MapKeyReferenceSegment)} with a non-null ${nameof(MapKeyReferenceSegment.Key)}"),
+                _ => throw new NotImplementedException("The ${nameof(referenceSegment)} must be a {nameof(StructReferenceSegment)} with a positive {nameof(StructReferenceSegment.Field)}" or a ${nameof(MapKeyReferenceSegment)} with a non-null ${nameof(MapKeyReferenceSegment.Key)}"),
             };
 
             if (referenceSegment.Child != null)
