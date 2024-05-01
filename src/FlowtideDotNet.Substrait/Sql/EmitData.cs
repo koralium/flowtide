@@ -232,6 +232,34 @@ namespace FlowtideDotNet.Substrait.Sql
             return _names.ToList();
         }
 
+        public record ExpressionInformation(int Index, string Name, List<Expression> Expression);
+
+        private bool ExpressionStartsWith(Expression expression, ObjectName? objectName)
+        {
+            if (objectName == null)
+            {
+                return true;
+            }
+            if (expression is Expression.CompoundIdentifier compoundIdentifier)
+            {
+                return compoundIdentifier.Idents.Count >= objectName.Values.Count &&
+                    compoundIdentifier.Idents.Take(objectName.Values.Count).Select(x => x.Value).SequenceEqual(objectName.Values.Select(x => x.Value));
+            }
+            return false;
+        }
+
+        public IReadOnlyList<ExpressionInformation> GetExpressions(ObjectName? objectName = null)
+        {
+            var indicesToExpression = emitList
+                .Where(x => ExpressionStartsWith(x.Key, objectName))
+                .SelectMany(x => x.Value.Index.Select(y => new { index = y, expression = x.Key }))
+                .GroupBy(x => x.index)
+                .Select(x => new ExpressionInformation(x.Key, GetName(x.Key), x.Select(z => z.expression).ToList()))
+                .ToList();
+
+            return indicesToExpression;
+        }
+
         public int Count => _names.Count;
     }
 }

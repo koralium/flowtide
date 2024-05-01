@@ -1284,5 +1284,370 @@ namespace FlowtideDotNet.Substrait.Tests
 
             var plan = builder.GetPlan();
         }
+
+        [Fact]
+        public void SelectWithWildcard()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                SELECT * FROM testtable
+            ");
+
+            var plan = builder.GetPlan();
+
+            plan.Should().BeEquivalentTo(
+                new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){2, 3},
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 1
+                                    }
+                                },
+                            },
+                            Input = new ReadRelation()
+                            {
+                                BaseSchema = new Type.NamedStruct(){
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
+                                NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                            }
+                        }
+                    }
+                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+        }
+
+        [Fact]
+        public void SelectWithWildcardAliasOnTable()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                SELECT * FROM testtable t
+            ");
+
+            var plan = builder.GetPlan();
+
+            plan.Should().BeEquivalentTo(
+                new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){2, 3},
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 1
+                                    }
+                                },
+                            },
+                            Input = new ReadRelation()
+                            {
+                                BaseSchema = new Type.NamedStruct(){
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
+                                NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                            }
+                        }
+                    }
+                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+        }
+
+        [Fact]
+        public void SelectWithQualifiedWildcard()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                SELECT t.* FROM testtable t
+            ");
+
+            var plan = builder.GetPlan();
+
+            plan.Should().BeEquivalentTo(
+                new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){2, 3},
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 1
+                                    }
+                                },
+                            },
+                            Input = new ReadRelation()
+                            {
+                                BaseSchema = new Type.NamedStruct(){
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
+                                NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                            }
+                        }
+                    }
+                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+        }
+
+        [Fact]
+        public void SelectWithQualifiedWildcardWithJoin()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                SELECT t.* FROM testtable t
+                LEFT JOIN testtable t2 ON t.c1 = t2.c1
+            ");
+
+            var plan = builder.GetPlan();
+
+            plan.Should().BeEquivalentTo(
+                new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){4, 5},
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 1
+                                    }
+                                },
+                            },
+                            Input = new JoinRelation()
+                            {
+                                Type = JoinType.Left,
+                                Expression = new ScalarFunction()
+                                {
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.Equal,
+                                    Arguments = new List<Expression>
+                                    {
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = 0
+                                            }
+                                        },
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = 2
+                                            }
+                                        }
+                                    }
+                                },
+                                Left = new ReadRelation()
+                                {
+                                    BaseSchema = new Type.NamedStruct(){
+                                        Names = new List<string>() { "c1", "c2" },
+                                        Struct = new Type.Struct()
+                                        {
+                                            Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                        }
+                                    },
+                                    NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                                },
+                                Right = new ReadRelation()
+                                {
+                                    BaseSchema = new Type.NamedStruct(){
+                                        Names = new List<string>() { "c1", "c2" },
+                                        Struct = new Type.Struct()
+                                        {
+                                            Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                        }
+                                    },
+                                    NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                                }
+                            }
+                        }
+                    }
+                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+        }
+
+        [Fact]
+        public void SelectWithWildcardWithJoin()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                SELECT * FROM testtable t
+                LEFT JOIN testtable t2 ON t.c1 = t2.c1
+            ");
+
+            var plan = builder.GetPlan();
+
+            plan.Should().BeEquivalentTo(
+                new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new ProjectRelation()
+                        {
+                            Emit = new List<int>(){4, 5, 6, 7},
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 1
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 2
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 3
+                                    }
+                                },
+                            },
+                            Input = new JoinRelation()
+                            {
+                                Type = JoinType.Left,
+                                Expression = new ScalarFunction()
+                                {
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.Equal,
+                                    Arguments = new List<Expression>
+                                    {
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = 0
+                                            }
+                                        },
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = 2
+                                            }
+                                        }
+                                    }
+                                },
+                                Left = new ReadRelation()
+                                {
+                                    BaseSchema = new Type.NamedStruct(){
+                                        Names = new List<string>() { "c1", "c2" },
+                                        Struct = new Type.Struct()
+                                        {
+                                            Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                        }
+                                    },
+                                    NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                                },
+                                Right = new ReadRelation()
+                                {
+                                    BaseSchema = new Type.NamedStruct(){
+                                        Names = new List<string>() { "c1", "c2" },
+                                        Struct = new Type.Struct()
+                                        {
+                                            Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                        }
+                                    },
+                                    NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                                }
+                            }
+                        }
+                    }
+                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+        }
     }
 }

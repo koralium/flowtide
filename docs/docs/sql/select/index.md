@@ -19,3 +19,12 @@ FROM table_source
 
 All fields which says expression, can take in expressions found under the [Expressions chapter](/docs/category/expressions).
 
+## Wildcards
+
+Wildcards can be used in SQL projections, as demonstrated in the example below:
+
+```sql
+SELECT * FROM table1
+```
+
+However, using wildcards is generally discouraged. They can lead to the inclusion of unnecessary columns and may result in errors if the structure of the source table changes.

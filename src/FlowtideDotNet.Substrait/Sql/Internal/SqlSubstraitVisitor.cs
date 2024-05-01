@@ -440,16 +440,32 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     expressions.Add(condition.Expr);
                     projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(exprAlias.Alias) })), outputCounter, exprAlias.Alias);
                     outputCounter++;
+                    emitList.Add(emitCounter);
+                    emitCounter++;
                 }
-                if (s is SelectItem.UnnamedExpression unnamedExpr)
+                else if (s is SelectItem.UnnamedExpression unnamedExpr)
                 {
                     var condition = exprVisitor.Visit(unnamedExpr.Expression, parent.EmitData);
                     expressions.Add(condition.Expr);
                     projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(condition.Name) })), outputCounter, condition.Name);
                     outputCounter++;
+                    emitList.Add(emitCounter);
+                    emitCounter++;
                 }
-                emitList.Add(emitCounter);
-                emitCounter++;
+                else if (s is SelectItem.Wildcard wildcard)
+                {
+                    var parentExpressions = parent.EmitData.GetExpressions();
+                    AddExpressionsFromWildcard(parentExpressions, expressions, projectEmitData, emitList, ref outputCounter, ref emitCounter);
+                }
+                else if (s is SelectItem.QualifiedWildcard qualifiedWildcard)
+                {
+                    var parentExpressions = parent.EmitData.GetExpressions(qualifiedWildcard.Name);
+                    AddExpressionsFromWildcard(parentExpressions, expressions, projectEmitData, emitList, ref outputCounter, ref emitCounter);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Unsupported select item");
+                }
             }
             var projectRel = new ProjectRelation()
             {
@@ -458,6 +474,31 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 Emit = emitList
             };
             return new RelationData(projectRel, projectEmitData);
+        }
+
+        private static void AddExpressionsFromWildcard(
+            IReadOnlyList<EmitData.ExpressionInformation> parentExpressions,
+            List<Expressions.Expression> expressions,
+            EmitData projectEmitData,
+            List<int> emitList,
+            ref int outputCounter,
+            ref int emitCounter)
+        {
+            for (int i = 0; i < parentExpressions.Count; i++)
+            {
+                var expr = new Expressions.DirectFieldReference()
+                {
+                    ReferenceSegment = new Expressions.StructReferenceSegment()
+                    {
+                        Field = parentExpressions[i].Index
+                    }
+                };
+                expressions.Add(expr);
+                projectEmitData.Add(parentExpressions[i].Expression[0], outputCounter, parentExpressions[i].Name);
+                outputCounter++;
+                emitList.Add(emitCounter);
+                emitCounter++;
+            }
         }
 
         protected override RelationData? VisitTableWithJoins(TableWithJoins tableWithJoins, object? state)
