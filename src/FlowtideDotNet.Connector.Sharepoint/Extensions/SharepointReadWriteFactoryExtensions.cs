@@ -14,6 +14,7 @@ using FlowtideDotNet.Connector;
 using FlowtideDotNet.Connector.Sharepoint;
 using FlowtideDotNet.Connector.Sharepoint.Internal;
 using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Type;
 using System.Text.RegularExpressions;
 
 namespace FlowtideDotNet.Core.Engine
@@ -55,7 +56,25 @@ namespace FlowtideDotNet.Core.Engine
                 }
                 transform?.Invoke(readRel);
                 var options = optionsFactory(readRel);
-                return new ReadOperatorInfo(new SharepointSource(options, readRel, opt));
+
+                List<int> indices = new List<int>();
+
+                var idIndex = readRel.BaseSchema.Names.FindIndex(x => x.Equals("Id", StringComparison.OrdinalIgnoreCase));
+                if (idIndex < 0)
+                {
+                    readRel.BaseSchema.Names.Add("Id");
+                    readRel.BaseSchema.Struct!.Types.Add(new AnyType() { Nullable = false });
+                    idIndex = readRel.BaseSchema.Names.Count - 1;
+                }
+                indices.Add(idIndex);
+
+                return new ReadOperatorInfo(new SharepointSource(options, readRel, opt), new NormalizationRelation()
+                {
+                    Input = readRel,
+                    Filter = readRel.Filter,
+                    KeyIndex = indices,
+                    Emit = readRel.Emit
+                });
             });
             return factory;
         }

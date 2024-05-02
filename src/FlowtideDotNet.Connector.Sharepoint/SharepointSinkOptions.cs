@@ -17,14 +17,14 @@ namespace FlowtideDotNet.Connector.Sharepoint
     public class SharepointSinkOptions : SharepointOptions
     {
         /// <summary>
+        /// Name of the columns that should be treated as the primary key.
+        /// </summary>
+        public required List<string> PrimaryKeyColumnNames { get; set; }
+
+        /// <summary>
         /// Do not delete items from Sharepoint
         /// </summary>
         public bool DisableDelete { get; set; }
-
-        /// <summary>
-        /// Stop the stream if a UPN is not found
-        /// </summary>
-        public bool ThrowOnPersonOrGroupNotFound { get; set; }
 
         /// <summary>
         /// Preprocess the row before it is sent to Sharepoint.

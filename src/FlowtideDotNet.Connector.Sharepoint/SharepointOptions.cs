@@ -21,10 +21,6 @@ namespace FlowtideDotNet.Connector.Sharepoint
 {
     public abstract class SharepointOptions
     {
-        /// <summary>
-        /// Name of the columns that should be treated as the primary key.
-        /// </summary>
-        public required List<string> PrimaryKeyColumnNames { get; set; }
 
         /// <summary>
         /// The URL of the Sharepoint tenant without 'https://'
