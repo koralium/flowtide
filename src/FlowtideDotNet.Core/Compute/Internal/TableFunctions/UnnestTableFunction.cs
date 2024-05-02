@@ -27,10 +27,10 @@ namespace FlowtideDotNet.Core.Compute.Internal.TableFunctions
         private static MethodInfo _unnestMethod = GetUnnestMethod();
         private static MethodInfo GetUnnestMethod()
         {
-            var method = typeof(UnnestTableFunction).GetMethod(nameof(DoUnnest), BindingFlags.Static | BindingFlags.NonPublic);
+            var method = typeof(UnnestTableFunction).GetMethod(nameof(DoUnnest), BindingFlags.Static | BindingFlags.Public);
             if (method == null)
             {
-                throw new InvalidOperationException("Could not find unnest method");
+                throw new InvalidOperationException("Could not find unnest method");    
             }
             return method;
         }
