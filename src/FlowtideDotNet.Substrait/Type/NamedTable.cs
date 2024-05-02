@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Type
 {
     public class NamedTable
@@ -22,6 +23,22 @@ namespace FlowtideDotNet.Substrait.Type
             {
                 return string.Join(".", Names);
             }
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is NamedTable table &&
+                   Names.SequenceEqual(table.Names);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            foreach(var name in Names)
+            {
+                code.Add(name);
+            }
+            return code.ToHashCode();
         }
     }
 }

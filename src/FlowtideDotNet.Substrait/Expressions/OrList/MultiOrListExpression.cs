@@ -22,5 +22,29 @@ namespace FlowtideDotNet.Substrait.Expressions
         {
             throw new NotImplementedException();
         }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is MultiOrListExpression expression &&
+                   Value.SequenceEqual(expression.Value) &&
+                   Options.SequenceEqual(expression.Options);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            
+            foreach(var value in Value)
+            {
+                code.Add(value);
+            }
+
+            foreach(var option in Options)
+            {
+                code.Add(option);
+            }
+
+            return code.ToHashCode();
+        }
     }
 }

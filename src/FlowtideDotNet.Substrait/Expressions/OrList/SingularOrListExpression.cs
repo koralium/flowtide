@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
     public class SingularOrListExpression : Expression
@@ -21,6 +22,26 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             return visitor.VisitSingularOrList(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is SingularOrListExpression expression &&
+                   Equals(Value, expression.Value) &&
+                   Options.SequenceEqual(expression.Options);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(Value);
+
+            foreach (var option in Options)
+            {
+                code.Add(option);
+            }
+
+            return code.ToHashCode();
         }
     }
 }

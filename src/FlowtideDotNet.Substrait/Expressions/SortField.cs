@@ -33,5 +33,17 @@ namespace FlowtideDotNet.Substrait.Expressions
         public required Expression Expression { get; set; }
 
         public SortDirection SortDirection { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is SortField field &&
+                   Equals(Expression, field.Expression) &&
+                   SortDirection == field.SortDirection;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Expression, SortDirection);
+        }
     }
 }

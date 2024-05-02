@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Relations
 {
     /// <summary>
@@ -27,6 +28,32 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitIterationReferenceReadRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is IterationReferenceReadRelation relation)
+            {
+                return EmitEquals(relation.Emit) &&
+                    Equals(IterationName, relation.IterationName) &&
+                   Equals(ReferenceOutputLength, relation.ReferenceOutputLength);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            if (Emit != null)
+            {
+                foreach (var emit in Emit)
+                {
+                    code.Add(emit);
+                }
+            }
+            code.Add(IterationName);
+            code.Add(ReferenceOutputLength);
+            return code.ToHashCode();
         }
     }
 }

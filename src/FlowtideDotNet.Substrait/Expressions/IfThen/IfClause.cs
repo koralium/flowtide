@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions.IfThen
 {
     public class IfClause
@@ -17,5 +18,17 @@ namespace FlowtideDotNet.Substrait.Expressions.IfThen
         public required Expression If { get; set; }
 
         public required Expression Then { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is IfClause clause &&
+                   Equals(If, clause.If) &&
+                   Equals(Then, clause.Then);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(If, Then);
+        }
     }
 }

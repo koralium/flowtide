@@ -10,10 +10,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
     public class StructReferenceSegment : ReferenceSegment
     {
         public int Field { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is StructReferenceSegment segment &&
+                   Equals(Child, segment.Child) &&
+                   Field == segment.Field;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Child, Field);
+        }
     }
 }

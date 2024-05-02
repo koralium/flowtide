@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
     public class DirectFieldReference : FieldReference
@@ -19,6 +20,17 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             return visitor.VisitDirectFieldReference(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is DirectFieldReference reference &&
+                   Equals(ReferenceSegment, reference.ReferenceSegment);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(ReferenceSegment);
         }
     }
 }

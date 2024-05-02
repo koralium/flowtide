@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
     public class ListNestedExpression : NestedExpression
@@ -18,6 +19,22 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             return visitor.VisitListNestedExpression(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ListNestedExpression expression &&
+                   Values.SequenceEqual(expression.Values);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            foreach(var value in Values)
+            {
+                code.Add(value);
+            }
+            return code.ToHashCode();
         }
     }
 }

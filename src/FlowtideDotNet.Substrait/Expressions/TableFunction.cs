@@ -31,5 +31,27 @@ namespace FlowtideDotNet.Substrait.Expressions
         public required List<Expression> Arguments { get; set; }
 
         public required NamedStruct TableSchema { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is TableFunction function &&
+                   ExtensionUri == function.ExtensionUri &&
+                   ExtensionName == function.ExtensionName &&
+                   Arguments.SequenceEqual(function.Arguments) &&
+                   Equals(TableSchema, function.TableSchema);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(ExtensionUri);
+            code.Add(ExtensionName);
+            foreach(var argument in Arguments)
+            {
+                code.Add(argument);
+            }
+            code.Add(TableSchema);
+            return code.ToHashCode();
+        }
     }
 }

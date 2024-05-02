@@ -24,5 +24,17 @@ namespace FlowtideDotNet.Substrait.Expressions
         {
             return visitor.VisitCastExpression(this, state);
         }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is CastExpression expression &&
+                   Equals(Expression, expression.Expression) &&
+                   Equals(Type, expression.Type);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Expression, Type);
+        }
     }
 }

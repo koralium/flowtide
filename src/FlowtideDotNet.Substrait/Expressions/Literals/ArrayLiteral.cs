@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
     public class ArrayLiteral : Literal
@@ -21,6 +22,23 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             return visitor.VisitArrayLiteral(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ArrayLiteral literal &&
+                   Expressions.SequenceEqual(literal.Expressions);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(Type);
+            foreach(var expr in Expressions)
+            {
+                code.Add(expr);
+            }
+            return code.ToHashCode();
         }
     }
 }

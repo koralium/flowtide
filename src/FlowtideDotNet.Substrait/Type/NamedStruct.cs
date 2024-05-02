@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Type
 {
     public class NamedStruct
@@ -17,5 +18,25 @@ namespace FlowtideDotNet.Substrait.Type
         public required List<string> Names { get; set; }
 
         public Struct? Struct { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is NamedStruct @struct &&
+                Names.SequenceEqual(@struct.Names) &&
+                Equals(Struct, @struct.Struct);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+
+            foreach (var name in Names)
+            {
+                code.Add(name);
+            }
+            code.Add(Struct);
+
+            return code.ToHashCode();
+        }
     }
 }

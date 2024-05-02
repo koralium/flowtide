@@ -41,5 +41,46 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             return visitor.VisitIterationRelation(this, state);
         }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is IterationRelation relation)
+            {
+                return EmitEquals(relation.Emit) &&
+                   Equals(Input, relation.Input) &&
+                   Equals(IterationName, relation.IterationName) &&
+                   Equals(LoopPlan, relation.LoopPlan) &&
+                   Equals(SkipIterateCondition, relation.SkipIterateCondition) &&
+                   Equals(MaxIterations, relation.MaxIterations);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            if (Emit != null)
+            {
+                foreach (var emit in Emit)
+                {
+                    code.Add(emit);
+                }
+            }
+            if (Input != null)
+            {
+                code.Add(Input);
+            }
+            code.Add(IterationName);
+            code.Add(LoopPlan);
+            if (SkipIterateCondition != null)
+            {
+                code.Add(SkipIterateCondition);
+            }
+            if (MaxIterations != null)
+            {
+                code.Add(MaxIterations);
+            }
+            return code.ToHashCode();
+        }
     }
 }

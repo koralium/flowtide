@@ -10,10 +10,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
     public class OrListRecord
     {
         public required List<Expression> Fields { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is OrListRecord record &&
+                   Fields.SequenceEqual(record.Fields);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            
+            foreach(var field in Fields)
+            {
+                code.Add(field);
+            }
+
+            return code.ToHashCode();
+        }
     }
 }

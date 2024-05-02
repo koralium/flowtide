@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions.IfThen
 {
     public class IfThenExpression : Expression
@@ -27,6 +28,24 @@ namespace FlowtideDotNet.Substrait.Expressions.IfThen
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             return visitor.VisitIfThen(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is IfThenExpression expression &&
+                   Ifs.SequenceEqual(expression.Ifs) &&
+                   Equals(Else, expression.Else);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            foreach(var ifClause in Ifs)
+            {
+                code.Add(ifClause);
+            }
+            code.Add(Else);
+            return code.ToHashCode();
         }
     }
 }

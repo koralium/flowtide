@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
     public class ScalarFunction : Expression
@@ -22,6 +23,26 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             return visitor.VisitScalarFunction(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ScalarFunction function &&
+                   ExtensionUri == function.ExtensionUri &&
+                   ExtensionName == function.ExtensionName &&
+                   Arguments.SequenceEqual(function.Arguments);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(ExtensionUri);
+            code.Add(ExtensionName);
+            foreach (var argument in Arguments)
+            {
+                code.Add(argument);
+            }
+            return code.ToHashCode();
         }
     }
 }

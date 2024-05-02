@@ -17,6 +17,22 @@ namespace FlowtideDotNet.Substrait.Relations
     public class AggregateGrouping
     {
         public required List<Expression> GroupingExpressions { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is AggregateGrouping grouping &&
+                   GroupingExpressions.SequenceEqual(grouping.GroupingExpressions);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            foreach (var expression in GroupingExpressions)
+            {
+                code.Add(expression);
+            }
+            return code.ToHashCode();
+        }
     }
 
     public class AggregateMeasure
@@ -24,6 +40,18 @@ namespace FlowtideDotNet.Substrait.Relations
         public required AggregateFunction Measure { get; set; }
 
         public Expression? Filter { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is AggregateMeasure measure &&
+                   Equals(Measure, measure.Measure) &&
+                   Equals(Filter, measure.Filter);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Measure, Filter);
+        }
     }
 
     public class AggregateRelation : Relation
@@ -61,6 +89,74 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitAggregateRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is AggregateRelation relation)
+            {
+                if (Groupings == null && relation.Groupings != null)
+                {
+                    return false;
+                }
+                if (Groupings != null && relation.Groupings == null)
+                {
+                    return false;
+                }
+                if (Groupings != null && relation.Groupings != null)
+                {
+                    if (!Groupings.SequenceEqual(relation.Groupings))
+                    {
+                        return false;
+                    }
+                }
+                if (Measures == null && relation.Measures != null)
+                {
+                    return false;
+                }
+                if (Measures != null && relation.Measures == null)
+                {
+                    return false;
+                }
+                if (Measures != null && relation.Measures != null)
+                {
+                    if (!Measures.SequenceEqual(relation.Measures))
+                    {
+                        return false;
+                    }
+                }
+                return EmitEquals(relation.Emit) &&
+                    Equals(Input, relation.Input);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(Input);
+            if (Emit != null)
+            {
+                foreach(var e in Emit)
+                {
+                    code.Add(e);
+                }
+            }
+            if (Groupings != null)
+            {
+                foreach (var grouping in Groupings)
+                {
+                    code.Add(grouping);
+                }
+            }
+            if (Measures != null)
+            {
+                foreach (var measure in Measures)
+                {
+                    code.Add(measure);
+                }
+            }
+            return code.ToHashCode();
         }
     }
 }

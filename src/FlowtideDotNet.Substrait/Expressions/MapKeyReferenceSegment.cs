@@ -21,5 +21,17 @@ namespace FlowtideDotNet.Substrait.Expressions
     public class MapKeyReferenceSegment : ReferenceSegment
     {
         public required string Key { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is MapKeyReferenceSegment segment &&
+                   Equals(Child, segment.Child) &&
+                   Key == segment.Key;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Child, Key);
+        }
     }
 }

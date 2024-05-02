@@ -10,10 +10,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Type
 {
     public class DateType : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.Date;
+
+        public override bool Equals(object? obj)
+        {
+            return obj is DateType type &&
+                   Nullable == type.Nullable;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Type, Nullable);
+        }
     }
 }

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
     public class AggregateFunction
@@ -19,5 +20,24 @@ namespace FlowtideDotNet.Substrait.Expressions
 
         public required List<Expression> Arguments { get; set; }
 
+        public override bool Equals(object? obj)
+        {
+            return obj is AggregateFunction function &&
+                   ExtensionUri == function.ExtensionUri &&
+                   ExtensionName == function.ExtensionName &&
+                   Arguments.SequenceEqual(function.Arguments);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(ExtensionUri);
+            code.Add(ExtensionName);
+            foreach (var argument in Arguments)
+            {
+                code.Add(argument);
+            }
+            return code.ToHashCode();
+        }
     }
 }
