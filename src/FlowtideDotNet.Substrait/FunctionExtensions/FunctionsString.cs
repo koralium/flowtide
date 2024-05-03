@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Replace = "replace";
         public const string StringBase64Encode = "string_base64_encode";
         public const string StringBase64Decode = "string_base64_decode";
+        public const string CharLength = "char_length";
 
         public const string StringAgg = "string_agg";
     }
