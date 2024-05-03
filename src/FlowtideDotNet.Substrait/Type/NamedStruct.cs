@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    public class NamedStruct
+    public class NamedStruct : IEquatable<NamedStruct>
     {
         public required List<string> Names { get; set; }
 
@@ -22,8 +22,14 @@ namespace FlowtideDotNet.Substrait.Type
         public override bool Equals(object? obj)
         {
             return obj is NamedStruct @struct &&
-                Names.SequenceEqual(@struct.Names) &&
-                Equals(Struct, @struct.Struct);
+                Equals(@struct);
+        }
+
+        public bool Equals(NamedStruct? other)
+        {
+            return other != null &&
+                Names.SequenceEqual(other.Names) &&
+                Equals(Struct, other.Struct);
         }
 
         public override int GetHashCode()
@@ -37,6 +43,16 @@ namespace FlowtideDotNet.Substrait.Type
             code.Add(Struct);
 
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(NamedStruct? left, NamedStruct? right)
+        {
+            return EqualityComparer<NamedStruct>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(NamedStruct? left, NamedStruct? right)
+        {
+            return !(left == right);
         }
     }
 }

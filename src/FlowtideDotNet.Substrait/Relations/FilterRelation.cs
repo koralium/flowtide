@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class FilterRelation : Relation
+    public class FilterRelation : Relation, IEquatable<FilterRelation>
     {
         public override int OutputLength
         {
@@ -39,13 +39,16 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is FilterRelation relation)
-            {
-                return base.Equals(relation) && 
-                   Equals(Input, relation.Input) &&
-                   Equals(Condition, relation.Condition);
-            }
-            return false;
+            return obj is FilterRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(FilterRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Equals(Condition, other.Condition);
         }
 
         public override int GetHashCode()
@@ -55,6 +58,16 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(Input);
             code.Add(Condition);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(FilterRelation? left, FilterRelation? right)
+        {
+            return EqualityComparer<FilterRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(FilterRelation? left, FilterRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

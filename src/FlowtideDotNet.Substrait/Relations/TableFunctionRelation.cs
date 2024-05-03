@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class TableFunctionRelation : Relation
+    public class TableFunctionRelation : Relation, IEquatable<TableFunctionRelation>
     {
         public required TableFunction TableFunction { get; set; }
 
@@ -53,15 +53,18 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is TableFunctionRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Equals(TableFunction, relation.TableFunction) &&
-                   Equals(Input, relation.Input) &&
-                   Equals(Type, relation.Type) &&
-                   Equals(JoinCondition, relation.JoinCondition);
-            }
-            return false;
+            return obj is TableFunctionRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(TableFunctionRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(TableFunction, other.TableFunction) &&
+                Equals(Input, other.Input) &&
+                Equals(Type, other.Type) &&
+                Equals(JoinCondition, other.JoinCondition);
         }
 
         public override int GetHashCode()
@@ -73,6 +76,16 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(Type);
             code.Add(JoinCondition);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(TableFunctionRelation? left, TableFunctionRelation? right)
+        {
+            return EqualityComparer<TableFunctionRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(TableFunctionRelation? left, TableFunctionRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class ProjectRelation : Relation
+    public class ProjectRelation : Relation, IEquatable<ProjectRelation>
     {
         public override int OutputLength
         {
@@ -40,13 +40,16 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is ProjectRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Equals(Input, relation.Input) &&
-                   Expressions.SequenceEqual(relation.Expressions);
-            }
-            return false;
+            return obj is ProjectRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(ProjectRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Expressions.SequenceEqual(other.Expressions);
         }
 
         public override int GetHashCode()
@@ -59,6 +62,16 @@ namespace FlowtideDotNet.Substrait.Relations
                 code.Add(expression);
             }
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(ProjectRelation? left, ProjectRelation? right)
+        {
+            return EqualityComparer<ProjectRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(ProjectRelation? left, ProjectRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

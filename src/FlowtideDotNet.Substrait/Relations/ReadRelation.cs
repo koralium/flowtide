@@ -15,7 +15,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class ReadRelation : Relation
+    public class ReadRelation : Relation, IEquatable<ReadRelation>
     {
         public required NamedStruct BaseSchema { get; set; }
 
@@ -42,14 +42,17 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is ReadRelation relation)
-            {
-                return base.Equals(relation) && 
-                   Equals(BaseSchema, relation.BaseSchema) &&
-                   Equals(NamedTable, relation.NamedTable) &&
-                   Equals(Filter, relation.Filter);
-            }
-            return false; 
+            return obj is ReadRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(ReadRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(BaseSchema, other.BaseSchema) &&
+                Equals(NamedTable, other.NamedTable) &&
+                Equals(Filter, other.Filter);
         }
 
         public override int GetHashCode()
@@ -61,6 +64,16 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(Filter);
 
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(ReadRelation? left, ReadRelation? right)
+        {
+            return EqualityComparer<ReadRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(ReadRelation? left, ReadRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class CastExpression : Expression
+    public class CastExpression : Expression, IEquatable<CastExpression>
     {
         public required Expression Expression { get; set; }
 
@@ -28,13 +28,30 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override bool Equals(object? obj)
         {
             return obj is CastExpression expression &&
-                   Equals(Expression, expression.Expression) &&
-                   Equals(Type, expression.Type);
+                   Equals(expression);
+        }
+
+        public bool Equals(CastExpression? other)
+        {
+            var eq = Equals(Type, other.Type);
+            return other != null &&
+                   Equals(Expression, other.Expression) &&
+                   Equals(Type, other.Type);
         }
 
         public override int GetHashCode()
         {
             return HashCode.Combine(Expression, Type);
+        }
+
+        public static bool operator ==(CastExpression? left, CastExpression? right)
+        {
+            return EqualityComparer<CastExpression>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(CastExpression? left, CastExpression? right)
+        {
+            return !(left == right);
         }
     }
 }

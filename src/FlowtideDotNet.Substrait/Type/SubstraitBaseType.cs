@@ -12,7 +12,7 @@
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    public abstract class SubstraitBaseType
+    public abstract class SubstraitBaseType : IEquatable<SubstraitBaseType>
     {
         public abstract SubstraitType Type { get; }
 
@@ -21,12 +21,29 @@ namespace FlowtideDotNet.Substrait.Type
         public override bool Equals(object? obj)
         {
             return obj is SubstraitBaseType type &&
-                   Nullable == type.Nullable;
+                   Equals(type);
+        }
+
+        public bool Equals(SubstraitBaseType? other)
+        {
+            return other != null &&
+                   Type == other.Type &&
+                   Nullable == other.Nullable;
         }
 
         public override int GetHashCode()
         {
             return HashCode.Combine(Type, Nullable);
+        }
+
+        public static bool operator ==(SubstraitBaseType? left, SubstraitBaseType? right)
+        {
+            return EqualityComparer<SubstraitBaseType>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(SubstraitBaseType? left, SubstraitBaseType? right)
+        {
+            return !(left == right);
         }
     }
 }

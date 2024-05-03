@@ -13,14 +13,20 @@
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    public class Struct
+    public class Struct : IEquatable<Struct>
     {
         public List<SubstraitBaseType> Types { get; set; }
 
         public override bool Equals(object? obj)
         {
             return obj is Struct @struct &&
-                Types.SequenceEqual(@struct.Types);
+                Equals(@struct);
+        }
+
+        public bool Equals(Struct? other)
+        {
+            return other != null &&
+                Types.SequenceEqual(other.Types);
         }
 
         public override int GetHashCode()
@@ -34,6 +40,16 @@ namespace FlowtideDotNet.Substrait.Type
                 }
             }
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(Struct? left, Struct? right)
+        {
+            return EqualityComparer<Struct>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(Struct? left, Struct? right)
+        {
+            return !(left == right);
         }
     }
 }

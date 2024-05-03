@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class WriteRelation : Relation
+    public class WriteRelation : Relation, IEquatable<WriteRelation>
     {
         public override int OutputLength => Input.OutputLength;
 
@@ -31,14 +31,17 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is WriteRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Equals(Input, relation.Input) &&
-                   Equals(TableSchema, relation.TableSchema) &&
-                   Equals(NamedObject, relation.NamedObject);
-            }
-            return false;
+            return obj is WriteRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(WriteRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Equals(TableSchema, other.TableSchema) &&
+                Equals(NamedObject, other.NamedObject);
         }
 
         public override int GetHashCode()
@@ -49,6 +52,16 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(TableSchema);
             code.Add(NamedObject);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(WriteRelation? left, WriteRelation? right)
+        {
+            return EqualityComparer<WriteRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(WriteRelation? left, WriteRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

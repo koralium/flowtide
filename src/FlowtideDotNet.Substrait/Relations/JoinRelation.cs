@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class JoinRelation : Relation
+    public class JoinRelation : Relation, IEquatable<JoinRelation>
     {
         public JoinType Type { get; set; }
 
@@ -54,16 +54,8 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is JoinRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Equals(Type, relation.Type) &&
-                   Equals(Left, relation.Left) &&
-                   Equals(Right, relation.Right) &&
-                   Equals(Expression, relation.Expression) &&
-                   Equals(PostJoinFilter, relation.PostJoinFilter);
-            }
-            return false;
+            return obj is JoinRelation relation &&
+                Equals(relation);
         }
 
         public override int GetHashCode()
@@ -76,6 +68,27 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(Expression);
             code.Add(PostJoinFilter);
             return code.ToHashCode();
+        }
+
+        public bool Equals(JoinRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Type, other.Type) &&
+                Equals(Left, other.Left) &&
+                Equals(Right, other.Right) &&
+                Equals(Expression, other.Expression) &&
+                Equals(PostJoinFilter, other.PostJoinFilter);
+        }
+
+        public static bool operator ==(JoinRelation? left, JoinRelation? right)
+        {
+            return EqualityComparer<JoinRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(JoinRelation? left, JoinRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

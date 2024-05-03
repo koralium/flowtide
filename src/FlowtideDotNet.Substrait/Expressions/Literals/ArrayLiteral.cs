@@ -11,9 +11,11 @@
 // limitations under the License.
 
 
+using static Substrait.Protobuf.Expression.Types;
+
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
-    public class ArrayLiteral : Literal
+    public class ArrayLiteral : Literal, IEquatable<ArrayLiteral>
     {
         public override LiteralType Type => LiteralType.Array;
 
@@ -27,7 +29,16 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
         public override bool Equals(object? obj)
         {
             return obj is ArrayLiteral literal &&
-                   Expressions.SequenceEqual(literal.Expressions);
+                   Equals(literal);
+        }
+
+        public bool Equals(ArrayLiteral? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+            return Expressions.SequenceEqual(other.Expressions);
         }
 
         public override int GetHashCode()
@@ -39,6 +50,16 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
                 code.Add(expr);
             }
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(ArrayLiteral? left, ArrayLiteral? right)
+        {
+            return EqualityComparer<ArrayLiteral>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(ArrayLiteral? left, ArrayLiteral? right)
+        {
+            return !(left == right);
         }
     }
 }

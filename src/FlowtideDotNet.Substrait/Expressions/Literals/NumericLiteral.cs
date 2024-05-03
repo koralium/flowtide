@@ -11,9 +11,11 @@
 // limitations under the License.
 
 
+using static Substrait.Protobuf.Expression.Types;
+
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
-    public class NumericLiteral : Literal
+    public class NumericLiteral : Literal, IEquatable<NumericLiteral>
     {
         public override LiteralType Type => LiteralType.Numeric;
 
@@ -27,12 +29,31 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
         public override bool Equals(object? obj)
         {
             return obj is NumericLiteral literal &&
-                   Value == literal.Value;
+                   Equals(literal);
+        }
+
+        public bool Equals(NumericLiteral? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+            return Value == other.Value;
         }
 
         public override int GetHashCode()
         {
             return HashCode.Combine(Type, Value);
+        }
+
+        public static bool operator ==(NumericLiteral? left, NumericLiteral? right)
+        {
+            return EqualityComparer<NumericLiteral>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(NumericLiteral? left, NumericLiteral? right)
+        {
+            return !(left == right);
         }
     }
 }

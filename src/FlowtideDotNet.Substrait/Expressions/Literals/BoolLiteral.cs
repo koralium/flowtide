@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
-    public class BoolLiteral : Literal
+    public class BoolLiteral : Literal, IEquatable<BoolLiteral>
     {
         public override LiteralType Type => LiteralType.Bool;
 
@@ -30,9 +30,28 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
                    Value == literal.Value;
         }
 
+        public bool Equals(BoolLiteral? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+            return Value == other.Value;
+        }
+
         public override int GetHashCode()
         {
             return HashCode.Combine(Type, Value);
+        }
+
+        public static bool operator ==(BoolLiteral? left, BoolLiteral? right)
+        {
+            return EqualityComparer<BoolLiteral>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(BoolLiteral? left, BoolLiteral? right)
+        {
+            return !(left == right);
         }
     }
 }

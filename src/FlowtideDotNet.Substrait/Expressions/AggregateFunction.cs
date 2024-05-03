@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class AggregateFunction
+    public class AggregateFunction : IEquatable<AggregateFunction>
     {
         public required string ExtensionUri { get; set; }
         public required string ExtensionName { get; set; }
@@ -23,9 +23,15 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override bool Equals(object? obj)
         {
             return obj is AggregateFunction function &&
-                   ExtensionUri == function.ExtensionUri &&
-                   ExtensionName == function.ExtensionName &&
-                   Arguments.SequenceEqual(function.Arguments);
+                   Equals(function);
+        }
+
+        public bool Equals(AggregateFunction? other)
+        {
+            return other != null &&
+                   ExtensionUri == other.ExtensionUri &&
+                   ExtensionName == other.ExtensionName &&
+                   Arguments.SequenceEqual(other.Arguments);
         }
 
         public override int GetHashCode()
@@ -38,6 +44,16 @@ namespace FlowtideDotNet.Substrait.Expressions
                 code.Add(argument);
             }
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(AggregateFunction? left, AggregateFunction? right)
+        {
+            return EqualityComparer<AggregateFunction>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(AggregateFunction? left, AggregateFunction? right)
+        {
+            return !(left == right);
         }
     }
 }

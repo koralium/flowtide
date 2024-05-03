@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         SortDirectionClustered = 5
     }
 
-    public class SortField
+    public class SortField : IEquatable<SortField>
     {
         public required Expression Expression { get; set; }
 
@@ -37,13 +37,29 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override bool Equals(object? obj)
         {
             return obj is SortField field &&
-                   Equals(Expression, field.Expression) &&
-                   SortDirection == field.SortDirection;
+                   Equals(field);
+        }
+
+        public bool Equals(SortField? other)
+        {
+            return other != null &&
+                   Equals(Expression, other.Expression) &&
+                   SortDirection == other.SortDirection;
         }
 
         public override int GetHashCode()
         {
             return HashCode.Combine(Expression, SortDirection);
+        }
+
+        public static bool operator ==(SortField? left, SortField? right)
+        {
+            return EqualityComparer<SortField>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(SortField? left, SortField? right)
+        {
+            return !(left == right);
         }
     }
 }

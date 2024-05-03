@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class ListNestedExpression : NestedExpression
+    public class ListNestedExpression : NestedExpression, IEquatable<ListNestedExpression>
     {
         public required List<Expression> Values { get; set; }
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
@@ -24,7 +24,13 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override bool Equals(object? obj)
         {
             return obj is ListNestedExpression expression &&
-                   Values.SequenceEqual(expression.Values);
+                   Equals(expression);
+        }
+
+        public bool Equals(ListNestedExpression? other)
+        {
+            return other != null &&
+                   Values.SequenceEqual(other.Values);
         }
 
         public override int GetHashCode()
@@ -35,6 +41,16 @@ namespace FlowtideDotNet.Substrait.Expressions
                 code.Add(value);
             }
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(ListNestedExpression? left, ListNestedExpression? right)
+        {
+            return EqualityComparer<ListNestedExpression>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(ListNestedExpression? left, ListNestedExpression? right)
+        {
+            return !(left == right);
         }
     }
 }

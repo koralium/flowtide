@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Substrait.Relations
     /// This must be different from reference relation since it must be known if its output should be sent on the loop output
     /// or on the egress output from the fixed point vertex.
     /// </summary>
-    public class IterationReferenceReadRelation : Relation
+    public class IterationReferenceReadRelation : Relation, IEquatable<IterationReferenceReadRelation>
     {
         public override int OutputLength => ReferenceOutputLength;
 
@@ -32,13 +32,16 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is IterationReferenceReadRelation relation)
-            {
-                return base.Equals(relation) &&
-                    Equals(IterationName, relation.IterationName) &&
-                   Equals(ReferenceOutputLength, relation.ReferenceOutputLength);
-            }
-            return false;
+            return obj is IterationReferenceReadRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(IterationReferenceReadRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(IterationName, other.IterationName) &&
+                Equals(ReferenceOutputLength, other.ReferenceOutputLength);
         }
 
         public override int GetHashCode()
@@ -48,6 +51,16 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(IterationName);
             code.Add(ReferenceOutputLength);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(IterationReferenceReadRelation? left, IterationReferenceReadRelation? right)
+        {
+            return left is null ? right is null : left.Equals(right);
+        }
+
+        public static bool operator !=(IterationReferenceReadRelation? left, IterationReferenceReadRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

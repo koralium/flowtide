@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class DirectFieldReference : FieldReference
+    public class DirectFieldReference : FieldReference, IEquatable<DirectFieldReference>
     {
         public required ReferenceSegment ReferenceSegment { get; set; }
 
@@ -25,12 +25,28 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override bool Equals(object? obj)
         {
             return obj is DirectFieldReference reference &&
-                   Equals(ReferenceSegment, reference.ReferenceSegment);
+                   Equals(reference);
+        }
+
+        public bool Equals(DirectFieldReference? other)
+        {
+            return other != null &&
+                   Equals(ReferenceSegment, other.ReferenceSegment);
         }
 
         public override int GetHashCode()
         {
             return HashCode.Combine(ReferenceSegment);
+        }
+
+        public static bool operator ==(DirectFieldReference? left, DirectFieldReference? right)
+        {
+            return EqualityComparer<DirectFieldReference>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(DirectFieldReference? left, DirectFieldReference? right)
+        {
+            return !(left == right);
         }
     }
 }

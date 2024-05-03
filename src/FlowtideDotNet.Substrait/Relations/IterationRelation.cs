@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class IterationRelation : Relation
+    public class IterationRelation : Relation, IEquatable<IterationRelation>
     {
         public override int OutputLength
         {
@@ -44,16 +44,19 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is IterationRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Equals(Input, relation.Input) &&
-                   Equals(IterationName, relation.IterationName) &&
-                   Equals(LoopPlan, relation.LoopPlan) &&
-                   Equals(SkipIterateCondition, relation.SkipIterateCondition) &&
-                   Equals(MaxIterations, relation.MaxIterations);
-            }
-            return false;
+            return obj is IterationRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(IterationRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Equals(IterationName, other.IterationName) &&
+                Equals(LoopPlan, other.LoopPlan) &&
+                Equals(SkipIterateCondition, other.SkipIterateCondition) &&
+                Equals(MaxIterations, other.MaxIterations);
         }
 
         public override int GetHashCode()
@@ -75,6 +78,16 @@ namespace FlowtideDotNet.Substrait.Relations
                 code.Add(MaxIterations);
             }
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(IterationRelation? left, IterationRelation? right)
+        {
+            return EqualityComparer<IterationRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(IterationRelation? left, IterationRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class SetRelation : Relation
+    public class SetRelation : Relation, IEquatable<SetRelation>
     {
         public required List<Relation> Inputs { get; set; }
 
@@ -38,13 +38,16 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is SetRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Inputs.SequenceEqual(relation.Inputs) &&
-                   Equals(Operation, relation.Operation);
-            }
-            return false;
+            return obj is SetRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(SetRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Inputs.SequenceEqual(other.Inputs) &&
+                Equals(Operation, other.Operation);
         }
 
         public override int GetHashCode()
@@ -57,6 +60,16 @@ namespace FlowtideDotNet.Substrait.Relations
             }
             code.Add(Operation);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(SetRelation? left, SetRelation? right)
+        {
+            return EqualityComparer<SetRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(SetRelation? left, SetRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions.IfThen
 {
-    public class IfThenExpression : Expression
+    public class IfThenExpression : Expression, IEquatable<IfThenExpression>
     {
         /// <summary>
         /// Contains all the if clauses, evaulated top to bottom.
@@ -33,8 +33,17 @@ namespace FlowtideDotNet.Substrait.Expressions.IfThen
         public override bool Equals(object? obj)
         {
             return obj is IfThenExpression expression &&
-                   Ifs.SequenceEqual(expression.Ifs) &&
-                   Equals(Else, expression.Else);
+                   Equals(expression);
+        }
+
+        public bool Equals(IfThenExpression? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+            return Ifs.SequenceEqual(other.Ifs) &&
+                   Equals(Else, other.Else);
         }
 
         public override int GetHashCode()
@@ -46,6 +55,16 @@ namespace FlowtideDotNet.Substrait.Expressions.IfThen
             }
             code.Add(Else);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(IfThenExpression? left, IfThenExpression? right)
+        {
+            return EqualityComparer<IfThenExpression>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(IfThenExpression? left, IfThenExpression? right)
+        {
+            return !(left == right);
         }
     }
 }

@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class SingularOrListExpression : Expression
+    public class SingularOrListExpression : Expression, IEquatable<SingularOrListExpression>
     {
         public required Expression Value { get; set; }
 
@@ -27,8 +27,14 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override bool Equals(object? obj)
         {
             return obj is SingularOrListExpression expression &&
-                   Equals(Value, expression.Value) &&
-                   Options.SequenceEqual(expression.Options);
+                   Equals(expression);
+        }
+
+        public bool Equals(SingularOrListExpression? other)
+        {
+            return other != null &&
+                   Equals(Value, other.Value) &&
+                   Options.SequenceEqual(other.Options);
         }
 
         public override int GetHashCode()
@@ -42,6 +48,16 @@ namespace FlowtideDotNet.Substrait.Expressions
             }
 
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(SingularOrListExpression? left, SingularOrListExpression? right)
+        {
+            return EqualityComparer<SingularOrListExpression>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(SingularOrListExpression? left, SingularOrListExpression? right)
+        {
+            return !(left == right);
         }
     }
 }

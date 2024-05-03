@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class VirtualTableReadRelation : Relation
+    public class VirtualTableReadRelation : Relation, IEquatable<VirtualTableReadRelation>
     {
         public required NamedStruct BaseSchema { get; set; }
         
@@ -35,13 +35,16 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is VirtualTableReadRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Equals(BaseSchema, relation.BaseSchema) &&
-                   Equals(Values, relation.Values);
-            }
-            return false;
+            return obj is VirtualTableReadRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(VirtualTableReadRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(BaseSchema, other.BaseSchema) &&
+                Equals(Values, other.Values);
         }
 
         public override int GetHashCode()
@@ -51,6 +54,16 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(BaseSchema);
             code.Add(Values);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(VirtualTableReadRelation? left, VirtualTableReadRelation? right)
+        {
+            return EqualityComparer<VirtualTableReadRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(VirtualTableReadRelation? left, VirtualTableReadRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

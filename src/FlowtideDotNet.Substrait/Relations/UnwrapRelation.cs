@@ -15,7 +15,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class UnwrapRelation : Relation
+    public class UnwrapRelation : Relation, IEquatable<UnwrapRelation>
     {
         public override int OutputLength
         {
@@ -48,15 +48,18 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is UnwrapRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Equals(Input, relation.Input) &&
-                   Equals(BaseSchema, relation.BaseSchema) &&
-                   Equals(Filter, relation.Filter) &&
-                   Equals(Field, relation.Field);
-            }
-            return false;
+            return obj is UnwrapRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(UnwrapRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Equals(BaseSchema, other.BaseSchema) &&
+                Equals(Filter, other.Filter) &&
+                Equals(Field, other.Field);
         }
 
         public override int GetHashCode()
@@ -68,6 +71,16 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(Filter);
             code.Add(Field);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(UnwrapRelation? left, UnwrapRelation? right)
+        {
+            return EqualityComparer<UnwrapRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(UnwrapRelation? left, UnwrapRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

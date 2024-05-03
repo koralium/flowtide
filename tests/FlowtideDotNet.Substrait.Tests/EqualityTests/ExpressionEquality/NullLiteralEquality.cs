@@ -32,5 +32,17 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.ExpressionEquality
         {
             Assert.Equal(new NullLiteral().GetHashCode(), new NullLiteral().GetHashCode());
         }
+
+        [Fact]
+        public void EqualOperator()
+        {
+            Assert.True(new NullLiteral() == new NullLiteral());
+        }
+
+        [Fact]
+        public void NotEqualOperator()
+        {
+            Assert.False(new NullLiteral() != new NullLiteral());
+        }
     }
 }

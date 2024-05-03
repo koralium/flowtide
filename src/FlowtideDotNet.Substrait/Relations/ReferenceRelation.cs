@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class ReferenceRelation : Relation
+    public class ReferenceRelation : Relation, IEquatable<ReferenceRelation>
     {
         public ReferenceRelation()
         {
@@ -32,13 +32,16 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is ReferenceRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Equals(RelationId, relation.RelationId) &&
-                   Equals(ReferenceOutputLength, relation.ReferenceOutputLength);
-            }
-            return false;
+            return obj is ReferenceRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(ReferenceRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(RelationId, other.RelationId) &&
+                Equals(ReferenceOutputLength, other.ReferenceOutputLength);
         }
 
         public override int GetHashCode()
@@ -48,6 +51,16 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(RelationId);
             code.Add(ReferenceOutputLength);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(ReferenceRelation? left, ReferenceRelation? right)
+        {
+            return EqualityComparer<ReferenceRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(ReferenceRelation? left, ReferenceRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

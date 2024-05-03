@@ -18,20 +18,36 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class MapKeyReferenceSegment : ReferenceSegment
+    public class MapKeyReferenceSegment : ReferenceSegment, IEquatable<MapKeyReferenceSegment>
     {
         public required string Key { get; set; }
 
         public override bool Equals(object? obj)
         {
             return obj is MapKeyReferenceSegment segment &&
-                   Equals(Child, segment.Child) &&
-                   Key == segment.Key;
+                   Equals(segment);
+        }
+
+        public bool Equals(MapKeyReferenceSegment? other)
+        {
+            return other != null &&
+                   Equals(Child, other.Child) &&
+                   Key == other.Key;
         }
 
         public override int GetHashCode()
         {
             return HashCode.Combine(Child, Key);
+        }
+
+        public static bool operator ==(MapKeyReferenceSegment? left, MapKeyReferenceSegment? right)
+        {
+            return EqualityComparer<MapKeyReferenceSegment>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(MapKeyReferenceSegment? left, MapKeyReferenceSegment? right)
+        {
+            return !(left == right);
         }
     }
 }

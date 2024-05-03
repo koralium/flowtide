@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class TopNRelation : Relation
+    public class TopNRelation : Relation, IEquatable<TopNRelation>
     {
         public override int OutputLength
         {
@@ -48,15 +48,18 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is TopNRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Equals(Input, relation.Input) &&
-                   Sorts.SequenceEqual(relation.Sorts) &&
-                   Equals(Offset, relation.Offset) &&
-                   Equals(Count, relation.Count);
-            }
-            return false;
+            return obj is TopNRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(TopNRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Sorts.SequenceEqual(other.Sorts) &&
+                Equals(Offset, other.Offset) &&
+                Equals(Count, other.Count);
         }
 
         public override int GetHashCode()
@@ -71,6 +74,16 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(Offset);
             code.Add(Count);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(TopNRelation? left, TopNRelation? right)
+        {
+            return EqualityComparer<TopNRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(TopNRelation? left, TopNRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

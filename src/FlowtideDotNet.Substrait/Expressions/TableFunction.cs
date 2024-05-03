@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Substrait.Expressions
     /// Represents a table function.
     /// A table function can only be used in the FROM clause or in joins.
     /// </summary>
-    public class TableFunction
+    public class TableFunction : IEquatable<TableFunction>
     {
         public required string ExtensionUri { get; set; }
         public required string ExtensionName { get; set; }
@@ -35,10 +35,16 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override bool Equals(object? obj)
         {
             return obj is TableFunction function &&
-                   ExtensionUri == function.ExtensionUri &&
-                   ExtensionName == function.ExtensionName &&
-                   Arguments.SequenceEqual(function.Arguments) &&
-                   Equals(TableSchema, function.TableSchema);
+                   Equals(function);
+        }
+
+        public bool Equals(TableFunction? other)
+        {
+            return other != null &&
+                   ExtensionUri == other.ExtensionUri &&
+                   ExtensionName == other.ExtensionName &&
+                   Arguments.SequenceEqual(other.Arguments) &&
+                   Equals(TableSchema, other.TableSchema);
         }
 
         public override int GetHashCode()
@@ -52,6 +58,16 @@ namespace FlowtideDotNet.Substrait.Expressions
             }
             code.Add(TableSchema);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(TableFunction? left, TableFunction? right)
+        {
+            return EqualityComparer<TableFunction>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(TableFunction? left, TableFunction? right)
+        {
+            return !(left == right);
         }
     }
 }

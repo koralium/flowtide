@@ -14,14 +14,20 @@ using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Substrait
 {
-    public class Plan
+    public class Plan : IEquatable<Plan>
     {
         public required List<Relation> Relations { get; set; }
 
         public override bool Equals(object? obj)
         {
             return obj is Plan plan &&
-                   Relations.SequenceEqual(plan.Relations);
+                   Equals(plan);
+        }
+
+        public bool Equals(Plan? other)
+        {
+            return other != null &&
+                   Relations.SequenceEqual(other.Relations);
         }
 
         public override int GetHashCode()
@@ -32,6 +38,16 @@ namespace FlowtideDotNet.Substrait
                 code.Add(relation);
             }
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(Plan? left, Plan? right)
+        {
+            return EqualityComparer<Plan>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(Plan? left, Plan? right)
+        {
+            return !(left == right);
         }
     }
 }

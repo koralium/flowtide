@@ -13,20 +13,36 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class StructReferenceSegment : ReferenceSegment
+    public class StructReferenceSegment : ReferenceSegment, IEquatable<StructReferenceSegment>
     {
         public int Field { get; set; }
 
         public override bool Equals(object? obj)
         {
             return obj is StructReferenceSegment segment &&
-                   Equals(Child, segment.Child) &&
-                   Field == segment.Field;
+                   Equals(segment);
+        }
+
+        public bool Equals(StructReferenceSegment? other)
+        {
+            return other != null &&
+                   Equals(Child, other.Child) &&
+                   Field == other.Field;
         }
 
         public override int GetHashCode()
         {
             return HashCode.Combine(Child, Field);
+        }
+
+        public static bool operator ==(StructReferenceSegment? left, StructReferenceSegment? right)
+        {
+            return EqualityComparer<StructReferenceSegment>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(StructReferenceSegment? left, StructReferenceSegment? right)
+        {
+            return !(left == right);
         }
     }
 }

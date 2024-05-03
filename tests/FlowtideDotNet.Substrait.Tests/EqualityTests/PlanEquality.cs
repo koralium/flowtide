@@ -119,5 +119,19 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests
             clone.Relations = notEqual.Relations;
             Assert.NotEqual(root, clone);
         }
+
+        [Fact]
+        public void EqualsOperator()
+        {
+            Assert.True(root == clone);
+            Assert.False(root == notEqual);
+        }
+
+        [Fact]
+        public void NotEqualsOperator()
+        {
+            Assert.False(root != clone);
+            Assert.True(root != notEqual);
+        }
     }
 }

@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class ScalarFunction : Expression
+    public class ScalarFunction : Expression, IEquatable<ScalarFunction>
     {
         public required string ExtensionUri { get; set; }
         public required string ExtensionName { get; set; }
@@ -28,9 +28,16 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override bool Equals(object? obj)
         {
             return obj is ScalarFunction function &&
-                   ExtensionUri == function.ExtensionUri &&
-                   ExtensionName == function.ExtensionName &&
-                   Arguments.SequenceEqual(function.Arguments);
+                   Equals(function);
+        }
+
+        public bool Equals(ScalarFunction? other)
+        {
+            return other != null &&
+                   ExtensionUri == other.ExtensionUri &&
+                   ExtensionName == other.ExtensionName &&
+                   Arguments.SequenceEqual(other.Arguments);
+            throw new NotImplementedException();
         }
 
         public override int GetHashCode()
@@ -43,6 +50,16 @@ namespace FlowtideDotNet.Substrait.Expressions
                 code.Add(argument);
             }
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(ScalarFunction? left, ScalarFunction? right)
+        {
+            return EqualityComparer<ScalarFunction>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(ScalarFunction? left, ScalarFunction? right)
+        {
+            return !(left == right);
         }
     }
 }

@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions.IfThen
 {
-    public class IfClause
+    public class IfClause : IEquatable<IfClause>
     {
         public required Expression If { get; set; }
 
@@ -22,13 +22,32 @@ namespace FlowtideDotNet.Substrait.Expressions.IfThen
         public override bool Equals(object? obj)
         {
             return obj is IfClause clause &&
-                   Equals(If, clause.If) &&
-                   Equals(Then, clause.Then);
+                   Equals(clause);
+        }
+
+        public bool Equals(IfClause? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+            return Equals(If, other.If) &&
+                   Equals(Then, other.Then);
         }
 
         public override int GetHashCode()
         {
             return HashCode.Combine(If, Then);
+        }
+
+        public static bool operator ==(IfClause? left, IfClause? right)
+        {
+            return EqualityComparer<IfClause>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(IfClause? left, IfClause? right)
+        {
+            return !(left == right);
         }
     }
 }

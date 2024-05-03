@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class FetchRelation : Relation
+    public class FetchRelation : Relation, IEquatable<FetchRelation>
     {
         public override int OutputLength
         {
@@ -45,15 +45,17 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is FetchRelation relation)
-            {
-                
-                return base.Equals(relation) &&
-                    Equals(Input, relation.Input) &&
-                   Equals(Count, relation.Count) &&
-                   Equals(Offset, relation.Offset);
-            }
-            return false;
+            return obj is FetchRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(FetchRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Equals(Count, other.Count) &&
+                Equals(Offset, other.Offset);
         }
 
         public override int GetHashCode()
@@ -64,6 +66,16 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(Offset);
             code.Add(Count);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(FetchRelation? left, FetchRelation? right)
+        {
+            return EqualityComparer<FetchRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(FetchRelation? left, FetchRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

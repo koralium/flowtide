@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class PlanRelation : Relation
+    public class PlanRelation : Relation, IEquatable<PlanRelation>
     {
         public override int OutputLength => Root.OutputLength;
 
@@ -26,12 +26,15 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is PlanRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Equals(Root, relation.Root);
-            }
-            return false;
+            return obj is PlanRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(PlanRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Root, other.Root);
         }
 
         public override int GetHashCode()
@@ -40,6 +43,16 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(base.GetHashCode());
             code.Add(Root);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(PlanRelation? left, PlanRelation? right)
+        {
+            return EqualityComparer<PlanRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(PlanRelation? left, PlanRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

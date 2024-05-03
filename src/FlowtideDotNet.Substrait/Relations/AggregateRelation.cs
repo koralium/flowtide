@@ -11,10 +11,11 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Expressions;
+using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class AggregateGrouping
+    public class AggregateGrouping : IEquatable<AggregateGrouping>
     {
         public required List<Expression> GroupingExpressions { get; set; }
 
@@ -22,6 +23,12 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             return obj is AggregateGrouping grouping &&
                    GroupingExpressions.SequenceEqual(grouping.GroupingExpressions);
+        }
+
+        public bool Equals(AggregateGrouping? other)
+        {
+            return other != null &&
+                   GroupingExpressions.SequenceEqual(other.GroupingExpressions);
         }
 
         public override int GetHashCode()
@@ -33,9 +40,19 @@ namespace FlowtideDotNet.Substrait.Relations
             }
             return code.ToHashCode();
         }
+
+        public static bool operator ==(AggregateGrouping? left, AggregateGrouping? right)
+        {
+            return EqualityComparer<AggregateGrouping>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(AggregateGrouping? left, AggregateGrouping? right)
+        {
+            return !(left == right);
+        }
     }
 
-    public class AggregateMeasure
+    public class AggregateMeasure : IEquatable<AggregateMeasure>
     {
         public required AggregateFunction Measure { get; set; }
 
@@ -44,17 +61,33 @@ namespace FlowtideDotNet.Substrait.Relations
         public override bool Equals(object? obj)
         {
             return obj is AggregateMeasure measure &&
-                   Equals(Measure, measure.Measure) &&
-                   Equals(Filter, measure.Filter);
+                   Equals(measure);
+        }
+
+        public bool Equals(AggregateMeasure? other)
+        {
+            return other != null &&
+                   Equals(Measure, other.Measure) &&
+                   Equals(Filter, other.Filter);
         }
 
         public override int GetHashCode()
         {
             return HashCode.Combine(Measure, Filter);
         }
+
+        public static bool operator ==(AggregateMeasure? left, AggregateMeasure? right)
+        {
+            return EqualityComparer<AggregateMeasure>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(AggregateMeasure? left, AggregateMeasure? right)
+        {
+            return !(left == right);
+        }
     }
 
-    public class AggregateRelation : Relation
+    public class AggregateRelation : Relation, IEquatable<AggregateRelation>
     {
         public required Relation Input { get; set; }
 
@@ -93,38 +126,8 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is AggregateRelation relation)
-            {
-                if (Groupings == null && relation.Groupings != null)
-                {
-                    return false;
-                }
-                if (Groupings != null && relation.Groupings == null)
-                {
-                    return false;
-                }
-                if (Groupings != null && relation.Groupings != null &&
-                    !Groupings.SequenceEqual(relation.Groupings))
-                {
-                    return false;
-                }
-                if (Measures == null && relation.Measures != null)
-                {
-                    return false;
-                }
-                if (Measures != null && relation.Measures == null)
-                {
-                    return false;
-                }
-                if (Measures != null && relation.Measures != null &&
-                    !Measures.SequenceEqual(relation.Measures))
-                {
-                    return false;
-                }
-                return base.Equals(relation) &&
-                    Equals(Input, relation.Input);
-            }
-            return false;
+            return obj is AggregateRelation relation &&
+                Equals(relation);
         }
 
         public override int GetHashCode()
@@ -147,6 +150,52 @@ namespace FlowtideDotNet.Substrait.Relations
                 }
             }
             return code.ToHashCode();
+        }
+
+        public bool Equals(AggregateRelation? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+            if (Groupings == null && other.Groupings != null)
+            {
+                return false;
+            }
+            if (Groupings != null && other.Groupings == null)
+            {
+                return false;
+            }
+            if (Groupings != null && other.Groupings != null &&
+                !Groupings.SequenceEqual(other.Groupings))
+            {
+                return false;
+            }
+            if (Measures == null && other.Measures != null)
+            {
+                return false;
+            }
+            if (Measures != null && other.Measures == null)
+            {
+                return false;
+            }
+            if (Measures != null && other.Measures != null &&
+                !Measures.SequenceEqual(other.Measures))
+            {
+                return false;
+            }
+            return base.Equals(other) &&
+                Equals(Input, other.Input);
+        }
+
+        public static bool operator ==(AggregateRelation? left, AggregateRelation? right)
+        {
+            return EqualityComparer<AggregateRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(AggregateRelation? left, AggregateRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

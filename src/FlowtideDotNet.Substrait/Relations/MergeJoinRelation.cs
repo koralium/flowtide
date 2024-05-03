@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class MergeJoinRelation : Relation
+    public class MergeJoinRelation : Relation, IEquatable<MergeJoinRelation>
     {
         public JoinType Type { get; set; }
 
@@ -47,17 +47,20 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is MergeJoinRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Equals(Type, relation.Type) &&
-                   Equals(Left, relation.Left) &&
-                   Equals(Right, relation.Right) &&
-                   LeftKeys.SequenceEqual(relation.LeftKeys) &&
-                   RightKeys.SequenceEqual(relation.RightKeys) &&
-                   Equals(PostJoinFilter, relation.PostJoinFilter);
-            }
-            return false;
+            return obj is MergeJoinRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(MergeJoinRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Type, other.Type) &&
+                Equals(Left, other.Left) &&
+                Equals(Right, other.Right) &&
+                LeftKeys.SequenceEqual(other.LeftKeys) &&
+                RightKeys.SequenceEqual(other.RightKeys) &&
+                Equals(PostJoinFilter, other.PostJoinFilter);
         }
 
         public override int GetHashCode()
@@ -79,6 +82,16 @@ namespace FlowtideDotNet.Substrait.Relations
 
             code.Add(PostJoinFilter);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(MergeJoinRelation? left, MergeJoinRelation? right)
+        {
+            return EqualityComparer<MergeJoinRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(MergeJoinRelation? left, MergeJoinRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

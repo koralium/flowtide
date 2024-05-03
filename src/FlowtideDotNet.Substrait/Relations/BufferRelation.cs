@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class BufferRelation : Relation
+    public class BufferRelation : Relation, IEquatable<BufferRelation>
     {
         public override int OutputLength
         {
@@ -37,12 +37,15 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is BufferRelation relation)
-            {
-                return base.Equals(relation) &&
-                    Equals(Input, relation.Input);
-            }
-            return false;
+            return obj is BufferRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(BufferRelation? other)
+        {
+            return base.Equals(other) &&
+                Equals(Input, other.Input);
+            throw new NotImplementedException();
         }
 
         public override int GetHashCode()
@@ -51,6 +54,16 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(base.GetHashCode());
             code.Add(Input);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(BufferRelation? left, BufferRelation? right)
+        {
+            return EqualityComparer<BufferRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(BufferRelation? left, BufferRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

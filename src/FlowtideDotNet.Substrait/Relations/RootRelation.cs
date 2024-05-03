@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class RootRelation : Relation
+    public class RootRelation : Relation, IEquatable<RootRelation>
     {
         public override int OutputLength => Input.OutputLength;
 
@@ -28,13 +28,16 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is RootRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Equals(Input, relation.Input) &&
-                   Names.SequenceEqual(relation.Names);
-            }
-            return false;
+            return obj is RootRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(RootRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Names.SequenceEqual(other.Names);
         }
 
         public override int GetHashCode()
@@ -47,6 +50,16 @@ namespace FlowtideDotNet.Substrait.Relations
                 code.Add(name);
             }
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(RootRelation? left, RootRelation? right)
+        {
+            return EqualityComparer<RootRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(RootRelation? left, RootRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

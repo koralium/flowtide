@@ -16,10 +16,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class SortRelation : Relation
+    public class SortRelation : Relation, IEquatable<SortRelation>
     {
         public override int OutputLength
         {
@@ -44,13 +45,16 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is SortRelation relation)
-            {
-                return base.Equals(relation) &&
-                   Equals(Input, relation.Input) &&
-                   Sorts.SequenceEqual(relation.Sorts);
-            }
-            return false;
+            return obj is SortRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(SortRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Sorts.SequenceEqual(other.Sorts);
         }
 
         public override int GetHashCode()
@@ -63,6 +67,16 @@ namespace FlowtideDotNet.Substrait.Relations
                 code.Add(sort);
             }
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(SortRelation? left, SortRelation? right)
+        {
+            return EqualityComparer<SortRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(SortRelation? left, SortRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    public class NamedTable
+    public class NamedTable : IEquatable<NamedTable>
     {
         public required List<string> Names { get; set; }
 
@@ -28,7 +28,13 @@ namespace FlowtideDotNet.Substrait.Type
         public override bool Equals(object? obj)
         {
             return obj is NamedTable table &&
-                   Names.SequenceEqual(table.Names);
+                   Equals(table);
+        }
+
+        public bool Equals(NamedTable? other)
+        {
+            return other != null &&
+                   Names.SequenceEqual(other.Names);
         }
 
         public override int GetHashCode()
@@ -39,6 +45,16 @@ namespace FlowtideDotNet.Substrait.Type
                 code.Add(name);
             }
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(NamedTable? left, NamedTable? right)
+        {
+            return EqualityComparer<NamedTable>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(NamedTable? left, NamedTable? right)
+        {
+            return !(left == right);
         }
     }
 }

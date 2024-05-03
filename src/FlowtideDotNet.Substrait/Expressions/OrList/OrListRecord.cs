@@ -13,14 +13,23 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class OrListRecord
+    public class OrListRecord : IEquatable<OrListRecord>
     {
         public required List<Expression> Fields { get; set; }
 
         public override bool Equals(object? obj)
         {
             return obj is OrListRecord record &&
-                   Fields.SequenceEqual(record.Fields);
+                   Equals(record);
+        }
+
+        public bool Equals(OrListRecord? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+            return Fields.SequenceEqual(other.Fields);
         }
 
         public override int GetHashCode()
@@ -33,6 +42,16 @@ namespace FlowtideDotNet.Substrait.Expressions
             }
 
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(OrListRecord? left, OrListRecord? right)
+        {
+            return EqualityComparer<OrListRecord>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(OrListRecord? left, OrListRecord? right)
+        {
+            return !(left == right);
         }
     }
 }

@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Substrait.Relations
     /// Any update on that key will replace the current value with the new value.
     /// A delete will delete the key even though there have been multiple inserts before with different values but the same key.
     /// </summary>
-    public class NormalizationRelation : Relation
+    public class NormalizationRelation : Relation, IEquatable<NormalizationRelation>
     {
         public required List<int> KeyIndex { get; set; }
 
@@ -46,14 +46,17 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public override bool Equals(object? obj)
         {
-            if (obj is NormalizationRelation relation)
-            {
-                return base.Equals(relation) &&
-                   KeyIndex.SequenceEqual(relation.KeyIndex) &&
-                   Equals(Filter, relation.Filter) &&
-                   Equals(Input, relation.Input);
-            }
-            return false;
+            return obj is NormalizationRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(NormalizationRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                KeyIndex.SequenceEqual(other.KeyIndex) &&
+                Equals(Filter, other.Filter) &&
+                Equals(Input, other.Input);
         }
 
         public override int GetHashCode()
@@ -67,6 +70,16 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(Filter);
             code.Add(Input);
             return code.ToHashCode();
+        }
+
+        public static bool operator ==(NormalizationRelation? left, NormalizationRelation? right)
+        {
+            return EqualityComparer<NormalizationRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(NormalizationRelation? left, NormalizationRelation? right)
+        {
+            return !(left == right);
         }
     }
 }
