@@ -452,7 +452,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     emitList.Add(emitCounter);
                     emitCounter++;
                 }
-                else if (s is SelectItem.Wildcard wildcard)
+                else if (s is SelectItem.Wildcard)
                 {
                     var parentExpressions = parent.EmitData.GetExpressions();
                     AddExpressionsFromWildcard(parentExpressions, expressions, projectEmitData, emitList, ref outputCounter, ref emitCounter);

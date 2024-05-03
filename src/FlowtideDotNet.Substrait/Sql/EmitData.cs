@@ -234,7 +234,7 @@ namespace FlowtideDotNet.Substrait.Sql
 
         public record ExpressionInformation(int Index, string Name, IReadOnlyList<Expression> Expression);
 
-        private bool ExpressionStartsWith(Expression expression, ObjectName? objectName)
+        private static bool ExpressionStartsWith(Expression expression, ObjectName? objectName)
         {
             if (objectName == null)
             {
