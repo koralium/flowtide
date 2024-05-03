@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Substrait.Expressions
                    Equals(segment);
         }
 
-        public bool Equals(ReferenceSegment? other)
+        public virtual bool Equals(ReferenceSegment? other)
         {
             return other != null &&
                    Equals(Child, other.Child);

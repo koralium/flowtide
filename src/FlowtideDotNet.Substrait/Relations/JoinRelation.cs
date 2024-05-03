@@ -52,12 +52,6 @@ namespace FlowtideDotNet.Substrait.Relations
             return visitor.VisitJoinRelation(this, state);
         }
 
-        public override bool Equals(object? obj)
-        {
-            return obj is JoinRelation relation &&
-                Equals(relation);
-        }
-
         public override int GetHashCode()
         {
             var code = new HashCode();
@@ -68,6 +62,12 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(Expression);
             code.Add(PostJoinFilter);
             return code.ToHashCode();
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is JoinRelation relation &&
+                Equals(relation);
         }
 
         public bool Equals(JoinRelation? other)
