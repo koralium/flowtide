@@ -1896,20 +1896,6 @@ namespace FlowtideDotNet.Substrait.Tests
                                 {
                                     ReferenceSegment = new StructReferenceSegment()
                                     {
-                                        Field = 0
-                                    }
-                                },
-                                new DirectFieldReference()
-                                {
-                                    ReferenceSegment = new StructReferenceSegment()
-                                    {
-                                        Field = 1
-                                    }
-                                },
-                                new DirectFieldReference()
-                                {
-                                    ReferenceSegment = new StructReferenceSegment()
-                                    {
                                         Field = 2
                                     }
                                 },
@@ -1918,6 +1904,20 @@ namespace FlowtideDotNet.Substrait.Tests
                                     ReferenceSegment = new StructReferenceSegment()
                                     {
                                         Field = 3
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                },
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 1
                                     }
                                 },
                             },

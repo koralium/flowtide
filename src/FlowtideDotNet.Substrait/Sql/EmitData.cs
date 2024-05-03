@@ -255,6 +255,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 .SelectMany(x => x.Value.Index.Select(y => new { index = y, expression = x.Key }))
                 .GroupBy(x => x.index)
                 .Select(x => new ExpressionInformation(x.Key, GetName(x.Key), x.Select(z => z.expression).ToList()))
+                .OrderBy(x => x.Index)
                 .ToList();
 
             return indicesToExpression;
