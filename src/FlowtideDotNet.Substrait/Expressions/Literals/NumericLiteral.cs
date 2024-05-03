@@ -15,7 +15,7 @@ using static Substrait.Protobuf.Expression.Types;
 
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
-    public class NumericLiteral : Literal, IEquatable<NumericLiteral>
+    public sealed class NumericLiteral : Literal, IEquatable<NumericLiteral>
     {
         public override LiteralType Type => LiteralType.Numeric;
 

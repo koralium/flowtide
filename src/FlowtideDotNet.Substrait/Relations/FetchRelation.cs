@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class FetchRelation : Relation, IEquatable<FetchRelation>
+    public sealed class FetchRelation : Relation, IEquatable<FetchRelation>
     {
         public override int OutputLength
         {

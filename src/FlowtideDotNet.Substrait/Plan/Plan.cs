@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Substrait
 {
-    public class Plan : IEquatable<Plan>
+    public sealed class Plan : IEquatable<Plan>
     {
         public required List<Relation> Relations { get; set; }
 

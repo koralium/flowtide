@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    public class NamedStruct : IEquatable<NamedStruct>
+    public sealed class NamedStruct : IEquatable<NamedStruct>
     {
         public required List<string> Names { get; set; }
 

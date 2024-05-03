@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class SingularOrListExpression : Expression, IEquatable<SingularOrListExpression>
+    public sealed class SingularOrListExpression : Expression, IEquatable<SingularOrListExpression>
     {
         public required Expression Value { get; set; }
 

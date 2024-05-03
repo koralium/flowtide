@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class ProjectRelation : Relation, IEquatable<ProjectRelation>
+    public sealed class ProjectRelation : Relation, IEquatable<ProjectRelation>
     {
         public override int OutputLength
         {

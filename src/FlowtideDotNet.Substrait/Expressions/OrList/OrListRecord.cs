@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class OrListRecord : IEquatable<OrListRecord>
+    public sealed class OrListRecord : IEquatable<OrListRecord>
     {
         public required List<Expression> Fields { get; set; }
 

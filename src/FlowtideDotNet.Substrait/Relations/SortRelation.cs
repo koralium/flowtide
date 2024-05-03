@@ -20,7 +20,7 @@ using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class SortRelation : Relation, IEquatable<SortRelation>
+    public sealed class SortRelation : Relation, IEquatable<SortRelation>
     {
         public override int OutputLength
         {

@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class SetRelation : Relation, IEquatable<SetRelation>
+    public sealed class SetRelation : Relation, IEquatable<SetRelation>
     {
         public required List<Relation> Inputs { get; set; }
 

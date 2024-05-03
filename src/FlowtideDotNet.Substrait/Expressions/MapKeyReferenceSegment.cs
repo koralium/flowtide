@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class MapKeyReferenceSegment : ReferenceSegment, IEquatable<MapKeyReferenceSegment>
+    public sealed class MapKeyReferenceSegment : ReferenceSegment, IEquatable<MapKeyReferenceSegment>
     {
         public required string Key { get; set; }
 

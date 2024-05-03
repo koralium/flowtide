@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class WriteRelation : Relation, IEquatable<WriteRelation>
+    public sealed class WriteRelation : Relation, IEquatable<WriteRelation>
     {
         public override int OutputLength => Input.OutputLength;
 

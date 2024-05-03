@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
-    public class NullLiteral : Literal, IEquatable<NullLiteral>
+    public sealed class NullLiteral : Literal, IEquatable<NullLiteral>
     {
         public override LiteralType Type => LiteralType.Null;
 

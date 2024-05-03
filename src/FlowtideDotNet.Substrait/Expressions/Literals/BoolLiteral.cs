@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
-    public class BoolLiteral : Literal, IEquatable<BoolLiteral>
+    public sealed class BoolLiteral : Literal, IEquatable<BoolLiteral>
     {
         public override LiteralType Type => LiteralType.Bool;
 

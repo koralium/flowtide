@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class BufferRelation : Relation, IEquatable<BufferRelation>
+    public sealed class BufferRelation : Relation, IEquatable<BufferRelation>
     {
         public override int OutputLength
         {

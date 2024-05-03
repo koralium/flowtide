@@ -15,7 +15,7 @@ using static Substrait.Protobuf.Expression.Types;
 
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
-    public class ArrayLiteral : Literal, IEquatable<ArrayLiteral>
+    public sealed class ArrayLiteral : Literal, IEquatable<ArrayLiteral>
     {
         public override LiteralType Type => LiteralType.Array;
 

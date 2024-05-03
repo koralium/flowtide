@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class StructReferenceSegment : ReferenceSegment, IEquatable<StructReferenceSegment>
+    public sealed class StructReferenceSegment : ReferenceSegment, IEquatable<StructReferenceSegment>
     {
         public int Field { get; set; }
 

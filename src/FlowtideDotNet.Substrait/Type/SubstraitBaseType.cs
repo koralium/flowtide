@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Substrait.Type
                    Equals(type);
         }
 
-        public bool Equals(SubstraitBaseType? other)
+        public virtual bool Equals(SubstraitBaseType? other)
         {
             return other != null &&
                    Type == other.Type &&

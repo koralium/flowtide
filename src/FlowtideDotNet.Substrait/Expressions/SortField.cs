@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         SortDirectionClustered = 5
     }
 
-    public class SortField : IEquatable<SortField>
+    public sealed class SortField : IEquatable<SortField>
     {
         public required Expression Expression { get; set; }
 

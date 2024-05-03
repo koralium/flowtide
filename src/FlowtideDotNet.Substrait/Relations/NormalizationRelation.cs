@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Substrait.Relations
     /// Any update on that key will replace the current value with the new value.
     /// A delete will delete the key even though there have been multiple inserts before with different values but the same key.
     /// </summary>
-    public class NormalizationRelation : Relation, IEquatable<NormalizationRelation>
+    public sealed class NormalizationRelation : Relation, IEquatable<NormalizationRelation>
     {
         public required List<int> KeyIndex { get; set; }
 

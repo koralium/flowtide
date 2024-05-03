@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class ScalarFunction : Expression, IEquatable<ScalarFunction>
+    public sealed class ScalarFunction : Expression, IEquatable<ScalarFunction>
     {
         public required string ExtensionUri { get; set; }
         public required string ExtensionName { get; set; }

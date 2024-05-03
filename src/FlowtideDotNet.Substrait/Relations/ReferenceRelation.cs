@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class ReferenceRelation : Relation, IEquatable<ReferenceRelation>
+    public sealed class ReferenceRelation : Relation, IEquatable<ReferenceRelation>
     {
         public ReferenceRelation()
         {

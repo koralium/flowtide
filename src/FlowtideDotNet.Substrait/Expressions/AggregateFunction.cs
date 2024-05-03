@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class AggregateFunction : IEquatable<AggregateFunction>
+    public sealed class AggregateFunction : IEquatable<AggregateFunction>
     {
         public required string ExtensionUri { get; set; }
         public required string ExtensionName { get; set; }

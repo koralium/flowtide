@@ -12,7 +12,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class MultiOrListExpression : Expression, IEquatable<MultiOrListExpression>
+    public sealed class MultiOrListExpression : Expression, IEquatable<MultiOrListExpression>
     {
         public required List<Expression> Value { get; set; }
 

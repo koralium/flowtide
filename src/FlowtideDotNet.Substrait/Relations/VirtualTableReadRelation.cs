@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class VirtualTableReadRelation : Relation, IEquatable<VirtualTableReadRelation>
+    public sealed class VirtualTableReadRelation : Relation, IEquatable<VirtualTableReadRelation>
     {
         public required NamedStruct BaseSchema { get; set; }
         

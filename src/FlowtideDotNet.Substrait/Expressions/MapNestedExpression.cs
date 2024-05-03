@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class MapNestedExpression : NestedExpression, IEquatable<MapNestedExpression>
+    public sealed class MapNestedExpression : NestedExpression, IEquatable<MapNestedExpression>
     {
         public required List<KeyValuePair<Expression, Expression>> KeyValues { get; set; }
 

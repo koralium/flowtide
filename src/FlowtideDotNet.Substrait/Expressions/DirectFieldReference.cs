@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class DirectFieldReference : FieldReference, IEquatable<DirectFieldReference>
+    public sealed class DirectFieldReference : FieldReference, IEquatable<DirectFieldReference>
     {
         public required ReferenceSegment ReferenceSegment { get; set; }
 

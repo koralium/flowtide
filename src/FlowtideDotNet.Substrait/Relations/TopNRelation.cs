@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class TopNRelation : Relation, IEquatable<TopNRelation>
+    public sealed class TopNRelation : Relation, IEquatable<TopNRelation>
     {
         public override int OutputLength
         {

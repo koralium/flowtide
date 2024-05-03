@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    public class Struct : IEquatable<Struct>
+    public sealed class Struct : IEquatable<Struct>
     {
         public List<SubstraitBaseType> Types { get; set; }
 

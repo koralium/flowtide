@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Substrait.Relations
     /// This must be different from reference relation since it must be known if its output should be sent on the loop output
     /// or on the egress output from the fixed point vertex.
     /// </summary>
-    public class IterationReferenceReadRelation : Relation, IEquatable<IterationReferenceReadRelation>
+    public sealed class IterationReferenceReadRelation : Relation, IEquatable<IterationReferenceReadRelation>
     {
         public override int OutputLength => ReferenceOutputLength;
 

@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Substrait.Expressions
     /// Represents a table function.
     /// A table function can only be used in the FROM clause or in joins.
     /// </summary>
-    public class TableFunction : IEquatable<TableFunction>
+    public sealed class TableFunction : IEquatable<TableFunction>
     {
         public required string ExtensionUri { get; set; }
         public required string ExtensionName { get; set; }

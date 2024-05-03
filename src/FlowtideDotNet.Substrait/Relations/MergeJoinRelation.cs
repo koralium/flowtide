@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class MergeJoinRelation : Relation, IEquatable<MergeJoinRelation>
+    public sealed class MergeJoinRelation : Relation, IEquatable<MergeJoinRelation>
     {
         public JoinType Type { get; set; }
 

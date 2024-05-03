@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions.IfThen
 {
-    public class IfThenExpression : Expression, IEquatable<IfThenExpression>
+    public sealed class IfThenExpression : Expression, IEquatable<IfThenExpression>
     {
         /// <summary>
         /// Contains all the if clauses, evaulated top to bottom.

@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions.IfThen
 {
-    public class IfClause : IEquatable<IfClause>
+    public sealed class IfClause : IEquatable<IfClause>
     {
         public required Expression If { get; set; }
 

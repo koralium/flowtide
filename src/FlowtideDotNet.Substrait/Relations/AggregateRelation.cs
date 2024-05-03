@@ -15,7 +15,7 @@ using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class AggregateGrouping : IEquatable<AggregateGrouping>
+    public sealed class AggregateGrouping : IEquatable<AggregateGrouping>
     {
         public required List<Expression> GroupingExpressions { get; set; }
 
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Substrait.Relations
         }
     }
 
-    public class AggregateMeasure : IEquatable<AggregateMeasure>
+    public sealed class AggregateMeasure : IEquatable<AggregateMeasure>
     {
         public required AggregateFunction Measure { get; set; }
 
@@ -87,7 +87,7 @@ namespace FlowtideDotNet.Substrait.Relations
         }
     }
 
-    public class AggregateRelation : Relation, IEquatable<AggregateRelation>
+    public sealed class AggregateRelation : Relation, IEquatable<AggregateRelation>
     {
         public required Relation Input { get; set; }
 
@@ -124,12 +124,6 @@ namespace FlowtideDotNet.Substrait.Relations
             return visitor.VisitAggregateRelation(this, state);
         }
 
-        public override bool Equals(object? obj)
-        {
-            return obj is AggregateRelation relation &&
-                Equals(relation);
-        }
-
         public override int GetHashCode()
         {
             var code = new HashCode();
@@ -150,6 +144,12 @@ namespace FlowtideDotNet.Substrait.Relations
                 }
             }
             return code.ToHashCode();
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is AggregateRelation relation &&
+                Equals(relation);
         }
 
         public bool Equals(AggregateRelation? other)

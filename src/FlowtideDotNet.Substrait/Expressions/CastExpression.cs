@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class CastExpression : Expression, IEquatable<CastExpression>
+    public sealed class CastExpression : Expression, IEquatable<CastExpression>
     {
         public required Expression Expression { get; set; }
 
@@ -33,7 +33,6 @@ namespace FlowtideDotNet.Substrait.Expressions
 
         public bool Equals(CastExpression? other)
         {
-            var eq = Equals(Type, other.Type);
             return other != null &&
                    Equals(Expression, other.Expression) &&
                    Equals(Type, other.Type);

@@ -15,7 +15,7 @@ using Substrait.Protobuf;
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    public class VirtualTable : IEquatable<VirtualTable>
+    public sealed class VirtualTable : IEquatable<VirtualTable>
     {
         public List<string> JsonValues { get; set; }
 

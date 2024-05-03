@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class TableFunctionRelation : Relation, IEquatable<TableFunctionRelation>
+    public sealed class TableFunctionRelation : Relation, IEquatable<TableFunctionRelation>
     {
         public required TableFunction TableFunction { get; set; }
 

@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class RootRelation : Relation, IEquatable<RootRelation>
+    public sealed class RootRelation : Relation, IEquatable<RootRelation>
     {
         public override int OutputLength => Input.OutputLength;
 

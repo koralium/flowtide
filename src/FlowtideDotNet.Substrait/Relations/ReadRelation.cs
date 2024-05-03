@@ -15,7 +15,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class ReadRelation : Relation, IEquatable<ReadRelation>
+    public sealed class ReadRelation : Relation, IEquatable<ReadRelation>
     {
         public required NamedStruct BaseSchema { get; set; }
 

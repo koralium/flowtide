@@ -15,7 +15,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class UnwrapRelation : Relation, IEquatable<UnwrapRelation>
+    public sealed class UnwrapRelation : Relation, IEquatable<UnwrapRelation>
     {
         public override int OutputLength
         {
