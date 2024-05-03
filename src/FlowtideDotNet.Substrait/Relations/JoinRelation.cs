@@ -51,5 +51,37 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             return visitor.VisitJoinRelation(this, state);
         }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is JoinRelation relation)
+            {
+                return EmitEquals(relation.Emit) &&
+                   Equals(Type, relation.Type) &&
+                   Equals(Left, relation.Left) &&
+                   Equals(Right, relation.Right) &&
+                   Equals(Expression, relation.Expression) &&
+                   Equals(PostJoinFilter, relation.PostJoinFilter);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            if (Emit != null)
+            {
+                foreach (var emit in Emit)
+                {
+                    code.Add(emit);
+                }
+            }
+            code.Add(Type);
+            code.Add(Left);
+            code.Add(Right);
+            code.Add(Expression);
+            code.Add(PostJoinFilter);
+            return code.ToHashCode();
+        }
     }
 }

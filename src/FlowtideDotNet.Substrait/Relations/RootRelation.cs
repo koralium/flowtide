@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Relations
 {
     public class RootRelation : Relation
@@ -23,6 +24,35 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitRootRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is RootRelation relation)
+            {
+                return EmitEquals(relation.Emit) &&
+                   Equals(Input, relation.Input) &&
+                   Names.SequenceEqual(relation.Names);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            if (Emit != null)
+            {
+                foreach (var emit in Emit)
+                {
+                    code.Add(emit);
+                }
+            }
+            code.Add(Input);
+            foreach(var name in Names)
+            {
+                code.Add(name);
+            }
+            return code.ToHashCode();
         }
     }
 }

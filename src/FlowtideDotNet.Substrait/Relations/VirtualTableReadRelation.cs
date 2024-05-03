@@ -32,5 +32,31 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             return visitor.VisitVirtualTableReadRelation(this, state);
         }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is VirtualTableReadRelation relation)
+            {
+                return EmitEquals(relation.Emit) &&
+                   Equals(BaseSchema, relation.BaseSchema) &&
+                   Equals(Values, relation.Values);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            if (Emit != null)
+            {
+                foreach (var emit in Emit)
+                {
+                    code.Add(emit);
+                }
+            }
+            code.Add(BaseSchema);
+            code.Add(Values);
+            return code.ToHashCode();
+        }
     }
 }

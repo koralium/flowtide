@@ -10,10 +10,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
+using Substrait.Protobuf;
+
 namespace FlowtideDotNet.Substrait.Type
 {
     public class VirtualTable
     {
         public List<string> JsonValues { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is VirtualTable table &&
+                   JsonValues.SequenceEqual(table.JsonValues);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            foreach (var value in JsonValues)
+            {
+                code.Add(value);
+            }
+            return code.ToHashCode();
+        }
     }
 }

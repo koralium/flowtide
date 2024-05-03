@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Relations
 {
     public class PlanRelation : Relation
@@ -21,6 +22,30 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitPlanRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is PlanRelation relation)
+            {
+                return EmitEquals(relation.Emit) &&
+                   Equals(Root, relation.Root);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            if (Emit != null)
+            {
+                foreach (var emit in Emit)
+                {
+                    code.Add(emit);
+                }
+            }
+            code.Add(Root);
+            return code.ToHashCode();
         }
     }
 }

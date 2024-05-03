@@ -17,5 +17,21 @@ namespace FlowtideDotNet.Substrait
     public class Plan
     {
         public required List<Relation> Relations { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is Plan plan &&
+                   Relations.SequenceEqual(plan.Relations);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            foreach (var relation in Relations)
+            {
+                code.Add(relation);
+            }
+            return code.ToHashCode();
+        }
     }
 }

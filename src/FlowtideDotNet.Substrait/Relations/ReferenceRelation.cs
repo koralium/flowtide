@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Relations
 {
     public class ReferenceRelation : Relation
@@ -27,6 +28,32 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitReferenceRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is ReferenceRelation relation)
+            {
+                return EmitEquals(relation.Emit) &&
+                   Equals(RelationId, relation.RelationId) &&
+                   Equals(ReferenceOutputLength, relation.ReferenceOutputLength);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            if (Emit != null)
+            {
+                foreach (var emit in Emit)
+                {
+                    code.Add(emit);
+                }
+            }
+            code.Add(RelationId);
+            code.Add(ReferenceOutputLength);
+            return code.ToHashCode();
         }
     }
 }
