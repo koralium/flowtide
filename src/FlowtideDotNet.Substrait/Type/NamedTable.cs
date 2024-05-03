@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Type
 {
-    public class NamedTable
+    public sealed class NamedTable : IEquatable<NamedTable>
     {
         public required List<string> Names { get; set; }
 
@@ -22,6 +23,38 @@ namespace FlowtideDotNet.Substrait.Type
             {
                 return string.Join(".", Names);
             }
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is NamedTable table &&
+                   Equals(table);
+        }
+
+        public bool Equals(NamedTable? other)
+        {
+            return other != null &&
+                   Names.SequenceEqual(other.Names);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            foreach(var name in Names)
+            {
+                code.Add(name);
+            }
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(NamedTable? left, NamedTable? right)
+        {
+            return EqualityComparer<NamedTable>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(NamedTable? left, NamedTable? right)
+        {
+            return !(left == right);
         }
     }
 }

@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class IterationRelation : Relation
+    public sealed class IterationRelation : Relation, IEquatable<IterationRelation>
     {
         public override int OutputLength
         {
@@ -40,6 +40,54 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitIterationRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is IterationRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(IterationRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Equals(IterationName, other.IterationName) &&
+                Equals(LoopPlan, other.LoopPlan) &&
+                Equals(SkipIterateCondition, other.SkipIterateCondition) &&
+                Equals(MaxIterations, other.MaxIterations);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(base.GetHashCode());
+            if (Input != null)
+            {
+                code.Add(Input);
+            }
+            code.Add(IterationName);
+            code.Add(LoopPlan);
+            if (SkipIterateCondition != null)
+            {
+                code.Add(SkipIterateCondition);
+            }
+            if (MaxIterations != null)
+            {
+                code.Add(MaxIterations);
+            }
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(IterationRelation? left, IterationRelation? right)
+        {
+            return EqualityComparer<IterationRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(IterationRelation? left, IterationRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
-    public class StringLiteral : Literal
+    public sealed class StringLiteral : Literal, IEquatable<StringLiteral>
     {
         public override LiteralType Type => LiteralType.String;
 
@@ -21,6 +22,36 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             return visitor.VisitStringLiteral(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is StringLiteral literal &&
+                   Equals(literal);
+        }
+
+        public bool Equals(StringLiteral? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+            return Value == other.Value;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Type, Value);
+        }
+
+        public static bool operator ==(StringLiteral? left, StringLiteral? right)
+        {
+            return EqualityComparer<StringLiteral>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(StringLiteral? left, StringLiteral? right)
+        {
+            return !(left == right);
         }
     }
 }

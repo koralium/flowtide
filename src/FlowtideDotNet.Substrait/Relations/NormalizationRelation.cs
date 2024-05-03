@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Substrait.Relations
     /// Any update on that key will replace the current value with the new value.
     /// A delete will delete the key even though there have been multiple inserts before with different values but the same key.
     /// </summary>
-    public class NormalizationRelation : Relation
+    public sealed class NormalizationRelation : Relation, IEquatable<NormalizationRelation>
     {
         public required List<int> KeyIndex { get; set; }
 
@@ -42,6 +42,44 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitNormalizationRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is NormalizationRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(NormalizationRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                KeyIndex.SequenceEqual(other.KeyIndex) &&
+                Equals(Filter, other.Filter) &&
+                Equals(Input, other.Input);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(base.GetHashCode());
+            foreach(var index in KeyIndex)
+            {
+                code.Add(index);
+            }
+            code.Add(Filter);
+            code.Add(Input);
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(NormalizationRelation? left, NormalizationRelation? right)
+        {
+            return EqualityComparer<NormalizationRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(NormalizationRelation? left, NormalizationRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

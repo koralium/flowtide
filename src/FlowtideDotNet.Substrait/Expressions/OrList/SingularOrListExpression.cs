@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class SingularOrListExpression : Expression
+    public sealed class SingularOrListExpression : Expression, IEquatable<SingularOrListExpression>
     {
         public required Expression Value { get; set; }
 
@@ -21,6 +22,42 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             return visitor.VisitSingularOrList(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is SingularOrListExpression expression &&
+                   Equals(expression);
+        }
+
+        public bool Equals(SingularOrListExpression? other)
+        {
+            return other != null &&
+                   Equals(Value, other.Value) &&
+                   Options.SequenceEqual(other.Options);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(Value);
+
+            foreach (var option in Options)
+            {
+                code.Add(option);
+            }
+
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(SingularOrListExpression? left, SingularOrListExpression? right)
+        {
+            return EqualityComparer<SingularOrListExpression>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(SingularOrListExpression? left, SingularOrListExpression? right)
+        {
+            return !(left == right);
         }
     }
 }

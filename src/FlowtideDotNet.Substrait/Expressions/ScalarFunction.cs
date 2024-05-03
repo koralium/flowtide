@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class ScalarFunction : Expression
+    public sealed class ScalarFunction : Expression, IEquatable<ScalarFunction>
     {
         public required string ExtensionUri { get; set; }
         public required string ExtensionName { get; set; }
@@ -22,6 +23,42 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             return visitor.VisitScalarFunction(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ScalarFunction function &&
+                   Equals(function);
+        }
+
+        public bool Equals(ScalarFunction? other)
+        {
+            return other != null &&
+                   ExtensionUri == other.ExtensionUri &&
+                   ExtensionName == other.ExtensionName &&
+                   Arguments.SequenceEqual(other.Arguments);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(ExtensionUri);
+            code.Add(ExtensionName);
+            foreach (var argument in Arguments)
+            {
+                code.Add(argument);
+            }
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(ScalarFunction? left, ScalarFunction? right)
+        {
+            return EqualityComparer<ScalarFunction>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(ScalarFunction? left, ScalarFunction? right)
+        {
+            return !(left == right);
         }
     }
 }

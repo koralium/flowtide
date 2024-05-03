@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class ReferenceRelation : Relation
+    public sealed class ReferenceRelation : Relation, IEquatable<ReferenceRelation>
     {
         public ReferenceRelation()
         {
@@ -27,6 +28,39 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitReferenceRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ReferenceRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(ReferenceRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(RelationId, other.RelationId) &&
+                Equals(ReferenceOutputLength, other.ReferenceOutputLength);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(base.GetHashCode());
+            code.Add(RelationId);
+            code.Add(ReferenceOutputLength);
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(ReferenceRelation? left, ReferenceRelation? right)
+        {
+            return EqualityComparer<ReferenceRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(ReferenceRelation? left, ReferenceRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

@@ -12,7 +12,7 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class MultiOrListExpression : Expression
+    public sealed class MultiOrListExpression : Expression, IEquatable<MultiOrListExpression>
     {
         public required List<Expression> Value { get; set; }
 
@@ -21,6 +21,49 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             throw new NotImplementedException();
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is MultiOrListExpression expression &&
+                   Equals(expression);
+        }
+
+        public bool Equals(MultiOrListExpression? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+            return Value.SequenceEqual(other.Value) &&
+                   Options.SequenceEqual(other.Options);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            
+            foreach(var value in Value)
+            {
+                code.Add(value);
+            }
+
+            foreach(var option in Options)
+            {
+                code.Add(option);
+            }
+
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(MultiOrListExpression? left, MultiOrListExpression? right)
+        {
+            return EqualityComparer<MultiOrListExpression>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(MultiOrListExpression? left, MultiOrListExpression? right)
+        {
+            return !(left == right);
         }
     }
 }
