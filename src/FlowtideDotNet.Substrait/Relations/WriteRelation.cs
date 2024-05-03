@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             if (obj is WriteRelation relation)
             {
-                return EmitEquals(relation.Emit) &&
+                return base.Equals(relation) &&
                    Equals(Input, relation.Input) &&
                    Equals(TableSchema, relation.TableSchema) &&
                    Equals(NamedObject, relation.NamedObject);
@@ -44,13 +44,7 @@ namespace FlowtideDotNet.Substrait.Relations
         public override int GetHashCode()
         {
             var code = new HashCode();
-            if (Emit != null)
-            {
-                foreach (var emit in Emit)
-                {
-                    code.Add(emit);
-                }
-            }
+            code.Add(base.GetHashCode());
             code.Add(Input);
             code.Add(TableSchema);
             code.Add(NamedObject);

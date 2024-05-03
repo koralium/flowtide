@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             if (obj is NormalizationRelation relation)
             {
-                return EmitEquals(relation.Emit) &&
+                return base.Equals(relation) &&
                    KeyIndex.SequenceEqual(relation.KeyIndex) &&
                    Equals(Filter, relation.Filter) &&
                    Equals(Input, relation.Input);
@@ -59,13 +59,7 @@ namespace FlowtideDotNet.Substrait.Relations
         public override int GetHashCode()
         {
             var code = new HashCode();
-            if (Emit != null)
-            {
-                foreach (var emit in Emit)
-                {
-                    code.Add(emit);
-                }
-            }
+            code.Add(base.GetHashCode());
             foreach(var index in KeyIndex)
             {
                 code.Add(index);

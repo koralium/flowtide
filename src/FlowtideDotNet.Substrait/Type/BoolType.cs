@@ -16,16 +16,5 @@ namespace FlowtideDotNet.Substrait.Type
     internal class BoolType : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.Bool;
-
-        public override bool Equals(object? obj)
-        {
-            return obj is BoolType type &&
-                   Nullable == type.Nullable;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Type, Nullable);
-        }
     }
 }

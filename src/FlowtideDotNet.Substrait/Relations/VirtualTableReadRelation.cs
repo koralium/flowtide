@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             if (obj is VirtualTableReadRelation relation)
             {
-                return EmitEquals(relation.Emit) &&
+                return base.Equals(relation) &&
                    Equals(BaseSchema, relation.BaseSchema) &&
                    Equals(Values, relation.Values);
             }
@@ -47,13 +47,7 @@ namespace FlowtideDotNet.Substrait.Relations
         public override int GetHashCode()
         {
             var code = new HashCode();
-            if (Emit != null)
-            {
-                foreach (var emit in Emit)
-                {
-                    code.Add(emit);
-                }
-            }
+            code.Add(base.GetHashCode());
             code.Add(BaseSchema);
             code.Add(Values);
             return code.ToHashCode();

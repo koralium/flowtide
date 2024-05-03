@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             if (obj is FilterRelation relation)
             {
-                return EmitEquals(relation.Emit) && 
+                return base.Equals(relation) && 
                    Equals(Input, relation.Input) &&
                    Equals(Condition, relation.Condition);
             }
@@ -51,13 +51,7 @@ namespace FlowtideDotNet.Substrait.Relations
         public override int GetHashCode()
         {
             var code = new HashCode();
-            if (Emit != null)
-            {
-                foreach (var emit in Emit)
-                {
-                    code.Add(emit);
-                }
-            }
+            code.Add(base.GetHashCode());
             code.Add(Input);
             code.Add(Condition);
             return code.ToHashCode();

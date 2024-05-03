@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             if (obj is ReferenceRelation relation)
             {
-                return EmitEquals(relation.Emit) &&
+                return base.Equals(relation) &&
                    Equals(RelationId, relation.RelationId) &&
                    Equals(ReferenceOutputLength, relation.ReferenceOutputLength);
             }
@@ -44,13 +44,7 @@ namespace FlowtideDotNet.Substrait.Relations
         public override int GetHashCode()
         {
             var code = new HashCode();
-            if (Emit != null)
-            {
-                foreach (var emit in Emit)
-                {
-                    code.Add(emit);
-                }
-            }
+            code.Add(base.GetHashCode());
             code.Add(RelationId);
             code.Add(ReferenceOutputLength);
             return code.ToHashCode();

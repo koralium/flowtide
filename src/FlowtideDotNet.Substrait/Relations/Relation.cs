@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Substrait.Relations
@@ -27,22 +28,39 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public abstract TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state);
 
-        protected bool EmitEquals(List<int>? other)
+        public override bool Equals(object? obj)
         {
-            if (Emit == null && other != null)
+            if (obj is Relation other)
             {
-                return false;
+                if (Emit == null && other.Emit != null)
+                {
+                    return false;
+                }
+                if (Emit != null && other.Emit == null)
+                {
+                    return false;
+                }
+                if (Emit != null && other.Emit != null &&
+                    !Emit.SequenceEqual(other.Emit))
+                {
+                    return false;
+                }
+                return true;
             }
-            if (Emit != null && other == null)
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            if (Emit != null)
             {
-                return false;
+                foreach (var emit in Emit)
+                {
+                    code.Add(emit);
+                }
             }
-            if (Emit != null && other != null &&
-                !Emit.SequenceEqual(other))
-            {
-                return false;
-            }
-            return true;
+            return code.ToHashCode();
         }
     }
 }

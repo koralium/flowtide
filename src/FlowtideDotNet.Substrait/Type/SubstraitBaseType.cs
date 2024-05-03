@@ -17,5 +17,16 @@ namespace FlowtideDotNet.Substrait.Type
         public abstract SubstraitType Type { get; }
 
         public bool Nullable { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is SubstraitBaseType type &&
+                   Nullable == type.Nullable;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Type, Nullable);
+        }
     }
 }

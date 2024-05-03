@@ -16,16 +16,5 @@ namespace FlowtideDotNet.Substrait.Type
     public class Int32Type : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.Int32;
-
-        public override bool Equals(object? obj)
-        {
-            return obj is Int32Type type &&
-                   Nullable == type.Nullable;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Type, Nullable);
-        }
     }
 }

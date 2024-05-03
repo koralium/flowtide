@@ -21,16 +21,5 @@ namespace FlowtideDotNet.Substrait.Type
     public class DecimalType : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.Decimal;
-
-        public override bool Equals(object? obj)
-        {
-            return obj is DecimalType type &&
-                   Nullable == type.Nullable;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Type, Nullable);
-        }
     }
 }

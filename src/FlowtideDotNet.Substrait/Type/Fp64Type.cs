@@ -16,16 +16,5 @@ namespace FlowtideDotNet.Substrait.Type
     internal class Fp64Type : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.Fp64;
-
-        public override bool Equals(object? obj)
-        {
-            return obj is Fp64Type type &&
-                   Nullable == type.Nullable;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Type, Nullable);
-        }
     }
 }

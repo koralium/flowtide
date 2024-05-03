@@ -121,7 +121,7 @@ namespace FlowtideDotNet.Substrait.Relations
                 {
                     return false;
                 }
-                return EmitEquals(relation.Emit) &&
+                return base.Equals(relation) &&
                     Equals(Input, relation.Input);
             }
             return false;
@@ -131,13 +131,7 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             var code = new HashCode();
             code.Add(Input);
-            if (Emit != null)
-            {
-                foreach(var e in Emit)
-                {
-                    code.Add(e);
-                }
-            }
+            code.Add(base.GetHashCode());
             if (Groupings != null)
             {
                 foreach (var grouping in Groupings)

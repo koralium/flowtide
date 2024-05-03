@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             if (obj is PlanRelation relation)
             {
-                return EmitEquals(relation.Emit) &&
+                return base.Equals(relation) &&
                    Equals(Root, relation.Root);
             }
             return false;
@@ -37,13 +37,7 @@ namespace FlowtideDotNet.Substrait.Relations
         public override int GetHashCode()
         {
             var code = new HashCode();
-            if (Emit != null)
-            {
-                foreach (var emit in Emit)
-                {
-                    code.Add(emit);
-                }
-            }
+            code.Add(base.GetHashCode());
             code.Add(Root);
             return code.ToHashCode();
         }

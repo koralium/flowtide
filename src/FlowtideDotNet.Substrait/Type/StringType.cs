@@ -16,16 +16,5 @@ namespace FlowtideDotNet.Substrait.Type
     public class StringType : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.String;
-
-        public override bool Equals(object? obj)
-        {
-            return obj is StringType type &&
-                   Nullable == type.Nullable;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Type, Nullable);
-        }
     }
 }
