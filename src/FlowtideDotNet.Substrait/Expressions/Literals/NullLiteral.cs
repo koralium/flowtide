@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
 
         public override bool Equals(object? obj)
         {
-            return obj is NullLiteral literal;
+            return obj is NullLiteral;
         }
 
         public override int GetHashCode()

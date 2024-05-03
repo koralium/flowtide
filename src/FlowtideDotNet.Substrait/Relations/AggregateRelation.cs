@@ -103,12 +103,10 @@ namespace FlowtideDotNet.Substrait.Relations
                 {
                     return false;
                 }
-                if (Groupings != null && relation.Groupings != null)
+                if (Groupings != null && relation.Groupings != null &&
+                    !Groupings.SequenceEqual(relation.Groupings))
                 {
-                    if (!Groupings.SequenceEqual(relation.Groupings))
-                    {
-                        return false;
-                    }
+                    return false;
                 }
                 if (Measures == null && relation.Measures != null)
                 {
@@ -118,12 +116,10 @@ namespace FlowtideDotNet.Substrait.Relations
                 {
                     return false;
                 }
-                if (Measures != null && relation.Measures != null)
+                if (Measures != null && relation.Measures != null &&
+                    !Measures.SequenceEqual(relation.Measures))
                 {
-                    if (!Measures.SequenceEqual(relation.Measures))
-                    {
-                        return false;
-                    }
+                    return false;
                 }
                 return EmitEquals(relation.Emit) &&
                     Equals(Input, relation.Input);

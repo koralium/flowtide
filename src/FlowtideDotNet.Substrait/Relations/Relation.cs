@@ -37,12 +37,10 @@ namespace FlowtideDotNet.Substrait.Relations
             {
                 return false;
             }
-            if (Emit != null && other != null)
+            if (Emit != null && other != null &&
+                !Emit.SequenceEqual(other))
             {
-                if (!Emit.SequenceEqual(other))
-                {
-                    return false;
-                }
+                return false;
             }
             return true;
         }

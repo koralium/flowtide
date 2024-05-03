@@ -87,6 +87,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
         public void EmitChangedNotEqual()
         {
             clone.Emit = notEqual.Emit;
+            Assert.NotEqual(root, clone);
         }
 
         [Fact]

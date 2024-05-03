@@ -115,36 +115,42 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
         public void EmitChangedNotEqual()
         {
             clone.Emit = notEqual.Emit;
+            Assert.NotEqual(root, clone);
         }
 
         [Fact]
         public void InputChangedNotEqual()
         {
             clone.Input = notEqual.Input;
+            Assert.NotEqual(root, clone);
         }
 
         [Fact]
         public void BaseSchemaChangedNotEqual()
         {
             clone.BaseSchema = notEqual.BaseSchema;
+            Assert.NotEqual(root, clone);
         }
 
         [Fact]
         public void FieldChangedNotEqual()
         {
             clone.Field = notEqual.Field;
+            Assert.NotEqual(root, clone);
         }
 
         [Fact]
         public void FilterChangedNotEqual()
         {
             clone.Filter = notEqual.Filter;
+            Assert.NotEqual(root, clone);
         }
 
         [Fact]
         public void EmitNullNotEqual()
         {
             clone.Emit = null;
+            Assert.NotEqual(root, clone);
         }
     }
 }
