@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class BufferRelation : Relation
+    public sealed class BufferRelation : Relation, IEquatable<BufferRelation>
     {
         public override int OutputLength
         {
@@ -32,6 +33,36 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitBufferRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is BufferRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(BufferRelation? other)
+        {
+            return base.Equals(other) &&
+                Equals(Input, other.Input);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(base.GetHashCode());
+            code.Add(Input);
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(BufferRelation? left, BufferRelation? right)
+        {
+            return EqualityComparer<BufferRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(BufferRelation? left, BufferRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

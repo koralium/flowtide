@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class JoinRelation : Relation
+    public sealed class JoinRelation : Relation, IEquatable<JoinRelation>
     {
         public JoinType Type { get; set; }
 
@@ -50,6 +50,45 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitJoinRelation(this, state);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(base.GetHashCode());
+            code.Add(Type);
+            code.Add(Left);
+            code.Add(Right);
+            code.Add(Expression);
+            code.Add(PostJoinFilter);
+            return code.ToHashCode();
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is JoinRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(JoinRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Type, other.Type) &&
+                Equals(Left, other.Left) &&
+                Equals(Right, other.Right) &&
+                Equals(Expression, other.Expression) &&
+                Equals(PostJoinFilter, other.PostJoinFilter);
+        }
+
+        public static bool operator ==(JoinRelation? left, JoinRelation? right)
+        {
+            return EqualityComparer<JoinRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(JoinRelation? left, JoinRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

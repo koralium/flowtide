@@ -12,8 +12,35 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public abstract class ReferenceSegment
+    public abstract class ReferenceSegment : IEquatable<ReferenceSegment>
     {
         public ReferenceSegment? Child { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ReferenceSegment segment &&
+                   Equals(segment);
+        }
+
+        public virtual bool Equals(ReferenceSegment? other)
+        {
+            return other != null &&
+                   Equals(Child, other.Child);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Child);
+        }
+
+        public static bool operator ==(ReferenceSegment? left, ReferenceSegment? right)
+        {
+            return EqualityComparer<ReferenceSegment>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(ReferenceSegment? left, ReferenceSegment? right)
+        {
+            return !(left == right);
+        }
     }
 }

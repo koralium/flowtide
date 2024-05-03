@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class TableFunctionRelation : Relation
+    public sealed class TableFunctionRelation : Relation, IEquatable<TableFunctionRelation>
     {
         public required TableFunction TableFunction { get; set; }
 
@@ -49,6 +49,43 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitTableFunctionRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is TableFunctionRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(TableFunctionRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(TableFunction, other.TableFunction) &&
+                Equals(Input, other.Input) &&
+                Equals(Type, other.Type) &&
+                Equals(JoinCondition, other.JoinCondition);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(base.GetHashCode());
+            code.Add(TableFunction);
+            code.Add(Input);
+            code.Add(Type);
+            code.Add(JoinCondition);
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(TableFunctionRelation? left, TableFunctionRelation? right)
+        {
+            return EqualityComparer<TableFunctionRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(TableFunctionRelation? left, TableFunctionRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

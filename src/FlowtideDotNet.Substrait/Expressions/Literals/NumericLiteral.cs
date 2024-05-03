@@ -10,9 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
+using static Substrait.Protobuf.Expression.Types;
+
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
-    public class NumericLiteral : Literal
+    public sealed class NumericLiteral : Literal, IEquatable<NumericLiteral>
     {
         public override LiteralType Type => LiteralType.Numeric;
 
@@ -21,6 +24,36 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             return visitor.VisitNumericLiteral(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is NumericLiteral literal &&
+                   Equals(literal);
+        }
+
+        public bool Equals(NumericLiteral? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+            return Value == other.Value;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Type, Value);
+        }
+
+        public static bool operator ==(NumericLiteral? left, NumericLiteral? right)
+        {
+            return EqualityComparer<NumericLiteral>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(NumericLiteral? left, NumericLiteral? right)
+        {
+            return !(left == right);
         }
     }
 }

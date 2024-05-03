@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class FilterRelation : Relation
+    public sealed class FilterRelation : Relation, IEquatable<FilterRelation>
     {
         public override int OutputLength
         {
@@ -35,6 +35,39 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitFilterRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is FilterRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(FilterRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Equals(Condition, other.Condition);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(base.GetHashCode());
+            code.Add(Input);
+            code.Add(Condition);
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(FilterRelation? left, FilterRelation? right)
+        {
+            return EqualityComparer<FilterRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(FilterRelation? left, FilterRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

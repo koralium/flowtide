@@ -10,12 +10,49 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Type
 {
-    public class NamedStruct
+    public sealed class NamedStruct : IEquatable<NamedStruct>
     {
         public required List<string> Names { get; set; }
 
         public Struct? Struct { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is NamedStruct @struct &&
+                Equals(@struct);
+        }
+
+        public bool Equals(NamedStruct? other)
+        {
+            return other != null &&
+                Names.SequenceEqual(other.Names) &&
+                Equals(Struct, other.Struct);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+
+            foreach (var name in Names)
+            {
+                code.Add(name);
+            }
+            code.Add(Struct);
+
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(NamedStruct? left, NamedStruct? right)
+        {
+            return EqualityComparer<NamedStruct>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(NamedStruct? left, NamedStruct? right)
+        {
+            return !(left == right);
+        }
     }
 }

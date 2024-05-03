@@ -10,12 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Type
 {
     public class StringType : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.String;
-
-
     }
 }
