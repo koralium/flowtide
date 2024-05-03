@@ -670,7 +670,7 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 escapeChar = new StringLiteral() { Value = like.EscapeChar.Value.ToString() };
             }
-
+            
             var likeFunction = new ScalarFunction()
             {
                 ExtensionUri = FunctionsString.Uri,
@@ -682,6 +682,20 @@ namespace FlowtideDotNet.Substrait.Sql
                     escapeChar
                 }
             };
+
+            if (like.Negated)
+            {
+                likeFunction = new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionName = FunctionsBoolean.Not,
+                    Arguments = new List<Expressions.Expression>()
+                    {
+                        likeFunction
+                    }
+                };
+            }
+
             return new ExpressionData(likeFunction, expr.Name);
         }
     }
