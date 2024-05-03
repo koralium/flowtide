@@ -37,7 +37,6 @@ namespace FlowtideDotNet.Substrait.Expressions
                    ExtensionUri == other.ExtensionUri &&
                    ExtensionName == other.ExtensionName &&
                    Arguments.SequenceEqual(other.Arguments);
-            throw new NotImplementedException();
         }
 
         public override int GetHashCode()

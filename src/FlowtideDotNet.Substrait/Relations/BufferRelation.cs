@@ -45,7 +45,6 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             return base.Equals(other) &&
                 Equals(Input, other.Input);
-            throw new NotImplementedException();
         }
 
         public override int GetHashCode()
