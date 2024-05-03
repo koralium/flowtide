@@ -59,6 +59,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Replace, (x, y, z) => ReplaceImplementation(x, y, z));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.StringBase64Encode, (x) => StringBase64EncodeImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.StringBase64Decode, (x) => StringBase64DecodeImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.CharLength, (x) => CharLengthImplementation(x));
 
             functionsRegister.RegisterScalarFunction(FunctionsString.Uri, FunctionsString.Substring,
                 (scalarFunction, parametersInfo, visitor) =>
@@ -281,6 +282,15 @@ namespace FlowtideDotNet.Core.Compute.Internal
             var bytes = Convert.FromBase64String(val.AsString);
             var str = Encoding.UTF8.GetString(bytes);
             return FlxValue.FromBytes(FlexBuffer.SingleValue(str));
+        }
+
+        private static FlxValue CharLengthImplementation(in FlxValue val)
+        {
+            if (val.ValueType != FlexBuffers.Type.String)
+            {
+                return NullValue;
+            }
+            return FlxValue.FromBytes(FlexBuffer.SingleValue(val.AsString.Length));
         }
     }
 }
