@@ -232,7 +232,7 @@ namespace FlowtideDotNet.Substrait.Sql
             return _names.ToList();
         }
 
-        public record ExpressionInformation(int Index, string Name, List<Expression> Expression);
+        public record ExpressionInformation(int Index, string Name, IReadOnlyList<Expression> Expression);
 
         private bool ExpressionStartsWith(Expression expression, ObjectName? objectName)
         {
