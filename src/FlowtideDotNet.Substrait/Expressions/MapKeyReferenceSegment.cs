@@ -31,13 +31,13 @@ namespace FlowtideDotNet.Substrait.Expressions
         public bool Equals(MapKeyReferenceSegment? other)
         {
             return other != null &&
-                   Equals(Child, other.Child) &&
+                   base.Equals(other) &&
                    Key == other.Key;
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Child, Key);
+            return HashCode.Combine(base.GetHashCode(), Key);
         }
 
         public static bool operator ==(MapKeyReferenceSegment? left, MapKeyReferenceSegment? right)

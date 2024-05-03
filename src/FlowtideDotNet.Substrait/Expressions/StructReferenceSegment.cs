@@ -26,13 +26,13 @@ namespace FlowtideDotNet.Substrait.Expressions
         public bool Equals(StructReferenceSegment? other)
         {
             return other != null &&
-                   Equals(Child, other.Child) &&
+                   base.Equals(other) &&
                    Field == other.Field;
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Child, Field);
+            return HashCode.Combine(base.GetHashCode(), Field);
         }
 
         public static bool operator ==(StructReferenceSegment? left, StructReferenceSegment? right)
