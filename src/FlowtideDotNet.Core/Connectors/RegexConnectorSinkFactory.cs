@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.Connectors
     public abstract class RegexConnectorSinkFactory : AbstractConnectorSinkFactory
     {
         private readonly string _regexPattern;
-        public RegexConnectorSinkFactory(string regexPattern)
+        protected RegexConnectorSinkFactory(string regexPattern)
         {
             if (regexPattern == "*")
             {

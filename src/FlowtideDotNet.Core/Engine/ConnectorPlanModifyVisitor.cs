@@ -32,17 +32,6 @@ namespace FlowtideDotNet.Core.Engine
             this.connectorManager = connectorManager;
         }
 
-        //override 
-
-        //public Plan VisitPlan(Plan plan)
-        //{
-        //    for(int i = 0; i < plan.Relations.Count; i++)
-        //    {
-        //        plan.Relations[i] = Visit(plan.Relations[i], new object());
-        //    }
-        //    return plan;
-        //}
-
         public override Relation VisitReadRelation(ReadRelation readRelation, object state)
         {
             // Special case for timestamp read relation

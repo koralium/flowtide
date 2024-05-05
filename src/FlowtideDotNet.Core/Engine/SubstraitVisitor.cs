@@ -36,6 +36,7 @@ using FlowtideDotNet.Core.Operators.TopN;
 using FlowtideDotNet.Core.Operators.TableFunction;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices.Egress;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -447,14 +448,27 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitWriteRelation(WriteRelation writeRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var sinkFactory = connectorManager.GetSinkFactory(writeRelation);
 
-            if (sinkFactory == null)
+            IStreamEgressVertex? op = default;
+            if (connectorManager != null)
             {
-                throw new NotSupportedException("No sink factory found for relation");
-            }
+                var sinkFactory = connectorManager.GetSinkFactory(writeRelation);
 
-            var op = sinkFactory.CreateSink(writeRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                if (sinkFactory == null)
+                {
+                    throw new NotSupportedException("No sink factory found for relation");
+                }
+
+                op = sinkFactory.CreateSink(writeRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            }
+            else if (readWriteFactory != null)
+            {
+                op = readWriteFactory.GetWriteOperator(writeRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            }
+            else
+            {
+                throw new InvalidOperationException("No ConnectorManager or ReadWriteFactory");
+            }
 
             if (op is ITargetBlock<IStreamEvent> target)
             {

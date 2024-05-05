@@ -23,9 +23,9 @@ namespace FlowtideDotNet.Core
 {
     public class ConnectorManager : IConnectorManager
     {
-        private List<IConnectorSinkFactory> _connectorSinkFactories = new List<IConnectorSinkFactory>();
-        private List<IConnectorSourceFactory> _connectorSourceFactories = new List<IConnectorSourceFactory>();
-        private List<IConnectorTableProviderFactory> _connectorTableProviderFactories = new List<IConnectorTableProviderFactory>();
+        private readonly List<IConnectorSinkFactory> _connectorSinkFactories = new List<IConnectorSinkFactory>();
+        private readonly List<IConnectorSourceFactory> _connectorSourceFactories = new List<IConnectorSourceFactory>();
+        private readonly List<IConnectorTableProviderFactory> _connectorTableProviderFactories = new List<IConnectorTableProviderFactory>();
 
         public void AddSink(IConnectorSinkFactory connectorSinkFactory)
         {
@@ -43,26 +43,12 @@ namespace FlowtideDotNet.Core
 
         public IConnectorSinkFactory? GetSinkFactory(WriteRelation writeRelation)
         {
-            foreach(var factory in _connectorSinkFactories)
-            {
-                if (factory.CanHandle(writeRelation))
-                {
-                    return factory;
-                }
-            }
-            return default;
+            return _connectorSinkFactories.Find(x => x.CanHandle(writeRelation));
         }
 
         public IConnectorSourceFactory? GetSourceFactory(ReadRelation readRelation)
         {
-            foreach (var factory in _connectorSourceFactories)
-            {
-                if (factory.CanHandle(readRelation))
-                {
-                    return factory;
-                }
-            }
-            return default;
+            return _connectorSourceFactories.Find(x => x.CanHandle(readRelation));
         }
 
         public IEnumerable<ITableProvider> GetTableProviders()
