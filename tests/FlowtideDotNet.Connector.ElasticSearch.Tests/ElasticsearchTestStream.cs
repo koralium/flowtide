@@ -12,6 +12,8 @@
 
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.CosmosDB.Tests;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using Nest;
 
@@ -28,9 +30,9 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             this.customMapping = customMapping;
         }
 
-        protected override void AddWriteResolvers(ReadWriteFactory factory)
+        protected override void AddWriteResolvers(IConnectorManager connectorManager)
         {
-            factory.AddElasticsearchSink("*", new FlowtideElasticsearchOptions()
+            connectorManager.AddElasticsearchSink("*", new FlowtideElasticsearchOptions()
             {
                 ConnectionSettings = elasticSearchFixture.GetConnectionSettings(),
                 CustomMappings = customMapping

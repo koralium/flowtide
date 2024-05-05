@@ -12,6 +12,8 @@
 
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.OpenFGA.Extensions;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using OpenFga.Sdk.Client;
 using OpenFga.Sdk.Client.Model;
@@ -35,7 +37,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             this.deleteFilter = deleteFilter;
         }
 
-        protected override void AddWriteResolvers(ReadWriteFactory factory)
+        protected override void AddWriteResolvers(IConnectorManager factory)
         {
             factory.AddOpenFGASink("openfga", new OpenFgaSinkOptions
             {
@@ -45,7 +47,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             base.AddWriteResolvers(factory);
         }
 
-        protected override void AddReadResolvers(ReadWriteFactory factory)
+        protected override void AddReadResolvers(IConnectorManager factory)
         {
             factory.AddOpenFGASource("openfga", new OpenFgaSourceOptions
             {

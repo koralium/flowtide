@@ -8,6 +8,7 @@ using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Connector.MongoDB.Extensions;
+using FlowtideDotNet.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,12 +49,12 @@ sqlPlanBuilder.Sql(query);
 
 var plan = sqlPlanBuilder.GetPlan();
 
-ReadWriteFactory readWriteFactory = new ReadWriteFactory()
+IConnectorManager connectorManager = new ConnectorManager()
     .AddOpenFGASource("openfga", new OpenFgaSourceOptions()
     {
         ClientConfiguration = openFgaConfig
     })
-    .AddSqlServerSource("demo.*", () => builder.Configuration.GetConnectionString("SqlServer")!)
+    .AddSqlServerSource(() => builder.Configuration.GetConnectionString("SqlServer")!)
     .AddMongoDbSink("*", new FlowtideDotNet.Connector.MongoDB.FlowtideMongoDBSinkOptions()
     {
         Collection = "demo",
@@ -65,7 +66,7 @@ ReadWriteFactory readWriteFactory = new ReadWriteFactory()
 builder.Services.AddFlowtideStream(x =>
 {
     x.AddPlan(plan)
-    .AddReadWriteFactory(readWriteFactory)
+    .AddConnectorManager(connectorManager)
     .WithStateOptions(new StateManagerOptions()
     {
         // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage

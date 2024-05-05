@@ -19,46 +19,46 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
-    public class SqlServerFactory : IReadWriteFactory
-    {
-        private readonly string connectionString;
+    //public class SqlServerFactory : IReadWriteFactory
+    //{
+    //    private readonly string connectionString;
 
-        public SqlServerFactory(string connectionString)
-        {
-            this.connectionString = connectionString;
-        }
+    //    public SqlServerFactory(string connectionString)
+    //    {
+    //        this.connectionString = connectionString;
+    //    }
 
-        public ReadOperatorInfo GetReadOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
-        {
-            int keyIndex = -1;
-            for (int i = 0; i < readRelation.BaseSchema.Struct.Types.Count; i++)
-            {
-                var type = readRelation.BaseSchema.Struct.Types[i];
-                if (type.Nullable == false)
-                {
-                    keyIndex = i;
-                }
-            }
-            if (keyIndex == -1)
-            {
-                throw new NotSupportedException("One column must be not nullable");
-            }
+    //    public ReadOperatorInfo GetReadOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
+    //    {
+    //        int keyIndex = -1;
+    //        for (int i = 0; i < readRelation.BaseSchema.Struct.Types.Count; i++)
+    //        {
+    //            var type = readRelation.BaseSchema.Struct.Types[i];
+    //            if (type.Nullable == false)
+    //            {
+    //                keyIndex = i;
+    //            }
+    //        }
+    //        if (keyIndex == -1)
+    //        {
+    //            throw new NotSupportedException("One column must be not nullable");
+    //        }
 
-            var sqlDataSource = new SqlServerDataSource(() => connectionString, readRelation, dataflowBlockOptions);
-            return new ReadOperatorInfo(sqlDataSource, new NormalizationRelation()
-            {
-                Filter= readRelation.Filter,
-                Input = readRelation,
-                KeyIndex = new List<int>() { keyIndex }
-            });
-        }
+    //        var sqlDataSource = new SqlServerDataSource(() => connectionString, readRelation, dataflowBlockOptions);
+    //        return new ReadOperatorInfo(sqlDataSource, new NormalizationRelation()
+    //        {
+    //            Filter= readRelation.Filter,
+    //            Input = readRelation,
+    //            KeyIndex = new List<int>() { keyIndex }
+    //        });
+    //    }
 
-        public IStreamEgressVertex GetWriteOperator(WriteRelation readRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
-        {
-            return new SqlServerSink(new Connector.SqlServer.SqlServerSinkOptions()
-            {
-                ConnectionStringFunc = () => connectionString,
-            }, readRelation, executionDataflowBlockOptions);
-        }
-    }
+    //    public IStreamEgressVertex GetWriteOperator(WriteRelation readRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
+    //    {
+    //        return new SqlServerSink(new Connector.SqlServer.SqlServerSinkOptions()
+    //        {
+    //            ConnectionStringFunc = () => connectionString,
+    //        }, readRelation, executionDataflowBlockOptions);
+    //    }
+    //}
 }

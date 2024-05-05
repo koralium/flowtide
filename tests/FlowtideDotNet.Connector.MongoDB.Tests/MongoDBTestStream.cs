@@ -12,6 +12,8 @@
 
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.MongoDB.Extensions;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -43,7 +45,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
             this.onInitialDataSent = onInitialDataSent;
         }
 
-        protected override void AddWriteResolvers(ReadWriteFactory factory)
+        protected override void AddWriteResolvers(IConnectorManager factory)
         {
             factory.AddMongoDbSink("*", new FlowtideMongoDBSinkOptions()
             {

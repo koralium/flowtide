@@ -16,6 +16,7 @@ using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Storage;
@@ -105,9 +106,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
 
-            var factory = new ReadWriteFactory();
-            AddReadResolvers(factory);
-            AddWriteResolvers(factory);
+            var connectorManager = new ConnectorManager();
+            AddReadResolvers(connectorManager);
+            AddWriteResolvers(connectorManager);
 
             _fileCachePersistence = new FileCachePersistentStorage(new Storage.FileCacheOptions()
             {
@@ -118,7 +119,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             flowtideBuilder
                 .AddPlan(plan)
                 .SetParallelism(parallelism)
-                .AddReadWriteFactory(factory)
+                .AddConnectorManager(connectorManager)
                 .SetGetTimestampUpdateInterval(timestampInterval.Value)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
@@ -217,17 +218,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
-        protected virtual void AddReadResolvers(ReadWriteFactory factory)
+        protected virtual void AddReadResolvers(IConnectorManager connectorManger)
         {
-            factory.AddMockSource("*", _db);
+            connectorManger.AddSource(new MockSourceFactory("*", _db));
         }
 
-        protected virtual void AddWriteResolvers(ReadWriteFactory factory)
+        protected virtual void AddWriteResolvers(IConnectorManager connectorManger)
         {
-            factory.AddWriteResolver((rel, opt) =>
-            {
-                return new MockDataSink(opt, OnDataUpdate, _egressCrashOnCheckpointCount);
-            });
+            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount));
         }
 
         public void AssertCurrentDataEqual<T>(IEnumerable<T> data)
