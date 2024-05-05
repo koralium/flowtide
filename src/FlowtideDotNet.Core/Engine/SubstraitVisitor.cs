@@ -421,6 +421,7 @@ namespace FlowtideDotNet.Core.Engine
                     previousState = normOp;
                     dataflowStreamBuilder.AddPropagatorBlock(normId.ToString(), normOp);
                 }
+                op = info.IngressVertex;
             }
             #endregion
             else
