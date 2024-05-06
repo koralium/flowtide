@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Core.Connectors
 {
     /// <summary>
     /// Factory for creating source connectors.
-    /// First call handle is called, if the factory responds true, then ModifyPlan is called.
+    /// First CanHandle is called, if the factory responds true, then ModifyPlan is called.
     /// After that, CanHandle is called again, if it returns true, then CreateSource is called.
     /// 
     /// This is done since the plan may be modified to include multiple read relations in case of partitions.
