@@ -41,12 +41,6 @@ namespace FlowtideDotNet.Core.Engine
             }
 
             var sourceFactory = connectorManager.GetSourceFactory(readRelation);
-
-            if (sourceFactory == null)
-            {
-                throw new FlowtideException($"No source could be found for table: {readRelation.NamedTable.DotSeperated}");
-            }
-
             return sourceFactory.ModifyPlan(readRelation);
         }
 
@@ -55,10 +49,6 @@ namespace FlowtideDotNet.Core.Engine
             writeRelation.Input = Visit(writeRelation.Input, state);
 
             var sinkFactory = connectorManager.GetSinkFactory(writeRelation);
-            if (sinkFactory == null)
-            {
-                throw new FlowtideException($"No sink could be found for table: {writeRelation.NamedObject.DotSeperated}");
-            }
             return sinkFactory.ModifyPlan(writeRelation);
         }
     }

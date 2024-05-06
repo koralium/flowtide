@@ -395,11 +395,6 @@ namespace FlowtideDotNet.Core.Engine
             if (connectorManager != null)
             {
                 var sourceFactory = connectorManager.GetSourceFactory(readRelation);
-
-                if (sourceFactory == null)
-                {
-                    throw new NotSupportedException("No source factory found for relation");
-                }
                 op = sourceFactory.CreateSource(readRelation, functionsRegister, new DataflowBlockOptions() { BoundedCapacity = queueSize });
                 previousState = state;
             }
@@ -454,12 +449,6 @@ namespace FlowtideDotNet.Core.Engine
             if (connectorManager != null)
             {
                 var sinkFactory = connectorManager.GetSinkFactory(writeRelation);
-
-                if (sinkFactory == null)
-                {
-                    throw new NotSupportedException("No sink factory found for relation");
-                }
-
                 op = sinkFactory.CreateSink(writeRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
             }
             else if (readWriteFactory != null)

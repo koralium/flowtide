@@ -10,27 +10,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Substrait.Relations;
-using FlowtideDotNet.Substrait.Sql;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core
+namespace FlowtideDotNet.Core.Exceptions
 {
-    public interface IConnectorManager
+    public class FlowtideNoConnectorFoundException : FlowtideException
     {
-        void AddSource(IConnectorSourceFactory connectorSourceFactory);
+        public FlowtideNoConnectorFoundException()
+        {
+        }
 
-        void AddSink(IConnectorSinkFactory connectorSinkFactory);
+        public FlowtideNoConnectorFoundException(string? message) : base(message)
+        {
+        }
 
-        IConnectorSourceFactory GetSourceFactory(ReadRelation readRelation);
+        public FlowtideNoConnectorFoundException(string? message, Exception? innerException) : base(message, innerException)
+        {
+        }
 
-        IConnectorSinkFactory GetSinkFactory(WriteRelation writeRelation);
-
-        IEnumerable<ITableProvider> GetTableProviders();
+        protected FlowtideNoConnectorFoundException(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+        }
     }
 }

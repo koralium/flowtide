@@ -11,8 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
+using Substrait.Protobuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,14 +43,34 @@ namespace FlowtideDotNet.Core
             _connectorSourceFactories.Add(connectorSourceFactory);
         }
 
-        public IConnectorSinkFactory? GetSinkFactory(WriteRelation writeRelation)
+        public IConnectorSinkFactory GetSinkFactory(WriteRelation writeRelation)
         {
-            return _connectorSinkFactories.Find(x => x.CanHandle(writeRelation));
+            var possibleConnectors = _connectorSinkFactories.Where(x => x.CanHandle(writeRelation));
+            var count = possibleConnectors.Count();
+            if (count > 1)
+            {
+                throw new FlowtideDuplicateConnectorsException($"Multiple connectors can handle the write relation '{writeRelation.NamedObject.DotSeperated}'.");
+            }
+            if (count == 0)
+            {
+                throw new FlowtideNoConnectorFoundException($"No connector can handle the write relation '{writeRelation.NamedObject.DotSeperated}'.");
+            }
+            return possibleConnectors.First();
         }
 
-        public IConnectorSourceFactory? GetSourceFactory(ReadRelation readRelation)
+        public IConnectorSourceFactory GetSourceFactory(ReadRelation readRelation)
         {
-            return _connectorSourceFactories.Find(x => x.CanHandle(readRelation));
+            var possibleConnectors = _connectorSourceFactories.Where(x => x.CanHandle(readRelation));
+            var count = possibleConnectors.Count();
+            if (count > 1)
+            {
+                throw new FlowtideDuplicateConnectorsException($"Multiple connectors can handle the read relation '{readRelation.NamedTable.DotSeperated}'.");
+            }
+            if (count == 0)
+            {
+                throw new FlowtideNoConnectorFoundException($"No connector can handle the read relation '{readRelation.NamedTable.DotSeperated}'.");
+            }
+            return possibleConnectors.First();
         }
 
         public IEnumerable<ITableProvider> GetTableProviders()
