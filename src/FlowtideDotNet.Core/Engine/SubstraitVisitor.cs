@@ -389,8 +389,8 @@ namespace FlowtideDotNet.Core.Engine
             {
                 return VisitGetTimestampTable(state);
             }
-            IStreamIngressVertex? op = default;
-            ITargetBlock<IStreamEvent>? previousState = default;
+            IStreamIngressVertex? op;
+            ITargetBlock<IStreamEvent>? previousState;
             // TODO: Remove this if statement after readwritefactory is removed
             if (connectorManager != null)
             {
