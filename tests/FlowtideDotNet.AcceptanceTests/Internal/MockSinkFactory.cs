@@ -37,7 +37,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
             return new MockDataSink(dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount);
-            throw new NotImplementedException();
         }
     }
 }
