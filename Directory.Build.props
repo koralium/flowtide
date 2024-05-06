@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup Label="Version settings">
+    <DefaultNetTargetFramework>net8.0</DefaultNetTargetFramework>
+  </PropertyGroup>
+</Project>
