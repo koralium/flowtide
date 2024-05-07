@@ -39,14 +39,17 @@ ON t.val = o.val
 WHERE t.val = 123;
 ";
 
-
-builder.Services.AddFlowtideStream("")
-    .AddSqlTextAsPlan(sqlText)
-    .AddConnectors((connectorManager) =>
-    {
-        connectorManager.AddSource(new DummyReadFactory("*"));
-        connectorManager.AddSink(new DummyWriteFactory("*"));
-    });
+builder.Services.AddFlowtideStream("test")
+.AddSqlTextAsPlan(sqlText)
+.AddConnectors((connectorManager) =>
+{
+    connectorManager.AddSource(new DummyReadFactory("*"));
+    connectorManager.AddSink(new DummyWriteFactory("*"));
+})
+.AddStorage(b =>
+{
+    b.AddTemporaryDevelopmentStorage();
+});
 
 builder.Services.AddCors();
 
