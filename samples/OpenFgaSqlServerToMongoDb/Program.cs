@@ -9,6 +9,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Connector.MongoDB.Extensions;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,35 +47,33 @@ SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
 sqlPlanBuilder.AddSqlServerProvider(() => builder.Configuration.GetConnectionString("SqlServer")!);
 sqlPlanBuilder.AddPlanAsView("permissionview", permissionViewPlan);
 sqlPlanBuilder.Sql(query);
-
 var plan = sqlPlanBuilder.GetPlan();
 
-IConnectorManager connectorManager = new ConnectorManager()
-    .AddOpenFGASource("openfga", new OpenFgaSourceOptions()
+builder.Services.AddFlowtideStream("stream")
+    .AddSqlPlan(sqlBuilder =>
     {
-        ClientConfiguration = openFgaConfig
+        sqlBuilder.AddPlanAsView("permissionview", permissionViewPlan);
+        sqlBuilder.Sql(query);
     })
-    .AddSqlServerSource(() => builder.Configuration.GetConnectionString("SqlServer")!)
-    .AddMongoDbSink("*", new FlowtideDotNet.Connector.MongoDB.FlowtideMongoDBSinkOptions()
+    .AddConnectors(connectorManager =>
     {
-        Collection = "demo",
-        ConnectionString = builder.Configuration.GetConnectionString("mongodb")!,
-        Database = "demo",
-        PrimaryKeys = new List<string>() { "docid" }
-    });
-
-builder.Services.AddFlowtideStream(x =>
-{
-    x.AddPlan(plan)
-    .AddConnectorManager(connectorManager)
-    .WithStateOptions(new StateManagerOptions()
-    {
-        // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage
-        PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
+        connectorManager.AddOpenFGASource("openfga", new OpenFgaSourceOptions
         {
-        })
+            ClientConfiguration = openFgaConfig
+        });
+        connectorManager.AddSqlServerSource(() => builder.Configuration.GetConnectionString("SqlServer")!);
+        connectorManager.AddMongoDbSink("*", new FlowtideDotNet.Connector.MongoDB.FlowtideMongoDBSinkOptions()
+        {
+            Collection = "demo",
+            ConnectionString = builder.Configuration.GetConnectionString("mongodb")!,
+            Database = "demo",
+            PrimaryKeys = new List<string>() { "docid" }
+        });
+    })
+    .AddStorage(storage =>
+    {
+        storage.AddTemporaryDevelopmentStorage();
     });
-});
 
 var app = builder.Build();
 
