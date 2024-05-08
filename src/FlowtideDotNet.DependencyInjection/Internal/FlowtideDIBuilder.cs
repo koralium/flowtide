@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.DependencyInjection.Exceptions;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -76,18 +77,37 @@ namespace FlowtideDotNet.DependencyInjection.Internal
 
         internal Base.Engine.DataflowStream Build(IServiceProvider serviceProvider)
         {
-            var connectorManager = serviceProvider.GetRequiredKeyedService<IConnectorManager>(streamName);
-            var planProvider = serviceProvider.GetRequiredKeyedService<IFlowtidePlanProvider>(streamName);
-            var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-            var stateManager = serviceProvider.GetRequiredKeyedService<StateManagerOptions>(streamName);
+            var connectorManager = serviceProvider.GetKeyedService<IConnectorManager>(streamName);
+            var planProvider = serviceProvider.GetKeyedService<IFlowtidePlanProvider>(streamName);
+            var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+            var stateManager = serviceProvider.GetKeyedService<StateManagerOptions>(streamName);
+
+            if (connectorManager == null)
+            {
+                throw new FlowtideMissingConnectorManagerException("IConnectorManager must be registered in the service collection, please do so manually or use the \"AddConnectors\" method.");
+            }
+
+            if (planProvider == null)
+            {
+                throw new FlowtideMissingPlanProviderException("IFlowtidePlanProvider must be registered in the service collection, please do so manually or use the \"AddPlan\" method.");
+            }
+
+            if (stateManager == null)
+            {
+                throw new FlowtideMissingStateManagerException("StateManagerOptions must be registered in the service collection, please do so manually or use the \"AddStorage\" method.");
+            }
 
             var plan = planProvider.GetPlan();
 
             var streamBuilder = new FlowtideBuilder(streamName)
                 .AddConnectorManager(connectorManager)
                 .AddPlan(plan)
-                .WithStateOptions(stateManager)
-                .WithLoggerFactory(loggerFactory);
+                .WithStateOptions(stateManager);
+
+            if (loggerFactory != null)
+            {
+                streamBuilder.WithLoggerFactory(loggerFactory);
+            }
 
             var stream = streamBuilder.Build();
 

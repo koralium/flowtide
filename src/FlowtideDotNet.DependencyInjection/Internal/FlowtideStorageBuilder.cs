@@ -58,7 +58,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
 
         internal StateManagerOptions Build(IServiceProvider serviceProvider)
         {
-            var persistentStorage = serviceProvider.GetRequiredKeyedService<IPersistentStorage>(name);
+            var persistentStorage = serviceProvider.GetKeyedService<IPersistentStorage>(name);
             var serializeOptions = serviceProvider.GetKeyedService<StateSerializeOptions>(name);
             var fileCacheOptions = serviceProvider.GetKeyedService<FileCacheOptions>(name);
 
