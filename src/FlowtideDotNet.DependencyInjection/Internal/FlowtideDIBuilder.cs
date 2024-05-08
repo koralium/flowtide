@@ -87,7 +87,8 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 .AddConnectorManager(connectorManager)
                 .AddPlan(plan)
                 .WithStateOptions(stateManager)
-                .WithLoggerFactory(loggerFactory);
+                .WithLoggerFactory(loggerFactory)
+                .;
 
             var stream = streamBuilder.Build();
 

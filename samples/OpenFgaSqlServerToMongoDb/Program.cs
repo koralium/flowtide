@@ -41,13 +41,7 @@ openFgaConfig.StoreId = store.Id;
 openFgaConfig.AuthorizationModelId = authModel.AuthorizationModel.Id;
 
 var permissionViewPlan = OpenFgaToFlowtide.Convert(authModel.AuthorizationModel, "doc", "can_view", "openfga");
-
 var query = File.ReadAllText("query.sql");
-SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
-sqlPlanBuilder.AddSqlServerProvider(() => builder.Configuration.GetConnectionString("SqlServer")!);
-sqlPlanBuilder.AddPlanAsView("permissionview", permissionViewPlan);
-sqlPlanBuilder.Sql(query);
-var plan = sqlPlanBuilder.GetPlan();
 
 builder.Services.AddFlowtideStream("stream")
     .AddSqlPlan(sqlBuilder =>

@@ -72,11 +72,11 @@ public class ExampleDataSource : GenericDataSourceAsync<User>
 }
 ```
 
-To use your data source, add the following to the *ReadWriteFactory*:
+To use your data source, add the following to the *ConnectorManager*:
 
 ```csharp
-factory.AddGenericDataSource(
-    "{regex for the table name}", 
+connectorManager.AddCustomSource(
+    "{the table name}", 
     (readRelation) => new ExampleDataSource(userRepository));
 ```
 
@@ -108,6 +108,8 @@ Example:
 ```csharp
 sqlPlanBuilder.AddGenericDataTable<User>("users");
 ```
+
+If you are starting Flowtide with dependency injection, a table provider is added automatically, so this step is not required.
 
 ## Generic data sink
 
@@ -143,8 +145,8 @@ internal class TestDataSink : GenericDataSink<User>
 }
 ```
 
-Add the generic data sink to the *ReadWriteFactory*:
+Add the generic data sink to the *ConnectorManager*:
 
 ```csharp
-factory.AddGenericDataSink("{regexPattern}", ExecutionMode.OnCheckpoint, (rel) => new testDataSink());
+connectorManager.AddCustomSink("{tableName}", (rel) => new testDataSink());
 ```

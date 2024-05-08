@@ -57,10 +57,10 @@ Without change tracking, Flowtide wont be able to find updates on the table.
 There are plans to allow the source to run in batch mode where it computes the delta inside of the connector, but
 that is not yet available.
 
-The SQL Server Source can be added to the 'ReadWriteFactory' with the following line:
+The SQL Server Source can be added to the 'ConnectorManager' with the following line:
 
 ```csharp
-factory.AddSqlServerSource("your regexp on table names", () => connectionString);
+connectorManager.AddSqlServerSource(() => connectionString);
 ```
 
 The connection string must be set as a function, since the idea is that the connection string might change, from say a system such as
@@ -104,10 +104,10 @@ All SQL Server Sink tables must have a primary key defined. The primary key must
 Its implementation waits fully until the stream has reached a steady state at a time T until it writes data to the database.
 This means that its table output can always be traced back to a state from the source systems.
 
-To use the *SQL Server Sink* add the following line to the *ReadWriteFactory*:
+To use the *SQL Server Sink* add the following line to the *ConnectorManager*:
 
 ```csharp
-factory.AddSqlServerSink("your regexp on table names", () => connectionString);
+connectorManager.AddSqlServerSink(() => connectionString);
 ```
 
 As with the *SQL Server Source*, the connection string is returned by a function to enable dynamic connection strings.
@@ -132,7 +132,7 @@ In this scenario you can provide column names for the columns you want Flowtide 
 Ex:
 
 ```csharp
-factory.AddSqlServerSink("your regexp on table names", new SqlServerSinkOptions() {
+connectorManager.AddSqlServerSink("your regexp on table names", new SqlServerSinkOptions() {
   ConnectionStringFunc = () => connectionString,
   CustomPrimaryKeys = new List<string>() { "my_column1", "my_column2" }
 });
@@ -148,3 +148,5 @@ To use the *table provider* add the following line to the *Sql plan builder*:
 ```csharp
 sqlBuilder.AddSqlServerProvider(() => connectionString);
 ```
+
+If you are starting Flowtide with dependency injection, a table provider is added automatically, so this step is not required.

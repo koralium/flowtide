@@ -9,6 +9,8 @@ sidebar_position: 3
 
 Parallelism support is still experimental.
 
+This setting can not yet be applied when creating a stream using Dependency Injection setup.
+
 :::
 
 Some operators support running in parallel. This is done by partitioning the input into an operator. For instance in an aggregate with a grouping.

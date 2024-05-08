@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Health checks
 
-In the 'TideflowDotnet.AspNetCore' package, there is built in support for 'Microsoft.Extensions.Diagnostics.HealthChecks'.
+In the 'FlowtideDotnet.AspNetCore' package, there is built in support for 'Microsoft.Extensions.Diagnostics.HealthChecks'.
 If you have added your stream using:
 
 ```

@@ -25,21 +25,21 @@ namespace FlowtideDotNet.DependencyInjection
 {
     public static class FlowtideDIBuilderExtensions
     {
-        public static IFlowtideDIBuilder AddSqlFileAsPlan(this IFlowtideDIBuilder builder, string filePath, Action<SqlPlanBuilder>? options = null)
+        public static IFlowtideDIBuilder AddSqlFileAsPlan(this IFlowtideDIBuilder builder, string filePath)
         {
             var sqlText = File.ReadAllText(filePath);
             builder.Services.AddKeyedSingleton<IFlowtidePlanProvider>(builder.StreamName, (provider, key) => {
                 var connectorManager = provider.GetRequiredKeyedService<IConnectorManager>(builder.StreamName);
-                return new SqlPlanProvider(sqlText, connectorManager, options);
+                return new SqlPlanProvider(sqlText, connectorManager);
             });
             return builder;
         }
 
-        public static IFlowtideDIBuilder AddSqlTextAsPlan(this IFlowtideDIBuilder builder, string sqlText, Action<SqlPlanBuilder>? options = null)
+        public static IFlowtideDIBuilder AddSqlTextAsPlan(this IFlowtideDIBuilder builder, string sqlText)
         {
             builder.Services.AddKeyedSingleton<IFlowtidePlanProvider>(builder.StreamName, (provider, key) => {
                 var connectorManager = provider.GetRequiredKeyedService<IConnectorManager>(builder.StreamName);
-                return new SqlPlanProvider(sqlText, connectorManager, options);
+                return new SqlPlanProvider(sqlText, connectorManager);
             });
             return builder;
         }

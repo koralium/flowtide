@@ -25,19 +25,16 @@ namespace FlowtideDotNet.DependencyInjection.Internal
     {
         private readonly string sql;
         private readonly IConnectorManager connectorManager;
-        private readonly Action<SqlPlanBuilder>? options;
 
-        public SqlPlanProvider(string sql, IConnectorManager connectorManager, Action<SqlPlanBuilder>? options)
+        public SqlPlanProvider(string sql, IConnectorManager connectorManager)
         {
             this.sql = sql;
             this.connectorManager = connectorManager;
-            this.options = options;
         }
 
         public Plan GetPlan()
         {
             var sqlPlanBuilder = new SqlPlanBuilder();
-            options?.Invoke(sqlPlanBuilder);
             foreach(var tableProvider in connectorManager.GetTableProviders())
             {
                 sqlPlanBuilder.AddTableProvider(tableProvider);
