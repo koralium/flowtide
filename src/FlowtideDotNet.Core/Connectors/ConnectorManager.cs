@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Core
         private readonly List<IConnectorSinkFactory> _connectorSinkFactories = new List<IConnectorSinkFactory>();
         private readonly List<IConnectorSourceFactory> _connectorSourceFactories = new List<IConnectorSourceFactory>();
         private readonly List<IConnectorTableProviderFactory> _connectorTableProviderFactories = new List<IConnectorTableProviderFactory>();
+        private readonly List<ITableProvider> _tableProviders = new List<ITableProvider>();
 
         public void AddSink(IConnectorSinkFactory connectorSinkFactory)
         {
@@ -41,6 +42,11 @@ namespace FlowtideDotNet.Core
                 _connectorTableProviderFactories.Add(tableProviderFactory);
             }
             _connectorSourceFactories.Add(connectorSourceFactory);
+        }
+
+        public void AddTableProvider(ITableProvider tableProvider)
+        {
+            _tableProviders.Add(tableProvider);
         }
 
         public IConnectorSinkFactory GetSinkFactory(WriteRelation writeRelation)
@@ -75,7 +81,8 @@ namespace FlowtideDotNet.Core
 
         public IEnumerable<ITableProvider> GetTableProviders()
         {
-            return _connectorTableProviderFactories.Select(f => f.Create());
+            return _connectorTableProviderFactories.Select(f => f.Create())
+                .Union(_tableProviders);
         }
     }
 }

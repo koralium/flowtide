@@ -32,5 +32,7 @@ namespace FlowtideDotNet.Core
         IConnectorSinkFactory GetSinkFactory(WriteRelation writeRelation);
 
         IEnumerable<ITableProvider> GetTableProviders();
+
+        void AddTableProvider(ITableProvider tableProvider);
     }
 }
