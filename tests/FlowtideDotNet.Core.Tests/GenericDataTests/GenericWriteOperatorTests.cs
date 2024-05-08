@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Sources.Generic;
 using FluentAssertions;
@@ -32,9 +33,9 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             this.testDataSink = testDataSink;
         }
 
-        protected override void AddWriteResolvers(ReadWriteFactory factory)
+        protected override void AddWriteResolvers(IConnectorManager factory)
         {
-            factory.AddGenericDataSink("*", Core.Operators.Write.ExecutionMode.OnCheckpoint, (rel) => testDataSink);
+            factory.AddCustomSink("output", (rel) => testDataSink, Core.Operators.Write.ExecutionMode.OnCheckpoint);
             base.AddWriteResolvers(factory);
         }
     }

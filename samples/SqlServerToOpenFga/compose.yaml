@@ -12,7 +12,7 @@ services:
       CUSTOMCONNSTR_SqlServer: "Server=sqlserver;Database=demo;User Id=sa;Password=yourStrong(!)Password;TrustServerCertificate=True"
       openfga_url: "http://openfga:8080"
     ports:
-      - "8000:80"
+      - "8000:8080"
   sqlserver:
     image: "mcr.microsoft.com/mssql/server:2022-latest"
     ports:

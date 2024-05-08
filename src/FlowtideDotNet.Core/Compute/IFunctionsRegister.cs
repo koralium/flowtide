@@ -86,5 +86,19 @@ namespace FlowtideDotNet.Core.Compute
         bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition);
 
         bool TryGetAggregateFunction(string uri, string name, [NotNullWhen(true)] out AggregateFunctionDefinition? aggregateFunctionDefinition);
+
+        /// <summary>
+        /// Register a table function, this is the low level call which requires the user to visit the expressions with the visitor.
+        /// The expression result should be of type IEnumerable<RowEvent>.
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <param name="name"></param>
+        /// <param name="mapFunc"></param>
+        void RegisterTableFunction(
+            string uri,
+            string name, 
+            Func<TableFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc);
+
+        bool TryGetTableFunction(string uri, string name, [NotNullWhen(true)] out TableFunctionDefinition? tableFunctionDefinition);
     }
 }

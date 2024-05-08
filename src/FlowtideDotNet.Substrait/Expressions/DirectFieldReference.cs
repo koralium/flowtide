@@ -10,15 +10,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class DirectFieldReference : FieldReference
+    public sealed class DirectFieldReference : FieldReference, IEquatable<DirectFieldReference>
     {
         public required ReferenceSegment ReferenceSegment { get; set; }
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
             return visitor.VisitDirectFieldReference(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is DirectFieldReference reference &&
+                   Equals(reference);
+        }
+
+        public bool Equals(DirectFieldReference? other)
+        {
+            return other != null &&
+                   Equals(ReferenceSegment, other.ReferenceSegment);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(ReferenceSegment);
+        }
+
+        public static bool operator ==(DirectFieldReference? left, DirectFieldReference? right)
+        {
+            return EqualityComparer<DirectFieldReference>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(DirectFieldReference? left, DirectFieldReference? right)
+        {
+            return !(left == right);
         }
     }
 }

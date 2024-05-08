@@ -34,16 +34,13 @@ namespace FlowtideDotNet.Substrait.Sql
 
         public override ExpressionData Visit(SqlParser.Ast.Expression expression, EmitData state)
         {
-            if (state.TryGetEmitIndex(expression, out var index))
+            if (state.TryGetEmitIndex(expression, out var segment, out var name))
             {
                 var r = new DirectFieldReference()
                 {
-                    ReferenceSegment = new StructReferenceSegment()
-                    {
-                        Field = index
-                    }
+                    ReferenceSegment = segment
                 };
-                return new ExpressionData(r, state.GetName(index));
+                return new ExpressionData(r, name);
             }
             return base.Visit(expression, state);
         }
@@ -339,16 +336,13 @@ namespace FlowtideDotNet.Substrait.Sql
         {
             var removedQuotaIdentifier = new SqlParser.Ast.Expression.CompoundIdentifier(new Sequence<Ident>(compoundIdentifier.Idents.Select(x => new Ident(x.Value))));
             // First try and get the index directly based on the expression
-            if (state.TryGetEmitIndex(removedQuotaIdentifier, out var index))
+            if (state.TryGetEmitIndex(removedQuotaIdentifier, out var segment, out var name))
             {
                 var r = new DirectFieldReference()
                 {
-                    ReferenceSegment = new StructReferenceSegment()
-                    {
-                        Field = index
-                    }
+                    ReferenceSegment = segment
                 };
-                return new ExpressionData(r, state.GetName(index));
+                return new ExpressionData(r, name);
             }
 
             // Otherwise try and find a a part of it.
@@ -676,7 +670,7 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 escapeChar = new StringLiteral() { Value = like.EscapeChar.Value.ToString() };
             }
-
+            
             var likeFunction = new ScalarFunction()
             {
                 ExtensionUri = FunctionsString.Uri,
@@ -688,6 +682,20 @@ namespace FlowtideDotNet.Substrait.Sql
                     escapeChar
                 }
             };
+
+            if (like.Negated)
+            {
+                likeFunction = new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionName = FunctionsBoolean.Not,
+                    Arguments = new List<Expressions.Expression>()
+                    {
+                        likeFunction
+                    }
+                };
+            }
+
             return new ExpressionData(likeFunction, expr.Name);
         }
     }

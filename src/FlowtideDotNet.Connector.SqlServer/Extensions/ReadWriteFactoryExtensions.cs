@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Core.Engine
                 }
                 transform?.Invoke(relation);
 
-                var source = new SqlServerDataSource(connectionStringFunc, relation, dataflowopt);
+                var source = new SqlServerDataSource(connectionStringFunc, relation.NamedTable.DotSeperated, relation, dataflowopt);
                 var primaryKeys = source.GetPrimaryKeys();
 
                 if (!source.IsChangeTrackingEnabled())

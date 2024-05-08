@@ -16,7 +16,7 @@
       ElasticsearchUrl: "http://elasticsearch:9200"
       StreamVersion: "1.0.0"
     ports:
-      - "8000:80"
+      - "8000:8080"
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite
     ports:

@@ -106,5 +106,18 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Where(x => x.FirstName!.StartsWith(firstUserChar) || x.FirstName!.StartsWith(secondUserChar)).Select(x => new { firstName = x.FirstName }));
         }
+
+        [Fact]
+        public async Task NotLike()
+        {
+            GenerateData();
+            var firstLetterFirstUser = Users[0].FirstName!.Substring(0, 1);
+            await StartStream(@"
+            INSERT INTO output
+            SELECT firstName FROM users WHERE firstName NOT LIKE '" + firstLetterFirstUser + @"%';
+            ");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => !x.FirstName!.StartsWith(firstLetterFirstUser)).Select(x => new { firstName = x.FirstName }));
+        }
     }
 }

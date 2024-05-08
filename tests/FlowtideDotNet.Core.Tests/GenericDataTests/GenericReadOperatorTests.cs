@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Sources.Generic;
 using FlowtideDotNet.Substrait.Sql;
@@ -27,9 +28,9 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             this.testDataSource = testDataSource;
         }
 
-        protected override void AddReadResolvers(ReadWriteFactory factory)
+        protected override void AddReadResolvers(IConnectorManager manager)
         {
-            factory.AddGenericDataSource("*", (rel) => testDataSource);
+            manager.AddCustomSource("users", (rel) => testDataSource);
         }
     }
 

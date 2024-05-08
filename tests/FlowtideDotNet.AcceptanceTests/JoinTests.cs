@@ -387,5 +387,23 @@ namespace FlowtideDotNet.AcceptanceTests
                     companyName = default(string)
                 });
         }
+
+        [Fact]
+        public async Task JoinWithSubProperty()
+        {
+            GenerateData();
+            await StartStream(@"
+                CREATE VIEW test AS
+                SELECT map('userkey', userkey) AS user 
+                FROM orders;
+
+                INSERT INTO output 
+                SELECT
+                    t.user.userkey
+                FROM test t
+                INNER JOIN users u ON t.user.userkey = u.userkey");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Orders.Select(x => new { x.UserKey }));
+        }
     }
 }

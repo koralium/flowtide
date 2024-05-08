@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
+using FlowtideDotNet.Core.Compute.Internal.TableFunctions;
 
 namespace FlowtideDotNet.Core.Compute.Internal
 {
@@ -19,6 +20,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
         public static void AddListFunctions(FunctionsRegister functionsRegister)
         {
             ListAggAggregation.Register(functionsRegister);
+            UnnestTableFunction.AddBuiltInUnnestFunction(functionsRegister);
         }
     }
 }

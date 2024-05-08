@@ -595,6 +595,36 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             await command.ExecuteNonQueryAsync();
         }
 
+        public static async Task<List<string>> GetFullTableNames(SqlConnection sqlConnection)
+        {
+            // Returns table names in {database}.{schema}.{table} format
+            using var dbNameSelectCommand = sqlConnection.CreateCommand();
+            dbNameSelectCommand.CommandText = "SELECT DB_NAME()";
+            var dbName = (string?)await dbNameSelectCommand.ExecuteScalarAsync();
+
+            if (dbName == null)
+            {
+                throw new InvalidOperationException("Could not get database name from sql server.");
+            }
+
+            string query = "SELECT sys.schemas.name as schema_name, sys.tables.name as table_name\n" +
+                "FROM sys.tables\n" +
+                "JOIN sys.schemas ON sys.schemas.schema_id = sys.tables.schema_id;";
+
+            using var cmd = sqlConnection.CreateCommand();
+            cmd.CommandText = query;
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            var list = new List<string>();
+
+            while (await reader.ReadAsync())
+            {
+                list.Add($"{dbName}.{reader.GetString(0)}.{reader.GetString(1)}");
+            }
+
+            return list;
+        }
+
         public static async Task<List<string>> GetPrimaryKeys(SqlConnection connection, string tableFullName)
         {
             var splitName = tableFullName.Split('.');

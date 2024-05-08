@@ -33,6 +33,10 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Core.Operators.TimestampProvider;
 using FlowtideDotNet.Core.Operators.Buffer;
 using FlowtideDotNet.Core.Operators.TopN;
+using FlowtideDotNet.Core.Operators.TableFunction;
+using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices.Egress;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -53,7 +57,8 @@ namespace FlowtideDotNet.Core.Engine
 
         private readonly Plan plan;
         private readonly DataflowStreamBuilder dataflowStreamBuilder;
-        private readonly IReadWriteFactory readFactory;
+        private readonly IConnectorManager? connectorManager;
+        private readonly IReadWriteFactory? readWriteFactory;
         private readonly int queueSize;
         private readonly FunctionsRegister functionsRegister;
         private readonly int parallelism;
@@ -99,7 +104,8 @@ namespace FlowtideDotNet.Core.Engine
         public SubstraitVisitor(
             Plan plan, 
             DataflowStreamBuilder dataflowStreamBuilder, 
-            IReadWriteFactory readFactory, 
+            IConnectorManager? connectorManager,
+            IReadWriteFactory? readWriteFactory,
             int queueSize, 
             FunctionsRegister functionsRegister,
             int parallelism,
@@ -107,7 +113,8 @@ namespace FlowtideDotNet.Core.Engine
         {
             this.plan = plan;
             this.dataflowStreamBuilder = dataflowStreamBuilder;
-            this.readFactory = readFactory;
+            this.connectorManager = connectorManager;
+            this.readWriteFactory = readWriteFactory;
             this.queueSize = queueSize;
             this.functionsRegister = functionsRegister;
             this.parallelism = parallelism;
@@ -382,25 +389,43 @@ namespace FlowtideDotNet.Core.Engine
             {
                 return VisitGetTimestampTable(state);
             }
-
-            var info = readFactory.GetReadOperator(readRelation, functionsRegister, new DataflowBlockOptions() { BoundedCapacity = queueSize });
-
-            var previousState = state;
-            if (info.NormalizationRelation != null)
+            IStreamIngressVertex? op;
+            ITargetBlock<IStreamEvent>? previousState;
+            // TODO: Remove this if statement after readwritefactory is removed
+            if (connectorManager != null)
             {
-                var normId = _operatorId++;
-                NormalizationOperator normOp = new NormalizationOperator(info.NormalizationRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                var sourceFactory = connectorManager.GetSourceFactory(readRelation);
+                op = sourceFactory.CreateSource(readRelation, functionsRegister, new DataflowBlockOptions() { BoundedCapacity = queueSize });
+                previousState = state;
+            }
+            #region ReadwriteFactory obsolete
+            else if (readWriteFactory != null)
+            {
+                var info = readWriteFactory.GetReadOperator(readRelation, functionsRegister, new DataflowBlockOptions() { BoundedCapacity = queueSize });
 
-                if (state != null)
+                previousState = state;
+                if (info.NormalizationRelation != null)
                 {
-                    normOp.LinkTo(state);
+                    var normId = _operatorId++;
+                    NormalizationOperator normOp = new NormalizationOperator(info.NormalizationRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+
+                    if (state != null)
+                    {
+                        normOp.LinkTo(state);
+                    }
+                    previousState = normOp;
+                    dataflowStreamBuilder.AddPropagatorBlock(normId.ToString(), normOp);
                 }
-                previousState = normOp;
-                dataflowStreamBuilder.AddPropagatorBlock(normId.ToString(), normOp);
+                op = info.IngressVertex;
+            }
+            #endregion
+            else
+            {
+                throw new InvalidOperationException("No ConnectorManager or ReadWriteFactory");
             }
 
+
             var id = _operatorId++;
-            var op = info.IngressVertex;
             if (op is ISourceBlock<IStreamEvent> sourceBlock)
             {
                 if (previousState != null)
@@ -419,7 +444,21 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitWriteRelation(WriteRelation writeRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = readFactory.GetWriteOperator(writeRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+
+            IStreamEgressVertex? op = default;
+            if (connectorManager != null)
+            {
+                var sinkFactory = connectorManager.GetSinkFactory(writeRelation);
+                op = sinkFactory.CreateSink(writeRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            }
+            else if (readWriteFactory != null)
+            {
+                op = readWriteFactory.GetWriteOperator(writeRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            }
+            else
+            {
+                throw new InvalidOperationException("No ConnectorManager or ReadWriteFactory");
+            }
 
             if (op is ITargetBlock<IStreamEvent> target)
             {
@@ -551,6 +590,39 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitFetchRelation(FetchRelation fetchRelation, ITargetBlock<IStreamEvent>? state)
         {
             throw new NotSupportedException("Fetch operation (top or limit) is not supported without an order by");
+        }
+
+        public override IStreamVertex VisitTableFunctionRelation(TableFunctionRelation tableFunctionRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            var id = _operatorId++;
+
+            if (tableFunctionRelation.Input == null)
+            {
+                // Used as a root for data such as in FROM func()
+                var op = new TableFunctionReadOperator(tableFunctionRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                if (state != null)
+                {
+                    op.LinkTo(state);
+                }
+
+                dataflowStreamBuilder.AddIngressBlock(id.ToString(), op);
+                return op;
+            }
+            else
+            {
+                // Used in a join or similar
+                var op = new TableFunctionJoinOperator(tableFunctionRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+
+                if (state != null)
+                {
+                    op.LinkTo(state);
+                }
+
+                tableFunctionRelation.Input.Accept(this, op);
+                dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
+                return op;
+            }
+           
         }
     }
 }

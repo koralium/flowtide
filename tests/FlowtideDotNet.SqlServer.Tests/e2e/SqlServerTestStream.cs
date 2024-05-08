@@ -12,13 +12,8 @@
 
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.SqlServer;
+using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Engine;
-using FlowtideDotNet.Substrait.Sql;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.SqlServer.Tests.e2e
 {
@@ -33,14 +28,14 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             this.customPrimaryKeys = customPrimaryKeys;
         }
 
-        protected override void AddReadResolvers(ReadWriteFactory factory)
+        protected override void AddReadResolvers(IConnectorManager factory)
         {
-            factory.AddSqlServerSource("*", () => connectionString);
+            factory.AddSqlServerSource(() => connectionString);
         }
 
-        protected override void AddWriteResolvers(ReadWriteFactory factory)
+        protected override void AddWriteResolvers(IConnectorManager factory)
         {
-            factory.AddSqlServerSink("*", new SqlServerSinkOptions()
+            factory.AddSqlServerSink(new SqlServerSinkOptions()
             {
                 ConnectionStringFunc = () => connectionString,
                 CustomPrimaryKeys = customPrimaryKeys

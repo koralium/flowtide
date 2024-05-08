@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class MergeJoinRelation : Relation
+    public sealed class MergeJoinRelation : Relation, IEquatable<MergeJoinRelation>
     {
         public JoinType Type { get; set; }
 
@@ -43,6 +43,55 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitMergeJoinRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is MergeJoinRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(MergeJoinRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Type, other.Type) &&
+                Equals(Left, other.Left) &&
+                Equals(Right, other.Right) &&
+                LeftKeys.SequenceEqual(other.LeftKeys) &&
+                RightKeys.SequenceEqual(other.RightKeys) &&
+                Equals(PostJoinFilter, other.PostJoinFilter);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(base.GetHashCode());
+            code.Add(Type);
+            code.Add(Left);
+            code.Add(Right);
+            
+            foreach(var key in LeftKeys)
+            {
+                code.Add(key);
+            }
+            foreach(var key in RightKeys)
+            {
+                code.Add(key);
+            }
+
+            code.Add(PostJoinFilter);
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(MergeJoinRelation? left, MergeJoinRelation? right)
+        {
+            return EqualityComparer<MergeJoinRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(MergeJoinRelation? left, MergeJoinRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

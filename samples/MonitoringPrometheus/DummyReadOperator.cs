@@ -12,12 +12,27 @@
 
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 
 namespace MonitoringPrometheus
 {
+    public class DummyReadFactory : RegexConnectorSourceFactory
+    {
+        public DummyReadFactory(string regexPattern) : base(regexPattern)
+        {
+        }
+
+        public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
+        {
+            return new DummyReadOperator(dataflowBlockOptions);
+        }
+    }
+
     public class DummyReadOperator : ReadBaseOperator<object>
     {
         private int _watermarkCounter = 1;

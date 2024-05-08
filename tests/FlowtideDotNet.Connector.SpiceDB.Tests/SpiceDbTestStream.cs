@@ -13,6 +13,8 @@
 using Authzed.Api.V1;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.SpiceDB.Extensions;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using Grpc.Core;
 using Grpc.Net.Client;
@@ -39,7 +41,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             this.deleteExistingFilter = deleteExistingFilter;
         }
 
-        protected override void AddWriteResolvers(ReadWriteFactory factory)
+        protected override void AddWriteResolvers(IConnectorManager factory)
         {
             if (addWriteResolver)
             {
@@ -61,7 +63,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             }
         }
 
-        protected override void AddReadResolvers(ReadWriteFactory factory)
+        protected override void AddReadResolvers(IConnectorManager factory)
         {
             if (addReadResolver)
             {

@@ -15,7 +15,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class ReadRelation : Relation
+    public sealed class ReadRelation : Relation, IEquatable<ReadRelation>
     {
         public required NamedStruct BaseSchema { get; set; }
 
@@ -38,6 +38,42 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitReadRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ReadRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(ReadRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(BaseSchema, other.BaseSchema) &&
+                Equals(NamedTable, other.NamedTable) &&
+                Equals(Filter, other.Filter);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(base.GetHashCode());
+            code.Add(BaseSchema);
+            code.Add(NamedTable);
+            code.Add(Filter);
+
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(ReadRelation? left, ReadRelation? right)
+        {
+            return EqualityComparer<ReadRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(ReadRelation? left, ReadRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

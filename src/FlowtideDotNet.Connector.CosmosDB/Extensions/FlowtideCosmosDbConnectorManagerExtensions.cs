@@ -10,10 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Substrait.Type
+using FlowtideDotNet.Connector.CosmosDB;
+using FlowtideDotNet.Connector.CosmosDB.Internal;
+
+namespace FlowtideDotNet.Core
 {
-    //public class NumericType : SubstraitBaseType
-    //{
-    //    public override SubstraitType Type => SubstraitType.Numeric;
-    //}
+    public static class FlowtideCosmosDbConnectorManagerExtensions
+    {
+        public static IConnectorManager AddCosmosDbSink(this IConnectorManager connectorManager, string regexPattern, FlowtideCosmosOptions options)
+        {
+            connectorManager.AddSink(new ComsosDbSinkFactory(regexPattern, options));
+            return connectorManager;
+        }
+    }
 }

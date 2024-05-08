@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.DeviceFactories;
 using FlowtideDotNet.Substrait.Conversion;
 using FlowtideDotNet.Substrait;
 using FASTER.core;
+using FlowtideDotNet.Core.Connectors;
 
 namespace FlowtideDotNet.Core.Tests.Failure
 {
@@ -283,6 +284,22 @@ namespace FlowtideDotNet.Core.Tests.Failure
 
             var tmpStorage = new InMemoryDeviceFactory();
             tmpStorage.Initialize("./data/tmp");
+
+            ConnectorManager connectorManager = new ConnectorManager();
+            connectorManager.AddSource(new TestIngressFactory("*"));
+            connectorManager.AddSink(new FailureEgressFactory("*", new FailureEgressOptions()
+            {
+                OnCheckpoint = () =>
+                {
+                    checkpointCount++;
+                    if (!thrownOnce)
+                    {
+                        thrownOnce = true;
+                        throw new Exception();
+                    }
+                }
+            }));
+
             FlowtideBuilder differentialComputeBuilder = new FlowtideBuilder("teststream")
                 .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                 {
@@ -296,27 +313,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
                     TemporaryStorageFactory = tmpStorage
                 })
                 .AddPlan(optimizedPlan)
-                .AddReadWriteFactory(new TestFactory(
-                    (readRel, opt) =>
-                    {
-                        return new TestIngress(opt);
-                    },
-                    (writeRel, opt) =>
-                    {
-                        return new FailureEgress(opt, new FailureEgressOptions()
-                        {
-                            OnCheckpoint = () =>
-                            {
-                                checkpointCount++;
-                                if (!thrownOnce)
-                                {
-                                    thrownOnce = true;
-                                    throw new Exception();
-                                }
-                            }
-                        });
-                    }
-                    ));
+                .AddConnectorManager(connectorManager);
 
             var stream = differentialComputeBuilder.Build();
             await stream.StartAsync();

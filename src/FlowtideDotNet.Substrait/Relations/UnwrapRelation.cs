@@ -15,7 +15,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class UnwrapRelation : Relation
+    public sealed class UnwrapRelation : Relation, IEquatable<UnwrapRelation>
     {
         public override int OutputLength
         {
@@ -44,6 +44,43 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitUnwrapRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is UnwrapRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(UnwrapRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Equals(BaseSchema, other.BaseSchema) &&
+                Equals(Filter, other.Filter) &&
+                Equals(Field, other.Field);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(base.GetHashCode());
+            code.Add(Input);
+            code.Add(BaseSchema);
+            code.Add(Filter);
+            code.Add(Field);
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(UnwrapRelation? left, UnwrapRelation? right)
+        {
+            return EqualityComparer<UnwrapRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(UnwrapRelation? left, UnwrapRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

@@ -10,14 +10,50 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class AggregateFunction
+    public sealed class AggregateFunction : IEquatable<AggregateFunction>
     {
         public required string ExtensionUri { get; set; }
         public required string ExtensionName { get; set; }
 
         public required List<Expression> Arguments { get; set; }
 
+        public override bool Equals(object? obj)
+        {
+            return obj is AggregateFunction function &&
+                   Equals(function);
+        }
+
+        public bool Equals(AggregateFunction? other)
+        {
+            return other != null &&
+                   ExtensionUri == other.ExtensionUri &&
+                   ExtensionName == other.ExtensionName &&
+                   Arguments.SequenceEqual(other.Arguments);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(ExtensionUri);
+            code.Add(ExtensionName);
+            foreach (var argument in Arguments)
+            {
+                code.Add(argument);
+            }
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(AggregateFunction? left, AggregateFunction? right)
+        {
+            return EqualityComparer<AggregateFunction>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(AggregateFunction? left, AggregateFunction? right)
+        {
+            return !(left == right);
+        }
     }
 }

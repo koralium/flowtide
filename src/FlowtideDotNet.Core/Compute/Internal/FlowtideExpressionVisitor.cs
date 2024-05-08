@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
@@ -45,8 +46,39 @@ namespace FlowtideDotNet.Core.Compute.Internal
             }
         }
 
+        public static System.Linq.Expressions.Expression VisitInnerReferenceSegment(ReferenceSegment referenceSegment, System.Linq.Expressions.Expression expression)
+        {
+            // Since ref structs cant implement interfaces, check that methods exist in both flx value types
+            Debug.Assert(nameof(FlxValue.GetVectorValue) != null);
+            Debug.Assert(nameof(FlxValueRef.GetVectorValue) != null);
+            Debug.Assert(nameof(FlxValue.GetMapValue) != null);
+            Debug.Assert(nameof(FlxValueRef.GetMapValue) != null);
+
+            var expr = referenceSegment switch
+            {
+                StructReferenceSegment { Field: >= 0 } structReferenceSegment => 
+                    System.Linq.Expressions.Expression.Call(
+                        expression, 
+                        expression.Type.GetMethod(nameof(FlxValue.GetVectorValue)) ?? throw new MissingMethodException(nameof(FlxValue)), 
+                        System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field)),
+                MapKeyReferenceSegment { Key: not null } mapKeyReferenceSegment => 
+                    System.Linq.Expressions.Expression.Call(
+                        expression, 
+                        expression.Type.GetMethod(nameof(FlxValue.GetMapValue)) ?? throw new MissingMethodException(nameof(FlxValue)), 
+                        System.Linq.Expressions.Expression.Constant(mapKeyReferenceSegment.Key)),
+                _ => throw new NotImplementedException($"The {nameof(referenceSegment)} must be a {nameof(StructReferenceSegment)} with a positive {nameof(StructReferenceSegment.Field)} or a {nameof(MapKeyReferenceSegment)} with a non-null {nameof(MapKeyReferenceSegment.Key)}"),
+            };
+
+            if (referenceSegment.Child != null)
+            {
+                return VisitInnerReferenceSegment(referenceSegment.Child, expr);
+            }
+            return expr;
+        }
+
         public override System.Linq.Expressions.Expression? VisitDirectFieldReference(DirectFieldReference directFieldReference, ParametersInfo state)
         {
+            // We must first check that it is a reference segment to find the relative index in case of a join
             if (directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
                 int parameterIndex = 0;
@@ -55,7 +87,6 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 {
                     if (structReferenceSegment.Field < state.RelativeIndices[i])
                     {
-
                         break;
                     }
                     else
@@ -64,8 +95,14 @@ namespace FlowtideDotNet.Core.Compute.Internal
                         parameterIndex = i;
                     }
                 }
-                var method = inputType.GetMethod("GetColumn");
-                return System.Linq.Expressions.Expression.Call(state.Parameters[parameterIndex], method, System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field - relativeIndex));
+                var method = inputType.GetMethod(nameof(RowEvent.GetColumn));
+                Debug.Assert(method != null);
+                System.Linq.Expressions.Expression expr = System.Linq.Expressions.Expression.Call(state.Parameters[parameterIndex], method, System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field - relativeIndex));
+                if (structReferenceSegment.Child != null)
+                {
+                    expr = VisitInnerReferenceSegment(structReferenceSegment.Child, expr);
+                }
+                return expr;
             }
             return base.VisitDirectFieldReference(directFieldReference, state);
         }

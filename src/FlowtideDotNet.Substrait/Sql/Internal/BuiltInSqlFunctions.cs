@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
+using FlowtideDotNet.Substrait.Sql.Internal.TableFunctions;
 using SqlParser.Ast;
 using System.Diagnostics;
 
@@ -519,6 +520,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
             });
 
+            
+
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "power", FunctionsArithmetic.Uri, FunctionsArithmetic.Power);
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "sqrt", FunctionsArithmetic.Uri, FunctionsArithmetic.Sqrt);
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "exp", FunctionsArithmetic.Uri, FunctionsArithmetic.Exp);
@@ -545,6 +548,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "string_base64_encode", FunctionsString.Uri, FunctionsString.StringBase64Encode);
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "string_base64_decode", FunctionsString.Uri, FunctionsString.StringBase64Decode);
+
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "len", FunctionsString.Uri, FunctionsString.CharLength);
+
+            // Table functions
+            UnnestSqlFunction.AddUnnest(sqlFunctionRegister);
         }
 
         private static void RegisterSingleVariableFunction(

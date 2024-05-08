@@ -13,7 +13,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace ConsoleTables
+namespace FlowtideDotNet.Core.Sinks
 {
     internal class ConsoleTable
     {
@@ -295,20 +295,20 @@ namespace ConsoleTables
             return columnLengths;
         }
 
-        public void Write(Format format = ConsoleTables.Format.Default)
+        public void Write(Format format = Sinks.Format.Default)
         {
             switch (format)
             {
-                case ConsoleTables.Format.Default:
+                case Sinks.Format.Default:
                     Options.OutputTo.WriteLine(ToString());
                     break;
-                case ConsoleTables.Format.MarkDown:
+                case Sinks.Format.MarkDown:
                     Options.OutputTo.WriteLine(ToMarkDownString());
                     break;
-                case ConsoleTables.Format.Alternative:
+                case Sinks.Format.Alternative:
                     Options.OutputTo.WriteLine(ToStringAlternative());
                     break;
-                case ConsoleTables.Format.Minimal:
+                case Sinks.Format.Minimal:
                     Options.OutputTo.WriteLine(ToMinimalString());
                     break;
                 default:

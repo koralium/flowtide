@@ -185,3 +185,15 @@ Accepts a string in base64 encoding and will return a decoded string.
 ```sql
 SELECT string_base64_decode(c1) FROM ...
 ```
+
+## Char Length
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#char_length)
+
+Returns the number of characters in a string, if the input is not a string or null, a null value is returned.
+
+### SQL Usage
+
+```
+SELECT LEN(c1) FROM ...
+```

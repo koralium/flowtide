@@ -14,7 +14,7 @@ using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.StateManager;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Core.Sinks
+namespace FlowtideDotNet.Core.Sinks.Blackhole
 {
     internal class BlackholeSink : WriteBaseOperator<object?>
     {
