@@ -22,9 +22,9 @@ namespace FlowtideDotNet.Substrait.Sql
 {
     public static class SqlPlanBuilderExtensions
     {
-        public static SqlPlanBuilder AddSharepointProvider(this SqlPlanBuilder builder, SharepointSourceOptions sharepointSourceOptions)
+        public static SqlPlanBuilder AddSharepointProvider(this SqlPlanBuilder builder, SharepointSourceOptions sharepointSourceOptions, string prefix = "")
         {
-            builder.AddTableProvider(new SharepointTableProvider(sharepointSourceOptions));
+            builder.AddTableProvider(new SharepointTableProvider(sharepointSourceOptions, prefix));
             return builder;
         }
     }

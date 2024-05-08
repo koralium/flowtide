@@ -29,11 +29,13 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         private readonly Dictionary<string, TableMetadata> _tables = new Dictionary<string, TableMetadata>();
         private readonly GraphServiceClient _graphClient;
         private ListCollectionResponse? _listResponse;
+        private readonly string _prefix;
 
-        public SharepointTableProvider(SharepointSourceOptions sharepointSourceOptions)
+        public SharepointTableProvider(SharepointSourceOptions sharepointSourceOptions, string? prefix = null)
         {
             _sharepointSourceOptions = sharepointSourceOptions;
             _graphClient = new GraphServiceClient(_sharepointSourceOptions.TokenCredential);
+            _prefix = prefix ?? "";
         }
         public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
@@ -43,6 +45,13 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 throw new InvalidOperationException("Could not fetch sharepoint information");
             }
 
+            if (!tableName.StartsWith(_prefix))
+            {
+                tableMetadata = null;
+                return false;
+            }
+            tableName = tableName.Substring(_prefix.Length);
+
             var list = _listResponse.Value.FirstOrDefault(x => x.Name == tableName);
             if (list == null)
             {
@@ -51,6 +60,28 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
             tableMetadata = GetListData(list);
             return true;
+        }
+
+        internal string GetListId(string tableName)
+        {
+            TryLoadSharepointData();
+            if (_listResponse == null || _listResponse.Value == null)
+            {
+                throw new InvalidOperationException("Could not fetch sharepoint information");
+            }
+
+            if (!tableName.StartsWith(_prefix))
+            {
+                throw new InvalidOperationException("Table name does not start with prefix");
+            }
+            tableName = tableName.Substring(_prefix.Length);
+
+            var list = _listResponse.Value.FirstOrDefault(x => x.Name == tableName);
+            if (list == null || list.Id == null)
+            {
+                throw new InvalidOperationException("Could not find list");
+            }
+            return list.Id;
         }
 
         private TableMetadata GetListData(List list)
@@ -76,9 +107,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
         private async Task<TableMetadata> LoadSharepointListData(List list)
         {
-            if (list.Name == null)
+            if (list.Id == null)
             {
-                throw new ArgumentNullException("List name is null");
+                throw new ArgumentNullException("List id is null");
             }
 
             var graphSite = $"{_sharepointSourceOptions.SharepointUrl}:/sites/{_sharepointSourceOptions.Site}:";
@@ -105,8 +136,13 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
             columnNames.Add("_fields");
 
+            if (list.Name == null)
+            {
+                throw new InvalidOperationException("List name is null");
+            }
+
             var metadata = new TableMetadata(list.Name, columnNames);
-            _tables.Add(list.Name, metadata);
+            _tables.Add(list.Id, metadata);
             return metadata;
         }
 

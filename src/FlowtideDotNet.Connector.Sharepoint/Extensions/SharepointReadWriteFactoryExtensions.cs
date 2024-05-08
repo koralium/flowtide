@@ -68,7 +68,10 @@ namespace FlowtideDotNet.Core.Engine
                 }
                 indices.Add(idIndex);
 
-                return new ReadOperatorInfo(new SharepointSource(options, readRel, opt), new NormalizationRelation()
+                var tableProvider = new SharepointTableProvider(options);
+                var listId = tableProvider.GetListId(readRel.NamedTable.DotSeperated);
+
+                return new ReadOperatorInfo(new SharepointSource(options, listId, readRel, opt), new NormalizationRelation()
                 {
                     Input = readRel,
                     Filter = readRel.Filter,

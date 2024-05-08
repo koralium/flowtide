@@ -44,16 +44,16 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         private readonly SharepointSourceOptions sharepointSourceOptions;
         private readonly ReadRelation readRelation;
         private SharepointGraphListClient? sharepointGraphListClient;
-        private string? listId;
+        private readonly string listId;
         private Dictionary<string, IColumnDecoder>? _decoders;
         private SharepointSourceState? _state;
         private Task? _changesTask;
 
-        public SharepointSource(SharepointSourceOptions sharepointSourceOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
+        public SharepointSource(SharepointSourceOptions sharepointSourceOptions, string listId, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
             this.sharepointSourceOptions = sharepointSourceOptions;
             this.readRelation = readRelation;
-            
+            this.listId = listId;
         }
 
         public override string DisplayName => "SharepointList";
@@ -105,8 +105,6 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         {
             sharepointGraphListClient = new SharepointGraphListClient(sharepointSourceOptions, StreamName, Name, Logger);
             await sharepointGraphListClient.Initialize();
-            listId = await sharepointGraphListClient.GetListId(readRelation.NamedTable.DotSeperated);
-
             _state = state == null ? new SharepointSourceState() : state;
 
             _decoders = await sharepointGraphListClient.GetColumnDecoders(listId, readRelation.BaseSchema.Names, stateManagerClient);
