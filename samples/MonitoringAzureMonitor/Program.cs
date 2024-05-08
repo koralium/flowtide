@@ -7,6 +7,8 @@ using MonitoringAzureMonitor;
 using Azure.Monitor.OpenTelemetry.Exporter;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.DependencyInjection;
+using FlowtideDotNet.Core.Sources.Generic;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,9 +27,7 @@ builder.Services.AddHealthChecks()
     .AddFlowtideCheck()
     .AddApplicationInsightsPublisher("{your connection string}");
 
-var sqlBuilder = new SqlPlanBuilder();
-
-sqlBuilder.Sql(@"
+var sqlText = @"
 CREATE TABLE testtable (
   val any
 );
@@ -41,27 +41,19 @@ SELECT t.val FROM testtable t
 LEFT JOIN other o
 ON t.val = o.val
 WHERE t.val = 123;
-");
+";
 
-var plan = sqlBuilder.GetPlan();
-
-var connectorManager = new ConnectorManager();
-// Add connections here to your real data sources, such as SQL Server, Kafka or similar.
-connectorManager.AddSource(new DummyReadFactory("*"));
-connectorManager.AddSink(new DummyWriteFactory("*"));
-
-builder.Services.AddFlowtideStream(b =>
-{
-    b.AddPlan(plan)
-    .AddConnectorManager(connectorManager)
-    .WithStateOptions(new StateManagerOptions()
+builder.Services.AddFlowtideStream("AzureMonitorSample")
+    .AddSqlTextAsPlan(sqlText)
+    .AddConnectors(connectorManager =>
     {
-        // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage
-        PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
-        {
-        })
+        connectorManager.AddSource(new DummyReadFactory("*"));
+        connectorManager.AddSink(new DummyWriteFactory("*"));
+    })
+    .AddStorage(storage =>
+    {
+        storage.AddTemporaryDevelopmentStorage();
     });
-});
 
 var app = builder.Build();
 

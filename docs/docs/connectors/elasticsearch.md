@@ -18,10 +18,10 @@ This field will not be added to the source fields.
 
 :::
 
-To use the *ElasticSearch Sink* add the following line to the *ReadWriteFactory*:
+To use the *ElasticSearch Sink* add the following line to the *ConnectorManager*:
 
 ```csharp
-factory.AddElasticsearchSink("*", elasticSearchConnectionSettings);
+connectorManager.AddElasticsearchSink("*", elasticSearchConnectionSettings);
 ```
 
 The table name in the write relation becomes the index the sink writes to.
@@ -37,7 +37,7 @@ sqlBuilder.Sql(@"
     FROM users
 ");
 
-factory.AddElasticsearchSink("*", elasticSearchConnectionSettings);
+connectorManager.AddElasticsearchSink("*", elasticSearchConnectionSettings);
 
 ...
 ```
@@ -50,7 +50,7 @@ This is possible by using the *GetIndexNameFunc* and *OnInitialDataSent* functio
 Example:
 
 ```csharp
-factory.AddElasticsearchSink("*", new FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions()
+connectorManager.AddElasticsearchSink("*", new FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions()
 {
     ConnectionSettings = connectionSettings,
     CustomMappings = (props) =>

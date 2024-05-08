@@ -8,10 +8,10 @@ sidebar_position: 5
 
 The Kafka Source allows a stream to fetch data from a kafka stream as a table in a stream.
 
-The source is added to the read write factory with the following line:
+The source is added to the *ConnectorManager* with the following line:
 
 ```csharp
-factory.AddKafkaSource("your regexp on table names",  new FlowtideKafkaSourceOptions()
+connectorManager.AddKafkaSource("your regexp on table names",  new FlowtideKafkaSourceOptions()
     {
         ConsumerConfig = kafkaConsumerConfig,
         KeyDeserializer = keyDeserializer,
@@ -50,10 +50,10 @@ FROM my_kafka_topic;
 
 The kafka sink allows a stream to write events to kafka.
 
-The sink is added to the read write factory with the following line:
+The sink is added to the *ConnectorManager* with the following line:
 
 ```csharp
-factory.AddKafkaSink("your regexp on table names",  new FlowtideKafkaSinkOptions()
+connectorManager.AddKafkaSink("your regexp on table names",  new FlowtideKafkaSinkOptions()
     {
         KeySerializer = new FlowtideKafkaStringKeySerializer(),
         ProducerConfig = config,
@@ -99,7 +99,7 @@ can then make sure only delta valeus are sent to the kafka topic, and deletions 
 Example:
 
 ```csharp
-factory.AddKafkaSink("your regexp on table names",  new FlowtideKafkaSinkOptions()
+connectorManager.AddKafkaSink("your regexp on table names",  new FlowtideKafkaSinkOptions()
     {
         ...
         EventProcessor = async (events) => {
