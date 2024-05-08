@@ -21,6 +21,7 @@ using FASTER.core;
 using FluentAssertions;
 using System.Diagnostics;
 using FlowtideDotNet.Core.Tests.SmokeTests.Count;
+using FlowtideDotNet.Core.Connectors;
 
 namespace FlowtideDotNet.Core.Tests.SmokeTests
 {
@@ -38,7 +39,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             deserializer = new SubstraitDeserializer();
         }
 
-        public abstract void AddReadResolvers(ReadWriteFactory readWriteFactory);
+        public abstract void AddReadResolvers(IConnectorManager connectorManager);
 
         public async Task DisposeAsync()
         {
@@ -65,29 +66,27 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
 
             modifiedPlan = PlanOptimizer.Optimize(modifiedPlan, settings);
 
-            ReadWriteFactory readWriteFactory = new ReadWriteFactory();
-            AddReadResolvers(readWriteFactory);
+            ConnectorManager connectorManager = new ConnectorManager();
+            AddReadResolvers(connectorManager);
 
             bool gotData = false;
 
             _streamScheduler = new DefaultStreamScheduler();
-            readWriteFactory.AddWriteResolver((rel, opt) =>
+            connectorManager.AddSink(new TestWriteOperatorFactory<TResult>("*", primaryKeysOutput, (rows) =>
             {
-                return new SmokeTests.TestWriteOperator<TResult>(primaryKeysOutput, (rows) =>
-                {
-                    changesCounter++;
-                    gotData = true;
-                    datachange(rows);
-                    return Task.CompletedTask;
-                }, rel, opt);
-            });
+                changesCounter++;
+                gotData = true;
+                datachange(rows);
+                return Task.CompletedTask;
+            }));
+
             var checkpointManager = new DeviceLogCommitCheckpointManager(
                 new InMemoryDeviceFactory(),
                 new DefaultCheckpointNamingScheme($"checkpoints/"));
             var logDevice = new ManagedLocalStorageDevice("logdevice", deleteOnClose: true);
             dataflowStream = differentialComputeBuilder
                 .AddPlan(modifiedPlan, false)
-                .AddReadWriteFactory(readWriteFactory)
+                .AddConnectorManager(connectorManager)
                 .WithScheduler(_streamScheduler)
                 .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                 {

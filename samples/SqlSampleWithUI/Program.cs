@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.AspNetCore.Extensions;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.StateManager;
@@ -39,21 +41,15 @@ WHERE t.val = 123;
 
 var plan = sqlBuilder.GetPlan();
 
-var factory = new ReadWriteFactory();
-// Add connections here to your real data sources, such as SQL Server, Kafka or similar.
-factory.AddReadResolver((readRel, functionsRegister, opt) =>
-{
-    return new ReadOperatorInfo(new DummyReadOperator(opt));
-});
-factory.AddWriteResolver((writeRel, opt) =>
-{
-    return new DummyWriteOperator(opt);
-});
+var connectorManager = new ConnectorManager();
+// Add connectors here
+connectorManager.AddSource(new DummyReadFactory("*"));
+connectorManager.AddSink(new DummyWriteFactory("*"));
 
 builder.Services.AddFlowtideStream(b =>
 {
     b.AddPlan(plan)
-    .AddReadWriteFactory(factory)
+    .AddConnectorManager(connectorManager)
     .WithStateOptions(new StateManagerOptions()
     {
         // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage

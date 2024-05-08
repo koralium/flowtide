@@ -1,6 +1,8 @@
 using FASTER.core;
 using FASTER.devices;
 using FlowtideDotNet.AspNetCore.Extensions;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Storage.DeviceFactories;
 using FlowtideDotNet.Storage.StateManager;
@@ -30,9 +32,9 @@ sqlPlanBuilder.AddSqlServerProvider(() => builder.Configuration.GetConnectionStr
 sqlPlanBuilder.Sql(query);
 var plan = sqlPlanBuilder.GetPlan();
 
-var readWriteFactory = new ReadWriteFactory();
-readWriteFactory.AddSqlServerSource("*", () => builder.Configuration.GetConnectionString("SqlServer") ?? throw new InvalidOperationException("SqlServer connection string not found"));
-readWriteFactory.AddElasticsearchSink("*", new FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions()
+var connectorManager = new ConnectorManager();
+connectorManager.AddSqlServerSource(() => builder.Configuration.GetConnectionString("SqlServer") ?? throw new InvalidOperationException("SqlServer connection string not found"));
+connectorManager.AddElasticsearchSink("*", new FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions()
 {
     ConnectionSettings = new ConnectionSettings(new Uri(builder.Configuration.GetValue<string>("ElasticsearchUrl") ?? throw new InvalidOperationException("ElasticsearchUrl not found"))),
     GetIndexNameFunc = (writeRel) =>
@@ -79,7 +81,7 @@ var checkpointManager = new DeviceLogCommitCheckpointManager(
 builder.Services.AddFlowtideStream(x =>
 {
     x.AddPlan(plan)
-    .AddReadWriteFactory(readWriteFactory)
+    .AddConnectorManager(connectorManager)
     .WithStateOptions(new StateManagerOptions()
     {
         // Read cache for reduced latency, minimizes calls to azure storage, but increases memory and local disk usage

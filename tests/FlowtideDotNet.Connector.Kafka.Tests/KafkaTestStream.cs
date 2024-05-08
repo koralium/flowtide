@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 
@@ -31,7 +33,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
             this.fetchExisting = fetchExisting;
         }
 
-        protected override void AddReadResolvers(ReadWriteFactory factory)
+        protected override void AddReadResolvers(IConnectorManager factory)
         {
             factory.AddKafkaSource("*", new FlowtideKafkaSourceOptions()
             {
@@ -41,7 +43,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
             });
         }
 
-        protected override void AddWriteResolvers(ReadWriteFactory factory)
+        protected override void AddWriteResolvers(IConnectorManager factory)
         {
             var opt = new FlowtideKafkaSinkOptions()
             {

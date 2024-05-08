@@ -7,6 +7,7 @@ using System.Text.Json;
 using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,8 +44,8 @@ var plan = sqlPlanBuilder.GetPlan();
 openFgaConfig.StoreId = store.Id;
 openFgaConfig.AuthorizationModelId = authModel.AuthorizationModel.Id;
 
-ReadWriteFactory readWriteFactory = new ReadWriteFactory()
-    .AddSqlServerSource("demo.*", () => builder.Configuration.GetConnectionString("SqlServer")!)
+IConnectorManager connectorManager = new ConnectorManager()
+    .AddSqlServerSource(() => builder.Configuration.GetConnectionString("SqlServer")!)
     .AddOpenFGASink("*", new FlowtideDotNet.Connector.OpenFGA.OpenFgaSinkOptions()
     {
         ClientConfiguration = openFgaConfig
@@ -53,7 +54,7 @@ ReadWriteFactory readWriteFactory = new ReadWriteFactory()
 builder.Services.AddFlowtideStream(x =>
 {
     x.AddPlan(plan)
-    .AddReadWriteFactory(readWriteFactory)
+    .AddConnectorManager(connectorManager)
     .WithStateOptions(new StateManagerOptions()
     {
         // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage
