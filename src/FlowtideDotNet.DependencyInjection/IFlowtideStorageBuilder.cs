@@ -31,7 +31,7 @@ namespace FlowtideDotNet.DependencyInjection
         bool UseReadCache { get; set; }
 
         /// <summary>
-        /// The max amount of memory the process should use, default: 80% of the total memory
+        /// The max amount of memory (in bytes) the process should use, default: 80% of the total memory
         /// </summary>
         long? MaxProcessMemory { get; set; }
 
