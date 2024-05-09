@@ -202,7 +202,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await scheduler!.Tick();
         }
 
-        public async Task WaitForUpdate()
+        public virtual async Task WaitForUpdate()
         {
             Debug.Assert(_stream != null);
             int currentCounter = 0;

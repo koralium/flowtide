@@ -10,9 +10,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+using Grpc.Core;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.OpenFGA")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.SpiceDB")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Permify")]
+namespace FlowtideDotNet.Connector.Permify
+{
+    public class PermifySourceOptions
+    {
+        public required ChannelBase Channel { get; set; }
+
+        public required string TenantId { get; set; }
+
+        /// <summary>
+        /// Allows setting custom headers, useful for authentication
+        /// </summary>
+        public Func<Metadata>? GetMetadata { get; set; }
+    }
+}
