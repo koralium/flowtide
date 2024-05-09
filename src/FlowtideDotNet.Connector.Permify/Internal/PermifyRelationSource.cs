@@ -221,7 +221,7 @@ namespace FlowtideDotNet.Connector.Permify.Internal
                     Metadata = new PermifyProto.RelationshipReadRequestMetadata()
                 });
 
-                while (readResponse.Tuples.Count >= 0)
+                while (readResponse.Tuples.Count > 0)
                 {
                     List<RowEvent> outData = new List<RowEvent>();
                     foreach (var tuple in readResponse.Tuples)
