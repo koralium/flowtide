@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Type;
 using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
@@ -32,9 +33,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             _tableProviders = new List<ITableProvider>();
         }
 
-        public void AddTable(string name, IEnumerable<string> columnNames)
+        public void AddTable(string name, NamedStruct schema)
         {
-            _tables.Add(name, new TableMetadata(name, columnNames.ToList()));
+            _tables.Add(name, new TableMetadata(name, schema));
         }
 
         public void AddTableProvider(ITableProvider tableProvider)

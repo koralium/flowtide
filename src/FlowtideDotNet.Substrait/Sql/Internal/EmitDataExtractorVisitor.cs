@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Type;
 using SqlParser.Ast;
 using System.Diagnostics;
 
@@ -45,6 +46,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 EmitData emitData = new EmitData();
                 var leftNames = left.GetNames();
                 var rightNames = right.GetNames();
+                var leftTypes = left.GetTypes();
+                var rightTypes = right.GetTypes();
+                
                 for (int i = 0; i < leftNames.Count; i++)
                 {
                     var alias = default(string);
@@ -60,7 +64,24 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     {
                         alias = leftNames[i];
                     }
-                    emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(alias) })), i, alias);
+                    SubstraitBaseType? type;
+                    if (leftTypes[i] is AnyType)
+                    {
+                        type = leftTypes[i];
+                    }
+                    else if (rightTypes[i] is AnyType)
+                    {
+                        type = rightTypes[i];
+                    }
+                    else if (leftTypes[i] == rightTypes[i])
+                    {
+                        type = leftTypes[i];
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Column {alias} has different types in left and right side of set operation");
+                    }
+                    emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(alias) })), i, alias, type);
                 }
                 return emitData;
             }
@@ -142,16 +163,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 var emitData = new EmitData();
 
-                for (int i = 0; i < t.Columns.Count; i++)
+                for (int i = 0; i < t.Schema.Names.Count; i++)
                 {
-                    emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(t.Columns[i]) })), i, t.Columns[i]);
+                    emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(t.Schema.Names[i]) })), i, t.Schema.Names[i]);
                 }
 
                 if (table.Alias != null)
                 {
-                    for (int i = 0; i < t.Columns.Count; i++)
+                    for (int i = 0; i < t.Schema.Names.Count; i++)
                     {
-                        emitData.AddWithAlias(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(table.Alias.Name), new Ident(t.Columns[i]) })), i);
+                        emitData.AddWithAlias(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(table.Alias.Name), new Ident(t.Schema.Names[i]) })), i);
                     }
                 }
 
