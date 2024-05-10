@@ -29,44 +29,49 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 
         public override string ColumnType => "Lookup";
 
+        private void HandleUntypedNode(UntypedNode val)
+        {
+            if (val is Microsoft.Kiota.Abstractions.Serialization.UntypedObject untypedObject)
+            {
+                var mapStart = flexBuffer.StartVector();
+                IDictionary<string, UntypedNode> nodes = untypedObject.GetValue();
+                if (nodes.TryGetValue("LookupId", out var idNode) && idNode is UntypedInteger untypedInteger)
+                {
+                    flexBuffer.AddKey("LookupId");
+                    flexBuffer.Add(untypedInteger.GetValue());
+                }
+                if (nodes.TryGetValue("LookupValue", out var valueNode) && valueNode is UntypedString untypedString)
+                {
+                    flexBuffer.AddKey("LookupValue");
+                    var untypedStringValue = untypedString.GetValue();
+
+                    if (untypedStringValue == null)
+                    {
+                        flexBuffer.AddNull();
+                    }
+                    else
+                    {
+                        flexBuffer.Add(untypedStringValue);
+                    }
+                }
+                flexBuffer.SortAndEndMap(mapStart);
+            }
+        }
+
         protected override ValueTask<FlxValue> DecodeValue(object? item)
         {
-            if (item != null && item is string str)
+            if (item is string str)
             {
                 return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(str)));
             }
-            if (item != null && item is Microsoft.Kiota.Abstractions.Serialization.UntypedArray untypedArray)
+            if (item is Microsoft.Kiota.Abstractions.Serialization.UntypedArray untypedArray)
             {
                 flexBuffer.NewObject();
                 var startArr = flexBuffer.StartVector();
                 var values = untypedArray.GetValue();
                 foreach (var val in values)
                 {
-                    if (val is Microsoft.Kiota.Abstractions.Serialization.UntypedObject untypedObject)
-                    {
-                        var mapStart = flexBuffer.StartVector();
-                        IDictionary<string, UntypedNode> nodes = untypedObject.GetValue();
-                        if (nodes.TryGetValue("LookupId", out var idNode) && idNode is UntypedInteger untypedInteger)
-                        {
-                            flexBuffer.AddKey("LookupId");
-                            flexBuffer.Add(untypedInteger.GetValue());
-                        }
-                        if (nodes.TryGetValue("LookupValue", out var valueNode) && valueNode is UntypedString untypedString)
-                        {
-                            flexBuffer.AddKey("LookupValue");
-                            var untypedStringValue = untypedString.GetValue();
-
-                            if (untypedStringValue == null)
-                            {
-                                flexBuffer.AddNull();
-                            }
-                            else
-                            {
-                                flexBuffer.Add(untypedStringValue);
-                            }
-                        }
-                        flexBuffer.SortAndEndMap(mapStart);
-                    }
+                    HandleUntypedNode(val);   
                 }
                 flexBuffer.EndVector(startArr, false, false);
                 var bytes = flexBuffer.Finish();

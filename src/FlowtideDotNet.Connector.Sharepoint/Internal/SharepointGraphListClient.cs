@@ -156,7 +156,13 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         public async Task<IDictionary<string, ColumnDefinition>> GetColumns(string listId)
         {
             var listColumns = await graphClient.Sites[graphSite].Lists[listId].Columns.GetAsync();
-            var columnsDict = listColumns.Value.ToDictionary(x => x.Name);
+
+            if (listColumns == null || listColumns.Value == null)
+            {
+                throw new InvalidOperationException($"Could not find list {listId}");
+            }
+
+            var columnsDict = listColumns.Value.ToDictionary(x => x.Name ?? throw new InvalidOperationException("Recieved column without name"));
 
             return columnsDict;
         }
@@ -245,6 +251,11 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 }
             }
 
+            return GetSpecialColumnDecoder(columnName);
+        }
+
+        private static IColumnDecoder GetSpecialColumnDecoder(string columnName)
+        {
             // Special columns
             if (columnName.Equals("ID", StringComparison.OrdinalIgnoreCase))
             {
