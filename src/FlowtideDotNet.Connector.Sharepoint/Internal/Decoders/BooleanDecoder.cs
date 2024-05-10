@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 
         protected override ValueTask<FlxValue> DecodeValue(object? item)
         {
-            if (item != null && item is bool b && b)
+            if (item is bool b && b)
             {
                 return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(true)));
             }

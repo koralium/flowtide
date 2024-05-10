@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 {
     internal class LookupDecoder : BaseDecoder
     {
-        FlexBuffer flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
+        private readonly FlexBuffer flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
 
         public override string ColumnType => "Lookup";
 

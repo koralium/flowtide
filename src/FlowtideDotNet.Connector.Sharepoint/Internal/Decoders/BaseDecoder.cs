@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
             return DecodeValue(value);
         }
 
-        protected virtual ValueTask<FlxValue> DecodeValue(object? value)
+        protected virtual ValueTask<FlxValue> DecodeValue(object? item)
         {
             throw new NotImplementedException();
         }

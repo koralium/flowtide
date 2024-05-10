@@ -31,9 +31,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
     /// </summary>
     internal class FieldsDecoder : IColumnDecoder
     {
-        FlexBuffer flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
+        private readonly FlexBuffer flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
         private Dictionary<string, IColumnDecoder>? _decoders;
-        private Dictionary<string, string?> _descriptions = new Dictionary<string, string?>();
+        private readonly Dictionary<string, string?> _descriptions = new Dictionary<string, string?>();
         private HashSet<string>? _columns;
         private SharepointGraphListClient? _client;
         private string? _listId;

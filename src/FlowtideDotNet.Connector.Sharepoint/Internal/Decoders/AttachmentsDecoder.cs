@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
         {
             object? value = null;
             item.Fields?.AdditionalData?.TryGetValue(_name, out value);
-            if (value != null && value is bool boolVal)
+            if (value is bool boolVal)
             {
                 return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(boolVal)));
             }

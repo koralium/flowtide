@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
             tableName = tableName.Substring(_prefix.Length);
 
-            var list = _listResponse.Value.FirstOrDefault(x => x.Name == tableName);
+            var list = _listResponse.Value.Find(x => x.Name == tableName);
             if (list == null)
             {
                 tableMetadata = null;
@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
             tableName = tableName.Substring(_prefix.Length);
 
-            var list = _listResponse.Value.FirstOrDefault(x => x.Name == tableName);
+            var list = _listResponse.Value.Find(x => x.Name == tableName);
             if (list == null || list.Id == null)
             {
                 throw new InvalidOperationException("Could not find list");
@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         {
             if (list.Id == null)
             {
-                throw new ArgumentNullException("List id is null");
+                throw new InvalidOperationException("List id is null");
             }
             if (_tables.TryGetValue(list.Id, out var tableMetadata))
             {
@@ -109,7 +109,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         {
             if (list.Id == null)
             {
-                throw new ArgumentNullException("List id is null");
+                throw new InvalidOperationException("List id is null");
             }
 
             var graphSite = $"{_sharepointSourceOptions.SharepointUrl}:/sites/{_sharepointSourceOptions.Site}:";

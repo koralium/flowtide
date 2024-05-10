@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 
         protected override ValueTask<FlxValue> DecodeValue(object? item)
         {
-            if (item != null && item is DateTime dateTime)
+            if (item is DateTime dateTime)
             {
                 var ms = dateTime.Subtract(DateTime.UnixEpoch).Ticks;
                 return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(ms)));
