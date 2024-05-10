@@ -11,25 +11,36 @@
 // limitations under the License.
 
 using Azure.Core;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.Sharepoint
 {
-    public class SharepointSinkOptions : SharepointOptions
+    public abstract class SharepointOptions
     {
-        /// <summary>
-        /// Name of the columns that should be treated as the primary key.
-        /// </summary>
-        public required List<string> PrimaryKeyColumnNames { get; set; }
 
         /// <summary>
-        /// Do not delete items from Sharepoint
+        /// The URL of the Sharepoint tenant without 'https://'
+        /// Example: {tenant}.sharepoint.com
         /// </summary>
-        public bool DisableDelete { get; set; }
+        public required string SharepointUrl { get; set; }
 
         /// <summary>
-        /// Preprocess the row before it is sent to Sharepoint.
-        /// Allows addition of metadata columns.
+        /// The name of the Sharepoint site
         /// </summary>
-        public Action<Dictionary<string, object>>? PreprocessRow { get; set; }
+        public required string Site { get; set; }
+
+        /// <summary>
+        /// Token credential to use for authentication
+        /// </summary>
+        public required TokenCredential TokenCredential { get; set; }
+
+        /// <summary>
+        /// Stop the stream if a UPN is not found
+        /// </summary>
+        public bool ThrowOnPersonOrGroupNotFound { get; set; }
     }
 }

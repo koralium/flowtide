@@ -23,5 +23,11 @@ namespace FlowtideDotNet.Core
             connectorManager.AddSink(new SharepointSinkFactory(regexPattern, sharepointSinkOptions, executionMode));
             return connectorManager;
         }
+
+        public static IConnectorManager AddSharepointSource(this IConnectorManager connectorManager, SharepointSourceOptions sharepointSourceOptions, string prefix = "")
+        {
+            connectorManager.AddSource(new SharepointSourceFactory(sharepointSourceOptions, prefix));
+            return connectorManager;
+        }
     }
 }
