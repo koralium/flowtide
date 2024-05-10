@@ -25,9 +25,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
     {
         public override string ColumnType => "Boolean";
 
-        protected override ValueTask<FlxValue> DecodeValue(object? value)
+        protected override ValueTask<FlxValue> DecodeValue(object? item)
         {
-            if (value != null && value is bool b && b)
+            if (item != null && item is bool b && b)
             {
                 return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(true)));
             }

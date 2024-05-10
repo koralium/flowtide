@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
     {
         Task Initialize(string name, string listId, SharepointGraphListClient client, IStateManagerClient stateManagerClient, IDictionary<string, ColumnDefinition> columns);
 
-        ValueTask<FlxValue> Decode(ListItem value);
+        ValueTask<FlxValue> Decode(ListItem item);
 
         /// <summary>
         /// Called each time a new batch of data has been found

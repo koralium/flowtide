@@ -29,13 +29,13 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 
         public override string ColumnType => "Lookup";
 
-        protected override ValueTask<FlxValue> DecodeValue(object? value)
+        protected override ValueTask<FlxValue> DecodeValue(object? item)
         {
-            if (value != null && value is string str)
+            if (item != null && item is string str)
             {
                 return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(str)));
             }
-            if (value != null && value is Microsoft.Kiota.Abstractions.Serialization.UntypedArray untypedArray)
+            if (item != null && item is Microsoft.Kiota.Abstractions.Serialization.UntypedArray untypedArray)
             {
                 flexBuffer.NewObject();
                 var startArr = flexBuffer.StartVector();
@@ -54,7 +54,16 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
                         if (nodes.TryGetValue("LookupValue", out var valueNode) && valueNode is UntypedString untypedString)
                         {
                             flexBuffer.AddKey("LookupValue");
-                            flexBuffer.Add(untypedString.GetValue());
+                            var untypedStringValue = untypedString.GetValue();
+
+                            if (untypedStringValue == null)
+                            {
+                                flexBuffer.AddNull();
+                            }
+                            else
+                            {
+                                flexBuffer.Add(untypedStringValue);
+                            }
                         }
                         flexBuffer.SortAndEndMap(mapStart);
                     }

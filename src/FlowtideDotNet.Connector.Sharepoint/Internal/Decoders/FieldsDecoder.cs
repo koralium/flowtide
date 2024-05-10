@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 
         public string ColumnType => "Fields";
 
-        public async ValueTask<FlxValue> Decode(ListItem value)
+        public async ValueTask<FlxValue> Decode(ListItem item)
         {
             Debug.Assert(_decoders != null);
 
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
                 flexBuffer.AddKey(decoder.Key);
                 var startVecInnerMap = flexBuffer.StartVector();
                 flexBuffer.AddKey("value");
-                flexBuffer.Add(await decoder.Value.Decode(value));
+                flexBuffer.Add(await decoder.Value.Decode(item));
 
                 flexBuffer.AddKey("type");
                 flexBuffer.Add(decoder.Value.ColumnType);

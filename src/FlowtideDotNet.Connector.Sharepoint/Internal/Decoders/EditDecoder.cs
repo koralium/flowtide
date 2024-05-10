@@ -25,9 +25,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
     {
         public override string ColumnType => "Edit";
 
-        protected override ValueTask<FlxValue> DecodeValue(object? value)
+        protected override ValueTask<FlxValue> DecodeValue(object? item)
         {
-            if (value != null && value is string str)
+            if (item != null && item is string str)
             {
                 return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(str)));
             }
