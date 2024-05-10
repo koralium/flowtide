@@ -18,12 +18,12 @@ using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Sql;
 using SqlSampleWithUI;
+using FlowtideDotNet.DependencyInjection;
+using FlowtideDotNet.Core.Sources.Generic;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var sqlBuilder = new SqlPlanBuilder();
-
-sqlBuilder.Sql(@"
+var sqlText = @"
 CREATE TABLE testtable (
   val any
 );
@@ -37,26 +37,18 @@ SELECT t.val FROM testtable t
 LEFT JOIN other o
 ON t.val = o.val
 WHERE t.val = 123;
-");
+";
 
-var plan = sqlBuilder.GetPlan();
-
-var connectorManager = new ConnectorManager();
-// Add connectors here
-connectorManager.AddSource(new DummyReadFactory("*"));
-connectorManager.AddSink(new DummyWriteFactory("*"));
-
-builder.Services.AddFlowtideStream(b =>
+builder.Services.AddFlowtideStream("test")
+.AddSqlTextAsPlan(sqlText)
+.AddConnectors((connectorManager) =>
 {
-    b.AddPlan(plan)
-    .AddConnectorManager(connectorManager)
-    .WithStateOptions(new StateManagerOptions()
-    {
-        // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage
-        PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
-        {
-        })
-    });
+    connectorManager.AddSource(new DummyReadFactory("*"));
+    connectorManager.AddSink(new DummyWriteFactory("*"));
+})
+.AddStorage(b =>
+{
+    b.AddTemporaryDevelopmentStorage();
 });
 
 builder.Services.AddCors();

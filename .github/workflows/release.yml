@@ -16,7 +16,7 @@ jobs:
     - name: Setup dotnet
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 7.0.x
+        dotnet-version: 8.0.x
     - name: Update project version
       uses: roryprimrose/set-vs-sdk-project-version@v1
       with:
@@ -60,5 +60,7 @@ jobs:
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.OpenFGA/FlowtideDotNet.Connector.OpenFGA.csproj
     - name: Package SpiceDB
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.SpiceDB/FlowtideDotNet.Connector.SpiceDB.csproj
+    - name: Package DependencyInjection
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.DependencyInjection/FlowtideDotNet.DependencyInjection.csproj
     - name: Publish
       run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_KEY }} -s https://api.nuget.org/v3/index.json

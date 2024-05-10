@@ -77,6 +77,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Zanzibar", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlServerToElasticProductionSample", "samples\SqlServerToElasticProductionSample\SqlServerToElasticProductionSample.csproj", "{8C410ABE-9279-43D3-A600-12D03400D1FF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.DependencyInjection", "src\FlowtideDotNet.DependencyInjection\FlowtideDotNet.DependencyInjection.csproj", "{703C3485-6824-44DA-8977-B66FF0BEE413}"
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestSharepointReadSource", "..\..\dev\TestSharepointSource\TestSharepointReadSource\TestSharepointReadSource.csproj", "{B8246350-BE5C-4D48-98DC-4A40AB244FEC}"
 EndProject
 Global
@@ -221,6 +223,10 @@ Global
 		{8C410ABE-9279-43D3-A600-12D03400D1FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C410ABE-9279-43D3-A600-12D03400D1FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C410ABE-9279-43D3-A600-12D03400D1FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{703C3485-6824-44DA-8977-B66FF0BEE413}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{703C3485-6824-44DA-8977-B66FF0BEE413}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{703C3485-6824-44DA-8977-B66FF0BEE413}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{703C3485-6824-44DA-8977-B66FF0BEE413}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B8246350-BE5C-4D48-98DC-4A40AB244FEC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B8246350-BE5C-4D48-98DC-4A40AB244FEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B8246350-BE5C-4D48-98DC-4A40AB244FEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -264,6 +270,7 @@ Global
 		{E0D7BE9D-B831-4B8F-8629-FBBF9500EA99} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 		{B5F9197F-149B-48DD-A3B3-7271C85DD6E9} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
 		{8C410ABE-9279-43D3-A600-12D03400D1FF} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
+		{703C3485-6824-44DA-8977-B66FF0BEE413} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {314C9503-DE99-42AA-8FB0-E355C91986C4}

@@ -14,10 +14,10 @@ To use it, add the following nuget:
 
 * FlowtideDotNet.Connector.Sharepoint
 
-Add it to the *ReadWriteFactory*:
+Add it to the *ConnectorManager*:
 
 ```csharp
-factory.AddSharepointListSink("{regexPattern}", (writeRelation) => new SharepointSinkOptions()
+connectorManager.AddSharepointListSink("{regexPattern}", (writeRelation) => new SharepointSinkOptions()
 {
     // Set the primary key in sharepoint, it is the name of the column in sharepoint
     PrimaryKeyColumnNames = new List<string> { "primaryKeyColumnName" }
