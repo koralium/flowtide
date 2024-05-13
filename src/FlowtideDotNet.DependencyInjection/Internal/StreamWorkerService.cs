@@ -40,7 +40,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var stream = serviceProvider.GetRequiredKeyedService<Base.Engine.DataflowStream>(name);
-            await stream.StartAsync();
+            await stream.RunAsync();
         }
     }
 }
