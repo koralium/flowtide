@@ -170,7 +170,7 @@ message JoinRel {
     JOIN_TYPE_RIGHT = 4;
     JOIN_TYPE_SEMI = 5;
     JOIN_TYPE_ANTI = 6;
-    // This join is useful for nested sub-queries where we need exactly one tuple in output (or throw exception)
+    // This join is useful for nested sub-queries where we need exactly one record in output (or throw exception)
     // See Section 3.2 of https://15721.courses.cs.cmu.edu/spring2018/papers/16-optimizer2/hyperjoins-btw2017.pdf
     JOIN_TYPE_SINGLE = 7;
   }
@@ -194,6 +194,7 @@ message FetchRel {
   // the offset expressed in number of records
   int64 offset = 3;
   // the amount of records to return
+  // use -1 to signal that ALL records should be returned
   int64 count = 4;
   substrait.extensions.AdvancedExtension advanced_extension = 10;
 }
@@ -205,10 +206,12 @@ message AggregateRel {
   // Input of the aggregation
   Rel input = 2;
 
-  // A list of expression grouping that the aggregation measured should be calculated for.
+  // A list of one or more grouping expression sets that the aggregation measures should be calculated for.
+  // Required if there are no measures.
   repeated Grouping groupings = 3;
 
   // A list of one or more aggregate expressions along with an optional filter.
+  // Required if there are no groupings.
   repeated Measure measures = 4;
 
   substrait.extensions.AdvancedExtension advanced_extension = 10;
@@ -225,6 +228,42 @@ message AggregateRel {
     // within the measure.
     // Helps to support SUM(<c>) FILTER(WHERE...) syntax without masking opportunities for optimization
     Expression filter = 2;
+  }
+}
+
+// ConsistentPartitionWindowRel provides the ability to perform calculations across sets of rows
+// that are related to the current query row. It can be used to execute window functions where
+// all the windows share the same partitioning and ordering.
+message ConsistentPartitionWindowRel {
+  RelCommon common = 1;
+  Rel input = 2;
+  repeated WindowRelFunction window_functions = 3;
+  repeated Expression partition_expressions = 4;
+  repeated SortField sorts = 5;
+
+  substrait.extensions.AdvancedExtension advanced_extension = 10;
+
+  // This message mirrors the `WindowFunction` message but removes the fields defining the partition,
+  // sorts, and bounds, since those must be consistent across the various functions in this rel.  Refer
+  // to the `WindowFunction` message for a description of these fields.
+  message WindowRelFunction {
+    uint32 function_reference = 1;
+
+    repeated FunctionArgument arguments = 9;
+
+    repeated FunctionOption options = 11;
+
+    Type output_type = 7;
+
+    AggregationPhase phase = 6;
+
+    AggregateFunction.AggregationInvocation invocation = 10;
+
+    Expression.WindowFunction.Bound lower_bound = 5;
+
+    Expression.WindowFunction.Bound upper_bound = 4;
+
+    Expression.WindowFunction.BoundsType bounds_type = 12;
   }
 }
 
@@ -340,6 +379,40 @@ message ExchangeRel {
   }
 }
 
+// Duplicates records by emitting one or more rows per input row.  The number of rows emitted per
+// input row is the same for all input rows.
+//
+// In addition to a field being emitted per input field an extra int64 field is emitted which
+// contains a zero-indexed ordinal corresponding to the duplicate definition.
+message ExpandRel {
+  RelCommon common = 1;
+  Rel input = 2;
+  // There should be one definition here for each input field.  Any fields beyond the provided
+  // definitions will be emitted as is (as if a consistent_field record with an identity
+  // expression was provided).
+  repeated ExpandField fields = 4;
+
+  message ExpandField {
+    oneof field_type {
+      // Field that switches output based on which duplicate is being output.  Every
+      // switching_field should contain the same number of duplicates (so that the output rows
+      // are of consistent size and type).  If there are not enough switching field definitions
+      // to match the other field definitions NULL will be returned to fill the extras.
+      SwitchingField switching_field = 2;
+
+      // Field that outputs the same value no matter which duplicate is being output.  Equivalent
+      // to a switching_field that lists the same expression multiple times.
+      Expression consistent_field = 3;
+    }
+  }
+
+  message SwitchingField {
+    // All duplicates must return the same type class but may differ in nullability.  The effective
+    // type of the output field will be nullable if any of the duplicate expressions are nullable.
+    repeated Expression duplicates = 1;
+  }
+}
+
 // A relation with output field names.
 //
 // This is for use at the root of a `Rel` tree.
@@ -365,11 +438,16 @@ message Rel {
     ExtensionMultiRel extension_multi = 10;
     ExtensionLeafRel extension_leaf = 11;
     CrossRel cross = 12;
-    WriteRel write = 15;
-
-    //Physical relations
+    ReferenceRel reference = 21;
+    WriteRel write = 19;
+    DdlRel ddl = 20;
+    // Physical relations
     HashJoinRel hash_join = 13;
     MergeJoinRel merge_join = 14;
+    NestedLoopJoinRel nested_loop_join = 18;
+    ConsistentPartitionWindowRel window = 17;
+    ExchangeRel exchange = 15;
+    ExpandRel expand = 16;
   }
 }
 
@@ -410,6 +488,7 @@ message DdlRel {
 
   // The body of the CREATE VIEW
   Rel view_definition = 7;
+  RelCommon common = 8;
 
   enum DdlObject {
     DDL_OBJECT_UNSPECIFIED = 0;
@@ -435,7 +514,7 @@ message DdlRel {
   //TODO add PK/constraints/indexes/etc..?
 }
 
-// The operator that modifies the content of a database (operates on 1 table at a time, but tuple-selection/source can be
+// The operator that modifies the content of a database (operates on 1 table at a time, but record-selection/source can be
 // based on joining of multiple tables).
 message WriteRel {
   // Definition of which TABLE we are operating on
@@ -450,7 +529,7 @@ message WriteRel {
   // The type of operation to perform
   WriteOp op = 4;
 
-  // The relation that determines the tuples to add/remove/modify
+  // The relation that determines the records to add/remove/modify
   // the schema must match with table_schema. Default values must be explicitly stated
   // in a ProjectRel at the top of the input. The match must also
   // occur in case of DELETE to ensure multi-engine plans are unequivocal.
@@ -458,40 +537,104 @@ message WriteRel {
 
   // Output mode determines what is the output of executing this rel
   OutputMode output = 6;
+  RelCommon common = 7;
 
   enum WriteOp {
     WRITE_OP_UNSPECIFIED = 0;
-    // The insert of new tuples in a table
+    // The insert of new records in a table
     WRITE_OP_INSERT = 1;
-    // The removal of tuples from a table
+    // The removal of records from a table
     WRITE_OP_DELETE = 2;
-    // The modification of existing tuples within a table
+    // The modification of existing records within a table
     WRITE_OP_UPDATE = 3;
-    // The Creation of a new table, and the insert of new tuples in the table
+    // The Creation of a new table, and the insert of new records in the table
     WRITE_OP_CTAS = 4;
   }
 
   enum OutputMode {
     OUTPUT_MODE_UNSPECIFIED = 0;
-    // return no tuples at all
+    // return no records at all
     OUTPUT_MODE_NO_OUTPUT = 1;
-    // this mode makes the operator return all the tuple INSERTED/DELETED/UPDATED by the operator.
+    // this mode makes the operator return all the record INSERTED/DELETED/UPDATED by the operator.
     // The operator returns the AFTER-image of any change. This can be further manipulated by operators upstreams
-    // (e.g., retunring the typical "count of modified tuples").
+    // (e.g., retunring the typical "count of modified records").
     // For scenarios in which the BEFORE image is required, the user must implement a spool (via references to
     // subplans in the body of the Rel input) and return those with anounter PlanRel.relations.
-    OUTPUT_MODE_MODIFIED_TUPLES = 2;
+    OUTPUT_MODE_MODIFIED_RECORDS = 2;
+  }
+}
+
+// Hash joins and merge joins are a specialization of the general join where the join
+// expression is an series of comparisons between fields that are ANDed together.  The
+// behavior of this comparison is flexible
+message ComparisonJoinKey {
+  // The key to compare from the left table
+  Expression.FieldReference left = 1;
+  // The key to compare from the right table
+  Expression.FieldReference right = 2;
+  // Describes how to compare the two keys
+  ComparisonType comparison = 3;
+
+  // Most joins will use one of the following behaviors.  To avoid the complexity
+  // of a function lookup we define the common behaviors here
+  enum SimpleComparisonType {
+    SIMPLE_COMPARISON_TYPE_UNSPECIFIED = 0;
+    // Returns true only if both values are equal and not null
+    SIMPLE_COMPARISON_TYPE_EQ = 1;
+    // Returns true if both values are equal and not null
+    // Returns true if both values are null
+    // Returns false if one value is null and the other value is not null
+    //
+    // This can be expressed as a = b OR (isnull(a) AND isnull(b))
+    SIMPLE_COMPARISON_TYPE_IS_NOT_DISTINCT_FROM = 2;
+    // Returns true if both values are equal and not null
+    // Returns true if either value is null
+    //
+    // This can be expressed as a = b OR isnull(a = b)
+    SIMPLE_COMPARISON_TYPE_MIGHT_EQUAL = 3;
+  }
+
+  // Describes how the relation should consider if two rows are a match
+  message ComparisonType {
+    oneof inner_type {
+      // One of the simple comparison behaviors is used
+      SimpleComparisonType simple = 1;
+      // A custom comparison behavior is used.  This can happen, for example, when using
+      // collations, where we might want to do something like a case-insensitive comparison.
+      //
+      // This must be a binary function with a boolean return type
+      uint32 custom_function_reference = 2;
+    }
   }
 }
 
 // The hash equijoin join operator will build a hash table out of the right input based on a set of join keys.
 // It will then probe that hash table for incoming inputs, finding matches.
+//
+// Two rows are a match if the comparison function returns true for all keys
 message HashJoinRel {
   RelCommon common = 1;
   Rel left = 2;
   Rel right = 3;
-  repeated Expression.FieldReference left_keys = 4;
-  repeated Expression.FieldReference right_keys = 5;
+  // These fields are deprecated in favor of `keys`.  If they are set then
+  // the two lists (left_keys and right_keys) must have the same length and
+  // the comparion function is considered to be SimpleEqualityType::EQ
+  repeated Expression.FieldReference left_keys = 4 [deprecated = true];
+  repeated Expression.FieldReference right_keys = 5 [deprecated = true];
+  // One or more keys to join on.  The relation is invalid if this is empty
+  // (unless the deprecated left_keys/right_keys fields are being used).
+  //
+  // If a custom comparison function is used then it must be consistent with
+  // the hash function used for the keys.
+  //
+  // In other words, the hash function must return the same hash code when the
+  // comparison returns true.  For example, if the comparison function is
+  // "equals ignoring case" then the hash function must return the same hash
+  // code for strings that differ only by case.  Note: the hash function is not
+  // specified here.  It is the responsibility of the consumer to find an appropriate
+  // hash function for a given comparsion function or to reject the plan if it cannot
+  // do so.
+  repeated ComparisonJoinKey keys = 8;
   Expression post_join_filter = 6;
 
   JoinType type = 7;
@@ -517,11 +660,56 @@ message MergeJoinRel {
   RelCommon common = 1;
   Rel left = 2;
   Rel right = 3;
-  repeated Expression.FieldReference left_keys = 4;
-  repeated Expression.FieldReference right_keys = 5;
+  // These fields are deprecated in favor of `keys`.  If they are set then
+  // the two lists (left_keys and right_keys) must have the same length and
+  // the comparion function is considered to be SimpleEqualityType::EQ
+  repeated Expression.FieldReference left_keys = 4 [deprecated = true];
+  repeated Expression.FieldReference right_keys = 5 [deprecated = true];
+  // One or more keys to join on.  The relation is invalid if this is empty
+  // (unless the deprecated left_keys/right_keys fields are being used).
+  //
+  // If a custom comparison function is used then it must be consistent with
+  // the ordering of the input data.  For example, if the comparison function
+  // is "<" then we generally expect the data to be sorted in ascending order.
+  //
+  // If the comparison function is something like "less than ignoring case" then
+  // the data should be sorted appropriately (e.g. both "A" and "a" should come
+  // before "b")
+  //
+  // The sort order is not specified here.  It is typically the responsibility of
+  // the producer to ensure the plan sorts the data if needed (although the consumer
+  // is free to do so as well).  If possible, the consumer should verify the sort
+  // order and reject invalid plans.
+  repeated ComparisonJoinKey keys = 8;
   Expression post_join_filter = 6;
 
   JoinType type = 7;
+
+  enum JoinType {
+    JOIN_TYPE_UNSPECIFIED = 0;
+    JOIN_TYPE_INNER = 1;
+    JOIN_TYPE_OUTER = 2;
+    JOIN_TYPE_LEFT = 3;
+    JOIN_TYPE_RIGHT = 4;
+    JOIN_TYPE_LEFT_SEMI = 5;
+    JOIN_TYPE_RIGHT_SEMI = 6;
+    JOIN_TYPE_LEFT_ANTI = 7;
+    JOIN_TYPE_RIGHT_ANTI = 8;
+  }
+
+  substrait.extensions.AdvancedExtension advanced_extension = 10;
+}
+
+// The nested loop join (NLJ) operator will hold the entire right input and iterate over it using the
+// left input, evaluating the join expression on the Cartesian product of all rows.
+message NestedLoopJoinRel {
+  RelCommon common = 1;
+  Rel left = 2;
+  Rel right = 3;
+  // optional, defaults to true (a cartesian join)
+  Expression expression = 4;
+
+  JoinType type = 5;
 
   enum JoinType {
     JOIN_TYPE_UNSPECIFIED = 0;
@@ -609,7 +797,8 @@ message Expression {
       string string = 12;
       bytes binary = 13;
       // Timestamp in units of microseconds since the UNIX epoch.
-      int64 timestamp = 14;
+      // Deprecated in favor of `precision_timestamp`
+      int64 timestamp = 14 [deprecated = true];
       // Date in units of days since the UNIX epoch.
       int32 date = 16;
       // Time in units of microseconds past midnight
@@ -620,10 +809,15 @@ message Expression {
       VarChar var_char = 22;
       bytes fixed_binary = 23;
       Decimal decimal = 24;
+      // If the precision is 6 or less then this is the microseconds since the UNIX epoch
+      // If the precision is more than 6 then this is the nanoseconds since the UNIX epoch
+      uint64 precision_timestamp = 34;
+      uint64 precision_timestamp_tz = 35;
       Struct struct = 25;
       Map map = 26;
       // Timestamp in units of microseconds since the UNIX epoch.
-      int64 timestamp_tz = 27;
+      // Deprecated in favor of `precision_timestamp_tz`
+      int64 timestamp_tz = 27 [deprecated = true];
       bytes uuid = 28;
       Type null = 29; // a typed null literal
       List list = 30;
@@ -632,9 +826,11 @@ message Expression {
       UserDefined user_defined = 33;
     }
 
-    // whether the literal type should be treated as a nullable type. Applies to
-    // all members of union other than the Typed null (which should directly
-    // declare nullability).
+    // Whether the literal_type above should be treated as a nullable type.
+    // Applies to all members of the literal_type oneof EXCEPT:
+    //  * Type null             (must be nullable by definition)
+    //  * Type.List empty_list  (use Type.List::nullability)
+    //  * Type.Map empty_map    (use Type.Map::nullability)
     bool nullable = 50;
 
     // optionally points to a type_variation_anchor defined in this plan.
@@ -696,9 +892,13 @@ message Expression {
       // parameterizable.
       repeated Type.Parameter type_parameters = 3;
 
-      // the value of the literal, serialized using some type-specific
-      // protobuf message
-      google.protobuf.Any value = 2;
+      // a user-defined literal can be encoded in one of two ways
+      oneof val {
+        // the value of the literal, serialized using some type-specific protobuf message
+        google.protobuf.Any value = 2;
+        // the value of the literal, serialized using the structure definition in its declaration
+        Literal.Struct struct = 4;
+      }
     }
   }
 
@@ -778,9 +978,14 @@ message Expression {
 
   // A window function call.
   message WindowFunction {
-    // Points to a function_anchor defined in this plan, which must refer
-    // to a window function in the associated YAML file. Required; 0 is
-    // considered to be a valid anchor/reference.
+    // Points to a function_anchor defined in this plan. The function must be:
+    //  - a window function
+    //  - an aggregate function
+    //
+    // An aggregate function referenced here should be treated as a window
+    // function with Window Type STREAMING
+    //
+    // Required; 0 is considered to be a valid anchor/reference.
     uint32 function_reference = 1;
 
     // The arguments to be bound to the function. This must have exactly the
@@ -825,10 +1030,13 @@ message Expression {
 
     // When one or more partition expressions are specified, two records are
     // considered to be in the same partition if and only if these expressions
-    // yield an equal tuple of values for both. When computing the window
+    // yield an equal record of values for both. When computing the window
     // function, only the subset of records within the bounds that are also in
     // the same partition as the current record are aggregated.
     repeated Expression partitions = 2;
+
+    // Defines the bounds type: ROWS, RANGE
+    BoundsType bounds_type = 12;
 
     // Defines the record relative to the current record from which the window
     // extends. The bound is inclusive. If the lower bound indexes a record
@@ -846,6 +1054,18 @@ message Expression {
 
     // Deprecated; use arguments instead.
     repeated Expression args = 8 [deprecated = true];
+
+    enum BoundsType {
+      BOUNDS_TYPE_UNSPECIFIED = 0;
+      // The lower and upper bound specify how many rows before and after the current row
+      // the window should extend.
+      BOUNDS_TYPE_ROWS = 1;
+      // The lower and upper bound describe a range of values.  The window should include all rows
+      // where the value of the ordering column is greater than or equal to (current_value - lower bound)
+      // and less than or equal to (current_value + upper bound).  This bounds type is only valid if there
+      // is a single ordering column.
+      BOUNDS_TYPE_RANGE = 2;
+    }
 
     // Defines one of the two boundaries for the window of a window function.
     message Bound {
@@ -893,7 +1113,9 @@ message Expression {
   }
 
   message IfThen {
+    // A list of one or more IfClauses
     repeated IfClause ifs = 1;
+    // The returned Expression if no IfClauses are satisified
     Expression else = 2;
 
     message IfClause {
@@ -1005,7 +1227,7 @@ message Expression {
   // pipeline.
   //
   // Note that this does not fundamentally alter the structure of data beyond
-  // the elimination of unecessary elements.
+  // the elimination of unnecessary elements.
   message MaskExpression {
     StructSelect select = 1;
     bool maintain_singular_struct = 2;
@@ -1287,10 +1509,10 @@ message AggregateFunction {
     // Use only distinct values in the aggregation calculation.
     AGGREGATION_INVOCATION_DISTINCT = 2;
   }
+}
 
-  // This rel is used  to create references,
-  // in case we refer to a RelRoot field names will be ignored
-  message ReferenceRel {
-    int32 subtree_ordinal = 1;
-  }
+// This rel is used  to create references,
+// in case we refer to a RelRoot field names will be ignored
+message ReferenceRel {
+  int32 subtree_ordinal = 1;
 }

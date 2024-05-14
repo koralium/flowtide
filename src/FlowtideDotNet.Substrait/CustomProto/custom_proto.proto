@@ -20,10 +20,6 @@ message NormalizationRelation {
     substrait.Expression filter = 2;
 }
 
-message ReferenceRelation {
-    int32 referenceId = 1;
-}
-
 message BufferRelation {
 
 }
