@@ -61,3 +61,11 @@ message TableFunctionRelation {
       JOIN_TYPE_LEFT = 3;
     }
 }
+
+message SubStreamRootRelation {
+}
+
+message ExchangeReferenceRelation {
+    int32 subtree_ordinal = 1;
+    int32 exchange_target_id = 2;
+}
