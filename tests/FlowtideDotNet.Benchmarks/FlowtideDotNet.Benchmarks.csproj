@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FlowtideDotNet.Storage\FlowtideDotNet.Storage.csproj" />
+    <ProjectReference Include="..\FlowtideDotNet.AcceptanceTests\FlowtideDotNet.AcceptanceTests.csproj" />
   </ItemGroup>
 
 </Project>
