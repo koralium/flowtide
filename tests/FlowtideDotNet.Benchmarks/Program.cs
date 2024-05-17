@@ -12,5 +12,6 @@
 
 using BenchmarkDotNet.Running;
 using DifferntialCompute.Benchmarks;
+using FlowtideDotNet.Benchmarks.Stream;
 
-var summary = BenchmarkRunner.Run<BPlusTreeInsertionBenchmark>();
+var summary = BenchmarkRunner.Run<StreamBenchmark>();

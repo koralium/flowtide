@@ -14,18 +14,22 @@ using FastMember;
 using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Base.Engine;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
 using System.Buffers;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -41,7 +45,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         int updateCounter = 0;
         FlowtideBuilder flowtideBuilder;
         private int _egressCrashOnCheckpointCount;
-        private FileCachePersistentStorage? _fileCachePersistence;
+        private IPersistentStorage? _persistentStorage;
+        private ConnectorManager? _connectorManager;
 
         public IReadOnlyList<User> Users  => generator.Users;
 
@@ -54,6 +59,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public ISqlFunctionRegister SqlFunctionRegister => sqlPlanBuilder.FunctionRegister;
 
         public SqlPlanBuilder SqlPlanBuilder => sqlPlanBuilder;
+
+        public int CachePageCount { get; set; } = 1000;
 
         public FlowtideTestStream(string testName)
         {
@@ -72,7 +79,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             action(sqlPlanBuilder);
         }
 
-        public void Generate(int count = 1000)
+        public virtual void Generate(int count = 1000)
         {
             generator.Generate(count);
         }
@@ -92,6 +99,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.DeleteOrder(order);
         }
 
+        [MemberNotNull(nameof(_connectorManager))]
+        public void SetupConnectorManager()
+        {
+            if (_connectorManager == null)
+            {
+                _connectorManager = new ConnectorManager();
+                AddReadResolvers(_connectorManager);
+                AddWriteResolvers(_connectorManager);
+            }
+        }
+
         public async Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default, TimeSpan? timestampInterval = default)
         {
             if (stateSerializeOptions == null)
@@ -106,26 +124,21 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
 
-            var connectorManager = new ConnectorManager();
-            AddReadResolvers(connectorManager);
-            AddWriteResolvers(connectorManager);
+            SetupConnectorManager();
 
-            _fileCachePersistence = new FileCachePersistentStorage(new Storage.FileCacheOptions()
-            {
-                DirectoryPath = $"./data/tempFiles/{testName}/persist",
-                SegmentSize = 1024L * 1024 * 1024 * 64
-            }, true);
+
+            _persistentStorage = CreatePersistentStorage(testName);
 
             flowtideBuilder
                 .AddPlan(plan)
                 .SetParallelism(parallelism)
-                .AddConnectorManager(connectorManager)
+                .AddConnectorManager(_connectorManager)
                 .SetGetTimestampUpdateInterval(timestampInterval.Value)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
-                    CachePageCount = 1000,
+                    CachePageCount = CachePageCount,
                     SerializeOptions = stateSerializeOptions,
-                    PersistentStorage = _fileCachePersistence,
+                    PersistentStorage = _persistentStorage,
                     TemporaryStorageOptions = new Storage.FileCacheOptions()
                     {
                         DirectoryPath = $"./data/tempFiles/{testName}/tmp"
@@ -134,6 +147,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             var stream = flowtideBuilder.Build();
             _stream = stream;
             await _stream.StartAsync();
+        }
+
+        protected virtual IPersistentStorage CreatePersistentStorage(string testName)
+        {
+            return new FileCachePersistentStorage(new Storage.FileCacheOptions()
+            {
+                DirectoryPath = $"./data/tempFiles/{testName}/persist",
+                SegmentSize = 1024L * 1024 * 1024 * 64
+            }, true);
         }
 
         private void OnDataUpdate(List<byte[]> actualData)
@@ -202,7 +224,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await scheduler!.Tick();
         }
 
-        public async Task WaitForUpdate()
+        public virtual async Task WaitForUpdate()
         {
             Debug.Assert(_stream != null);
             int currentCounter = 0;
@@ -316,15 +338,20 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 await _stream.DisposeAsync();
             }
-            if (_fileCachePersistence != null)
+            if (_persistentStorage != null)
             {
-                _fileCachePersistence.ForceDispose();
+                _persistentStorage.Dispose();
             }
         }
 
         public async Task Trigger(string triggerName)
         {
             await _stream!.CallTrigger(triggerName, default);
+        }
+
+        public StreamGraph GetDiagnosticsGraph()
+        {
+            return _stream!.GetDiagnosticsGraph();
         }
     }
 }
