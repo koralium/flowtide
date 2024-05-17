@@ -54,7 +54,6 @@ namespace FlowtideDotNet.Benchmarks.Stream
                 return counter.Total.Sum;
             }).Sum();
             var meanValue = TimeInterval.FromNanoseconds(summary[benchmarkCase]!.ResultStatistics!.Mean).ToSeconds();
-            summary.GetColumns().FirstOrDefault(x => x.ColumnName == "Mean");
             var perSecond = Math.Round(sum / (decimal)meanValue);
             return perSecond.ToString();
         }

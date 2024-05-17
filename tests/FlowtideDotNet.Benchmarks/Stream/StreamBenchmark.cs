@@ -15,19 +15,6 @@ using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Loggers;
-using FlowtideDotNet.AcceptanceTests.Internal;
-using FlowtideDotNet.Storage.Comparers;
-using FlowtideDotNet.Storage.Serializers;
-using FlowtideDotNet.Storage.Tree;
-using Microsoft.VisualStudio.TestPlatform.Utilities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.Action;
-using static SqlParser.Ast.JoinConstraint;
-using static SqlParser.Ast.JoinOperator;
 
 namespace FlowtideDotNet.Benchmarks.Stream
 {
@@ -48,7 +35,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
     public class StreamBenchmark
     {
         private int iterationId = 0;
-        private BenchmarkTestStream _stream;
+        private BenchmarkTestStream? _stream;
         [IterationSetup]
         public void IterationSetup()
         {
@@ -61,7 +48,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         [Benchmark]
         public async Task InnerJoin()
         {
-            await _stream.StartStream(@"
+            await _stream!.StartStream(@"
             INSERT INTO output
             SELECT u.userkey FROM users u
             INNER JOIN orders o
@@ -75,13 +62,13 @@ namespace FlowtideDotNet.Benchmarks.Stream
         [IterationCleanup(Target = nameof(InnerJoin))]
         public void AfterInnerJoin()
         {
-            StreamGraphMetadata.SaveGraphData(nameof(InnerJoin), _stream.GetDiagnosticsGraph());
+            StreamGraphMetadata.SaveGraphData(nameof(InnerJoin), _stream!.GetDiagnosticsGraph());
         }
 
         [Benchmark]
         public async Task LeftJoin()
         {
-            await _stream.StartStream(@"
+            await _stream!.StartStream(@"
             INSERT INTO output
             SELECT u.userkey FROM users u
             LEFT JOIN orders o
@@ -95,7 +82,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         [IterationCleanup(Target = nameof(LeftJoin))]
         public void AfterLeftJoin()
         {
-            StreamGraphMetadata.SaveGraphData(nameof(LeftJoin), _stream.GetDiagnosticsGraph());
+            StreamGraphMetadata.SaveGraphData(nameof(LeftJoin), _stream!.GetDiagnosticsGraph());
         }
 
         /// <summary>
@@ -108,7 +95,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         [Benchmark]
         public async Task ProjectionAndNormalization()
         {
-            await _stream.StartStream(@"
+            await _stream!.StartStream(@"
             INSERT INTO output
             SELECT u.userkey FROM users u
             ", 1);
@@ -118,7 +105,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         [IterationCleanup(Target = nameof(ProjectionAndNormalization))]
         public void AfterProjectionAndNormalization()
         {
-            StreamGraphMetadata.SaveGraphData(nameof(ProjectionAndNormalization), _stream.GetDiagnosticsGraph());
+            StreamGraphMetadata.SaveGraphData(nameof(ProjectionAndNormalization), _stream!.GetDiagnosticsGraph());
         }
 
 
@@ -131,7 +118,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         [Benchmark]
         public async Task SumAggregation()
         {
-            await _stream.StartStream(@"
+            await _stream!.StartStream(@"
             INSERT INTO output
             SELECT sum(u.userkey) FROM users u
             ", 1);
@@ -141,7 +128,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         [IterationCleanup(Target = nameof(SumAggregation))]
         public void AfterSumAggregation()
         {
-            StreamGraphMetadata.SaveGraphData(nameof(SumAggregation), _stream.GetDiagnosticsGraph());
+            StreamGraphMetadata.SaveGraphData(nameof(SumAggregation), _stream!.GetDiagnosticsGraph());
         }
     }
 }
