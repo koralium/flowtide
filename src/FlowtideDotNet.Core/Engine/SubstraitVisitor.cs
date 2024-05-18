@@ -59,14 +59,13 @@ namespace FlowtideDotNet.Core.Engine
         private readonly DataflowStreamBuilder dataflowStreamBuilder;
         private readonly IConnectorManager? connectorManager;
         private readonly IReadWriteFactory? readWriteFactory;
-        private readonly int queueSize;
         private readonly FunctionsRegister functionsRegister;
         private readonly int parallelism;
         private readonly TimeSpan getTimestampInterval;
         private int _operatorId = 0;
         private Dictionary<int, RelationTree> _doneRelations;
         private Dictionary<string, IterationOperator> _iterationOperators = new Dictionary<string, IterationOperator>();
-        private ExecutionDataflowBlockOptions _defaultBlockOptions;
+        private readonly ExecutionDataflowBlockOptions _defaultBlockOptions;
 
         public void BuildPlan()
         {
@@ -117,7 +116,6 @@ namespace FlowtideDotNet.Core.Engine
             this.dataflowStreamBuilder = dataflowStreamBuilder;
             this.connectorManager = connectorManager;
             this.readWriteFactory = readWriteFactory;
-            this.queueSize = queueSize;
             this.functionsRegister = functionsRegister;
             this.parallelism = parallelism;
             this.getTimestampInterval = getTimestampInterval;
