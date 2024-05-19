@@ -16,3 +16,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.OpenFGA")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.SpiceDB")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Permify")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Sharepoint")]

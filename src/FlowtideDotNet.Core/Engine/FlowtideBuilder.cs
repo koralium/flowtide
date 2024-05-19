@@ -35,6 +35,7 @@ namespace FlowtideDotNet.Core.Engine
         private FunctionsRegister _functionsRegister;
         private int _parallelism = 1;
         private TimeSpan _getTimestampInterval = TimeSpan.FromHours(1);
+        private TaskScheduler? _taskScheduler;
 
         public FlowtideBuilder(string streamName)
         {
@@ -125,6 +126,12 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder SetTaskScheduler(TaskScheduler taskScheduler)
+        {
+            _taskScheduler = taskScheduler;
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
@@ -172,7 +179,8 @@ namespace FlowtideDotNet.Core.Engine
                 _queueSize, 
                 _functionsRegister, 
                 _parallelism, 
-                _getTimestampInterval);
+                _getTimestampInterval,
+                _taskScheduler);
 
             visitor.BuildPlan();
 

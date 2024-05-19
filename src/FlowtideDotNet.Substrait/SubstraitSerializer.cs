@@ -678,22 +678,14 @@ namespace FlowtideDotNet.Substrait
 
             public override Rel VisitReferenceRelation(ReferenceRelation referenceRelation, SerializerVisitorState state)
             {
-                var refRel = new CustomProtobuf.ReferenceRelation()
+                var refRel = new ReferenceRel()
                 {
-                    ReferenceId = referenceRelation.RelationId
-                };
-                var rel = new Protobuf.ExtensionLeafRel()
-                {
-                    Detail = new Google.Protobuf.WellKnownTypes.Any()
-                    {
-                        TypeUrl = "flowtide/flowtide.ReferenceRelation",
-                        Value = refRel.ToByteString()
-                    }
+                    SubtreeOrdinal = referenceRelation.RelationId
                 };
 
                 return new Rel()
                 {
-                    ExtensionLeaf = rel
+                    Reference = refRel
                 };
             }
 
@@ -1074,7 +1066,6 @@ namespace FlowtideDotNet.Substrait
                 CustomProtobuf.IterationReferenceReadRelation.Descriptor,
                 CustomProtobuf.IterationRelation.Descriptor,
                 CustomProtobuf.NormalizationRelation.Descriptor,
-                CustomProtobuf.ReferenceRelation.Descriptor,
                 CustomProtobuf.TopNRelation.Descriptor);
             var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
                 .WithIndentation();

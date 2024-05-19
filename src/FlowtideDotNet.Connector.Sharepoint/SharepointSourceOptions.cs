@@ -10,8 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using BenchmarkDotNet.Running;
-using DifferntialCompute.Benchmarks;
-using FlowtideDotNet.Benchmarks.Stream;
+using Azure.Core;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-var summary = BenchmarkRunner.Run<StreamBenchmark>();
+namespace FlowtideDotNet.Connector.Sharepoint
+{
+    public class SharepointSourceOptions : SharepointOptions
+    {
+    }
+}
