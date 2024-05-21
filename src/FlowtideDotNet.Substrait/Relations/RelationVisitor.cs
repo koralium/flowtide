@@ -133,5 +133,15 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             throw new NotImplementedException("Sub stream root relation is not implemented");
         }
+
+        public virtual TReturn VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, TState state)
+        {
+            throw new NotImplementedException("PullExchangeReferenceRelation is not implemented");
+        }
+
+        public virtual TReturn VisitStandardOutputExchangeReferenceRelation(StandardOutputExchangeReferenceRelation standardOutputExchangeReferenceRelation, TState state)
+        {
+            throw new NotImplementedException("StandardOutputExchangeReferenceRelation is not implemented");
+        }
     }
 }

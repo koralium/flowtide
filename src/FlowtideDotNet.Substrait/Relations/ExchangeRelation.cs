@@ -41,16 +41,63 @@ namespace FlowtideDotNet.Substrait.Relations
     public abstract class ExchangeKind
     {
         public abstract ExchangeKindType Type { get; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ExchangeKind other &&
+                Equals(Type, other.Type);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Type);        
+        }
     }
 
-    public class ScatterExchangeKind : ExchangeKind
+    public sealed class ScatterExchangeKind : ExchangeKind, IEquatable<ScatterExchangeKind>
     {
         public override ExchangeKindType Type => ExchangeKindType.Scatter;
 
         public required List<FieldReference> Fields { get; set; }
+
+        public bool Equals(ScatterExchangeKind? other)
+        {
+            return other != null && 
+                base.Equals(other) &&
+                Fields.SequenceEqual(other.Fields);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ScatterExchangeKind scatterExchangeKind &&
+                Equals(scatterExchangeKind);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(base.GetHashCode());
+
+            foreach(var field in Fields)
+            {
+                code.Add(field.GetHashCode());
+            }
+
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(ScatterExchangeKind? left, ScatterExchangeKind? right)
+        {
+            return EqualityComparer<ScatterExchangeKind>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(ScatterExchangeKind? left, ScatterExchangeKind? right)
+        {
+            return !(left == right);
+        }
     }
 
-    public class SingleBucketExchangeKind : ExchangeKind
+    public sealed class SingleBucketExchangeKind : ExchangeKind, IEquatable<SingleBucketExchangeKind>
     {
         public override ExchangeKindType Type => ExchangeKindType.SingleBucket;
 
@@ -58,11 +105,65 @@ namespace FlowtideDotNet.Substrait.Relations
         /// Expression that returns the bucket number, this will be taken modulo the number of partitions
         /// </summary>
         public required Expression Expression { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is SingleBucketExchangeKind singleBucketExchangeKind &&
+                Equals(singleBucketExchangeKind);
+        }
+
+        public bool Equals(SingleBucketExchangeKind? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Expression, other.Expression);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(base.GetHashCode(), Expression.GetHashCode());
+        }
+
+        public static bool operator ==(SingleBucketExchangeKind? left, SingleBucketExchangeKind? right)
+        {
+            return EqualityComparer<SingleBucketExchangeKind>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(SingleBucketExchangeKind? left, SingleBucketExchangeKind? right)
+        {
+            return !(left == right);
+        }
     }
 
-    public class BroadcastExchangeKind : ExchangeKind
+    public sealed class BroadcastExchangeKind : ExchangeKind, IEquatable<BroadcastExchangeKind>
     {
         public override ExchangeKindType Type => ExchangeKindType.Broadcast;
+
+        public override bool Equals(object? obj)
+        {
+            return obj is BroadcastExchangeKind broadcastExchangeKind &&
+                Equals(broadcastExchangeKind);
+        }
+
+        public bool Equals(BroadcastExchangeKind? other)
+        {
+            return other != null && base.Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(base.GetHashCode());
+        }
+
+        public static bool operator ==(BroadcastExchangeKind? left, BroadcastExchangeKind? right)
+        {
+            return EqualityComparer<BroadcastExchangeKind>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(BroadcastExchangeKind? left, BroadcastExchangeKind? right)
+        {
+            return !(left == right);
+        }
     }
 
     public enum ExchangeTargetType
@@ -72,45 +173,112 @@ namespace FlowtideDotNet.Substrait.Relations
         /// </summary>
         StandardOutput = 1,
         /// <summary>
-        /// Sends the result to another stream based on a stream reference name
+        /// Stores the result in a bucket that can be pulled by the target.
+        /// This is useful to allow the target to pull the data when it is ready.
         /// </summary>
-        StreamReference = 2
+        PullBucket = 2
     }
 
     public abstract class ExchangeTarget
     {
         public abstract ExchangeTargetType Type { get; }
-    }
-
-    public class StandardOutputExchangeTarget : ExchangeTarget
-    {
-        public override ExchangeTargetType Type => ExchangeTargetType.StandardOutput;
-    }
-
-    public class StreamReferenceExchangeTarget : ExchangeTarget
-    {
-        public override ExchangeTargetType Type => ExchangeTargetType.StreamReference;
 
         /// <summary>
-        /// Reference id of the stream to send the result to.
-        /// It is up to the ececutor on how to find the stream with the given id.
-        /// The id should be the relation id of the relation that has the exchange relation as input.
+        /// List of partition ids to send to this target.
+        /// If it is an empty list all partition ids should be sent to this target.
         /// </summary>
-        public required int StreamReferenceId { get; set; }
+        public required List<int> PartitionIds { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ExchangeTarget exchangeTarget &&
+                Equals(Type, exchangeTarget.Type) &&
+                PartitionIds.SequenceEqual(exchangeTarget.PartitionIds);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Type);
+        }
+    }
+
+    public class StandardOutputExchangeTarget : ExchangeTarget, IEquatable<StandardOutputExchangeTarget>
+    {
+        public override ExchangeTargetType Type => ExchangeTargetType.StandardOutput;
+
+        public override bool Equals(object? obj)
+        {
+            return obj is StandardOutputExchangeTarget standardOutputExchangeTarget &&
+                Equals(standardOutputExchangeTarget);
+        }
+
+        public bool Equals(StandardOutputExchangeTarget? other)
+        {
+            return other != null &&
+                base.Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(base.GetHashCode());
+        }
+
+        public static bool operator ==(StandardOutputExchangeTarget? left, StandardOutputExchangeTarget? right)
+        {
+            return EqualityComparer<StandardOutputExchangeTarget>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(StandardOutputExchangeTarget? left, StandardOutputExchangeTarget? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    public class PullBucketExchangeTarget : ExchangeTarget, IEquatable<PullBucketExchangeTarget>
+    {
+        public override ExchangeTargetType Type => ExchangeTargetType.PullBucket;
 
         /// <summary>
         /// An identifier that should be unique inside the stream/substream.
-        /// This is used so it knows where to send the result to.
+        /// This is used when the target wants to pull the data.
         /// </summary>
         public int ExchangeTargetId { get; set; }
+
+        public bool Equals(PullBucketExchangeTarget? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(ExchangeTargetId, other.ExchangeTargetId);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is PullBucketExchangeTarget other &&
+                Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(base.GetHashCode(), ExchangeTargetId);
+        }
+
+        public static bool operator ==(PullBucketExchangeTarget? left, PullBucketExchangeTarget? right)
+        {
+            return EqualityComparer<PullBucketExchangeTarget>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(PullBucketExchangeTarget? left, PullBucketExchangeTarget? right)
+        {
+            return !(left == right);
+        }
     }
 
 
-    public class ExchangeRelation : Relation
+    public class ExchangeRelation : Relation, IEquatable<ExchangeRelation>
     {
         public required Relation Input { get; set; }
 
-        public int PartitionCount { get; set; }
+        public int? PartitionCount { get; set; }
 
         public required ExchangeKind ExchangeKind { get; set; }
 
@@ -131,6 +299,48 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitExchangeRelation(this, state);
+        }
+
+        public bool Equals(ExchangeRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Equals(PartitionCount, other.PartitionCount) &&
+                Equals(ExchangeKind, other.ExchangeKind) &&
+                Targets.SequenceEqual(other.Targets);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ExchangeRelation other &&
+                Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            HashCode code = new HashCode();
+            code.Add(base.GetHashCode());
+            code.Add(Input);
+            code.Add(PartitionCount);
+            code.Add(ExchangeKind);
+
+            foreach(var target in Targets)
+            {
+                code.Add(target);
+            }
+
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(ExchangeRelation? left, ExchangeRelation? right)
+        {
+            return EqualityComparer<ExchangeRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(ExchangeRelation? left, ExchangeRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

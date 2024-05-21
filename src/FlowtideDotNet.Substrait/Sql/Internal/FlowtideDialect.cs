@@ -24,6 +24,19 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
     /// </summary>
     internal class FlowtideDialect : MsSqlDialect
     {
+        
+        private bool TryParseSubstream(Parser parser)
+        {
+            var token = parser.PeekToken();
+            if (token is Word word &&
+                    string.Equals(word.Value, "SUBSTREAM", StringComparison.OrdinalIgnoreCase))
+            {
+                parser.NextToken();
+                return true;
+            }
+            return false;
+        }
+
         public override Statement? ParseStatement(Parser parser)
         {
             if (parser.ParseKeyword(Keyword.CREATE))
@@ -35,8 +48,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 else
                 {
                     parser.PrevToken();
-                    return base.ParseStatement(parser);
                 }
+            }
+            else if (TryParseSubstream(parser))
+            {
+                var objName = parser.ParseObjectName();
+                return new BeginSubStream(objName);
             }
             
             return base.ParseStatement(parser);

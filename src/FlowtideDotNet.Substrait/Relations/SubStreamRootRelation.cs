@@ -18,15 +18,46 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class SubStreamRootRelation : Relation
+    public class SubStreamRootRelation : Relation, IEquatable<SubStreamRootRelation>
     {
         public required Relation Input { get; set; }
+
+        public required string Name { get; set; }
 
         public override int OutputLength => Input.OutputLength;
 
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
-            throw new NotImplementedException();
+            return visitor.VisitSubStreamRootRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is SubStreamRootRelation relation &&
+                   Equals(relation);
+        }
+
+        public bool Equals(SubStreamRootRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Input, other.Input) &&
+                Equals(Name, other.Name);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(base.GetHashCode(), Input, Name);
+        }
+
+        public static bool operator ==(SubStreamRootRelation? left, SubStreamRootRelation? right)
+        {
+            return EqualityComparer<SubStreamRootRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(SubStreamRootRelation? left, SubStreamRootRelation? right)
+        {
+            return !(left == right);
         }
     }
 }
