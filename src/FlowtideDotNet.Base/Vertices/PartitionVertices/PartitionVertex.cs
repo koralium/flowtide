@@ -80,11 +80,11 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             {
                 if (x is ILockingEvent ev)
                 {
-                    return Broadcast(ev);
+                    return HandleLockingEvent(ev);
                 }
                 if (x is LockingEventPrepare lockingEventPrepare)
                 {
-                    return Broadcast(lockingEventPrepare);
+                    return HandleLockingEventPrepare(lockingEventPrepare);
                 }
                 if (x is StreamMessage<T> message)
                 {
@@ -97,7 +97,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 }
                 if (x is Watermark watermark)
                 {
-                    return Broadcast(watermark);
+                    return HandleWatermark(watermark);
                 }
                 throw new NotSupportedException();
             }, _executionDataflowBlockOptions);
@@ -112,11 +112,45 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             
         }
 
-        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> Broadcast(IStreamEvent streamEvent)
+        protected virtual Task OnLockingEvent(ILockingEvent lockingEvent)
         {
+            return Task.CompletedTask;
+        }
+
+        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> HandleLockingEvent(ILockingEvent streamEvent)
+        {
+            await OnLockingEvent(streamEvent);
             for (int i = 0; i < targetNumber; i++)
             {
                 yield return new KeyValuePair<int, IStreamEvent>(i, streamEvent);
+            }
+        }
+
+        internal virtual Task OnLockingEventPrepare(LockingEventPrepare lockingEventPrepare)
+        {
+            return Task.CompletedTask;
+        }
+
+        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> HandleLockingEventPrepare(LockingEventPrepare lockingEventPrepare)
+        {
+            await OnLockingEventPrepare(lockingEventPrepare);
+            for (int i = 0; i < targetNumber; i++)
+            {
+                yield return new KeyValuePair<int, IStreamEvent>(i, lockingEventPrepare);
+            }
+        }
+
+        protected virtual Task OnWatermark(Watermark watermark)
+        {
+            return Task.CompletedTask;
+        }
+
+        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> HandleWatermark(Watermark watermark)
+        {
+            await OnWatermark(watermark);
+            for (int i = 0; i < targetNumber; i++)
+            {
+                yield return new KeyValuePair<int, IStreamEvent>(i, watermark);
             }
         }
 

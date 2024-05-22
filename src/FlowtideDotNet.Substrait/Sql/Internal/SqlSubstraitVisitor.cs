@@ -219,17 +219,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 // Add the exchange relation to a lookup table so usage of the view can add to the targets.
                 exchangeRelations.Add(createView.Name.ToSql(),new ExchangeContainer(relationData.EmitData, subRelations.Count, relation.OutputLength, (relation as ExchangeRelation)!, subStreamName));
 
-                if (subStreamName == null)
+                if (subStreamName != null)
                 {
-                    throw new InvalidOperationException("Distributed view must be used after a 'SUBSTREAM {nme}' command.");
+                    relation = new SubStreamRootRelation()
+                    {
+                        Input = relation,
+                        Name = subStreamName
+                    };
                 }
 
-                // Add a sub stream root relation to mark in the plan that this is a sub stream.
-                relation = new SubStreamRootRelation()
-                {
-                    Input = relation,
-                    Name = subStreamName
-                };
+                
                 subRelations.Add(relation);
             }
             else
