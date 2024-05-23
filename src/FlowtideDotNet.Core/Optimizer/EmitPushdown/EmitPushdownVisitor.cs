@@ -285,7 +285,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             return base.VisitProjectRelation(projectRelation, state);
         }
 
-        private record InputEmitResult(Dictionary<int, int> OldToNew, List<int> Emit);
+        private sealed record InputEmitResult(Dictionary<int, int> OldToNew, List<int> Emit);
 
         private static InputEmitResult CreateInputEmitList(Relation input, List<int> usedFields)
         {
