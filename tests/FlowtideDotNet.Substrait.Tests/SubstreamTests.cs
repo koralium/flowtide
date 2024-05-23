@@ -10,20 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Exceptions;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
 using FluentAssertions;
-using FluentAssertions.Execution;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.DataType;
-using static SqlParser.Ast.Expression;
-using static Substrait.Protobuf.FunctionSignature.Types;
 
 namespace FlowtideDotNet.Substrait.Tests
 {
@@ -686,7 +678,7 @@ namespace FlowtideDotNet.Substrait.Tests
         {
             var builder = new SqlPlanBuilder();
 
-            var ex = Assert.Throws<InvalidOperationException>(() =>
+            var ex = Assert.Throws<SubstraitParseException>(() =>
             {
                 builder.Sql(@"
                 CREATE TABLE table1 (val any);

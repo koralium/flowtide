@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             var token = parser.PeekToken();
             if (token is Word word &&
-                    string.Equals(word.Value, "SUBSTREAM", StringComparison.OrdinalIgnoreCase))
+                    string.Equals(word.Value, SqlTextResources.Substream, StringComparison.OrdinalIgnoreCase))
             {
                 parser.NextToken();
                 return true;

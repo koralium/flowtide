@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Exceptions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using SqlParser;
@@ -29,6 +30,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private readonly SqlFunctionRegister sqlFunctionRegister;
         private readonly Dictionary<string, CTEContainer> cteContainers;
         private readonly Dictionary<string, ExchangeContainer> exchangeRelations;
+        private readonly Dictionary<string, ViewContainer> viewRelations;
         private string? subStreamName;
         private int exchangeTargetIdCounter;
         private readonly List<Relation> subRelations;
@@ -40,6 +42,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             tablesMetadata = sqlPlanBuilder._tablesMetadata;
             cteContainers = new Dictionary<string, CTEContainer>(StringComparer.OrdinalIgnoreCase);
             exchangeRelations = new Dictionary<string, ExchangeContainer>(StringComparer.OrdinalIgnoreCase);
+            viewRelations = new Dictionary<string, ViewContainer>(StringComparer.OrdinalIgnoreCase);
             subRelations = new List<Relation>();
         }
 
@@ -125,7 +128,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 foreach(var opt in createView.WithOptions)
                 {
                     var upperName = opt.Name.ToString().ToUpper();
-                    if (upperName == "BUFFERED")
+                    if (upperName == SqlTextResources.Buffered)
                     {
                         var upperVal = opt.Value.ToSql().ToUpper();
                         if (upperVal == "TRUE")
@@ -133,7 +136,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             isBuffered = true;
                         }
                     }
-                    else if (upperName == "DISTRIBUTED")
+                    else if (upperName == SqlTextResources.Distributed)
                     {
                         var upperVal = opt.Value.ToSql().ToUpper();
                         if (upperVal == "TRUE")
@@ -141,7 +144,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             isDistributed = true;
                         }
                     }
-                    else if (upperName == "SCATTER_BY")
+                    else if (upperName == SqlTextResources.ScatterBy)
                     {
                         if (opt.Value is Value.StringBasedValue stringBasedVal)
                         {
@@ -154,15 +157,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             }
                             else
                             {
-                                throw new InvalidOperationException("SCATTER_BY epxects a field reference.");
+                                throw new SubstraitParseException("SCATTER_BY expects a field reference.");
                             }
                         }
                         else
                         {
-                            throw new InvalidOperationException("SCATTER_BY expects a string based value with qoutes.");
+                            throw new SubstraitParseException("SCATTER_BY expects a string based value with qoutes.");
                         }
                     }
-                    else if (upperName == "PARTITION_COUNT")
+                    else if (upperName == SqlTextResources.PartitionCount)
                     {
                         if (int.TryParse(opt.Value.ToSql(), out var partitionCountValue))
                         {
@@ -170,12 +173,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         }
                         else
                         {
-                            throw new InvalidOperationException($"Invalid partition count expected a number got '{opt.Value.ToSql()}'");
+                            throw new SubstraitParseException($"Invalid partition count expected a number got '{opt.Value.ToSql()}'");
                         }
                     }
                     else
                     {
-                        throw new InvalidOperationException($"Unknown option '{opt.Name}' in create view statement");
+                        throw new SubstraitParseException($"Unknown option '{opt.Name}' in create view statement");
                     }
                 }
             }
@@ -193,22 +196,19 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
             if (isDistributed)
             {
-                ExchangeKind? exchangeKind = default;
+                ExchangeKind? exchangeKind;
                 if (scatterField != null)
                 {
                     exchangeKind = new ScatterExchangeKind()
                     {
-                        Fields = new List<Expressions.FieldReference>()
-                        {
-                            scatterField
-                        }
+                        Fields = [scatterField]
                     };
                 }
                 else
                 {
                     exchangeKind = new BroadcastExchangeKind();
                 }
-                relation = new ExchangeRelation()
+                var exchangeRelation = new ExchangeRelation()
                 {
                     Input = relation,
                     ExchangeKind = exchangeKind,
@@ -217,39 +217,37 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 };
 
                 // Add the exchange relation to a lookup table so usage of the view can add to the targets.
-                exchangeRelations.Add(createView.Name.ToSql(),new ExchangeContainer(relationData.EmitData, subRelations.Count, relation.OutputLength, (relation as ExchangeRelation)!, subStreamName));
+                exchangeRelations.Add(createView.Name.ToSql(),new ExchangeContainer(relationData.EmitData, subRelations.Count, relation.OutputLength, exchangeRelation, subStreamName));
 
                 if (subStreamName == null)
                 {
-                    throw new InvalidOperationException("Distributed view must be used after a 'SUBSTREAM {nme}' command.");
+                    relation = exchangeRelation;
                 }
-
-                // Add a sub stream root relation to mark in the plan that this is a sub stream.
-                relation = new SubStreamRootRelation()
+                else
                 {
-                    Input = relation,
-                    Name = subStreamName
-                };
+                    // Add a sub stream root relation to mark in the plan that this is a sub stream.
+                    relation = new SubStreamRootRelation()
+                    {
+                        Input = exchangeRelation,
+                        Name = subStreamName
+                    };
+                }
+                
                 subRelations.Add(relation);
             }
             else
             {
                 if (scatterField != null)
                 {
-                    throw new InvalidOperationException("SCATTER_BY can only be used on a distributed view");
+                    throw new SubstraitParseException("SCATTER_BY can only be used on a distributed view");
                 }
                 if (partitionCount != null)
                 {
-                    throw new InvalidOperationException("PARTITION_COUNT can only be used on a distributed view");
+                    throw new SubstraitParseException("PARTITION_COUNT can only be used on a distributed view");
                 }
-                sqlPlanBuilder._planModifier.AddPlanAsView(viewName, new FlowtideDotNet.Substrait.Plan()
-                {
-                    Relations = new List<Relation>() { relation }
-                });
-                tablesMetadata.AddTable(viewName, relationData.EmitData.GetNames());
+                viewRelations.Add(viewName, new ViewContainer(relationData.EmitData, subRelations.Count, relation.OutputLength));
+                subRelations.Add(relation);
             }
-
-            
             
             return default;
         }
@@ -858,6 +856,20 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
             
             var tableName = string.Join('.', table.Name.Values.Select(x => x.Value));
+
+            if (viewRelations.TryGetValue(tableName, out var viewContainer))
+            {
+                var emitData = viewContainer.EmitData;
+                if (table.Alias != null)
+                {
+                    emitData = emitData.CloneWithAlias(table.Alias.Name.Value);
+                }
+                return new RelationData(new ReferenceRelation()
+                {
+                    ReferenceOutputLength = viewContainer.OutputLength,
+                    RelationId = viewContainer.RelationId
+                }, emitData);
+            }
 
             if (cteContainers.TryGetValue(tableName, out var cteContainer))
             {
