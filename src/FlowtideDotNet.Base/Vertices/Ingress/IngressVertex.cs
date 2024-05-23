@@ -70,6 +70,10 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         {
             lock(_stateLock)
             {
+                if (options.CancellationToken.IsCancellationRequested)
+                {
+                    throw new InvalidOperationException("ExecutionDataflowBlockOptions CancellationToken is already cancalled, can not create the block");
+                }
                 _ingressState = new IngressState<TData>();
                 _ingressState._checkpointLock = new SemaphoreSlim(1, 1);
                 _ingressState._block = new BufferBlock<IStreamEvent>(options);
@@ -92,6 +96,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 _ingressState._tokenSource = new CancellationTokenSource();
                 _ingressState._block.Completion.ContinueWith(t =>
                 {
+                    Logger.LogDebug(t.Exception, "Block failure");
                     lock (_stateLock)
                     {
                         _ingressState._taskEnabled = false;

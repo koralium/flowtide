@@ -37,6 +37,7 @@ using FlowtideDotNet.Core.Operators.TableFunction;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Base.Vertices.Egress;
+using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -65,7 +66,25 @@ namespace FlowtideDotNet.Core.Engine
         private int _operatorId = 0;
         private Dictionary<int, RelationTree> _doneRelations;
         private Dictionary<string, IterationOperator> _iterationOperators = new Dictionary<string, IterationOperator>();
-        private readonly ExecutionDataflowBlockOptions _defaultBlockOptions;
+        private readonly TaskScheduler? _taskScheduler;
+        private readonly int _queueSize;
+
+        private ExecutionDataflowBlockOptions DefaultBlockOptions
+        {
+            get
+            {
+                var options = new ExecutionDataflowBlockOptions()
+                {
+                    BoundedCapacity = _queueSize,
+                    MaxDegreeOfParallelism = 1
+                };
+                if (_taskScheduler != null)
+                {
+                    options.TaskScheduler = _taskScheduler;
+                }
+                return options;
+            }
+        }
 
         public void BuildPlan()
         {
@@ -119,22 +138,28 @@ namespace FlowtideDotNet.Core.Engine
             this.functionsRegister = functionsRegister;
             this.parallelism = parallelism;
             this.getTimestampInterval = getTimestampInterval;
+            _queueSize = queueSize;
+            _taskScheduler = taskScheduler;
             _doneRelations = new Dictionary<int, RelationTree>();
-            _defaultBlockOptions = new ExecutionDataflowBlockOptions()
-            {
-                BoundedCapacity = queueSize,
-                MaxDegreeOfParallelism = 1
-            };
-            if (taskScheduler != null)
-            {
-                _defaultBlockOptions.TaskScheduler = taskScheduler;
-            }
         }
+
+        //private ExecutionDataflowBlockOptions CreateBlockOptions()
+        //{
+        //    var options = new ExecutionDataflowBlockOptions()
+        //    {
+        //        BoundedCapacity = _queueSize,
+        //        MaxDegreeOfParallelism = 1
+        //    };
+        //    if (taskScheduler != null)
+        //    {
+        //        options.TaskScheduler = taskScheduler;
+        //    }
+        //}
 
         public override IStreamVertex VisitFilterRelation(FilterRelation filterRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new FilterOperator(filterRelation, functionsRegister, _defaultBlockOptions);
+            var op = new FilterOperator(filterRelation, functionsRegister, DefaultBlockOptions);
 
             if (state != null)
             {
@@ -149,7 +174,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitProjectRelation(ProjectRelation projectRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new ProjectOperator(projectRelation, functionsRegister, _defaultBlockOptions);
+            var op = new ProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
 
             if (state != null)
             {
@@ -167,17 +192,17 @@ namespace FlowtideDotNet.Core.Engine
             {
                 
                 var partitionOperatorId = _operatorId++;
-                var partitionOperator = new PartitionOperator(new PartitionOperatorOptions(aggregateRelation.Groupings[0].GroupingExpressions), functionsRegister, parallelism, _defaultBlockOptions);
+                var partitionOperator = new PartitionOperator(new PartitionOperatorOptions(aggregateRelation.Groupings[0].GroupingExpressions), functionsRegister, parallelism, DefaultBlockOptions);
                 dataflowStreamBuilder.AddPropagatorBlock(partitionOperatorId.ToString(), partitionOperator);
 
                 var partitionCombinerId = _operatorId++;
-                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch, object>(parallelism, _defaultBlockOptions);
+                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch, object>(parallelism, DefaultBlockOptions);
                 dataflowStreamBuilder.AddPropagatorBlock(partitionCombinerId.ToString(), partitionCombiner);
 
                 for (int i = 0; i < parallelism; i++)
                 {
                     var aggregateOperatorId = _operatorId++;
-                    var aggregateOperator = new AggregateOperator(aggregateRelation, functionsRegister, _defaultBlockOptions);
+                    var aggregateOperator = new AggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
                     // Link partition output to the aggregate operator
                     partitionOperator.Sources[i].LinkTo(aggregateOperator);
                     dataflowStreamBuilder.AddPropagatorBlock(aggregateOperatorId.ToString(), aggregateOperator);
@@ -195,7 +220,7 @@ namespace FlowtideDotNet.Core.Engine
             else
             {
                 var id = _operatorId++;
-                var op = new AggregateOperator(aggregateRelation, functionsRegister, _defaultBlockOptions);
+                var op = new AggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
 
                 if (state != null)
                 {
@@ -212,7 +237,7 @@ namespace FlowtideDotNet.Core.Engine
         {
             var id = _operatorId++;
 
-            var op = new UnwrapOperator(unwrapRelation, functionsRegister, _defaultBlockOptions);
+            var op = new UnwrapOperator(unwrapRelation, functionsRegister, DefaultBlockOptions);
 
             if (state != null)
             {
@@ -230,7 +255,7 @@ namespace FlowtideDotNet.Core.Engine
             if (parallelism > 1)
             {
                 var leftPartitionOperatorId = _operatorId++;
-                var leftPartitionOperator = new PartitionOperator(new PartitionOperatorOptions(mergeJoinRelation.LeftKeys.ToList<Substrait.Expressions.Expression>()), functionsRegister, parallelism, _defaultBlockOptions);
+                var leftPartitionOperator = new PartitionOperator(new PartitionOperatorOptions(mergeJoinRelation.LeftKeys.ToList<Substrait.Expressions.Expression>()), functionsRegister, parallelism, DefaultBlockOptions);
                 dataflowStreamBuilder.AddPropagatorBlock(leftPartitionOperatorId.ToString(), leftPartitionOperator);
                 var rightPartitionOperatorId = _operatorId++;
                 var rightPartitionOperator = new PartitionOperator(new PartitionOperatorOptions(mergeJoinRelation.RightKeys.Select(x =>
@@ -246,17 +271,17 @@ namespace FlowtideDotNet.Core.Engine
                         };
                     }
                     return x;
-                }).ToList<Substrait.Expressions.Expression>()), functionsRegister, parallelism, _defaultBlockOptions);
+                }).ToList<Substrait.Expressions.Expression>()), functionsRegister, parallelism, DefaultBlockOptions);
                 dataflowStreamBuilder.AddPropagatorBlock(rightPartitionOperatorId.ToString(), rightPartitionOperator);
 
                 var partitionCombinerId = _operatorId++;
-                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch, object>(parallelism, _defaultBlockOptions);
+                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch, object>(parallelism, DefaultBlockOptions);
                 dataflowStreamBuilder.AddPropagatorBlock(partitionCombinerId.ToString(), partitionCombiner);
 
                 for (int i = 0; i < parallelism; i++)
                 {
                     var id = _operatorId++;
-                    var op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, _defaultBlockOptions);
+                    var op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
                     leftPartitionOperator.Sources[i].LinkTo(op.Targets[0]);
                     rightPartitionOperator.Sources[i].LinkTo(op.Targets[1]);
                     op.LinkTo(partitionCombiner.Targets[i]);
@@ -276,7 +301,7 @@ namespace FlowtideDotNet.Core.Engine
             {
                 var id = _operatorId++;
 
-                var op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, _defaultBlockOptions);
+                var op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
                 if (state != null)
                 {
                     op.LinkTo(state);
@@ -297,7 +322,7 @@ namespace FlowtideDotNet.Core.Engine
             if (joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Inner)
             {
                 //throw new NotSupportedException();
-                var op = new BlockNestedJoinOperator(joinRelation, functionsRegister, _defaultBlockOptions);
+                var op = new BlockNestedJoinOperator(joinRelation, functionsRegister, DefaultBlockOptions);
 
                 if (state != null)
                 {
@@ -322,7 +347,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitSetRelation(SetRelation setRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new SetOperator(setRelation, _defaultBlockOptions);
+            var op = new SetOperator(setRelation, DefaultBlockOptions);
             
             if (state != null)
             {
@@ -340,7 +365,7 @@ namespace FlowtideDotNet.Core.Engine
         private IStreamVertex VisitGetTimestampTable(ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new TimestampProviderOperator(getTimestampInterval, _defaultBlockOptions);
+            var op = new TimestampProviderOperator(getTimestampInterval, DefaultBlockOptions);
             if (op is ISourceBlock<IStreamEvent> sourceBlock)
             {
                 if (state != null)
@@ -368,19 +393,19 @@ namespace FlowtideDotNet.Core.Engine
             if (connectorManager != null)
             {
                 var sourceFactory = connectorManager.GetSourceFactory(readRelation);
-                op = sourceFactory.CreateSource(readRelation, functionsRegister, _defaultBlockOptions);
+                op = sourceFactory.CreateSource(readRelation, functionsRegister, DefaultBlockOptions);
                 previousState = state;
             }
             #region ReadwriteFactory obsolete
             else if (readWriteFactory != null)
             {
-                var info = readWriteFactory.GetReadOperator(readRelation, functionsRegister, _defaultBlockOptions);
+                var info = readWriteFactory.GetReadOperator(readRelation, functionsRegister, DefaultBlockOptions);
 
                 previousState = state;
                 if (info.NormalizationRelation != null)
                 {
                     var normId = _operatorId++;
-                    NormalizationOperator normOp = new NormalizationOperator(info.NormalizationRelation, functionsRegister, _defaultBlockOptions);
+                    NormalizationOperator normOp = new NormalizationOperator(info.NormalizationRelation, functionsRegister, DefaultBlockOptions);
 
                     if (state != null)
                     {
@@ -422,11 +447,11 @@ namespace FlowtideDotNet.Core.Engine
             if (connectorManager != null)
             {
                 var sinkFactory = connectorManager.GetSinkFactory(writeRelation);
-                op = sinkFactory.CreateSink(writeRelation, functionsRegister, _defaultBlockOptions);
+                op = sinkFactory.CreateSink(writeRelation, functionsRegister, DefaultBlockOptions);
             }
             else if (readWriteFactory != null)
             {
-                op = readWriteFactory.GetWriteOperator(writeRelation, functionsRegister, _defaultBlockOptions);
+                op = readWriteFactory.GetWriteOperator(writeRelation, functionsRegister, DefaultBlockOptions);
             }
             else
             {
@@ -468,7 +493,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitNormalizationRelation(NormalizationRelation normalizationRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            NormalizationOperator op = new NormalizationOperator(normalizationRelation, functionsRegister, _defaultBlockOptions);
+            NormalizationOperator op = new NormalizationOperator(normalizationRelation, functionsRegister, DefaultBlockOptions);
 
             if (state != null)
             {
@@ -483,7 +508,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitVirtualTableReadRelation(VirtualTableReadRelation virtualTableReadRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            VirtualTableOperator op = new VirtualTableOperator(virtualTableReadRelation, _defaultBlockOptions);
+            VirtualTableOperator op = new VirtualTableOperator(virtualTableReadRelation, DefaultBlockOptions);
 
             if (state != null)
             {
@@ -501,7 +526,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitIterationRelation(IterationRelation iterationRelation, ITargetBlock<IStreamEvent> state)
         {
             var id = _operatorId++;
-            var op = new IterationOperator(iterationRelation, functionsRegister, _defaultBlockOptions);
+            var op = new IterationOperator(iterationRelation, functionsRegister, DefaultBlockOptions);
             if (state != null)
             {
                 op.EgressSource.LinkTo(state);
@@ -509,7 +534,7 @@ namespace FlowtideDotNet.Core.Engine
             if (iterationRelation.Input == null)
             {
                 var ingressId = _operatorId++;
-                var readDummy = new IterationDummyRead(_defaultBlockOptions);
+                var readDummy = new IterationDummyRead(DefaultBlockOptions);
                 readDummy.LinkTo(op.IngressTarget);
                 dataflowStreamBuilder.AddIngressBlock(ingressId.ToString(), readDummy);
             }
@@ -537,7 +562,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitBufferRelation(BufferRelation bufferRelation, ITargetBlock<IStreamEvent> state)
         {
             var id = _operatorId++;
-            var op = new BufferOperator(bufferRelation, _defaultBlockOptions);
+            var op = new BufferOperator(bufferRelation, DefaultBlockOptions);
             if (state != null)
             {
                 op.LinkTo(state);
@@ -550,7 +575,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitTopNRelation(TopNRelation topNRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new TopNOperator(topNRelation, functionsRegister, _defaultBlockOptions);
+            var op = new TopNOperator(topNRelation, functionsRegister, DefaultBlockOptions);
             if (state != null)
             {
                 op.LinkTo(state);
@@ -572,7 +597,7 @@ namespace FlowtideDotNet.Core.Engine
             if (tableFunctionRelation.Input == null)
             {
                 // Used as a root for data such as in FROM func()
-                var op = new TableFunctionReadOperator(tableFunctionRelation, functionsRegister, _defaultBlockOptions);
+                var op = new TableFunctionReadOperator(tableFunctionRelation, functionsRegister, DefaultBlockOptions);
                 if (state != null)
                 {
                     op.LinkTo(state);
@@ -584,7 +609,7 @@ namespace FlowtideDotNet.Core.Engine
             else
             {
                 // Used in a join or similar
-                var op = new TableFunctionJoinOperator(tableFunctionRelation, functionsRegister, _defaultBlockOptions);
+                var op = new TableFunctionJoinOperator(tableFunctionRelation, functionsRegister, DefaultBlockOptions);
 
                 if (state != null)
                 {
