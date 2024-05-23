@@ -27,7 +27,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
 
         [Fact]
-        public async Task ExchangeTest()
+        public async Task BroadcastExchangeTest()
         {
             GenerateData();
 
@@ -37,6 +37,36 @@ namespace FlowtideDotNet.AcceptanceTests
 
             INSERT INTO outputtable
             SELECT * FROM dataview
+            ");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task ScatterExchangeTest()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            CREATE VIEW dataview WITH (DISTRIBUTED = true, SCATTER_BY = 'userkey', PARTITION_COUNT=2) AS
+            SELECT userkey FROM users;
+
+            CREATE VIEW data_partition0 AS
+            SELECT * FROM dataview WITH (PARTITION_ID = 0);
+
+            CREATE VIEW data_partition1 AS
+            SELECT * FROM dataview WITH (PARTITION_ID = 1);
+
+            INSERT INTO outputtable
+            SELECT 
+            * 
+            FROM data_partition0
+            UNION
+            SELECT 
+            * 
+            FROM data_partition1
             ");
 
             await WaitForUpdate();

@@ -629,7 +629,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitExchangeRelation(ExchangeRelation exchangeRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new ExchangeOperator(exchangeRelation, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            var op = new ExchangeOperator(exchangeRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
 
             exchangeRelation.Input.Accept(this, op);
             dataflowStreamBuilder.AddEgressBlock(id.ToString(), op);

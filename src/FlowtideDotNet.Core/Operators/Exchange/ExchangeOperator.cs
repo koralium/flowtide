@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Base.Vertices.PartitionVertices;
+using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System;
@@ -35,7 +36,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly IExchangeKindExecutor _executor;
         private Action<string>? _checkpointDone;
 
-        public ExchangeOperator(ExchangeRelation exchangeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(CalculateTargetNumber(exchangeRelation), executionDataflowBlockOptions)
+        public ExchangeOperator(ExchangeRelation exchangeRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(CalculateTargetNumber(exchangeRelation), executionDataflowBlockOptions)
         {
             this.exchangeRelation = exchangeRelation;
 
@@ -43,6 +44,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 case ExchangeKindType.Broadcast:
                     _executor = new BroadcastExecutor();
+                    break;
+                case ExchangeKindType.Scatter:
+                    _executor = new ScatterExecutor(exchangeRelation, functionsRegister);
                     break;
                 default:
                     throw new NotImplementedException(exchangeRelation.ExchangeKind.Type.ToString());

@@ -26,24 +26,22 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     internal class ScatterExecutor : IExchangeKindExecutor
     {
-        private readonly FunctionsRegister functionsRegister;
-        private readonly ScatterExchangeKind _scatterExchangeKind;
         private readonly Func<RowEvent, uint> _hashFunction;
         private readonly int _partitionCount;
-        private readonly int[][] _standardOutputTargets;
+        private readonly int[][] _partitionsToTargets;
         private readonly int _standardOutputCount;
-        private readonly List<RowEvent>?[] standardOutputArr;
+        private readonly IExchangeTarget[] _targets;
 
+        /// <summary>
+        /// List that contains all standard outputs to make it simple to iterate when giving out the results.
+        /// </summary>
+        private readonly List<StandardOutputTarget> standardOutputTargetList;
 
         public ScatterExecutor(ExchangeRelation exchangeRelation, FunctionsRegister functionsRegister)
         {
-            if (exchangeRelation.ExchangeKind is ScatterExchangeKind scatterExchangeKind)
+            if (!(exchangeRelation.ExchangeKind is ScatterExchangeKind scatterExchangeKind))
             {
-                _scatterExchangeKind = scatterExchangeKind;
-            }
-            else
-            {
-                throw new InvalidOperationException("ExchangeKind is not ScatterExchangeKind"); ;
+                throw new InvalidOperationException("ExchangeKind is not ScatterExchangeKind");
             }
 
             if (exchangeRelation.PartitionCount != null)
@@ -54,45 +52,67 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _partitionCount = exchangeRelation.Targets.Count;
             }
-            standardOutputArr = new List<RowEvent>[_standardOutputCount];
+
+            standardOutputTargetList = new List<StandardOutputTarget>();
+            _targets = new IExchangeTarget[exchangeRelation.Targets.Count];
+            for (int i = 0; i < exchangeRelation.Targets.Count; i++)
+            {
+                switch (exchangeRelation.Targets[i].Type)
+                {
+                    case ExchangeTargetType.StandardOutput:
+                        var target = new StandardOutputTarget(); ;
+                        _targets[i] = target;
+                        standardOutputTargetList.Add(target);
+                        break;
+                    case ExchangeTargetType.PullBucket:
+                        _targets[i] = new PullBucketTarget();
+                        break;
+                    default:
+                        throw new NotSupportedException($"{exchangeRelation.Targets[i].Type} is not yet supported");
+                }
+            }
+
             _standardOutputCount = exchangeRelation.Targets.Count(x => x.Type == ExchangeTargetType.StandardOutput);
-            _standardOutputTargets = CreateStandardOutputTargets(exchangeRelation);
+            _partitionsToTargets = CreatePartitionToTargets(exchangeRelation);
             //_isStandardOutput = exchangeRelation.Targets.Select(x => x.Type == ExchangeTargetType.StandardOutput).ToArray();
 
             // Create the hash function based on the fields
             _hashFunction = HashCompiler.CompileGetHashCode(new List<Substrait.Expressions.Expression>(scatterExchangeKind.Fields), functionsRegister);
-
-            this.functionsRegister = functionsRegister;
         }
 
-        /// <summary>
-        /// Locate standard output targets in order to be able to send data to them.
-        /// </summary>
-        /// <param name="exchangeRelation"></param>
-        /// <returns></returns>
-        private int[][] CreateStandardOutputTargets(ExchangeRelation exchangeRelation)
+        private int[][] CreatePartitionToTargets(ExchangeRelation exchangeRelation)
         {
-            var standardOutputTargets = new List<int>[_partitionCount];
+            var targets = new List<int>[_partitionCount];
 
-            int standardOutputCounter = 0;
             for (int i = 0; i < exchangeRelation.Targets.Count; i++)
             {
-                if (exchangeRelation.Targets[i].Type == ExchangeTargetType.StandardOutput)
+                if (exchangeRelation.Targets[i].PartitionIds.Count == 0)
+                {
+                    for (int j = 0; j < _partitionCount; j++)
+                    {
+                        if (targets[j] == null)
+                        {
+                            targets[j] = new List<int>();
+                        }
+                        targets[j].Add(i);
+                    }
+                }
+                else
                 {
                     for (int j = 0; j < exchangeRelation.Targets[i].PartitionIds.Count; j++)
                     {
                         var partitionId = exchangeRelation.Targets[i].PartitionIds[j];
-                        if (standardOutputTargets[partitionId] == null)
+                        if (targets[partitionId] == null)
                         {
-                            standardOutputTargets[partitionId] = new List<int>();
+                            targets[partitionId] = new List<int>();
                         }
-                        standardOutputTargets[partitionId].Add(standardOutputCounter);
+                        targets[partitionId].Add(i);
                     }
-                    standardOutputCounter++;
                 }
+                
             }
 
-            return standardOutputTargets.Select(x => x.ToArray()).ToArray();
+            return targets.Select(x => x?.ToArray() ?? new int[0]).ToArray();
         }
 
         public Task Initialize(
@@ -129,23 +149,21 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 var hash = _hashFunction(e);
                 int partitionId = (int)(hash % _partitionCount);
 
-                foreach(var target in _standardOutputTargets[partitionId])
+                foreach(var target in _partitionsToTargets[partitionId])
                 {
-                    if (standardOutputArr[target] == null)
-                    {
-                        standardOutputArr[target] = new List<RowEvent>();
-                    }
-                    standardOutputArr[target]!.Add(e);
+                    await _targets[target].AddEvent(e);
                 }
             }
 
-            // Output for standard
-            for (int i = 0; i < standardOutputArr.Length; i++)
+            for (int i = 0; i < standardOutputTargetList.Count; i++)
             {
-                if (standardOutputArr[i] != null)
+                var eventsList = standardOutputTargetList[i].GetEvents();
+
+                if (eventsList != null)
                 {
-                    yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(i,
-                        new StreamMessage<StreamEventBatch>(new StreamEventBatch(standardOutputArr[i]!), time));
+                    yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(
+                        i,
+                        new StreamMessage<StreamEventBatch>(new StreamEventBatch(eventsList), time));
                 }
             }
         }
