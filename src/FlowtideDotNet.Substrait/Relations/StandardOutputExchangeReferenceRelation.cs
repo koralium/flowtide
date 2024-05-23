@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Substrait.Relations
     /// <summary>
     /// Relation that marks that it should get its data from an exchange relations standard output.
     /// </summary>
-    public class StandardOutputExchangeReferenceRelation : Relation, IEquatable<StandardOutputExchangeReferenceRelation>
+    public sealed class StandardOutputExchangeReferenceRelation : Relation, IEquatable<StandardOutputExchangeReferenceRelation>
     {
         /// <summary>
         /// Relation id where the exchange relation is located

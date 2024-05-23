@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class PullExchangeReferenceRelation : Relation, IEquatable<PullExchangeReferenceRelation>
+    public sealed class PullExchangeReferenceRelation : Relation, IEquatable<PullExchangeReferenceRelation>
     {
         public override int OutputLength => ReferenceOutputLength;
 

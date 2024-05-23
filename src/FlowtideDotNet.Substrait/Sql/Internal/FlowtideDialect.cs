@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
     internal class FlowtideDialect : MsSqlDialect
     {
         
-        private bool TryParseSubstream(Parser parser)
+        private static bool TryParseSubstream(Parser parser)
         {
             var token = parser.PeekToken();
             if (token is Word word &&
