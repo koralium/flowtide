@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(DefaultNetTargetFramework)</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FlowtideDotNet.Core\FlowtideDotNet.Core.csproj" />
+    <ProjectReference Include="..\FlowtideDotNet.Zanzibar\FlowtideDotNet.Zanzibar.csproj" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Grpc.Net.Client" Version="2.61.0" />
+		<PackageReference Include="Grpc.Tools" Version="2.61.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Protobuf Include="proto\**\*.proto" ProtoRoot="proto" Access="public" />
+	</ItemGroup>
+</Project>

@@ -10,8 +10,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using BenchmarkDotNet.Running;
-using DifferntialCompute.Benchmarks;
-using FlowtideDotNet.Benchmarks.Stream;
+using Grpc.Core;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-var summary = BenchmarkRunner.Run<StreamBenchmark>();
+namespace FlowtideDotNet.Connector.Permify
+{
+    public class PermifySourceOptions
+    {
+        public required ChannelBase Channel { get; set; }
+
+        public required string TenantId { get; set; }
+
+        /// <summary>
+        /// Allows setting custom headers, useful for authentication
+        /// </summary>
+        public Func<Metadata>? GetMetadata { get; set; }
+    }
+}

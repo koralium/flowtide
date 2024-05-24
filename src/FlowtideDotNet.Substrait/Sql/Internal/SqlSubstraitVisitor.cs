@@ -130,16 +130,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     var upperName = opt.Name.ToString().ToUpper();
                     if (upperName == SqlTextResources.Buffered)
                     {
-                        var upperVal = opt.Value.ToSql().ToUpper();
-                        if (upperVal == "TRUE")
+                        var val = opt.Value.ToSql();
+                        if (string.Equals(val, bool.TrueString, StringComparison.OrdinalIgnoreCase))
                         {
                             isBuffered = true;
                         }
                     }
                     else if (upperName == SqlTextResources.Distributed)
                     {
-                        var upperVal = opt.Value.ToSql().ToUpper();
-                        if (upperVal == "TRUE")
+                        var val = opt.Value.ToSql();
+                        if (string.Equals(val, bool.TrueString, StringComparison.OrdinalIgnoreCase))
                         {
                             isDistributed = true;
                         }
