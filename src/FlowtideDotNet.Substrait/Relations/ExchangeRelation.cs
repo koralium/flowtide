@@ -202,7 +202,7 @@ namespace FlowtideDotNet.Substrait.Relations
         }
     }
 
-    public class StandardOutputExchangeTarget : ExchangeTarget, IEquatable<StandardOutputExchangeTarget>
+    public sealed class StandardOutputExchangeTarget : ExchangeTarget, IEquatable<StandardOutputExchangeTarget>
     {
         public override ExchangeTargetType Type => ExchangeTargetType.StandardOutput;
 
@@ -234,7 +234,7 @@ namespace FlowtideDotNet.Substrait.Relations
         }
     }
 
-    public class PullBucketExchangeTarget : ExchangeTarget, IEquatable<PullBucketExchangeTarget>
+    public sealed class PullBucketExchangeTarget : ExchangeTarget, IEquatable<PullBucketExchangeTarget>
     {
         public override ExchangeTargetType Type => ExchangeTargetType.PullBucket;
 
@@ -274,7 +274,7 @@ namespace FlowtideDotNet.Substrait.Relations
     }
 
 
-    public class ExchangeRelation : Relation, IEquatable<ExchangeRelation>
+    public sealed class ExchangeRelation : Relation, IEquatable<ExchangeRelation>
     {
         public required Relation Input { get; set; }
 

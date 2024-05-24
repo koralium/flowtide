@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class SubStreamRootRelation : Relation, IEquatable<SubStreamRootRelation>
+    public sealed class SubStreamRootRelation : Relation, IEquatable<SubStreamRootRelation>
     {
         public required Relation Input { get; set; }
 
