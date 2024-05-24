@@ -561,7 +561,8 @@ namespace FlowtideDotNet.Substrait.Sql
                 options.Add(Visit(v, state).Expr);
             }
             
-            return new ExpressionData(
+        
+            var result = new ExpressionData(
                 new SingularOrListExpression()
                 {
                     Value = expr.Expr,
@@ -569,6 +570,12 @@ namespace FlowtideDotNet.Substrait.Sql
                 },
                 "$inlist"
                 );
+
+            if (inList.Negated)
+            {
+                return VisitNotUnaryOp(result);
+            }
+            return result;
         }
 
         protected override ExpressionData VisitCast(Cast cast, EmitData state)
@@ -683,20 +690,14 @@ namespace FlowtideDotNet.Substrait.Sql
                 }
             };
 
+            var result = new ExpressionData(likeFunction, expr.Name);
+
             if (like.Negated)
             {
-                likeFunction = new ScalarFunction()
-                {
-                    ExtensionUri = FunctionsBoolean.Uri,
-                    ExtensionName = FunctionsBoolean.Not,
-                    Arguments = new List<Expressions.Expression>()
-                    {
-                        likeFunction
-                    }
-                };
+                return VisitNotUnaryOp(result);
             }
 
-            return new ExpressionData(likeFunction, expr.Name);
+            return result;
         }
     }
 }

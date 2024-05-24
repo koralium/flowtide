@@ -177,6 +177,21 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task WhereNotInSingularOrList()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey 
+                FROM users u
+                WHERE u.userkey NOT IN (1, 5, 17, 325)");
+            await WaitForUpdate();
+            List<int> list = new List<int>() { 1, 5, 17, 325 };
+            AssertCurrentDataEqual(Users.Where(x => !list.Contains(x.UserKey)).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
         public async Task WhereInSingularOrListOneValue()
         {
             GenerateData();
