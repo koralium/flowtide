@@ -219,7 +219,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 // Add the exchange relation to a lookup table so usage of the view can add to the targets.
                 exchangeRelations.Add(createView.Name.ToSql(),new ExchangeContainer(relationData.EmitData, subRelations.Count, relation.OutputLength, exchangeRelation, subStreamName));
 
-                if (subStreamName != null)
+                if (subStreamName == null)
                 {
                     relation = exchangeRelation;
                 }

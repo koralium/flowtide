@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.FixedPoint;
+using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -37,6 +38,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         private ILogger? _logger;
         private IMeter? _metrics;
         private bool _isHealthy = true;
+        private IVertexHandler? _vertexHandler;
 
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
 
@@ -120,6 +122,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> HandleLockingEvent(ILockingEvent streamEvent)
         {
             await OnLockingEvent(streamEvent);
+
             for (int i = 0; i < targetNumber; i++)
             {
                 yield return new KeyValuePair<int, IStreamEvent>(i, streamEvent);
@@ -188,6 +191,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             _currentTime = newTime;
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
             _metrics = vertexHandler.Metrics;
+            _vertexHandler = vertexHandler;
 
             TState? parsedState = default;
             if (state.HasValue)
@@ -276,9 +280,27 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             }
         }
 
-        public Task QueueTrigger(TriggerEvent triggerEvent)
+        protected Task RegisterTrigger(string name, TimeSpan? scheduleInterval = null)
+        {
+            if (_vertexHandler == null)
+            {
+                throw new NotSupportedException("Cannot register trigger before initialize is called");
+            }
+            return _vertexHandler.RegisterTrigger(name, scheduleInterval);
+        }
+
+        public virtual Task QueueTrigger(TriggerEvent triggerEvent)
         {
             throw new NotSupportedException("Triggers are not supported in partition vertices");
+        }
+
+        protected void ScheduleCheckpoint(TimeSpan inTime)
+        {
+            if (_vertexHandler == null)
+            {
+                throw new NotSupportedException("Cannot schedule checkpoint before initialize");
+            }
+            _vertexHandler.ScheduleCheckpoint(inTime);
         }
 
         public IEnumerable<ITargetBlock<IStreamEvent>> GetLinks()

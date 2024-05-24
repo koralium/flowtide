@@ -23,5 +23,9 @@ namespace FlowtideDotNet.Storage.Tree
         List<K> Keys { get; }
 
         List<V> Values { get; }
+
+        void EnterLock();
+
+        void ExitLock();
     }
 }

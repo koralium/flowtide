@@ -94,5 +94,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             return new Enumerator(leaf, index);
         }
+
+        public void EnterLock()
+        {
+            leaf.EnterWriteLock();
+        }
+
+        public void ExitLock()
+        {
+            leaf.ExitWriteLock();
+        }
     }
 }

@@ -652,6 +652,7 @@ namespace FlowtideDotNet.Core.Engine
             {
                 if (state != null)
                 {
+                    //for (int i = 0; i < exchangeOperator.R)
                     exchangeOperator.Sources[standardOutputExchangeReferenceRelation.TargetId].LinkTo(state);
                 }
                 return exchangeOperator;

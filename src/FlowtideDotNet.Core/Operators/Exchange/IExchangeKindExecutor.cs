@@ -32,5 +32,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         Task OnLockingEventPrepare(LockingEventPrepare lockingEventPrepare);
 
         Task OnWatermark(Watermark watermark);
+
+        Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState);
+
+        Task GetPullBucketData(int exchangeTargetId, ExchangeFetchDataMessage fetchDataRequest);
     }
 }

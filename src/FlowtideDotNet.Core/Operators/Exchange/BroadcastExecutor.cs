@@ -11,18 +11,12 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
@@ -99,6 +93,36 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 await _events.Upsert(_eventCounter++, watermark);
             }
+        }
+
+        public Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState)
+        {
+            exchangeOperatorState.EventCounter = _eventCounter;
+            return Task.CompletedTask;
+        }
+
+        public async Task GetPullBucketData(int exchangeTargetId, ExchangeFetchDataMessage fetchDataRequest)
+        {
+            Debug.Assert(_events != null);
+            var iterator = _events.CreateIterator();
+            await iterator.Seek(fetchDataRequest.FromEventId);
+
+            List<IStreamEvent> outputData = new List<IStreamEvent>();
+            await foreach(var page in iterator)
+            {
+                page.EnterLock();
+                foreach(var kv in page)
+                {
+                    fetchDataRequest.LastEventId = kv.Key;
+                    outputData.Add(kv.Value);
+                }
+                page.ExitLock();
+                if (outputData.Count > 100)
+                {
+                    break;
+                }
+            }
+            fetchDataRequest.OutEvents = outputData;
         }
     }
 }

@@ -17,6 +17,7 @@ using SqlParser.Ast;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -38,46 +39,111 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             for (var i = 0; i < count; i++)
             {
                 var type = reader.ReadByte();
-                //switch (type)
-                //{
-                //    case StreamEventBatchType:
-                //        DeserializeBatch(reader, values);
-                //        break;
-                //    case WatermarkType:
-                //        DeserializeWatermark(reader, values);
-                //        break;
-                //    case LockingEventPrepareType:
-                //        DeserializeLockingEventPrepare(reader, values);
-                //        break;
-                //    case InitWatermarksEventType:
-                //        DeserializeInitWatermarksEvent(reader, values);
-                //        break;
-                //    case CheckpointType:
-                //        DeserializeCheckpoint(reader, values);
-                //        break;
-                //    default:
-                //        throw new NotImplementedException();
-                //}
+                switch (type)
+                {
+                    case StreamEventBatchType:
+                        DeserializeBatch(reader, values);
+                        break;
+                    case WatermarkType:
+                        DeserializeWatermark(reader, values);
+                        break;
+                    case LockingEventPrepareType:
+                        DeserializeLockingEventPrepare(reader, values);
+                        break;
+                    case InitWatermarksEventType:
+                        var initWatermark = DeserializeInitWatermark(reader);
+                        values.Add(initWatermark);
+                        break;
+                    case CheckpointType:
+                        var checkpoint = DeserializeCheckpoint(reader);
+                        values.Add(checkpoint);
+                        break;
+                    default:
+                        throw new NotImplementedException();
+                }
             }
-
-            throw new NotImplementedException();
         }
 
-        //private void DeserializeBatch(in BinaryReader reader, in List<IStreamEvent> values)
-        //{
-        //    var time = reader.ReadInt64();
-        //    var length = reader.ReadInt32();
-        //    var bytes = reader.ReadBytes(length);
-        //    var vector = FlxValue.FromMemory(bytes).AsVector;
+        private void DeserializeBatch(in BinaryReader reader, in List<IStreamEvent> values)
+        {
+            var time = reader.ReadInt64();
+            var length = reader.ReadInt32();
+            var bytes = reader.ReadBytes(length);
+            var vector = FlxValue.FromMemory(bytes).AsVector;
+            var count = reader.ReadInt32();
 
-        //    var events = new List<RowEvent>();
-        //    for (var i = 0; i < vector.Length; i++)
-        //    {
-        //        events.Add(new RowEvent(new VectorRowData(vector.Get(i).AsVector)));
-        //    }
+            var events = new List<RowEvent>();
+            for (var i = 0; i < vector.Length; i++)
+            {
+                var weight = reader.ReadInt32();
+                var iteration = reader.ReadUInt32();
+                events.Add(new RowEvent(weight, iteration, new VectorRowData(vector.Get(i).AsVector)));
+            }
 
-        //    values.Add(new StreamMessage<StreamEventBatch>(new StreamEventBatch(events), time));
-        //}
+            values.Add(new StreamMessage<StreamEventBatch>(new StreamEventBatch(events), time));
+        }
+
+        private void DeserializeWatermark(in BinaryReader reader, in List<IStreamEvent> values)
+        {
+            var sourceOperatorId = reader.ReadString();
+            var startTimeUnix = reader.ReadInt64();
+
+            var count = reader.ReadInt32();
+
+            var builder = ImmutableDictionary.CreateBuilder<string, long>();
+
+            for (int i = 0; i < count; i++)
+            {
+                var key = reader.ReadString();
+                var value = reader.ReadInt64();
+                builder.Add(key, value);
+            }
+            values.Add(new Watermark(builder.ToImmutable()));
+        }
+
+        private InitWatermarksEvent DeserializeInitWatermark(in BinaryReader reader)
+        {
+            var count = reader.ReadInt32();
+            HashSet<string> watermarkNames = new HashSet<string>();
+
+            for (int i = 0; i < count; i++)
+            {
+                watermarkNames.Add(reader.ReadString());
+            }
+            return new InitWatermarksEvent(watermarkNames);
+        }
+
+        private Checkpoint DeserializeCheckpoint(in BinaryReader reader)
+        {
+            var checkpointTime = reader.ReadInt64();
+            var newTime = reader.ReadInt64();
+
+            return new Checkpoint(checkpointTime, newTime);
+        }
+
+        private void DeserializeLockingEventPrepare(in BinaryReader reader, in List<IStreamEvent> values)
+        {
+            var otherInputsNotInCheckpoint = reader.ReadBoolean();
+            var lockingEventType = reader.ReadByte();
+
+            LockingEventPrepare? lockingEventPrepare;
+            switch (lockingEventType)
+            {
+                case CheckpointType:
+                    var checkpoint = DeserializeCheckpoint(reader);
+                    lockingEventPrepare = new LockingEventPrepare(checkpoint);
+                    break;
+                case InitWatermarksEventType:
+                    var initWatermark = DeserializeInitWatermark(reader);
+                    lockingEventPrepare = new LockingEventPrepare(initWatermark);
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
+            
+            lockingEventPrepare.OtherInputsNotInCheckpoint = otherInputsNotInCheckpoint;
+            values.Add(lockingEventPrepare);
+        }
 
         private void SerializeBatch(in BinaryWriter writer, in StreamMessage<StreamEventBatch> batch)
         {
@@ -100,6 +166,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             var bytes = builder.Finish();
             writer.Write(bytes.Length);
             writer.Write(bytes);
+
+            // Write weight and iterations
+            writer.Write(batch.Data.Events.Count);
+            for (int i = 0; i <  batch.Data.Events.Count; i++)
+            {
+                writer.Write(batch.Data.Events[i].Weight);
+                writer.Write(batch.Data.Events[i].Iteration);
+            }
         }
 
         private void SerializeWatermark(in BinaryWriter writer, Watermark watermark)
@@ -136,8 +210,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 SerializeCheckpoint(writer, checkpointEvent);
                 return;
             }
-            
-
             throw new NotImplementedException();
         }
 
@@ -185,7 +257,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     throw new NotImplementedException();
                 }
             }
-            throw new NotImplementedException();
         }
     }
 }

@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Storage.StateManager;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,24 +19,21 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
-    internal interface IExchangeTarget
+    internal class ExchangeFetchDataMessage
     {
-        ValueTask AddEvent(RowEvent rowEvent);
-
-        Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state);
+        /// <summary>
+        /// Input
+        /// </summary>
+        public long FromEventId { get; set; }
 
         /// <summary>
-        /// Called when a event batch has been partitioned.
+        /// Set during output with a list of events
         /// </summary>
-        /// <returns></returns>
-        ValueTask BatchComplete(long time);
+        public List<IStreamEvent>? OutEvents { get; set; }
 
-        Task OnLockingEvent(ILockingEvent lockingEvent);
-
-        Task OnLockingEventPrepare(LockingEventPrepare lockingEventPrepare);
-
-        Task OnWatermark(Watermark watermark);
-
-        Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState);
+        /// <summary>
+        /// Set during output with the last eventid in the out events
+        /// </summary>
+        public long LastEventId { get; set; }
     }
 }

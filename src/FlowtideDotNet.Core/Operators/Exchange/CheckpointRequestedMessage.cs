@@ -10,8 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base;
-using FlowtideDotNet.Storage.StateManager;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,24 +18,11 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
-    internal interface IExchangeTarget
+    /// <summary>
+    /// Special message that can be sent in from another stream to notify that it wants to take a checkpoint.
+    /// This will schedule a checkpoint on this stream as well to create a coherent checkpoint across all substreams.
+    /// </summary>
+    internal class CheckpointRequestedMessage
     {
-        ValueTask AddEvent(RowEvent rowEvent);
-
-        Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state);
-
-        /// <summary>
-        /// Called when a event batch has been partitioned.
-        /// </summary>
-        /// <returns></returns>
-        ValueTask BatchComplete(long time);
-
-        Task OnLockingEvent(ILockingEvent lockingEvent);
-
-        Task OnLockingEventPrepare(LockingEventPrepare lockingEventPrepare);
-
-        Task OnWatermark(Watermark watermark);
-
-        Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState);
     }
 }
