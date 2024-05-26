@@ -79,9 +79,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlServerToElasticProductio
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.DependencyInjection", "src\FlowtideDotNet.DependencyInjection\FlowtideDotNet.DependencyInjection.csproj", "{703C3485-6824-44DA-8977-B66FF0BEE413}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Permify", "src\FlowtideDotNet.Connector.Permify\FlowtideDotNet.Connector.Permify.csproj", "{3DF413F3-FD3B-43E0-A21C-ECB8DF46A902}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Permify", "src\FlowtideDotNet.Connector.Permify\FlowtideDotNet.Connector.Permify.csproj", "{3DF413F3-FD3B-43E0-A21C-ECB8DF46A902}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Permify.Tests", "tests\FlowtideDotNet.Connector.Permify.Tests\FlowtideDotNet.Connector.Permify.Tests.csproj", "{079CC855-A000-4E1C-9128-FE025A57FFCD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Permify.Tests", "tests\FlowtideDotNet.Connector.Permify.Tests\FlowtideDotNet.Connector.Permify.Tests.csproj", "{079CC855-A000-4E1C-9128-FE025A57FFCD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Orleans", "src\FlowtideDotNet.Orleans\FlowtideDotNet.Orleans.csproj", "{3E91C2B3-0A51-4BEC-9CE8-4035D41320A7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrleansSample", "samples\OrleansSample\OrleansSample.csproj", "{B2239B4F-C9EA-4D94-85AB-26F7D2D055B2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -237,6 +241,14 @@ Global
 		{079CC855-A000-4E1C-9128-FE025A57FFCD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{079CC855-A000-4E1C-9128-FE025A57FFCD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{079CC855-A000-4E1C-9128-FE025A57FFCD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3E91C2B3-0A51-4BEC-9CE8-4035D41320A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3E91C2B3-0A51-4BEC-9CE8-4035D41320A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3E91C2B3-0A51-4BEC-9CE8-4035D41320A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3E91C2B3-0A51-4BEC-9CE8-4035D41320A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B2239B4F-C9EA-4D94-85AB-26F7D2D055B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2239B4F-C9EA-4D94-85AB-26F7D2D055B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2239B4F-C9EA-4D94-85AB-26F7D2D055B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2239B4F-C9EA-4D94-85AB-26F7D2D055B2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -279,6 +291,8 @@ Global
 		{703C3485-6824-44DA-8977-B66FF0BEE413} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
 		{3DF413F3-FD3B-43E0-A21C-ECB8DF46A902} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
 		{079CC855-A000-4E1C-9128-FE025A57FFCD} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
+		{3E91C2B3-0A51-4BEC-9CE8-4035D41320A7} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
+		{B2239B4F-C9EA-4D94-85AB-26F7D2D055B2} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {314C9503-DE99-42AA-8FB0-E355C91986C4}

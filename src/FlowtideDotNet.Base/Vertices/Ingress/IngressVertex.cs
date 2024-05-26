@@ -212,7 +212,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         protected abstract Task<IReadOnlySet<string>> GetWatermarkNames();
 
-        public void DoLockingEvent(ILockingEvent lockingEvent)
+        public virtual void DoLockingEvent(ILockingEvent lockingEvent)
         {
             RunTask(RunLockingEvent, lockingEvent);
         }

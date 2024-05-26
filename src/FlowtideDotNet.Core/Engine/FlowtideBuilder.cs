@@ -36,6 +36,7 @@ namespace FlowtideDotNet.Core.Engine
         private int _parallelism = 1;
         private TimeSpan _getTimestampInterval = TimeSpan.FromHours(1);
         private TaskScheduler? _taskScheduler;
+        private DistributedOptions? _distributedOptions;
 
         public FlowtideBuilder(string streamName)
         {
@@ -132,6 +133,12 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder SetDistributedOptions(DistributedOptions distributedOptions)
+        {
+            _distributedOptions = distributedOptions;
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
@@ -180,7 +187,8 @@ namespace FlowtideDotNet.Core.Engine
                 _functionsRegister, 
                 _parallelism, 
                 _getTimestampInterval,
-                _taskScheduler);
+                _taskScheduler,
+                _distributedOptions);
 
             visitor.BuildPlan();
 

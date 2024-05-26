@@ -10,11 +10,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Substrait.Relations;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.OpenFGA")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.SpiceDB")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Permify")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Sharepoint")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Orleans")]
+namespace FlowtideDotNet.Core.Operators.Exchange
+{
+    public interface IPullBucketExchangeReadFactory
+    {
+        IStreamIngressVertex GetOperator(PullExchangeReferenceRelation pullExchangeReferenceRelation, DataflowBlockOptions dataflowBlockOptions);
+    }
+}

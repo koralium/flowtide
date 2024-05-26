@@ -33,6 +33,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private long _eventCounter;
         private bool hasStandardOutputTargets;
         private int standardOutputTargetNumber;
+        private readonly object _lock = new object();
 
         private bool HasPullBucketTargets(ExchangeRelation exchangeRelation)
         {
@@ -51,16 +52,25 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     Comparer = new LongComparer(),
                     KeySerializer = new LongSerializer(),
-                    ValueSerializer = new StreamEventSerializer()
+                    ValueSerializer = new StreamEventSerializer(),
+                    BucketSize = 32
                 });
+            }
+        }
+
+        private long GetNewEventId()
+        {
+            lock (_lock)
+            {
+                return _eventCounter++;
             }
         }
 
         public async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
         {
             if (_events != null)
-            {
-                await _events.Upsert(_eventCounter++, new StreamMessage<StreamEventBatch>(data, time));
+            {   
+                await _events.Upsert(GetNewEventId(), new StreamMessage<StreamEventBatch>(data, time));
             }
             if (hasStandardOutputTargets)
             {
@@ -75,7 +85,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             if (_events != null)
             {
-                await _events.Upsert(_eventCounter++, lockingEvent);
+                await _events.Upsert(GetNewEventId(), lockingEvent);
             }
         }
 
@@ -83,7 +93,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             if (_events != null)
             {
-                await _events.Upsert(_eventCounter++, lockingEventPrepare);
+                await _events.Upsert(GetNewEventId(), lockingEventPrepare);
             }
         }
 
@@ -91,7 +101,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             if (_events != null)
             {
-                await _events.Upsert(_eventCounter++, watermark);
+                await _events.Upsert(GetNewEventId(), watermark);
             }
         }
 
@@ -104,6 +114,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public async Task GetPullBucketData(int exchangeTargetId, ExchangeFetchDataMessage fetchDataRequest)
         {
             Debug.Assert(_events != null);
+
+            lock (_lock)
+            {
+                if (_eventCounter <= fetchDataRequest.FromEventId)
+                {
+                    fetchDataRequest.LastEventId = fetchDataRequest.FromEventId;
+                    fetchDataRequest.OutEvents = new List<IStreamEvent>();
+                    return;
+                }
+            }
+
             var iterator = _events.CreateIterator();
             await iterator.Seek(fetchDataRequest.FromEventId);
 

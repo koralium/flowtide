@@ -153,7 +153,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             m_cleanupTask = Task.Factory.StartNew(async () =>
             {
                 await CleanupTask();
-            }, TaskCreationOptions.LongRunning)
+            }, default, TaskCreationOptions.LongRunning, TaskScheduler.Default)
                 .Unwrap()
                 .ContinueWith((task) =>
                 {
@@ -301,14 +301,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     m_sameCaheHitsCount++;
                     if (m_sameCaheHitsCount >= 10000 && currentCount > 0)
-                    {
-                        // No cache hits during a long time, clear the entire cache
-                        isCleanup = true;
-                        cleanupStartLocal = lruTableOptions.MinSize;
-                        m_sameCaheHitsCount = 0;
-                    }
-                    else
-                    {
+                        {
+                            // No cache hits during a long time, clear the entire cache
+                            isCleanup = true;
+                            cleanupStartLocal = lruTableOptions.MinSize;
+                            m_sameCaheHitsCount = 0;
+                        }
+                        else
+                        {
                         return;
                     }
                 }
@@ -330,7 +330,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     Volatile.Write(ref maxSize, (int)Math.Ceiling(maxSize * 1.1));
                     Volatile.Write(ref cleanupStart, (int)Math.Ceiling(maxSize * 0.7));
-                    return;
                 }
                 else
                 {

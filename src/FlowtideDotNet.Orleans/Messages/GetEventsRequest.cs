@@ -10,11 +10,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.OpenFGA")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.SpiceDB")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Permify")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Sharepoint")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Orleans")]
+namespace FlowtideDotNet.Orleans.Messages
+{
+    [GenerateSerializer]
+    [Immutable]
+    public class GetEventsRequest
+    {
+        public GetEventsRequest(long fromEventId, int exchangeTargetId)
+        {
+            FromEventId = fromEventId;
+            ExchangeTargetId = exchangeTargetId;
+        }
+
+        [Id(1)]
+        public long FromEventId { get; }
+
+        [Id(2)]
+        public int ExchangeTargetId { get; }
+    }
+}

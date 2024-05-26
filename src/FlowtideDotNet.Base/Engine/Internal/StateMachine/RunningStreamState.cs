@@ -222,6 +222,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // Only support a single concurrent checkpoint for now for simplicity
                 if (_context.checkpointTask != null)
                 {
+                    // Enqueue the checkpoint as soon as possible
+                    _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromMilliseconds(1));
                     return _context.checkpointTask.Task;
                 }
                 _context._logger.StartingCheckpoint(_context.streamName);

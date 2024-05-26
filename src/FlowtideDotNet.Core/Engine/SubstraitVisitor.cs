@@ -68,6 +68,7 @@ namespace FlowtideDotNet.Core.Engine
         private Dictionary<int, RelationTree> _doneRelations;
         private Dictionary<string, IterationOperator> _iterationOperators = new Dictionary<string, IterationOperator>();
         private readonly TaskScheduler? _taskScheduler;
+        private readonly DistributedOptions? _distributedOptions;
         private readonly int _queueSize;
 
         private ExecutionDataflowBlockOptions DefaultBlockOptions
@@ -130,7 +131,8 @@ namespace FlowtideDotNet.Core.Engine
             FunctionsRegister functionsRegister,
             int parallelism,
             TimeSpan getTimestampInterval,
-            TaskScheduler? taskScheduler = default)
+            TaskScheduler? taskScheduler = default,
+            DistributedOptions? distributedOptions = default)
         {
             this.plan = plan;
             this.dataflowStreamBuilder = dataflowStreamBuilder;
@@ -141,6 +143,7 @@ namespace FlowtideDotNet.Core.Engine
             this.getTimestampInterval = getTimestampInterval;
             _queueSize = queueSize;
             _taskScheduler = taskScheduler;
+            _distributedOptions = distributedOptions;
             _doneRelations = new Dictionary<int, RelationTree>();
         }
 
@@ -659,6 +662,38 @@ namespace FlowtideDotNet.Core.Engine
             {
                 throw new InvalidOperationException("StandardOutputExchangeReferenceRelation must reference an ExchangeOperator");
             }
+        }
+
+        public override IStreamVertex VisitSubStreamRootRelation(SubStreamRootRelation subStreamRootRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            if (_distributedOptions == null)
+            {
+                return Visit(subStreamRootRelation.Input, state);
+            }
+            else
+            {
+                if (_distributedOptions.SubstreamName == subStreamRootRelation.Name)
+                {
+                    return Visit(subStreamRootRelation.Input, state);
+                }
+                return null;
+            }
+        }
+
+        public override IStreamVertex VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, ITargetBlock<IStreamEvent> ?state)
+        {
+            if (_distributedOptions == null)
+            {
+                throw new InvalidOperationException("PullExchangeReferenceRelation is not supported without DistributedOptions");
+            }
+            var op = _distributedOptions.PullBucketExchangeReadFactory.GetOperator(pullExchangeReferenceRelation, DefaultBlockOptions);
+            var id = _operatorId++;
+            if (state != null && op is ISourceBlock<IStreamEvent> sourceBlock)
+            {
+                sourceBlock.LinkTo(state);
+            }
+            dataflowStreamBuilder.AddIngressBlock(id.ToString(), op);
+            return op;
         }
     }
 }
