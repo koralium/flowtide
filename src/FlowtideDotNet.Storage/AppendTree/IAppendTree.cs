@@ -21,6 +21,7 @@ namespace FlowtideDotNet.Storage
     public interface IAppendTree<K, V>
     {
         ValueTask Append(in K key, in V value);
+        ValueTask Commit();
         ValueTask Prune(K key);
         internal Task<string> Print();
     }

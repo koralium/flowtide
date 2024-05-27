@@ -53,6 +53,10 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ValueTask Append_AfterFetchRightNode(in K key, in V value)
         {
+            if (m_rightNode.keys.Count > 0 && m_keyComparer.Compare(m_rightNode!.keys[m_rightNode.keys.Count -1], key) >= 0)
+            {
+                throw new InvalidOperationException("Key must be greater than the last key in the right node.");
+            } 
             if (m_rightNode!.keys.Count < m_bucketSize)
             {
                 // Locking is done insert of insert at.
@@ -163,7 +167,11 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             // Must always check if it is the right node since it is not commited to state before full.
             if (id == m_stateClient.Metadata!.Right)
             {
-                return await ValueTask.FromResult<IBPlusTreeNode?>(m_rightNode!);
+                if (m_rightNode == null)
+                {
+                    m_rightNode = (await m_stateClient.GetValue(id, "")) as LeafNode<K, V>;
+                }
+                return m_rightNode!;
             }
             try
             {

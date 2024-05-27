@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
                 if (i > 0)
                 {
                     internalNode.EnterWriteLock();
-                    internalNode.keys.RemoveRange(0, i - 1);
+                    internalNode.keys.RemoveRange(0, i);
                     internalNode.children.RemoveRange(0, i);
                     internalNode.ExitWriteLock();
                 }

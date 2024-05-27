@@ -74,13 +74,22 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             {
                 return;
             }
-            var node = await GetChildNode(m_stateClient.Metadata.Root);
+            var node = await GetChildNode(id);
 
             if (node is InternalNode<K, V> internalNode)
             {
                 m_rightInternalNodes.Add(internalNode);
-                await CreateInternalNodesList(id);
+                await CreateInternalNodesList(internalNode.children[internalNode.children.Count - 1]);
             }
+        }
+
+        public ValueTask Commit()
+        {
+            if (m_rightNode != null)
+            {
+                m_stateClient.AddOrUpdate(m_rightNode.Id, m_rightNode);
+            }
+            return m_stateClient.Commit();
         }
 
         public async Task<string> Print()
