@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Engine;
@@ -45,12 +46,16 @@ namespace FlowtideDotNet.Orleans.Grains
 
         public async Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request)
         {
+            if (_stream == null)
+            {
+                return new GetEventsResponse(0, new List<IStreamEvent>(), true);
+            }
             var msg = new ExchangeFetchDataMessage()
             {
                 FromEventId = request.FromEventId
             };
             await _stream.CallTrigger($"exchange_{request.ExchangeTargetId}", msg);
-            return new GetEventsResponse(msg.LastEventId, msg.OutEvents);
+            return new GetEventsResponse(msg.LastEventId, msg.OutEvents, false);
         }
 
         public async Task StartStreamAsync(StartStreamMessage startStreamMessage)
@@ -61,6 +66,8 @@ namespace FlowtideDotNet.Orleans.Grains
             flowtideBuilder.WithStateOptions(new Storage.StateManager.StateManagerOptions()
             {
                 MinCachePageCount = 0,
+                CachePageCount = 10,
+                MaxProcessMemory = 5 * 1024 * 1024 * 1024L,
                 //PersistentStorage = new FasterKvPersistentStorage(new FASTER.core.FasterKVSettings<long, FASTER.core.SpanByte>("./data/" + startStreamMessage.SubstreamName, true)
                 //{
                 //    PageSize = 16 * 1024 * 1024,

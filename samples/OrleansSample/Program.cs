@@ -10,6 +10,8 @@ using static SqlParser.Ast.DataType;
 using OrleansSample;
 using FlowtideDotNet.Core.Sinks;
 using OpenTelemetry.Metrics;
+using static SqlParser.Ast.Action;
+using System.Net.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,23 +61,52 @@ var grain2 = grainFactory.GetGrain<IStreamGrain>("sub2");
 app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 await app.StartAsync();
+//CREATE TABLE table1 (
+//    id any
+//);
+
+//SUBSTREAM sub1;
+
+//CREATE VIEW partitioned_data WITH(DISTRIBUTED = true) AS
+//SELECT id FROM table1;
+
+//SUBSTREAM sub2;
+
+//INSERT INTO console
+//SELECT * FROM partitioned_data;
 
 SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
 sqlPlanBuilder.Sql(@"
-
-CREATE TABLE table1 (
-    id any
-);
+CREATE TABLE table1 (val any);
+CREATE TABLE table2 (val any);
 
 SUBSTREAM sub1;
 
-CREATE VIEW partitioned_data WITH(DISTRIBUTED = true) AS
-SELECT id FROM table1;
+CREATE VIEW read_table_1_stream1 WITH (DISTRIBUTED = true, SCATTER_BY = 'val', PARTITION_COUNT = 2) AS
+SELECT val FROM table1;
 
 SUBSTREAM sub2;
 
-INSERT INTO console
-SELECT * FROM partitioned_data;
+CREATE VIEW read_table_2_stream2 WITH (DISTRIBUTED = true, SCATTER_BY = 'val', PARTITION_COUNT = 2) AS
+SELECT val FROM table2;
+
+SUBSTREAM sub1;
+
+INSERT INTO output
+SELECT 
+    a.val 
+FROM read_table_1_stream1 a WITH (PARTITION_ID = 0)
+LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 0)
+ON a.val = b.val;
+
+SUBSTREAM sub2;
+
+INSERT INTO output
+SELECT 
+    a.val 
+FROM read_table_1_stream1 a WITH (PARTITION_ID = 1)
+LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 1)
+ON a.val = b.val;
 ");
 
 var plan = sqlPlanBuilder.GetPlan();
@@ -89,4 +120,10 @@ await grain2.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMes
 //await grain7.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream7", plan, "sub2"));
 //await grain8.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream8", plan, "sub2"));
 
+
+while (true)
+{
+    await Task.Delay(TimeSpan.FromSeconds(10));
+    GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
+}
 await app.WaitForShutdownAsync();

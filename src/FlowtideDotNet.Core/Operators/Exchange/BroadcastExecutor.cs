@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     Comparer = new LongComparer(),
                     KeySerializer = new LongSerializer(),
                     ValueSerializer = new StreamEventSerializer(),
-                    BucketSize = 32
+                    BucketSize = 8
                 });
             }
         }

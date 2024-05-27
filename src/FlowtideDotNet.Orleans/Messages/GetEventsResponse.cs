@@ -23,10 +23,11 @@ namespace FlowtideDotNet.Orleans.Messages
     [Immutable]
     public class GetEventsResponse
     {
-        public GetEventsResponse(long lastEventId, List<IStreamEvent> events)
+        public GetEventsResponse(long lastEventId, List<IStreamEvent> events, bool notStarted)
         {
             LastEventId = lastEventId;
             Events = events;
+            NotStarted = notStarted;
         }
 
         [Id(1)]
@@ -34,5 +35,7 @@ namespace FlowtideDotNet.Orleans.Messages
 
         [Id(2)]
         public List<IStreamEvent> Events { get; }
+
+        public bool NotStarted { get; }
     }
 }

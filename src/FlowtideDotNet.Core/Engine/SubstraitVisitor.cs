@@ -653,8 +653,17 @@ namespace FlowtideDotNet.Core.Engine
             {
                 if (state != null)
                 {
-                    //for (int i = 0; i < exchangeOperator.R)
-                    exchangeOperator.Sources[standardOutputExchangeReferenceRelation.TargetId].LinkTo(state);
+                    // TODO: Must locate the correct source by iterating over the targets and find the index for this targetid.
+                    int sourceTargetId = 0;
+                    for (int i = 0; i < exchangeOperator.exchangeRelation.Targets.Count && i < standardOutputExchangeReferenceRelation.TargetId; i++)
+                    {
+                        var target = exchangeOperator.exchangeRelation.Targets[i];
+                        if (target.Type == ExchangeTargetType.StandardOutput)
+                        {
+                            sourceTargetId++;
+                        }
+                    }
+                    exchangeOperator.Sources[sourceTargetId].LinkTo(state);
                 }
                 return exchangeOperator;
             }

@@ -15,6 +15,7 @@ using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Orleans.Interfaces;
+using FlowtideDotNet.Orleans.Messages;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System;
@@ -79,7 +80,21 @@ namespace FlowtideDotNet.Orleans.Internal
             long nextId = 0;
             while(!output.CancellationToken.IsCancellationRequested)
             {
-                var events = await _referenceGrain.GetEventsAsync(new Messages.GetEventsRequest(nextId, exchangeReferenceRelation.ExchangeTargetId));
+                GetEventsResponse? events = null;
+                while (true)
+                {
+                    events = await _referenceGrain.GetEventsAsync(new Messages.GetEventsRequest(nextId, exchangeReferenceRelation.ExchangeTargetId));
+                        
+                    if (!events.NotStarted)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        await Task.Delay(100);
+                    }
+                }
+                
                 if (events.Events.Count == 0)
                 {
                     await Task.Delay(100);
