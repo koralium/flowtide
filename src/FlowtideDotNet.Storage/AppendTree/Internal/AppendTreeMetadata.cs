@@ -10,21 +10,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.Tree;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Storage.StateManager
+namespace FlowtideDotNet.Storage.AppendTree.Internal
 {
-    public interface IStateManagerClient
+    internal class AppendTreeMetadata
     {
+        public int BucketLength { get; set; }
+        public long Root { get; set; }
+
         /// <summary>
-        /// Gets or creates a BPlusTree with the specified name.
+        /// Contains the id of the most left page.
+        /// This is used to start an iterator.
         /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
-        ValueTask<IBPlusTree<K, V>> GetOrCreateTree<K, V>(string name, BPlusTreeOptions<K, V> options);
+        public long Left { get; set; }
 
-        ValueTask<IAppendTree<K,V>> GetOrCreateAppendTree<K, V>(string name, BPlusTreeOptions<K, V> options);
-
-        IStateManagerClient GetChildManager(string name);
+        public long Right { get; set; }
     }
 }
