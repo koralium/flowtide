@@ -105,5 +105,24 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             builder.AppendLine("}");
             return builder.ToString();
         }
+
+        public IAppendTreeIterator<K, V> CreateIterator()
+        {
+            return new AppendTreeIterator<K, V>(this);
+        }
+
+        internal async ValueTask<IBPlusTreeNode?> GetChildNode(long id)
+        {
+            // Must always check if it is the right node since it is not commited to state before full.
+            if (id == m_stateClient.Metadata!.Right)
+            {
+                if (m_rightNode == null)
+                {
+                    m_rightNode = (await m_stateClient.GetValue(id, "")) as LeafNode<K, V>;
+                }
+                return m_rightNode!;
+            }
+            return await m_stateClient.GetValue(id, "");
+        }
     }
 }

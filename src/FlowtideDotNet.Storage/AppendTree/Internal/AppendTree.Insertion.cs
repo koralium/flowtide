@@ -161,26 +161,5 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             }
             return ValueTask.CompletedTask;
         }
-
-        private async ValueTask<IBPlusTreeNode?> GetChildNode(long id)
-        {
-            // Must always check if it is the right node since it is not commited to state before full.
-            if (id == m_stateClient.Metadata!.Right)
-            {
-                if (m_rightNode == null)
-                {
-                    m_rightNode = (await m_stateClient.GetValue(id, "")) as LeafNode<K, V>;
-                }
-                return m_rightNode!;
-            }
-            try
-            {
-                return await m_stateClient.GetValue(id, "");
-            }
-            catch (Exception)
-            {
-                throw;
-            }
-        }
     }
 }

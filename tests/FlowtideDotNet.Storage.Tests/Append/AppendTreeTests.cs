@@ -169,5 +169,27 @@ namespace FlowtideDotNet.Storage.Tests.Append
             Assert.Equal("Key must be greater than the last key in the right node.", ex.Message);
         }
 
+        [Fact]
+        public async Task TestIterator()
+        {
+            var tree = await CreateTree(2);
+
+            for (int i = 0; i < 10; i++)
+            {
+                await tree.Append(i, i);
+            }
+
+            var iterator = tree.CreateIterator();
+            await iterator.Seek(0);
+
+            int counter = 0;
+            await foreach(var kv in iterator)
+            {
+                Assert.Equal(counter, kv.Key);
+                Assert.Equal(counter, kv.Value);
+                counter++;
+            }
+        }
+
     }
 }

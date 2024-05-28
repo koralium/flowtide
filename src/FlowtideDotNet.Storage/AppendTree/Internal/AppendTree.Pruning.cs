@@ -31,7 +31,6 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             var rootNode = await GetChildNode(m_stateClient.Metadata!.Root);
 
             await Prune_AfterGetRoot(rootNode, key);
-
         }
 
         /// <summary>
