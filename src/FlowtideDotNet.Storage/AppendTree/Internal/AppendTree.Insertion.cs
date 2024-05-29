@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ValueTask Append_AfterFetchRightNode(in K key, in V value)
         {
-            if (m_rightNode.keys.Count > 0 && m_keyComparer.Compare(m_rightNode!.keys[m_rightNode.keys.Count -1], key) >= 0)
+            if (m_rightNode!.keys.Count > 0 && m_keyComparer.Compare(m_rightNode!.keys[m_rightNode.keys.Count -1], key) >= 0)
             {
                 throw new InvalidOperationException("Key must be greater than the last key in the right node.");
             } 

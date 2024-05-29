@@ -27,17 +27,15 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
         internal readonly IStateClient<IBPlusTreeNode, AppendTreeMetadata> m_stateClient;
         private readonly BPlusTreeOptions<K, V> m_options;
         internal IComparer<K> m_keyComparer;
-        private int minSize;
         private LeafNode<K, V>? m_rightNode;
-        private int m_bucketSize;
-        private List<InternalNode<K, V>> m_rightInternalNodes;
+        private readonly int m_bucketSize;
+        private readonly List<InternalNode<K, V>> m_rightInternalNodes;
 
         public AppendTree(IStateClient<IBPlusTreeNode, AppendTreeMetadata> stateClient, BPlusTreeOptions<K, V> options)
         {
             Debug.Assert(options.BucketSize.HasValue);
             this.m_stateClient = stateClient;
             this.m_options = options;
-            minSize = options.BucketSize.Value / 3;
             m_bucketSize = options.BucketSize.Value;
             this.m_keyComparer = options.Comparer;
             m_rightInternalNodes = new List<InternalNode<K, V>>();

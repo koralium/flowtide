@@ -28,8 +28,8 @@ namespace FlowtideDotNet.Benchmarks
 {
     public class AppendTreeBenchmark
     {
-        private IStateManagerClient nodeClient;
-        private IAppendTree<long, string> tree;
+        private IStateManagerClient? nodeClient;
+        private IAppendTree<long, string>? tree;
 
         [Params(1000, 5000, 10000)]
         public int CachePageCount;
@@ -41,10 +41,7 @@ namespace FlowtideDotNet.Benchmarks
             localStorage.Initialize("./data/temp");
             StateManagerSync stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
-                CachePageCount = CachePageCount,
-                LogDevice = localStorage.Get(new FileDescriptor("persistent", "perstitent.log")),
-                CheckpointDir = "./data",
-                TemporaryStorageFactory = localStorage
+                CachePageCount = CachePageCount
             }, NullLogger.Instance, new System.Diagnostics.Metrics.Meter("storage"), "storage");
 
             stateManager.InitializeAsync().GetAwaiter().GetResult();
@@ -55,7 +52,7 @@ namespace FlowtideDotNet.Benchmarks
         [IterationSetup]
         public void IterationSetup()
         {
-            tree = nodeClient.GetOrCreateAppendTree<long, string>("tree", new BPlusTreeOptions<long, string>()
+            tree = nodeClient!.GetOrCreateAppendTree<long, string>("tree", new BPlusTreeOptions<long, string>()
             {
                 BucketSize = 1024,
                 Comparer = new LongComparer(),
@@ -70,7 +67,7 @@ namespace FlowtideDotNet.Benchmarks
         {
             for (int i = 0; i < 1_000_000; i++)
             {
-                await tree.Append(i, $"hello{i}");
+                await tree!.Append(i, $"hello{i}");
             }
         }
     }

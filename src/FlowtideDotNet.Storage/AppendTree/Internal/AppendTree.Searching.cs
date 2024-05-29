@@ -76,13 +76,13 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
             if (!childNodeTask.IsCompletedSuccessfully)
             {
-                return SearchLeafNodeForReadInternal_Slow(key, node, searchComparer, childNodeTask);
+                return SearchLeafNodeForReadInternal_Slow(key, searchComparer, childNodeTask);
             }
 
             return SearchLeafNodeForRead_AfterTask(key, childNodeTask.Result!, searchComparer);
         }
 
-        private async ValueTask<LeafNode<K, V>> SearchLeafNodeForReadInternal_Slow(K key, InternalNode<K, V> node, IComparer<K> searchComparer, ValueTask<IBPlusTreeNode?> task)
+        private async ValueTask<LeafNode<K, V>> SearchLeafNodeForReadInternal_Slow(K key, IComparer<K> searchComparer, ValueTask<IBPlusTreeNode?> task)
         {
             var childNode = await task;
             return await SearchLeafNodeForRead_AfterTask(key, childNode!, searchComparer);
