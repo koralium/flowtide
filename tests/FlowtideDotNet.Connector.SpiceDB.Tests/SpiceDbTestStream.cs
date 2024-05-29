@@ -78,7 +78,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                     }
                 });
             }
-            base.AddReadResolvers(factory);
+            else
+            {
+                base.AddReadResolvers(factory);
+            }
         }
     }
 }

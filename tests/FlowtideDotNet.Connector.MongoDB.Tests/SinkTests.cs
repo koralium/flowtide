@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
                 mongoDBFixture,
                 "test",
                 "test",
-                new List<string>() { "UserKey" }, "test");
+                new List<string>() { "UserKey" }, "testinsert");
 
             testStream.Generate(userCount);
             await testStream.StartStream(@"
@@ -78,7 +78,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
                 mongoDBFixture,
                 "test",
                 "test2",
-                new List<string>() { "UserKey" }, "test",
+                new List<string>() { "UserKey" }, "testclear",
                 (doc) =>
                 {
                     doc.Add("_metadata", "1");
