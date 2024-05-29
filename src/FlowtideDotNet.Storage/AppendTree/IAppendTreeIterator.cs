@@ -10,9 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using BenchmarkDotNet.Running;
-using DifferntialCompute.Benchmarks;
-using FlowtideDotNet.Benchmarks;
-using FlowtideDotNet.Benchmarks.Stream;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+namespace FlowtideDotNet.Storage.AppendTree
+{
+    public interface IAppendTreeIterator<K, V> : IAsyncEnumerable<KeyValuePair<K, V>>
+    {
+        ValueTask Seek(in K key, in IComparer<K>? searchComparer = null);
+    }
+}
