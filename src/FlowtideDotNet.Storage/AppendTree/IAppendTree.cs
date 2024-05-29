@@ -26,5 +26,6 @@ namespace FlowtideDotNet.Storage
         ValueTask Prune(K key);
         internal Task<string> Print();
         IAppendTreeIterator<K, V> CreateIterator();
+        ValueTask Clear();
     }
 }

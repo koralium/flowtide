@@ -124,5 +124,26 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             }
             return await m_stateClient.GetValue(id, "");
         }
+
+        public async ValueTask Clear()
+        {
+            Debug.Assert(m_options.BucketSize.HasValue);
+            // Clear the current state from the state storage
+            await m_stateClient.Reset(true);
+
+            // Create a new root leaf
+            var rootId = m_stateClient.GetNewPageId();
+            var root = new LeafNode<K, V>(rootId);
+            m_stateClient.Metadata = new AppendTreeMetadata()
+            {
+                Root = rootId,
+                BucketLength = m_options.BucketSize.Value,
+                Left = rootId,
+                Right = rootId
+            };
+            m_rightNode = root;
+            m_rightInternalNodes.Clear();
+            m_stateClient.AddOrUpdate(rootId, root);
+        }
     }
 }
