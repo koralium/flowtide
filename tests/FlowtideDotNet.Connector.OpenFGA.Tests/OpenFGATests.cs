@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             var conf = openFGAFixture.Configuration;
             conf.StoreId = createStoreResponse.Id;
             conf.AuthorizationModelId = createModelResponse.AuthorizationModelId;
-            var stream = new OpenFgaTestStream("test", conf);
+            var stream = new OpenFgaTestStream("test", conf, false, true);
             stream.Generate(100);
             await stream.StartStream(@"
                 INSERT INTO openfga
@@ -151,7 +151,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             var conf = openFGAFixture.Configuration;
             conf.StoreId = createStoreResponse.Id;
             conf.AuthorizationModelId = createModelResponse.AuthorizationModelId;
-            var stream = new OpenFgaTestStream("testalreadyexist", conf);
+            var stream = new OpenFgaTestStream("testalreadyexist", conf, false, true);
             stream.Generate(10);
 
             var addTupleClient = new OpenFgaClient(conf);
@@ -243,7 +243,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             var conf = openFGAFixture.Configuration;
             conf.StoreId = createStoreResponse.Id;
             conf.AuthorizationModelId = createModelResponse.AuthorizationModelId;
-            var stream = new OpenFgaTestStream("testdeletenotexist", conf);
+            var stream = new OpenFgaTestStream("testdeletenotexist", conf, false, true);
             stream.Generate(10);
 
             await stream.StartStream(@"
@@ -355,7 +355,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             }
             
 
-            var stream = new OpenFgaTestStream("testreadtuples", conf);
+            var stream = new OpenFgaTestStream("testreadtuples", conf, true, false);
             stream.Generate(100);
             await stream.StartStream(@"
 
@@ -464,7 +464,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             }
 
 
-            var stream = new OpenFgaTestStream("testobjecttypefilter", conf);
+            var stream = new OpenFgaTestStream("testobjecttypefilter", conf, true, false);
             stream.Generate(100);
             await stream.StartStream(@"
 
@@ -673,7 +673,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 }
             });
 
-            var stream = new OpenFgaTestStream("testreadparsedstream", conf);
+            var stream = new OpenFgaTestStream("testreadparsedstream", conf, true, false);
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
             var modelPlan = OpenFgaToFlowtide.Convert(parsedModel, "doc", "can_read", "openfga");
@@ -811,7 +811,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             });
 
 
-            var stream = new OpenFgaTestStream("testparsedmodeldirect", conf);
+            var stream = new OpenFgaTestStream("testparsedmodeldirect", conf, true, false);
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
             var modelPlan = OpenFgaToFlowtide.Convert(parsedModel, "group", "member", "openfga");
@@ -995,7 +995,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             });
 
 
-            var stream = new OpenFgaTestStream("TestParsedModelWithAndWildcard", conf);
+            var stream = new OpenFgaTestStream("TestParsedModelWithAndWildcard", conf, true, false);
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
             var modelPlan = OpenFgaToFlowtide.Convert(parsedModel, "role_binding", "can_read", "openfga");
@@ -1208,7 +1208,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 }
             });
 
-            var stream = new OpenFgaTestStream("TestReadParsedModelWithStopType", conf);
+            var stream = new OpenFgaTestStream("TestReadParsedModelWithStopType", conf, true, false);
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
             var modelPlan = OpenFgaToFlowtide.Convert(parsedModel, "doc", "can_read", "openfga", "group");
@@ -1346,7 +1346,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 }
             });
 
-            var stream = new OpenFgaTestStream("TestHashtagRelation", conf);
+            var stream = new OpenFgaTestStream("TestHashtagRelation", conf, true, false);
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
             Assert.NotNull(parsedModel);
@@ -1445,7 +1445,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 }
             });
 
-            var stream = new OpenFgaTestStream("testinsertdeleteexisting", conf, FetchRows);
+            var stream = new OpenFgaTestStream("testinsertdeleteexisting", conf, false, true, FetchRows);
             stream.Generate(10);
             await stream.StartStream(@"
                 INSERT INTO openfga

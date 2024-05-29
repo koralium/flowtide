@@ -29,31 +29,52 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
     internal class OpenFgaTestStream : FlowtideTestStream
     {
         private readonly ClientConfiguration clientConfiguration;
+        private readonly bool addReadResolver;
+        private readonly bool addWriteResolver;
         private readonly Func<OpenFgaClient, IAsyncEnumerable<TupleKey>>? deleteFilter;
 
-        public OpenFgaTestStream(string testName, ClientConfiguration clientConfiguration, Func<OpenFgaClient, IAsyncEnumerable<TupleKey>>? deleteFilter = null) : base(testName)
+        public OpenFgaTestStream(
+            string testName, 
+            ClientConfiguration clientConfiguration, 
+            bool addReadResolver,
+            bool addWriteResolver,
+            Func<OpenFgaClient, IAsyncEnumerable<TupleKey>>? deleteFilter = null) : base(testName)
         {
             this.clientConfiguration = clientConfiguration;
+            this.addReadResolver = addReadResolver;
+            this.addWriteResolver = addWriteResolver;
             this.deleteFilter = deleteFilter;
         }
 
         protected override void AddWriteResolvers(IConnectorManager factory)
         {
-            factory.AddOpenFGASink("openfga", new OpenFgaSinkOptions
+            if (addWriteResolver) 
             {
-                ClientConfiguration = clientConfiguration,
-                DeleteExistingDataFetcher = deleteFilter
-            });
-            base.AddWriteResolvers(factory);
+                factory.AddOpenFGASink("openfga", new OpenFgaSinkOptions
+                {
+                    ClientConfiguration = clientConfiguration,
+                    DeleteExistingDataFetcher = deleteFilter
+                });
+            }
+            else
+            {
+                base.AddWriteResolvers(factory);
+            }
         }
 
         protected override void AddReadResolvers(IConnectorManager factory)
         {
-            factory.AddOpenFGASource("openfga", new OpenFgaSourceOptions
+            if (addReadResolver)
             {
-                ClientConfiguration = clientConfiguration
-            });
-            base.AddReadResolvers(factory);
+                factory.AddOpenFGASource("openfga", new OpenFgaSourceOptions
+                {
+                    ClientConfiguration = clientConfiguration
+                });
+            }
+            else
+            {
+                base.AddReadResolvers(factory);
+            }
         }
     }
 }
