@@ -36,7 +36,6 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
         protected override void AddWriteResolvers(IConnectorManager factory)
         {
             factory.AddCustomSink("output", (rel) => testDataSink, Core.Operators.Write.ExecutionMode.OnCheckpoint);
-            base.AddWriteResolvers(factory);
         }
     }
 
