@@ -42,7 +42,10 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
             private KeyValuePair<K, V> GetCurrent()
             {
-                return new KeyValuePair<K, V>(_node.keys[_index], _node.values[_index]);
+                _node.EnterWriteLock();
+                var result = new KeyValuePair<K, V>(_node.keys[_index], _node.values[_index]);
+                _node.ExitWriteLock();
+                return result;
             }
 
             public ValueTask DisposeAsync()
@@ -111,7 +114,9 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
         {
             var comparer = searchComparer == null ? _tree.m_keyComparer : searchComparer;
             _node = await _tree.FindLeafNode(key, comparer);
+            _node.EnterWriteLock();
             var i = _node.keys.BinarySearch(key, searchComparer);
+            _node.ExitWriteLock();
             if (i < 0)
             {
                 i = ~i;
