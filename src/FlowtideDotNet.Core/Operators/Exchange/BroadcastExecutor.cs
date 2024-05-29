@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
@@ -28,7 +29,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// <summary>
         /// A single tree is enough in broadcast mode.
         /// </summary>
-        private IBPlusTree<long, IStreamEvent>? _events;
+        private IAppendTree<long, IStreamEvent>? _events;
 
         private long _eventCounter;
         private bool hasStandardOutputTargets;
@@ -47,7 +48,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             standardOutputTargetNumber = exchangeRelation.Targets.Where(x => x.Type == ExchangeTargetType.StandardOutput).Count();
             if (HasPullBucketTargets(exchangeRelation))
             {
-                _events = await stateManagerClient.GetOrCreateTree<long, IStreamEvent>("events", new BPlusTreeOptions<long, IStreamEvent>()
+                _events = await stateManagerClient.GetOrCreateAppendTree<long, IStreamEvent>("events", new BPlusTreeOptions<long, IStreamEvent>()
                 {
                     Comparer = new LongComparer(),
                     KeySerializer = new LongSerializer(),
@@ -60,7 +61,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             if (_events != null)
             {
-                await _events.Upsert(_eventCounter++, new StreamMessage<StreamEventBatch>(data, time));
+                await _events.Append(_eventCounter++, new StreamMessage<StreamEventBatch>(data, time));
             }
             if (hasStandardOutputTargets)
             {
@@ -75,7 +76,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             if (_events != null)
             {
-                await _events.Upsert(_eventCounter++, lockingEvent);
+                await _events.Append(_eventCounter++, lockingEvent);
             }
         }
 
@@ -83,7 +84,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             if (_events != null)
             {
-                await _events.Upsert(_eventCounter++, lockingEventPrepare);
+                await _events.Append(_eventCounter++, lockingEventPrepare);
             }
         }
 
@@ -91,7 +92,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             if (_events != null)
             {
-                await _events.Upsert(_eventCounter++, watermark);
+                await _events.Append(_eventCounter++, watermark);
             }
         }
 
@@ -108,15 +109,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             await iterator.Seek(fetchDataRequest.FromEventId);
 
             List<IStreamEvent> outputData = new List<IStreamEvent>();
-            await foreach(var page in iterator)
+            await foreach(var kv in iterator)
             {
-                page.EnterLock();
-                foreach(var kv in page)
-                {
-                    fetchDataRequest.LastEventId = kv.Key;
-                    outputData.Add(kv.Value);
-                }
-                page.ExitLock();
+                
+                fetchDataRequest.LastEventId = kv.Key;
+                outputData.Add(kv.Value);
                 if (outputData.Count > 100)
                 {
                     break;
