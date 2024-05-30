@@ -343,6 +343,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                         try
                         {
                             var readRequest = new ReadRelationshipsRequest();
+
+                            if (m_spiceDbSourceOptions.Consistency != null)
+                            {
+                                readRequest.Consistency = m_spiceDbSourceOptions.Consistency;
+                            }
                             readRequest.RelationshipFilter = new RelationshipFilter()
                             {
                                 ResourceType = readType

@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 _ingressState._sourceBlock = source;
                 _ingressState._output = new IngressOutput<TData>(_ingressState, _ingressState._block);
                 _ingressState._tokenSource = new CancellationTokenSource();
-                _ingressState._block.Completion.ContinueWith(t =>
+                _ingressState._block.Completion.ContinueWith(t =>   
                 {
                     Logger.LogDebug(t.Exception, "Block failure");
                     lock (_stateLock)
