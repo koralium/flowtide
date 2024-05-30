@@ -33,3 +33,7 @@ jobs:
       run: dotnet build --no-restore
     - name: Test
       run: dotnet test ./tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj --no-build --verbosity normal -p:ParallelizeTestCollections=false
+    - uses: actions/upload-artifact@v4
+      with:
+        name: debugwrites
+        path: ./tests/FlowtideDotNet.AcceptanceTests/bin/Debug/net8.0/debugwrite
