@@ -25,4 +25,4 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
     - name: Test
-      run: dotnet test ./tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj --no-build --verbosity normal
+      run: dotnet test --no-build --verbosity normal
