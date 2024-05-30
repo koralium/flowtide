@@ -27,6 +27,7 @@ using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
+using Serilog;
 using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -128,11 +129,26 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             SetupConnectorManager();
 
 
+#if DEBUG_WRITE
+
+            var loggerFactory = LoggerFactory.Create(b =>
+            {
+                var logger = new LoggerConfiguration()
+                    .MinimumLevel.Debug()
+                    .WriteTo.File($"debugwrite/{testName.Replace("/", "_")}.log")
+                    .CreateLogger();
+                b.AddSerilog(logger);
+            });
+#endif
+
             _persistentStorage = CreatePersistentStorage(testName);
 
             flowtideBuilder
                 .AddPlan(plan)
                 .SetParallelism(parallelism)
+#if DEBUG_WRITE
+                .WithLoggerFactory(loggerFactory)
+#endif
                 .AddConnectorManager(_connectorManager)
                 .SetGetTimestampUpdateInterval(timestampInterval.Value)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
