@@ -240,7 +240,15 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             {
                 Directory.CreateDirectory("debugwrite");
             }
-            allOutput = File.CreateText($"debugwrite/{StreamName}_{Name}.alloutput.txt");
+            if (allOutput == null)
+            {
+                allOutput = File.CreateText($"debugwrite/{StreamName}_{Name}.alloutput.txt");
+            }
+            else
+            {
+                allOutput.WriteLine("Restart");
+                allOutput.Flush();
+            }
 #endif
             Logger.InitializingNormalizationOperator(StreamName, Name);
             if (_eventsCounter == null)
