@@ -135,7 +135,16 @@ namespace FlowtideDotNet.Core.Operators.Project
             {
                 var dir = Directory.CreateDirectory("debugwrite");
             }
-            allInput = File.CreateText($"debugwrite/{StreamName}_{Name}.all.txt");
+            if(allInput == null)
+            {
+                allInput = File.CreateText($"debugwrite/{StreamName}_{Name}.all.txt");
+            }
+            else
+            {
+                allInput.WriteLine("Restart");
+                allInput.Flush();
+            }
+            
 #endif
             Logger.InitializingProjectOperator(StreamName, Name);
             if (_eventsCounter == null)

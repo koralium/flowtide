@@ -200,8 +200,17 @@ namespace FlowtideDotNet.Core.Operators.Set
             {
                 Directory.CreateDirectory("debugwrite");
             }
-            allInput = File.CreateText($"debugwrite/{StreamName}_{Name}.all.txt");
-            outputWriter = File.CreateText($"debugwrite/{StreamName}_{Name}.output.txt");
+            if (allInput == null)
+            {
+                allInput = File.CreateText($"debugwrite/{StreamName}_{Name}.all.txt");
+                outputWriter = File.CreateText($"debugwrite/{StreamName}_{Name}.output.txt");
+            }
+            else
+            {
+                allInput.WriteLine("Restart");
+                allInput.Flush();
+            }
+            
 #endif
             if (_eventsCounter == null)
             {
