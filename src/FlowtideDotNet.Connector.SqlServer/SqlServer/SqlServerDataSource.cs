@@ -182,7 +182,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         protected override async Task InitializeOrRestore(long restoreTime, SqlServerState? state, IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
-            allInput = File.CreateText($"{Name}.all.txt");
+            if (!Directory.Exists("debugwrite"))
+            {
+                Directory.CreateDirectory("debugwrite");
+            }
+            allInput = File.CreateText($"debugwrite/{StreamName}_{Name}.all.txt");
 #endif
             if (_eventsCounter == null)
             {

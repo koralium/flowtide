@@ -196,8 +196,12 @@ namespace FlowtideDotNet.Core.Operators.Set
         protected override async Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
-            allInput = File.CreateText($"{Name}.all.txt");
-            outputWriter = File.CreateText($"{Name}.output.txt");
+            if (!Directory.Exists("debugwrite"))
+            {
+                Directory.CreateDirectory("debugwrite");
+            }
+            allInput = File.CreateText($"debugwrite/{StreamName}_{Name}.all.txt");
+            outputWriter = File.CreateText($"debugwrite/{StreamName}_{Name}.output.txt");
 #endif
             if (_eventsCounter == null)
             {
