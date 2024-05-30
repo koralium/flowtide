@@ -43,6 +43,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly string testName;
         private List<byte[]>? _actualData;
         int updateCounter = 0;
+        int waitCounter = 0;
         FlowtideBuilder flowtideBuilder;
         private int _egressCrashOnCheckpointCount;
         private IPersistentStorage? _persistentStorage;
@@ -227,17 +228,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public virtual async Task WaitForUpdate()
         {
             Debug.Assert(_stream != null);
-            int currentCounter = 0;
-            lock (_lock)
-            {
-                currentCounter = updateCounter;
-            }
+            int currentCounter = waitCounter;
+
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
             while (updateCounter == currentCounter)
             {
                 await scheduler!.Tick();
                 await Task.Delay(10);
             }
+            waitCounter = updateCounter;
         }
 
         protected virtual void AddReadResolvers(IConnectorManager connectorManger)
