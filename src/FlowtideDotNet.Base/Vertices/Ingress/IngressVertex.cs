@@ -269,7 +269,6 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                     }
                     lock (_stateLock)
                     {
-                        var tId = state;
                         _runningTasks.Remove(taskState.taskId);
                     }
                 }, tState, default, TaskContinuationOptions.None, TaskScheduler.Default);
