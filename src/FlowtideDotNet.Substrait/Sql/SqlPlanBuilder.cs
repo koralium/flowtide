@@ -68,19 +68,14 @@ namespace FlowtideDotNet.Substrait.Sql
             });
 
             SqlSubstraitVisitor sqlSubstraitVisitor = new SqlSubstraitVisitor(this, _sqlFunctionRegister);
-            foreach (var statement in statements)
+            var relations = sqlSubstraitVisitor.GetRelations(statements);
+
+            if (relations.Count > 0)
             {
-                var result = sqlSubstraitVisitor.Visit(statement, default);
-                if (result != null)
+                _planModifier.AddRootPlan(new Plan()
                 {
-                    _planModifier.AddRootPlan(new Plan()
-                    {
-                        Relations = new List<FlowtideDotNet.Substrait.Relations.Relation>()
-                        {
-                            result.Relation
-                        }
-                    });
-                }
+                    Relations = relations
+                });
             }
         }
 
