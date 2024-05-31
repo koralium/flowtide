@@ -64,13 +64,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        private void DeserializeBatch(in BinaryReader reader, in List<IStreamEvent> values)
+        private static void DeserializeBatch(in BinaryReader reader, in List<IStreamEvent> values)
         {
             var time = reader.ReadInt64();
             var length = reader.ReadInt32();
             var bytes = reader.ReadBytes(length);
             var vector = FlxValue.FromMemory(bytes).AsVector;
-            var count = reader.ReadInt32();
 
             var events = new List<RowEvent>();
             for (var i = 0; i < vector.Length; i++)
@@ -83,7 +82,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             values.Add(new StreamMessage<StreamEventBatch>(new StreamEventBatch(events), time));
         }
 
-        private void DeserializeWatermark(in BinaryReader reader, in List<IStreamEvent> values)
+        private static void DeserializeWatermark(in BinaryReader reader, in List<IStreamEvent> values)
         {
             var sourceOperatorId = reader.ReadString();
             var startTimeUnix = reader.ReadInt64();
@@ -98,10 +97,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 var value = reader.ReadInt64();
                 builder.Add(key, value);
             }
-            values.Add(new Watermark(builder.ToImmutable()));
+            values.Add(new Watermark(builder.ToImmutable(), DateTimeOffset.FromUnixTimeMilliseconds(startTimeUnix))
+            {
+                SourceOperatorId = sourceOperatorId
+            });
         }
 
-        private InitWatermarksEvent DeserializeInitWatermark(in BinaryReader reader)
+        private static InitWatermarksEvent DeserializeInitWatermark(in BinaryReader reader)
         {
             var count = reader.ReadInt32();
             HashSet<string> watermarkNames = new HashSet<string>();
@@ -113,7 +115,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return new InitWatermarksEvent(watermarkNames);
         }
 
-        private Checkpoint DeserializeCheckpoint(in BinaryReader reader)
+        private static Checkpoint DeserializeCheckpoint(in BinaryReader reader)
         {
             var checkpointTime = reader.ReadInt64();
             var newTime = reader.ReadInt64();
@@ -121,7 +123,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return new Checkpoint(checkpointTime, newTime);
         }
 
-        private void DeserializeLockingEventPrepare(in BinaryReader reader, in List<IStreamEvent> values)
+        private static void DeserializeLockingEventPrepare(in BinaryReader reader, in List<IStreamEvent> values)
         {
             var otherInputsNotInCheckpoint = reader.ReadBoolean();
             var lockingEventType = reader.ReadByte();
@@ -145,7 +147,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             values.Add(lockingEventPrepare);
         }
 
-        private void SerializeBatch(in BinaryWriter writer, in StreamMessage<StreamEventBatch> batch)
+        private static void SerializeBatch(in BinaryWriter writer, in StreamMessage<StreamEventBatch> batch)
         {
             writer.Write(StreamEventBatchType);
             writer.Write(batch.Time);
@@ -168,7 +170,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             writer.Write(bytes);
 
             // Write weight and iterations
-            writer.Write(batch.Data.Events.Count);
             for (int i = 0; i <  batch.Data.Events.Count; i++)
             {
                 writer.Write(batch.Data.Events[i].Weight);
@@ -176,7 +177,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        private void SerializeWatermark(in BinaryWriter writer, Watermark watermark)
+        private static void SerializeWatermark(in BinaryWriter writer, Watermark watermark)
         {
             writer.Write(WatermarkType);
             writer.Write(watermark.SourceOperatorId ?? "");
@@ -191,14 +192,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        private void SerializeCheckpoint(in BinaryWriter writer, Checkpoint checkpoint)
+        private static void SerializeCheckpoint(in BinaryWriter writer, Checkpoint checkpoint)
         {
             writer.Write(CheckpointType);
             writer.Write(checkpoint.CheckpointTime);
             writer.Write(checkpoint.NewTime);
         }
 
-        private void SerializeLockingEvent(in BinaryWriter writer, ILockingEvent lockingEvent)
+        private static void SerializeLockingEvent(in BinaryWriter writer, ILockingEvent lockingEvent)
         {
             if (lockingEvent is InitWatermarksEvent initWatermarksEvent)
             {
@@ -213,7 +214,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             throw new NotImplementedException();
         }
 
-        private void SerializeInitWatermarksEvent(in BinaryWriter writer, InitWatermarksEvent initWatermarksEvent)
+        private static void SerializeInitWatermarksEvent(in BinaryWriter writer, InitWatermarksEvent initWatermarksEvent)
         {
             writer.Write(InitWatermarksEventType);
             writer.Write(initWatermarksEvent.WatermarkNames.Count);
@@ -224,7 +225,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        private void SerializeLockingEventPrepare(in BinaryWriter writer, LockingEventPrepare lockingEventPrepare)
+        private static void SerializeLockingEventPrepare(in BinaryWriter writer, LockingEventPrepare lockingEventPrepare)
         {
             writer.Write(LockingEventPrepareType);
             writer.Write(lockingEventPrepare.OtherInputsNotInCheckpoint);

@@ -35,17 +35,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private bool hasStandardOutputTargets;
         private int standardOutputTargetNumber;
 
-        private bool HasPullBucketTargets(ExchangeRelation exchangeRelation)
+        private static bool HasPullBucketTargets(ExchangeRelation exchangeRelation)
         {
-            return exchangeRelation.Targets.Any(x => x.Type == ExchangeTargetType.PullBucket);
+            return exchangeRelation.Targets.Exists(x => x.Type == ExchangeTargetType.PullBucket);
         }
 
         public async Task Initialize(ExchangeRelation exchangeRelation, IStateManagerClient stateManagerClient, ExchangeOperatorState exchangeOperatorState)
         {
             _eventCounter = exchangeOperatorState.EventCounter;
 
-            hasStandardOutputTargets = exchangeRelation.Targets.Any(x => x.Type == ExchangeTargetType.StandardOutput);
-            standardOutputTargetNumber = exchangeRelation.Targets.Where(x => x.Type == ExchangeTargetType.StandardOutput).Count();
+            hasStandardOutputTargets = exchangeRelation.Targets.Exists(x => x.Type == ExchangeTargetType.StandardOutput);
+            standardOutputTargetNumber = exchangeRelation.Targets.Count(x => x.Type == ExchangeTargetType.StandardOutput);
             if (HasPullBucketTargets(exchangeRelation))
             {
                 _events = await stateManagerClient.GetOrCreateAppendTree<long, IStreamEvent>("events", new BPlusTreeOptions<long, IStreamEvent>()
