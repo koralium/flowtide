@@ -136,7 +136,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             break;
                     }
 #if DEBUG_WRITE
-                    allInput.WriteLine($"{streamEvent.Weight} {streamEvent.Vector.ToJson}");
+                    allInput.WriteLine($"{streamEvent.Weight} {streamEvent.ToJson()}");
 #endif
                     result.Add(streamEvent);
                 }
