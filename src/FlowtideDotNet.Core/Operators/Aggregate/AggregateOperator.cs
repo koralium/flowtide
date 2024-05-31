@@ -44,6 +44,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
         private List<IAggregateContainer> _measures;
         private ICounter<long>? _eventsProcessed;
 
+#if DEBUG_WRITE
+        // TODO: Tmp remove
+        private StreamWriter allInput;
+        private StreamWriter outputWriter;
+#endif
+
         public AggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             _measures = new List<IAggregateContainer>();
@@ -84,6 +90,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
         public override async Task<AggregateOperatorState> OnCheckpoint()
         {
             Debug.Assert(_tree != null, "Tree should not be null");
+
+#if DEBUG_WRITE
+            allInput.WriteLine("Checkpoint");
+            allInput.Flush();
+#endif
+
             await _tree.Commit();
 
             // Commit each measure
@@ -125,12 +137,21 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                         if (!val.PreviousValue.SequenceEqual(outputData))
                         {
                             var oldEvent = new RowEvent(-1, 0, new CompactRowData(val.PreviousValue));
+
+#if DEBUG_WRITE
+                            outputWriter.WriteLine($"{oldEvent.Weight} {oldEvent.ToJson()}");
+                            outputWriter.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
+#endif
+
                             outputs.Add(outputEvent);
                             outputs.Add(oldEvent);
                         }
                     }
                     else
                     {
+#if DEBUG_WRITE
+                        outputWriter.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
+#endif
                         outputs.Add(outputEvent);
                     }
 
@@ -159,7 +180,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                     _flexBufferNewValue.EndVector(vectorStart, false, false);
                     var outputData = _flexBufferNewValue.Finish();
                     val.PreviousValue = outputData;
-                    outputs.Add(new RowEvent(1, 0, new CompactRowData(outputData)));
+
+                    var outputEvent = new RowEvent(1, 0, new CompactRowData(outputData));
+
+#if DEBUG_WRITE
+                    outputWriter.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
+#endif
+
+                    outputs.Add(outputEvent);
 
                     if (outputs.Count > 100)
                     {
@@ -193,7 +221,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                             if (val.PreviousValue != null)
                             {
                                 // Negate that row on the stream
-                                outputs.Add(new RowEvent(-1, 0, new CompactRowData(val.PreviousValue)));
+                                var outputEvent = new RowEvent(-1, 0, new CompactRowData(val.PreviousValue));
+
+#if DEBUG_WRITE
+                                outputWriter.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
+#endif
+
+                                outputs.Add(outputEvent);
                             }
                             await _tree.Delete(kv.Key);
                             continue;
@@ -222,8 +256,15 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                             if (!val.PreviousValue.SequenceEqual(newObjectValue))
                             {
                                 var oldEvent = new RowEvent(-1, 0, new CompactRowData(val.PreviousValue));
+                                var outputEvent = new RowEvent(1, 0, new CompactRowData(newObjectValue));
+
+#if DEBUG_WRITE
+                                outputWriter.WriteLine($"{oldEvent.Weight} {oldEvent.ToJson()}");
+                                outputWriter.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
+#endif
+
                                 outputs.Add(oldEvent);
-                                outputs.Add(new RowEvent(1, 0, new CompactRowData(newObjectValue)));
+                                outputs.Add(outputEvent);
                             }
                             else
                             {
@@ -268,9 +309,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             Debug.Assert(_tree != null, "Tree should not be null");
             Debug.Assert(_temporaryTree != null, "Temporary tree should not be null");
             Debug.Assert(_eventsProcessed != null, "Events processed should not be null");
+
             _eventsProcessed.Add(msg.Events.Count);
             foreach (var e in msg.Events)
             {
+#if DEBUG_WRITE
+                allInput.WriteLine($"Input: {e.Weight} {e.ToJson()}");
+#endif
+
                 // Create the key
                 RowEvent? key = default;
                 if (groupExpressions != null)
@@ -350,6 +396,24 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
         protected override async Task InitializeOrRestore(AggregateOperatorState? state, IStateManagerClient stateManagerClient)
         {
+#if DEBUG_WRITE
+            if (!Directory.Exists("debugwrite"))
+            {
+                Directory.CreateDirectory("debugwrite");
+            }
+            if (allInput == null)
+            {
+                allInput = File.CreateText($"debugwrite/{StreamName}_{Name}.all.txt");
+                outputWriter = File.CreateText($"debugwrite/{StreamName}_{Name}.output.txt");
+            }
+            else
+            {
+                allInput.WriteLine("Restart");
+                allInput.Flush();
+            }
+            
+#endif
+
             if (aggregateRelation.Measures != null && aggregateRelation.Measures.Count > 0)
             {
                 _measures.Clear();

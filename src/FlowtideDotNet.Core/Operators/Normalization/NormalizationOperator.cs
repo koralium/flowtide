@@ -236,7 +236,19 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         protected override async Task InitializeOrRestore(NormalizationState? state, IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
-            allOutput = File.CreateText($"{Name}.alloutput.txt");
+            if (!Directory.Exists("debugwrite"))
+            {
+                Directory.CreateDirectory("debugwrite");
+            }
+            if (allOutput == null)
+            {
+                allOutput = File.CreateText($"debugwrite/{StreamName}_{Name}.alloutput.txt");
+            }
+            else
+            {
+                allOutput.WriteLine("Restart");
+                allOutput.Flush();
+            }
 #endif
             Logger.InitializingNormalizationOperator(StreamName, Name);
             if (_eventsCounter == null)
