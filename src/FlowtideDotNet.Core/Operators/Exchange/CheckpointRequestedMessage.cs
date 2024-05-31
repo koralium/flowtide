@@ -10,22 +10,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Storage.Tree
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Core.Operators.Exchange
 {
-    public interface IBPlusTreePageIterator<K, V> : IEnumerable<KeyValuePair<K, V>>
+    /// <summary>
+    /// Special message that can be sent in from another stream to notify that it wants to take a checkpoint.
+    /// This will schedule a checkpoint on this stream as well to create a coherent checkpoint across all substreams.
+    /// </summary>
+    internal class CheckpointRequestedMessage
     {
-        /// <summary>
-        /// Saves the current page, allows the user to modify values on the page and then trigger a save.
-        /// </summary>
-        /// <returns></returns>
-        ValueTask SavePage();
-
-        List<K> Keys { get; }
-
-        List<V> Values { get; }
-
-        void EnterLock();
-
-        void ExitLock();
     }
 }

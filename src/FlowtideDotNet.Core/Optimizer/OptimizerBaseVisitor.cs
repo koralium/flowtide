@@ -151,5 +151,16 @@ namespace FlowtideDotNet.Core.Optimizer
 
             return tableFunctionRelation;
         }
+
+        public override Relation VisitExchangeRelation(ExchangeRelation exchangeRelation, object state)
+        {
+            exchangeRelation.Input = Visit(exchangeRelation.Input, state);
+            return exchangeRelation;
+        }
+
+        public override Relation VisitStandardOutputExchangeReferenceRelation(StandardOutputExchangeReferenceRelation standardOutputExchangeReferenceRelation, object state)
+        {
+            return standardOutputExchangeReferenceRelation;
+        }
     }
 }

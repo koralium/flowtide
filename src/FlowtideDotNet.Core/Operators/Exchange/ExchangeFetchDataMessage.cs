@@ -10,22 +10,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Storage.Tree
+using FlowtideDotNet.Base;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Core.Operators.Exchange
 {
-    public interface IBPlusTreePageIterator<K, V> : IEnumerable<KeyValuePair<K, V>>
+    internal class ExchangeFetchDataMessage
     {
         /// <summary>
-        /// Saves the current page, allows the user to modify values on the page and then trigger a save.
+        /// Input
         /// </summary>
-        /// <returns></returns>
-        ValueTask SavePage();
+        public long FromEventId { get; set; }
 
-        List<K> Keys { get; }
+        /// <summary>
+        /// Set during output with a list of events
+        /// </summary>
+        public List<IStreamEvent>? OutEvents { get; set; }
 
-        List<V> Values { get; }
-
-        void EnterLock();
-
-        void ExitLock();
+        /// <summary>
+        /// Set during output with the last eventid in the out events
+        /// </summary>
+        public long LastEventId { get; set; }
     }
 }
