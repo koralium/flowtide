@@ -70,6 +70,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                 factory.AddSpiceDbSource("*", new SpiceDbSourceOptions()
                 {
                     Channel = grpcChannel,
+                    Consistency = new Consistency()
+                    {
+                        FullyConsistent = true
+                    },
                     GetMetadata = () =>
                     {
                         var metadata = new Metadata();

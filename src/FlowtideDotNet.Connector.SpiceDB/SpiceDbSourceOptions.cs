@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Authzed.Api.V1;
 using Grpc.Core;
 using System;
 using System.Collections.Generic;
@@ -24,5 +25,7 @@ namespace FlowtideDotNet.Connector.SpiceDB
         public required ChannelBase Channel { get; set; }
 
         public Func<Metadata>? GetMetadata { get; set; }
+
+        public Consistency? Consistency { get; set; } 
     }
 }
