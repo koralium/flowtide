@@ -30,7 +30,7 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore -p:FeatureFlags=#DEBUG_WRITE
     - name: Test
       run: dotnet test ./tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj --no-build --verbosity normal -p:ParallelizeTestCollections=false
     - name: Upload logs
