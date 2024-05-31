@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.AppendTree.Internal;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Tree.Internal;
 using System.Diagnostics;
@@ -32,6 +33,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public IStateManagerClient GetChildManager(string name)
         {
             return new StateManagerSyncClient($"{m_name}_{name}", stateManager, tagList);
+        }
+
+        public async ValueTask<IAppendTree<K, V>> GetOrCreateAppendTree<K, V>(string name, BPlusTreeOptions<K, V> options)
+        {
+            var stateClient = await CreateStateClient<IBPlusTreeNode, AppendTreeMetadata>(name, new BPlusTreeSerializer<K, V>(options.KeySerializer, options.ValueSerializer));
+
+            if (options.BucketSize == null)
+            {
+                options.BucketSize = stateClient.BPlusTreePageSize;
+            }
+
+            var tree = new AppendTree<K, V>(stateClient, options);
+            await tree.InitializeAsync();
+            return tree;
         }
 
         public async ValueTask<IBPlusTree<K, V>> GetOrCreateTree<K, V>(string name, BPlusTreeOptions<K, V> options)

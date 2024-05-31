@@ -27,6 +27,7 @@ using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
+using Serilog;
 using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -43,6 +44,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly string testName;
         private List<byte[]>? _actualData;
         int updateCounter = 0;
+        int waitCounter = 0;
         FlowtideBuilder flowtideBuilder;
         private int _egressCrashOnCheckpointCount;
         private IPersistentStorage? _persistentStorage;
@@ -127,11 +129,26 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             SetupConnectorManager();
 
 
+#if DEBUG_WRITE
+
+            var loggerFactory = LoggerFactory.Create(b =>
+            {
+                var logger = new LoggerConfiguration()
+                    .MinimumLevel.Debug()
+                    .WriteTo.File($"debugwrite/{testName.Replace("/", "_")}.log")
+                    .CreateLogger();
+                b.AddSerilog(logger);
+            });
+#endif
+
             _persistentStorage = CreatePersistentStorage(testName);
 
             flowtideBuilder
                 .AddPlan(plan)
                 .SetParallelism(parallelism)
+#if DEBUG_WRITE
+                .WithLoggerFactory(loggerFactory)
+#endif
                 .AddConnectorManager(_connectorManager)
                 .SetGetTimestampUpdateInterval(timestampInterval.Value)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
@@ -227,17 +244,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public virtual async Task WaitForUpdate()
         {
             Debug.Assert(_stream != null);
-            int currentCounter = 0;
-            lock (_lock)
-            {
-                currentCounter = updateCounter;
-            }
+            int currentCounter = waitCounter;
+
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
             while (updateCounter == currentCounter)
             {
                 await scheduler!.Tick();
                 await Task.Delay(10);
             }
+            waitCounter = updateCounter;
         }
 
         protected virtual void AddReadResolvers(IConnectorManager connectorManger)

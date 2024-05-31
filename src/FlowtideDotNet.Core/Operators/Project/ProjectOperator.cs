@@ -131,7 +131,20 @@ namespace FlowtideDotNet.Core.Operators.Project
         protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
-            allInput = File.CreateText($"{Name}.all.txt");
+            if (!Directory.Exists("debugwrite"))
+            {
+                var dir = Directory.CreateDirectory("debugwrite");
+            }
+            if(allInput == null)
+            {
+                allInput = File.CreateText($"debugwrite/{StreamName}_{Name}.all.txt");
+            }
+            else
+            {
+                allInput.WriteLine("Restart");
+                allInput.Flush();
+            }
+            
 #endif
             Logger.InitializingProjectOperator(StreamName, Name);
             if (_eventsCounter == null)

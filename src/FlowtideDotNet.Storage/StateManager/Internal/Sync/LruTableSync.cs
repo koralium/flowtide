@@ -141,7 +141,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                     lock (m_nodes)
                     {
-                        m_nodes.Remove(node);
+                        if (node.List != null)
+                        {
+                            m_nodes.Remove(node);
+                        }                        
                     }
                 }
                 
@@ -410,7 +413,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                             lock (m_nodes)
                             {
-                                m_nodes.Remove(val.Item1);
+                                if (val.Item1.List != null)
+                                {
+                                    m_nodes.Remove(val.Item1);
+                                }
                             }
                         }
                     }

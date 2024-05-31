@@ -61,14 +61,14 @@ namespace FlowtideDotNet.Core.Tests
             var factory = new ConnectorManager();
             factory.AddConsoleSink(".*");
 
-            var e = Assert.Throws<FlowtideException>(() =>
+            var e = Assert.Throws<FlowtideNoConnectorFoundException>(() =>
             {
                 var stream = new FlowtideBuilder("test")
                     .AddPlan(plan)
                     .AddConnectorManager(factory)
                     .Build();
             });
-            Assert.Equal("No source could be found for table: a", e.Message);
+            Assert.Equal("No connector can handle the read relation 'a'.", e.Message);
         }
 
         [Fact]
@@ -82,14 +82,14 @@ namespace FlowtideDotNet.Core.Tests
             var factory = new ConnectorManager();
             factory.AddSource(new FailureIngressFactory("*"));
 
-            var e = Assert.Throws<FlowtideException>(() =>
+            var e = Assert.Throws<FlowtideNoConnectorFoundException>(() =>
             {
                 var stream = new FlowtideBuilder("test")
                     .AddPlan(plan)
                     .AddConnectorManager(factory)
                     .Build();
             });
-            Assert.Equal("No sink could be found for table: test", e.Message);
+            Assert.Equal("No connector can handle the write relation 'test'.", e.Message);
         }
 
         [Fact]

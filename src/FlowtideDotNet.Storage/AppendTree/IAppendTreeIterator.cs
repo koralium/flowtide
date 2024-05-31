@@ -10,22 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Authzed.Api.V1;
-using Grpc.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.SpiceDB
+namespace FlowtideDotNet.Storage.AppendTree
 {
-    public class SpiceDbSourceOptions
+    public interface IAppendTreeIterator<K, V> : IAsyncEnumerable<KeyValuePair<K, V>>
     {
-        public required ChannelBase Channel { get; set; }
-
-        public Func<Metadata>? GetMetadata { get; set; }
-
-        public Consistency? Consistency { get; set; } 
+        ValueTask Seek(in K key, in IComparer<K>? searchComparer = null);
     }
 }

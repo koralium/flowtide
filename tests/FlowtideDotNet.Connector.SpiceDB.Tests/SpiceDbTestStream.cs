@@ -70,6 +70,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                 factory.AddSpiceDbSource("*", new SpiceDbSourceOptions()
                 {
                     Channel = grpcChannel,
+                    Consistency = new Consistency()
+                    {
+                        FullyConsistent = true
+                    },
                     GetMetadata = () =>
                     {
                         var metadata = new Metadata();
@@ -78,7 +82,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                     }
                 });
             }
-            base.AddReadResolvers(factory);
+            else
+            {
+                base.AddReadResolvers(factory);
+            }
         }
     }
 }

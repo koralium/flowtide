@@ -12,6 +12,7 @@
 
 using BenchmarkDotNet.Running;
 using DifferntialCompute.Benchmarks;
+using FlowtideDotNet.Benchmarks;
 using FlowtideDotNet.Benchmarks.Stream;
 
-var summary = BenchmarkRunner.Run<StreamBenchmark>();
+var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private static int CalculateTargetNumber(ExchangeRelation exchangeRelation)
         {
-            return exchangeRelation.Targets.Where(x => x.Type == ExchangeTargetType.StandardOutput).Count();
+            return exchangeRelation.Targets.Count(x => x.Type == ExchangeTargetType.StandardOutput);
         }
 
         public override string DisplayName => "Exchange";
@@ -89,19 +89,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public override async Task QueueTrigger(TriggerEvent triggerEvent)
         {
             // Check if it is a request to fetch data from a pull bucket
-            if (triggerEvent.State is ExchangeFetchDataMessage exchangeFetchDataRequest)
+            if (triggerEvent.State is ExchangeFetchDataMessage exchangeFetchDataRequest &&
+                triggerEvent.Name.StartsWith(PullBucketRequestTriggerPrefix))
             {
-                if (triggerEvent.Name.StartsWith(PullBucketRequestTriggerPrefix))
+                var exchangeIdString = triggerEvent.Name.Substring(PullBucketRequestTriggerPrefix.Length);
+                if (int.TryParse(exchangeIdString, out var exchangeId))
                 {
-                    var exchangeIdString = triggerEvent.Name.Substring(PullBucketRequestTriggerPrefix.Length);
-                    if (int.TryParse(exchangeIdString, out var exchangeId))
-                    {
-                        await _executor.GetPullBucketData(exchangeId, exchangeFetchDataRequest);
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Invalid exchange target id, it must be an integer value");
-                    }
+                    await _executor.GetPullBucketData(exchangeId, exchangeFetchDataRequest);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Invalid exchange target id, it must be an integer value");
                 }
             }
             if (triggerEvent.State is CheckpointRequestedMessage)

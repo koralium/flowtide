@@ -1,6 +1,7 @@
 using Authzed.Api.V1;
 using Grpc.Core;
 using System.Buffers.Text;
+using System.Diagnostics;
 using System.Text;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Tests
@@ -181,6 +182,9 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                 }
             });
             await permissionClient.WriteRelationshipsAsync(writeRequest, metadata);
+
+            // Wait 1 second so it is guaranteed that the data has been updated
+            await Task.Delay(1000);
 
             await stream.WaitForUpdate();
             var actual2 = stream.GetActualRowsAsVectors();
@@ -488,6 +492,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                     {
                         ResourceType = "document",
                         OptionalRelation = "reader"
+                    },
+                    Consistency = new Consistency()
+                    {
+                        FullyConsistent = true
                     }
                 });
             stream.Generate(10);
@@ -503,6 +511,8 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             ");
 
             List<ReadRelationshipsResponse>? existing;
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
             while (true)
             {
                 existing = await permissionClient.ReadRelationships(new ReadRelationshipsRequest()
@@ -520,6 +530,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                 if (existing.Count == 10)
                 {
                     break;
+                }
+                if (stopwatch.ElapsedMilliseconds > 10000)
+                {
+                    Assert.Fail("Could not reach count of 10, current count: " + existing.Count.ToString());
                 }
                 await Task.Delay(10);
             }
