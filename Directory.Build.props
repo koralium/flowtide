@@ -2,4 +2,8 @@
   <PropertyGroup Label="Version settings">
     <DefaultNetTargetFramework>net8.0</DefaultNetTargetFramework>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>$(DefineConstants)$(FeatureFlags.Replace("#",";"))</DefineConstants>
+  </PropertyGroup>
 </Project>
