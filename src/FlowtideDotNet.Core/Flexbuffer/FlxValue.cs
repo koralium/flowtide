@@ -24,11 +24,11 @@ namespace FlexBuffers
     public struct FlxValue
     {
         public static readonly FlxValue Null = FlxValue.FromBytes(FlexBuffer.Null());
-        private readonly byte[] _buffer;
+        internal readonly byte[] _buffer;
         internal readonly int _offset;
         internal readonly byte _parentWidth;
         internal readonly byte _byteWidth;
-        private readonly Type _type;
+        internal readonly Type _type;
 
         internal FlxValue(byte[] buffer, int offset, byte parentWidth, byte packedType)
         {
