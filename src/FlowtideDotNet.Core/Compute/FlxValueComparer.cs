@@ -12,6 +12,8 @@
 
 using FlowtideDotNet.Core.Flexbuffer;
 using FlexBuffers;
+using SqlParser.Ast;
+using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Core.Compute
 {
@@ -43,9 +45,30 @@ namespace FlowtideDotNet.Core.Compute
             return dec.ValueType - b.ValueType;
         }
 
-        public static int CompareTo(FlxValue a, FlxValue b)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int CompareLongSameWidth(in FlxValue a, in FlxValue b, in byte width) 
         {
-            var tComp = a.ValueType.CompareTo(b.ValueType);
+            if (width == 1)
+            {
+                return a.Buffer[a._offset] - b.Buffer[b._offset];
+            }
+
+            if (width == 2)
+            {
+                return BitConverter.ToInt16(a.Buffer.Slice(a._offset, 2)) - BitConverter.ToInt16(b.Buffer.Slice(b._offset, 2));
+            }
+
+            if (width == 4)
+            {
+                return BitConverter.ToInt32(a.Buffer.Slice(a._offset, 4)) - BitConverter.ToInt32(b.Buffer.Slice(b._offset, 4));
+            }
+
+            return BitConverter.ToInt64(a.Buffer.Slice(a._offset, 8)).CompareTo(BitConverter.ToInt64(b.Buffer.Slice(b._offset, 8)));
+        }
+
+        public static int CompareTo(in FlxValue a, in FlxValue b)
+        {
+            var tComp = a.ValueType - b.ValueType;
             if (tComp == 0)
             {
                 // Same tpe
@@ -64,6 +87,10 @@ namespace FlowtideDotNet.Core.Compute
                 }
                 if (a.ValueType == FlexBuffers.Type.Int)
                 {
+                    if (a._parentWidth == b._parentWidth)
+                    {
+                        return CompareLongSameWidth(in a, in b, in a._parentWidth);
+                    }
                     return a.AsLong.CompareTo(b.AsLong);
                 }
                 if (a.ValueType == FlexBuffers.Type.Key)

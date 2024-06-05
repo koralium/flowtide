@@ -21,16 +21,16 @@ namespace FlowtideDotNet.Core.Operators.Read
         private FlxVector _vector;
         internal bool IsDeleted { get; set; }
 
-        internal IngressData(Memory<byte> bytes, bool isDeleted)
+        internal IngressData(byte[] bytes, bool isDeleted)
         {
             Memory = bytes;
             _vector = FlxValue.FromMemory(bytes).AsVector;
             IsDeleted = isDeleted;
         }
 
-        public Span<byte> Span => Memory.Span;
+        public Span<byte> Span => Memory;
 
-        public Memory<byte> Memory { get; internal set; }
+        public byte[] Memory { get; internal set; }
 
         public FlxVector Vector => _vector;
 
@@ -40,12 +40,6 @@ namespace FlowtideDotNet.Core.Operators.Read
         {
             dest[0] = IsDeleted ? (byte)1 : (byte)0;
             Span.CopyTo(dest.Slice(1));
-        }
-
-        public static IngressData CreateFromWal(Memory<byte> bytes)
-        {
-            var isDeleted = bytes.Span[0];
-            return new IngressData(bytes.Slice(1), isDeleted == 1);
         }
 
         public static IngressData Create(Action<IFlexBufferVectorBuilder> vector)
