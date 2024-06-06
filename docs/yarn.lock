@@ -3646,10 +3646,10 @@ dns-packet@^5.2.2:
   dependencies:
     "@leichtgewicht/ip-codec" "^2.0.1"
 
-docusaurus-lunr-search@^3.3.0:
-  version "3.3.0"
-  resolved "https://registry.yarnpkg.com/docusaurus-lunr-search/-/docusaurus-lunr-search-3.3.0.tgz#b79af937d28ff2ab4d766d2e42c1e4bcff50e0a6"
-  integrity sha512-F2fSAA+6vRCHxF4R+rV8xSg1cYY7pXFKdbBNlTX6+dyKdwCWcnrmTXJmlCkN4DT65ntNU9iTd+mZ8lZzH3Lncg==
+docusaurus-lunr-search@^3.3.2:
+  version "3.3.2"
+  resolved "https://registry.yarnpkg.com/docusaurus-lunr-search/-/docusaurus-lunr-search-3.3.2.tgz#23699b899d9275402e3004e1fe6085e1bae4f007"
+  integrity sha512-+TXfiRAwIAaNwME8bBZvC+osfoXjJSNs5BcZu92lIHoWc3Myct4Nw3jU0FMXQCQGQcQ0FgFqMDoh56LPCLVaxQ==
   dependencies:
     autocomplete.js "^0.37.0"
     clsx "^1.2.1"
@@ -3661,7 +3661,6 @@ docusaurus-lunr-search@^3.3.0:
     lunr-languages "^1.4.0"
     mark.js "^8.11.1"
     minimatch "^3.0.4"
-    object-assign "^4.1.1"
     rehype-parse "^7.0.1"
     to-vfile "^6.1.0"
     unified "^9.0.0"
