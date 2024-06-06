@@ -150,7 +150,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             Debug.Assert(_tree != null, nameof(_tree));
 
             bool isUpdate = false;
-            Memory<byte>? previousValue = null;
+            byte[]? previousValue = null;
 
             var ingressInput = IngressData.Create(b =>
             {
@@ -197,12 +197,12 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
             if (isUpdate)
             {
-                if (!previousValue.HasValue)
+                if (previousValue == null)
                 {
                     throw new InvalidOperationException("Previous value was null, should not happen");
                 }
                 output.Add(new RowEvent(1, 0, new CompactRowData(ingressInput.Memory)));
-                output.Add(new RowEvent(-1, 0, new CompactRowData(previousValue.Value)));
+                output.Add(new RowEvent(-1, 0, new CompactRowData(previousValue)));
             }
             else if (added)
             {
