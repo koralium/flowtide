@@ -661,18 +661,24 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             newNode.next = child.next;
 
             // Copy half of the values on the right to the new node
-            newNode.keys.AddRange(child.keys.GetRange(m_stateClient.Metadata.BucketLength / 2, child.keys.Count - m_stateClient.Metadata.BucketLength / 2));
-            newNode.values.AddRange(child.values.GetRange(m_stateClient.Metadata.BucketLength / 2, child.values.Count - m_stateClient.Metadata.BucketLength / 2));
+            var keysHalf = child.keys.Count / 2;
+            newNode.keys.AddRange(child.keys.GetRange(keysHalf, child.keys.Count - keysHalf));
+            newNode.values.AddRange(child.values.GetRange(keysHalf, child.values.Count - keysHalf));
             newNode.ExitWriteLock();
 
             child.EnterWriteLock();
             // Clear the values from the child, this is so the values and keys can be garbage collected
-            child.keys.RemoveRange(m_stateClient.Metadata.BucketLength / 2, child.keys.Count - m_stateClient.Metadata.BucketLength / 2);
-            child.values.RemoveRange(m_stateClient.Metadata.BucketLength / 2, child.values.Count - m_stateClient.Metadata.BucketLength / 2);
+            child.keys.RemoveRange(keysHalf, child.keys.Count - keysHalf);
+            child.values.RemoveRange(keysHalf, child.values.Count - keysHalf);
 
             // Set the next pointer on the child for iteration
             child.next = newNodeId;
             child.ExitWriteLock();
+
+            if (child.keys.Count == 0)
+            {
+
+            }
 
             var splitKey = child.keys[child.keys.Count - 1];
             // Add the children to the parent node
@@ -824,14 +830,17 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var newNodeId = m_stateClient.GetNewPageId(); // _metadata.GetNextId();
             var newNode = new InternalNode<K, V>(newNodeId);
 
-            newNode.keys.AddRange(child.keys.GetRange(m_stateClient.Metadata.BucketLength / 2, child.keys.Count - m_stateClient.Metadata.BucketLength / 2));
-            newNode.children.AddRange(child.children.GetRange(m_stateClient.Metadata.BucketLength / 2, (m_stateClient.Metadata.BucketLength / 2) + 1));
+            var keysHalf = (child.keys.Count + 1) / 2;
+            var keysHalfLower = (child.keys.Count) / 2;
+            var childHalf = (child.children.Count + 1) / 2;
+            newNode.keys.AddRange(child.keys.GetRange(keysHalf, child.keys.Count - keysHalf));
+            newNode.children.AddRange(child.children.GetRange(keysHalf, childHalf));
 
-            var splitKey = child.keys[m_stateClient.Metadata.BucketLength / 2 - 1];
+            var splitKey = child.keys[keysHalf - 1];
 
             child.EnterWriteLock();
-            child.keys.RemoveRange(m_stateClient.Metadata.BucketLength / 2 - 1, m_stateClient.Metadata.BucketLength / 2 + 1);
-            child.children.RemoveRange(m_stateClient.Metadata.BucketLength / 2, m_stateClient.Metadata.BucketLength / 2 + 1);
+            child.keys.RemoveRange(keysHalf - 1, keysHalfLower + 1);
+            child.children.RemoveRange(keysHalf, childHalf);
             child.ExitWriteLock();
 
             parent.EnterWriteLock();

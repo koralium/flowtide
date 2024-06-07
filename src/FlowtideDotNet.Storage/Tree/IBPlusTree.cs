@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Storage.Tree
 {
     public enum GenericWriteOperation
@@ -56,5 +57,6 @@ namespace FlowtideDotNet.Storage.Tree
         /// </summary>
         /// <returns></returns>
         ValueTask Clear();
+        ValueTask BulkWriteSortedData(List<KeyValuePair<K, V>> items);
     }
 }

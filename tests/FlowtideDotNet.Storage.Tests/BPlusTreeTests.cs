@@ -410,5 +410,120 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
         }
+
+        [Fact]
+        public async Task TestBulk()
+        {
+            //for (int i = 0; i < 10; i++)
+            //{
+            //    await _tree.Upsert(i, $"{i}");
+            //}
+
+            var data1 = new List<KeyValuePair<long, string>>();
+            for (int i = 0; i < 10; i++)
+            {
+                data1.Add(new KeyValuePair<long, string>(i, $"{i}"));
+            }
+
+            await _tree.BulkWriteSortedData(data1);
+
+            var data = new List<KeyValuePair<long, string>>();
+            for (int i = 10; i < 20; i++)
+            {
+                data.Add(new KeyValuePair<long, string>(i, $"{i}"));
+            }
+
+            await _tree.BulkWriteSortedData(data);
+
+            var it = _tree.CreateIterator();
+            await it.SeekFirst();
+
+            int count = 0;
+            await foreach (var page in it)
+            {
+                foreach (var kv in page)
+                {
+                    Assert.Equal(count, kv.Key);
+                    count++;
+                }
+            }
+            Assert.Equal(10, count);
+        }
+
+        [Fact]
+        public async Task TestBulkRandom()
+        {
+            //for (int i = 0; i < 10; i++)
+            //{
+            //    await _tree.Upsert(i, $"{i}");
+            //}
+            Random r = new Random(123);
+            List<KeyValuePair<long, string>> bulkData = new List<KeyValuePair<long, string>>();
+            for (int i = 0; i < 32; i++)
+            {
+                var n = r.Next();
+                bulkData.Add(new KeyValuePair<long, string>(n, $"{n}"));
+
+                if (i == 23)
+                {
+                    var graphUrlBeforeBug = KrokiUrlBuilder.ToKrokiUrl(await _tree.Print());
+                }
+                if (bulkData.Count == 4)
+                {
+                    var ordered = bulkData.OrderBy(x => x.Key).ToList();
+                    await _tree.BulkWriteSortedData(ordered);
+                    bulkData.Clear();
+                }
+                var iterator = _tree.CreateIterator();
+                await iterator.SeekFirst();
+                long val = 0;
+                await foreach(var page in iterator)
+                {
+                    foreach (var kv in page)
+                    {
+                        if (val > kv.Key)
+                        {
+                            var buggyTree = KrokiUrlBuilder.ToKrokiUrl(await _tree.Print());
+                            Assert.Fail();
+                        }
+                        else
+                        {
+                            val = kv.Key;
+                        }
+                        
+                    }
+                }
+                //await tree.Upsert(i, $"hello{i}");
+            }
+
+            var graphUrl = KrokiUrlBuilder.ToKrokiUrl(await _tree.Print());
+        }
+
+        [Fact]
+        public async Task TestUpsertRandom()
+        {
+            //for (int i = 0; i < 10; i++)
+            //{
+            //    await _tree.Upsert(i, $"{i}");
+            //}
+            Random r = new Random(123);
+            List<KeyValuePair<long, string>> bulkData = new List<KeyValuePair<long, string>>();
+            for (int i = 0; i < 128; i++)
+            {
+                var n = r.Next();
+                //bulkData.Add(new KeyValuePair<long, string>(n, $"{n}"));
+
+                await _tree.Upsert(n, $"{n}");
+                //if (bulkData.Count == 4)
+                //{
+                //    var ordered = bulkData.OrderBy(x => x.Key).ToList();
+                //    await _tree.BulkWriteSortedData(ordered);
+                //    bulkData.Clear();
+                //}
+                //await tree.Upsert(i, $"hello{i}");
+            }
+
+            var graphUrl = KrokiUrlBuilder.ToKrokiUrl(await _tree.Print());
+        }
     }
 }

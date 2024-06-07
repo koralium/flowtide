@@ -25,7 +25,7 @@ namespace DifferntialCompute.Benchmarks
         private IStateManagerClient nodeClient;
         private IBPlusTree<long, string> tree;
 
-        [Params(1000, 5000, 10000)]
+        [Params(1000)] //, 5000, 10000)]
         public int CachePageCount;
 
         [GlobalSetup]
@@ -65,6 +65,54 @@ namespace DifferntialCompute.Benchmarks
             for (int i = 0; i < 1_000_000; i++)
             {
                 await tree.Upsert(i, $"hello{i}");
+            }
+        }
+
+        [Benchmark]
+        public async Task InsertRandom()
+        {
+            Random r = new Random(123);
+            for (int i = 0; i < 1_000_000; i++)
+            {
+                var n = r.Next();
+                await tree.Upsert(n, $"hello{n}");
+            }
+        }
+
+        [Benchmark]
+        public async Task InsertInOrderBulk()
+        {
+            List<KeyValuePair<long, string>> bulkData = new List<KeyValuePair<long, string>>();
+            for (int i = 0; i < 1_000_000; i++)
+            {
+                bulkData.Add(new KeyValuePair<long, string>(i, $"hello{i}"));
+
+                if (bulkData.Count == 100)
+                {
+                    await tree.BulkWriteSortedData(bulkData);
+                    bulkData.Clear();
+                }
+                //await tree.Upsert(i, $"hello{i}");
+            }
+        }
+
+        [Benchmark]
+        public async Task InsertRandomBulk()
+        {
+            Random r = new Random(123);
+            List<KeyValuePair<long, string>> bulkData = new List<KeyValuePair<long, string>>();
+            for (int i = 0; i < 1_000_000; i++)
+            {
+                var n = r.Next();
+                bulkData.Add(new KeyValuePair<long, string>(n, $"hello{n}"));
+
+                if (bulkData.Count == 100)
+                {
+                    var ordered = bulkData.OrderBy(x => x.Key).ToList();
+                    await tree.BulkWriteSortedData(ordered);
+                    bulkData.Clear();
+                }
+                //await tree.Upsert(i, $"hello{i}");
             }
         }
     }
