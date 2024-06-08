@@ -464,7 +464,7 @@ namespace FlowtideDotNet.Storage.Tests
                 var n = r.Next();
                 bulkData.Add(new KeyValuePair<long, string>(n, $"{n}"));
 
-                if (i == 23)
+                if (i == 19)
                 {
                     var graphUrlBeforeBug = KrokiUrlBuilder.ToKrokiUrl(await _tree.Print());
                 }

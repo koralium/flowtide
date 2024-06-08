@@ -188,8 +188,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             else if (node is InternalNode<K, V> internalNode)
             {
-                BulkWriteSortedData_Internal(waitList, splitList, items, 0, items.Count, internalNode, 0, internalNode.keys.Count);
-
+                //BulkWriteSortedData_Internal(waitList, splitList, items, 0, items.Count, internalNode, 0, internalNode.keys.Count);
+                BulkWriteSortedData_InternalStart(waitList, splitList, items, insertIndex, insertCount, internalNode, 0, internalNode.keys.Count - 1);
+                //BulkWriteSortedData_InternalNode(waitList, splitList, items, 0, items.Count, internalNode, 0, internalNode.keys.Count);
                 // Check for split
                 if (internalNode.keys.Count >= this.m_stateClient.Metadata!.BucketLength)
                 {
@@ -227,6 +228,99 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     leaf.InsertAt(items[i].Key, items[i].Value, index);
                 }
             }
+        }
+
+        private void BulkWriteSortedData_InternalStart(
+            List<Task> waitList,
+            Dictionary<long, SplitInfo> splitList,
+            List<KeyValuePair<K, V>> items,
+            int index,
+            int endIndex,
+            InternalNode<K, V> node,
+            int searchIndex,
+            int searchCount
+            )
+        {
+
+            //var medianItemIndex = count / 2;
+            var leftIndex = node.keys.BinarySearch(searchIndex, searchCount, items[index].Key, m_keyComparer);
+            var rightIndex = node.keys.BinarySearch(searchIndex, searchCount, items[endIndex - 1].Key, m_keyComparer);
+            if (leftIndex < 0)
+            {
+                leftIndex = ~leftIndex;
+            }
+            if (rightIndex < 0)
+            {
+                rightIndex = ~rightIndex;
+            }
+            if (leftIndex == rightIndex)
+            {
+                // All items are in the same bucket
+                throw new NotImplementedException();
+                //BulkWriteSortedData_Internal(waitList, splitList, items, index, endIndex - index, node, leftIndex, rightIndex - leftIndex);
+                return;
+            }
+            else
+            {
+                BulkWriteSortedData_InternalNode(waitList, splitList, items, index, endIndex, node, leftIndex, rightIndex);
+            }
+            
+        }
+
+        private void BulkWriteSortedData_InternalNode(
+            List<Task> waitList,
+            Dictionary<long, SplitInfo> splitList,
+            List<KeyValuePair<K, V>> items,
+            int insertLeftIndex,
+            int insertRightIndex,
+            InternalNode<K, V> node,
+            int searchLeftIndex,
+            int searchRightIndex
+            )
+        {
+            if (searchLeftIndex == searchRightIndex)
+            {
+                var getChildTask = m_stateClient.GetValue(node.children[searchLeftIndex], "SearchRoot");
+
+                // Check if child is already fetched, if so, continue, otherwise start task that will wait for the result.
+                if (getChildTask.IsCompletedSuccessfully)
+                {
+                    BulkWriteSortedData_Node(waitList, splitList, items, getChildTask.Result!, node, searchLeftIndex, insertLeftIndex, insertRightIndex - insertLeftIndex);
+                }
+                else
+                {
+                    var task = getChildTask.AsTask().ContinueWith(childNode =>
+                    {
+                        BulkWriteSortedData_Node(waitList, splitList, items, getChildTask.Result!, node, searchLeftIndex, insertLeftIndex, insertRightIndex - insertLeftIndex);
+                    });
+                    lock (waitList)
+                    {
+                        waitList.Add(task);
+                    }
+                }
+                return;
+            }
+
+            var medianItemIndex = (insertLeftIndex + insertRightIndex + 1) / 2;
+
+            var bucketIndex = node.keys.BinarySearch(searchLeftIndex, searchRightIndex - searchLeftIndex, items[medianItemIndex].Key, m_keyComparer);
+            var leftIndex = node.keys.BinarySearch(searchLeftIndex, searchRightIndex - searchLeftIndex, items[insertLeftIndex].Key, m_keyComparer);
+            var rightIndex = node.keys.BinarySearch(searchLeftIndex, searchRightIndex - searchLeftIndex, items[insertRightIndex].Key, m_keyComparer);
+            if (leftIndex < 0)
+            {
+                leftIndex = ~leftIndex;
+            }
+            if (rightIndex < 0)
+            {
+                rightIndex = ~rightIndex;
+            }
+            if (bucketIndex < 0)
+            {
+                bucketIndex = ~bucketIndex;
+            }
+
+            BulkWriteSortedData_InternalNode(waitList, splitList, items, insertLeftIndex, medianItemIndex, node, searchLeftIndex, bucketIndex);
+            BulkWriteSortedData_InternalNode(waitList, splitList, items, medianItemIndex + 1, insertRightIndex, node, bucketIndex + 1, searchRightIndex);
         }
 
         private void BulkWriteSortedData_Internal(
