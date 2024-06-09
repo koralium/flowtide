@@ -11,11 +11,14 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Columns;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Join;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -49,6 +52,20 @@ namespace FlowtideDotNet.Benchmarks
 
         private List<JoinStreamEvent> compactData = new List<JoinStreamEvent>();
         private List<JoinStreamEvent> arrayData = new List<JoinStreamEvent>();
+        private FlowtideDotNet.Core.ColumnStore.Column column = new FlowtideDotNet.Core.ColumnStore.Column();
+        private List<string> longList = new List<string>();
+        private StringColumn stringColumn = new StringColumn();
+
+        [GlobalSetup]
+        public void GlobalSetup()
+        {
+            Random r = new Random(123);
+            for (int i = 0; i < 1_000_000; i++)
+            {
+                var val = r.Next();
+                stringColumn.Add(new FlowtideDotNet.Core.ColumnStore.StringValue(val.ToString()));
+            }
+        }
 
 
         [IterationSetup()]
@@ -57,14 +74,48 @@ namespace FlowtideDotNet.Benchmarks
             Random r = new Random(123);
             compactData.Clear();
             arrayData.Clear();
+            column = new Core.ColumnStore.Column();
+            longList.Clear();
             for (int i = 0; i < 1_000_000; i++)
             {
+                var val = r.Next();
                 var e = RowEvent.Create(1, 0, b =>
                 {
-                    b.Add(r.Next());
+                    b.Add(val);
                 });
+                longList.Add(val.ToString());
                 compactData.Add(new JoinStreamEvent(0, 0, e.RowData));
                 arrayData.Add(new JoinStreamEvent(0, 0, ArrayRowData.Create(e.RowData, default)));
+                column.InsertAt(i, new FlowtideDotNet.Core.ColumnStore.Int64Value(val));
+            }
+        }
+
+        [Benchmark]
+        public void CompareAgainstColumnStoreString()
+        {
+            var strVal = new FlowtideDotNet.Core.ColumnStore.StringValue("0");
+            for (int i = 0; i < arrayData.Count; i++)
+            {
+                stringColumn.CompareToStrict(i, strVal);
+            }
+        }
+
+        [Benchmark]
+        public void CompareLongList()
+        {
+            for (int i = 0; i < compactData.Count; i++)
+            {
+                longList[0].CompareTo(longList[i]);
+            }
+        }
+
+        [Benchmark]
+        public void CompareAgainstColumnStore()
+        {
+            var val = new FlowtideDotNet.Core.ColumnStore.Int64Value(0);
+            for (int i = 0; i < arrayData.Count; i++)
+            {
+                column.CompareTo(i, val);
             }
         }
 
@@ -107,5 +158,7 @@ namespace FlowtideDotNet.Benchmarks
                 comparer.Compare(arrayData[0], arrayData[i]);
             }
         }
+
+        
     }
 }
