@@ -14,16 +14,17 @@ using System.Text;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal class InternalNode<K, V> : BaseNode<K>
+    internal class InternalNode<K, V, TKeyContainer> : BaseNode<K, TKeyContainer>
+        where TKeyContainer : IKeyContainer<K>
     {
         public List<long> children;
 
-        public InternalNode(long id) : base(id)
+        public InternalNode(long id, TKeyContainer keyContainer) : base(id, keyContainer)
         {
             children = new List<long>();
         }
 
-        public override async Task Print(StringBuilder stringBuilder, Func<long, ValueTask<BaseNode<K>>> lookupFunc)
+        public override async Task Print(StringBuilder stringBuilder, Func<long, ValueTask<BaseNode<K, TKeyContainer>>> lookupFunc)
         {
             stringBuilder.Append($"node{Id}");
             stringBuilder.Append($"[label = <");
@@ -35,7 +36,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 stringBuilder.Append($"<td port=\"f{i}\"></td>");
                 stringBuilder.Append("<td>");
-                stringBuilder.Append(keys[i]);
+                stringBuilder.Append(keys.Get(i));
                 stringBuilder.Append("</td>");
             }
             stringBuilder.Append($"<td port=\"f{keys.Count}\"></td>");

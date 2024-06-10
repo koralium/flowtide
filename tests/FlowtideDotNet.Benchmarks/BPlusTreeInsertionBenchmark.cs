@@ -23,7 +23,7 @@ namespace DifferntialCompute.Benchmarks
     public class BPlusTreeInsertionBenchmark
     {
         private IStateManagerClient nodeClient;
-        private IBPlusTree<long, string> tree;
+        private IBPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>> tree;
 
         [Params(1000, 5000, 10000)]
         public int CachePageCount;
@@ -49,12 +49,12 @@ namespace DifferntialCompute.Benchmarks
         [IterationSetup]
         public void IterationSetup()
         {
-            tree = nodeClient.GetOrCreateTree<long, string>("tree", new BPlusTreeOptions<long, string>()
+            tree = nodeClient.GetOrCreateTree("tree", new BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
             {
                 BucketSize = 1024,
-                Comparer = new LongComparer(),
-                KeySerializer = new LongSerializer(),
-                ValueSerializer = new StringSerializer()
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
             }).GetAwaiter().GetResult();
             tree.Clear();
         }

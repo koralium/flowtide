@@ -10,18 +10,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
 namespace FlowtideDotNet.Storage.Tree
 {
-    public interface IBPlusTreePageIterator<K, V> : IEnumerable<KeyValuePair<K, V>>
+    public interface IValueContainer<V>
     {
-        /// <summary>
-        /// Saves the current page, allows the user to modify values on the page and then trigger a save.
-        /// </summary>
-        /// <returns></returns>
-        ValueTask SavePage();
+        void Insert(int index, V value);
 
-        IKeyContainer<K> Keys { get; }
+        void Update(int index, V value);
 
-        IValueContainer<V> Values { get; }
+        void RemoveAt(int index);
+
+        int Count { get; }
+
+        V Get(int index);
+
+        void AddRangeFrom(IValueContainer<V> container, int start, int count);
+
+        void RemoveRange(int start, int count);
     }
 }
