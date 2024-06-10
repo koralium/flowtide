@@ -136,5 +136,15 @@ namespace FlowtideDotNet.Core.ColumnStore
             _length += str.Span.Length;
             return resultOffset;
         }
+
+        public int BinarySearch(in IDataValue dataValue)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int BinarySearch(in IDataValue dataValue, int start, int end)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

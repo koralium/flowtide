@@ -23,6 +23,8 @@ namespace FlowtideDotNet.Core.ColumnStore
     {
         private readonly List<Column> columns;
 
+        public int Count => columns[0].Count;
+
         public EventBatchData(List<Column> columns)
         {
             this.columns = columns;

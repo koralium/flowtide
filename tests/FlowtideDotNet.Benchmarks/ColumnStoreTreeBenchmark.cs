@@ -11,22 +11,34 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
+using FASTER.core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FASTER.core;
 using Microsoft.Extensions.Logging.Abstractions;
+using Substrait.Protobuf;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace DifferntialCompute.Benchmarks
+namespace FlowtideDotNet.Benchmarks
 {
-    public class BPlusTreeInsertionBenchmark
+    public class ColumnStoreTreeBenchmark
     {
         private IStateManagerClient nodeClient;
-        private IBPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>> tree;
+        private IBPlusTree<ColumnRowReference, string, ColumnKeyStorageContainer, ListValueContainer<string>> tree;
 
         //[Params(1000, 5000, 10000)]
         //public int CachePageCount;
+        private EventBatchData data = new EventBatchData(new List<Column>()
+        {
+            new Column()
+        });
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -40,20 +52,25 @@ namespace DifferntialCompute.Benchmarks
                 CheckpointDir = "./data",
                 TemporaryStorageFactory = localStorage
             }, NullLogger.Instance, new System.Diagnostics.Metrics.Meter("storage"), "storage");
-            
+
             stateManager.InitializeAsync().GetAwaiter().GetResult();
 
             nodeClient = stateManager.GetOrCreateClient("node1");
+
+            for (int i = 0; i < 1_000_000; i++)
+            {
+                data.Columns[0].Add(new Int64Value(i));
+            }
         }
 
         [IterationSetup]
         public void IterationSetup()
         {
-            tree = nodeClient.GetOrCreateTree("tree", new BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
+            tree = nodeClient.GetOrCreateTree("tree", new BPlusTreeOptions<ColumnRowReference, string, ColumnKeyStorageContainer, ListValueContainer<string>>()
             {
                 BucketSize = 1024,
-                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
-                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                Comparer = new ColumnComparer(1),
+                KeySerializer = new ColumnStoreSerializer(),
                 ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
             }).GetAwaiter().GetResult();
             tree.Clear();
@@ -64,7 +81,11 @@ namespace DifferntialCompute.Benchmarks
         {
             for (int i = 0; i < 1_000_000; i++)
             {
-                await tree.Upsert(i, $"hello{i}");
+                await tree.Upsert(new ColumnRowReference()
+                {
+                    referenceBatch = data,
+                    RowIndex = i
+                }, $"hello{i}");
             }
         }
     }

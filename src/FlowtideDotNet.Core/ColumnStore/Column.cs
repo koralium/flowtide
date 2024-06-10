@@ -146,6 +146,17 @@ namespace FlowtideDotNet.Core.ColumnStore
             _offsets.RemoveAt(index);
         }
 
+        public int BinarySarch(in IDataValue value, int start, int end)
+        {
+            var type = (byte)value.Type;
+            var valueColumn = _valueColumns[type];
+            if (valueColumn == null)
+            {
+                return ~0;
+            }
+            return valueColumn.BinarySearch(value, start, end);
+        }
+
         public int CompareTo(in Column otherColumn, in int thisIndex, in int otherIndex)
         {
             var thisType = _typeList[thisIndex];

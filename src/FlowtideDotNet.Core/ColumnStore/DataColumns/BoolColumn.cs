@@ -18,40 +18,53 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    internal class Int64Column : IDataColumn
+    internal class BoolColumn : IDataColumn
     {
-        private List<long> _data;
-
-        public Int64Column()
-        {
-            _data = new List<long>();
-        }
-
+        private BitmapArray _bitmapArray = new();
+        private int _count;
         public int Add(in IDataValue value)
         {
-            var index = _data.Count;
-            _data.Add(value.AsLong);
-            return index;
+            if (value.AsBool)
+            {
+                _bitmapArray.Set(_count);
+            }
+            else
+            {
+                _bitmapArray.Clear(_count);
+            }
+            return _count++;
         }
 
         public int Add<T>(in T value) where T : struct, IDataValue
         {
-            var index = _data.Count;
-            _data.Add(value.AsLong);
-            return index;
+            if (value.AsBool)
+            {
+                _bitmapArray.Set(_count);
+            }
+            else
+            {
+                _bitmapArray.Clear(_count);
+            }
+            return _count++;
+        }
+
+        public int BinarySearch(in IDataValue dataValue)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int BinarySearch(in IDataValue dataValue, int start, int end)
+        {
+            throw new NotImplementedException();
         }
 
         public int CompareToStrict(in int index, in IDataValue value)
         {
-            return _data[index].CompareTo(value.AsLong);
+            throw new NotImplementedException();
         }
 
         public int CompareToStrict(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
-            if (otherColumn is Int64Column int64Column)
-            {
-                return _data[thisIndex].CompareTo(int64Column._data[otherIndex]);
-            }
             throw new NotImplementedException();
         }
 
@@ -62,17 +75,25 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataValue GetValueAt(in int index)
         {
-            return new Int64Value(_data[index]);
+            return new BoolValue(_bitmapArray.IsSet(index));
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
         {
-            throw new NotImplementedException();
+            dataValueContainer._type = ArrowTypeId.Boolean;
+            dataValueContainer._boolValue = new BoolValue(_bitmapArray.IsSet(index));
         }
 
         public int Update(in int index, in IDataValue value)
         {
-            _data[index] = value.AsLong;
+            if (value.AsBool)
+            {
+                _bitmapArray.Set(index);
+            }
+            else
+            {
+                _bitmapArray.Clear(index);
+            }
             return index;
         }
 

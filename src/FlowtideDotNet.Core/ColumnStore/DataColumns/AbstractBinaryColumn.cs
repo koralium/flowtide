@@ -77,5 +77,15 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public abstract void GetValueAt(in int index, in DataValueContainer dataValueContainer);
+
+        public int BinarySearch(in IDataValue dataValue)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int BinarySearch(in IDataValue dataValue, int start, int end)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

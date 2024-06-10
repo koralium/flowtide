@@ -41,6 +41,16 @@ namespace FlowtideDotNet.Core.ColumnStore
             return index;
         }
 
+        public int BinarySearch(in IDataValue dataValue)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int BinarySearch(in IDataValue dataValue, int start, int end)
+        {
+            throw new NotImplementedException();
+        }
+
         public int CompareToStrict(in int index, in IDataValue value)
         {
             throw new NotImplementedException();

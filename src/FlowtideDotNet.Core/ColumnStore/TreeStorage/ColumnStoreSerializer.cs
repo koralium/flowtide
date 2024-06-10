@@ -10,31 +10,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore
+namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
-    public interface IDataColumn
+    internal class ColumnStoreSerializer : IBPlusTreeKeySerializer<ColumnRowReference, ColumnKeyStorageContainer>
     {
-        int CompareToStrict<T>(in int index, in T value)
-            where T: struct, IDataValue;
+        public ColumnKeyStorageContainer CreateEmpty()
+        {
+            return new ColumnKeyStorageContainer(1);
+        }
 
-        int CompareToStrict(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);
+        public ColumnKeyStorageContainer Deserialize(in BinaryReader reader)
+        {
+            throw new NotImplementedException();
+        }
 
-        int Add<T>(in T value)
-            where T: struct, IDataValue;
-
-        int Add(in IDataValue value);
-
-        IDataValue GetValueAt(in int index);
-
-        void GetValueAt(in int index, in DataValueContainer dataValueContainer);
-
-        int Update<T>(in int index, in T value)
-            where T: struct, IDataValue;
+        public void Serialize(in BinaryWriter writer, in ColumnKeyStorageContainer values)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
