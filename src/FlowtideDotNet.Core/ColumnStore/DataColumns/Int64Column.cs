@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -61,9 +62,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int CompareToStrict<T>(in int index, in T value) where T : struct, IDataValue
+        public int CompareToStrict<T>(in int index, in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            var longValue = value.AsLong;
+            return _data[index].CompareTo(longValue);
         }
 
         public IDataValue GetValueAt(in int index)
@@ -74,6 +76,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
         {
             throw new NotImplementedException();
+        }
+
+        public (int, int) SearchBoundries(in IDataValue dataValue, int start, int end)
+        {
+            var val = dataValue.AsLong;
+            return IntListSearch.SearchBoundries(_data, val, start, end - start);
         }
 
         public int Update(in int index, in IDataValue value)

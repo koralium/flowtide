@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         public void RemoveRange(int start, int count)
         {
             var end = start + count;
-            for (int i = start; i < end; i++)
+            for (int i = end - 1; i >= start; i--)
             {
                 RemoveAt(i);
             }

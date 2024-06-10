@@ -45,7 +45,18 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             int end = keyContainer.Count;
             for (int i = 0; i < columnCount; i++)
             {
-                return keyContainer._data.Columns[i].BinarySarch(key.referenceBatch.Columns[i].GetValueAt(i), start, end);
+                var (low, high) = keyContainer._data.Columns[i].SearchBoundries(key.referenceBatch.Columns[i].GetValueAt(key.RowIndex), start, end);
+
+                if (low != 0)
+                {
+                    return low;
+                }
+                else
+                {
+                    index = low;
+                    start = low;
+                    end = high;
+                }
             }
             return index;
         }

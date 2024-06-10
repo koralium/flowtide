@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public abstract int Update(in int index, in IDataValue value);
 
-        public int CompareToStrict<T>(in int index, in T value) where T : struct, IDataValue
+        public int CompareToStrict<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
         }
@@ -84,6 +84,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public int BinarySearch(in IDataValue dataValue, int start, int end)
+        {
+            throw new NotImplementedException();
+        }
+
+        public (int, int) SearchBoundries(in IDataValue dataValue, int start, int end)
         {
             throw new NotImplementedException();
         }

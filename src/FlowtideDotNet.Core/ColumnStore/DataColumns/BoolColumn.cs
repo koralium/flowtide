@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int CompareToStrict<T>(in int index, in T value) where T : struct, IDataValue
+        public int CompareToStrict<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
         }
@@ -82,6 +82,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             dataValueContainer._type = ArrowTypeId.Boolean;
             dataValueContainer._boolValue = new BoolValue(_bitmapArray.IsSet(index));
+        }
+
+        public (int, int) SearchBoundries(in IDataValue dataValue, int start, int end)
+        {
+            throw new NotImplementedException();
         }
 
         public int Update(in int index, in IDataValue value)

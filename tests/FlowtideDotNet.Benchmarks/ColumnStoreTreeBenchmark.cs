@@ -12,8 +12,12 @@
 
 using BenchmarkDotNet.Attributes;
 using FASTER.core;
+using FastSerialization;
+using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.Operators.Set;
+using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
@@ -32,6 +36,7 @@ namespace FlowtideDotNet.Benchmarks
     {
         private IStateManagerClient nodeClient;
         private IBPlusTree<ColumnRowReference, string, ColumnKeyStorageContainer, ListValueContainer<string>> tree;
+        private IBPlusTree<RowEvent, string, ListKeyContainer<RowEvent>, ListValueContainer<string>> flxTree;
 
         //[Params(1000, 5000, 10000)]
         //public int CachePageCount;
@@ -39,6 +44,8 @@ namespace FlowtideDotNet.Benchmarks
         {
             new Column()
         });
+
+        private List<RowEvent> rowEvents = new List<RowEvent>();
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -60,6 +67,10 @@ namespace FlowtideDotNet.Benchmarks
             for (int i = 0; i < 1_000_000; i++)
             {
                 data.Columns[0].Add(new Int64Value(i));
+                rowEvents.Add(RowEvent.Create(1, 0, b =>
+                {
+                    b.Add(i);
+                }));
             }
         }
 
@@ -70,14 +81,30 @@ namespace FlowtideDotNet.Benchmarks
             {
                 BucketSize = 1024,
                 Comparer = new ColumnComparer(1),
-                KeySerializer = new ColumnStoreSerializer(),
+                KeySerializer = new ColumnStoreSerializer(1),
                 ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
             }).GetAwaiter().GetResult();
             tree.Clear();
+            flxTree = nodeClient.GetOrCreateTree("flxtree", new BPlusTreeOptions<RowEvent, string, ListKeyContainer<RowEvent>, ListValueContainer<string>>()
+            {
+                BucketSize = 1024,
+                Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer()),
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
+            }).GetAwaiter().GetResult();
         }
 
         [Benchmark]
-        public async Task InsertInOrder()
+        public async Task FlxValueInsertInOrder()
+        {
+            for (int i = 0; i < 1_000_000; i++)
+            {
+                await flxTree.Upsert(rowEvents[i], $"hello{i}");
+            }
+        }
+
+        [Benchmark]
+        public async Task ColumnarInsertInOrder()
         {
             for (int i = 0; i < 1_000_000; i++)
             {

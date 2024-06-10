@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public int CompareToStrict<T>(in int index, in T value)
-            where T : struct, IDataValue
+            where T : IDataValue
         {
             var str = value.AsString;
             var dataSpan = _data.AsSpan();
@@ -143,6 +143,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public int BinarySearch(in IDataValue dataValue, int start, int end)
+        {
+            throw new NotImplementedException();
+        }
+
+        public (int, int) SearchBoundries(in IDataValue dataValue, int start, int end)
         {
             throw new NotImplementedException();
         }

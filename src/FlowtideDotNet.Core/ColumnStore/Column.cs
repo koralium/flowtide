@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+
 namespace FlowtideDotNet.Core.ColumnStore
 {
     /// <summary>
@@ -21,15 +23,22 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <summary>
         /// Contains what type of data is stored in each element.
         /// </summary>
-        private readonly List<ArrowTypeId> _typeList;
-        private readonly List<int> _offsets;
-        private readonly IDataColumn[] _valueColumns;
+        internal readonly List<ArrowTypeId> _typeList;
+        internal readonly List<int> _offsets;
+        internal readonly IDataColumn[] _valueColumns;
+        private int _typesCounter;
 
         /// <summary>
         /// Counter that checks how many deletes have happpened.
         /// When this gets too high, the column should be compacted.
         /// </summary>
         private int _deletesCounter;
+
+        /// <summary>
+        /// Counter that keeps track of how many out of order inserts have happened.
+        /// Too out of order will degrade performance since there wont be as many cache hits.
+        /// </summary>
+        private int outOfOrderCounter;
 
         public Column()
         {
@@ -43,6 +52,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void InsertAt<T>(in int index, in T value)
             where T: struct, IDataValue
         {
+            if (index != _typeList.Count)
+            {
+                outOfOrderCounter++;
+            }
             var typeByte = (byte)value.Type;
             CheckArrayExist(value.Type);
 
@@ -54,6 +67,10 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertAt(in int index, in IDataValue value)
         {
+            if (index != _typeList.Count)
+            {
+                outOfOrderCounter++;
+            }
             var typeByte = (byte)value.Type;
             CheckArrayExist(value.Type);
 
@@ -68,6 +85,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             var typeByte = (byte)type;
             if (_valueColumns[typeByte] == null)
             {
+                _typesCounter++;
                 switch (type)
                 {
                     case ArrowTypeId.Int64:
@@ -157,6 +175,25 @@ namespace FlowtideDotNet.Core.ColumnStore
             return valueColumn.BinarySearch(value, start, end);
         }
 
+        public (int, int) SearchBoundries(in IDataValue value, in int start, in int end)
+        {
+            if (_typesCounter == 1 && outOfOrderCounter == 0)
+            {
+                // only one type in the column, so we can use the binary search inside of the type array.
+                // It is also in order, so its safe to run the entire search inside of the type array.
+                var type = (byte)value.Type;
+
+                return _valueColumns[type].SearchBoundries(in value, start, end);
+            }
+            else
+            {
+                // Multiple types so a binary search will be done outside using all types.
+                return IntListSearch.SearchBoundriesForColumn(this, value, start, end);
+            }
+
+            return IntListSearch.SearchBoundriesForColumn(this, value, start, end);
+        }
+
         public int CompareTo(in Column otherColumn, in int thisIndex, in int otherIndex)
         {
             var thisType = _typeList[thisIndex];
@@ -176,7 +213,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         // Generics to avoid boxing
         public int CompareTo<T>(in int index, in T dataValue)
-            where T : struct, IDataValue
+            where T : IDataValue
         {
             var type = _typeList[index];
 
@@ -190,6 +227,21 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return type - dataValue.Type;
             }
         }
+
+        //public int CompareTo(in int index, in IDataValue dataValue)
+        //{
+        //    var type = _typeList[index];
+
+        //    if (type == dataValue.Type)
+        //    {
+        //        var valueColumn = _valueColumns[(byte)type];
+        //        return valueColumn.CompareToStrict(_offsets[index], in dataValue);
+        //    }
+        //    else
+        //    {
+        //        return type - dataValue.Type;
+        //    }
+        //}
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
         {

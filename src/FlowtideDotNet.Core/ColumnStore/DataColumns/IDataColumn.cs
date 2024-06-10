@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Core.ColumnStore
     public interface IDataColumn
     {
         int CompareToStrict<T>(in int index, in T value)
-            where T: struct, IDataValue;
+            where T: IDataValue;
 
         int CompareToStrict(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);
 
@@ -38,5 +38,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             where T: struct, IDataValue;
 
         int BinarySearch(in IDataValue dataValue, int start, int end);
+
+        (int, int) SearchBoundries(in IDataValue dataValue, int start, int end);
     }
 }

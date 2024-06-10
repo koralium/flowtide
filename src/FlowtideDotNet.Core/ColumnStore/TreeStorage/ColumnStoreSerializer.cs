@@ -21,9 +21,15 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
     internal class ColumnStoreSerializer : IBPlusTreeKeySerializer<ColumnRowReference, ColumnKeyStorageContainer>
     {
+        private readonly int columnCount;
+
+        public ColumnStoreSerializer(int columnCount)
+        {
+            this.columnCount = columnCount;
+        }
         public ColumnKeyStorageContainer CreateEmpty()
         {
-            return new ColumnKeyStorageContainer(1);
+            return new ColumnKeyStorageContainer(columnCount);
         }
 
         public ColumnKeyStorageContainer Deserialize(in BinaryReader reader)

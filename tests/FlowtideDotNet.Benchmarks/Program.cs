@@ -15,4 +15,9 @@ using DifferntialCompute.Benchmarks;
 using FlowtideDotNet.Benchmarks;
 using FlowtideDotNet.Benchmarks.Stream;
 
+//ColumnStoreTreeBenchmark columnStoreTreeBenchmark = new ColumnStoreTreeBenchmark();
+//columnStoreTreeBenchmark.GlobalSetup();
+//columnStoreTreeBenchmark.IterationSetup();
+//await columnStoreTreeBenchmark.InsertInOrder();
+
 var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
