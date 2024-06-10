@@ -252,7 +252,7 @@ namespace FlowtideDotNet.Storage.Tests
             var tree = await client.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
             {
                 BucketSize = 8,
-                Comparer = new LongComparer(),
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
                 KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
                 ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
             });
@@ -302,7 +302,7 @@ namespace FlowtideDotNet.Storage.Tests
             var tree = await client.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
             {
                 BucketSize = 8,
-                Comparer = new LongComparer(),
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
                 KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
                 ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
             });

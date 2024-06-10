@@ -171,7 +171,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             in GenericWriteFunction<V> function
             )
         {
-            var index = parentNode.keys.BinarySearch(key, m_keyComparer);
+            var index = m_keyComparer.FindIndex(key, parentNode.keys);
 
             if (index < 0)
             {
@@ -611,7 +611,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             in V? value,
             in GenericWriteFunction<V> function)
         {
-            var index = leafNode.keys.BinarySearch(key, m_keyComparer);
+            var index = m_keyComparer.FindIndex(key, leafNode.keys);
             if (index < 0)
             {
                 var result = function(value, default, false);

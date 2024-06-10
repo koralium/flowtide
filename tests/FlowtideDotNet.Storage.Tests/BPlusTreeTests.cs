@@ -23,14 +23,14 @@ namespace FlowtideDotNet.Storage.Tests
 {
     public class BPlusTreeTests : IDisposable
     {
-        private IBPlusTree<long, string> _tree;
+        private IBPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>> _tree;
         StateManager.StateManagerSync stateManager;
         public BPlusTreeTests()
         {
             _tree = Init().GetAwaiter().GetResult();
         }
 
-        private async Task<IBPlusTree<long, string>> Init()
+        private async Task<IBPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>> Init()
         {
             var localStorage = new LocalStorageNamedDeviceFactory(deleteOnClose: true);
             localStorage.Initialize("./data/temp");
@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Storage.Tests
                 new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
             {
                 BucketSize = 8,
-                Comparer = new LongComparer(),
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
                 KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
                 ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
             });

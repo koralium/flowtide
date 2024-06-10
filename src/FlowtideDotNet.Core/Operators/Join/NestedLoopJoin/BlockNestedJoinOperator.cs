@@ -37,12 +37,12 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
     internal class BlockNestedJoinOperator : MultipleInputVertex<StreamEventBatch, JoinState>
     {
         // Persisted trees
-        protected IBPlusTree<RowEvent, JoinStorageValue>? _leftTree;
-        protected IBPlusTree<RowEvent, JoinStorageValue>? _rightTree;
+        protected IBPlusTree<RowEvent, JoinStorageValue, ListKeyContainer<RowEvent>, ListValueContainer<JoinStorageValue>>? _leftTree;
+        protected IBPlusTree<RowEvent, JoinStorageValue, ListKeyContainer<RowEvent>, ListValueContainer<JoinStorageValue>>? _rightTree;
 
         // Temporary trees
-        protected IBPlusTree<RowEvent, JoinStorageValue>? _leftTemporary;
-        protected IBPlusTree<RowEvent, JoinStorageValue>? _rightTemporary;
+        protected IBPlusTree<RowEvent, JoinStorageValue, ListKeyContainer<RowEvent>, ListValueContainer<JoinStorageValue>>? _leftTemporary;
+        protected IBPlusTree<RowEvent, JoinStorageValue, ListKeyContainer<RowEvent>, ListValueContainer<JoinStorageValue>>? _rightTemporary;
         protected readonly Func<RowEvent, RowEvent, bool> _condition;
         private readonly JoinRelation joinRelation;
         private readonly IRowData _rightNullData;
@@ -333,14 +333,14 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             _leftTree = await stateManagerClient.GetOrCreateTree("left", 
                 new BPlusTreeOptions<RowEvent, JoinStorageValue, ListKeyContainer<RowEvent>, ListValueContainer<JoinStorageValue>>()
             {
-                Comparer = new NestedJoinStreamEventComparer(),
+                Comparer = new BPlusTreeListComparer<RowEvent>(new NestedJoinStreamEventComparer()),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
                 ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
             });
             _rightTree = await stateManagerClient.GetOrCreateTree("right", 
                 new BPlusTreeOptions<RowEvent, JoinStorageValue, ListKeyContainer<RowEvent>, ListValueContainer<JoinStorageValue>>()
             {
-                Comparer = new NestedJoinStreamEventComparer(),
+                Comparer = new BPlusTreeListComparer<RowEvent>(new NestedJoinStreamEventComparer()),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
                 ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
             });
@@ -348,7 +348,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             _leftTemporary = await stateManagerClient.GetOrCreateTree("left_tmp", 
                 new BPlusTreeOptions<RowEvent, JoinStorageValue, ListKeyContainer<RowEvent>, ListValueContainer<JoinStorageValue>>()
             {
-                Comparer = new NestedJoinStreamEventComparer(),
+                Comparer = new BPlusTreeListComparer<RowEvent>(new NestedJoinStreamEventComparer()),
                     KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
                     ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
                 });
@@ -356,7 +356,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             _rightTemporary = await stateManagerClient.GetOrCreateTree("right_tmp", 
                 new BPlusTreeOptions<RowEvent, JoinStorageValue, ListKeyContainer<RowEvent>, ListValueContainer<JoinStorageValue>>()
             {
-                Comparer = new NestedJoinStreamEventComparer(),
+                Comparer = new BPlusTreeListComparer<RowEvent>(new NestedJoinStreamEventComparer()),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
                 ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
             });

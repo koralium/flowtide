@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         }
 
 
-        public async ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchRoot(K key, IComparer<K> searchComparer)
+        public async ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchRoot(K key, IBplusTreeComparer<K, TKeyContainer> searchComparer)
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return await SearchLeafNodeForRead_AfterTask(key, root, searchComparer);
         }
 
-        private ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchLeafNodeForRead_AfterTask(in K key, in IBPlusTreeNode node, in IComparer<K> searchComparer)
+        private ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchLeafNodeForRead_AfterTask(in K key, in IBPlusTreeNode node, in IBplusTreeComparer<K, TKeyContainer> searchComparer)
         {
             if (node is LeafNode<K, V, TKeyContainer, TValueContainer> leaf)
             {
@@ -58,9 +58,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             throw new NotImplementedException();
         }
 
-        private async ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchLeafNodeForReadInternal(K key, InternalNode<K, V, TKeyContainer> node, IComparer<K> searchComparer)
+        private async ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchLeafNodeForReadInternal(K key, InternalNode<K, V, TKeyContainer> node, IBplusTreeComparer<K, TKeyContainer> searchComparer)
         {
-            var index = node.keys.BinarySearch(key, searchComparer);
+            var index = searchComparer.FindIndex(key, node.keys);
             if (index < 0)
             {
                 index = ~index;

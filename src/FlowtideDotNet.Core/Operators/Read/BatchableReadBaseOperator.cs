@@ -41,17 +41,17 @@ namespace FlowtideDotNet.Core.Operators.Read
         /// <summary>
         /// Temporary tree used to store the full load data
         /// </summary>
-        private IBPlusTree<string, RowEvent>? _fullLoadTempTree;
+        private IBPlusTree<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>? _fullLoadTempTree;
 
         /// <summary>
         /// Persistent tree used to store the data
         /// </summary>
-        private IBPlusTree<string, RowEvent>? _persistentTree;
+        private IBPlusTree<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>? _persistentTree;
 
         /// <summary>
         /// Tree used to store the deletions for the data in full load
         /// </summary>
-        private IBPlusTree<string, int>? _deletionsTree;
+        private IBPlusTree<string, int, ListKeyContainer<string>, ListValueContainer<int>>? _deletionsTree;
         private BatchableReadOperatorState? _state;
         private readonly string _watermarkName;
         private readonly ReadRelation readRelation;
@@ -124,7 +124,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp", 
                 new BPlusTreeOptions<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>()
             {
-                Comparer = StringComparer.Ordinal,
+                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
                 KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
                 ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer())
             });
@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             _persistentTree = await stateManagerClient.GetOrCreateTree("persistent", 
                 new BPlusTreeOptions<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>()
             {
-                Comparer = StringComparer.Ordinal,
+                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
                 KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
                 ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer())
             });
@@ -141,14 +141,14 @@ namespace FlowtideDotNet.Core.Operators.Read
             _deletionsTree = await stateManagerClient.GetOrCreateTree("deletions", 
                 new BPlusTreeOptions<string, int, ListKeyContainer<string>, ListValueContainer<int>>()
             {
-                Comparer = StringComparer.Ordinal,
+                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
                 KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
                 ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
             });
             await _deletionsTree.Clear();
         }
 
-        private static async IAsyncEnumerable<KeyValuePair<string, RowEvent>> IteratePerRow(IBPlusTreeIterator<string, RowEvent> iterator)
+        private static async IAsyncEnumerable<KeyValuePair<string, RowEvent>> IteratePerRow(IBPlusTreeIterator<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>> iterator)
         {
             await foreach (var page in iterator)
             {

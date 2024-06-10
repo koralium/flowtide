@@ -17,13 +17,13 @@ using System.Text;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal partial class BPlusTree<K, V, TKeyContainer, TValueContainer> : IBPlusTree<K, V>
+    internal partial class BPlusTree<K, V, TKeyContainer, TValueContainer> : IBPlusTree<K, V, TKeyContainer, TValueContainer>
         where TKeyContainer: IKeyContainer<K>
         where TValueContainer: IValueContainer<V>
     {
         internal readonly IStateClient<IBPlusTreeNode, BPlusTreeMetadata> m_stateClient;
         private readonly BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> m_options;
-        internal IComparer<K> m_keyComparer;
+        internal IBplusTreeComparer<K, TKeyContainer> m_keyComparer;
         private int minSize;
 
         public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options) 
@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private async ValueTask<(bool found, V? value)> GetValue_Internal(K key)
         {
             var leaf = await SearchRoot(key, m_keyComparer);
-            var index = leaf.keys.BinarySearch(key, m_keyComparer);
+            var index = m_keyComparer.FindIndex(key, leaf.keys);
             if (index < 0)
             {
                 return (false, default);
@@ -141,7 +141,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private async ValueTask<(bool found, K? key)> GetKey_Internal(K key)
         {
             var leaf = await SearchRoot(key, m_keyComparer);
-            var index = leaf.keys.BinarySearch(key, m_keyComparer);
+            var index = m_keyComparer.FindIndex(key, leaf.keys);
             if (index < 0)
             {
                 return (false, default);
@@ -149,7 +149,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return (true, leaf.keys.Get(index));
         }
 
-        public IBPlusTreeIterator<K, V> CreateIterator()
+        public IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> CreateIterator()
         {
             return new BPlusTreeIterator<K, V, TKeyContainer, TValueContainer>(this);
         }

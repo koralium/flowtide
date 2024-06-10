@@ -27,7 +27,9 @@ namespace FlowtideDotNet.Storage.Tree
 
     public delegate (V? result, GenericWriteOperation operation) GenericWriteFunction<V>(V? input, V? current, bool exists);
 
-    public interface IBPlusTree<K, V>
+    public interface IBPlusTree<K, V, TKeyContainer, TValueContainer>
+        where TKeyContainer: IKeyContainer<K>
+        where TValueContainer: IValueContainer<V>
     {
         ValueTask Upsert(in K key, in V value);
 
@@ -39,7 +41,7 @@ namespace FlowtideDotNet.Storage.Tree
 
         ValueTask<(bool found, K? key)> GetKey(in K key);
 
-        IBPlusTreeIterator<K, V> CreateIterator();
+        IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> CreateIterator();
 
         /// <summary>
         /// For debugging purposes only

@@ -14,7 +14,7 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal class BPlusTreeIterator<K, V, TKeyContainer, TValueContainer> : IBPlusTreeIterator<K, V>
+    internal class BPlusTreeIterator<K, V, TKeyContainer, TValueContainer> : IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer>
         where TKeyContainer: IKeyContainer<K>
         where TValueContainer : IValueContainer<V>
     {
@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return enumerator;
         }
 
-        public ValueTask Seek(in K key, in IComparer<K>? searchComparer = null)
+        public ValueTask Seek(in K key, in IBplusTreeComparer<K, TKeyContainer>? searchComparer = null)
         {
             var comparer = searchComparer == null ? tree.m_keyComparer : searchComparer;
             var searchTask = tree.SearchRoot(key, comparer);
@@ -108,16 +108,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return ValueTask.CompletedTask;
         }
 
-        private async ValueTask Seek_Slow(ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> task, K key, IComparer<K> searchComparer)
+        private async ValueTask Seek_Slow(ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> task, K key, IBplusTreeComparer<K, TKeyContainer> searchComparer)
         {
             leafNode = await task;
             AfterSeek(key, searchComparer);
         }
 
-        private void AfterSeek(in K key, IComparer<K> searchComparer)
+        private void AfterSeek(in K key, IBplusTreeComparer<K, TKeyContainer> searchComparer)
         {
             Debug.Assert(leafNode != null);
-            var i = leafNode.keys.BinarySearch(key, searchComparer);
+            var i = searchComparer.FindIndex(key, leafNode.keys);
             if (i < 0)
             {
                 i = ~i;

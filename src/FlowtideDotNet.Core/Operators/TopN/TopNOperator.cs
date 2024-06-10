@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
     {
         private readonly TopNComparer _comparer;
         private readonly TopNRelation relation;
-        private IBPlusTree<RowEvent, int>? _tree;
+        private IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>? _tree;
         private ICounter<long>? _eventsOutCounter;
         private ICounter<long>? _eventsProcessed;
 
@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
             }
         }
 
-        private async Task GetOutputValues(RowEvent ev, List<RowEvent> output, IBPlusTreeIterator<RowEvent, int> iterator, GenericWriteOperation op)
+        private async Task GetOutputValues(RowEvent ev, List<RowEvent> output, IBPlusTreeIterator<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>> iterator, GenericWriteOperation op)
         {
             await iterator.SeekFirst();
             int count = 0;
@@ -255,7 +255,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
             _tree = await stateManagerClient.GetOrCreateTree("topn", 
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
-                Comparer = _comparer,
+                Comparer = new BPlusTreeListComparer<RowEvent>(_comparer),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
                 ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
             });

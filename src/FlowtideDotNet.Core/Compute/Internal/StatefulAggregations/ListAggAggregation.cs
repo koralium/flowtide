@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
     {
         private readonly int keyLength;
 
-        public ListAggAggregationSingleton(IBPlusTree<RowEvent, int> tree, int keyLength)
+        public ListAggAggregationSingleton(IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>> tree, int keyLength)
         {
             Tree = tree;
             this.keyLength = keyLength;
@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
         }
         public FlexBuffer OutputBuilder { get; } 
         public int KeyLength => keyLength;
-        public IBPlusTree<RowEvent, int> Tree { get; }
+        public IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>> Tree { get; }
         public bool AreKeyEqual(RowEvent x, RowEvent y)
         {
             for (int i = 0; i < keyLength; i++)
@@ -89,7 +89,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             var tree = await stateManagerClient.GetOrCreateTree("listaggtree", 
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
-                Comparer = new ListAggAggregationInsertComparer(groupingLength + 1),
+                Comparer = new BPlusTreeListComparer<RowEvent>(new ListAggAggregationInsertComparer(groupingLength + 1)),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
                 ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
             });

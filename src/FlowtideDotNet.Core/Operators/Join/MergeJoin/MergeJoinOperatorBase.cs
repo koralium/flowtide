@@ -32,8 +32,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private readonly JoinComparerLeft leftComparer;
         private readonly JoinComparerRight rightComparer;
         protected readonly MergeJoinRelation mergeJoinRelation;
-        protected IBPlusTree<JoinStreamEvent, JoinStorageValue>? _leftTree;
-        protected IBPlusTree<JoinStreamEvent, JoinStorageValue>? _rightTree;
+        protected IBPlusTree<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>? _leftTree;
+        protected IBPlusTree<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>? _rightTree;
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
 
@@ -399,14 +399,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             _leftTree = await stateManagerClient.GetOrCreateTree("left", 
                 new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>()
             {
-                Comparer = leftComparer,
+                Comparer = new BPlusTreeListComparer<JoinStreamEvent>(leftComparer),
                 KeySerializer = new KeyListSerializer<JoinStreamEvent>(new JoinStreamEvenBPlusTreeSerializer()),
                 ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
             });
             _rightTree = await stateManagerClient.GetOrCreateTree("right", 
                 new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>()
             {
-                Comparer = rightComparer,
+                Comparer = new BPlusTreeListComparer<JoinStreamEvent>(rightComparer),
                 KeySerializer = new KeyListSerializer<JoinStreamEvent>(new JoinStreamEvenBPlusTreeSerializer()),
                 ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
             });

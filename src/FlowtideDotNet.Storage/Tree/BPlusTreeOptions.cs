@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Storage.Tree
         /// </summary>
         public int? BucketSize { get; set; }
 
-        public required IComparer<K> Comparer { get; set; } 
+        public required IBplusTreeComparer<K, TKeyContainer> Comparer { get; set; } 
 
         /// <summary>
         /// Serializer for the keys

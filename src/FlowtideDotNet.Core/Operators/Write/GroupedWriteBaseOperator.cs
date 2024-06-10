@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Core.Operators.Write
     public abstract class GroupedWriteBaseOperator<TState> : EgressVertex<StreamEventBatch, TState>
         where TState: IStatefulWriteState
     {
-        private IBPlusTree<GroupedStreamEvent, int>? _tree;
+        private IBPlusTree<GroupedStreamEvent, int, ListKeyContainer<GroupedStreamEvent>, ListValueContainer<int>>? _tree;
         private Func<GroupedStreamEvent, GroupedStreamEvent, int>? _comparer;
         private IComparer<RowEvent>? _streamEventComparer;
 
@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Core.Operators.Write
             _tree = await stateManagerClient.GetOrCreateTree("output", 
                 new BPlusTreeOptions<GroupedStreamEvent, int, ListKeyContainer<GroupedStreamEvent>, ListValueContainer<int>>() 
             { 
-                Comparer = new GroupedStreamEventComparer(_comparer),
+                Comparer = new BPlusTreeListComparer<GroupedStreamEvent>(new GroupedStreamEventComparer(_comparer)),
                 ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
                 KeySerializer = new KeyListSerializer<GroupedStreamEvent>(new GroupedStreamEventBPlusTreeSerializer())
             });

@@ -38,7 +38,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         private readonly Func<string> connectionStringFunc;
         private readonly SqlServerSinkOptions sqlServerSinkOptions;
         private readonly WriteRelation writeRelation;
-        private IBPlusTree<RowEvent, int>? m_modified;
+        private IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>? m_modified;
         private bool m_hasModified;
         private SqlConnection? connection;
         private IReadOnlyList<int>? m_primaryKeys;
@@ -260,7 +260,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             m_modified = await stateManagerClient.GetOrCreateTree("temporary", 
                 new Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
-                Comparer = PrimaryKeyComparer,
+                Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer),
                 ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer())
             });

@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         //    return tree;
         //}
 
-        public async ValueTask<IBPlusTree<K, V>> GetOrCreateTree<K, V, TKeyContainer, TValueContainer>(string name, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
+        public async ValueTask<IBPlusTree<K, V, TKeyContainer, TValueContainer>> GetOrCreateTree<K, V, TKeyContainer, TValueContainer>(string name, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
             where TKeyContainer : IKeyContainer<K>
             where TValueContainer : IValueContainer<V>
         {
