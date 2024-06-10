@@ -14,16 +14,18 @@ using System.Collections;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal struct BPlusTreePageIterator<K, V> : IBPlusTreePageIterator<K, V>
+    internal struct BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> : IBPlusTreePageIterator<K, V>
+        where TKeyContainer: IKeyContainer<K>
+        where TValueContainer: IValueContainer<V>
     {
         internal struct Enumerator : IEnumerator<KeyValuePair<K, V>>
         {
             private readonly int _startIndex;
             private int index;
-            private LeafNode<K, V> leafNode;
+            private LeafNode<K, V, TKeyContainer, TValueContainer> leafNode;
             private KeyValuePair<K, V> _current;
 
-            public Enumerator(in LeafNode<K, V> leafNode, in int index)
+            public Enumerator(in LeafNode<K, V, TKeyContainer, TValueContainer> leafNode, in int index)
             {
                 _startIndex = index;
                 this.index = index;
@@ -42,7 +44,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 if (index < leafNode.keys.Count)
                 {
-                    _current = new KeyValuePair<K, V>(leafNode.keys[index], leafNode.values[index]);
+                    _current = new KeyValuePair<K, V>(leafNode.keys.Get(index), leafNode.values.Get(index));
                     index++;
                     return true;
                 }
@@ -55,20 +57,20 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
         }
 
-        private readonly LeafNode<K, V> leaf;
+        private readonly LeafNode<K, V, TKeyContainer, TValueContainer> leaf;
         private readonly int index;
-        private readonly BPlusTree<K, V> tree;
+        private readonly BPlusTree<K, V, TKeyContainer, TValueContainer> tree;
 
-        public BPlusTreePageIterator(in LeafNode<K, V> leaf, in int index, in BPlusTree<K, V> tree)
+        public BPlusTreePageIterator(in LeafNode<K, V, TKeyContainer, TValueContainer> leaf, in int index, in BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
         {
             this.leaf = leaf;
             this.index = index;
             this.tree = tree;
         }
 
-        public List<K> Keys => leaf.keys;
+        public IKeyContainer<K> Keys => leaf.keys;
 
-        public List<V> Values => leaf.values;
+        public IValueContainer<V> Values => leaf.values;
 
         public ValueTask SavePage()
         {

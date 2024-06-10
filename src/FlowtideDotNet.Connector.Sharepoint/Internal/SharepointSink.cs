@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         private readonly SharepointSinkOptions sinkOptions;
         private SharepointGraphListClient? sharepointGraphListClient;
         private readonly WriteRelation writeRelation;
-        private IBPlusTree<string, string>? _existingObjectsTree;
+        private IBPlusTree<string, string, ListKeyContainer<string>, ListValueContainer<string>>? _existingObjectsTree;
         private List<IColumnEncoder>? encoders;
         private List<int>? primaryKeyIndices;
         private List<IColumnEncoder>? primaryKeyEncoders;
@@ -80,11 +80,12 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
             this.sharepointGraphListClient = new SharepointGraphListClient(sinkOptions, StreamName, Name, Logger);
             await sharepointGraphListClient.Initialize();
-            _existingObjectsTree = await stateManagerClient.GetOrCreateTree("object_ids_tmp", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<string, string>()
+            _existingObjectsTree = await stateManagerClient.GetOrCreateTree("object_ids_tmp", 
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<string, string, ListKeyContainer<string>, ListValueContainer<string>>()
             {
-                Comparer = StringComparer.OrdinalIgnoreCase,
-                KeySerializer = new StringSerializer(),
-                ValueSerializer = new StringSerializer()
+                Comparer = new BPlusTreeListComparer<string>(StringComparer.OrdinalIgnoreCase),
+                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
             });
             listId = await sharepointGraphListClient.GetListId(writeRelation.NamedObject.DotSeperated);
             encoders = await sharepointGraphListClient.GetColumnEncoders(writeRelation.NamedObject.DotSeperated, writeRelation.TableSchema.Names, stateManagerClient);

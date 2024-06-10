@@ -89,14 +89,14 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
     {
         private readonly int keyLength;
 
-        public MinMaxAggregationSingleton(IBPlusTree<RowEvent, int> tree, int keyLength)
+        public MinMaxAggregationSingleton(IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>> tree, int keyLength)
         {
             Tree = tree;
             this.keyLength = keyLength;
         }
 
         public int KeyLength => keyLength;
-        public IBPlusTree<RowEvent, int> Tree { get; }
+        public IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>> Tree { get; }
         public bool AreKeyEqual(RowEvent x, RowEvent y)
         {
             for (int i = 0; i < keyLength; i++)
@@ -130,11 +130,12 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             {
                 searchPrimaryKeys.Add(i);
             }
-            var tree = await stateManagerClient.GetOrCreateTree(treeName, new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
+            var tree = await stateManagerClient.GetOrCreateTree(treeName, 
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
-                Comparer = comparer,
-                KeySerializer = new StreamEventBPlusTreeSerializer(),
-                ValueSerializer = new IntSerializer()
+                Comparer = new BPlusTreeListComparer<RowEvent>(comparer),
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
             });
 
             return new MinMaxAggregationSingleton(tree, groupingLength);

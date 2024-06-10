@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.Operators.Set
     {
         private readonly SetRelation setRelation;
         
-        private readonly List<IBPlusTree<RowEvent, int>> _storages;
+        private readonly List<IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>> _storages;
         private readonly Func<int, StreamEventBatch, long, IAsyncEnumerable<StreamEventBatch>> _operation;
         private readonly Func<int, int, int> _unionWeightFunction;
 
@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.Operators.Set
         public SetOperator(SetRelation setRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(setRelation.Inputs.Count, executionDataflowBlockOptions)
         {
             this.setRelation = setRelation;
-            _storages = new List<IBPlusTree<RowEvent, int>>();
+            _storages = new List<IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>>();
 
             if (setRelation.Operation == SetOperation.UnionAll)
             {
@@ -229,11 +229,12 @@ namespace FlowtideDotNet.Core.Operators.Set
             _storages.Clear();
             for (int i = 0; i < setRelation.Inputs.Count; i++)
             {
-                _storages.Add(await stateManagerClient.GetOrCreateTree(i.ToString(), new BPlusTreeOptions<RowEvent, int>()
+                _storages.Add(await stateManagerClient.GetOrCreateTree(i.ToString(), 
+                    new BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
                 {
-                    Comparer = new BPlusTreeStreamEventComparer(),
-                    KeySerializer = new StreamEventBPlusTreeSerializer(),
-                    ValueSerializer = new IntSerializer()
+                    Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer()),
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
                 }));
                 
             }

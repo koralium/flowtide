@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         private StreamWriter allOutput;
 #endif
         private readonly NormalizationRelation normalizationRelation;
-        private IBPlusTree<string, IngressData>? _tree;
+        private IBPlusTree<string, IngressData, ListKeyContainer<string>, ListValueContainer<IngressData>>? _tree;
         private readonly Func<RowEvent, bool>? _filter;
 
         private ICounter<long>? _eventsCounter;
@@ -259,11 +259,12 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            _tree = await stateManagerClient.GetOrCreateTree("input", new BPlusTreeOptions<string, IngressData>()
+            _tree = await stateManagerClient.GetOrCreateTree("input", 
+                new BPlusTreeOptions<string, IngressData, ListKeyContainer<string>, ListValueContainer<IngressData>>()
             {
-                Comparer = StringComparer.Ordinal,
-                KeySerializer = new StringSerializer(),
-                ValueSerializer = new IngressDataStateSerializer()
+                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                ValueSerializer = new ValueListSerializer<IngressData>(new IngressDataStateSerializer())
             });
         }
 

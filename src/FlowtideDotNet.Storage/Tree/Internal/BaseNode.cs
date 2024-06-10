@@ -14,13 +14,14 @@ using System.Text;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal abstract class BaseNode<K> : IBPlusTreeNode
+    internal abstract class BaseNode<K, TKeyContainer> : IBPlusTreeNode
+        where TKeyContainer: IKeyContainer<K>
     {
-        public List<K> keys;
+        public TKeyContainer keys;
 
-        public BaseNode(long id)
+        public BaseNode(long id, TKeyContainer container)
         {
-            keys = new List<K>();
+            keys = container;
             Id = id;
         }
 
@@ -36,7 +37,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             Monitor.Exit(this);
         }
 
-        public abstract Task Print(StringBuilder stringBuilder, Func<long, ValueTask<BaseNode<K>>> lookupFunc);
+        public abstract Task Print(StringBuilder stringBuilder, Func<long, ValueTask<BaseNode<K, TKeyContainer>>> lookupFunc);
 
         public abstract Task PrintNextPointers(StringBuilder stringBuilder);
     }
