@@ -130,11 +130,12 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             {
                 searchPrimaryKeys.Add(i);
             }
-            var tree = await stateManagerClient.GetOrCreateTree(treeName, new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
+            var tree = await stateManagerClient.GetOrCreateTree(treeName, 
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
                 Comparer = comparer,
-                KeySerializer = new StreamEventBPlusTreeSerializer(),
-                ValueSerializer = new IntSerializer()
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
             });
 
             return new MinMaxAggregationSingleton(tree, groupingLength);

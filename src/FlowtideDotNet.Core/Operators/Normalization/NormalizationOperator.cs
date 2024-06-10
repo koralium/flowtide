@@ -259,11 +259,12 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            _tree = await stateManagerClient.GetOrCreateTree("input", new BPlusTreeOptions<string, IngressData>()
+            _tree = await stateManagerClient.GetOrCreateTree("input", 
+                new BPlusTreeOptions<string, IngressData, ListKeyContainer<string>, ListValueContainer<IngressData>>()
             {
                 Comparer = StringComparer.Ordinal,
-                KeySerializer = new StringSerializer(),
-                ValueSerializer = new IngressDataStateSerializer()
+                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                ValueSerializer = new ValueListSerializer<IngressData>(new IngressDataStateSerializer())
             });
         }
 

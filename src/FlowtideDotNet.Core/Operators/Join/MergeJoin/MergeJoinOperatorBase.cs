@@ -23,6 +23,7 @@ using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core.Utils;
+using FlowtideDotNet.Storage.Serializers;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -395,17 +396,19 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 state = new JoinState();
             }
-            _leftTree = await stateManagerClient.GetOrCreateTree("left", new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue>()
+            _leftTree = await stateManagerClient.GetOrCreateTree("left", 
+                new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>()
             {
                 Comparer = leftComparer,
-                KeySerializer = new JoinStreamEvenBPlusTreeSerializer(),
-                ValueSerializer = new JoinStorageValueBPlusTreeSerializer()
+                KeySerializer = new KeyListSerializer<JoinStreamEvent>(new JoinStreamEvenBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
             });
-            _rightTree = await stateManagerClient.GetOrCreateTree("right", new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue>()
+            _rightTree = await stateManagerClient.GetOrCreateTree("right", 
+                new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>()
             {
                 Comparer = rightComparer,
-                KeySerializer = new JoinStreamEvenBPlusTreeSerializer(),
-                ValueSerializer = new JoinStorageValueBPlusTreeSerializer()
+                KeySerializer = new KeyListSerializer<JoinStreamEvent>(new JoinStreamEvenBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
             });
         }
     }

@@ -14,28 +14,30 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal class BPlusTreeIterator<K, V> : IBPlusTreeIterator<K, V>
+    internal class BPlusTreeIterator<K, V, TKeyContainer, TValueContainer> : IBPlusTreeIterator<K, V>
+        where TKeyContainer: IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         internal class Enumerator : IAsyncEnumerator<IBPlusTreePageIterator<K, V>>
         {
-            private readonly BPlusTree<K, V> tree;
-            private LeafNode<K, V>? leafNode;
+            private readonly BPlusTree<K, V, TKeyContainer, TValueContainer> tree;
+            private LeafNode<K, V, TKeyContainer, TValueContainer>? leafNode;
             private int index;
             private bool started;
 
-            public Enumerator(in BPlusTree<K, V> tree)
+            public Enumerator(in BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
             {
                 this.tree = tree;
             }
 
-            public void Reset(LeafNode<K, V>? leafNode, int index)
+            public void Reset(LeafNode<K, V, TKeyContainer, TValueContainer>? leafNode, int index)
             {
                 this.leafNode = leafNode;
                 this.index = index;
                 this.started = false;
             }
 
-            public IBPlusTreePageIterator<K, V> Current => new BPlusTreePageIterator<K, V>(leafNode!, index, tree);
+            public IBPlusTreePageIterator<K, V> Current => new BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>(leafNode!, index, tree);
 
             public ValueTask DisposeAsync()
             {
@@ -63,7 +65,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
                     return MoveNextAsync_Slow(getNextPageTask);
                 }
-                leafNode = (getNextPageTask.Result as LeafNode<K, V>)!;
+                leafNode = (getNextPageTask.Result as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
                 index = 0;
                 return ValueTask.FromResult(true);
             }
@@ -71,18 +73,18 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             private async ValueTask<bool> MoveNextAsync_Slow(ValueTask<IBPlusTreeNode?> getPageTask)
             {
                 var page = await getPageTask;
-                leafNode = (page as LeafNode<K, V>)!;
+                leafNode = (page as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
                 index = 0;
                 return true;
             }
         }
 
-        private LeafNode<K, V>? leafNode;
-        private readonly BPlusTree<K, V> tree;
+        private LeafNode<K, V, TKeyContainer, TValueContainer>? leafNode;
+        private readonly BPlusTree<K, V, TKeyContainer, TValueContainer> tree;
         private int index;
         private readonly Enumerator enumerator;
 
-        public BPlusTreeIterator(BPlusTree<K, V> tree)
+        public BPlusTreeIterator(BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
         {
             this.tree = tree;
             enumerator = new Enumerator(tree);
@@ -106,7 +108,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return ValueTask.CompletedTask;
         }
 
-        private async ValueTask Seek_Slow(ValueTask<LeafNode<K, V>> task, K key, IComparer<K> searchComparer)
+        private async ValueTask Seek_Slow(ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> task, K key, IComparer<K> searchComparer)
         {
             leafNode = await task;
             AfterSeek(key, searchComparer);

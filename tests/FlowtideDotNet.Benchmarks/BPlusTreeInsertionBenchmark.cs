@@ -49,12 +49,12 @@ namespace DifferntialCompute.Benchmarks
         [IterationSetup]
         public void IterationSetup()
         {
-            tree = nodeClient.GetOrCreateTree<long, string>("tree", new BPlusTreeOptions<long, string>()
+            tree = nodeClient.GetOrCreateTree("tree", new BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
             {
                 BucketSize = 1024,
                 Comparer = new LongComparer(),
-                KeySerializer = new LongSerializer(),
-                ValueSerializer = new StringSerializer()
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
             }).GetAwaiter().GetResult();
             tree.Clear();
         }

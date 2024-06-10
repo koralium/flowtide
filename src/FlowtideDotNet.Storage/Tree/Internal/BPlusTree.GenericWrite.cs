@@ -14,7 +14,9 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal partial class BPlusTree<K, V>
+    internal partial class BPlusTree<K, V, TKeyContainer, TValueContainer>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         
 
@@ -66,7 +68,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
-            if (rootNode is LeafNode<K, V> leafNode)
+            if (rootNode is LeafNode<K, V, TKeyContainer, TValueContainer> leafNode)
             {
                 var result = GenericWrite_Leaf(leafNode, key, value, function);
 
@@ -75,7 +77,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
 
                     var nextId = m_stateClient.GetNewPageId();
-                    var newParentNode = new InternalNode<K, V>(nextId);
+                    var emptyKeys = m_options.KeySerializer.CreateEmpty();
+                    var newParentNode = new InternalNode<K, V, TKeyContainer>(nextId, emptyKeys);
 
                     // No lock required
                     newParentNode.children.Insert(0, leafNode.Id);
@@ -104,7 +107,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 return ValueTask.FromResult(result);
             }
-            else if (rootNode is InternalNode<K, V> internalNode)
+            else if (rootNode is InternalNode<K, V, TKeyContainer> internalNode)
             {
                 var resultTask = GenericWrite_Internal(internalNode, key, value, function);
                 if (!resultTask.IsCompletedSuccessfully)
@@ -119,7 +122,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         private async ValueTask<GenericWriteOperation> GenericWriteRoot_SlowInternal(
             ValueTask<GenericWriteOperation> resultTask,
-            InternalNode<K, V> internalNode
+            InternalNode<K, V, TKeyContainer> internalNode
             )
         {
             var result = await resultTask;
@@ -128,15 +131,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         private ValueTask<GenericWriteOperation> GenericWriteRoot_AfterInternal(
             in GenericWriteOperation result,
-            in InternalNode<K, V> internalNode
+            in InternalNode<K, V, TKeyContainer> internalNode
             )
         {
             Debug.Assert(m_stateClient.Metadata != null);
             if (internalNode.keys.Count == m_stateClient.Metadata.BucketLength)
             {
                 var nextId = m_stateClient.GetNewPageId();
-                var newParentNode = new InternalNode<K, V>(nextId);
-                // No lock required
+                var emptyKeys = m_options.KeySerializer.CreateEmpty();
+                var newParentNode = new InternalNode<K, V, TKeyContainer>(nextId, emptyKeys);
+                // No lock requireds
                 newParentNode.children.Insert(0, internalNode.Id);
                 m_stateClient.Metadata.Root = nextId;
 
@@ -161,7 +165,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         }
 
         private ValueTask<GenericWriteOperation> GenericWrite_Internal(
-            in InternalNode<K, V> parentNode,
+            in InternalNode<K, V, TKeyContainer> parentNode,
             in K key,
             in V? value,
             in GenericWriteFunction<V> function
@@ -187,7 +191,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private async ValueTask<GenericWriteOperation> GenericWrite_Internal_SlowGetNode(
             int index,
             ValueTask<IBPlusTreeNode?> getChildTask,
-            InternalNode<K, V> parentNode,
+            InternalNode<K, V, TKeyContainer> parentNode,
             K key,
             V? value,
             GenericWriteFunction<V> function
@@ -200,7 +204,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private ValueTask<GenericWriteOperation> GenericWrite_Internal_AfterGetNode(
             in int index,
             in IBPlusTreeNode? child,
-            in InternalNode<K, V> parentNode,
+            in InternalNode<K, V, TKeyContainer> parentNode,
             in K key,
             in V? value,
             in GenericWriteFunction<V> function
@@ -208,7 +212,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
-            if (child is LeafNode<K, V> leafNode)
+            if (child is LeafNode<K, V, TKeyContainer, TValueContainer> leafNode)
             {
                 var result = GenericWrite_Leaf(leafNode, key, value, function);
 
@@ -239,7 +243,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         {
                             return GenericWrite_Internal_AfterGetNode_LeafNodeTooSmall_SlowGetLeft(getLeftNodeTask, leafNode, parentNode, index, result);
                         }
-                        var leftNode = (getLeftNodeTask.Result as LeafNode<K, V>)!;
+                        var leftNode = (getLeftNodeTask.Result as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
 
                         return GenericWrite_Internal_AfterGetNode_LeafNodeTooSmall_AfterGetLeft(leftNode, leafNode, parentNode, index, result);
                     }
@@ -252,7 +256,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         {
                             return GenericWrite_Internal_AfterGetNode_NodeTooSmall_SlowGetRight(getRightNodeTask, leafNode, parentNode, index, result);
                         }
-                        var rightNode = (getRightNodeTask.Result as LeafNode<K, V>)!;
+                        var rightNode = (getRightNodeTask.Result as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
 
                         return GenericWrite_Internal_AfterGetNode_NodeTooSmall_AfterGetRight(rightNode, leafNode, parentNode, index, result);
                     }
@@ -268,7 +272,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 return ValueTask.FromResult(result);
             }
-            else if (child is InternalNode<K, V> internalNode)
+            else if (child is InternalNode<K, V, TKeyContainer> internalNode)
             {
                 var rmwTask = GenericWrite_Internal(internalNode, key, value, function);
                 if (!rmwTask.IsCompletedSuccessfully)
@@ -283,8 +287,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         private async ValueTask<GenericWriteOperation> GenericWrite_Internal_AfterGetNode_SlowCallInternal(
             ValueTask<GenericWriteOperation> internalTask,
-            InternalNode<K, V> internalNode,
-            InternalNode<K, V> parentNode,
+            InternalNode<K, V, TKeyContainer> internalNode,
+            InternalNode<K, V, TKeyContainer> parentNode,
             int index
             )
         {
@@ -293,8 +297,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         }
 
         private ValueTask<GenericWriteOperation> GenericWrite_Internal_AfterGetNode_AfterCallInternal(
-            in InternalNode<K, V> internalNode,
-            in InternalNode<K, V> parentNode,
+            in InternalNode<K, V, TKeyContainer> internalNode,
+            in InternalNode<K, V, TKeyContainer> parentNode,
             in int index,
             in GenericWriteOperation result
             )
@@ -326,7 +330,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         return GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_SlowGetLeft(getLeftNodeTask, internalNode, parentNode, index, result);
                     }
-                    var leftNode = (getLeftNodeTask.Result as InternalNode<K, V>)!;
+                    var leftNode = (getLeftNodeTask.Result as InternalNode<K, V, TKeyContainer>)!;
                     return GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_AfterGetLeft(leftNode, internalNode, parentNode, index, result);
                 }
                 else
@@ -337,7 +341,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         return GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_SlowGetRight(getRightNodeTask, internalNode, parentNode, index, result);
                     }
-                    var rightNode = (getRightNodeTask.Result as InternalNode<K, V>)!;
+                    var rightNode = (getRightNodeTask.Result as InternalNode<K, V, TKeyContainer>)!;
 
                     return GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_AfterGetRight(rightNode, internalNode, parentNode, index, result);
                 }
@@ -347,20 +351,20 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         private async ValueTask<GenericWriteOperation> GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_SlowGetRight(
             ValueTask<IBPlusTreeNode?> getRightNodeTask,
-            InternalNode<K, V> internalNode,
-            InternalNode<K, V> parentNode,
+            InternalNode<K, V, TKeyContainer> internalNode,
+            InternalNode<K, V, TKeyContainer> parentNode,
             int index,
             GenericWriteOperation result
             )
         {
-            var rightNode = (await getRightNodeTask as InternalNode<K, V>)!;
+            var rightNode = (await getRightNodeTask as InternalNode<K, V, TKeyContainer>)!;
             return await GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_AfterGetRight(rightNode, internalNode, parentNode, index, result);
         }
 
         private ValueTask<GenericWriteOperation> GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_AfterGetRight(
-            in InternalNode<K, V> rightNode,
-            in InternalNode<K, V> internalNode,
-            in InternalNode<K, V> parentNode,
+            in InternalNode<K, V, TKeyContainer> rightNode,
+            in InternalNode<K, V, TKeyContainer> internalNode,
+            in InternalNode<K, V, TKeyContainer> parentNode,
             in int index,
             in GenericWriteOperation result
             )
@@ -368,11 +372,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             Debug.Assert(m_stateClient.Metadata != null);
             if (rightNode.keys.Count >= m_stateClient.Metadata.BucketLength / 2)
             {
-                var parentKey = parentNode.keys[index];
+                var parentKey = parentNode.keys.Get(index);
                 var newSplitKey = DistributeBetweenNodesInternal(internalNode, rightNode, parentKey);
 
                 parentNode.EnterWriteLock();
-                parentNode.keys[index] = newSplitKey;
+                parentNode.keys.Update(index, newSplitKey);
                 parentNode.ExitWriteLock();
 
                 var isFull = false;
@@ -387,7 +391,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             else
             {
-                var parentKey = parentNode.keys[index];
+                var parentKey = parentNode.keys.Get(index);
                 MergeInternalNodesIntoLeft(internalNode, rightNode, parentKey);
 
                 parentNode.EnterWriteLock();
@@ -410,20 +414,20 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         private async ValueTask<GenericWriteOperation> GenericWrite_Internal_AfterGetNode_NodeTooSmall_SlowGetRight(
             ValueTask<IBPlusTreeNode?> getRightNodeTask,
-            LeafNode<K, V> leafNode,
-            InternalNode<K, V> parentNode,
+            LeafNode<K, V, TKeyContainer, TValueContainer> leafNode,
+            InternalNode<K, V, TKeyContainer> parentNode,
             int index,
             GenericWriteOperation result
             )
         {
-            var rightNode = (await getRightNodeTask as LeafNode<K, V>)!;
+            var rightNode = (await getRightNodeTask as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
             return await GenericWrite_Internal_AfterGetNode_NodeTooSmall_AfterGetRight(rightNode, leafNode, parentNode, index, result);
         }
 
         private ValueTask<GenericWriteOperation> GenericWrite_Internal_AfterGetNode_NodeTooSmall_AfterGetRight(
-            in LeafNode<K, V> rightNode,
-            in LeafNode<K, V> leafNode,
-            in InternalNode<K, V> parentNode,
+            in LeafNode<K, V, TKeyContainer, TValueContainer> rightNode,
+            in LeafNode<K, V, TKeyContainer, TValueContainer> leafNode,
+            in InternalNode<K, V, TKeyContainer> parentNode,
             in int index,
             in GenericWriteOperation result
             )
@@ -434,7 +438,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var newSplitKey = SplitBetweenNodes(leafNode, rightNode);
 
                 parentNode.EnterWriteLock();
-                parentNode.keys[index] = newSplitKey;
+                parentNode.keys.Update(index, newSplitKey);
                 parentNode.ExitWriteLock();
 
                 // Save all changes
@@ -472,20 +476,20 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         private async ValueTask<GenericWriteOperation> GenericWrite_Internal_AfterGetNode_LeafNodeTooSmall_SlowGetLeft(
             ValueTask<IBPlusTreeNode?> getLeftNodeTask,
-            LeafNode<K, V> leafNode,
-            InternalNode<K, V> parentNode,
+            LeafNode<K, V, TKeyContainer, TValueContainer> leafNode,
+            InternalNode<K, V, TKeyContainer> parentNode,
             int index,
             GenericWriteOperation result
             )
         {
-            var leftNode = (await getLeftNodeTask as LeafNode<K, V>)!;
+            var leftNode = (await getLeftNodeTask as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
             return await GenericWrite_Internal_AfterGetNode_LeafNodeTooSmall_AfterGetLeft(leftNode, leafNode, parentNode, index, result);
         }
 
         private ValueTask<GenericWriteOperation> GenericWrite_Internal_AfterGetNode_LeafNodeTooSmall_AfterGetLeft(
-            in LeafNode<K, V> leftNode,
-            in LeafNode<K, V> leafNode,
-            in InternalNode<K, V> parentNode,
+            in LeafNode<K, V, TKeyContainer, TValueContainer> leftNode,
+            in LeafNode<K, V, TKeyContainer, TValueContainer> leafNode,
+            in InternalNode<K, V, TKeyContainer> parentNode,
             in int index,
             in GenericWriteOperation result
             )
@@ -498,7 +502,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 // Since this is the most right node, the key will always be on the left
                 parentNode.EnterWriteLock();
-                parentNode.keys[index - 1] = newSplitKey;
+                parentNode.keys.Update(index - 1, newSplitKey);
                 parentNode.ExitWriteLock();
 
                 // Save all changes
@@ -537,20 +541,20 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         private async ValueTask<GenericWriteOperation> GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_SlowGetLeft(
             ValueTask<IBPlusTreeNode?> getLeftNodeTask,
-            InternalNode<K, V> internalNode,
-            InternalNode<K, V> parentNode,
+            InternalNode<K, V, TKeyContainer> internalNode,
+            InternalNode<K, V, TKeyContainer> parentNode,
             int index,
             GenericWriteOperation result
             )
         {
-            var leftNode = (await getLeftNodeTask as InternalNode<K, V>)!;
+            var leftNode = (await getLeftNodeTask as InternalNode<K, V, TKeyContainer>)!;
             return await GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_AfterGetLeft(leftNode, internalNode, parentNode, index, result);
         }
 
         private ValueTask<GenericWriteOperation> GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_AfterGetLeft(
-            in InternalNode<K, V> leftNode,
-            in InternalNode<K, V> internalNode,
-            in InternalNode<K, V> parentNode,
+            in InternalNode<K, V, TKeyContainer> leftNode,
+            in InternalNode<K, V, TKeyContainer> internalNode,
+            in InternalNode<K, V, TKeyContainer> parentNode,
             in int index,
             in GenericWriteOperation result
             )
@@ -559,11 +563,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             if (leftNode.keys.Count >= m_stateClient.Metadata.BucketLength / 2)
             {
                 // Borrow
-                var parentKey = parentNode.keys[index - 1];
+                var parentKey = parentNode.keys.Get(index - 1);
                 var newSplitKey = DistributeBetweenNodesInternal(leftNode, internalNode, parentKey);
 
                 parentNode.EnterWriteLock();
-                parentNode.keys[index - 1] = newSplitKey;
+                parentNode.keys.Update(index - 1, newSplitKey);
                 parentNode.ExitWriteLock();
 
                 var isFull = false;
@@ -578,7 +582,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             else
             {
-                var parentKey = parentNode.keys[index - 1];
+                var parentKey = parentNode.keys.Get(index - 1);
                 MergeInternalNodesIntoLeft(leftNode, internalNode, parentKey);
 
                 parentNode.EnterWriteLock();
@@ -602,7 +606,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         }
 
         private GenericWriteOperation GenericWrite_Leaf(
-            in LeafNode<K, V> leafNode,
+            in LeafNode<K, V, TKeyContainer, TValueContainer> leafNode,
             in K key,
             in V? value,
             in GenericWriteFunction<V> function)
@@ -630,7 +634,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             else
             {
-                var currentValue = leafNode.values[index];
+                var currentValue = leafNode.values.Get(index);
                 var result = function(value, currentValue, true);
                 if (result.operation == GenericWriteOperation.Upsert)
                 {
@@ -644,25 +648,27 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
         }
 
-        private (LeafNode<K, V>, K splitKey) SplitLeafNode(
-            in InternalNode<K, V> parent,
+        private (LeafNode<K, V, TKeyContainer, TValueContainer>, K splitKey) SplitLeafNode(
+            in InternalNode<K, V, TKeyContainer> parent,
             in int index,
-            in LeafNode<K, V> child)
+            in LeafNode<K, V, TKeyContainer, TValueContainer> child)
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
             // Check that both parent and child write locks are collected
             var newNodeId = m_stateClient.GetNewPageId();// _metadata.GetNextId();
 
-            var newNode = new LeafNode<K, V>(newNodeId);
+            var emptyKeys = m_options.KeySerializer.CreateEmpty();
+            var emptyValues = m_options.ValueSerializer.CreateEmpty();
+            var newNode = new LeafNode<K, V, TKeyContainer, TValueContainer>(newNodeId, emptyKeys, emptyValues);
             newNode.EnterWriteLock();
             
             // Set the next id on the new node to the now left childs next id.
             newNode.next = child.next;
 
             // Copy half of the values on the right to the new node
-            newNode.keys.AddRange(child.keys.GetRange(m_stateClient.Metadata.BucketLength / 2, child.keys.Count - m_stateClient.Metadata.BucketLength / 2));
-            newNode.values.AddRange(child.values.GetRange(m_stateClient.Metadata.BucketLength / 2, child.values.Count - m_stateClient.Metadata.BucketLength / 2));
+            newNode.keys.AddRangeFrom(child.keys, m_stateClient.Metadata.BucketLength / 2, child.keys.Count - m_stateClient.Metadata.BucketLength / 2);
+            newNode.values.AddRangeFrom(child.values, m_stateClient.Metadata.BucketLength / 2, child.values.Count - m_stateClient.Metadata.BucketLength / 2);
             newNode.ExitWriteLock();
 
             child.EnterWriteLock();
@@ -674,7 +680,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             child.next = newNodeId;
             child.ExitWriteLock();
 
-            var splitKey = child.keys[child.keys.Count - 1];
+            var splitKey = child.keys.Get(child.keys.Count - 1);
             // Add the children to the parent node
             parent.EnterWriteLock();
             parent.keys.Insert(index, splitKey);
@@ -692,7 +698,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return result;
         }
 
-        private K SplitBetweenNodes(LeafNode<K, V> leftNode, LeafNode<K, V> rightNode)
+        private K SplitBetweenNodes(LeafNode<K, V, TKeyContainer, TValueContainer> leftNode, LeafNode<K, V, TKeyContainer, TValueContainer> rightNode)
         {
             leftNode.EnterWriteLock();
             rightNode.EnterWriteLock();
@@ -704,30 +710,35 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             if (leftNode.keys.Count < half)
             {
                 var remainder = half - leftNode.keys.Count;
-                leftNode.keys.AddRange(rightNode.keys.GetRange(0, remainder));
-                leftNode.values.AddRange(rightNode.values.GetRange(0, remainder));
+                leftNode.keys.AddRangeFrom(rightNode.keys, 0, remainder);
+                leftNode.values.AddRangeFrom(rightNode.values, 0, remainder);
 
                 var rightNodeSize = rightNode.keys.Count - remainder;
-                var rightKeys = new List<K>(rightNodeSize);
-                var rightValues = new List<V>(rightNodeSize);
-                rightKeys.AddRange(rightNode.keys.GetRange(remainder, rightNodeSize));
-                rightValues.AddRange(rightNode.values.GetRange(remainder, rightNodeSize));
+                var rightKeys = m_options.KeySerializer.CreateEmpty();
+                var rightValues = m_options.ValueSerializer.CreateEmpty();
+
+                rightKeys.AddRangeFrom(rightNode.keys, remainder, rightNodeSize);
+                rightValues.AddRangeFrom(rightNode.values, remainder, rightNodeSize);
                 rightNode.keys = rightKeys;
                 rightNode.values = rightValues;
             }
             // Left has more values
             else
             {
-                var rightKeys = new List<K>(half);
-                var rightValues = new List<V>(half);
+                var rightKeys = m_options.KeySerializer.CreateEmpty();  //new List<K>(half);
+                var rightValues = m_options.ValueSerializer.CreateEmpty(); //new List<V>(half);
 
                 var remainder = half - rightNode.keys.Count;
 
                 // Copy values from left to right at the beginning
-                rightKeys.AddRange(leftNode.keys.GetRange(leftNode.keys.Count - remainder, remainder));
-                rightKeys.AddRange(rightNode.keys);
-                rightValues.AddRange(leftNode.values.GetRange(leftNode.keys.Count - remainder, remainder));
-                rightValues.AddRange(rightNode.values);
+                rightKeys.AddRangeFrom(leftNode.keys, leftNode.keys.Count - remainder, remainder);
+                rightKeys.AddRangeFrom(rightNode.keys, 0, rightNode.keys.Count);
+                rightValues.AddRangeFrom(leftNode.values, leftNode.keys.Count - remainder, remainder);
+                rightValues.AddRangeFrom(rightNode.values, 0, rightNode.values.Count);
+                //rightKeys.AddRange(leftNode.keys.GetRange(leftNode.keys.Count - remainder, remainder));
+                //rightKeys.AddRange(rightNode.keys);
+                //rightValues.AddRange(leftNode.values.GetRange(leftNode.keys.Count - remainder, remainder));
+                //rightValues.AddRange(rightNode.values);
 
                 leftNode.keys.RemoveRange(leftNode.keys.Count - remainder, remainder);
                 leftNode.values.RemoveRange(leftNode.values.Count - remainder, remainder);
@@ -737,18 +748,18 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             rightNode.ExitWriteLock();
             leftNode.ExitWriteLock();
-            var splitKey = leftNode.keys[leftNode.keys.Count - 1];
+            var splitKey = leftNode.keys.Get(leftNode.keys.Count - 1);
             return splitKey;
         }
 
-        private void MergeLeafNodesIntoLeft(LeafNode<K, V> leftNode, LeafNode<K, V> rightNode)
+        private void MergeLeafNodesIntoLeft(LeafNode<K, V, TKeyContainer, TValueContainer> leftNode, LeafNode<K, V, TKeyContainer, TValueContainer> rightNode)
         {
-            leftNode.keys.AddRange(rightNode.keys);
-            leftNode.values.AddRange(rightNode.values);
+            leftNode.keys.AddRangeFrom(rightNode.keys, 0, rightNode.keys.Count);
+            leftNode.values.AddRangeFrom(rightNode.values, 0, rightNode.values.Count);
             leftNode.next = rightNode.next;
         }
 
-        internal static K DistributeBetweenNodesInternal(InternalNode<K, V> leftNode, InternalNode<K, V> rightNode, K parentKey)
+        internal K DistributeBetweenNodesInternal(InternalNode<K, V, TKeyContainer> leftNode, InternalNode<K, V, TKeyContainer> rightNode, K parentKey)
         {
             leftNode.EnterWriteLock();
             rightNode.EnterWriteLock();
@@ -762,16 +773,18 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var remainder = half - leftNode.keys.Count;
                 // Add a new key with the most right value on left side
                 leftNode.keys.Add(parentKey);
-                leftNode.keys.AddRange(rightNode.keys.GetRange(0, remainder - 1));
+                leftNode.keys.AddRangeFrom(rightNode.keys, 0, remainder - 1);
+                //leftNode.keys.AddRange(rightNode.keys.GetRange(0, remainder - 1));
 
                 // Set the split key to the most right value
-                splitKey = rightNode.keys[remainder - 1];
+                splitKey = rightNode.keys.Get(remainder - 1);
                 leftNode.children.AddRange(rightNode.children.GetRange(0, remainder));
 
                 var rightNodeSize = rightNode.keys.Count - remainder;
-                var rightKeys = new List<K>(rightNodeSize);
+                var rightKeys = m_options.KeySerializer.CreateEmpty(); //new List<K>(rightNodeSize);
                 var rightChildren = new List<long>(rightNodeSize);
-                rightKeys.AddRange(rightNode.keys.GetRange(remainder, rightNodeSize));
+
+                rightKeys.AddRangeFrom(rightNode.keys, remainder, rightNodeSize);
                 rightChildren.AddRange(rightNode.children.GetRange(remainder, rightNode.children.Count - remainder));
                 rightNode.keys = rightKeys;
                 rightNode.children = rightChildren;
@@ -779,7 +792,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             // Left has more values
             else
             {
-                var rightKeys = new List<K>(half);
+                var rightKeys = m_options.KeySerializer.CreateEmpty(); // new List<K>(half);
                 var rightChildren = new List<long>(half);
 
                 var remainder = half - rightNode.keys.Count;
@@ -787,8 +800,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 
                 leftNode.keys.Add(parentKey);
                 // Copy values from left to right at the beginning
-                rightKeys.AddRange(leftNode.keys.GetRange(leftNode.keys.Count - remainder, remainder));
-                rightKeys.AddRange(rightNode.keys);
+                rightKeys.AddRangeFrom(leftNode.keys, leftNode.keys.Count - remainder, remainder);
+                rightKeys.AddRangeFrom(rightNode.keys, 0, rightNode.keys.Count);
+                //rightKeys.AddRange(leftNode.keys.GetRange(leftNode.keys.Count - remainder, remainder));
+                //rightKeys.AddRange(rightNode.keys);
                 rightChildren.AddRange(leftNode.children.GetRange(leftNode.children.Count - remainder, remainder));
                 rightChildren.AddRange(rightNode.children);
 
@@ -796,7 +811,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 leftNode.children.RemoveRange(leftNode.children.Count - remainder, remainder);
                 rightNode.keys = rightKeys;
                 rightNode.children = rightChildren;
-                splitKey = leftNode.keys[leftNode.keys.Count - 1];
+                splitKey = leftNode.keys.Get(leftNode.keys.Count - 1);
                 leftNode.keys.RemoveAt(leftNode.keys.Count - 1);
             }
             rightNode.ExitWriteLock();
@@ -805,29 +820,31 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return splitKey;
         }
 
-        internal void MergeInternalNodesIntoLeft(in InternalNode<K, V> leftNode, in InternalNode<K, V> rightNode, in K parentKey)
+        internal void MergeInternalNodesIntoLeft(in InternalNode<K, V, TKeyContainer> leftNode, in InternalNode<K, V, TKeyContainer> rightNode, in K parentKey)
         {
             leftNode.EnterWriteLock();
             leftNode.keys.Add(parentKey);
 
-            leftNode.keys.AddRange(rightNode.keys);
+            leftNode.keys.AddRangeFrom(rightNode.keys, 0, rightNode.keys.Count);
             leftNode.children.AddRange(rightNode.children);
             leftNode.ExitWriteLock();
         }
 
-        private (InternalNode<K, V>, K splitKey) SplitInternalNode(
-            in InternalNode<K, V> parent,
+        private (InternalNode<K, V, TKeyContainer>, K splitKey) SplitInternalNode(
+            in InternalNode<K, V, TKeyContainer> parent,
             in int index,
-            in InternalNode<K, V> child)
+            in InternalNode<K, V, TKeyContainer> child)
         {
             Debug.Assert(m_stateClient.Metadata != null);
             var newNodeId = m_stateClient.GetNewPageId(); // _metadata.GetNextId();
-            var newNode = new InternalNode<K, V>(newNodeId);
+            var emptyKeys = m_options.KeySerializer.CreateEmpty();
+            var newNode = new InternalNode<K, V, TKeyContainer>(newNodeId, emptyKeys);
 
-            newNode.keys.AddRange(child.keys.GetRange(m_stateClient.Metadata.BucketLength / 2, child.keys.Count - m_stateClient.Metadata.BucketLength / 2));
+            newNode.keys.AddRangeFrom(child.keys, m_stateClient.Metadata.BucketLength / 2, child.keys.Count - m_stateClient.Metadata.BucketLength / 2);
+            //newNode.keys.AddRange(child.keys.GetRange(m_stateClient.Metadata.BucketLength / 2, child.keys.Count - m_stateClient.Metadata.BucketLength / 2));
             newNode.children.AddRange(child.children.GetRange(m_stateClient.Metadata.BucketLength / 2, (m_stateClient.Metadata.BucketLength / 2) + 1));
 
-            var splitKey = child.keys[m_stateClient.Metadata.BucketLength / 2 - 1];
+            var splitKey = child.keys.Get(m_stateClient.Metadata.BucketLength / 2 - 1);
 
             child.EnterWriteLock();
             child.keys.RemoveRange(m_stateClient.Metadata.BucketLength / 2 - 1, m_stateClient.Metadata.BucketLength / 2 + 1);

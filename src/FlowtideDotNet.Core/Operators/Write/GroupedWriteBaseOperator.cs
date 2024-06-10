@@ -122,11 +122,12 @@ namespace FlowtideDotNet.Core.Operators.Write
             _streamEventComparer = new StreamEventComparer(GroupIndexCreator.CreateComparer<RowEvent>(primaryKeyColumns));
             _comparer = GroupIndexCreator.CreateComparer<GroupedStreamEvent>(primaryKeyColumns);
 
-            _tree = await stateManagerClient.GetOrCreateTree("output", new BPlusTreeOptions<GroupedStreamEvent, int>() 
+            _tree = await stateManagerClient.GetOrCreateTree("output", 
+                new BPlusTreeOptions<GroupedStreamEvent, int, ListKeyContainer<GroupedStreamEvent>, ListValueContainer<int>>() 
             { 
                 Comparer = new GroupedStreamEventComparer(_comparer),
-                ValueSerializer = new IntSerializer(),
-                KeySerializer = new GroupedStreamEventBPlusTreeSerializer()
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                KeySerializer = new KeyListSerializer<GroupedStreamEvent>(new GroupedStreamEventBPlusTreeSerializer())
             });
 
             await Initialize(restoreTime, state, stateManagerClient);

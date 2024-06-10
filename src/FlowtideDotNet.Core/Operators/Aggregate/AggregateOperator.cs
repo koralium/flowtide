@@ -430,16 +430,18 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed", "events", "Total events processed");
             }
 
-            _tree = await stateManagerClient.GetOrCreateTree<RowEvent, AggregateRowState>("grouping_set_1_v1", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, AggregateRowState>()
+            _tree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1", 
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, AggregateRowState, ListKeyContainer<RowEvent>, ListValueContainer<AggregateRowState>>()
             {
-                KeySerializer = new StreamEventBPlusTreeSerializer(),
-                ValueSerializer = new AggregateRowStateSerializer(),
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<AggregateRowState>(new AggregateRowStateSerializer()),
                 Comparer = new BPlusTreeStreamEventComparer()
             });
-            _temporaryTree = await stateManagerClient.GetOrCreateTree<RowEvent, int>("grouping_set_1_v1_temp", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
+            _temporaryTree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1_temp", 
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
-                KeySerializer = new StreamEventBPlusTreeSerializer(),
-                ValueSerializer = new IntSerializer(),
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
                 Comparer = new BPlusTreeStreamEventComparer()
             });
             await _temporaryTree.Clear();

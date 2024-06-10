@@ -229,11 +229,12 @@ namespace FlowtideDotNet.Core.Operators.Set
             _storages.Clear();
             for (int i = 0; i < setRelation.Inputs.Count; i++)
             {
-                _storages.Add(await stateManagerClient.GetOrCreateTree(i.ToString(), new BPlusTreeOptions<RowEvent, int>()
+                _storages.Add(await stateManagerClient.GetOrCreateTree(i.ToString(), 
+                    new BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
                 {
                     Comparer = new BPlusTreeStreamEventComparer(),
-                    KeySerializer = new StreamEventBPlusTreeSerializer(),
-                    ValueSerializer = new IntSerializer()
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
                 }));
                 
             }

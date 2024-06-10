@@ -17,14 +17,16 @@ using System.Text;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal partial class BPlusTree<K, V> : IBPlusTree<K, V>
+    internal partial class BPlusTree<K, V, TKeyContainer, TValueContainer> : IBPlusTree<K, V>
+        where TKeyContainer: IKeyContainer<K>
+        where TValueContainer: IValueContainer<V>
     {
         internal readonly IStateClient<IBPlusTreeNode, BPlusTreeMetadata> m_stateClient;
-        private readonly BPlusTreeOptions<K, V> m_options;
+        private readonly BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> m_options;
         internal IComparer<K> m_keyComparer;
         private int minSize;
 
-        public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V> options) 
+        public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options) 
         {
             Debug.Assert(options.BucketSize.HasValue);
             this.m_stateClient = stateClient;
@@ -39,7 +41,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             if (m_stateClient.Metadata == null)
             {
                 var rootId = m_stateClient.GetNewPageId();
-                var root = new LeafNode<K, V>(rootId);
+
+                var emptyKeyContainer = m_options.KeySerializer.CreateEmpty();
+                var emptyValueContainer = m_options.ValueSerializer.CreateEmpty();
+                var root = new LeafNode<K, V, TKeyContainer, TValueContainer>(rootId, emptyKeyContainer, emptyValueContainer);
                 m_stateClient.Metadata = new BPlusTreeMetadata()
                 {
                     Root = rootId,
@@ -54,13 +59,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public async Task<string> Print()
         {
             Debug.Assert(m_stateClient.Metadata != null);
-            var root = (BaseNode<K>)(await m_stateClient.GetValue(m_stateClient.Metadata.Root, "PrintRoot"))!;
+            var root = (BaseNode<K, TKeyContainer>)(await m_stateClient.GetValue(m_stateClient.Metadata.Root, "PrintRoot"))!;
 
             var builder = new StringBuilder();
             builder.AppendLine("digraph g {");
             builder.AppendLine("splines=line");
             builder.AppendLine("node [shape = none,height=.1];");
-            await root.Print(builder, async (id) => (BaseNode<K>)(await m_stateClient.GetValue(id, "GetPrint"))!);
+            await root.Print(builder, async (id) => (BaseNode<K, TKeyContainer>)(await m_stateClient.GetValue(id, "GetPrint"))!);
             builder.AppendLine("}");
             return builder.ToString();
         }
@@ -125,7 +130,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 return (false, default);
             }
-            return (true, leaf.values[index]);
+            return (true, leaf.values.Get(index));
         }
 
         public ValueTask<(bool found, K? key)> GetKey(in K key)
@@ -141,12 +146,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 return (false, default);
             }
-            return (true, leaf.keys[index]);
+            return (true, leaf.keys.Get(index));
         }
 
         public IBPlusTreeIterator<K, V> CreateIterator()
         {
-            return new BPlusTreeIterator<K, V>(this);
+            return new BPlusTreeIterator<K, V, TKeyContainer, TValueContainer>(this);
         }
 
         public ValueTask<(GenericWriteOperation operation, V? result)> RMW(in K key, in V? value, in GenericWriteFunction<V> function)
@@ -181,7 +186,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             // Create a new root leaf
             var rootId = m_stateClient.GetNewPageId();
-            var root = new LeafNode<K, V>(rootId);
+            var emptyKeys = m_options.KeySerializer.CreateEmpty();
+            var emptyValues = m_options.ValueSerializer.CreateEmpty();
+            var root = new LeafNode<K, V, TKeyContainer, TValueContainer>(rootId, emptyKeys, emptyValues);
             m_stateClient.Metadata = new BPlusTreeMetadata()
             {
                 Root = rootId,

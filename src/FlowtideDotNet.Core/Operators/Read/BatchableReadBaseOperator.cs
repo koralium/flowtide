@@ -121,26 +121,29 @@ namespace FlowtideDotNet.Core.Operators.Read
                 };
             }
 
-            _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp", new BPlusTreeOptions<string, RowEvent>()
+            _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp", 
+                new BPlusTreeOptions<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>()
             {
                 Comparer = StringComparer.Ordinal,
-                KeySerializer = new StringSerializer(),
-                ValueSerializer = new StreamEventBPlusTreeSerializer()
+                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer())
             });
             await _fullLoadTempTree.Clear();
 
-            _persistentTree = await stateManagerClient.GetOrCreateTree("persistent", new BPlusTreeOptions<string, RowEvent>()
+            _persistentTree = await stateManagerClient.GetOrCreateTree("persistent", 
+                new BPlusTreeOptions<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>()
             {
                 Comparer = StringComparer.Ordinal,
-                KeySerializer = new StringSerializer(),
-                ValueSerializer = new StreamEventBPlusTreeSerializer()
+                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer())
             });
 
-            _deletionsTree = await stateManagerClient.GetOrCreateTree("deletions", new BPlusTreeOptions<string, int>()
+            _deletionsTree = await stateManagerClient.GetOrCreateTree("deletions", 
+                new BPlusTreeOptions<string, int, ListKeyContainer<string>, ListValueContainer<int>>()
             {
                 Comparer = StringComparer.Ordinal,
-                KeySerializer = new StringSerializer(),
-                ValueSerializer = new IntSerializer()
+                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
             });
             await _deletionsTree.Clear();
         }

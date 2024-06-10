@@ -131,11 +131,12 @@ namespace FlowtideDotNet.Core.Operators.Buffer
             }
             
             // Temporary tree for storing the input events
-            _tree = await stateManagerClient.GetOrCreateTree("input", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
+            _tree = await stateManagerClient.GetOrCreateTree("input", 
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
                 Comparer = new BPlusTreeStreamEventComparer(),
-                KeySerializer = new StreamEventBPlusTreeSerializer(),
-                ValueSerializer = new IntSerializer()
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
             });
         }
     }

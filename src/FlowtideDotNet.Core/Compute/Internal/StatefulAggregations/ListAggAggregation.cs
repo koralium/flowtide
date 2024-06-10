@@ -86,11 +86,12 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             {
                 searchPrimaryKeys.Add(i);
             }
-            var tree = await stateManagerClient.GetOrCreateTree("listaggtree", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
+            var tree = await stateManagerClient.GetOrCreateTree("listaggtree", 
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
                 Comparer = new ListAggAggregationInsertComparer(groupingLength + 1),
-                KeySerializer = new StreamEventBPlusTreeSerializer(),
-                ValueSerializer = new IntSerializer()
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
             });
 
             return new ListAggAggregationSingleton(tree, groupingLength);

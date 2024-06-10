@@ -257,11 +257,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             await LoadMetadata();
             Debug.Assert(PrimaryKeyComparer != null);
             // Create a tree for storing modified data.
-            m_modified = await stateManagerClient.GetOrCreateTree<RowEvent, int>("temporary", new Storage.Tree.BPlusTreeOptions<RowEvent, int>()
+            m_modified = await stateManagerClient.GetOrCreateTree("temporary", 
+                new Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
                 Comparer = PrimaryKeyComparer,
-                ValueSerializer = new IntSerializer(),
-                KeySerializer = new StreamEventBPlusTreeSerializer()
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer())
             });
             // Clear the modified tree in case of a crash
             await m_modified.Clear();
