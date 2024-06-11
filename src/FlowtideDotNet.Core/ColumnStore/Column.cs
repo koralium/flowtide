@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using SqlParser.Ast;
 using System.Runtime.InteropServices;
@@ -58,6 +59,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 outOfOrderCounter++;
             }
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _typeList.Add(ArrowTypeId.Null);
+                return;
+            }
+
             var typeByte = (byte)value.Type;
             CheckArrayExist(value.Type);
 
@@ -72,6 +79,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (index != _typeList.Count)
             {
                 outOfOrderCounter++;
+            }
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _typeList.Add(ArrowTypeId.Null);
+                return;
             }
             var typeByte = (byte)value.Type;
             CheckArrayExist(value.Type);
@@ -111,6 +123,11 @@ namespace FlowtideDotNet.Core.ColumnStore
                     case ArrowTypeId.Map:
                         _valueColumns[typeByte] = new MapColumn();
                         break;
+                    case ArrowTypeId.Decimal128:
+                        _valueColumns[typeByte] = new DecimalColumn();
+                        break;
+                    default:
+                        throw new NotImplementedException();
                 }
             }
         }
@@ -243,6 +260,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataValue GetValueAt(in int index)
         {
             var type = _typeList[index];
+            if (type == ArrowTypeId.Null)
+            {
+                return new NullValue();
+            }
             var valueColumn = _valueColumns[(byte)type];
             return valueColumn.GetValueAt(_offsets[index]);
         }

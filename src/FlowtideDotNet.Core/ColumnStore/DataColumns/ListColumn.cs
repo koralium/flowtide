@@ -78,11 +78,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (index + 1 < _offsets.Count)
             {
-                return new ListValue(_internalColumn, _offsets[index], _offsets[index + 1]);
+                return new ReferenceListValue(_internalColumn, _offsets[index], _offsets[index + 1]);
             }
             else
             {
-                return new ListValue(_internalColumn, _offsets[index], _internalColumn.Count);
+                return new ReferenceListValue(_internalColumn, _offsets[index], _internalColumn.Count);
             }
         }
 

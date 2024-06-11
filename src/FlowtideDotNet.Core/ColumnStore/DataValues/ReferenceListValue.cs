@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,16 +21,20 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public struct DecimalValue : IDataValue
+    public struct ReferenceListValue : IListValue
     {
-        private readonly decimal value;
+        private readonly Column column;
+        private readonly int start;
+        private readonly int end;
 
-        public DecimalValue(decimal value)
+        public ReferenceListValue(Column column, int start, int end)
         {
-            this.value = value;
+            this.column = column;
+            this.start = start;
+            this.end = end;
         }
 
-        public ArrowTypeId Type => ArrowTypeId.Decimal128;
+        public ArrowTypeId Type => ArrowTypeId.List;
 
         public long AsLong => throw new NotImplementedException();
 
@@ -39,12 +44,19 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public double AsDouble => throw new NotImplementedException();
 
-        public IListValue AsList => throw new NotImplementedException();
+        public IListValue AsList => this;
+
+        public int Count => end - start;
 
         public Span<byte> AsBinary => throw new NotImplementedException();
 
         public IMapValue AsMap => throw new NotImplementedException();
 
-        public decimal AsDecimal => value;
+        public decimal AsDecimal => throw new NotImplementedException();
+
+        public IDataValue GetAt(in int index)
+        {
+            return column.GetValueAt(start + index);
+        }
     }
 }

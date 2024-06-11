@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
@@ -41,7 +42,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public double AsDouble => throw new NotImplementedException();
 
-        public ListValue AsList => throw new NotImplementedException();
+        public IListValue AsList => throw new NotImplementedException();
 
         public Span<byte> AsBinary => _bytes.AsSpan(_start, _end - _start);
 

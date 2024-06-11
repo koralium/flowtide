@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataValue GetValueAt(in int index)
         {
-            throw new NotImplementedException();
+            return new DecimalValue(_values[index]);
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer)

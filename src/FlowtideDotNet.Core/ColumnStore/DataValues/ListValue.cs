@@ -12,26 +12,23 @@
 
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore
+namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
-    public struct ListValue : IDataValue
+    public struct ListValue : IListValue
     {
-        private readonly Column column;
-        private readonly int start;
-        private readonly int end;
+        private readonly IReadOnlyList<IDataValue> dataValues;
 
-        public ListValue(Column column, int start, int end)
+        public ListValue(IReadOnlyList<IDataValue> dataValues)
         {
-            this.column = column;
-            this.start = start;
-            this.end = end;
+            this.dataValues = dataValues;
         }
+
+        public int Count => dataValues.Count;
 
         public ArrowTypeId Type => ArrowTypeId.List;
 
@@ -43,9 +40,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public double AsDouble => throw new NotImplementedException();
 
-        public ListValue AsList => this;
-
-        public int Count => end - start;
+        public IListValue AsList => this;
 
         public Span<byte> AsBinary => throw new NotImplementedException();
 
@@ -55,7 +50,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataValue GetAt(in int index)
         {
-            return column.GetValueAt(start + index);
+            return dataValues[index];
         }
     }
 }

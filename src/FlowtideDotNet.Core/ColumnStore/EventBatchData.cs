@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    internal class EventBatchData
+    public class EventBatchData
     {
         private readonly List<Column> columns;
 

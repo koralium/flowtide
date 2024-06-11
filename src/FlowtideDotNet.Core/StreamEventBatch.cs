@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore;
+
 namespace FlowtideDotNet.Core
 {
     /// <summary>
@@ -19,11 +21,21 @@ namespace FlowtideDotNet.Core
     /// </summary>
     public class StreamEventBatch
     {
-        public IReadOnlyList<RowEvent> Events { get; }
+        //public IReadOnlyList<RowEvent> Events { get; }
 
-        public StreamEventBatch(IReadOnlyList<RowEvent> events)
+        public EventBatchWeighted Data { get; }
+
+        public IReadOnlyList<RowEvent> Events => RowEventToEventBatchData.EventBatchWeightedToRowEvents(Data);
+
+        public StreamEventBatch(EventBatchWeighted data)
         {
-            Events = events;
+            Data = data;
+        }
+
+        public StreamEventBatch(List<RowEvent> events)
+        {
+            var columnCount = events[0].RowData.Length;
+            Data = RowEventToEventBatchData.ConvertToEventBatchData(events, columnCount);
         }
     }
 }

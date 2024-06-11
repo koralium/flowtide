@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,24 +18,10 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
-    public struct NullValue : IDataValue
+    public interface IListValue : IDataValue
     {
-        public ArrowTypeId Type =>  ArrowTypeId.Null;
+        IDataValue GetAt(in int index);
 
-        public long AsLong => throw new NotImplementedException();
-
-        public FlxString AsString => throw new NotImplementedException();
-
-        public bool AsBool => throw new NotImplementedException();
-
-        public double AsDouble => throw new NotImplementedException();
-
-        public IListValue AsList => throw new NotImplementedException();
-
-        public Span<byte> AsBinary => throw new NotImplementedException();
-
-        public IMapValue AsMap => throw new NotImplementedException();
-
-        public decimal AsDecimal => throw new NotImplementedException();
+        public int Count { get; }
     }
 }

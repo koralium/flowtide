@@ -10,8 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,24 +18,21 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public interface IDataValue
+    public class EventBatchWeighted
     {
-        ArrowTypeId Type { get; }
+        private readonly List<int> weights;
+        private readonly List<uint> iterations;
+        private readonly EventBatchData eventBatchData;
 
-        long AsLong { get; }
+        public EventBatchData EventBatchData => eventBatchData;
+        public List<int> Weights => weights;
+        public List<uint> Iterations => iterations;
 
-        FlxString AsString { get; }
-
-        bool AsBool { get; }
-
-        double AsDouble { get; }
-
-        IListValue AsList { get; }
-
-        Span<byte> AsBinary { get; }
-
-        IMapValue AsMap { get; }
-
-        decimal AsDecimal { get; }
+        public EventBatchWeighted(List<int> weights, List<uint> iterations, EventBatchData eventBatchData)
+        {
+            this.weights = weights;
+            this.iterations = iterations;
+            this.eventBatchData = eventBatchData;
+        }
     }
 }

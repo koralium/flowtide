@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
@@ -31,7 +32,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         internal DoubleValue _doubleValue;
         internal BoolValue _boolValue;
         internal DecimalValue _decimalValue;
-        internal ListValue _listValue;
+        internal IListValue? _listValue;
         internal IMapValue? _mapValue;
         internal ArrowTypeId _type;
 
@@ -46,7 +47,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public double AsDouble => _doubleValue.AsDouble;
 
-        public ListValue AsList => _listValue.AsList;
+        public IListValue AsList => _listValue!.AsList;
 
         public Span<byte> AsBinary => _binaryValue.AsBinary;
 

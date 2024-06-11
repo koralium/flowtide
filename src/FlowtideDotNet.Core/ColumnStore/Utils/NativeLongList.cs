@@ -16,6 +16,7 @@ using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,8 +26,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     /// <summary>
     /// A list of longs that can be used in a column store.
     /// All values are stored in little endian to allow for fast serialization and deserialization.
+    /// Uses native memory aligned to 64 bytes to allow for fast avx operations.
     /// </summary>
-    internal unsafe class LongList : IDisposable
+    internal unsafe class NativeLongList : IDisposable
     {
         private void* _data;
         private int _dataLength;
@@ -34,13 +36,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private bool _disposedValue;
         private readonly IMemoryAllocator _memoryAllocator;
 
-        public LongList(IMemoryAllocator memoryAllocator)
+        public NativeLongList(IMemoryAllocator memoryAllocator)
         {
             _data = null;
             _memoryAllocator = memoryAllocator;
         }
 
-        public LongList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)
+        public NativeLongList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)
         {
             _data = data;
             _dataLength = dataLength;
@@ -57,28 +59,32 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 {
                     newLength = 64;
                 }
-                var newData = _memoryAllocator.Allocate(newLength, 64);
-                var newDataSpan = new Span<long>(newData, newLength);
-                var oldDataSpan = new Span<long>(_data, _dataLength);
-                oldDataSpan.CopyTo(newDataSpan);
-                _memoryAllocator.Free(_data);
+                var allocSize = newLength * sizeof(long);
+                var newData = _memoryAllocator.Allocate(allocSize, 64);
+                if (_data != null)
+                {
+                    var newDataSpan = new Span<long>(newData, newLength);
+                    var oldDataSpan = new Span<long>(_data, _length);
+                    oldDataSpan.CopyTo(newDataSpan);
+                    _memoryAllocator.Free(_data);
+                }
                 _data = newData;
                 _dataLength = newLength;
             }
         }
 
-        public Span<long> Span => new Span<long>(_data, _dataLength);
+        private Span<long> AccessSpan => new Span<long>(_data, _dataLength);
 
         public void Add(long value)
         {
             EnsureCapacity(_length + 1);
             if (BitConverter.IsLittleEndian)
             {
-                this.Span[_length++] = value;
+                AccessSpan[_length++] = value;
             }
             else
             {
-                this.Span[_length++] = BinaryPrimitives.ReverseEndianness(value);
+                AccessSpan[_length++] = BinaryPrimitives.ReverseEndianness(value);
             }
         }
 
@@ -91,7 +97,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
             
             EnsureCapacity(_length + 1);
-            var span = Span;
+            var span = AccessSpan;
             span.Slice(index, _length - index).CopyTo(span.Slice(index + 1, _length - index));
             if (BitConverter.IsLittleEndian)
             {
@@ -106,14 +112,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public void RemoveAt(int index)
         {
-            var span = Span;
+            var span = AccessSpan;
             span.Slice(index + 1, _length - index - 1).CopyTo(span.Slice(index, _length - index - 1));
             _length--;
         }
 
         public void RemoveRange(int index, int count)
         {
-            var span = Span;
+            var span = AccessSpan;
             var length = _length - index - count;
             span.Slice(index + count, length).CopyTo(span.Slice(index));
             _length -= count;
@@ -121,13 +127,20 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public long Get(in int index)
         {
-            var span = Span;
-            return span[index];
+            var span = AccessSpan;
+            if (BitConverter.IsLittleEndian)
+            {
+                return span[index];
+            }
+            else
+            {
+                return BinaryPrimitives.ReverseEndianness(span[index]);
+            }
         }
 
         public void Update(in int index, in long value)
         {
-            var span = Span;
+            var span = AccessSpan;
             if (BitConverter.IsLittleEndian)
             {
                 span[index] = value;
@@ -161,7 +174,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
-        ~LongList()
+        ~NativeLongList()
         {
             Dispose(disposing: false);
         }

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,10 +28,13 @@ namespace FlowtideDotNet.Core.ColumnStore
     internal static class RowEventToEventBatchData
     {
 
+        // Allot of boxing in this method, but it is temporary until flxvalue is phased out.
         public static IDataValue FlxValueToDataValue(FlxValue flxValue)
         {
             switch (flxValue.ValueType)
             {
+                case FlexBuffers.Type.Null:
+                    return new NullValue();
                 case FlexBuffers.Type.Bool:
                     return new BoolValue(flxValue.AsBool);
                 case FlexBuffers.Type.Int:
@@ -39,8 +43,43 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return new StringValue(flxValue.AsFlxString.Span.ToArray());
                 case FlexBuffers.Type.Decimal:
                     return new DecimalValue(flxValue.AsDecimal);
+                case FlexBuffers.Type.Float:
+                    return new DoubleValue(flxValue.AsDouble);
+                case FlexBuffers.Type.Blob:
+                    var blob = flxValue.AsBlob;
+                    return new BinaryValue(blob.ToArray(), 0, blob.Length);
+                case FlexBuffers.Type.Map:
+                    return MapToDataValue(flxValue);
+                case FlexBuffers.Type.Vector:
+                    return ListToDataValue(flxValue);
             }
             throw new NotImplementedException();
+        }
+
+        private static IDataValue ListToDataValue(FlxValue flxValue)
+        {
+            var list = flxValue.AsVector;
+
+            List<IDataValue> dataValues = new List<IDataValue>();
+            for (int i = 0; i < list.Length; i++)
+            {
+                var innerVal = FlxValueToDataValue(list.Get(i));
+                dataValues.Add(innerVal);
+            }
+            return new ListValue(dataValues);
+        }
+
+        private static IDataValue MapToDataValue(FlxValue flxValue)
+        {
+            var map = flxValue.AsMap;
+            
+            List<KeyValuePair<string, IDataValue>> dataMap = new List<KeyValuePair<string, IDataValue>>();
+            foreach (var kv in map)
+            {
+                var innerVal = FlxValueToDataValue(kv.Value);
+                dataMap.Add(new KeyValuePair<string, IDataValue>(kv.Key, innerVal));
+            }
+            return new MapValue(dataMap);
         }
 
         public static FlxValue DataValueToFlxValue(IDataValue dataValue)
@@ -101,8 +140,27 @@ namespace FlowtideDotNet.Core.ColumnStore
             return FlxValue.FromBytes(bytes);
         }
 
-        public static EventBatchData ConvertToEventBatchData(List<RowEvent> rowEvents, int columnCount)
+        public static List<RowEvent> EventBatchWeightedToRowEvents(EventBatchWeighted eventBatch)
         {
+            List<RowEvent> rowEvents = new List<RowEvent>();
+            for (int i = 0; i < eventBatch.Weights.Count; i++)
+            {
+                var weight = eventBatch.Weights[i];
+                var iteration = eventBatch.Iterations[i];
+                FlxValue[] columns = new FlxValue[eventBatch.EventBatchData.Columns.Count];
+                for (int c = 0; c < eventBatch.EventBatchData.Columns.Count; c++)
+                {
+                    columns[c] = DataValueToFlxValue(eventBatch.EventBatchData.Columns[c].GetValueAt(i));
+                }
+                rowEvents.Add(new RowEvent(weight, iteration, new ArrayRowData(columns)));
+            }
+            return rowEvents;
+        }
+
+        public static EventBatchWeighted ConvertToEventBatchData(List<RowEvent> rowEvents, int columnCount)
+        {
+            List<int> weights = new List<int>();
+            List<uint> iterations = new List<uint>();
             List<Column> columns = new List<Column>();
             for (int i = 0; i < columnCount; i++)
             {
@@ -111,6 +169,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             foreach(var e in rowEvents)
             {
+                weights.Add(e.Weight);
+                iterations.Add(e.Iteration);
                 for (int i = 0; i < columnCount; i++)
                 {
                     var dataValue = FlxValueToDataValue(e.GetColumn(i));
@@ -120,7 +180,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             var eventBatchData = new EventBatchData(columns);
 
-            return eventBatchData;
+            return new EventBatchWeighted(weights, iterations, eventBatchData);
         }
     }
 }

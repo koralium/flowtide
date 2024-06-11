@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         public void TestAdd()
         {
             var allocator = new NativeMemoryAllocator();
-            using var longList = new LongList(allocator);
+            using var longList = new NativeLongList(allocator);
             longList.Add(1);
             longList.Add(2);
             longList.Add(3);
@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         public void TestInsertMiddle()
         {
             var allocator = new NativeMemoryAllocator();
-            using var longList = new LongList(allocator);
+            using var longList = new NativeLongList(allocator);
             longList.Add(1);
             longList.Add(3);
             longList.InsertAt(1, 2);
@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         public void TestInsertFirst()
         {
             var allocator = new NativeMemoryAllocator();
-            using var longList = new LongList(allocator);
+            using var longList = new NativeLongList(allocator);
             longList.Add(2);
             longList.Add(3);
             longList.InsertAt(0, 1);
@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         public void TestInsertLast()
         {
             var allocator = new NativeMemoryAllocator();
-            using var longList = new LongList(allocator);
+            using var longList = new NativeLongList(allocator);
             longList.Add(1);
             longList.Add(2);
             longList.InsertAt(2, 3);
@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         public void TestRemoveMiddle()
         {
             var allocator = new NativeMemoryAllocator();
-            using var longList = new LongList(allocator);
+            using var longList = new NativeLongList(allocator);
             longList.Add(1);
             longList.Add(2);
             longList.Add(3);
@@ -97,7 +97,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         public void TestRemoveFirst()
         {
             var allocator = new NativeMemoryAllocator();
-            using var longList = new LongList(allocator);
+            using var longList = new NativeLongList(allocator);
             longList.Add(1);
             longList.Add(2);
             longList.Add(3);
@@ -112,7 +112,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         public void TestRemoveLast()
         {
             var allocator = new NativeMemoryAllocator();
-            using var longList = new LongList(allocator);
+            using var longList = new NativeLongList(allocator);
             longList.Add(1);
             longList.Add(2);
             longList.Add(3);
@@ -127,7 +127,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         public void TestRemoveRange()
         {
             var allocator = new NativeMemoryAllocator();
-            using var longList = new LongList(allocator);
+            using var longList = new NativeLongList(allocator);
             longList.Add(1);
             longList.Add(2);
             longList.Add(3);
@@ -139,6 +139,20 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             Assert.Equal(4, longList[1]);
             Assert.Equal(5, longList[2]);
             Assert.Equal(3, longList.Count);
+        }
+
+        [Fact]
+        public void TestAddOneMillion()
+        {
+            var allocator = new NativeMemoryAllocator();
+            using var longList = new NativeLongList(allocator);
+            
+            for (int i = 0; i < 1_000_000; i++)
+            {
+                longList.Add(i);
+            }
+
+            Assert.Equal(1_000_000, longList.Count);
         }
     }
 }
