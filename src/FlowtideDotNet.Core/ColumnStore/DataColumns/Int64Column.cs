@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System;
 using System.Collections.Generic;
@@ -42,7 +43,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             return index;
         }
 
-        public int BinarySearch(in IDataValue dataValue, int start, int end)
+        public int BinarySearch(in IDataValue dataValue, in int start, in int end)
         {
             var longVal = dataValue.AsLong;
             return _data.BinarySearch(start, end - start, longVal, default);
@@ -78,10 +79,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public (int, int) SearchBoundries(in IDataValue dataValue, int start, int end)
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end)
+            where T: IDataValue
         {
             var val = dataValue.AsLong;
-            return IntListSearch.SearchBoundries(_data, val, start, end - start);
+            return BoundarySearch.SearchBoundries<long>(_data, val, start, end - start, Int64Comparer.Instance);
         }
 
         public int Update(in int index, in IDataValue value)
@@ -92,7 +94,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int Update<T>(in int index, in T value) where T : struct, IDataValue
         {
-            throw new NotImplementedException();
+            _data[index] = value.AsLong;
+            return index;
         }
     }
 }

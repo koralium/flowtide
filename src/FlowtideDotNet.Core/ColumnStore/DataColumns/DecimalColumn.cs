@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int BinarySearch(in IDataValue dataValue, int start, int end)
+        public int BinarySearch(in IDataValue dataValue, in int start, in int end)
         {
             throw new NotImplementedException();
         }
@@ -76,7 +76,8 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._decimalValue = new DecimalValue(_values[index]);
         }
 
-        public (int, int) SearchBoundries(in IDataValue dataValue, int start, int end)
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end) 
+            where T : IDataValue
         {
             throw new NotImplementedException();
         }

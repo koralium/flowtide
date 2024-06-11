@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using SqlParser.Ast;
+using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -23,9 +25,9 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <summary>
         /// Contains what type of data is stored in each element.
         /// </summary>
-        internal readonly List<ArrowTypeId> _typeList;
-        internal readonly List<int> _offsets;
-        internal readonly IDataColumn[] _valueColumns;
+        private readonly List<ArrowTypeId> _typeList;
+        private readonly List<int> _offsets;
+        private readonly IDataColumn[] _valueColumns;
         private int _typesCounter;
 
         /// <summary>
@@ -61,7 +63,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             _typeList.Insert(index, value.Type);
             var valueColumn = _valueColumns[typeByte];
-            var offset = valueColumn.Add(value);
+            var offset = valueColumn.Add(in value);
             _offsets.Insert(index, offset);
         }
 
@@ -175,23 +177,22 @@ namespace FlowtideDotNet.Core.ColumnStore
             return valueColumn.BinarySearch(value, start, end);
         }
 
-        public (int, int) SearchBoundries(in IDataValue value, in int start, in int end)
+        public (int, int) SearchBoundries<T>(in T value, in int start, in int end)
+            where T: IDataValue
         {
             if (_typesCounter == 1 && outOfOrderCounter == 0)
             {
                 // only one type in the column, so we can use the binary search inside of the type array.
                 // It is also in order, so its safe to run the entire search inside of the type array.
                 var type = (byte)value.Type;
-
-                return _valueColumns[type].SearchBoundries(in value, start, end);
+                
+                return _valueColumns[type].SearchBoundries(in value, in start, in end);
             }
             else
             {
                 // Multiple types so a binary search will be done outside using all types.
-                return IntListSearch.SearchBoundriesForColumn(this, value, start, end);
+                return BoundarySearch.SearchBoundriesForColumn(this, in value, in start, in end);
             }
-
-            return IntListSearch.SearchBoundriesForColumn(this, value, start, end);
         }
 
         public int CompareTo(in Column otherColumn, in int thisIndex, in int otherIndex)
@@ -201,9 +202,13 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             if (thisType == otherType)
             {
+                if (thisType == ArrowTypeId.Null)
+                {
+                    return 0;
+                }
                 var thisValueColumn = _valueColumns[(byte)thisType];
                 var otherValueColumn = otherColumn._valueColumns[(byte)otherType];
-                return thisValueColumn.CompareToStrict(otherValueColumn, _offsets[thisIndex], otherColumn._offsets[otherIndex]);
+                return thisValueColumn.CompareToStrict(in otherValueColumn,_offsets[thisIndex], otherColumn._offsets[otherIndex]);
             }
             else
             {
@@ -227,21 +232,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return type - dataValue.Type;
             }
         }
-
-        //public int CompareTo(in int index, in IDataValue dataValue)
-        //{
-        //    var type = _typeList[index];
-
-        //    if (type == dataValue.Type)
-        //    {
-        //        var valueColumn = _valueColumns[(byte)type];
-        //        return valueColumn.CompareToStrict(_offsets[index], in dataValue);
-        //    }
-        //    else
-        //    {
-        //        return type - dataValue.Type;
-        //    }
-        //}
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
         {

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.Utils;
 using System;
 using System.Collections;
@@ -22,9 +23,10 @@ using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
-    internal static class IntListSearch
+    internal static class BoundarySearch
     {
-        public static (int, int) SearchBoundriesForColumn(in Column column, in IDataValue value, in int index, in int length)
+        public static (int, int) SearchBoundriesForColumn<T>(in Column column, in T value, in int index, in int length)
+            where T: IDataValue
         {
             int lo = index;
             int hi = index + length - 1;
@@ -100,7 +102,8 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
             return (lowerbound, upperbound);
         }
-        public static (int, int) SearchBoundries(in List<long> list, in long value, in int index, in int length)
+
+        public static (int, int) SearchBoundries<T>(in List<T> list, in T value, in int index, in int length, IColumnComparer<T> comparer)
         {
             int lo = index;
             int hi = index + length - 1;
@@ -111,7 +114,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 int i = lo + ((hi - lo) >> 1);
 
-                int c = list[i].CompareTo(value);
+                int c = comparer.Compare(list[i], in value);
                 if (c == 0)
                 {
                     found = true;
@@ -138,7 +141,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (lo < (index + length - 1))
             {
                 // Check that the next value is the same, if not we are at the of the bounds.
-                int c = list[lo + 1].CompareTo(value);
+                int c = comparer.Compare(list[lo + 1], in value);
                 if (c != 0)
                 {
                     return (lowerbound, lowerbound);
@@ -157,7 +160,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 int i = lo + ((hi - lo) >> 1);
 
-                int c = list[i].CompareTo(value);
+                int c = comparer.Compare(list[i], in value);
                 if (c <= 0)
                 {
                     lo = i + 1;
@@ -170,7 +173,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             int upperbound = lo - 1;
             if (!found)
             {
-                upperbound = ~lo;
+                upperbound = ~upperbound;
             }
 
             return (lowerbound, upperbound);

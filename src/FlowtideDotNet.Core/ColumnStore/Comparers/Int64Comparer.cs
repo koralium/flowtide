@@ -10,14 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using BenchmarkDotNet.Running;
-using DifferntialCompute.Benchmarks;
-using FlowtideDotNet.Benchmarks;
-using FlowtideDotNet.Benchmarks.Stream;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-//ColumnStoreTreeBenchmark columnStoreTreeBenchmark = new ColumnStoreTreeBenchmark();
-//columnStoreTreeBenchmark.GlobalSetup();
-//columnStoreTreeBenchmark.IterationSetup();
-//await columnStoreTreeBenchmark.ColumnarInsertInOrder();
+namespace FlowtideDotNet.Core.ColumnStore.Comparers
+{
+    internal class Int64Comparer : IColumnComparer<long>
+    {
+        internal static readonly Int64Comparer Instance = new Int64Comparer();
 
-var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+        public int Compare(in long x, in long y)
+        {
+            return x.CompareTo(y);
+        }
+    }
+}

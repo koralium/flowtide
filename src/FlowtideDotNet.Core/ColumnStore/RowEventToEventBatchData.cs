@@ -14,6 +14,7 @@ using FlexBuffers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -46,16 +47,59 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             switch (dataValue.Type)
             {
+                case ArrowTypeId.Null:
+                    return FlxValue.Null;
                 case ArrowTypeId.Int64:
                     return FlxValue.FromBytes(FlexBuffer.SingleValue(dataValue.AsLong));
                 case ArrowTypeId.Boolean:
                     return FlxValue.FromBytes(FlexBuffer.SingleValue(dataValue.AsBool));
-                //case ArrowTypeId.String:
-                //    return FlxValue.FromBytes(FlexBuffer.SingleValue(dataValue.AsString));
+                case ArrowTypeId.String:
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(Encoding.UTF8.GetString(dataValue.AsString.Span)));
+                case ArrowTypeId.Decimal128:
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(dataValue.AsDecimal));
+                case ArrowTypeId.Double:
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(dataValue.AsDouble));
+                case ArrowTypeId.Binary:
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(dataValue.AsBinary.ToArray()));
+                case ArrowTypeId.Map:
+                    return MapToFlxValue(dataValue);
+                case ArrowTypeId.List:
+                    return ListToFlxValue(dataValue);
             }
             throw new NotImplementedException();
         }
         
+        private static FlxValue ListToFlxValue(IDataValue value)
+        {
+            var list = value.AsList;
+
+            var bytes = FlexBufferBuilder.Vector(v =>
+            {
+                int listCount = list.Count;
+                for (int i = 0; i < listCount; i++)
+                {
+                    var innerVal = DataValueToFlxValue(list.GetAt(i));
+                    v.Add(innerVal);
+                }
+            });
+
+            return FlxValue.FromBytes(bytes);
+        }
+
+        private static FlxValue MapToFlxValue(IDataValue value)
+        {
+            var map = value.AsMap;
+
+            var bytes = FlexBufferBuilder.Map(m =>
+            {
+                foreach (var kv in map)
+                {
+                    var innerVal = DataValueToFlxValue(kv.Value);
+                    m.Add(kv.Key, innerVal);
+                }
+            });
+            return FlxValue.FromBytes(bytes);
+        }
 
         public static EventBatchData ConvertToEventBatchData(List<RowEvent> rowEvents, int columnCount)
         {

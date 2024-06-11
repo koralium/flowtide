@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -46,7 +48,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int BinarySearch(in IDataValue dataValue, int start, int end)
+        public int BinarySearch(in IDataValue dataValue, in int start, in int end)
         {
             throw new NotImplementedException();
         }
@@ -63,7 +65,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int CompareToStrict<T>(in int index, in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            return _data[index].CompareTo(value.AsDouble);
         }
 
         public IDataValue GetValueAt(in int index)
@@ -76,9 +78,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public (int, int) SearchBoundries(in IDataValue dataValue, int start, int end)
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end) 
+            where T : IDataValue
         {
-            throw new NotImplementedException();
+            var val = dataValue.AsDouble;
+            return BoundarySearch.SearchBoundries<double>(_data, val, start, end - start, DoubleComparer.Instance);
         }
 
         public int Update(in int index, in IDataValue value)

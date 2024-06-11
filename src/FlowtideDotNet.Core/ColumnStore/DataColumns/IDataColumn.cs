@@ -37,8 +37,9 @@ namespace FlowtideDotNet.Core.ColumnStore
         int Update<T>(in int index, in T value)
             where T: struct, IDataValue;
 
-        int BinarySearch(in IDataValue dataValue, int start, int end);
+        int BinarySearch(in IDataValue dataValue, in int start, in int end);
 
-        (int, int) SearchBoundries(in IDataValue dataValue, int start, int end);
+        (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end)
+            where T : IDataValue;
     }
 }

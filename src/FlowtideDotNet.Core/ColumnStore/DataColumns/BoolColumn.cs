@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,32 +22,33 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     internal class BoolColumn : IDataColumn
     {
-        private BitmapArray _bitmapArray = new();
-        private int _count;
+        private List<bool> _data = new();
         public int Add(in IDataValue value)
         {
+            var index = _data.Count;
             if (value.AsBool)
             {
-                _bitmapArray.Set(_count);
+                _data.Add(true);
             }
             else
             {
-                _bitmapArray.Clear(_count);
+                _data.Add(false);
             }
-            return _count++;
+            return index;
         }
 
         public int Add<T>(in T value) where T : struct, IDataValue
         {
+            var index = _data.Count;
             if (value.AsBool)
             {
-                _bitmapArray.Set(_count);
+                _data.Add(true);
             }
             else
             {
-                _bitmapArray.Clear(_count);
+                _data.Add(false);
             }
-            return _count++;
+            return index;
         }
 
         public int BinarySearch(in IDataValue dataValue)
@@ -53,7 +56,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int BinarySearch(in IDataValue dataValue, int start, int end)
+        public int BinarySearch(in IDataValue dataValue, in int start, in int end)
         {
             throw new NotImplementedException();
         }
@@ -70,41 +73,51 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int CompareToStrict<T>(in int index, in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            return _data[index].CompareTo(value.AsBool);
         }
 
         public IDataValue GetValueAt(in int index)
         {
-            return new BoolValue(_bitmapArray.IsSet(index));
+            return new BoolValue(_data[index]);
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
         {
             dataValueContainer._type = ArrowTypeId.Boolean;
-            dataValueContainer._boolValue = new BoolValue(_bitmapArray.IsSet(index));
+            dataValueContainer._boolValue = new BoolValue(_data[index]);
         }
 
-        public (int, int) SearchBoundries(in IDataValue dataValue, int start, int end)
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end)
+            where T : IDataValue
         {
-            throw new NotImplementedException();
+            var val = dataValue.AsBool;
+            return BoundarySearch.SearchBoundries<bool>(_data, val, start, end - start, BoolComparer.Instance);
         }
 
         public int Update(in int index, in IDataValue value)
         {
             if (value.AsBool)
             {
-                _bitmapArray.Set(index);
+                _data[index] = true;
             }
             else
             {
-                _bitmapArray.Clear(index);
+                _data[index] = false;
             }
             return index;
         }
 
         public int Update<T>(in int index, in T value) where T : struct, IDataValue
         {
-            throw new NotImplementedException();
+            if (value.AsBool)
+            {
+                _data[index] = true;
+            }
+            else
+            {
+                _data[index] = false;
+            }
+            return index;
         }
     }
 }

@@ -10,27 +10,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Tests.ColumnStore
+namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
 {
-    public  class SearchBoundriesBinaryTest
+    public class MemCopyUtilsTests
     {
         [Fact]
-        public void Test()
+        public void TestCopyWithAddEntireArray()
         {
-            List<long> sortedList = new List<long> { 1, 2, 2, 2, 2, 4, 5, 6 };
-
-            for (int i = 7; i < 10000; i++)
+            int[] arr1 = new int[64];
+            int[] arr2 = new int[64];
+            for (int i = 0; i < 64; i++)
             {
-                sortedList.Add(i);
+                arr1[i] = i;
             }
-            var (min, max) = BoundarySearch.SearchBoundries(sortedList, 2, 0, sortedList.Count, default);
+
+            AvxUtils.MemCpyWithAdd(arr1, arr2, 5);
         }
     }
 }

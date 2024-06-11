@@ -101,6 +101,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Update(int index, ColumnRowReference key)
         {
+            throw new Exception();
             //for (int i = 0; i < columnCount; i++)
             //{
             //    _data.Columns[i].UpdateAt(index, key.referenceBatch.Columns[i].GetValueAt(i));

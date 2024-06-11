@@ -86,6 +86,7 @@ namespace FlowtideDotNet.Benchmarks
                 longList.Add(val.ToString());
                 compactData.Add(new JoinStreamEvent(0, 0, e.RowData));
                 arrayData.Add(new JoinStreamEvent(0, 0, ArrayRowData.Create(e.RowData, default)));
+
                 column.InsertAt(i, new FlowtideDotNet.Core.ColumnStore.Int64Value(val));
             }
         }
