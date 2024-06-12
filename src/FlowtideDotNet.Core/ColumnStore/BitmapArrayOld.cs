@@ -11,22 +11,51 @@
 // limitations under the License.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    internal class BitmapArray
+    internal class BitmapArrayOld
     {
         static readonly byte[] _emptyArray = new byte[0];
         private byte[] _data;
 
-        public BitmapArray()
+        public BitmapArrayOld()
         {
+            
             _data = _emptyArray;
+        }
+
+        public void RemoveAt(in int index)
+        {
+            var byteIndex = index / 8;
+            var bitIndex = index % 8;
+
+            int start = byteIndex + 1;
+            var span = _data.AsSpan<byte>();
+
+            var existing = span[index];
+            
+
+
+            //var ulongspan = MemoryMarshal.Cast<byte, ulong>(span);
+            //ulong endBitMask = ((ulong)1) << 63;
+            //ulong firstBitMask = ((ulong)1);
+            //for (int i = start; i < ulongspan.Length; i++)
+            //{
+            //    if ((ulongspan[i] & endBitMask) > 0)
+            //    {
+            //        // Add the bit to the previous byte at the end
+            //        ulongspan[i - 1] = ulongspan[i - 1] | firstBitMask;
+            //    }
+            //    ulongspan[i] = ulongspan[i] << 1;
+            //}
         }
 
         public void Set(in int index)

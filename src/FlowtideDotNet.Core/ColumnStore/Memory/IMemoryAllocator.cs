@@ -22,6 +22,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
     {
         void* Allocate(int size, int alignment);
 
+        void* Reallocate(void* ptr, int size, int alignment);
+
         void Free(void* ptr);
     }
 }

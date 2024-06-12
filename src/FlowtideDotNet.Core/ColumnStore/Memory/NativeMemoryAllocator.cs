@@ -30,5 +30,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
         {
             NativeMemory.AlignedFree(ptr);
         }
+
+        public unsafe void* Reallocate(void* ptr, int size, int alignment)
+        {
+            return NativeMemory.AlignedRealloc(ptr, (nuint)size, (nuint)alignment);
+        }
     }
 }

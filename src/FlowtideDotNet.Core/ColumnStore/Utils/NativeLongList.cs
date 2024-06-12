@@ -60,16 +60,27 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     newLength = 64;
                 }
                 var allocSize = newLength * sizeof(long);
-                var newData = _memoryAllocator.Allocate(allocSize, 64);
-                if (_data != null)
+
+                if (_data == null)
                 {
-                    var newDataSpan = new Span<long>(newData, newLength);
-                    var oldDataSpan = new Span<long>(_data, _length);
-                    oldDataSpan.CopyTo(newDataSpan);
-                    _memoryAllocator.Free(_data);
+                    _data = _memoryAllocator.Allocate(allocSize, 64);
                 }
-                _data = newData;
+                else
+                {
+                    _data = _memoryAllocator.Reallocate(_data, allocSize, 64);
+                }
                 _dataLength = newLength;
+
+                //var newData = _memoryAllocator.Allocate(allocSize, 64);
+                //if (_data != null)
+                //{
+                //    var newDataSpan = new Span<long>(newData, newLength);
+                //    var oldDataSpan = new Span<long>(_data, _length);
+                //    oldDataSpan.CopyTo(newDataSpan);
+                //    _memoryAllocator.Free(_data);
+                //}
+                //_data = newData;
+
             }
         }
 

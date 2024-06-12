@@ -16,6 +16,9 @@ using FlowtideDotNet.Benchmarks;
 using FlowtideDotNet.Benchmarks.ColumnStore.Utils;
 using FlowtideDotNet.Benchmarks.Stream;
 
+int index = 100;
+int bitMask = 1 << 32;
+
 //ColumnStoreTreeBenchmark columnStoreTreeBenchmark = new ColumnStoreTreeBenchmark();
 //columnStoreTreeBenchmark.GlobalSetup();
 //columnStoreTreeBenchmark.IterationSetup();
