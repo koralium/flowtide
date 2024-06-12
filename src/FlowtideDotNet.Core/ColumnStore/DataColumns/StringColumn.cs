@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public int CompareToStrict<T>(in int index, in T value)
+        public int CompareTo<T>(in int index, in T value)
             where T : IDataValue
         {
             var str = value.AsString;
@@ -84,7 +84,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             return resultOffset;
         }
 
-        public int CompareToStrict(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
+        public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             if (otherColumn is StringColumn stringColumn)
             {

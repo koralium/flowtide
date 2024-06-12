@@ -179,13 +179,13 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public abstract int CompareToStrict(in int index, in IDataValue value);
 
-        public abstract int CompareToStrict(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);
+        public abstract int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);
 
         public abstract IDataValue GetValueAt(in int index);
 
         public abstract int Update(in int index, in IDataValue value);
 
-        public int CompareToStrict<T>(in int index, in T value) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
         }

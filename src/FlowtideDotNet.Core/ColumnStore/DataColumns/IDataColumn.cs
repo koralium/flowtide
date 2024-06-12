@@ -20,15 +20,14 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public interface IDataColumn
     {
-        int CompareToStrict<T>(in int index, in T value)
+        int Count { get; }
+        int CompareTo<T>(in int index, in T value)
             where T: IDataValue;
 
-        int CompareToStrict(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);
+        int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);
 
         int Add<T>(in T value)
-            where T: struct, IDataValue;
-
-        int Add(in IDataValue value);
+            where T: IDataValue;
 
         IDataValue GetValueAt(in int index);
 
@@ -40,6 +39,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         int BinarySearch(in IDataValue dataValue, in int start, in int end);
 
         (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end)
+            where T : IDataValue;
+
+        void RemoveAt(in int index);
+
+        void InsertAt<T>(in int index, in T value)
             where T : IDataValue;
     }
 }

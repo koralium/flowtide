@@ -83,9 +83,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new DoubleValue(0));
             column.Add(new DoubleValue(1));
             column.Add(new DoubleValue(2));
-            Assert.Equal(-1, column.CompareToStrict(0, new DoubleValue(1)));
-            Assert.Equal(0, column.CompareToStrict(1, new DoubleValue(1)));
-            Assert.Equal(1, column.CompareToStrict(2, new DoubleValue(1)));
+            Assert.Equal(-1, column.CompareTo(0, new DoubleValue(1)));
+            Assert.Equal(0, column.CompareTo(1, new DoubleValue(1)));
+            Assert.Equal(1, column.CompareTo(2, new DoubleValue(1)));
         }
     }
 }

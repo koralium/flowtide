@@ -132,5 +132,88 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             Assert.True(list.Get(33));
             Assert.True(list.Get(35));
         }
+
+        [Fact]
+        public void TestInitialization()
+        {
+            var list = new BitmapList();
+            for (int i = 0; i < 64; i++)
+            {
+                Assert.False(list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestSetAndUnsetBits()
+        {
+            var list = new BitmapList();
+            list.Set(0);
+            Assert.True(list.Get(0));
+            list.Unset(0);
+            Assert.False(list.Get(0));
+
+            list.Set(63);
+            Assert.True(list.Get(63));
+            list.Unset(63);
+            Assert.False(list.Get(63));
+        }
+
+
+        [Fact]
+        public void TestBoundaryConditions()
+        {
+            var list = new BitmapList();
+            list.Set(0);
+            list.Set(31);
+            list.Set(32);
+            list.Set(63);
+
+            Assert.True(list.Get(0));
+            Assert.True(list.Get(31));
+            Assert.True(list.Get(32));
+            Assert.True(list.Get(63));
+
+            list.RemoveAt(31);
+            Assert.True(list.Get(31));
+            Assert.True(list.Get(62));
+
+            list.InsertAt(32, true);
+            Assert.True(list.Get(31));
+            Assert.True(list.Get(32));
+        }
+
+        [Fact]
+        public void TestInsertRemoveInEmptyList()
+        {
+            var list = new BitmapList();
+            list.InsertAt(0, true);
+            Assert.True(list.Get(0));
+
+            list.RemoveAt(0);
+            Assert.False(list.Get(0));
+        }
+
+        [Fact]
+        public void TestInsertRemoveSingleBitList()
+        {
+            var list = new BitmapList();
+            list.Set(10);
+            list.InsertAt(5, true);
+            Assert.True(list.Get(5));
+            Assert.True(list.Get(11)); // Original bit should have shifted
+
+            list.RemoveAt(5);
+            Assert.False(list.Get(5));
+            Assert.True(list.Get(10)); // Original bit should have shifted back
+        }
+
+        [Fact]
+        public void TestLargeIndexSet()
+        {
+            var list = new BitmapList();
+            list.Set(1024);
+            Assert.True(list.Get(1024));
+            Assert.False(list.Get(1023));
+        }
     }
 }

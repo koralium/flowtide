@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,23 +24,34 @@ namespace FlowtideDotNet.Core.ColumnStore
     internal class Int64Column : IDataColumn
     {
         private List<long> _data;
+        private int nullCounter;
+        private BitmapList? _nullList;
+
+        public int Count => throw new NotImplementedException();
 
         public Int64Column()
         {
             _data = new List<long>();
         }
 
-        public int Add(in IDataValue value)
+        public int Add<T>(in T value) where T: IDataValue
         {
             var index = _data.Count;
-            _data.Add(value.AsLong);
-            return index;
-        }
+            if (value.Type == ArrowTypeId.Null)
+            {
+                if (_nullList == null)
+                {
+                    _nullList = new BitmapList();
+                }
+                nullCounter++;
+                _nullList.Set(index);
+                _data.Add(0);
+            }
+            else
+            {
+                _data.Add(value.AsLong);
+            }
 
-        public int Add<T>(in T value) where T : struct, IDataValue
-        {
-            var index = _data.Count;
-            _data.Add(value.AsLong);
             return index;
         }
 
@@ -54,7 +66,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             return _data[index].CompareTo(value.AsLong);
         }
 
-        public int CompareToStrict(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
+        public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             if (otherColumn is Int64Column int64Column)
             {
@@ -63,7 +75,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int CompareToStrict<T>(in int index, in T value) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value) where T : IDataValue
         {
             var longValue = value.AsLong;
             return _data[index].CompareTo(longValue);
@@ -96,6 +108,27 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _data[index] = value.AsLong;
             return index;
+        }
+
+        public void RemoveAt(in int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void InsertAt<T>(in int index, in T value) where T : IDataValue
+        {
+            if (value.Type == ArrowTypeId.Null)
+            {
+                if (_nullList == null)
+                {
+                    _nullList = new BitmapList();
+                }
+                nullCounter++;
+                _nullList.InsertAt(index, true);
+                _data.Insert(index, 0);
+            }
+            _data.Insert(index, value.AsLong);
+            throw new NotImplementedException();
         }
     }
 }

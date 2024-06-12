@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             return index;
         }
 
-        public int Add<T>(in T value) where T : struct, IDataValue
+        public int Add<T>(in T value) where T : IDataValue
         {
             var index = _data.Count;
             _data.Add(value.AsDouble);
@@ -58,12 +58,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int CompareToStrict(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
+        public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             throw new NotImplementedException();
         }
 
-        public int CompareToStrict<T>(in int index, in T value) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value) where T : IDataValue
         {
             return _data[index].CompareTo(value.AsDouble);
         }

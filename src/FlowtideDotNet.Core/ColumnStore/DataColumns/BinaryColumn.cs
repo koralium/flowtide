@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public override int CompareToStrict(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
+        public override int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             throw new NotImplementedException();
         }

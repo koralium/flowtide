@@ -56,12 +56,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int CompareToStrict(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
+        public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             throw new NotImplementedException();
         }
 
-        public int CompareToStrict<T>(in int index, in T value) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
         }

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.Utils;
 using System;
 using System.Collections;
@@ -25,7 +26,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
     internal static class BoundarySearch
     {
-        public static (int, int) SearchBoundriesForColumn<T>(in Column column, in T value, in int index, in int length)
+        public static (int, int) SearchBoundriesForColumn<T>(in UnionColumn column, in T value, in int index, in int length)
             where T: IDataValue
         {
             int lo = index;

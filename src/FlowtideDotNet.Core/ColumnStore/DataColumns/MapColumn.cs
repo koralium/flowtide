@@ -56,23 +56,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             return startOffset;
         }
 
-        private (int, int) GetStartEndOffset(in int index)
-        {
-            int startOffset = _offsets[index];
-            if (index + 1 < _offsets.Count)
-            {
-                return (startOffset, _offsets[index + 1]);
-            }
-            else
-            {
-                return (startOffset, _valueColumn.Count);
-            }
-        }
-
         public IEnumerable<KeyValuePair<string, IDataValue>> GetKeyValuePairs(int index)
         {
-            var (startOffset, endOffset) = GetStartEndOffset(index); //_offsets[index];
-            //var endOffset = _offsets[index + 1];
+            var startOffset = _offsets[index];
+            var endOffset = _offsets[index + 1];
 
             for (int i = startOffset; i < endOffset; i++)
             {
@@ -87,7 +74,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int CompareToStrict(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
+        public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             throw new NotImplementedException();
         }
@@ -102,7 +89,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             return Add(value);
         }
 
-        public int CompareToStrict<T>(in int index, in T value) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
         }

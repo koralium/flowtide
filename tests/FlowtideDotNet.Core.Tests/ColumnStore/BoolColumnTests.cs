@@ -67,10 +67,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var column = new BoolColumn();
             column.Add(new BoolValue(false));
             column.Add(new BoolValue(true));
-            Assert.Equal(-1, column.CompareToStrict(0, new BoolValue(true)));
-            Assert.Equal(0, column.CompareToStrict(0, new BoolValue(false)));
-            Assert.Equal(0, column.CompareToStrict(1, new BoolValue(true)));
-            Assert.Equal(1, column.CompareToStrict(1, new BoolValue(false)));
+            Assert.Equal(-1, column.CompareTo(0, new BoolValue(true)));
+            Assert.Equal(0, column.CompareTo(0, new BoolValue(false)));
+            Assert.Equal(0, column.CompareTo(1, new BoolValue(true)));
+            Assert.Equal(1, column.CompareTo(1, new BoolValue(false)));
         }
     }
 }

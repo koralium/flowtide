@@ -24,8 +24,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private const int firstBitMask = 1 << 31;
         private const int lastBitMask = 1;
 
-        private static readonly int[] BitPatternArray = new int[32]
-        {
+        private static readonly int[] BitPatternArray =
+        [
             (1 << 1) - 1,  // 0th element with 1 bit set
             (1 << 2) - 1,  // 1st element with 2 bits set
             (1 << 3) - 1,  // 2nd element with 3 bits set
@@ -58,10 +58,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             (1 << 30) - 1, // 29th element with 30 bits set
             int.MaxValue, // 30th element with 31 bits set
             (int.MaxValue << 1) | 1  // 31st element with 32 bits set (all bits set)
-        };
+        ];
 
-        private static readonly int[] topBitsSetMask = new int[]
-        {
+        private static readonly int[] topBitsSetMask =
+        [
             ~((1 << 1) - 1),  // 0th element with all bits except the lowest 1 bit set
             ~((1 << 2) - 1),  // 1st element with all bits except the lowest 2 bits set
             ~((1 << 3) - 1),  // 2nd element with all bits except the lowest 3 bits set
@@ -93,8 +93,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             ~((1 << 29) - 1), // 28th element with all bits except the lowest 29 bits set
             ~((1 << 30) - 1), // 29th element with all bits except the lowest 30 bits set
             -2147483648, // 30th element with all bits except the lowest 31 bits set
-            ~((1 << 32) - 1), // 31st element with all bits except the lowest 32 bits set (all bits are set to 1 in a signed 32-bit int, this overflows to 0)
-        };
+            ~((1 << 32) - 1)
+        ];
 
 
         private int[] _data;
@@ -143,13 +143,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             {
                 return;
             }
-            _data[wordIndex] &= ~(1 << bitIndex);
+            _data[wordIndex] &= ~bitIndex;
         }
 
         public void InsertAt(int index, bool value)
         {
             var toIndex = index >> 5;
+
+            if (toIndex >= _data.Length)
+            {
+                var newData = new int[toIndex + 1];
+                Array.Copy(_data, newData, _data.Length);
+                _data = newData;
+            }
+
             var mod = index % 32;
+            int bitIndex = 1 << index;
             if ((_data[_data.Length - 1] & lastBitMask) != 0)
             {
                 // add an extra element so it does not overflow.
@@ -161,19 +170,28 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             {
                 var topBitsMask = topBitsSetMask[mod];
                 var bottomBitsMask = BitPatternArray[mod];
-                var val = _data[toIndex] & topBitsMask;
+                var val = _data[toIndex] & bottomBitsMask;
                 ShiftLeft(toIndex);
-                var newVal = _data[toIndex] & bottomBitsMask;
+                var newVal = _data[toIndex] & topBitsMask;
                 _data[toIndex] = (val | newVal);
             }
-
-            ShiftLeft(toIndex);
+            else
+            {
+                ShiftLeft(toIndex);
+            }
+            if (value)
+            {
+                _data[toIndex] |= bitIndex;
+            }
+            else
+            {
+                _data[toIndex] &= ~bitIndex;
+            }
         }
 
         private void ShiftLeft(int toIndex)
         {
             var fromindex = _data.Length - 1;
-            //int fromindex = lastIndex - lengthToClear;
             unchecked
             {
                 int lastIndex = fromindex;
@@ -207,17 +225,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 var beforeMask = BitPatternArray[mod - 1];
                 var clearMask = topBitsSetMask[mod - 1];
                 var val = _data[fromIndex] & beforeMask;
-                ShiftRight(fromIndex, mod);
+                ShiftRight(fromIndex);
                 var newVal = _data[fromIndex] & clearMask;
                 _data[fromIndex] = (val | newVal);
             }
             else
             {
-                ShiftRight(fromIndex, mod);
+                ShiftRight(fromIndex);
             }
         }
 
-        private void ShiftRight(int fromIndex, int mod)
+        private void ShiftRight(int fromIndex)
         {
             // Loop from BitArray.
             int toIndex = 0;
@@ -230,9 +248,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     int left = _data[++fromIndex] << (32 - 1);
                     _data[toIndex++] = left | (int)right;
                 }
-                uint mask = uint.MaxValue >> (32 - mod);
-                mask &= (uint)_data[fromIndex];
-                _data[toIndex++] = (int)(mask >> 1);
+
+                _data[toIndex++] = (int)(_data[fromIndex] >> 1);
             }
         }
 
