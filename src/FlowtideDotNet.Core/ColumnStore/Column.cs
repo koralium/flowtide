@@ -62,6 +62,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (value.Type == ArrowTypeId.Null)
             {
                 _typeList.Add(ArrowTypeId.Null);
+                _offsets.Add(0);
                 return;
             }
 
@@ -83,6 +84,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (value.Type == ArrowTypeId.Null)
             {
                 _typeList.Add(ArrowTypeId.Null);
+                _offsets.Add(0);
                 return;
             }
             var typeByte = (byte)value.Type;

@@ -34,7 +34,11 @@ namespace FlowtideDotNet.Core
 
         public StreamEventBatch(List<RowEvent> events)
         {
-            var columnCount = events[0].RowData.Length;
+            var columnCount = 0;
+            if (events.Count > 0)
+            {
+                columnCount = events[0].RowData.Length;
+            }
             Data = RowEventToEventBatchData.ConvertToEventBatchData(events, columnCount);
         }
     }

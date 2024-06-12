@@ -56,10 +56,23 @@ namespace FlowtideDotNet.Core.ColumnStore
             return startOffset;
         }
 
+        private (int, int) GetStartEndOffset(in int index)
+        {
+            int startOffset = _offsets[index];
+            if (index + 1 < _offsets.Count)
+            {
+                return (startOffset, _offsets[index + 1]);
+            }
+            else
+            {
+                return (startOffset, _valueColumn.Count);
+            }
+        }
+
         public IEnumerable<KeyValuePair<string, IDataValue>> GetKeyValuePairs(int index)
         {
-            var startOffset = _offsets[index];
-            var endOffset = _offsets[index + 1];
+            var (startOffset, endOffset) = GetStartEndOffset(index); //_offsets[index];
+            //var endOffset = _offsets[index + 1];
 
             for (int i = startOffset; i < endOffset; i++)
             {
