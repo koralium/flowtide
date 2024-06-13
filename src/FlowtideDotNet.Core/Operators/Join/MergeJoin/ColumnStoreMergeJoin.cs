@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Join.NestedLoopJoin;
 using FlowtideDotNet.Storage.Serializers;
@@ -38,6 +39,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private MergeJoinSearchComparer _searchLeftComparer;
         private MergeJoinSearchComparer _searchRightComparer;
 
+        private List<int> _leftOutputColumns;
+        private List<int> _rightOutputColumns;
+
         public ColumnStoreMergeJoin(MergeJoinRelation mergeJoinRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
             this._mergeJoinRelation = mergeJoinRelation;
@@ -48,6 +52,31 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             _searchLeftComparer = new MergeJoinSearchComparer(leftColumns, rightColumns);
             _searchRightComparer = new MergeJoinSearchComparer(rightColumns, leftColumns);
+
+            _leftOutputColumns = GetOutputColumns(mergeJoinRelation, 0, mergeJoinRelation.Left.OutputLength);
+            _rightOutputColumns = GetOutputColumns(mergeJoinRelation, mergeJoinRelation.Left.OutputLength, mergeJoinRelation.Right.OutputLength);
+        }
+
+        private static List<int> GetOutputColumns(MergeJoinRelation mergeJoinRelation, int relative, int maxSize)
+        {
+            List<int> columns = new List<int>();
+            if (mergeJoinRelation.EmitSet)
+            {
+                for (int i = 0; i < mergeJoinRelation.Emit.Count; i++)
+                {
+                    var index = mergeJoinRelation.Emit[i];
+                    if (index >= relative)
+                    {
+                        index = index - relative;
+                        if (index < maxSize)
+                        {
+                            columns.Add(index);
+                        }
+                    }
+                    
+                }
+            }
+            return columns;
         }
 
         private static List<int> GetCompareColumns(List<FieldReference> fieldReferences, int relativeIndex)
@@ -88,6 +117,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)
         {
             var it = _rightTree!.CreateIterator();
+            List<Column> rightColumns = new List<Column>();
+            for (int i = 0; i < _rightOutputColumns.Count; i++)
+            {
+                rightColumns.Add(new Column());
+            }
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
                 var columnReference = new ColumnRowReference()
@@ -105,6 +139,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     
                     await foreach(var page in it)
                     {
+                        var pageKeyStorage = page.Keys as ColumnKeyStorageContainer;
                         if (!firstPage)
                         {
                             // Locate indices again
@@ -114,6 +149,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         {
                             int outputWeight = page.Values.Get(k).Weight * msg.Data.Weights[i];
                             joinWeight += outputWeight;
+                            for (int z = 0; z < rightColumns.Count; z++)
+                            {
+                                var val = pageKeyStorage._data.Columns[_rightOutputColumns[z]].GetValueAt(k);
+                                rightColumns[z].Add(val);
+                            }
                         }
                         if (_searchRightComparer.end < (page.Keys.Count - 1))
                         {
@@ -144,6 +184,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveRight(StreamEventBatch msg, long time)
         {
             var it = _leftTree!.CreateIterator();
+            List<Column> leftColumns = new List<Column>();
+            for (int i = 0; i < _leftOutputColumns.Count; i++)
+            {
+                leftColumns.Add(new Column());
+            }
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
                 var columnReference = new ColumnRowReference()
@@ -163,6 +208,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     
                     await foreach (var page in it)
                     {
+                        var pageKeyStorage = page.Keys as ColumnKeyStorageContainer;
                         if (!firstPage)
                         {
                             // Locate indices again
@@ -172,6 +218,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         {
                             int outputWeight = page.Values.Get(k).Weight * weight;
                             joinWeight += outputWeight;
+                            for (int z = 0; z < leftColumns.Count; z++)
+                            {
+                                var val = pageKeyStorage._data.Columns[_leftOutputColumns[z]].GetValueAt(k);
+                                leftColumns[z].Add(val);
+                            }
                         }
                         if (_searchLeftComparer.end < (page.Keys.Count - 1))
                         {
