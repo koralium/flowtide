@@ -78,7 +78,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             for (int i = 0; i < columnCount; i++)
             {
-                _data.Columns[i].InsertAt(index, key.referenceBatch.Columns[i].GetValueAt(i));
+                _data.Columns[i].InsertAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex));
             }
         }
 
@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             for (int i = 0; i < columnCount; i++)
             {
-                _data.Columns[i].Remove(index);
+                _data.Columns[i].RemoveAt(index);
             }
         }
 

@@ -23,23 +23,21 @@ namespace FlowtideDotNet.Core.ColumnStore
     internal class BoolColumn : IDataColumn
     {
         private List<bool> _data = new();
-        public int Add(in IDataValue value)
+
+        public int Count => _data.Count;
+
+        public ArrowTypeId Type => ArrowTypeId.Boolean;
+
+        public int Add<T>(in T value) where T : IDataValue
         {
             var index = _data.Count;
-            if (value.AsBool)
-            {
-                _data.Add(true);
-            }
-            else
+
+            if (value.Type == ArrowTypeId.Null)
             {
                 _data.Add(false);
+                return index;
             }
-            return index;
-        }
 
-        public int Add<T>(in T value) where T : struct, IDataValue
-        {
-            var index = _data.Count;
             if (value.AsBool)
             {
                 _data.Add(true);
@@ -107,7 +105,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             return index;
         }
 
-        public int Update<T>(in int index, in T value) where T : struct, IDataValue
+        public int Update<T>(in int index, in T value) where T : IDataValue
         {
             if (value.AsBool)
             {
@@ -118,6 +116,16 @@ namespace FlowtideDotNet.Core.ColumnStore
                 _data[index] = false;
             }
             return index;
+        }
+
+        public void RemoveAt(in int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void InsertAt<T>(in int index, in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
         }
     }
 }

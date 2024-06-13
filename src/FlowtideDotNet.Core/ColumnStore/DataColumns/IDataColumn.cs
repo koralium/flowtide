@@ -21,6 +21,9 @@ namespace FlowtideDotNet.Core.ColumnStore
     public interface IDataColumn
     {
         int Count { get; }
+
+        ArrowTypeId Type { get; }
+
         int CompareTo<T>(in int index, in T value)
             where T: IDataValue;
 
@@ -34,7 +37,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         void GetValueAt(in int index, in DataValueContainer dataValueContainer);
 
         int Update<T>(in int index, in T value)
-            where T: struct, IDataValue;
+            where T: IDataValue;
 
         int BinarySearch(in IDataValue dataValue, in int start, in int end);
 

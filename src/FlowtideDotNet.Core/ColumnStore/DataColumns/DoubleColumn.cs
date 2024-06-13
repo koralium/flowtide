@@ -24,16 +24,13 @@ namespace FlowtideDotNet.Core.ColumnStore
     {
         private readonly List<double> _data;
 
+        public int Count => _data.Count;
+
+        public ArrowTypeId Type => ArrowTypeId.Double;
+
         public DoubleColumn()
         {
             _data = new List<double>();
-        }
-
-        public int Add(in IDataValue value)
-        {
-            var index = _data.Count;
-            _data.Add(value.AsDouble);
-            return index;
         }
 
         public int Add<T>(in T value) where T : IDataValue
@@ -91,7 +88,17 @@ namespace FlowtideDotNet.Core.ColumnStore
             return index;
         }
 
-        public int Update<T>(in int index, in T value) where T : struct, IDataValue
+        public int Update<T>(in int index, in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveAt(in int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
         }

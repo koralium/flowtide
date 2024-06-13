@@ -32,6 +32,10 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         private List<int> _offsets;
 
+        public int Count => _offsets.Count;
+
+        public ArrowTypeId Type => ArrowTypeId.Map;
+
         public MapColumn()
         {
             _keyColumn = new StringColumn();
@@ -39,27 +43,22 @@ namespace FlowtideDotNet.Core.ColumnStore
             _offsets = new List<int>();
         }
 
-        public int Add(in IDataValue value)
+        private (int, int) GetOffsets(in int index)
         {
-            var map = value.AsMap;
-            // Sort keys so its possible to binary search after a key.
-            // In future, can check if it is a reference map value or not to skip sorting
-            var ordered = map.OrderBy(x => x.Key).ToList();
-            var startOffset = _offsets.Count;
-            _offsets.Add(_valueColumn.Count);
-            foreach (var pair in ordered)
+            var startOffset = _offsets[index];
+            if ((index + 1)  >= _offsets.Count)
             {
-                _keyColumn.Add(new StringValue(pair.Key));
-                _valueColumn.Add(pair.Value);
+                return (startOffset, _valueColumn.Count);
             }
-
-            return startOffset;
+            else
+            {
+                return (startOffset, _offsets[index + 1]);
+            }
         }
 
         public IEnumerable<KeyValuePair<string, IDataValue>> GetKeyValuePairs(int index)
         {
-            var startOffset = _offsets[index];
-            var endOffset = _offsets[index + 1];
+            var (startOffset, endOffset) = GetOffsets(in index);
 
             for (int i = startOffset; i < endOffset; i++)
             {
@@ -94,9 +93,21 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int Add<T>(in T value) where T : struct, IDataValue
+        public int Add<T>(in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            var map = value.AsMap;
+            // Sort keys so its possible to binary search after a key.
+            // In future, can check if it is a reference map value or not to skip sorting
+            var ordered = map.OrderBy(x => x.Key).ToList();
+            var startOffset = _offsets.Count;
+            _offsets.Add(_valueColumn.Count);
+            foreach (var pair in ordered)
+            {
+                _keyColumn.Add(new StringValue(pair.Key));
+                _valueColumn.Add(pair.Value);
+            }
+
+            return startOffset;
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
@@ -104,7 +115,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int Update<T>(in int index, in T value) where T : struct, IDataValue
+        public int Update<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
         }
@@ -121,6 +132,16 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end) 
             where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveAt(in int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
         }

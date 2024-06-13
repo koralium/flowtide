@@ -24,10 +24,10 @@ namespace FlowtideDotNet.Core.ColumnStore
     internal class Int64Column : IDataColumn
     {
         private List<long> _data;
-        private int nullCounter;
-        private BitmapList? _nullList;
 
-        public int Count => throw new NotImplementedException();
+        public int Count => _data.Count;
+
+        public ArrowTypeId Type => ArrowTypeId.Int64;
 
         public Int64Column()
         {
@@ -39,19 +39,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             var index = _data.Count;
             if (value.Type == ArrowTypeId.Null)
             {
-                if (_nullList == null)
-                {
-                    _nullList = new BitmapList();
-                }
-                nullCounter++;
-                _nullList.Set(index);
                 _data.Add(0);
+                return index;
             }
-            else
-            {
-                _data.Add(value.AsLong);
-            }
-
+            _data.Add(value.AsLong);
             return index;
         }
 
@@ -88,7 +79,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
         {
-            throw new NotImplementedException();
+            dataValueContainer._type = ArrowTypeId.Int64;
+            dataValueContainer._int64Value = new Int64Value(_data[index]);
         }
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end)
@@ -104,31 +96,29 @@ namespace FlowtideDotNet.Core.ColumnStore
             return index;
         }
 
-        public int Update<T>(in int index, in T value) where T : struct, IDataValue
+        public int Update<T>(in int index, in T value) where T : IDataValue
         {
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _data[index] = 0;
+                return index;
+            }
             _data[index] = value.AsLong;
             return index;
         }
 
         public void RemoveAt(in int index)
         {
-            throw new NotImplementedException();
+            _data.RemoveAt(index);
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
             if (value.Type == ArrowTypeId.Null)
             {
-                if (_nullList == null)
-                {
-                    _nullList = new BitmapList();
-                }
-                nullCounter++;
-                _nullList.InsertAt(index, true);
                 _data.Insert(index, 0);
             }
             _data.Insert(index, value.AsLong);
-            throw new NotImplementedException();
         }
     }
 }

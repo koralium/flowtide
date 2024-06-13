@@ -20,11 +20,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public class BinaryColumn : AbstractBinaryColumn
     {
-        public override int Add(in IDataValue value)
-        {
-            var span = value.AsBinary;
-            return Add(span);
-        }
+        public override ArrowTypeId Type => ArrowTypeId.Binary;
 
         public override int CompareToStrict(in int index, in IDataValue value)
         {
@@ -56,6 +52,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         public override int Update(in int index, in IDataValue value)
         {
             return Add(value);
+        }
+
+        public override int Add<T>(in T value)
+        {
+            var span = value.AsBinary;
+            return Add(span);
         }
     }
 }

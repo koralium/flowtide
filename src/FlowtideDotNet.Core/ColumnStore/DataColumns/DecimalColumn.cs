@@ -22,19 +22,16 @@ namespace FlowtideDotNet.Core.ColumnStore
     {
         private List<decimal> _values;
 
+        public int Count => _values.Count;
+
+        public ArrowTypeId Type => ArrowTypeId.Decimal128;
+
         public DecimalColumn()
         {
             _values = new List<decimal>();
         }
 
-        public int Add(in IDataValue value)
-        {
-            var index = _values.Count;
-            _values.Add(value.AsDecimal);
-            return index;
-        }
-
-        public int Add<T>(in T value) where T : struct, IDataValue
+        public int Add<T>(in T value) where T : IDataValue
         {
             var index = _values.Count;
             _values.Add(value.AsDecimal);
@@ -87,7 +84,17 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int Update<T>(in int index, in T value) where T : struct, IDataValue
+        public int Update<T>(in int index, in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveAt(in int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
         }

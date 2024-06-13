@@ -29,6 +29,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         protected int _length = 0;
         protected List<int> _offsets = new List<int>();
 
+        public int Count => _offsets.Count;
+
+        public abstract ArrowTypeId Type { get; }
+
         public AbstractBinaryColumn()
         {
             _data = s_emptyArray;
@@ -174,9 +178,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-
-        public abstract int Add(in IDataValue value);
-
         public abstract int CompareToStrict(in int index, in IDataValue value);
 
         public abstract int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);
@@ -190,12 +191,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int Add<T>(in T value) where T : struct, IDataValue
-        {
-            throw new NotImplementedException();
-        }
+        public abstract int Add<T>(in T value) where T : IDataValue;
 
-        public int Update<T>(in int index, in T value) where T : struct, IDataValue
+        public int Update<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
         }
@@ -214,6 +212,16 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end)
             where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveAt(in int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
         }

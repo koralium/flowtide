@@ -43,6 +43,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private byte[] _data;
         private IntList _offsets;
         private int _length;
+
+        public int Count => _offsets.Count;
+
         public BinaryList()
         {
             _offsets = new IntList();

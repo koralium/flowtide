@@ -23,6 +23,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         private readonly Column _internalColumn;
         private readonly List<int> _offsets;
 
+        public int Count => _offsets.Count;
+
+        public ArrowTypeId Type => ArrowTypeId.List;
+
         public ListColumn()
         {
             _internalColumn = new Column();
@@ -44,9 +48,19 @@ namespace FlowtideDotNet.Core.ColumnStore
             return currentOffset;
         }
 
-        public int Add<T>(in T value) where T : struct, IDataValue
+        public int Add<T>(in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            var list = value.AsList;
+
+            var currentOffset = _offsets.Count;
+            _offsets.Add(_internalColumn.Count);
+            var listLength = list.Count;
+            for (int i = 0; i < listLength; i++)
+            {
+                _internalColumn.Add(list.GetAt(i));
+            }
+
+            return currentOffset;
         }
 
         public int BinarySearch(in IDataValue dataValue)
@@ -102,7 +116,17 @@ namespace FlowtideDotNet.Core.ColumnStore
             return Add(value);
         }
 
-        public int Update<T>(in int index, in T value) where T : struct, IDataValue
+        public int Update<T>(in int index, in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveAt(in int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
         }

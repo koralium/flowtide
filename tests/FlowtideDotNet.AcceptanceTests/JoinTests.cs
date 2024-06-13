@@ -24,11 +24,11 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task InnerJoinMergeJoin()
         {
-            GenerateData();
+            GenerateData(100);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
-                    o.orderkey, u.firstName, u.LastName
+                    o.orderkey
                 FROM orders o
                 INNER JOIN users u
                 ON o.userkey = u.userkey");

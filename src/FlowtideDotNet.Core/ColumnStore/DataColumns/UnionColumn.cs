@@ -45,6 +45,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         /// </summary>
         private int outOfOrderCounter;
 
+        public int Count => _typeList.Count;
+
+        public ArrowTypeId Type => ArrowTypeId.Union;
+
         public UnionColumn()
         {
             _typeList = new List<ArrowTypeId>();
@@ -190,7 +194,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return BoundarySearch.SearchBoundriesForColumn(this, in dataValue, in start, in end);
         }
 
-        public int Update<T>(in int index, in T value) where T : struct, IDataValue
+        public int Update<T>(in int index, in T value) where T : IDataValue
         {
             var currentType = _typeList[index];
 
