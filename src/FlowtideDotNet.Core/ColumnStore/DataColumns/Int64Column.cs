@@ -121,10 +121,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data.InsertAt(index, value.AsLong);
         }
 
-        public IArrowArray ToArrowArray()
+        public IArrowArray ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            //return new Int64Array(new ArrowBuffer())
-            throw new NotImplementedException();
+            var valueBuffer = new ArrowBuffer(_data.Memory);
+            return new Int64Array(valueBuffer, nullBuffer, _data.Count, nullCount, 0);
         }
     }
 }

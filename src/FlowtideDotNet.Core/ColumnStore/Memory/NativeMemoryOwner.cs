@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
     public unsafe class NativeMemoryOwner : MemoryManager<byte>, IFlowtideMemoryOwner
     {
         private void* ptr;
-        private readonly int length;
+        private int length;
         private readonly int alignment;
 
         public NativeMemoryOwner(void* ptr, int length, int alignment)
@@ -46,6 +46,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
         public void Reallocate(int newSize)
         {
             ptr = NativeMemory.AlignedRealloc(ptr, (nuint)newSize, (nuint)alignment);
+            length = newSize;
         }
 
         public override void Unpin()
@@ -57,7 +58,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
         {
             if (ptr != null)
             {
-                NativeMemory.Free(ptr);
+                NativeMemory.AlignedFree(ptr);
                 ptr = null;
             }
             
