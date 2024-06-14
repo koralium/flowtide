@@ -75,6 +75,36 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _offsets.Add(currentOffset);
         }
 
+        public void AddEmpty()
+        {
+            var currentOffset = _length;
+            _offsets.Add(currentOffset);
+        }
+
+        public void UpdateAt(int index, Span<byte> data)
+        {
+            var offset = _offsets.Get(index);
+            var length = _length;
+            if (index != _offsets.Count - 1)
+            {
+                length = _offsets.Get(index + 1);
+            }
+            if (length == data.Length)
+            {
+                data.CopyTo(_data.AsSpan(offset));
+            }
+            else
+            {
+                var difference = data.Length - length;
+                EnsureCapacity(_length + difference);
+                var span = _data.AsSpan();
+                span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset + data.Length));
+                data.CopyTo(span.Slice(offset));
+                _length += difference;
+                _offsets.Update(index, data.Length, difference);
+            }
+        }
+
         /// <summary>
         /// Insert binary data at a specfic index.
         /// If this is not inserted at the end, a copy will be done of all elements larger than this index.
@@ -107,6 +137,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _offsets.InsertAt(index, offset, toMove);
             
             _length += data.Length;
+        }
+
+        public void InsertEmpty(in int index)
+        {
+            if (index == _offsets.Count)
+            {
+                AddEmpty();
+                return;
+            }
+
+            var offset = _offsets.Get(index);
+            _offsets.InsertAt(index, offset);
         }
 
         public void RemoveAt(int index)

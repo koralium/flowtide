@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using System;
 using System.Collections.Generic;
@@ -21,9 +23,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public class StringColumn : IDataColumn
     {
-        //private byte[] _data = new byte[0];
-        //private int _length = 0;
-        //private List<int> _offsets = new List<int>();
+        private static SpanByteComparer s_spanByteComparer = new SpanByteComparer();
         private BinaryList _binaryList = new BinaryList();
 
         public int Count => _binaryList.Count;
@@ -33,22 +33,26 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int Add<T>(in T value) where T : IDataValue
         {
             var index = _binaryList.Count;
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _binaryList.AddEmpty();
+                return index;
+            }
             _binaryList.Add(value.AsString.Span);
             return index;
         }
 
-        public int BinarySearch(in IDataValue dataValue, in int start, in int end)
-        {
-            throw new NotImplementedException();
-        }
-
         public int CompareTo<T>(in int index, in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            return s_spanByteComparer.Compare(_binaryList.Get(index), value.AsString.Span);
         }
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
+            if (otherColumn is StringColumn stringColumn)
+            {
+                return s_spanByteComparer.Compare(_binaryList.Get(thisIndex), stringColumn._binaryList.Get(otherIndex));
+            }
             throw new NotImplementedException();
         }
 
@@ -65,151 +69,33 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
-            if (value.Type == null)
+            if (value.Type == ArrowTypeId.Null)
             {
-                // TODO: dont know
-
+                _binaryList.InsertEmpty(index);
+                return;
             }
             _binaryList.Insert(index, value.AsString.Span);
         }
 
         public void RemoveAt(in int index)
         {
-            throw new NotImplementedException();
+            _binaryList.RemoveAt(index);
         }
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end) where T : IDataValue
         {
-            throw new NotImplementedException();
+            return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end, s_spanByteComparer);
         }
 
         public int Update<T>(in int index, in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _binaryList.UpdateAt(index, Span<byte>.Empty);
+                return index;
+            }
+            _binaryList.UpdateAt(index, value.AsString.Span);
+            return index;
         }
-
-        //        public int CompareTo<T>(in int index, in T value)
-        //            where T : IDataValue
-        //        {
-        //            var str = value.AsString;
-        //            var dataSpan = _data.AsSpan();
-        //            var startOffset = _offsets[index];
-        //            if (index + 1 < _offsets.Count)
-        //            {
-        //                var endOffset = _offsets[index + 1];
-        //                var length = endOffset - startOffset;
-        //                return str.Span.SequenceCompareTo(dataSpan.Slice(startOffset, length));
-        //            }
-        //            else
-        //            {
-        //                var length = _length - startOffset;
-        //                return str.CompareTo(new Flexbuffer.FlxString(dataSpan.Slice(startOffset, length)));
-        //            }
-        //        }
-
-
-        //        private void EnsureCapacity(int length)
-        //        {
-        //            if (_data.Length < length)
-        //            {
-        //                var newData = new byte[length * 2];
-        //                _data.CopyTo(newData, 0);
-        //                _data = newData;
-        //            }
-        //        }
-
-        //        public int Add<T>(in T value)
-        //            where T : IDataValue
-        //        {
-        //            if (value.Type == ArrowTypeId.Null)
-        //            {
-        //                var index = _offsets.Count;
-        //                _offsets.Add(_length);
-        //                return index;
-        //            }
-        //            var str = value.AsString;
-        //            EnsureCapacity(_length + str.Span.Length);
-
-        //            str.Span.CopyTo(_data.AsSpan(_length));
-        //            var resultOffset = _offsets.Count;
-        //            _offsets.Add(_length);
-        //            _length += str.Span.Length;
-        //            return resultOffset;
-        //        }
-
-        //        public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
-        //        {
-        //            if (otherColumn is StringColumn stringColumn)
-        //            {
-        //                var str = new Flexbuffer.FlxString(_data.AsSpan(_offsets[thisIndex], _offsets[thisIndex + 1] - _offsets[thisIndex]));
-        //                var otherStr = new Flexbuffer.FlxString(stringColumn._data.AsSpan(stringColumn._offsets[otherIndex], stringColumn._offsets[otherIndex + 1] - stringColumn._offsets[otherIndex]));
-        //                return str.CompareTo(otherStr);
-        //            }
-        //            throw new NotImplementedException();
-        //        }
-
-        //        public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
-        //        {
-        //            dataValueContainer._type = ArrowTypeId.String;
-        //            if (index + 1 < _offsets.Count)
-        //            {
-        //                dataValueContainer._stringValue = new StringValue(_data, _offsets[index], _offsets[index + 1]);
-        //            }
-        //            else
-        //            {
-        //                dataValueContainer._stringValue = new StringValue(_data, _offsets[index], _length);
-        //            }
-
-        //        }
-
-        //        public IDataValue GetValueAt(in int index)
-        //        {
-        //            if (index + 1 < _offsets.Count)
-        //            {
-        //                // Boxing is expected here, as we are returning a reference type
-        //                // Get value should only be used if its not possible to use the value directly from the array.
-        //#pragma warning disable HAA0502 // Explicit new reference type allocation
-        //#pragma warning disable HAA0601 // Value type to reference type conversion causing boxing allocation
-        //                return new StringValue(_data, _offsets[index], _offsets[index + 1]);
-        //            }
-        //            else
-        //            {
-        //                return new StringValue(_data, _offsets[index], _length);
-        //#pragma warning restore HAA0502 // Explicit new reference type allocation
-        //#pragma warning restore HAA0601 // Value type to reference type conversion causing boxing allocation
-        //            }
-        //        }
-
-        //        public int Update<T>(in int index, in T value)
-        //            where T : IDataValue
-        //        {
-        //            throw new NotImplementedException();
-        //        }
-
-        //        public int BinarySearch(in IDataValue dataValue)
-        //        {
-        //            throw new NotImplementedException();
-        //        }
-
-        //        public int BinarySearch(in IDataValue dataValue, in int start, in int end)
-        //        {
-        //            throw new NotImplementedException();
-        //        }
-
-        //        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end) 
-        //            where T : IDataValue
-        //        {
-        //            throw new NotImplementedException();
-        //        }
-
-        //        public void RemoveAt(in int index)
-        //        {
-        //            throw new NotImplementedException();
-        //        }
-
-        //        public void InsertAt<T>(in int index, in T value) where T : IDataValue
-        //        {
-        //            throw new NotImplementedException();
-        //        }
     }
 }
