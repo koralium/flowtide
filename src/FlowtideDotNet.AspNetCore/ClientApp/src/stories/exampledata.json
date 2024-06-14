@@ -1,0 +1,364 @@
+{
+    "nodes": {
+      "3": {
+        "operatorName": "3",
+        "displayName": "Dummy read",
+        "counters": [],
+        "gauges": [
+          {
+            "name": "flowtide_backpressure",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          },
+          {
+            "name": "flowtide_busy",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 0
+              }
+            }
+          },
+          {
+            "name": "flowtide_health",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          },
+          {
+            "name": "flowtide_metadata",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          },
+          {
+            "name": "flowtide_link",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          }
+        ]
+      },
+      "4": {
+        "operatorName": "4",
+        "displayName": "Dummy read",
+        "counters": [],
+        "gauges": [
+          {
+            "name": "flowtide_backpressure",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          },
+          {
+            "name": "flowtide_busy",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 0
+              }
+            }
+          },
+          {
+            "name": "flowtide_health",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          },
+          {
+            "name": "flowtide_metadata",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          },
+          {
+            "name": "flowtide_link",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          }
+        ]
+      },
+      "2": {
+        "operatorName": "2",
+        "displayName": "Merge Join",
+        "counters": [
+          {
+            "name": "flowtide_events",
+            "unit": null,
+            "description": null,
+            "total": {
+              "sum": 957501,
+              "rateLastMinute": 957501
+            },
+            "isMultiDimensional": true,
+            "tagValues": {
+              "operator=2,stream=stream,titleMerge Join": {
+                "sum": 957501,
+                "rateLastMinute": 957501
+              }
+            }
+          },
+          {
+            "name": "flowtide_events_processed",
+            "unit": null,
+            "description": null,
+            "total": {
+              "sum": 957600,
+              "rateLastMinute": 957600
+            },
+            "isMultiDimensional": true,
+            "tagValues": {
+              "operator=2,stream=stream,titleMerge Join": {
+                "sum": 957600,
+                "rateLastMinute": 957600
+              }
+            }
+          }
+        ],
+        "gauges": [
+          {
+            "name": "flowtide_busy",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 0.980000019073486
+              }
+            }
+          },
+          {
+            "name": "flowtide_backpressure",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 0
+              }
+            }
+          },
+          {
+            "name": "flowtide_health",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          },
+          {
+            "name": "flowtide_metadata",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          },
+          {
+            "name": "flowtide_link",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          }
+        ]
+      },
+      "1": {
+        "operatorName": "1",
+        "displayName": "Projection",
+        "counters": [
+          {
+            "name": "flowtide_events",
+            "unit": null,
+            "description": null,
+            "total": {
+              "sum": 957501,
+              "rateLastMinute": 957501
+            },
+            "isMultiDimensional": true,
+            "tagValues": {
+              "operator=1,stream=stream,titleProjection": {
+                "sum": 957501,
+                "rateLastMinute": 957501
+              }
+            }
+          },
+          {
+            "name": "flowtide_events_processed",
+            "unit": null,
+            "description": null,
+            "total": {
+              "sum": 957501,
+              "rateLastMinute": 957501
+            },
+            "isMultiDimensional": true,
+            "tagValues": {
+              "operator=1,stream=stream,titleProjection": {
+                "sum": 957501,
+                "rateLastMinute": 957501
+              }
+            }
+          }
+        ],
+        "gauges": [
+          {
+            "name": "flowtide_busy",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 0
+              }
+            }
+          },
+          {
+            "name": "flowtide_backpressure",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 0
+              }
+            }
+          },
+          {
+            "name": "flowtide_health",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          },
+          {
+            "name": "flowtide_metadata",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          },
+          {
+            "name": "flowtide_link",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          }
+        ]
+      },
+      "0": {
+        "operatorName": "0",
+        "displayName": "Dummy write",
+        "counters": [],
+        "gauges": [
+          {
+            "name": "flowtide_busy",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 0
+              }
+            }
+          },
+          {
+            "name": "flowtide_InputQueue",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 0
+              }
+            }
+          },
+          {
+            "name": "flowtide_health",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          },
+          {
+            "name": "flowtide_metadata",
+            "unit": null,
+            "description": null,
+            "dimensions": {
+              "": {
+                "value": 1
+              }
+            }
+          }
+        ]
+      }
+    },
+    "edges": [
+      {
+        "source": "3",
+        "target": "2"
+      },
+      {
+        "source": "4",
+        "target": "2"
+      },
+      {
+        "source": "2",
+        "target": "1"
+      },
+      {
+        "source": "1",
+        "target": "0"
+      }
+    ],
+    "state": "running"
+  }
