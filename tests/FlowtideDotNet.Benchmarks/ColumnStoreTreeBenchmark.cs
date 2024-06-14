@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Benchmarks
 
         //[Params(1000, 5000, 10000)]
         //public int CachePageCount;
-        private EventBatchData data = new EventBatchData(new List<Column>()
+        private EventBatchData data = new EventBatchData(new List<IColumn>()
         {
             new Column()
         });

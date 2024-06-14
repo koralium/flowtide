@@ -161,7 +161,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             List<int> weights = new List<int>();
             List<uint> iterations = new List<uint>();
-            List<Column> columns = new List<Column>();
+            List<IColumn> columns = new List<IColumn>();
             for (int i = 0; i < columnCount; i++)
             {
                 columns.Add(new Column());

@@ -58,6 +58,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 //var column = columnOrder[i];
                 // Get value by container to skip boxing for each value
                 key.referenceBatch.Columns[referenceColumns[i]].GetValueAt(key.RowIndex, dataValueContainer);
+                if (dataValueContainer._type == ArrowTypeId.Null)
+                {
+                    noMatch = true;
+                    return start;
+                }
                 var (low, high) = keyContainer._data.Columns[selfColumns[i]].SearchBoundries(dataValueContainer, start, end);
 
                 if (low < 0)

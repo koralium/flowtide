@@ -21,16 +21,16 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public class EventBatchData
     {
-        private readonly List<Column> columns;
+        private readonly List<IColumn> columns;
 
         public int Count => columns[0].Count;
 
-        public EventBatchData(List<Column> columns)
+        public EventBatchData(List<IColumn> columns)
         {
             this.columns = columns;
         }
 
-        public IReadOnlyList<Column> Columns => columns;
+        public IReadOnlyList<IColumn> Columns => columns;
 
         /// <summary>
         /// Compares two rows from different batches.

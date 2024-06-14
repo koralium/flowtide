@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.ColumnStore
     /// Add value -> Value column (single type)
     /// Add different type -> Union column
     /// </summary>
-    public class Column
+    public class Column : IColumn
     {
         private static readonly IDataValue NullValue = new NullValue();
 
@@ -65,6 +65,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return _dataColumn!.Count;
             }
         }
+
+        public ArrowTypeId Type => _type;
+        IDataColumn IColumn.DataColumn =>  _dataColumn!;
 
         private IDataColumn CreateArray(in ArrowTypeId type)
         {
@@ -271,20 +274,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataValue GetValueAt(in int index)
         {
-            try
+            if (_nullCounter > 0 &&
+            _nullList.Get(index))
             {
-                if (_nullCounter > 0 &&
-                _nullList.Get(index))
-                {
-                    return NullValue;
-                }
-                return _dataColumn!.GetValueAt(index);
+                return NullValue;
             }
-            catch(Exception e)
-            {
-                throw;
-            }
-            
+            return _dataColumn!.GetValueAt(index);
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
@@ -293,6 +288,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 _nullList.Get(index))
             {
                 dataValueContainer._type = ArrowTypeId.Null;
+                return;
             }
             _dataColumn!.GetValueAt(in index, in dataValueContainer);
         }
@@ -318,25 +314,25 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public int CompareTo(in Column otherColumn, in int thisIndex, in int otherIndex)
+        public int CompareTo(in IColumn otherColumn, in int thisIndex, in int otherIndex)
         {
-            if (otherColumn._type == _type)
+            if (otherColumn.Type == _type)
             {
                 if (_type == ArrowTypeId.Null)
                 {
                     return 0;
                 }
-                return _dataColumn!.CompareTo(otherColumn._dataColumn!, thisIndex, otherIndex);
+                return _dataColumn!.CompareTo(otherColumn.DataColumn!, thisIndex, otherIndex);
             }
             // Check if any of the columns are unions, if so fetch the value and compare it
-            else if (_type == ArrowTypeId.Union || otherColumn._type == ArrowTypeId.Union)
+            else if (_type == ArrowTypeId.Union || otherColumn.Type == ArrowTypeId.Union)
             {
                 var otherValue = otherColumn.GetValueAt(otherIndex);
                 return CompareTo(thisIndex, otherValue);
             }
             else
             {
-                return _type - otherColumn._type;
+                return _type - otherColumn.Type;
             }
         }
 
@@ -379,5 +375,17 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
             }
         }
+
+        //public Apache.Arrow.IArrowArray ToArrowArray()
+        //{
+        //    if (_type == ArrowTypeId.Null)
+        //    {
+        //        return new Apache.Arrow.NullArray(Count);
+        //    }
+        //    else if (_type == ArrowTypeId.Union)
+        //    {
+
+        //    }
+        //}
     }
 }

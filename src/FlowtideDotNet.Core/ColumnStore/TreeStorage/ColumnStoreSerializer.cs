@@ -39,6 +39,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Serialize(in BinaryWriter writer, in ColumnKeyStorageContainer values)
         {
+            
             throw new NotImplementedException();
         }
     }

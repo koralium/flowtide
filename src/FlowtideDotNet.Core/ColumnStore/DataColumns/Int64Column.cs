@@ -10,12 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -119,6 +121,14 @@ namespace FlowtideDotNet.Core.ColumnStore
                 _data.Insert(index, 0);
             }
             _data.Insert(index, value.AsLong);
+        }
+
+        public IArrowArray ToArrowArray()
+        {
+            var spanInt = CollectionsMarshal.AsSpan(_data);
+            
+            //return new Int64Array(new ArrowBuffer())
+            throw new NotImplementedException();
         }
     }
 }

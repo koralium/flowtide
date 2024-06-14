@@ -65,7 +65,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 key.referenceBatch.Columns[column].GetValueAt(key.RowIndex, dataValueContainer);
                 var (low, high) = keyContainer._data.Columns[column].SearchBoundries(dataValueContainer, start, end);
 
-                if (low != 0)
+                if (low < 0)
                 {
                     return low;
                 }

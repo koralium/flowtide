@@ -10,10 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Join.NestedLoopJoin;
+using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -21,7 +24,9 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -41,6 +46,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         private List<int> _leftOutputColumns;
         private List<int> _rightOutputColumns;
+
+        // Metrics
+        private ICounter<long>? _eventsCounter;
+        private ICounter<long>? _eventsProcessed;
 
         public ColumnStoreMergeJoin(MergeJoinRelation mergeJoinRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
@@ -118,6 +127,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             var it = _rightTree!.CreateIterator();
             List<Column> rightColumns = new List<Column>();
+            List<int> foundOffsets = new List<int>();
+            List<int> weights = new List<int>();
+            List<uint> iterations = new List<uint>();
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
                 rightColumns.Add(new Column());
@@ -154,11 +166,26 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 var val = pageKeyStorage._data.Columns[_rightOutputColumns[z]].GetValueAt(k);
                                 rightColumns[z].Add(val);
                             }
+                            foundOffsets.Add(i);
+                            iterations.Add(msg.Data.Iterations[i]);
+                            weights.Add(outputWeight);
                         }
                         if (_searchRightComparer.end < (page.Keys.Count - 1))
                         {
                             break;
                         }
+                    }
+                }
+
+                // If it is a left join we must output the left side even if there is no match
+                if (joinWeight == 0 && _mergeJoinRelation.Type == JoinType.Left)
+                {
+                    foundOffsets.Add(i);
+                    iterations.Add(msg.Data.Iterations[i]);
+                    weights.Add(1);
+                    for (int z = 0; z < rightColumns.Count; z++)
+                    {
+                        rightColumns[z].Add(NullValue.Instance);
                     }
                 }
                 await _leftTree!.RMW(in columnReference, new JoinStorageValue() { Weight = weight, JoinWeight = joinWeight }, (input, current, found) =>
@@ -175,16 +202,30 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                     return (input, GenericWriteOperation.Upsert);
                 });
-
-
             }
-            yield break;
+
+            if (foundOffsets.Count > 0)
+            {
+                List<IColumn> outputColumns = new List<IColumn>();
+                for (int i = 0; i < _leftOutputColumns.Count; i++)
+                {
+                    outputColumns.Add(new ColumnWithOffset(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, true));
+                }
+                for (int i = 0; i < rightColumns.Count; i++)
+                {
+                    outputColumns.Add(rightColumns[i]);
+                }
+                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+            }
         }
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveRight(StreamEventBatch msg, long time)
         {
             var it = _leftTree!.CreateIterator();
             List<Column> leftColumns = new List<Column>();
+            List<int> foundOffsets = new List<int>();
+            List<int> weights = new List<int>();
+            List<uint> iterations = new List<uint>();
             for (int i = 0; i < _leftOutputColumns.Count; i++)
             {
                 leftColumns.Add(new Column());
@@ -208,6 +249,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     
                     await foreach (var page in it)
                     {
+                        bool pageUpdated = false;
                         var pageKeyStorage = page.Keys as ColumnKeyStorageContainer;
                         if (!firstPage)
                         {
@@ -216,13 +258,60 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         // All in this range matched the key comparisons
                         for (int k = _searchLeftComparer.start; k <= _searchLeftComparer.end; k++)
                         {
-                            int outputWeight = page.Values.Get(k).Weight * weight;
+                            var joinStorageValue = page.Values.Get(k);
+                            int outputWeight = joinStorageValue.Weight * weight;
                             joinWeight += outputWeight;
                             for (int z = 0; z < leftColumns.Count; z++)
                             {
-                                var val = pageKeyStorage._data.Columns[_leftOutputColumns[z]].GetValueAt(k);
+                                var val = pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k);
                                 leftColumns[z].Add(val);
                             }
+                            foundOffsets.Add(i);
+                            iterations.Add(msg.Data.Iterations[i]);
+                            weights.Add(outputWeight);
+
+                            if (_mergeJoinRelation.Type == JoinType.Left)
+                            {
+                                pageUpdated = true;
+                                if (joinStorageValue.JoinWeight == 0)
+                                {
+                                    // If it was zero before, we must emit a left with right null to negate previous value
+
+                                    // TODO: Can optimize here since we are copying the same value from left two times.
+                                    // If offsets where also used on these values, we could just copy the offset
+                                    for (int z = 0; z < leftColumns.Count; z++)
+                                    {
+                                        var val = pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k);
+                                        leftColumns[z].Add(val);
+                                    }
+                                    foundOffsets.Add(msg.Data.Weights.Count);
+                                    weights.Add(-joinStorageValue.Weight);
+                                    iterations.Add(msg.Data.Iterations[i]);
+                                    
+                                    //output.Add(CreateLeftWithNullRightEvent(-kv.Value.Weight, kv.Key, e.Iteration));
+                                }
+
+                                joinStorageValue.JoinWeight += outputWeight;
+
+                                if (joinStorageValue.JoinWeight == 0)
+                                {
+                                    // Became 0 this time, must emit a left with right null
+                                    for (int z = 0; z < leftColumns.Count; z++)
+                                    {
+                                        var val = pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k);
+                                        leftColumns[z].Add(val);
+                                    }
+                                    foundOffsets.Add(msg.Data.Weights.Count);
+                                    weights.Add(joinStorageValue.Weight);
+                                    iterations.Add(msg.Data.Iterations[i]);
+
+                                    //output.Add(CreateLeftWithNullRightEvent(kv.Value.Weight, kv.Key, e.Iteration));
+                                }
+                            }
+                        }
+                        if (pageUpdated)
+                        {
+                            await page.SavePage();
                         }
                         if (_searchLeftComparer.end < (page.Keys.Count - 1))
                         {
@@ -244,14 +333,27 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                     return (input, GenericWriteOperation.Upsert);
                 });
-
-
             }
-            yield break;
+
+            if (foundOffsets.Count > 0)
+            {
+                List<IColumn> outputColumns = new List<IColumn>();
+                for (int i = 0; i < leftColumns.Count; i++)
+                {
+                    outputColumns.Add(leftColumns[i]);
+                }
+                for (int i = 0; i < _rightOutputColumns.Count; i++)
+                {
+                    outputColumns.Add(new ColumnWithOffset(msg.Data.EventBatchData.Columns[_rightOutputColumns[i]], foundOffsets, true));
+                }
+                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+            }
         }
 
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
         {
+            Debug.Assert(_eventsProcessed != null, nameof(_eventsProcessed));
+            _eventsProcessed.Add(msg.Events.Count);
             if (targetId == 0)
             {
                 return OnRecieveLeft(msg, time);
@@ -264,15 +366,25 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         protected override async Task InitializeOrRestore(JoinState? state, IStateManagerClient stateManagerClient)
         {
+            Logger.InitializingMergeJoinOperator(StreamName, Name);
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
+
             _leftTree = await stateManagerClient.GetOrCreateTree("left",
-                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, JoinStorageValue, ColumnKeyStorageContainer, ListValueContainer<JoinStorageValue>>()
+                new BPlusTreeOptions<ColumnRowReference, JoinStorageValue, ColumnKeyStorageContainer, ListValueContainer<JoinStorageValue>>()
                 {
                     Comparer = _leftInsertComparer,
                     KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Left.OutputLength),
                     ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
                 });
             _rightTree = await stateManagerClient.GetOrCreateTree("right",
-                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, JoinStorageValue, ColumnKeyStorageContainer, ListValueContainer<JoinStorageValue>>()
+                new BPlusTreeOptions<ColumnRowReference, JoinStorageValue, ColumnKeyStorageContainer, ListValueContainer<JoinStorageValue>>()
                 {
                     Comparer = _rightInsertComparer,
                     KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Right.OutputLength),

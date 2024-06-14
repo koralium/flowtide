@@ -18,35 +18,35 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public interface IDataColumn
+    public interface IColumn
     {
         int Count { get; }
 
         ArrowTypeId Type { get; }
 
-        int CompareTo<T>(in int index, in T value)
-            where T: IDataValue;
+        internal IDataColumn DataColumn { get; }
 
-        int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);
+        void Add<T>(in T value)
+            where T : IDataValue;
 
-        int Add<T>(in T value)
-            where T: IDataValue;
+        void InsertAt<T>(in int index, in T value)
+            where T : IDataValue;
+
+        void UpdateAt<T>(in int index, in T value)
+            where T : IDataValue;
+
+        void RemoveAt(in int index);
 
         IDataValue GetValueAt(in int index);
 
         void GetValueAt(in int index, in DataValueContainer dataValueContainer);
 
-        int Update<T>(in int index, in T value)
-            where T: IDataValue;
-
-        (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end)
+        int CompareTo<T>(in int index, in T dataValue)
             where T : IDataValue;
 
-        void RemoveAt(in int index);
+        int CompareTo(in IColumn otherColumn, in int thisIndex, in int otherIndex);
 
-        void InsertAt<T>(in int index, in T value)
+        (int, int) SearchBoundries<T>(in T value, in int start, in int end)
             where T : IDataValue;
-
-        //Apache.Arrow.IArrowArray ToArrowArray();
     }
 }
