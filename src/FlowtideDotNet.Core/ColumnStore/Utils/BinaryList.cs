@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,6 +27,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public readonly int length;
         public BinaryInfo(byte[] data, int index, int length)
         {
+            
             this.data = data;
             this.index = index;
             this.length = length;
@@ -38,17 +40,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     /// This means that it does not store references to the binary data, but instead stores them directly in the array.
     /// This list allows inserting data and removing data where it correctly recalculates offsets.
     /// </summary>
-    internal class BinaryList
+    internal class BinaryList : IDisposable
     {
         private byte[] _data;
         private IntList _offsets;
         private int _length;
+        private bool disposedValue;
 
         public int Count => _offsets.Count;
 
-        public BinaryList()
+        public BinaryList(IMemoryAllocator memoryAllocator)
         {
-            _offsets = new IntList();
+            _offsets = new IntList(memoryAllocator);
             _data = Array.Empty<byte>();
         }
 
@@ -206,6 +209,36 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             {
                 return new BinaryInfo(_data, offset, _offsets.Get(index + 1) - offset);
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    // TODO: dispose managed state (managed objects)
+                    _offsets.Dispose();
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        // ~BinaryList()
+        // {
+        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        //     Dispose(disposing: false);
+        // }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

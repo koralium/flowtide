@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using System;
 using System.Collections.Generic;
@@ -26,7 +27,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         {
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
-            BinaryList binaryList = new BinaryList();
+            BinaryList binaryList = new BinaryList(new NativeMemoryAllocator());
             binaryList.Add(e1);
             binaryList.Add(e2);
 
@@ -40,7 +41,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            BinaryList binaryList = new BinaryList();
+            BinaryList binaryList = new BinaryList(new NativeMemoryAllocator());
             binaryList.Add(e1);
             binaryList.Add(e2);
             binaryList.Insert(1, e3);
@@ -56,7 +57,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            BinaryList binaryList = new BinaryList();
+            BinaryList binaryList = new BinaryList(new NativeMemoryAllocator());
             binaryList.Add(e1);
             binaryList.Add(e2);
             binaryList.Insert(0, e3);
@@ -72,7 +73,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            BinaryList binaryList = new BinaryList();
+            BinaryList binaryList = new BinaryList(new NativeMemoryAllocator());
             binaryList.Add(e1);
             binaryList.Add(e2);
             binaryList.Insert(2, e3);
@@ -88,7 +89,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            BinaryList binaryList = new BinaryList();
+            BinaryList binaryList = new BinaryList(new NativeMemoryAllocator());
             binaryList.Add(e1);
             binaryList.Add(e2);
             binaryList.Add(e3);
@@ -105,7 +106,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            BinaryList binaryList = new BinaryList();
+            BinaryList binaryList = new BinaryList(new NativeMemoryAllocator());
             binaryList.Add(e1);
             binaryList.Add(e2);
             binaryList.Add(e3);
@@ -122,7 +123,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            BinaryList binaryList = new BinaryList();
+            BinaryList binaryList = new BinaryList(new NativeMemoryAllocator());
             binaryList.Add(e1);
             binaryList.Add(e2);
             binaryList.Add(e3);

@@ -10,7 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow.Memory;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,40 +26,62 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     /// Special list data structure that stores integers only
     /// This data structure is useful when storing offsets for instance since it can change offset locations during removal.
     /// </summary>
-    internal class IntList
+    internal unsafe class IntList : IDisposable
     {
-        private int[] _data;
+        private void* _data;
+        IFlowtideMemoryOwner? _memoryOwner;
+        private int _dataLength;
         private int _length;
+        private bool disposedValue;
+        private readonly IMemoryAllocator memoryAllocator;
+        //private IMemoryOwner<byte>? _memoryOwner;
 
-        public IntList()
+        private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
+
+        public IntList(IMemoryAllocator memoryAllocator)
         {
-            _data = Array.Empty<int>();
+            _data = null;
+            this.memoryAllocator = memoryAllocator;
         }
 
-        public Span<int> Span => _data;
+        public ReadOnlySpan<int> Span => new ReadOnlySpan<int>(_data, _length);
 
         public int Count => _length;
 
         private void EnsureCapacity(int length)
         {
-            if (_data.Length < length)
+            if (_dataLength < length)
             {
-                var newData = new int[length * 2];
-                _data.CopyTo(newData, 0);
-                _data = newData;
+                var newLength = length * 2;
+                if (newLength < 64)
+                {
+                    newLength = 64;
+                }
+                
+                var allocLength = newLength * 2 * sizeof(int);
+                if (_memoryOwner == null)
+                {
+                    _memoryOwner = memoryAllocator.Allocate(allocLength, 64);
+                    _data = _memoryOwner.Memory.Pin().Pointer;
+                }
+                else
+                {
+                    _memoryOwner.Reallocate(allocLength);
+                    _data = _memoryOwner.Memory.Pin().Pointer;
+                }
+                _dataLength = newLength;
             }
         }
 
         public void Add(int item)
         {
             EnsureCapacity(_length + 1);
-            _data[_length++] = item;
+            AccessSpan[_length++] = item;
         }
 
         public void RemoveAt(int index)
         {
-            var span = _data.AsSpan();
-            span.Slice(index + 1, _length - index - 1).CopyTo(span.Slice(index));
+            AccessSpan.Slice(index + 1, _length - index - 1).CopyTo(AccessSpan.Slice(index));
             _length--;
         }
 
@@ -68,38 +93,34 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="additionOnMoved"></param>
         public void RemoveAt(int index, int additionOnMoved)
         {
-            var span = _data.AsSpan();
-            var source = span.Slice(index + 1, _length - index - 1);
-            var dest = span.Slice(index);
-            AvxUtils.InPlaceMemCopyWithAddition(span, index + 1, index, _length - index - 1, additionOnMoved);
-            //AvxUtils.MemCpyWithAdd(source, dest, additionOnMoved);
+            AvxUtils.InPlaceMemCopyWithAddition(AccessSpan, index + 1, index, _length - index - 1, additionOnMoved);
             _length--;
         }
 
         public void InsertAt(int index, int item)
         {
             EnsureCapacity(_length + 1);
-            var span = _data.AsSpan();
+            var span = AccessSpan;
             span.Slice(index, _length - index).CopyTo(span.Slice(index + 1));
-            _data[index] = item;
+            span[index] = item;
             _length++;
         }
 
         public void InsertAt(int index, int item, int additionOnMoved)
         {
             EnsureCapacity(_length + 1);
-            var span = _data.AsSpan();
+            var span = AccessSpan;
             var source = span.Slice(index, _length - index);
             var dest = span.Slice(index + 1);
             AvxUtils.InPlaceMemCopyWithAddition(span, index, index + 1, _length - index, additionOnMoved);
             //AvxUtils.MemCpyWithAdd(source, dest, additionOnMoved);
-            _data[index] = item;
+            span[index] = item;
             _length++;
         }
 
         public void Update(int index, int item)
         {
-            _data[index] = item;
+            AccessSpan[index] = item;
         }
 
         /// <summary>
@@ -111,13 +132,40 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="additionOnAbove"></param>
         public void Update(int index, int item, int additionOnAbove)
         {
-            _data[index] = item;
-            AvxUtils.AddValueToElements(_data.AsSpan(index + 1, _length - index - 1), additionOnAbove);
+            AccessSpan[index] = item;
+            AvxUtils.AddValueToElements(AccessSpan.Slice(index + 1, _length - index - 1), additionOnAbove);
         }
 
         public int Get(in int index)
         {
-            return _data[index];
+            return AccessSpan[index];
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (_memoryOwner != null)
+                {
+                    _memoryOwner.Dispose();
+                    _memoryOwner = null;
+                    _data = null;
+                }
+                disposedValue = true;
+            }
+        }
+
+        ~IntList()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

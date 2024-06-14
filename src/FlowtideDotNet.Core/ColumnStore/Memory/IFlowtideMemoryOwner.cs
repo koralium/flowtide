@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,12 +19,8 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Memory
 {
-    public unsafe interface IMemoryAllocator
+    public interface IFlowtideMemoryOwner : IMemoryOwner<byte>
     {
-        NativeMemoryOwner Allocate(int size, int alignment);
-
-        //void* Reallocate(void* ptr, int size, int alignment);
-
-        //void Free(void* ptr);
+        void Reallocate(int newSize);
     }
 }

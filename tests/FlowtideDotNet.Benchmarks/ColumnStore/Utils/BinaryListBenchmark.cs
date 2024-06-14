@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using Substrait.Protobuf;
 using System;
@@ -63,7 +64,7 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
         [Benchmark]
         public void TestInsert()
         {
-            var bl = new BinaryList();
+            var bl = new BinaryList(new NativeMemoryAllocator());
 
             foreach (var item in toInsert)
             {

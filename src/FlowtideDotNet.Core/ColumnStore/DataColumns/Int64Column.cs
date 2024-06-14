@@ -12,9 +12,11 @@
 
 using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -25,7 +27,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     internal class Int64Column : IDataColumn
     {
-        private List<long> _data;
+        //private List<long> _data;
+        private NativeLongList _data;
 
         public int Count => _data.Count;
 
@@ -33,7 +36,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public Int64Column()
         {
-            _data = new List<long>();
+            _data = new NativeLongList(new NativeMemoryAllocator());
+            //_data = new List<long>();
         }
 
         public int Add<T>(in T value) where T: IDataValue
@@ -46,12 +50,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             _data.Add(value.AsLong);
             return index;
-        }
-
-        public int BinarySearch(in IDataValue dataValue, in int start, in int end)
-        {
-            var longVal = dataValue.AsLong;
-            return _data.BinarySearch(start, end - start, longVal, default);
         }
 
         public int CompareToStrict(in int index, in IDataValue value)
@@ -89,7 +87,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             where T: IDataValue
         {
             var val = dataValue.AsLong;
-            return BoundarySearch.SearchBoundries<long>(_data, val, start, end - start, Int64Comparer.Instance);
+            return BoundarySearch.SearchBoundries(_data, val, start, end - start, Int64Comparer.Instance);
         }
 
         public int Update(in int index, in IDataValue value)
@@ -118,15 +116,13 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (value.Type == ArrowTypeId.Null)
             {
-                _data.Insert(index, 0);
+                _data.InsertAt(index, 0);
             }
-            _data.Insert(index, value.AsLong);
+            _data.InsertAt(index, value.AsLong);
         }
 
         public IArrowArray ToArrowArray()
         {
-            var spanInt = CollectionsMarshal.AsSpan(_data);
-            
             //return new Int64Array(new ArrowBuffer())
             throw new NotImplementedException();
         }

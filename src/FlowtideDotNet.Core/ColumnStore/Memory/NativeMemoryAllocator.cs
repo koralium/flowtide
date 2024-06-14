@@ -21,19 +21,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
 {
     internal class NativeMemoryAllocator : IMemoryAllocator
     {
-        public unsafe void* Allocate(int size, int alignment)
-        {
-            return NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-        }
+        //public unsafe void* Allocate(int size, int alignment)
+        //{
+        //    return NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
+        //}
 
-        public unsafe void Free(void* ptr)
-        {
-            NativeMemory.AlignedFree(ptr);
-        }
+        //public unsafe void Free(void* ptr)
+        //{
+        //    NativeMemory.AlignedFree(ptr);
+        //}
 
-        public unsafe void* Reallocate(void* ptr, int size, int alignment)
+        //public unsafe void* Reallocate(void* ptr, int size, int alignment)
+        //{
+        //    return NativeMemory.AlignedRealloc(ptr, (nuint)size, (nuint)alignment);
+        //}
+        public unsafe NativeMemoryOwner Allocate(int size, int alignment)
         {
-            return NativeMemory.AlignedRealloc(ptr, (nuint)size, (nuint)alignment);
+            var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
+            return new NativeMemoryOwner(ptr, size, alignment);
         }
     }
 }

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using System;
@@ -24,7 +25,7 @@ namespace FlowtideDotNet.Core.ColumnStore
     public class StringColumn : IDataColumn
     {
         private static SpanByteComparer s_spanByteComparer = new SpanByteComparer();
-        private BinaryList _binaryList = new BinaryList();
+        private BinaryList _binaryList = new BinaryList(new NativeMemoryAllocator());
 
         public int Count => _binaryList.Count;
 

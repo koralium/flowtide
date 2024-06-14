@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using Google.Protobuf.Reflection;
 using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,12 +36,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private int _length;
         private bool _disposedValue;
         private readonly IMemoryAllocator _memoryAllocator;
+        private IFlowtideMemoryOwner? _memoryOwner;
 
         public NativeLongList(IMemoryAllocator memoryAllocator)
         {
             _data = null;
             _memoryAllocator = memoryAllocator;
         }
+
+        public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
         public NativeLongList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)
         {
@@ -61,26 +65,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 }
                 var allocSize = newLength * sizeof(long);
 
-                if (_data == null)
+                if (_memoryOwner == null)
                 {
-                    _data = _memoryAllocator.Allocate(allocSize, 64);
+                    _memoryOwner = _memoryAllocator.Allocate(allocSize, 64);
+                    _data = _memoryOwner.Memory.Pin().Pointer;
                 }
                 else
                 {
-                    _data = _memoryAllocator.Reallocate(_data, allocSize, 64);
+                    _memoryOwner.Reallocate(allocSize);
+                    _data = _memoryOwner.Memory.Pin().Pointer;
                 }
                 _dataLength = newLength;
-
-                //var newData = _memoryAllocator.Allocate(allocSize, 64);
-                //if (_data != null)
-                //{
-                //    var newDataSpan = new Span<long>(newData, newLength);
-                //    var oldDataSpan = new Span<long>(_data, _length);
-                //    oldDataSpan.CopyTo(newDataSpan);
-                //    _memoryAllocator.Free(_data);
-                //}
-                //_data = newData;
-
             }
         }
 
@@ -180,7 +175,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             if (!_disposedValue)
             {
-                _memoryAllocator.Free(_data);
+                if (_memoryOwner != null)
+                {
+                    _memoryOwner.Dispose();
+                    _memoryOwner = null;
+                    _data = null;
+                }
+                
                 _disposedValue = true;
             }
         }
