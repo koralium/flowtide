@@ -155,7 +155,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         if (!firstPage)
                         {
                             // Locate indices again
+                            var index = _searchRightComparer.FindIndex(in columnReference, pageKeyStorage!);
+                            if (_searchRightComparer.noMatch)
+                            {
+                                break;
+                            }
                         }
+                        firstPage = false;
                         // All in this range matched the key comparisons
                         for (int k = _searchRightComparer.start; k <= _searchRightComparer.end; k++)
                         {
@@ -254,7 +260,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         if (!firstPage)
                         {
                             // Locate indices again
+                            var index = _searchLeftComparer.FindIndex(in columnReference, pageKeyStorage!);
+                            if (_searchLeftComparer.noMatch)
+                            {
+                                break;
+                            }
                         }
+                        firstPage = false;
                         // All in this range matched the key comparisons
                         for (int k = _searchLeftComparer.start; k <= _searchLeftComparer.end; k++)
                         {

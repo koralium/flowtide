@@ -22,5 +22,16 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
     {
         public int RowIndex;
         public EventBatchData referenceBatch;
+
+        public override string ToString()
+        {
+            List<string> vals = new List<string>();
+            for (int i = 0; i < referenceBatch.Columns.Count; i++)
+            {
+                vals.Add(referenceBatch.Columns[i].GetValueAt(RowIndex).ToString()!);
+
+            }
+            return $"{{{string.Join(",", vals)}}}";
+        }
     }
 }
