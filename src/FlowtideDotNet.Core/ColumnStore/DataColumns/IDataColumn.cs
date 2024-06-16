@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,14 +35,14 @@ namespace FlowtideDotNet.Core.ColumnStore
         int Add<T>(in T value)
             where T: IDataValue;
 
-        IDataValue GetValueAt(in int index);
+        IDataValue GetValueAt(in int index, in ReferenceSegment? child);
 
-        void GetValueAt(in int index, in DataValueContainer dataValueContainer);
+        void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child);
 
         int Update<T>(in int index, in T value)
             where T: IDataValue;
 
-        (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end)
+        (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child)
             where T : IDataValue;
 
         void RemoveAt(in int index);

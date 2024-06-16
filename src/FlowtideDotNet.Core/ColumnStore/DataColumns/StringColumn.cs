@@ -87,7 +87,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end) where T : IDataValue
         {
-            return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end, s_spanByteComparer);
+            return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end - start, s_spanByteComparer);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)

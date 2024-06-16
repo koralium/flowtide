@@ -15,6 +15,8 @@ using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Join.NestedLoopJoin;
 using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.Serializers;
@@ -51,7 +53,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
 
-        public ColumnStoreMergeJoin(MergeJoinRelation mergeJoinRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
+
+        // To be deprecated when functions also work with column store
+        protected readonly Func<RowEvent, RowEvent, bool> _postCondition;
+
+        public ColumnStoreMergeJoin(MergeJoinRelation mergeJoinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
             this._mergeJoinRelation = mergeJoinRelation;
             var leftColumns = GetCompareColumns(mergeJoinRelation.LeftKeys, 0);
@@ -64,6 +70,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             _leftOutputColumns = GetOutputColumns(mergeJoinRelation, 0, mergeJoinRelation.Left.OutputLength);
             _rightOutputColumns = GetOutputColumns(mergeJoinRelation, mergeJoinRelation.Left.OutputLength, mergeJoinRelation.Right.OutputLength);
+
+            if (mergeJoinRelation.PostJoinFilter != null)
+            {
+                _postCondition = BooleanCompiler.Compile<RowEvent>(mergeJoinRelation.PostJoinFilter, functionsRegister, mergeJoinRelation.Left.OutputLength);
+            }
         }
 
         private static List<int> GetOutputColumns(MergeJoinRelation mergeJoinRelation, int relative, int maxSize)
@@ -165,6 +176,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         // All in this range matched the key comparisons
                         for (int k = _searchRightComparer.start; k <= _searchRightComparer.end; k++)
                         {
+                            if (_postCondition != null)
+                            {
+                                var rightEvent = RowEventToEventBatchData.RowReferenceToRowEvent(1, 0, new ColumnRowReference() { referenceBatch = pageKeyStorage!._data, RowIndex = k });
+                                var leftEvent = RowEventToEventBatchData.RowReferenceToRowEvent(1, 0, columnReference);
+                                if (!_postCondition(leftEvent, rightEvent))
+                                {
+                                    _searchRightComparer.end = int.MinValue;
+                                    break;
+                                }
+                            }
                             int outputWeight = page.Values.Get(k).Weight * msg.Data.Weights[i];
                             joinWeight += outputWeight;
                             for (int z = 0; z < rightColumns.Count; z++)
@@ -270,6 +291,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         // All in this range matched the key comparisons
                         for (int k = _searchLeftComparer.start; k <= _searchLeftComparer.end; k++)
                         {
+                            if (_postCondition != null)
+                            {
+                                var leftEvent = RowEventToEventBatchData.RowReferenceToRowEvent(1, 0, new ColumnRowReference() { referenceBatch = pageKeyStorage!._data, RowIndex = k });
+                                var rightEvent = RowEventToEventBatchData.RowReferenceToRowEvent(1, 0, columnReference);
+                                if (!_postCondition(leftEvent, rightEvent))
+                                {
+                                    _searchLeftComparer.end = int.MinValue;
+                                    break;
+                                }
+                            }
                             var joinStorageValue = page.Values.Get(k);
                             int outputWeight = joinStorageValue.Weight * weight;
                             joinWeight += outputWeight;

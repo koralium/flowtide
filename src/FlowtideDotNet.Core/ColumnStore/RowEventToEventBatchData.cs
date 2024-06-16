@@ -12,6 +12,7 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -155,6 +156,16 @@ namespace FlowtideDotNet.Core.ColumnStore
                 rowEvents.Add(new RowEvent(weight, iteration, new ArrayRowData(columns)));
             }
             return rowEvents;
+        }
+
+        public static RowEvent RowReferenceToRowEvent(int weight, uint iteration, ColumnRowReference columnRowReference)
+        {
+            FlxValue[] columns = new FlxValue[columnRowReference.referenceBatch.Columns.Count];
+            for (int c = 0; c < columnRowReference.referenceBatch.Columns.Count; c++)
+            {
+                columns[c] = DataValueToFlxValue(columnRowReference.referenceBatch.Columns[c].GetValueAt(columnRowReference.RowIndex));
+            }
+            return new RowEvent(weight, iteration, new ArrayRowData(columns));
         }
 
         public static EventBatchWeighted ConvertToEventBatchData(List<RowEvent> rowEvents, int columnCount)

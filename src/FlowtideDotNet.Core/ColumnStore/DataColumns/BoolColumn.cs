@@ -127,7 +127,19 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _data.Insert(index, false);
+                return;
+            }
+            if (value.AsBool)
+            {                 
+                _data.Insert(index, true);
+            }
+            else
+            {
+                _data.Insert(index, false);
+            } 
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)

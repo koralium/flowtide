@@ -301,7 +301,7 @@ namespace FlowtideDotNet.Core.Engine
             {
                 var id = _operatorId++;
 
-                var op = new ColumnStoreMergeJoin(mergeJoinRelation, DefaultBlockOptions); //new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                var op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions); //new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
                 if (state != null)
                 {
                     op.LinkTo(state);
