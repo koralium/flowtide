@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,11 +19,21 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
-    internal class EventBatchToArrow
+    internal static class EventBatchToArrow
     {
-        //public Apache.Arrow.Array ColumnToArray(Column column)
-        //{
-            
-        //}
+        public static RecordBatch BatchToArrow(EventBatchData eventBatchData)
+        {
+            var schemaBuilder = new Apache.Arrow.Schema.Builder();
+            List<IArrowArray> arrays = new List<IArrowArray>();
+            int length = 0;
+            for (int i = 0; i < eventBatchData.Columns.Count; i++)
+            {
+                length = eventBatchData.Columns[i].Count;
+                var (array, type) = eventBatchData.Columns[i].ToArrowArray();
+                schemaBuilder.Field(new Apache.Arrow.Field($"{i}", type, true));
+                arrays.Add(array);
+            }
+            return new Apache.Arrow.RecordBatch(schemaBuilder.Build(), arrays, length);
+        }
     }
 }

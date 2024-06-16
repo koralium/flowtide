@@ -65,5 +65,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             start = 0;
             end = _utf8.Length;
         }
+
+        public override string ToString()
+        {
+            return Encoding.UTF8.GetString(_utf8, start, end - start);
+        }
     }
 }

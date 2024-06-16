@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow;
+using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -86,6 +88,13 @@ namespace FlowtideDotNet.Core.ColumnStore
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end) where T : IDataValue
         {
             return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end, s_spanByteComparer);
+        }
+
+        public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
+        {
+            var offsetBuffer = new ArrowBuffer(_binaryList.OffsetMemory);
+            var dataBuffer = new ArrowBuffer(_binaryList.DataMemory);
+            return (new StringArray(Count, offsetBuffer, dataBuffer, nullBuffer, nullCount), StringType.Default);
         }
 
         public int Update<T>(in int index, in T value) where T : IDataValue

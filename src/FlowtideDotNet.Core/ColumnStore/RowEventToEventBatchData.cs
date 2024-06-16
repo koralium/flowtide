@@ -73,11 +73,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var map = flxValue.AsMap;
             
-            List<KeyValuePair<string, IDataValue>> dataMap = new List<KeyValuePair<string, IDataValue>>();
+            List<KeyValuePair<IDataValue, IDataValue>> dataMap = new List<KeyValuePair<IDataValue, IDataValue>>();
             foreach (var kv in map)
             {
                 var innerVal = FlxValueToDataValue(kv.Value);
-                dataMap.Add(new KeyValuePair<string, IDataValue>(kv.Key, innerVal));
+                dataMap.Add(new KeyValuePair<IDataValue, IDataValue>(new StringValue(kv.Key), innerVal));
             }
             return new MapValue(dataMap);
         }
@@ -134,7 +134,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 foreach (var kv in map)
                 {
                     var innerVal = DataValueToFlxValue(kv.Value);
-                    m.Add(kv.Key, innerVal);
+                    m.Add(kv.Key.ToString()!, innerVal);
                 }
             });
             return FlxValue.FromBytes(bytes);

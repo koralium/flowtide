@@ -10,11 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow.Types;
+using Apache.Arrow;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -23,48 +28,42 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <summary>
         /// Contains all the property keys, must always be strings
         /// </summary>
-        private StringColumn _keyColumn;
+        private Column _keyColumn;
 
         /// <summary>
         /// Contains the values, can be any type
         /// </summary>
         private Column _valueColumn;
 
-        private List<int> _offsets;
+        private IntList _offsets;
 
-        public int Count => _offsets.Count;
+        public int Count => _offsets.Count - 1;
 
         public ArrowTypeId Type => ArrowTypeId.Map;
 
         public MapColumn()
         {
-            _keyColumn = new StringColumn();
+            _keyColumn = new Column();
             _valueColumn = new Column();
-            _offsets = new List<int>();
+            _offsets = new IntList(new NativeMemoryAllocator());
+            _offsets.Add(0);
         }
 
         private (int, int) GetOffsets(in int index)
         {
-            var startOffset = _offsets[index];
-            if ((index + 1)  >= _offsets.Count)
-            {
-                return (startOffset, _valueColumn.Count);
-            }
-            else
-            {
-                return (startOffset, _offsets[index + 1]);
-            }
+            var startOffset = _offsets.Get(index);
+            return (startOffset, _offsets.Get(index + 1));
         }
 
-        public IEnumerable<KeyValuePair<string, IDataValue>> GetKeyValuePairs(int index)
+        public IEnumerable<KeyValuePair<IDataValue, IDataValue>> GetKeyValuePairs(int index)
         {
             var (startOffset, endOffset) = GetOffsets(in index);
 
             for (int i = startOffset; i < endOffset; i++)
             {
-                var key = _keyColumn.GetValueAt(i).AsString;
+                var key = _keyColumn.GetValueAt(i);
                 var value = _valueColumn.GetValueAt(i);
-                yield return new KeyValuePair<string, IDataValue>(Encoding.UTF8.GetString(key.Span), value);
+                yield return new KeyValuePair<IDataValue, IDataValue>(key, value);
             }
         }
 
@@ -95,17 +94,23 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int Add<T>(in T value) where T : IDataValue
         {
+            var startOffset = _offsets.Count - 1;
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _offsets.Add(_valueColumn.Count);
+                return startOffset;
+            }
             var map = value.AsMap;
             // Sort keys so its possible to binary search after a key.
             // In future, can check if it is a reference map value or not to skip sorting
-            var ordered = map.OrderBy(x => x.Key).ToList();
-            var startOffset = _offsets.Count;
-            _offsets.Add(_valueColumn.Count);
+            var ordered = map.OrderBy(x => x.Key, new DataValueComparer()).ToList();
+            
             foreach (var pair in ordered)
             {
-                _keyColumn.Add(new StringValue(pair.Key));
+                _keyColumn.Add(pair.Key);
                 _valueColumn.Add(pair.Value);
             }
+            _offsets.Add(_valueColumn.Count);
 
             return startOffset;
         }
@@ -144,6 +149,25 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
+        }
+
+        public (IArrowArray, IArrowType) ToArrowArray(Apache.Arrow.ArrowBuffer nullBuffer, int nullCount)
+        {
+            var keyData = _keyColumn.ToArrowArray();
+            var valueData = _valueColumn.ToArrowArray();
+            //var keyData = _keyColumn.ToArrowArray(new ArrowBuffer(), 0);
+
+            var mapType = new MapType(keyData.Item2, valueData.Item2, keySorted: true);
+
+            var structType = new StructType(new List<Field>()
+            {
+                new Field("keys", keyData.Item2, true),
+                new Field("values", valueData.Item2, true)
+            });
+            var structArr = new StructArray(structType, _keyColumn.Count, new List<IArrowArray>() { keyData.Item1, valueData.Item1 }, nullBuffer, nullCount);
+            var valueOffsetsBuffer = new ArrowBuffer(_offsets.Memory);
+            var mapArr = new MapArray(mapType, Count, valueOffsetsBuffer, structArr, nullBuffer, nullCount);
+            return (mapArr, mapType);
         }
     }
 }

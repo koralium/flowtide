@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow;
+using Apache.Arrow.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -95,6 +97,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
             throw new NotImplementedException();
         }

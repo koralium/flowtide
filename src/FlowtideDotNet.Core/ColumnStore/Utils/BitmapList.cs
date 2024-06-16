@@ -10,16 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
-    internal class BitmapList
+    internal unsafe class BitmapList
     {
         private const int firstBitMask = 1 << 31;
         private const int lastBitMask = 1;
@@ -95,28 +99,56 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             -2147483648, // 30th element with all bits except the lowest 31 bits set
             ~((1 << 32) - 1)
         ];
-
-
-        private int[] _data;
+        private readonly IMemoryAllocator memoryAllocator;
+        //private int[] _data;
         private int _length;
+        private void* _data;
+        private int _dataLength;
+        private IMemoryOwner<byte>? _memoryOwner;
 
+        public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
-        public BitmapList()
+        public BitmapList(IMemoryAllocator memoryAllocator)
         {
-            _data = new int[0];
+            _data = null;
+            this.memoryAllocator = memoryAllocator;
+        }
+
+        private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
+
+        private void EnsureSize(int length)
+        {
+            if (length > _dataLength)
+            {
+                int allocationSize = length * sizeof(int);
+                if (_memoryOwner == null)
+                {
+                    _memoryOwner = memoryAllocator.Allocate(allocationSize, 64);
+                    _data = _memoryOwner.Memory.Pin().Pointer;
+                    NativeMemory.Fill(_data, (nuint)allocationSize, 0);
+                }
+                else
+                {
+                    int oldSize = _dataLength * sizeof(int);
+                    var newMemory = memoryAllocator.Allocate(allocationSize, 64);
+                    var newPtr = newMemory.Memory.Pin().Pointer;
+                    NativeMemory.Copy(_data, newPtr, (nuint)oldSize);
+                    _memoryOwner.Dispose();
+                    _memoryOwner = newMemory;
+                    _data = newPtr;
+                    NativeMemory.Fill((byte*)(_data) + oldSize, (nuint)(allocationSize - oldSize), 0);
+                }
+                _dataLength = length;
+            }
         }
 
         public void Set(int index)
         {
             var wordIndex = index >> 5;
             int bitIndex = 1 << index;
-            if (wordIndex >= _data.Length)
-            {
-                var newData = new int[wordIndex + 1];
-                Array.Copy(_data, newData, _data.Length);
-                _data = newData;
-            }
-            _data[wordIndex] |= bitIndex;
+            EnsureSize(wordIndex + 1);
+
+            AccessSpan[wordIndex] |= bitIndex;
 
             if (_length < index)
             {
@@ -128,52 +160,46 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             var wordIndex = index >> 5;
             int bitIndex = 1 << index;
-            if (wordIndex >= _data.Length)
+            if (wordIndex >= _dataLength)
             {
                 return false;
             }
-            return (_data[wordIndex] & bitIndex) != 0;
+            return (AccessSpan[wordIndex] & bitIndex) != 0;
         }
 
         public void Unset(int index)
         {
             var wordIndex = index >> 5;
             int bitIndex = 1 << index;
-            if (wordIndex >= _data.Length)
+            if (wordIndex >= _dataLength)
             {
                 return;
             }
-            _data[wordIndex] &= ~bitIndex;
+            AccessSpan[wordIndex] &= ~bitIndex;
         }
 
         public void InsertAt(int index, bool value)
         {
             var toIndex = index >> 5;
 
-            if (toIndex >= _data.Length)
-            {
-                var newData = new int[toIndex + 1];
-                Array.Copy(_data, newData, _data.Length);
-                _data = newData;
-            }
+            EnsureSize(toIndex + 1);
 
             var mod = index % 32;
             int bitIndex = 1 << index;
-            if ((_data[_data.Length - 1] & lastBitMask) != 0)
+            var span = AccessSpan;
+            if ((span[_dataLength - 1] & lastBitMask) != 0)
             {
-                // add an extra element so it does not overflow.
-                var newData = new int[_data.Length + 1];
-                Array.Copy(_data, newData, _data.Length);
-                _data = newData;
+                EnsureSize(_dataLength + 1);
             }
+            span = AccessSpan;
             if (mod > 0)
             {
                 var topBitsMask = topBitsSetMask[mod];
                 var bottomBitsMask = BitPatternArray[mod];
-                var val = _data[toIndex] & bottomBitsMask;
+                var val = span[toIndex] & bottomBitsMask;
                 ShiftLeft(toIndex);
-                var newVal = _data[toIndex] & topBitsMask;
-                _data[toIndex] = (val | newVal);
+                var newVal = span[toIndex] & topBitsMask;
+                span[toIndex] = (val | newVal);
             }
             else
             {
@@ -181,28 +207,29 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
             if (value)
             {
-                _data[toIndex] |= bitIndex;
+                span[toIndex] |= bitIndex;
             }
             else
             {
-                _data[toIndex] &= ~bitIndex;
+                span[toIndex] &= ~bitIndex;
             }
         }
 
         private void ShiftLeft(int toIndex)
         {
-            var fromindex = _data.Length - 1;
+            var span = AccessSpan;
+            var fromindex = _dataLength - 1;
             unchecked
             {
                 int lastIndex = fromindex;
                 while (fromindex > toIndex)
                 {
-                    int left = _data[fromindex] << 1;
-                    uint right = (uint)_data[--fromindex] >> (32 - 1);
-                    _data[lastIndex] = left | (int)right;
+                    int left = span[fromindex] << 1;
+                    uint right = (uint)span[--fromindex] >> (32 - 1);
+                    span[lastIndex] = left | (int)right;
                     lastIndex--;
                 }
-                _data[lastIndex] = _data[fromindex] << 1;
+                span[lastIndex] = span[fromindex] << 1;
             }
         }
 
@@ -212,11 +239,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="index"></param>
         public void RemoveAt(int index)
         {
-            if (index < 0 || index >= _data.Length * 32)
+            if (index < 0 || index >= _dataLength * 32)
             {
                 throw new ArgumentOutOfRangeException(nameof(index));
             }
-
+            var span = AccessSpan;
             var fromIndex = index >> 5;
             var mod = index % 32;
 
@@ -224,10 +251,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             {
                 var beforeMask = BitPatternArray[mod - 1];
                 var clearMask = topBitsSetMask[mod - 1];
-                var val = _data[fromIndex] & beforeMask;
+                var val = span[fromIndex] & beforeMask;
                 ShiftRight(fromIndex);
-                var newVal = _data[fromIndex] & clearMask;
-                _data[fromIndex] = (val | newVal);
+                var newVal = span[fromIndex] & clearMask;
+                span[fromIndex] = (val | newVal);
             }
             else
             {
@@ -237,19 +264,20 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         private void ShiftRight(int fromIndex)
         {
+            var span = AccessSpan;
             // Loop from BitArray.
             int toIndex = 0;
-            int lastIndex = _data.Length - 1;
+            int lastIndex = _dataLength - 1;
             unchecked
             {
                 while (fromIndex < lastIndex)
                 {
-                    uint right = (uint)_data[fromIndex] >> 1;
-                    int left = _data[++fromIndex] << (32 - 1);
-                    _data[toIndex++] = left | (int)right;
+                    uint right = (uint)span[fromIndex] >> 1;
+                    int left = span[++fromIndex] << (32 - 1);
+                    span[toIndex++] = left | (int)right;
                 }
 
-                _data[toIndex++] = (int)(_data[fromIndex] >> 1);
+                span[toIndex++] = (int)(span[fromIndex] >> 1);
             }
         }
 

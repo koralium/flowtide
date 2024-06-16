@@ -10,8 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow;
+using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using System;
 using System.Collections.Generic;
@@ -32,8 +35,6 @@ namespace FlowtideDotNet.Core.ColumnStore
     /// </summary>
     public class Column : IColumn
     {
-        private static readonly IDataValue NullValue = new NullValue();
-
         private int _nullCounter;
         private IDataColumn? _dataColumn;
 
@@ -42,7 +43,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// since a column could start as a null column without any data.
         /// The type of data that is stored is then unknown.
         /// </summary>
-        private BitmapList _nullList;
+        private BitmapList _validityList;
 
         /// <summary>
         /// The type of data the column is storing, starts with null
@@ -51,7 +52,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public Column()
         {
-            _nullList = new BitmapList();    
+            _validityList = new BitmapList(new NativeMemoryAllocator());    
         }
 
         public int Count
@@ -107,9 +108,13 @@ namespace FlowtideDotNet.Core.ColumnStore
                     _type = value.Type;
 
                     // Add null values as undefined values to the array.
-                    for (var i = 0; i < _nullCounter; i++)
+                    if (_nullCounter > 0)
                     {
-                        _dataColumn.Add(in NullValue);
+                        for (var i = 0; i < _nullCounter; i++)
+                        {
+                            _dataColumn.Add(in NullValue.Instance);
+                        }
+                        _validityList.Set(Count);
                     }
 
                     _dataColumn.Add(value);
@@ -124,17 +129,19 @@ namespace FlowtideDotNet.Core.ColumnStore
                 var index = _dataColumn!.Count;
                 if (value.Type == ArrowTypeId.Null)
                 {
+                    CheckNullInitialization();
                     // Increase null counter
                     _nullCounter++;
                     // Set null bit
-                    _nullList.Set(index);
+                    _validityList.Unset(index);
                     // Add undefined value to value array
-                    _dataColumn.Add(in NullValue);
+                    _dataColumn.Add(in NullValue.Instance);
                 }
                 else
                 {
                     // Convert from single buffer to union buffer
                     var unionColumn = ConvertToUnion();
+                    _type = ArrowTypeId.Union;
                     _dataColumn = unionColumn;
                     _nullCounter = 0;
                     _dataColumn.Add(value);
@@ -146,13 +153,29 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // Check if the current buffer is a null buffer
                 if (_type == ArrowTypeId.Null)
                 {
+                    CheckNullInitialization();
                     var index = _nullCounter;
                     _nullCounter++;
-                    _nullList.Set(index);
+                    _validityList.Unset(index);
                 }
                 else
                 {
+                    if (_nullCounter > 0)
+                    {
+                        _validityList.Set(_dataColumn!.Count);
+                    }
                     _dataColumn!.Add(value);
+                }
+            }
+        }
+
+        private void CheckNullInitialization()
+        {
+            if (_nullCounter == 0)
+            {
+                for (int i = 0; i < Count; i++)
+                {
+                    _validityList.Set(i);
                 }
             }
         }
@@ -182,12 +205,12 @@ namespace FlowtideDotNet.Core.ColumnStore
                     // Add null values as undefined values to the array.
                     for (var i = 0; i < _nullCounter; i++)
                     {
-                        _dataColumn.Add(in NullValue);
+                        _dataColumn.Add(in NullValue.Instance);
                     }
 
                     if (_nullCounter > 0)
                     {
-                        _nullList.InsertAt(index, false);
+                        _validityList.InsertAt(index, true);
                     }
 
                     _dataColumn.InsertAt(index, value);
@@ -201,12 +224,13 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
                 if (value.Type == ArrowTypeId.Null)
                 {
+                    CheckNullInitialization();
                     // Increase null counter
                     _nullCounter++;
                     // Set null bit
-                    _nullList.Set(index);
+                    _validityList.InsertAt(index, false);
                     // Add undefined value to value array
-                    _dataColumn!.InsertAt(index, in NullValue);
+                    _dataColumn!.InsertAt(index, in NullValue.Instance);
                 }
                 else
                 {
@@ -224,13 +248,12 @@ namespace FlowtideDotNet.Core.ColumnStore
                 if (_type == ArrowTypeId.Null)
                 {
                     _nullCounter++;
-                    _nullList.Set(index);
                 }
                 else
                 {
                     if (_nullCounter > 0)
                     {
-                        _nullList.InsertAt(index, false);
+                        _validityList.InsertAt(index, false);
                     }
                     _dataColumn!.InsertAt(index, value);
                 }
@@ -241,18 +264,18 @@ namespace FlowtideDotNet.Core.ColumnStore
             where T : IDataValue
         {
             if (_nullCounter > 0 &&
-                    _nullList.Get(index))
+                    !_validityList.Get(index))
             {
                 if (value.Type == ArrowTypeId.Null)
                 {
                     return;
                 }
-                _nullList.Unset(index);
+                _validityList.Set(index);
                 _nullCounter--;
             }
             if (value.Type == ArrowTypeId.Null)
             {
-                _nullList.Set(index);
+                _validityList.Unset(index);
                 _nullCounter++;
             }
             _dataColumn!.Update<T>(index, value);
@@ -260,24 +283,23 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveAt(in int index)
         {
-            if (_nullCounter > 0 &&
-                _nullList.Get(index))
+            if (_nullCounter > 0)
             {
-                _nullList.RemoveAt(index);
-                _nullCounter--;
+                if (!_validityList.Get(index))
+                {
+                    _nullCounter--;
+                }
+                _validityList.RemoveAt(index);
             }
-            else
-            {
-                _dataColumn!.RemoveAt(in index);
-            }
+            _dataColumn!.RemoveAt(in index);
         }
 
         public IDataValue GetValueAt(in int index)
         {
             if (_nullCounter > 0 &&
-            _nullList.Get(index))
+            !_validityList.Get(index))
             {
-                return NullValue;
+                return NullValue.Instance;
             }
             return _dataColumn!.GetValueAt(index);
         }
@@ -285,7 +307,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
         {
             if (_nullCounter > 0 &&
-                _nullList.Get(index))
+                !_validityList.Get(index))
             {
                 dataValueContainer._type = ArrowTypeId.Null;
                 return;
@@ -376,16 +398,15 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        //public Apache.Arrow.IArrowArray ToArrowArray()
-        //{
-        //    if (_type == ArrowTypeId.Null)
-        //    {
-        //        return new Apache.Arrow.NullArray(Count);
-        //    }
-        //    else if (_type == ArrowTypeId.Union)
-        //    {
+        public (IArrowArray, IArrowType) ToArrowArray()
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return (new Apache.Arrow.NullArray(Count), NullType.Default);
+            }
 
-        //    }
-        //}
+            var nullBuffer = new ArrowBuffer(_validityList.Memory);
+            return _dataColumn!.ToArrowArray(nullBuffer, _nullCounter);
+        }
     }
 }

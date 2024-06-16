@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public decimal AsDecimal => throw new NotImplementedException();
 
-        public IEnumerator<KeyValuePair<string, IDataValue>> GetEnumerator()
+        public IEnumerator<KeyValuePair<IDataValue, IDataValue>> GetEnumerator()
         {
             return mapColumn.GetKeyValuePairs(index).GetEnumerator();
         }

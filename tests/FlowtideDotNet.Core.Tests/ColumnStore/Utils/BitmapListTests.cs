@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using System;
 using System.Collections.Generic;
@@ -24,7 +25,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestRemoveAtFirst()
         {
-            var list = new BitmapList();
+            var list = new BitmapList(new NativeMemoryAllocator());
             list.Set(0);
             list.Set(31);
             list.Set(33);
@@ -38,7 +39,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestRemoveAtMiddle()
         {
-            var list = new BitmapList();
+            var list = new BitmapList(new NativeMemoryAllocator());
             list.Set(2);
             list.Set(16);
             list.Set(28);
@@ -56,7 +57,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestRemoveAtLast()
         {
-            var list = new BitmapList();
+            var list = new BitmapList(new NativeMemoryAllocator());
             list.Set(2);
             list.Set(16);
             list.Set(28);
@@ -74,7 +75,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestRemoveAtLastNextBitTrue()
         {
-            var list = new BitmapList();
+            var list = new BitmapList(new NativeMemoryAllocator());
             list.Set(2);
             list.Set(16);
             list.Set(28);
@@ -95,7 +96,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestInsertAt()
         {
-            var list = new BitmapList();
+            var list = new BitmapList(new NativeMemoryAllocator());
             list.Set(2);
             list.Set(16);
             list.Set(28);
@@ -115,7 +116,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestInsertAtSecondInteger()
         {
-            var list = new BitmapList();
+            var list = new BitmapList(new NativeMemoryAllocator());
             list.Set(2);
             list.Set(16);
             list.Set(28);
@@ -136,7 +137,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestInitialization()
         {
-            var list = new BitmapList();
+            var list = new BitmapList(new NativeMemoryAllocator());
             for (int i = 0; i < 64; i++)
             {
                 Assert.False(list.Get(i));
@@ -146,7 +147,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestSetAndUnsetBits()
         {
-            var list = new BitmapList();
+            var list = new BitmapList(new NativeMemoryAllocator());
             list.Set(0);
             Assert.True(list.Get(0));
             list.Unset(0);
@@ -162,7 +163,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestBoundaryConditions()
         {
-            var list = new BitmapList();
+            var list = new BitmapList(new NativeMemoryAllocator());
             list.Set(0);
             list.Set(31);
             list.Set(32);
@@ -185,7 +186,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestInsertRemoveInEmptyList()
         {
-            var list = new BitmapList();
+            var list = new BitmapList(new NativeMemoryAllocator());
             list.InsertAt(0, true);
             Assert.True(list.Get(0));
 
@@ -196,7 +197,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestInsertRemoveSingleBitList()
         {
-            var list = new BitmapList();
+            var list = new BitmapList(new NativeMemoryAllocator());
             list.Set(10);
             list.InsertAt(5, true);
             Assert.True(list.Get(5));
@@ -210,7 +211,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestLargeIndexSet()
         {
-            var list = new BitmapList();
+            var list = new BitmapList(new NativeMemoryAllocator());
             list.Set(1024);
             Assert.True(list.Get(1024));
             Assert.False(list.Get(1023));

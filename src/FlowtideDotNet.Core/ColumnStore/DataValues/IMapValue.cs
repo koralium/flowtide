@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public interface IMapValue : IDataValue, IEnumerable<KeyValuePair<string, IDataValue>>
+    public interface IMapValue : IDataValue, IEnumerable<KeyValuePair<IDataValue, IDataValue>>
     {
     }
 }

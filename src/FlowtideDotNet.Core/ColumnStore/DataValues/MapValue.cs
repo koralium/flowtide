@@ -24,9 +24,9 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     internal struct MapValue : IMapValue
     {
-        private readonly IEnumerable<KeyValuePair<string, IDataValue>> keyValuePairs;
+        private readonly IEnumerable<KeyValuePair<IDataValue, IDataValue>> keyValuePairs;
 
-        public MapValue(IEnumerable<KeyValuePair<string, IDataValue>> keyValuePairs)
+        public MapValue(IEnumerable<KeyValuePair<IDataValue, IDataValue>> keyValuePairs)
         {
             this.keyValuePairs = keyValuePairs;
         }
@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public decimal AsDecimal => throw new NotImplementedException();
 
-        public IEnumerator<KeyValuePair<string, IDataValue>> GetEnumerator()
+        public IEnumerator<KeyValuePair<IDataValue, IDataValue>> GetEnumerator()
         {
             return keyValuePairs.GetEnumerator();
         }

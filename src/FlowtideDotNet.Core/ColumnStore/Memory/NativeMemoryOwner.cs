@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Memory
 {
-    public unsafe class NativeMemoryOwner : MemoryManager<byte>, IFlowtideMemoryOwner
+    public unsafe class NativeMemoryOwner : MemoryManager<byte>
     {
         private void* ptr;
         private int length;

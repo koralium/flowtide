@@ -19,8 +19,8 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Memory
 {
-    public interface IFlowtideMemoryOwner : IMemoryOwner<byte>
-    {
-        void Reallocate(int newSize);
-    }
+    //public interface IFlowtideMemoryOwner : IMemoryOwner<byte>
+    //{
+    //    void Reallocate(int newSize);
+    //}
 }

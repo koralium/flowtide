@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using System;
 using System.Collections.Generic;
@@ -98,6 +99,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public (int, int) SearchBoundries<T>(in T value, in int start, in int end) where T : IDataValue
         {
             throw new NotSupportedException("Column with offset does not SearchBoundries.");
+        }
+
+        public (IArrowArray, Apache.Arrow.Types.IArrowType) ToArrowArray()
+        {
+            throw new NotImplementedException();
         }
 
         public void UpdateAt<T>(in int index, in T value) where T : IDataValue

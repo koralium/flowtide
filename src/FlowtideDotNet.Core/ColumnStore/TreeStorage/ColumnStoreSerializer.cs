@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow.Ipc;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -40,7 +42,14 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         public void Serialize(in BinaryWriter writer, in ColumnKeyStorageContainer values)
         {
             
-            throw new NotImplementedException();
+            var recordBatch = EventBatchToArrow.BatchToArrow(values._data);
+            MemoryStream memoryStream = new MemoryStream();
+            var batchWriter = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            batchWriter.WriteRecordBatch(recordBatch);
+            batchWriter.WriteEnd();
+            var arr = memoryStream.ToArray();
+            writer.Write(arr.Length);
+            writer.Write(arr);
         }
     }
 }

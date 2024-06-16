@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow.Types;
+using Apache.Arrow;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -48,5 +50,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         (int, int) SearchBoundries<T>(in T value, in int start, in int end)
             where T : IDataValue;
+
+        (IArrowArray, IArrowType) ToArrowArray();
     }
 }

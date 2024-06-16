@@ -17,6 +17,7 @@ using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -29,7 +30,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     internal unsafe class IntList : IDisposable
     {
         private void* _data;
-        IFlowtideMemoryOwner? _memoryOwner;
+        IMemoryOwner<byte>? _memoryOwner;
         private int _dataLength;
         private int _length;
         private bool disposedValue;
@@ -37,6 +38,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         //private IMemoryOwner<byte>? _memoryOwner;
 
         private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
+
+        public Memory<byte> Memory => _memoryOwner?.Memory.Slice(0, _length * sizeof(int)) ?? new Memory<byte>();
 
         public IntList(IMemoryAllocator memoryAllocator)
         {
@@ -66,8 +69,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 }
                 else
                 {
-                    _memoryOwner.Reallocate(allocLength);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
+                    var newMemory = memoryAllocator.Allocate(allocLength, 64);
+                    var newPtr = newMemory.Memory.Pin().Pointer;
+                    NativeMemory.Copy(_data, newMemory.Memory.Pin().Pointer, (nuint)(_dataLength * sizeof(int)));
+                    _data = newPtr;
+                    _memoryOwner.Dispose();
+                    _memoryOwner = newMemory;
                 }
                 _dataLength = newLength;
             }

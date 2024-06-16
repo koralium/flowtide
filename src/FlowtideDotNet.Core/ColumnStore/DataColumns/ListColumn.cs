@@ -10,55 +10,65 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow.Types;
+using Apache.Arrow;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
     public class ListColumn : IDataColumn
     {
         private readonly Column _internalColumn;
-        private readonly List<int> _offsets;
+        private readonly IntList _offsets;
 
-        public int Count => _offsets.Count;
+        public int Count => _offsets.Count - 1;
 
         public ArrowTypeId Type => ArrowTypeId.List;
 
         public ListColumn()
         {
             _internalColumn = new Column();
-            _offsets = new List<int>();
+            _offsets = new IntList(new NativeMemoryAllocator());
+            _offsets.Add(0);
         }
 
         public int Add(in IDataValue value)
         {
             var list = value.AsList;
 
-            var currentOffset = _offsets.Count;
-            _offsets.Add(_internalColumn.Count);
+            var currentOffset = Count;
             var listLength = list.Count;
             for (int i = 0; i < listLength; i++)
             {
                 _internalColumn.Add(list.GetAt(i));
             }
+            _offsets.Add(_internalColumn.Count);
 
             return currentOffset;
         }
 
         public int Add<T>(in T value) where T : IDataValue
         {
-            var list = value.AsList;
+            var currentOffset = Count;
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _offsets.Add(_internalColumn.Count);
+                return currentOffset;
+            }
 
-            var currentOffset = _offsets.Count;
-            _offsets.Add(_internalColumn.Count);
+            var list = value.AsList;
             var listLength = list.Count;
             for (int i = 0; i < listLength; i++)
             {
                 _internalColumn.Add(list.GetAt(i));
             }
+            _offsets.Add(_internalColumn.Count);
 
             return currentOffset;
         }
@@ -90,14 +100,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataValue GetValueAt(in int index)
         {
-            if (index + 1 < _offsets.Count)
-            {
-                return new ReferenceListValue(_internalColumn, _offsets[index], _offsets[index + 1]);
-            }
-            else
-            {
-                return new ReferenceListValue(_internalColumn, _offsets[index], _internalColumn.Count);
-            }
+            return new ReferenceListValue(_internalColumn, _offsets.Get(index), _offsets.Get(index + 1));
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
@@ -129,6 +132,14 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotImplementedException();
+        }
+
+        public (IArrowArray, IArrowType) ToArrowArray(Apache.Arrow.ArrowBuffer nullBuffer, int nullCount)
+        {
+            var (arr, type) = _internalColumn.ToArrowArray();
+            var listType = new ListType(type);
+            var offsetBuffer = new ArrowBuffer(_offsets.Memory);
+            return (new Apache.Arrow.ListArray(listType, Count, offsetBuffer, arr, nullBuffer, nullCount), listType);
         }
     }
 }

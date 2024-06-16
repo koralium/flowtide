@@ -11,25 +11,19 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.Memory;
-using Google.Protobuf.Reflection;
 using System;
-using System.Buffers;
 using System.Buffers.Binary;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
-    /// <summary>
-    /// A list of longs that can be used in a column store.
-    /// All values are stored in little endian to allow for fast serialization and deserialization.
-    /// Uses native memory aligned to 64 bytes to allow for fast avx operations.
-    /// </summary>
-    internal unsafe class NativeLongList : IDisposable
+    internal unsafe class PrimitiveList<T> : IDisposable
+        where T: unmanaged
     {
         private void* _data;
         private int _dataLength;
@@ -38,7 +32,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private readonly IMemoryAllocator _memoryAllocator;
         private IMemoryOwner<byte>? _memoryOwner;
 
-        public NativeLongList(IMemoryAllocator memoryAllocator)
+        public PrimitiveList(IMemoryAllocator memoryAllocator)
         {
             _data = null;
             _memoryAllocator = memoryAllocator;
@@ -46,7 +40,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
-        public NativeLongList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)
+        public PrimitiveList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)
         {
             _data = data;
             _dataLength = dataLength;
@@ -63,7 +57,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 {
                     newLength = 64;
                 }
-                var allocSize = newLength * sizeof(long);
+                var allocSize = newLength * sizeof(T);
 
                 if (_memoryOwner == null)
                 {
@@ -74,7 +68,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 {
                     var newMemory = _memoryAllocator.Allocate(allocSize, 64);
                     var newPtr = newMemory.Memory.Pin().Pointer;
-                    NativeMemory.Copy(_data, newPtr, (nuint)(_dataLength * sizeof(long)));
+                    NativeMemory.Copy(_data, newPtr, (nuint)(_dataLength * sizeof(T)));
                     _data = newPtr;
                     _memoryOwner.Dispose();
                     _memoryOwner = newMemory;
@@ -83,40 +77,26 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
-        private Span<long> AccessSpan => new Span<long>(_data, _dataLength);
+        private Span<T> AccessSpan => new Span<T>(_data, _dataLength);
 
-        public void Add(long value)
+        public void Add(T value)
         {
             EnsureCapacity(_length + 1);
-            if (BitConverter.IsLittleEndian)
-            {
-                AccessSpan[_length++] = value;
-            }
-            else
-            {
-                AccessSpan[_length++] = BinaryPrimitives.ReverseEndianness(value);
-            }
+            AccessSpan[_length++] = value;
         }
 
-        public void InsertAt(int index, long value)
+        public void InsertAt(int index, T value)
         {
             if (index == _length)
             {
                 Add(value);
                 return;
             }
-            
+
             EnsureCapacity(_length + 1);
             var span = AccessSpan;
             span.Slice(index, _length - index).CopyTo(span.Slice(index + 1, _length - index));
-            if (BitConverter.IsLittleEndian)
-            {
-                span[index] = value;
-            }
-            else
-            {
-                span[index] = BinaryPrimitives.ReverseEndianness(value);
-            }
+            span[index] = value;
             _length++;
         }
 
@@ -135,33 +115,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length -= count;
         }
 
-        public long Get(in int index)
+        public T Get(in int index)
         {
             var span = AccessSpan;
-            if (BitConverter.IsLittleEndian)
-            {
-                return span[index];
-            }
-            else
-            {
-                return BinaryPrimitives.ReverseEndianness(span[index]);
-            }
+            return span[index];
         }
 
-        public void Update(in int index, in long value)
+        public void Update(in int index, in T value)
         {
-            var span = AccessSpan;
-            if (BitConverter.IsLittleEndian)
-            {
-                span[index] = value;
-            }
-            else
-            {
-                span[index] = BinaryPrimitives.ReverseEndianness(value);
-            }
+            AccessSpan[index] = value;
         }
 
-        public long this[int index]
+        public T this[int index]
         {
             get
             {
@@ -185,12 +150,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _memoryOwner = null;
                     _data = null;
                 }
-                
+
                 _disposedValue = true;
             }
         }
 
-        ~NativeLongList()
+        ~PrimitiveList()
         {
             Dispose(disposing: false);
         }

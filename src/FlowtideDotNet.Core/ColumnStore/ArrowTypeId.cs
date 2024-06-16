@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public enum ArrowTypeId : byte
+    public enum ArrowTypeId : sbyte
     {
         Null,
         Boolean,

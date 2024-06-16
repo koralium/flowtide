@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -121,10 +122,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data.InsertAt(index, value.AsLong);
         }
 
-        public IArrowArray ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
+        public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
             var valueBuffer = new ArrowBuffer(_data.Memory);
-            return new Int64Array(valueBuffer, nullBuffer, _data.Count, nullCount, 0);
+            return (new Int64Array(valueBuffer, nullBuffer, _data.Count, nullCount, 0), Int64Type.Default);
         }
     }
 }
