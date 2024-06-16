@@ -20,6 +20,8 @@ using System.Threading.Tasks;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -77,8 +79,21 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public IDataValue GetValueAt(in int index)
+        public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
+            if (child != null)
+            {
+                if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
+                {
+                    var (startOffset, endOffset) = GetOffsets(in index);
+                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset);
+                    if (keyLocationStart < 0)
+                    {
+                        return NullValue.Instance;
+                    }
+                    return _valueColumn.GetValueAt(keyLocationStart);
+                }
+            }
             return new ReferenceMapValue(this, index);
         }
 
@@ -115,7 +130,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             return startOffset;
         }
 
-        public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
+        public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             throw new NotImplementedException();
         }
@@ -135,7 +150,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
             where T : IDataValue
         {
             throw new NotImplementedException();
