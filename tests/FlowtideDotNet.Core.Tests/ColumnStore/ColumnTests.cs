@@ -30,8 +30,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new Int64Value(1));
             column.Add(new Int64Value(2));
 
-            Assert.Equal(1, column.GetValueAt(0).AsLong);
-            Assert.Equal(2, column.GetValueAt(1).AsLong);
+            Assert.Equal(1, column.GetValueAt(0, default).AsLong);
+            Assert.Equal(2, column.GetValueAt(1, default).AsLong);
         }
 
         [Fact]
@@ -42,9 +42,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new Int64Value(1));
             column.Add(new Int64Value(2));
 
-            Assert.True(column.GetValueAt(0).Type == ArrowTypeId.Null);
-            Assert.Equal(1, column.GetValueAt(1).AsLong);
-            Assert.Equal(2, column.GetValueAt(2).AsLong);
+            Assert.True(column.GetValueAt(0, default).Type == ArrowTypeId.Null);
+            Assert.Equal(1, column.GetValueAt(1, default).AsLong);
+            Assert.Equal(2, column.GetValueAt(2, default).AsLong);
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Column column = new Column();
             column.InsertAt(0, new Int64Value(1));
 
-            Assert.Equal(1, column.GetValueAt(0).AsLong);
+            Assert.Equal(1, column.GetValueAt(0, default).AsLong);
         }
 
         [Fact]
@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.InsertAt(0, new Int64Value(1));
             column.UpdateAt(0, new NullValue());
             
-            Assert.True(column.GetValueAt(0).Type == ArrowTypeId.Null);
+            Assert.True(column.GetValueAt(0, default).Type == ArrowTypeId.Null);
         }
 
         [Fact]
@@ -73,8 +73,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new NullValue());
             column.InsertAt(0, new Int64Value(1));
 
-            Assert.Equal(1, column.GetValueAt(0).AsLong);
-            Assert.True(column.GetValueAt(1).Type == ArrowTypeId.Null);
+            Assert.Equal(1, column.GetValueAt(0, default).AsLong);
+            Assert.True(column.GetValueAt(1, default).Type == ArrowTypeId.Null);
         }
 
         [Fact]

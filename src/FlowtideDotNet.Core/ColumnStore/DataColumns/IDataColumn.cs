@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
@@ -27,7 +28,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         ArrowTypeId Type { get; }
 
-        int CompareTo<T>(in int index, in T value)
+        int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList)
             where T: IDataValue;
 
         int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);

@@ -97,7 +97,7 @@ namespace FlowtideDotNet.Benchmarks
             var strVal = new FlowtideDotNet.Core.ColumnStore.StringValue("0");
             for (int i = 0; i < arrayData.Count; i++)
             {
-                stringColumn.CompareTo(i, strVal);
+                stringColumn.CompareTo(i, strVal, default, default);
             }
         }
 
@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Benchmarks
             var val = new FlowtideDotNet.Core.ColumnStore.Int64Value(0);
             for (int i = 0; i < arrayData.Count; i++)
             {
-                column.CompareTo(i, val);
+                column.CompareTo(i, val, default);
             }
         }
 

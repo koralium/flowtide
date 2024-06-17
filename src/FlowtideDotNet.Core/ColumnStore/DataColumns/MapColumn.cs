@@ -22,6 +22,7 @@ using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -63,8 +64,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             for (int i = startOffset; i < endOffset; i++)
             {
-                var key = _keyColumn.GetValueAt(i);
-                var value = _valueColumn.GetValueAt(i);
+                var key = _keyColumn.GetValueAt(i, default);
+                var value = _valueColumn.GetValueAt(i, default);
                 yield return new KeyValuePair<IDataValue, IDataValue>(key, value);
             }
         }
@@ -86,12 +87,12 @@ namespace FlowtideDotNet.Core.ColumnStore
                 if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
                 {
                     var (startOffset, endOffset) = GetOffsets(in index);
-                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset);
+                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset, default);
                     if (keyLocationStart < 0)
                     {
                         return NullValue.Instance;
                     }
-                    return _valueColumn.GetValueAt(keyLocationStart);
+                    return _valueColumn.GetValueAt(keyLocationStart, child.Child);
                 }
             }
             return new ReferenceMapValue(this, index);
@@ -102,9 +103,75 @@ namespace FlowtideDotNet.Core.ColumnStore
             return Add(value);
         }
 
-        public int CompareTo<T>(in int index, in T value) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
         {
-            throw new NotImplementedException();
+            if (validityList != null &&
+                !validityList.Get(index))
+            {
+                if (value.Type == ArrowTypeId.Null)
+                {
+                    return 0;
+                }
+                return -1;
+            }
+            if (child != null)
+            {
+                if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
+                {
+                    // Compare on property level
+
+                    // Get the offsets that this index exist in.
+                    var (startOffset, endOffset) = GetOffsets(in index);
+                    // Search the keys for the key
+                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset, default);
+                    // If the property does not exist, treat it as null
+                    if (keyLocationStart < 0)
+                    {
+                        return ArrowTypeId.Null - value.Type;
+                    }
+                    // Compare with the inner column
+                    return _valueColumn.CompareTo(keyLocationStart, value, mapKeyReferenceSegment.Child);
+                }
+                throw new NotImplementedException();
+            }
+            else
+            {
+                // Compare on the map level
+                var map = value.AsMap;
+                var (startOffset, endOffset) = GetOffsets(in index);
+                if (map is ReferenceMapValue refmap)
+                {
+                    var (otherStart, otherEnd) = refmap.mapColumn.GetOffsets(refmap.index);
+
+                    // Compare lengths
+                    var length = endOffset - startOffset;
+                    if (length != otherEnd - otherStart)
+                    {
+                        return length - (otherEnd - otherStart);
+                    }
+                    
+                    for (int i = 0; i < length; i++)
+                    {
+                        var otherKeyVal = refmap.mapColumn._keyColumn.GetValueAt(otherStart + i, default);
+                        var keyCompareVal = _keyColumn.CompareTo(startOffset + i, otherKeyVal, default);
+                        if (keyCompareVal != 0)
+                        {
+                            return keyCompareVal;
+                        }
+                        var otherValueVal = refmap.mapColumn._valueColumn.GetValueAt(otherStart + i, default);
+                        var valueCompareVal = _valueColumn.CompareTo(startOffset + i, otherValueVal, default);
+                        if (valueCompareVal != 0)
+                        {
+                            return valueCompareVal;
+                        }
+                    }
+                    return 0;
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+            }
         }
 
         public int Add<T>(in T value) where T : IDataValue
@@ -132,7 +199,23 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
-            throw new NotImplementedException();
+            if (child != null)
+            {
+                if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
+                {
+                    var (startOffset, endOffset) = GetOffsets(in index);
+                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset, default);
+                    if (keyLocationStart < 0)
+                    {
+                        dataValueContainer._type = ArrowTypeId.Null;
+                    }
+                    _valueColumn.GetValueAt(keyLocationStart, dataValueContainer, child.Child);
+                    return;
+                }
+                throw new NotImplementedException();
+            }
+            dataValueContainer._type = ArrowTypeId.Map;
+            dataValueContainer._mapValue = new ReferenceMapValue(this, index);
         }
 
         public int Update<T>(in int index, in T value) where T : IDataValue
@@ -153,17 +236,41 @@ namespace FlowtideDotNet.Core.ColumnStore
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
             where T : IDataValue
         {
-            throw new NotImplementedException();
+            return BoundarySearch.SearchBoundriesForMapColumn(this, dataValue, start, end - start, child, default);
         }
 
         public void RemoveAt(in int index)
         {
-            throw new NotImplementedException();
+            var (startOffset, endOffset) = GetOffsets(index);
+
+            for (int i = endOffset - 1; i >= startOffset; i--)
+            {
+                _keyColumn.RemoveAt(i);
+                _valueColumn.RemoveAt(i);
+            }
+            // Remove the offset and shift all the offsets after it
+            _offsets.RemoveAt(index, startOffset - endOffset);
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _offsets.InsertAt(index, _valueColumn.Count);
+                return;
+            }
+            var map = value.AsMap;
+            // Sort keys so its possible to binary search after a key.
+            // In future, can check if it is a reference map value or not to skip sorting
+            var ordered = map.OrderBy(x => x.Key, new DataValueComparer()).ToList();
+
+            var currentOffset = _offsets.Get(index);
+            for (int i = 0; i < ordered.Count; i++)
+            {
+                _keyColumn.InsertAt(currentOffset + i, ordered[i].Key);
+                _valueColumn.InsertAt(currentOffset + i, ordered[i].Value);
+            }
+            _offsets.InsertAt(index, currentOffset, ordered.Count);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(Apache.Arrow.ArrowBuffer nullBuffer, int nullCount)

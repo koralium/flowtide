@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.Tests
                 column.InsertAt(0, new Int64Value(i));
             }
 
-            column.CompareTo(5, new Int64Value(5));
+            column.CompareTo(5, new Int64Value(5), default);
         }
 
         [Fact]
@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.Tests
                 column.InsertAt(i, new StringValue(i.ToString()));
             }
 
-            column.CompareTo(5, new StringValue("5"));
+            column.CompareTo(5, new StringValue("5"), default);
         }
     }
 }

@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Utils;
+using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -41,7 +42,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 int i = lo + ((hi - lo) >> 1);
 
                 
-                int c = column.CompareTo(i, value);
+                int c = column.CompareTo(i, value, default, default);
                 if (c == 0)
                 {
                     found = true;
@@ -68,7 +69,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (lo < (index + length - 1))
             {
                 // Check that the next value is the same, if not we are at the of the bounds.
-                int c = column.CompareTo(lo + 1, value);
+                int c = column.CompareTo(lo + 1, value, default, default);
                 if (c != 0)
                 {
                     return (lowerbound, lowerbound);
@@ -87,7 +88,201 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 int i = lo + ((hi - lo) >> 1);
 
-                int c = column.CompareTo(i, value);
+                int c = column.CompareTo(i, value, default, default);
+                if (c <= 0)
+                {
+                    lo = i + 1;
+                }
+                else
+                {
+                    hi = i - 1;
+                }
+            }
+            int upperbound = lo - 1;
+            if (!found)
+            {
+                upperbound = ~lo;
+            }
+
+            return (lowerbound, upperbound);
+        }
+
+        public static (int, int) SearchBoundriesForMapColumn<T>(
+            in MapColumn column, 
+            in T value, 
+            in int index, 
+            in int length, 
+            in ReferenceSegment? child,
+            in BitmapList? validityList)
+            where T : IDataValue
+        {
+            if (length == 0)
+            {
+                var comparison = column.CompareTo(index, value, child, validityList);
+                if (comparison == 0)
+                {
+                    return (index, index);
+                }
+                else
+                {
+                    return (~index, ~index);
+                }
+            }
+
+            int lo = index;
+            int hi = index + length - 1;
+            int maxNotFound = hi;
+
+            bool found = false;
+            while (lo <= hi)
+            {
+                int i = lo + ((hi - lo) >> 1);
+
+
+                int c = column.CompareTo(i, value, child, validityList);
+                if (c == 0)
+                {
+                    found = true;
+                    hi = i - 1;
+                }
+                else if (c < 0)
+                {
+                    lo = i + 1;
+                }
+                else
+                {
+                    hi = i - 1;
+                    maxNotFound = hi;
+                }
+            }
+            int lowerbound = lo;
+            if (!found)
+            {
+                lowerbound = ~lo;
+                // We did not find the value so this is the the bounds.
+                return (lowerbound, lowerbound);
+            }
+
+            if (lo < (index + length - 1))
+            {
+                // Check that the next value is the same, if not we are at the of the bounds.
+                int c = column.CompareTo(lo + 1, value, child, validityList);
+                if (c != 0)
+                {
+                    return (lowerbound, lowerbound);
+                }
+            }
+            else
+            {
+                // At the top of the array
+                return (lowerbound, lowerbound);
+            }
+
+            // There are duplicate values, binary search for the end.
+            hi = maxNotFound;
+
+            while (lo <= hi)
+            {
+                int i = lo + ((hi - lo) >> 1);
+
+                int c = column.CompareTo(i, value, child, validityList);
+                if (c <= 0)
+                {
+                    lo = i + 1;
+                }
+                else
+                {
+                    hi = i - 1;
+                }
+            }
+            int upperbound = lo - 1;
+            if (!found)
+            {
+                upperbound = ~lo;
+            }
+
+            return (lowerbound, upperbound);
+        }
+
+        public static (int, int) SearchBoundriesForDataColumn<T>(
+            in IDataColumn column, 
+            in T value, 
+            in int index, 
+            in int length, 
+            in ReferenceSegment? child, 
+            in BitmapList? validityList)
+            where T : IDataValue
+        {
+            if (length == 0)
+            {
+                var comparison = column.CompareTo(index, value, child, validityList);
+                if (comparison == 0)
+                {
+                    return (index, index);
+                }
+                else
+                {
+                    return (~index, ~index);
+                }
+            }
+
+            int lo = index;
+            int hi = index + length - 1;
+            int maxNotFound = hi;
+
+            bool found = false;
+            while (lo <= hi)
+            {
+                int i = lo + ((hi - lo) >> 1);
+
+
+                int c = column.CompareTo(i, value, child, validityList);
+                if (c == 0)
+                {
+                    found = true;
+                    hi = i - 1;
+                }
+                else if (c < 0)
+                {
+                    lo = i + 1;
+                }
+                else
+                {
+                    hi = i - 1;
+                    maxNotFound = hi;
+                }
+            }
+            int lowerbound = lo;
+            if (!found)
+            {
+                lowerbound = ~lo;
+                // We did not find the value so this is the the bounds.
+                return (lowerbound, lowerbound);
+            }
+
+            if (lo < (index + length - 1))
+            {
+                // Check that the next value is the same, if not we are at the of the bounds.
+                int c = column.CompareTo(lo + 1, value, child, validityList);
+                if (c != 0)
+                {
+                    return (lowerbound, lowerbound);
+                }
+            }
+            else
+            {
+                // At the top of the array
+                return (lowerbound, lowerbound);
+            }
+
+            // There are duplicate values, binary search for the end.
+            hi = maxNotFound;
+
+            while (lo <= hi)
+            {
+                int i = lo + ((hi - lo) >> 1);
+
+                int c = column.CompareTo(i, value, child, validityList);
                 if (c <= 0)
                 {
                     lo = i + 1;
@@ -117,7 +312,6 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 int i = lo + ((hi - lo) >> 1);
 
-                
                 int c = comparer.Compare(list.Get(i), in value);
                 if (c == 0)
                 {

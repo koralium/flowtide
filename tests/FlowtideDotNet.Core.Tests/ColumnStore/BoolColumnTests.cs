@@ -33,9 +33,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(1, i2);
             Assert.Equal(2, i3);
 
-            Assert.True(column.GetValueAt(i1).AsBool);
-            Assert.False(column.GetValueAt(i2).AsBool);
-            Assert.True(column.GetValueAt(i3).AsBool);
+            Assert.True(column.GetValueAt(i1, default).AsBool);
+            Assert.False(column.GetValueAt(i2, default).AsBool);
+            Assert.True(column.GetValueAt(i3, default).AsBool);
         }
 
         [Fact]
@@ -47,16 +47,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new BoolValue(false));
             column.Add(new BoolValue(true));
 
-            var (start, end) = column.SearchBoundries(new BoolValue(false), 0, 4);
+            var (start, end) = column.SearchBoundries(new BoolValue(false), 0, 4, default);
             Assert.Equal(0, start);
             Assert.Equal(2, end);
 
-            (start, end) = column.SearchBoundries(new BoolValue(true), 0, 4);
+            (start, end) = column.SearchBoundries(new BoolValue(true), 0, 4, default);
             Assert.Equal(3, start);
             Assert.Equal(3, end);
 
             var emptyColumn = new BoolColumn();
-            (start, end) = emptyColumn.SearchBoundries(new BoolValue(true), 0, 0);
+            (start, end) = emptyColumn.SearchBoundries(new BoolValue(true), 0, 0, default);
             Assert.Equal(~0, start);
             Assert.Equal(~0, end);
         }
@@ -67,10 +67,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var column = new BoolColumn();
             column.Add(new BoolValue(false));
             column.Add(new BoolValue(true));
-            Assert.Equal(-1, column.CompareTo(0, new BoolValue(true)));
-            Assert.Equal(0, column.CompareTo(0, new BoolValue(false)));
-            Assert.Equal(0, column.CompareTo(1, new BoolValue(true)));
-            Assert.Equal(1, column.CompareTo(1, new BoolValue(false)));
+            Assert.Equal(-1, column.CompareTo(0, new BoolValue(true), default, default));
+            Assert.Equal(0, column.CompareTo(0, new BoolValue(false), default, default));
+            Assert.Equal(0, column.CompareTo(1, new BoolValue(true), default, default));
+            Assert.Equal(1, column.CompareTo(1, new BoolValue(false), default, default));
         }
     }
 }

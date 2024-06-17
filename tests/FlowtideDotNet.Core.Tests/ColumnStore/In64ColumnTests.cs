@@ -34,9 +34,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(1, i2);
             Assert.Equal(2, i3);
 
-            Assert.Equal(1, column.GetValueAt(i1).AsLong);
-            Assert.Equal(3, column.GetValueAt(i2).AsLong);
-            Assert.Equal(2, column.GetValueAt(i3).AsLong);
+            Assert.Equal(1, column.GetValueAt(i1, default).AsLong);
+            Assert.Equal(3, column.GetValueAt(i2, default).AsLong);
+            Assert.Equal(2, column.GetValueAt(i3, default).AsLong);
         }
 
         [Fact]
@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             c1.Add(new Int64Value(1));
             c1.Add(new Int64Value(1));
             c1.Add(new Int64Value(2));
-            var (start, end) = c1.SearchBoundries(new Int64Value(1), 0, 4);
+            var (start, end) = c1.SearchBoundries(new Int64Value(1), 0, 4, default);
             Assert.Equal(0, start);
             Assert.Equal(2, end);
 
@@ -64,24 +64,24 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new Int64Value(6));
             column.Add(new Int64Value(7));
 
-            (start, end) = column.SearchBoundries(new Int64Value(2), 0, 9);
+            (start, end) = column.SearchBoundries(new Int64Value(2), 0, 9, default);
             Assert.Equal(1, start);
             Assert.Equal(4, end);
 
-            (start, end) = column.SearchBoundries(new Int64Value(3), 0, 9);
+            (start, end) = column.SearchBoundries(new Int64Value(3), 0, 9, default);
             Assert.Equal(5, start);
             Assert.Equal(5, end);
 
-            (start, end) = column.SearchBoundries(new Int64Value(4), 0, 9);
+            (start, end) = column.SearchBoundries(new Int64Value(4), 0, 9, default);
             Assert.Equal(6, start);
             Assert.Equal(7, end);
 
-            (start, end) = column.SearchBoundries(new Int64Value(9), 0, 9);
+            (start, end) = column.SearchBoundries(new Int64Value(9), 0, 9, default);
             Assert.Equal(~9, start);
             Assert.Equal(~9, end);
 
             var emptyColumn = new Int64Column();
-            (start, end) = emptyColumn.SearchBoundries(new Int64Value(4), 0, 0);
+            (start, end) = emptyColumn.SearchBoundries(new Int64Value(4), 0, 0, default);
             Assert.Equal(~0, start);
             Assert.Equal(~0, end);
         }
@@ -93,9 +93,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new Int64Value(0));
             column.Add(new Int64Value(1));
             column.Add(new Int64Value(2));
-            Assert.Equal(-1, column.CompareTo(0, new Int64Value(1)));
-            Assert.Equal(0, column.CompareTo(1, new Int64Value(1)));
-            Assert.Equal(1, column.CompareTo(2, new Int64Value(1)));
+            Assert.Equal(-1, column.CompareTo(0, new Int64Value(1), default, default));
+            Assert.Equal(0, column.CompareTo(1, new Int64Value(1), default, default));
+            Assert.Equal(1, column.CompareTo(2, new Int64Value(1), default, default));
         }
     }
 }

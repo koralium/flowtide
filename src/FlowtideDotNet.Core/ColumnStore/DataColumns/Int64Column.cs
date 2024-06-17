@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -67,24 +68,37 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int CompareTo<T>(in int index, in T value) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
         {
+            if (validityList != null &&
+                !validityList.Get(index))
+            {
+                if (value.Type == ArrowTypeId.Null)
+                {
+                    return 0;
+                }
+                return -1;
+            }
+            else if (value.Type == ArrowTypeId.Null)
+            {
+                return 1;
+            }
             var longValue = value.AsLong;
             return _data[index].CompareTo(longValue);
         }
 
-        public IDataValue GetValueAt(in int index)
+        public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             return new Int64Value(_data[index]);
         }
 
-        public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
+        public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             dataValueContainer._type = ArrowTypeId.Int64;
             dataValueContainer._int64Value = new Int64Value(_data[index]);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end)
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child)
             where T: IDataValue
         {
             var val = dataValue.AsLong;

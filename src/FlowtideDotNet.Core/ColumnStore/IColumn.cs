@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -39,16 +40,16 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void RemoveAt(in int index);
 
-        IDataValue GetValueAt(in int index);
+        IDataValue GetValueAt(in int index, in ReferenceSegment? child);
 
-        void GetValueAt(in int index, in DataValueContainer dataValueContainer);
+        void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child);
 
-        int CompareTo<T>(in int index, in T dataValue)
+        int CompareTo<T>(in int index, in T dataValue, in ReferenceSegment? child)
             where T : IDataValue;
 
         int CompareTo(in IColumn otherColumn, in int thisIndex, in int otherIndex);
 
-        (int, int) SearchBoundries<T>(in T value, in int start, in int end)
+        (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child)
             where T : IDataValue;
 
         (IArrowArray, IArrowType) ToArrowArray();

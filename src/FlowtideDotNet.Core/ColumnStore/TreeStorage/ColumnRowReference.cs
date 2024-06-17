@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             List<string> vals = new List<string>();
             for (int i = 0; i < referenceBatch.Columns.Count; i++)
             {
-                vals.Add(referenceBatch.Columns[i].GetValueAt(RowIndex).ToString()!);
+                vals.Add(referenceBatch.Columns[i].GetValueAt(RowIndex, default).ToString()!);
 
             }
             return $"{{{string.Join(",", vals)}}}";

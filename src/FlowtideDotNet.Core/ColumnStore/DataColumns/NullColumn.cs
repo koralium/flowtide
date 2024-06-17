@@ -13,6 +13,8 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,7 +35,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return _count++;
         }
 
-        public int CompareTo<T>(in int index, in T value) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
         {
             throw new NotImplementedException();
         }
@@ -43,12 +45,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             throw new NotImplementedException();
         }
 
-        public IDataValue GetValueAt(in int index)
+        public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             return NullValue.Instance;
         }
 
-        public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
+        public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             dataValueContainer._type = ArrowTypeId.Null;
         }
@@ -63,7 +65,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _count--;
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end) where T : IDataValue
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
         {
             throw new NotImplementedException();
         }

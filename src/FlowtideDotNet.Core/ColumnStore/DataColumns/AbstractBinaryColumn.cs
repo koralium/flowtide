@@ -12,6 +12,8 @@
 
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -184,11 +186,11 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public abstract int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);
 
-        public abstract IDataValue GetValueAt(in int index);
+        public abstract IDataValue GetValueAt(in int index, in ReferenceSegment? child);
 
         public abstract int Update(in int index, in IDataValue value);
 
-        public int CompareTo<T>(in int index, in T value) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
         {
             throw new NotImplementedException();
         }
@@ -200,7 +202,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public abstract void GetValueAt(in int index, in DataValueContainer dataValueContainer);
+        public abstract void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child);
 
         public int BinarySearch(in IDataValue dataValue)
         {
@@ -212,7 +214,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end)
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child)
             where T : IDataValue
         {
             throw new NotImplementedException();

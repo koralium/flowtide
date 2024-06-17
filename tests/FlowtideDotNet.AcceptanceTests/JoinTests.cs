@@ -44,6 +44,8 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task InnerJoinMergeJoinNullConditionEqual()
         {
+            // TODO: Fix error with this case when left first then right in join.
+            // There is an error with bitmap list
             GenerateData(10);
             await StartStream(@"
                 INSERT INTO output 
@@ -60,7 +62,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task LeftJoinMergeJoin()
         {
-            GenerateData(100);
+            GenerateData(100_000);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
@@ -391,7 +393,8 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task JoinWithSubProperty()
         {
-            GenerateData();
+            // 9178
+            GenerateData(10000);
             await StartStream(@"
                 CREATE VIEW test AS
                 SELECT map('userkey', userkey) AS user 
@@ -401,7 +404,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 SELECT
                     t.user.userkey
                 FROM test t
-                INNER JOIN users u ON t.user.userkey = u.userkey");
+                INNER JOIN users u ON t.user.userkey = u.userkey", pageSize: 1024);
             await WaitForUpdate();
             AssertCurrentDataEqual(Orders.Select(x => new { x.UserKey }));
         }

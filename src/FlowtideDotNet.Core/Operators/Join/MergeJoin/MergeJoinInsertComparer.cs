@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,22 +25,25 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
     internal class MergeJoinInsertComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
     {
         private DataValueContainer dataValueContainer;
-        private List<int> columnOrder;
-        public MergeJoinInsertComparer(List<int> comparisonColumns, int columnCount)
+        private List<KeyValuePair<int, ReferenceSegment?>> columnOrder;
+        public MergeJoinInsertComparer(List<KeyValuePair<int, ReferenceSegment?>> comparisonColumns, int columnCount)
         {
             dataValueContainer = new DataValueContainer();
-            columnOrder = new List<int>();
+            columnOrder = new List<KeyValuePair<int, ReferenceSegment?>>();
             // Add the comparison columns first
             for (int i = 0; i < comparisonColumns.Count; i++)
             {
                 columnOrder.Add(comparisonColumns[i]);
             }
+
             // Add the missing columns in the order they appear in the data
             for (int i = 0; i < columnCount; i++)
             {
-                if (!columnOrder.Contains(i))
+                var exists = columnOrder.Exists(x => x.Key == i);
+                var existingColumn = columnOrder.Find(x => x.Key == i);
+                if (!exists || existingColumn.Value != null)
                 {
-                    columnOrder.Add(i);
+                    columnOrder.Add(new KeyValuePair<int, ReferenceSegment?>(i, default));
                 }
             }
         }
@@ -59,11 +63,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             int start = 0;
             int end = keyContainer.Count;
             for (int i = 0; i < columnOrder.Count; i++)
-            {
+            {       
                 var column = columnOrder[i];
                 // Get value by container to skip boxing for each value
-                key.referenceBatch.Columns[column].GetValueAt(key.RowIndex, dataValueContainer);
-                var (low, high) = keyContainer._data.Columns[column].SearchBoundries(dataValueContainer, start, end);
+                key.referenceBatch.Columns[column.Key].GetValueAt(key.RowIndex, dataValueContainer, column.Value);
+                var (low, high) = keyContainer._data.Columns[column.Key].SearchBoundries(dataValueContainer, start, end, column.Value);
 
                 if (low < 0)
                 {

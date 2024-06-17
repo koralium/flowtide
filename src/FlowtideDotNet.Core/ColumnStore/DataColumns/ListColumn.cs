@@ -19,6 +19,7 @@ using System.Text;
 using System.Threading.Tasks;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -83,32 +84,27 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int CompareToStrict(in int index, in IDataValue value)
-        {
-            throw new NotImplementedException();
-        }
-
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             throw new NotImplementedException();
         }
 
-        public int CompareTo<T>(in int index, in T value) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
         {
             throw new NotImplementedException();
         }
 
-        public IDataValue GetValueAt(in int index)
+        public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             return new ReferenceListValue(_internalColumn, _offsets.Get(index), _offsets.Get(index + 1));
         }
 
-        public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
+        public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             throw new NotImplementedException();
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
             where T : IDataValue
         {
             throw new NotImplementedException();

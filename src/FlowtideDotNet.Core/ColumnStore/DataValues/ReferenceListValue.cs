@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataValue GetAt(in int index)
         {
-            return column.GetValueAt(start + index);
+            return column.GetValueAt(start + index, default);
         }
     }
 }

@@ -112,7 +112,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
-        public async Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default, TimeSpan? timestampInterval = default)
+        public async Task StartStream(
+            string sql, 
+            int parallelism = 1, 
+            StateSerializeOptions? stateSerializeOptions = default, 
+            TimeSpan? timestampInterval = default,
+            int pageSize = 1024)
         {
             if (stateSerializeOptions == null)
             {
@@ -156,6 +161,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     CachePageCount = CachePageCount,
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _persistentStorage,
+                    DefaultBPlusTreePageSize = pageSize,
                     TemporaryStorageOptions = new Storage.FileCacheOptions()
                     {
                         DirectoryPath = $"./data/tempFiles/{testName}/tmp"

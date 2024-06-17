@@ -48,8 +48,8 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             for (int i = 0; i < columnCount; i++)
             {
                 // Get value by container to skip boxing for each value
-                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, dataValueContainer);
-                var (low, high) = keyContainer._data.Columns[i].SearchBoundries(dataValueContainer, start, end);
+                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, dataValueContainer, default);
+                var (low, high) = keyContainer._data.Columns[i].SearchBoundries(dataValueContainer, start, end, default);
 
                 if (low != 0)
                 {

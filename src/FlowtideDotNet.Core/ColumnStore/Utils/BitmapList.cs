@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -23,7 +24,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
-    internal unsafe class BitmapList
+    public unsafe class BitmapList : IEnumerable<bool>
     {
         private const int firstBitMask = 1 << 31;
         private const int lastBitMask = 1;
@@ -213,6 +214,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             {
                 span[toIndex] &= ~bitIndex;
             }
+            if (index > _length)
+            {
+                _length = index;
+            }
+            else
+            {
+                _length++;
+            }
         }
 
         private void ShiftLeft(int toIndex)
@@ -281,5 +290,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        private IEnumerable<bool> GetEnumerable()
+        {
+            for (int i = 0; i < _length; i++)
+            {
+                yield return Get(i);
+            }
+        }
+
+        public IEnumerator<bool> GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
     }
 }

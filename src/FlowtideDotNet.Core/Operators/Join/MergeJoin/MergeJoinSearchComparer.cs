@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,14 +25,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
     internal class MergeJoinSearchComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
     {
         private DataValueContainer dataValueContainer;
-        private readonly List<int> selfColumns;
-        private readonly List<int> referenceColumns;
+        private readonly List<KeyValuePair<int, ReferenceSegment?>> selfColumns;
+        private readonly List<KeyValuePair<int, ReferenceSegment?>> referenceColumns;
 
         public int start;
         public int end;
         public bool noMatch = false;
 
-        public MergeJoinSearchComparer(List<int> selfColumns, List<int> referenceColumns)
+        public MergeJoinSearchComparer(List<KeyValuePair<int, ReferenceSegment?>> selfColumns, List<KeyValuePair<int, ReferenceSegment?>> referenceColumns)
         {
             dataValueContainer = new DataValueContainer();
             this.selfColumns = selfColumns;
@@ -55,15 +56,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             noMatch = false;
             for (int i = 0; i < selfColumns.Count; i++)
             {
-                //var column = columnOrder[i];
                 // Get value by container to skip boxing for each value
-                key.referenceBatch.Columns[referenceColumns[i]].GetValueAt(key.RowIndex, dataValueContainer);
+                key.referenceBatch.Columns[referenceColumns[i].Key].GetValueAt(key.RowIndex, dataValueContainer, referenceColumns[i].Value);
                 if (dataValueContainer._type == ArrowTypeId.Null)
                 {
                     noMatch = true;
                     return start;
                 }
-                var (low, high) = keyContainer._data.Columns[selfColumns[i]].SearchBoundries(dataValueContainer, start, end);
+                var (low, high) = keyContainer._data.Columns[selfColumns[i].Key].SearchBoundries(dataValueContainer, start, end, selfColumns[i].Value);
 
                 if (low < 0)
                 {

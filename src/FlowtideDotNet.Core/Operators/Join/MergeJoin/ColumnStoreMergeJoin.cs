@@ -57,6 +57,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         // To be deprecated when functions also work with column store
         protected readonly Func<RowEvent, RowEvent, bool> _postCondition;
 
+#if DEBUG_WRITE
+        // Debug data
+        private StreamWriter allInput;
+        private StreamWriter leftInput;
+        private StreamWriter rightInput;
+        private StreamWriter outputWriter;
+#endif
+
         public ColumnStoreMergeJoin(MergeJoinRelation mergeJoinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
             this._mergeJoinRelation = mergeJoinRelation;
@@ -99,15 +107,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             return columns;
         }
 
-        private static List<int> GetCompareColumns(List<FieldReference> fieldReferences, int relativeIndex)
+        private static List<KeyValuePair<int, ReferenceSegment?>> GetCompareColumns(List<FieldReference> fieldReferences, int relativeIndex)
         {
-            List<int> leftKeys = new List<int>();
+            List<KeyValuePair<int, ReferenceSegment?>> leftKeys = new List<KeyValuePair<int, ReferenceSegment?>>();
             for (int i = 0; i < fieldReferences.Count; i++)
             {
                 if (fieldReferences[i] is DirectFieldReference directFieldReference &&
                     directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
                 {
-                    leftKeys.Add(structReferenceSegment.Field - relativeIndex);
+                    leftKeys.Add(new KeyValuePair<int, ReferenceSegment?>(structReferenceSegment.Field - relativeIndex, structReferenceSegment.Child));
                 }
                 else
                 {
@@ -143,10 +151,17 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             List<uint> iterations = new List<uint>();
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
-                rightColumns.Add(new Column());
+                rightColumns.Add(new Column()); 
             }
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
+                // DEBUG START
+                //var userkeyval = msg.Data.EventBatchData.Columns[0].GetValueAt(i, new MapKeyReferenceSegment() { Key = "userkey" });
+                //if (userkeyval.AsLong == 7046)
+                //{
+
+                //}
+                    // DEBUG END
                 var columnReference = new ColumnRowReference()
                 {
                     referenceBatch = msg.Data.EventBatchData,
@@ -190,7 +205,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             joinWeight += outputWeight;
                             for (int z = 0; z < rightColumns.Count; z++)
                             {
-                                var val = pageKeyStorage._data.Columns[_rightOutputColumns[z]].GetValueAt(k);
+                                var val = pageKeyStorage._data.Columns[_rightOutputColumns[z]].GetValueAt(k, default);
                                 rightColumns[z].Add(val);
                             }
                             foundOffsets.Add(i);
@@ -242,7 +257,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 {
                     outputColumns.Add(rightColumns[i]);
                 }
-                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+
+                var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+#if DEBUG_WRITE
+                foreach (var o in outputBatch.Events)
+                {
+                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
+                }
+                await outputWriter.FlushAsync();
+#endif
+                yield return outputBatch;
             }
         }
 
@@ -264,6 +288,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     referenceBatch = msg.Data.EventBatchData,
                     RowIndex = i
                 };
+
+                // DEBUG START
+                //var debugVal = msg.Data.EventBatchData.Columns[0].GetValueAt(i, default);
+                //if (debugVal.AsLong == 7046)
+                //{
+
+                //}
+                // DEBUG END
 
                 await it.Seek(in columnReference, _searchLeftComparer);
 
@@ -306,7 +338,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             joinWeight += outputWeight;
                             for (int z = 0; z < leftColumns.Count; z++)
                             {
-                                var val = pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k);
+                                var val = pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k, default);
                                 leftColumns[z].Add(val);
                             }
                             foundOffsets.Add(i);
@@ -324,7 +356,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     // If offsets where also used on these values, we could just copy the offset
                                     for (int z = 0; z < leftColumns.Count; z++)
                                     {
-                                        var val = pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k);
+                                        var val = pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k, default);
                                         leftColumns[z].Add(val);
                                     }
                                     foundOffsets.Add(msg.Data.Weights.Count);
@@ -341,7 +373,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     // Became 0 this time, must emit a left with right null
                                     for (int z = 0; z < leftColumns.Count; z++)
                                     {
-                                        var val = pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k);
+                                        var val = pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k, default);
                                         leftColumns[z].Add(val);
                                     }
                                     foundOffsets.Add(msg.Data.Weights.Count);
@@ -389,12 +421,47 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 {
                     outputColumns.Add(new ColumnWithOffset(msg.Data.EventBatchData.Columns[_rightOutputColumns[i]], foundOffsets, true));
                 }
-                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+                var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+
+#if DEBUG_WRITE
+                foreach (var o in outputBatch.Events)
+                {
+                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
+                }
+                await outputWriter.FlushAsync();
+#endif
+
+                yield return outputBatch;
             }
         }
 
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
         {
+#if DEBUG_WRITE
+            allInput.WriteLine("New batch");
+            foreach (var e in msg.Events)
+            {
+                allInput.WriteLine($"{targetId}, {e.Weight} {e.ToJson()}");
+            }
+            if (targetId == 0)
+            {
+                foreach (var e in msg.Events)
+                {
+                    leftInput.WriteLine($"{e.Weight} {e.ToJson()}");
+                }
+                leftInput.Flush();
+            }
+            else
+            {
+                foreach (var e in msg.Events)
+                {
+                    rightInput.WriteLine($"{e.Weight} {e.ToJson()}");
+                }
+                rightInput.Flush();
+            }
+            
+            allInput.Flush();
+#endif
             Debug.Assert(_eventsProcessed != null, nameof(_eventsProcessed));
             _eventsProcessed.Add(msg.Events.Count);
             if (targetId == 0)
@@ -409,6 +476,23 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         protected override async Task InitializeOrRestore(JoinState? state, IStateManagerClient stateManagerClient)
         {
+#if DEBUG_WRITE
+            if (!Directory.Exists("debugwrite"))
+            {
+                var dir = Directory.CreateDirectory("debugwrite");
+            }
+            if (allInput != null)
+            {
+                allInput.WriteLine("Restart");
+            }
+            else
+            {
+                allInput = File.CreateText($"debugwrite/{StreamName}-{Name}.all.txt");
+                leftInput = File.CreateText($"debugwrite/{StreamName}-{Name}.left.txt");
+                rightInput = File.CreateText($"debugwrite/{StreamName}-{Name}.right.txt");
+                outputWriter = File.CreateText($"debugwrite/{StreamName}-{Name}.output.txt");
+            }
+#endif
             Logger.InitializingMergeJoinOperator(StreamName, Name);
             if (_eventsCounter == null)
             {

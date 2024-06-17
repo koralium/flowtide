@@ -16,7 +16,9 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Substrait.Expressions;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -24,7 +26,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public class StringColumn : IDataColumn
+    public class StringColumn : IDataColumn, IEnumerable<string>
     {
         private static SpanByteComparer s_spanByteComparer = new SpanByteComparer();
         private BinaryList _binaryList = new BinaryList(new NativeMemoryAllocator());
@@ -45,8 +47,21 @@ namespace FlowtideDotNet.Core.ColumnStore
             return index;
         }
 
-        public int CompareTo<T>(in int index, in T value) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
         {
+            if (validityList != null &&
+                !validityList.Get(index))
+            {
+                if (value.Type == ArrowTypeId.Null)
+                {
+                    return 0;
+                }
+                return -1;
+            }
+            else if (value.Type == ArrowTypeId.Null)
+            {
+                return 1;
+            }
             return s_spanByteComparer.Compare(_binaryList.Get(index), value.AsString.Span);
         }
 
@@ -59,12 +74,17 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public IDataValue GetValueAt(in int index)
+        public IEnumerator<string> GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             return new StringValue(_binaryList.Get(in index).ToArray());
         }
 
-        public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
+        public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             dataValueContainer._type = ArrowTypeId.String;
             dataValueContainer._stringValue = new StringValue(_binaryList.Get(in index).ToArray());
@@ -85,7 +105,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _binaryList.RemoveAt(index);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end) where T : IDataValue
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
         {
             return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end - start, s_spanByteComparer);
         }
@@ -106,6 +126,19 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             _binaryList.UpdateAt(index, value.AsString.Span);
             return index;
+        }
+
+        private IEnumerable<string> GetEnumerable()
+        {
+            for (int i = 0; i < _binaryList.Count; i++)
+            {
+                yield return Encoding.UTF8.GetString(_binaryList.Get(i));
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
         }
     }
 }

@@ -15,7 +15,9 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -186,7 +188,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             var unionColumn = new UnionColumn();
             for (int i = 0; i < Count; i++)
             {
-                GetValueAt(in i, in dataValueContainer);
+                GetValueAt(in i, in dataValueContainer, default);
                 unionColumn.Add(dataValueContainer);
             }
             return unionColumn;
@@ -253,7 +255,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     if (_nullCounter > 0)
                     {
-                        _validityList.InsertAt(index, false);
+                        _validityList.InsertAt(index, true);
                     }
                     _dataColumn!.InsertAt(index, value);
                 }
@@ -294,17 +296,17 @@ namespace FlowtideDotNet.Core.ColumnStore
             _dataColumn!.RemoveAt(in index);
         }
 
-        public IDataValue GetValueAt(in int index)
+        public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             if (_nullCounter > 0 &&
             !_validityList.Get(index))
             {
                 return NullValue.Instance;
             }
-            return _dataColumn!.GetValueAt(index);
+            return _dataColumn!.GetValueAt(index, child);
         }
 
-        public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
+        public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             if (_nullCounter > 0 &&
                 !_validityList.Get(index))
@@ -312,10 +314,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                 dataValueContainer._type = ArrowTypeId.Null;
                 return;
             }
-            _dataColumn!.GetValueAt(in index, in dataValueContainer);
+            _dataColumn!.GetValueAt(in index, in dataValueContainer, child);
         }
 
-        public int CompareTo<T>(in int index, in T dataValue)
+        public int CompareTo<T>(in int index, in T dataValue, in ReferenceSegment? child)
             where T : IDataValue
         {
             if (dataValue.Type == _type)
@@ -324,11 +326,11 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     return 0;
                 }
-                return _dataColumn!.CompareTo(index, in dataValue);
+                return _dataColumn!.CompareTo(index, in dataValue, child, _nullCounter > 0 ? _validityList : default);
             }
             else if (_type == ArrowTypeId.Union)
             {
-                return _dataColumn!.CompareTo(index, dataValue);
+                return _dataColumn!.CompareTo(index, dataValue, child, default);
             }
             else
             {
@@ -349,8 +351,8 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Check if any of the columns are unions, if so fetch the value and compare it
             else if (_type == ArrowTypeId.Union || otherColumn.Type == ArrowTypeId.Union)
             {
-                var otherValue = otherColumn.GetValueAt(otherIndex);
-                return CompareTo(thisIndex, otherValue);
+                var otherValue = otherColumn.GetValueAt(otherIndex, default);
+                return CompareTo(thisIndex, otherValue, default);
             }
             else
             {
@@ -358,7 +360,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public (int, int) SearchBoundries<T>(in T value, in int start, in int end)
+        public (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child)
             where T : IDataValue
         {
             if (_type == value.Type)
@@ -372,16 +374,34 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return (~0, ~0);
                 }
                 // TODO: Check if there is any null values, if so null bitmap must be passed in.
-                return _dataColumn!.SearchBoundries(in value, in start, in end);
+                if (_nullCounter > 0)
+                {
+                    return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end - start, child, _validityList);
+                }
+                return _dataColumn!.SearchBoundries(in value, in start, in end, child);
             }
             else if (_type == ArrowTypeId.Union)
             {
-                return _dataColumn!.SearchBoundries(in value, in start, in end);
+                return _dataColumn!.SearchBoundries(in value, in start, in end, child);
+            }
+            else if (_type == ArrowTypeId.Null)
+            {
+                var compareValue = _type.CompareTo(value.Type);
+                return compareValue < 0 ? (~Count, ~Count) : (~0, ~0);
+            }
+            else if (child != null)
+            {
+                if (_nullCounter > 0)
+                {
+                    return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end - start, child, _validityList);
+                }
+                return _dataColumn!.SearchBoundries(in value, in start, in end, child);
             }
             else if (_nullCounter > 0 && value.Type == ArrowTypeId.Null)
             {
                 // TODO: Must pass the validity bitmap to the search function
-                return _dataColumn!.SearchBoundries(in value, in start, in end);
+                return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end - start, child, _validityList);
+                //return _dataColumn!.SearchBoundries(in value, in start, in end, child);
             }
             else
             {

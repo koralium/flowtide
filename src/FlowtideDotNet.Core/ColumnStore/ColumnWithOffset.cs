@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -53,10 +54,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotSupportedException("Column with offset does not support add.");
         }
 
-        public int CompareTo<T>(in int index, in T dataValue) where T : IDataValue
+        public int CompareTo<T>(in int index, in T dataValue, in ReferenceSegment? child) where T : IDataValue
         {
             var offset = offsets[index];
-            return innerColumn.CompareTo(offset, dataValue);
+            return innerColumn.CompareTo(offset, dataValue, child);
         }
 
         public int CompareTo(in IColumn otherColumn, in int thisIndex, in int otherIndex)
@@ -65,17 +66,17 @@ namespace FlowtideDotNet.Core.ColumnStore
             return innerColumn.CompareTo(otherColumn, offset, otherIndex);
         }
 
-        public IDataValue GetValueAt(in int index)
+        public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             var offset = offsets[index];
             if (includeNullValueAtEnd && offset == innerColumn.Count)
             {
                 return NullValue.Instance;
             }
-            return innerColumn.GetValueAt(offset);
+            return innerColumn.GetValueAt(offset, child);
         }
 
-        public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
+        public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             var offset = offsets[index];
             if (includeNullValueAtEnd && offset == innerColumn.Count)
@@ -83,7 +84,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 dataValueContainer._type = ArrowTypeId.Null;
                 return;
             }
-            innerColumn.GetValueAt(offset, dataValueContainer);
+            innerColumn.GetValueAt(offset, dataValueContainer, child);
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
@@ -96,7 +97,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotSupportedException("Column with offset does not support RemoveAt.");
         }
 
-        public (int, int) SearchBoundries<T>(in T value, in int start, in int end) where T : IDataValue
+        public (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
         {
             throw new NotSupportedException("Column with offset does not SearchBoundries.");
         }

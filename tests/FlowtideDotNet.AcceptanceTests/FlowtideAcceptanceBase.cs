@@ -32,7 +32,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public IFunctionsRegister FunctionsRegister => flowtideTestStream.FunctionsRegister;
         public ISqlFunctionRegister SqlFunctionRegister => flowtideTestStream.SqlFunctionRegister;
 
-        protected Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions);
+        protected Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default, int pageSize = 1024) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize);
 
         public List<FlxVector> GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 

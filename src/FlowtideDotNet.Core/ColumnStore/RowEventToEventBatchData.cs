@@ -151,7 +151,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 FlxValue[] columns = new FlxValue[eventBatch.EventBatchData.Columns.Count];
                 for (int c = 0; c < eventBatch.EventBatchData.Columns.Count; c++)
                 {
-                    columns[c] = DataValueToFlxValue(eventBatch.EventBatchData.Columns[c].GetValueAt(i));
+                    columns[c] = DataValueToFlxValue(eventBatch.EventBatchData.Columns[c].GetValueAt(i, default));
                 }
                 rowEvents.Add(new RowEvent(weight, iteration, new ArrayRowData(columns)));
             }
@@ -163,7 +163,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             FlxValue[] columns = new FlxValue[columnRowReference.referenceBatch.Columns.Count];
             for (int c = 0; c < columnRowReference.referenceBatch.Columns.Count; c++)
             {
-                columns[c] = DataValueToFlxValue(columnRowReference.referenceBatch.Columns[c].GetValueAt(columnRowReference.RowIndex));
+                columns[c] = DataValueToFlxValue(columnRowReference.referenceBatch.Columns[c].GetValueAt(columnRowReference.RowIndex, default));
             }
             return new RowEvent(weight, iteration, new ArrayRowData(columns));
         }

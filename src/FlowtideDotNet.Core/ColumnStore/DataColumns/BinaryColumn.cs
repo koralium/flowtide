@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,7 +33,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public override IDataValue GetValueAt(in int index)
+        public override IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             if (index + 1 < _offsets.Count)
             {
@@ -44,7 +45,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public override void GetValueAt(in int index, in DataValueContainer dataValueContainer)
+        public override void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             throw new NotImplementedException();
         }

@@ -23,8 +23,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public struct ReferenceMapValue : IMapValue
     {
-        private readonly MapColumn mapColumn;
-        private readonly int index;
+        internal readonly MapColumn mapColumn;
+        internal readonly int index;
 
         public ReferenceMapValue(MapColumn mapColumn, int index)
         {

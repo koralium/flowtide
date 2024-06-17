@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -140,7 +141,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             throw new NotImplementedException();
         }
 
-        public int CompareTo<T>(in int index, in T value) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
         {
             var type = _typeList[index];
 
@@ -148,7 +149,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 var valueColumnIndex = _typeIds[(byte)type];
                 var valueColumn = _valueColumns[valueColumnIndex];
-                return valueColumn.CompareTo(_offsets.Get(index), in value);
+                return valueColumn.CompareTo(_offsets.Get(index), in value, child, default);
             }
             else
             {
@@ -182,32 +183,31 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
             else
             {
-                var value = otherColumn.GetValueAt(otherIndex);
-                return CompareTo(thisIndex, value);
+                var value = otherColumn.GetValueAt(otherIndex, default);
+                return CompareTo(thisIndex, value, default, default);
             }
         }
 
-        public IDataValue GetValueAt(in int index)
+        public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
-            var type = _typeList[index];
-            if (type == 0)
+            var valueColumnIndex = _typeList[index];
+            if (valueColumnIndex == 0)
             {
                 return new NullValue();
             }
-            var valueColumnIndex = _typeIds[(byte)type];
             var valueColumn = _valueColumns[valueColumnIndex];
-            return valueColumn.GetValueAt(_offsets.Get(index));
+            return valueColumn.GetValueAt(_offsets.Get(index), child);
         }
 
-        public void GetValueAt(in int index, in DataValueContainer dataValueContainer)
+        public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             var type = _typeList[index];
             var valueColumnIndex = _typeIds[(byte)type];
             var valueColumn = _valueColumns[valueColumnIndex];
-            valueColumn.GetValueAt(_offsets.Get(index), dataValueContainer);
+            valueColumn.GetValueAt(_offsets.Get(index), dataValueContainer, child);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end) where T : IDataValue
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
         {
             return BoundarySearch.SearchBoundriesForColumn(this, in dataValue, in start, in end);
         }

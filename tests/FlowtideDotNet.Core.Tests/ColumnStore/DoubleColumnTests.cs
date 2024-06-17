@@ -33,9 +33,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(1, i2);
             Assert.Equal(2, i3);
 
-            Assert.Equal(1, column.GetValueAt(i1).AsDouble);
-            Assert.Equal(3, column.GetValueAt(i2).AsDouble);
-            Assert.Equal(2, column.GetValueAt(i3).AsDouble);
+            Assert.Equal(1, column.GetValueAt(i1, default).AsDouble);
+            Assert.Equal(3, column.GetValueAt(i2, default).AsDouble);
+            Assert.Equal(2, column.GetValueAt(i3, default).AsDouble);
         }
 
         [Fact]
@@ -54,24 +54,24 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new DoubleValue(6));
             column.Add(new DoubleValue(7));
 
-            var (start, end) = column.SearchBoundries(new DoubleValue(2), 0, 9);
+            var (start, end) = column.SearchBoundries(new DoubleValue(2), 0, 9, default);
             Assert.Equal(1, start);
             Assert.Equal(4, end);
 
-            (start, end) = column.SearchBoundries(new DoubleValue(3), 0, 9);
+            (start, end) = column.SearchBoundries(new DoubleValue(3), 0, 9, default);
             Assert.Equal(5, start);
             Assert.Equal(5, end);
 
-            (start, end) = column.SearchBoundries(new DoubleValue(4), 0, 9);
+            (start, end) = column.SearchBoundries(new DoubleValue(4), 0, 9, default);
             Assert.Equal(6, start);
             Assert.Equal(7, end);
 
-            (start, end) = column.SearchBoundries(new DoubleValue(9), 0, 9);
+            (start, end) = column.SearchBoundries(new DoubleValue(9), 0, 9, default);
             Assert.Equal(~9, start);
             Assert.Equal(~9, end);
 
             var emptyColumn = new DoubleColumn();
-            (start, end) = emptyColumn.SearchBoundries(new DoubleValue(4), 0, 0);
+            (start, end) = emptyColumn.SearchBoundries(new DoubleValue(4), 0, 0, default);
             Assert.Equal(~0, start);
             Assert.Equal(~0, end);
         }
@@ -83,9 +83,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new DoubleValue(0));
             column.Add(new DoubleValue(1));
             column.Add(new DoubleValue(2));
-            Assert.Equal(-1, column.CompareTo(0, new DoubleValue(1)));
-            Assert.Equal(0, column.CompareTo(1, new DoubleValue(1)));
-            Assert.Equal(1, column.CompareTo(2, new DoubleValue(1)));
+            Assert.Equal(-1, column.CompareTo(0, new DoubleValue(1), default, default));
+            Assert.Equal(0, column.CompareTo(1, new DoubleValue(1), default, default));
+            Assert.Equal(1, column.CompareTo(2, new DoubleValue(1), default, default));
         }
     }
 }
