@@ -393,7 +393,6 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task JoinWithSubProperty()
         {
-            // 9178
             GenerateData(10000);
             await StartStream(@"
                 CREATE VIEW test AS

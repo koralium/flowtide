@@ -35,6 +35,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId Type => ArrowTypeId.String;
 
+
+
         public int Add<T>(in T value) where T : IDataValue
         {
             var index = _binaryList.Count;
@@ -107,7 +109,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
         {
-            return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end - start, s_spanByteComparer);
+            return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end, s_spanByteComparer);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)

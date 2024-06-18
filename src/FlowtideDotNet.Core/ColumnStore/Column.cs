@@ -57,6 +57,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             _validityList = new BitmapList(new NativeMemoryAllocator());    
         }
 
+        internal Column(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type)
+        {
+            _nullCounter = nullCounter;
+            _dataColumn = dataColumn;
+            _validityList = validityList;
+            _type = type;
+        }
+
         public int Count
         {
             get
@@ -376,7 +384,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // TODO: Check if there is any null values, if so null bitmap must be passed in.
                 if (_nullCounter > 0)
                 {
-                    return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end - start, child, _validityList);
+                    return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
                 }
                 return _dataColumn!.SearchBoundries(in value, in start, in end, child);
             }
@@ -393,14 +401,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 if (_nullCounter > 0)
                 {
-                    return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end - start, child, _validityList);
+                    return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
                 }
                 return _dataColumn!.SearchBoundries(in value, in start, in end, child);
             }
             else if (_nullCounter > 0 && value.Type == ArrowTypeId.Null)
             {
                 // TODO: Must pass the validity bitmap to the search function
-                return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end - start, child, _validityList);
+                return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
                 //return _dataColumn!.SearchBoundries(in value, in start, in end, child);
             }
             else

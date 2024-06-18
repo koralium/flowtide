@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             {
                 sortedList.Add(i);
             }
-            var (min, max) = BoundarySearch.SearchBoundries(sortedList, 2, 0, sortedList.Count, default);
+            var (min, max) = BoundarySearch.SearchBoundries(sortedList, 2, 0, sortedList.Count - 1, default);
         }
     }
 }

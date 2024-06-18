@@ -87,7 +87,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
                 {
                     var (startOffset, endOffset) = GetOffsets(in index);
-                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset, default);
+                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset - 1, default);
                     if (keyLocationStart < 0)
                     {
                         return NullValue.Instance;
@@ -123,7 +123,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     // Get the offsets that this index exist in.
                     var (startOffset, endOffset) = GetOffsets(in index);
                     // Search the keys for the key
-                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset, default);
+                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset - 1, default);
                     // If the property does not exist, treat it as null
                     if (keyLocationStart < 0)
                     {
@@ -204,7 +204,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
                 {
                     var (startOffset, endOffset) = GetOffsets(in index);
-                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset, default);
+                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset - 1, default);
                     if (keyLocationStart < 0)
                     {
                         dataValueContainer._type = ArrowTypeId.Null;
@@ -236,7 +236,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
             where T : IDataValue
         {
-            return BoundarySearch.SearchBoundriesForMapColumn(this, dataValue, start, end - start, child, default);
+            return BoundarySearch.SearchBoundriesForMapColumn(this, dataValue, start, end, child, default);
         }
 
         public void RemoveAt(in int index)

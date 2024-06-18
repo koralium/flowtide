@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -36,20 +37,35 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public ColumnKeyStorageContainer Deserialize(in BinaryReader reader)
         {
-            throw new NotImplementedException();
+            using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var recordBatch = arrowReader.ReadNextRecordBatch();
+            
+            List<IColumn> columns = new List<IColumn>();
+            var visitor = new ArrowToInternalVisitor();
+            for (int i = 0; i < recordBatch.ColumnCount; i++)
+            {
+                recordBatch.Column(i).Accept(visitor);
+                columns.Add(visitor.Column!);
+            }
+            recordBatch.Dispose();
+
+            return new ColumnKeyStorageContainer(recordBatch.ColumnCount, new EventBatchData(columns));
         }
 
         public void Serialize(in BinaryWriter writer, in ColumnKeyStorageContainer values)
         {
             
             var recordBatch = EventBatchToArrow.BatchToArrow(values._data);
-            MemoryStream memoryStream = new MemoryStream();
-            var batchWriter = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
             batchWriter.WriteRecordBatch(recordBatch);
-            batchWriter.WriteEnd();
-            var arr = memoryStream.ToArray();
-            writer.Write(arr.Length);
-            writer.Write(arr);
+            //batchWriter.WriteEnd();
+            //MemoryStream memoryStream = new MemoryStream();
+            //var batchWriter = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            //batchWriter.WriteRecordBatch(recordBatch);
+            //batchWriter.WriteEnd();
+            //var arr = memoryStream.ToArray();
+            //writer.Write(arr.Length);
+            //writer.Write(arr);
         }
     }
 }

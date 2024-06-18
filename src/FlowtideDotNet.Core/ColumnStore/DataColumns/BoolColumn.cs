@@ -106,7 +106,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             where T : IDataValue
         {
             var val = dataValue.AsBool;
-            return BoundarySearch.SearchBoundries<bool>(_data, val, start, end - start, BoolComparer.Instance);
+            return BoundarySearch.SearchBoundries<bool>(_data, val, start, end, BoolComparer.Instance);
         }
 
         public int Update(in int index, in IDataValue value)

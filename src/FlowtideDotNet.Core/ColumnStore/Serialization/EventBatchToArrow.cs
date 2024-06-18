@@ -19,6 +19,10 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
+    /// <summary>
+    /// Handles the conversion of an EventBatchData to an Arrow RecordBatch.
+    /// This is useful if one wants to use existing apache arrow libraries to work with the data.
+    /// </summary>
     internal static class EventBatchToArrow
     {
         public static RecordBatch BatchToArrow(EventBatchData eventBatchData)

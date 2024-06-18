@@ -42,6 +42,16 @@ namespace FlowtideDotNet.Core.ColumnStore
             //_data = new List<long>();
         }
 
+        public Int64Column(IMemoryOwner<byte> memory, int length)
+        {
+            _data = new NativeLongList(memory, length, new NativeMemoryAllocator());
+        }
+
+        public Int64Column(ReadOnlyMemory<byte> memory, int length)
+        {
+            _data = new NativeLongList(memory, length, new NativeMemoryAllocator());
+        }
+
         public int Add<T>(in T value) where T: IDataValue
         {
             var index = _data.Count;
@@ -102,7 +112,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             where T: IDataValue
         {
             var val = dataValue.AsLong;
-            return BoundarySearch.SearchBoundries(_data, val, start, end - start, Int64Comparer.Instance);
+            return BoundarySearch.SearchBoundries(_data, val, start, end, Int64Comparer.Instance);
         }
 
         public int Update(in int index, in IDataValue value)

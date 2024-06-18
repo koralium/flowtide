@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow.Memory;
+using FASTER.core;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using System;
 using System.Buffers;
@@ -34,6 +35,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private int _dataLength;
         private int _length;
         private bool disposedValue;
+        private MemoryHandle? _memoryHandle;
         private readonly IMemoryAllocator memoryAllocator;
         //private IMemoryOwner<byte>? _memoryOwner;
 
@@ -47,13 +49,23 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             this.memoryAllocator = memoryAllocator;
         }
 
+        public IntList(ReadOnlyMemory<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        {
+            _memoryOwner = null;
+            _memoryHandle = memory.Pin();
+            _data = _memoryHandle.Value.Pointer;
+            _dataLength = memory.Length;
+            _length = length;
+            this.memoryAllocator = memoryAllocator;
+        }
+
         public ReadOnlySpan<int> Span => new ReadOnlySpan<int>(_data, _length);
 
         public int Count => _length;
 
         private void EnsureCapacity(int length)
         {
-            if (_dataLength < length)
+            if (_dataLength < length || _memoryOwner == null)
             {
                 var newLength = length * 2;
                 if (newLength < 64)
@@ -65,13 +77,25 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 if (_memoryOwner == null)
                 {
                     _memoryOwner = memoryAllocator.Allocate(allocLength, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
+                    var newMemoryHandle = _memoryOwner.Memory.Pin();
+
+                    if (_memoryHandle.HasValue)
+                    {
+                        // Copy read only data ower
+                        NativeMemory.Copy(_data, newMemoryHandle.Pointer, (nuint)(_dataLength * sizeof(int)));
+                        _memoryHandle.Value.Dispose();
+                    }
+                    _memoryHandle = newMemoryHandle;
+                    _data = _memoryHandle.Value.Pointer;
                 }
                 else
                 {
                     var newMemory = memoryAllocator.Allocate(allocLength, 64);
-                    var newPtr = newMemory.Memory.Pin().Pointer;
-                    NativeMemory.Copy(_data, newMemory.Memory.Pin().Pointer, (nuint)(_dataLength * sizeof(int)));
+                    var newMemoryHandle = newMemory.Memory.Pin();
+                    var newPtr = newMemoryHandle.Pointer;
+                    NativeMemory.Copy(_data, newMemoryHandle.Pointer, (nuint)(_dataLength * sizeof(int)));
+                    _memoryHandle!.Value.Dispose();
+                    _memoryHandle = newMemoryHandle;
                     _data = newPtr;
                     _memoryOwner.Dispose();
                     _memoryOwner = newMemory;
@@ -157,6 +181,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _memoryOwner.Dispose();
                     _memoryOwner = null;
                     _data = null;
+                }
+                if (_memoryHandle.HasValue)
+                {
+                    _memoryHandle.Value.Dispose();
+                    _memoryHandle = null;
                 }
                 disposedValue = true;
             }

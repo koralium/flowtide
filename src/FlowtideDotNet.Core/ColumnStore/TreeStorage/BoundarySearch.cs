@@ -29,11 +29,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
     internal static class BoundarySearch
     {
-        public static (int, int) SearchBoundriesForColumn<T>(in UnionColumn column, in T value, in int index, in int length)
+        public static (int, int) SearchBoundriesForColumn<T>(in UnionColumn column, in T value, in int index, in int end)
             where T: IDataValue
         {
             int lo = index;
-            int hi = index + length - 1;
+            int hi = end;
             int maxNotFound = hi;
             
             bool found = false;
@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 return (lowerbound, lowerbound);
             }
 
-            if (lo < (index + length - 1))
+            if (lo < end)
             {
                 // Check that the next value is the same, if not we are at the of the bounds.
                 int c = column.CompareTo(lo + 1, value, default, default);
@@ -111,26 +111,13 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             in MapColumn column, 
             in T value, 
             in int index, 
-            in int length, 
+            in int end, 
             in ReferenceSegment? child,
             in BitmapList? validityList)
             where T : IDataValue
         {
-            if (length == 0)
-            {
-                var comparison = column.CompareTo(index, value, child, validityList);
-                if (comparison == 0)
-                {
-                    return (index, index);
-                }
-                else
-                {
-                    return (~index, ~index);
-                }
-            }
-
             int lo = index;
-            int hi = index + length - 1;
+            int hi = end;
             int maxNotFound = hi;
 
             bool found = false;
@@ -163,7 +150,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 return (lowerbound, lowerbound);
             }
 
-            if (lo < (index + length - 1))
+            if (lo < end)
             {
                 // Check that the next value is the same, if not we are at the of the bounds.
                 int c = column.CompareTo(lo + 1, value, child, validityList);
@@ -208,26 +195,13 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             in IDataColumn column, 
             in T value, 
             in int index, 
-            in int length, 
+            in int end, 
             in ReferenceSegment? child, 
             in BitmapList? validityList)
             where T : IDataValue
         {
-            if (length == 0)
-            {
-                var comparison = column.CompareTo(index, value, child, validityList);
-                if (comparison == 0)
-                {
-                    return (index, index);
-                }
-                else
-                {
-                    return (~index, ~index);
-                }
-            }
-
             int lo = index;
-            int hi = index + length - 1;
+            int hi = end;
             int maxNotFound = hi;
 
             bool found = false;
@@ -260,7 +234,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 return (lowerbound, lowerbound);
             }
 
-            if (lo < (index + length - 1))
+            if (lo < (end))
             {
                 // Check that the next value is the same, if not we are at the of the bounds.
                 int c = column.CompareTo(lo + 1, value, child, validityList);
@@ -301,10 +275,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             return (lowerbound, upperbound);
         }
 
-        public static (int, int) SearchBoundries(in BinaryList list, in ReadOnlySpan<byte> value, in int index, in int length, ISpanByteComparer comparer)
+        public static (int, int) SearchBoundries(in BinaryList list, in ReadOnlySpan<byte> value, in int index, in int end, ISpanByteComparer comparer)
         {
             int lo = index;
-            int hi = index + length - 1;
+            int hi = end;
             int maxNotFound = hi;
 
             bool found = false;
@@ -336,14 +310,22 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 return (lowerbound, lowerbound);
             }
 
-            if (lo < (index + length - 1))
+            if (lo < end)
             {
-                // Check that the next value is the same, if not we are at the of the bounds.
-                int c = comparer.Compare(list.Get(lo + 1), in value);
-                if (c != 0)
+                try
                 {
-                    return (lowerbound, lowerbound);
+                    // Check that the next value is the same, if not we are at the of the bounds.
+                    int c = comparer.Compare(list.Get(lo + 1), in value);
+                    if (c != 0)
+                    {
+                        return (lowerbound, lowerbound);
+                    }
                 }
+                catch(Exception e)
+                {
+                    throw;
+                }
+                
             }
             else
             {
@@ -377,10 +359,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             return (lowerbound, upperbound);
         }
 
-        public static (int, int) SearchBoundries(in NativeLongList list, in long value, in int index, in int length, IColumnComparer<long> comparer)
+        public static (int, int) SearchBoundries(in NativeLongList list, in long value, in int index, in int end, IColumnComparer<long> comparer)
         {
             int lo = index;
-            int hi = index + length - 1;
+            int hi = end;
             int maxNotFound = hi;
 
             bool found = false;
@@ -412,7 +394,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 return (lowerbound, lowerbound);
             }
 
-            if (lo < (index + length - 1))
+            if (lo < end)
             {
                 // Check that the next value is the same, if not we are at the of the bounds.
                 int c = comparer.Compare(list[lo + 1], in value);
@@ -453,10 +435,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             return (lowerbound, upperbound);
         }
 
-        public static (int, int) SearchBoundries<T>(in List<T> list, in T value, in int index, in int length, IColumnComparer<T> comparer)
+        public static (int, int) SearchBoundries<T>(in List<T> list, in T value, in int index, in int end, IColumnComparer<T> comparer)
         {
             int lo = index;
-            int hi = index + length - 1;
+            int hi = end;
             int maxNotFound = hi;
 
             bool found = false;
@@ -488,7 +470,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 return (lowerbound, lowerbound);
             }
 
-            if (lo < (index + length - 1))
+            if (lo < end)
             {
                 // Check that the next value is the same, if not we are at the of the bounds.
                 int c = comparer.Compare(list[lo + 1], in value);

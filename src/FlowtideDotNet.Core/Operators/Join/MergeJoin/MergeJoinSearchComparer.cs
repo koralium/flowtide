@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             int index = -1;
             start = 0;
-            end = keyContainer.Count;
+            end = keyContainer.Count - 1;
             noMatch = false;
             for (int i = 0; i < selfColumns.Count; i++)
             {

@@ -115,6 +115,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             this.memoryAllocator = memoryAllocator;
         }
 
+        public BitmapList(IMemoryOwner<byte> memoryOwner, int length, IMemoryAllocator memoryAllocator)
+        {
+            _memoryOwner = memoryOwner;
+            _data = _memoryOwner.Memory.Pin().Pointer;
+            _dataLength = memoryOwner.Memory.Length / sizeof(int);
+            _length = length;
+            this.memoryAllocator = memoryAllocator;
+        }
+
         private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
 
         private void EnsureSize(int length)

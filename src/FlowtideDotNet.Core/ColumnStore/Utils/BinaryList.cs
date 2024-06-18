@@ -73,6 +73,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _memoryAllocator = memoryAllocator;
         }
 
+        /// <summary>
+        /// Create a binary list from existing read only memory.
+        /// If any changes are made to the list, the memory will be copied to a new memory location.
+        /// </summary>
+        /// <param name="offsetMemory"></param>
+        /// <param name="offsetLength"></param>
+        /// <param name="dataMemory"></param>
+        /// <param name="memoryAllocator"></param>
+        public BinaryList(ReadOnlyMemory<byte> offsetMemory, int offsetLength, ReadOnlyMemory<byte> dataMemory, IMemoryAllocator memoryAllocator)
+        {
+            
+        }
+
         private void EnsureCapacity(int length)
         {
             if (_dataLength < length)

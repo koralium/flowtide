@@ -37,6 +37,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private bool _disposedValue;
         private readonly IMemoryAllocator _memoryAllocator;
         private IMemoryOwner<byte>? _memoryOwner;
+        private MemoryHandle? _memoryHandle;
 
         public NativeLongList(IMemoryAllocator memoryAllocator)
         {
@@ -46,17 +47,29 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
-        public NativeLongList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)
+        public NativeLongList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _data = data;
-            _dataLength = dataLength;
+            _memoryOwner = memory;
+            _memoryHandle = _memoryOwner.Memory.Pin();
+            _data = _memoryHandle.Value.Pointer;
+            _dataLength = memory.Memory.Length / sizeof(long);
+            _length = length;
+            _memoryAllocator = memoryAllocator;
+        }
+
+        public NativeLongList(ReadOnlyMemory<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        {
+            _memoryOwner = null;
+            _memoryHandle = memory.Pin();
+            _data = _memoryHandle.Value.Pointer;
+            _dataLength = memory.Length / sizeof(long);
             _length = length;
             _memoryAllocator = memoryAllocator;
         }
 
         private void EnsureCapacity(int length)
         {
-            if (_dataLength < length)
+            if (_dataLength < length || _memoryOwner == null)
             {
                 var newLength = length * 2;
                 if (newLength < 64)
@@ -68,13 +81,29 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 if (_memoryOwner == null)
                 {
                     _memoryOwner = _memoryAllocator.Allocate(allocSize, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
+                    var newHandle = _memoryOwner.Memory.Pin();
+                    // Check if a memory handle already exist, in that case there is some read only memory
+                    if (_memoryHandle != null)
+                    {
+                        // Copy the old data into the new memory
+                        NativeMemory.Copy(_data, newHandle.Pointer, (nuint)(_dataLength * sizeof(long)));
+                        _memoryHandle.Value.Dispose();
+                    }
+                    _memoryHandle = newHandle;
+                    _data = _memoryHandle.Value.Pointer;
                 }
                 else
                 {
                     var newMemory = _memoryAllocator.Allocate(allocSize, 64);
-                    var newPtr = newMemory.Memory.Pin().Pointer;
+
+                    var newMemoryHandle = newMemory.Memory.Pin();
+                    var newPtr = newMemoryHandle.Pointer;
                     NativeMemory.Copy(_data, newPtr, (nuint)(_dataLength * sizeof(long)));
+                    if (_memoryHandle != null)
+                    {
+                        _memoryHandle.Value.Dispose();
+                    }
+                    _memoryHandle = newMemoryHandle;
                     _data = newPtr;
                     _memoryOwner.Dispose();
                     _memoryOwner = newMemory;
@@ -184,6 +213,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _memoryOwner.Dispose();
                     _memoryOwner = null;
                     _data = null;
+                }
+                if (_memoryHandle.HasValue)
+                {
+                    _memoryHandle.Value.Dispose();
+                    _memoryHandle = null;
                 }
                 
                 _disposedValue = true;

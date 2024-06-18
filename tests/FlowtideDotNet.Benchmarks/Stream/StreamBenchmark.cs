@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         {
             await _stream!.StartStream(@"
             INSERT INTO output
-            SELECT u.userkey FROM users u
+            SELECT u.userkey, u.firstName, u.lastName FROM users u
             LEFT JOIN orders o
             ON u.userkey = o.userkey
             ", 1);

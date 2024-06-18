@@ -35,6 +35,12 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             this.columnCount = columnCount;
         }
 
+        internal ColumnKeyStorageContainer(int columnCount, EventBatchData eventBatchData)
+        {
+            this.columnCount = columnCount;
+            _data = eventBatchData;
+        }
+
         public int Count => _data.Count;
 
         public void Add(ColumnRowReference key)

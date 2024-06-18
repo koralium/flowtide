@@ -137,9 +137,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             return Task.CompletedTask;
         }
 
-        public override Task<JoinState?> OnCheckpoint()
+        public override async Task<JoinState?> OnCheckpoint()
         {
-            return Task.FromResult(new JoinState());
+            await _leftTree!.Commit();
+            await _rightTree!.Commit();
+            return new JoinState();
         }
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)

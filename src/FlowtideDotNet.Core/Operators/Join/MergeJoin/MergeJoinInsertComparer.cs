@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             int index = -1;
             int start = 0;
-            int end = keyContainer.Count;
+            int end = keyContainer.Count - 1;
             for (int i = 0; i < columnOrder.Count; i++)
             {       
                 var column = columnOrder[i];
