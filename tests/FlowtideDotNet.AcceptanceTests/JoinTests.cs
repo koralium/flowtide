@@ -147,7 +147,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task LeftJoinMergeJoinNullCondition()
         {
-            GenerateData(100);
+            GenerateData(10000);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 

@@ -216,5 +216,26 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             Assert.True(list.Get(1024));
             Assert.False(list.Get(1023));
         }
+
+        /// <summary>
+        /// This test was added since there was a bug when the first bit was false, where it did not extend the array correctly.
+        /// </summary>
+        [Fact]
+        public void TestInsertAtEndOfIndex()
+        {
+            var list = new BitmapList(new NativeMemoryAllocator());
+            for (int i = 1; i < 32; i++)
+            {
+                list.InsertAt(i, true);
+            }
+            list.InsertAt(31, true);
+
+            Assert.False(list.Get(0));
+
+            for (int i = 1; i < 33; i++)
+            {
+                Assert.True(list.Get(i));
+            }
+        }
     }
 }

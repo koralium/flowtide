@@ -377,9 +377,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     if (_nullCounter > 0)
                     {
-                        return (0, _nullCounter);
+                        return (start, end);
                     }
-                    return (~0, ~0);
+                    return (~start, ~start);
                 }
                 // TODO: Check if there is any null values, if so null bitmap must be passed in.
                 if (_nullCounter > 0)
@@ -395,7 +395,8 @@ namespace FlowtideDotNet.Core.ColumnStore
             else if (_type == ArrowTypeId.Null)
             {
                 var compareValue = _type.CompareTo(value.Type);
-                return compareValue < 0 ? (~Count, ~Count) : (~0, ~0);
+                var index = end + 1;
+                return compareValue < 0 ? (~index, ~index) : (~start, ~start);
             }
             else if (child != null)
             {
@@ -416,12 +417,12 @@ namespace FlowtideDotNet.Core.ColumnStore
                 var compareValue = _type.CompareTo(value.Type);
                 if (compareValue < 0)
                 {
-                    var index = Count;
+                    var index = end + 1;
                     return (~index, ~index);
                 }
                 else
                 {
-                    return (~0, ~0);
+                    return (~start, ~start);
                 }
             }
         }

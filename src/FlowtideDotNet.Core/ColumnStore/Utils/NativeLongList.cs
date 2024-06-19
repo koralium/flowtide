@@ -134,7 +134,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 Add(value);
                 return;
             }
-            
+
             EnsureCapacity(_length + 1);
             var span = AccessSpan;
             span.Slice(index, _length - index).CopyTo(span.Slice(index + 1, _length - index));

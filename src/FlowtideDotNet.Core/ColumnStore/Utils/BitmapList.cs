@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     public unsafe class BitmapList : IEnumerable<bool>
     {
         private const int firstBitMask = 1 << 31;
-        private const int lastBitMask = 1;
+        private const int lastBitMask = int.MinValue;
 
         private static readonly int[] BitPatternArray =
         [
@@ -223,9 +223,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             {
                 span[toIndex] &= ~bitIndex;
             }
-            if (index > _length)
+            if (index >= _length)
             {
-                _length = index;
+                _length = index + 1;
             }
             else
             {
@@ -264,8 +264,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var span = AccessSpan;
             var fromIndex = index >> 5;
             var mod = index % 32;
-
-            if (index > 0)
+            if (mod > 0)
             {
                 var beforeMask = BitPatternArray[mod - 1];
                 var clearMask = topBitsSetMask[mod - 1];
