@@ -74,16 +74,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         }
 
         /// <summary>
-        /// Create a binary list from existing read only memory.
-        /// If any changes are made to the list, the memory will be copied to a new memory location.
+        /// Create a binary list from existing memory.
+        /// If any changes are made to the list that exceeds the current memory, a new memory block will be allocated that is used only for the list.
         /// </summary>
         /// <param name="offsetMemory"></param>
         /// <param name="offsetLength"></param>
         /// <param name="dataMemory"></param>
         /// <param name="memoryAllocator"></param>
-        public BinaryList(ReadOnlyMemory<byte> offsetMemory, int offsetLength, ReadOnlyMemory<byte> dataMemory, IMemoryAllocator memoryAllocator)
+        public BinaryList(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte> dataMemory, IMemoryAllocator memoryAllocator)
         {
-            
+            _offsets = new IntList(offsetMemory, offsetLength, memoryAllocator);
+            _data = dataMemory.Memory.Pin().Pointer;
+            _memoryAllocator = memoryAllocator;
+            _memoryOwner = dataMemory;
+            var lastoffset = _offsets.Get(offsetLength - 1);
+            _length = lastoffset;
+            _dataLength = dataMemory.Memory.Length;
         }
 
         private void EnsureCapacity(int length)

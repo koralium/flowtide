@@ -31,22 +31,36 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
     /// This causes alot of pinning of memory, so it is important to dispose of the column when done.
     /// A converted arrow array should be shortlived and not stored for long periods of time.
     /// </summary>
-    internal class ArrowToInternalVisitor : 
+    internal unsafe class ArrowToInternalVisitor : 
         IArrowArrayVisitor<Int64Array>,
         IArrowArrayVisitor<StringArray>
     {
-        private static readonly FieldInfo _memoryOwnerField = GetMethodArrowBufferMemoryOwner();
-        private static FieldInfo GetMethodArrowBufferMemoryOwner()
-        {
-            var fieldInfo = typeof(ArrowBuffer).GetField("_memoryOwner", BindingFlags.NonPublic | BindingFlags.Instance);
-            return fieldInfo!;
-        }
+        private readonly IMemoryOwner<byte> recordBatchMemoryOwner;
+        private readonly BatchMemoryManager batchMemoryManager;
+        private readonly void* _rootPtr;
+        private int _rootUsageCount;
 
         public Column? Column { get; private set; }
 
-        private static IMemoryOwner<byte> GetArrowBufferMemoryOwner(ArrowBuffer arrowBuffer)
+        public ArrowToInternalVisitor(IMemoryOwner<byte> recordBatchMemoryOwner, BatchMemoryManager batchMemoryManager)
         {
-            return (IMemoryOwner<byte>)_memoryOwnerField.GetValue(arrowBuffer)!;
+            this.recordBatchMemoryOwner = recordBatchMemoryOwner;
+            this.batchMemoryManager = batchMemoryManager;
+            _rootPtr = recordBatchMemoryOwner.Memory.Pin().Pointer;
+        }
+
+        private IMemoryOwner<byte> GetMemoryOwner(ArrowBuffer buffer)
+        {
+            var memoryHandle = buffer.Memory.Pin();
+            _rootUsageCount++;
+            IMemoryOwner<byte> bitmapMemoryOwner = new MultiBatchMemoryOwner(batchMemoryManager, _rootPtr, memoryHandle.Pointer, buffer.Memory.Length);
+            memoryHandle.Dispose();
+            return bitmapMemoryOwner;
+        }
+
+        public void Finish()
+        {
+            batchMemoryManager.AddUsedMemory(new nint(_rootPtr), recordBatchMemoryOwner, _rootUsageCount);
         }
 
         public void Visit(Int64Array array)
@@ -55,26 +69,15 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             
             if (array.NullCount > 0)
             {
-                var bitmapMemory = GetArrowBufferMemoryOwner(array.NullBitmapBuffer);
-                bitmapList = new BitmapList(bitmapMemory, array.Length, new NativeMemoryAllocator());
+                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
+                bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
             }
             else
             {
-                bitmapList = new BitmapList(new NativeMemoryAllocator());
+                bitmapList = new BitmapList(batchMemoryManager);
             }
 
-            Int64Column int64Column;
-            var memoryOwner = GetArrowBufferMemoryOwner(array.ValueBuffer);
-            
-            // Try and use the memory owner if possible.
-            if (memoryOwner != null)
-            {
-                int64Column = new Int64Column(memoryOwner, array.Length);
-            }
-            else
-            {
-                int64Column = new Int64Column(array.ValueBuffer.Memory, array.Length);
-            }
+            Int64Column int64Column = new Int64Column(GetMemoryOwner(array.ValueBuffer), array.Length, batchMemoryManager);
 
             Column = new Column(array.NullCount, int64Column, bitmapList, ArrowTypeId.Int64);
         }
@@ -87,8 +90,23 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Visit(StringArray array)
         {
-            
-            throw new NotImplementedException();
+            BitmapList bitmapList;
+
+            if (array.NullCount > 0)
+            {
+                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
+                bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+            }
+            else
+            {
+                bitmapList = new BitmapList(batchMemoryManager);
+            }
+
+            var offsetMemoryOwner = GetMemoryOwner(array.ValueOffsetsBuffer);
+            var dataMemoryOwner = GetMemoryOwner(array.ValueBuffer);
+            var stringColumn = new StringColumn(offsetMemoryOwner, array.ValueOffsets.Length, dataMemoryOwner, batchMemoryManager);
+
+            Column = new Column(array.NullCount, stringColumn, bitmapList, ArrowTypeId.String);
         }
     }
 }

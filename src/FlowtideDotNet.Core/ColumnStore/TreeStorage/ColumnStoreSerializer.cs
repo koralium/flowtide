@@ -10,13 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow;
 using Apache.Arrow.Ipc;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Tree;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -35,19 +38,28 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             return new ColumnKeyStorageContainer(columnCount);
         }
 
+        private static readonly FieldInfo _memoryOwnerField = GetMethodArrowBufferMemoryOwner();
+        private static FieldInfo GetMethodArrowBufferMemoryOwner()
+        {
+            var fieldInfo = typeof(RecordBatch).GetField("_memoryOwner", BindingFlags.NonPublic | BindingFlags.Instance);
+            return fieldInfo!;
+        }
+
         public ColumnKeyStorageContainer Deserialize(in BinaryReader reader)
         {
             using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var recordBatch = arrowReader.ReadNextRecordBatch();
-            
+
+            var memoryOwner = (IMemoryOwner<byte>?)_memoryOwnerField.GetValue(recordBatch);
+
             List<IColumn> columns = new List<IColumn>();
-            var visitor = new ArrowToInternalVisitor();
+            var visitor = new ArrowToInternalVisitor(memoryOwner!, new ColumnStore.Memory.BatchMemoryManager(recordBatch.ColumnCount));
             for (int i = 0; i < recordBatch.ColumnCount; i++)
             {
                 recordBatch.Column(i).Accept(visitor);
                 columns.Add(visitor.Column!);
             }
-            recordBatch.Dispose();
+            visitor.Finish();
 
             return new ColumnKeyStorageContainer(recordBatch.ColumnCount, new EventBatchData(columns));
         }

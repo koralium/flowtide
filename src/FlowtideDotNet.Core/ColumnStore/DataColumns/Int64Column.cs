@@ -42,14 +42,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             //_data = new List<long>();
         }
 
-        public Int64Column(IMemoryOwner<byte> memory, int length)
+        public Int64Column(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _data = new NativeLongList(memory, length, new NativeMemoryAllocator());
-        }
-
-        public Int64Column(ReadOnlyMemory<byte> memory, int length)
-        {
-            _data = new NativeLongList(memory, length, new NativeMemoryAllocator());
+            _data = new NativeLongList(memory, length, memoryAllocator);
         }
 
         public int Add<T>(in T value) where T: IDataValue

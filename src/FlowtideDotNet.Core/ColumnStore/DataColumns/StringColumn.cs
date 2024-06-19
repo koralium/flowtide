@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,7 +36,14 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId Type => ArrowTypeId.String;
 
+        public StringColumn()
+        {
+        }
 
+        public StringColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte> dataMemory, IMemoryAllocator memoryAllocator)
+        {
+            _binaryList = new BinaryList(offsetMemory, offsetLength, dataMemory, memoryAllocator);
+        }
 
         public int Add<T>(in T value) where T : IDataValue
         {

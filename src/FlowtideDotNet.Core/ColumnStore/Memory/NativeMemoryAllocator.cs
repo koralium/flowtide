@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -35,7 +36,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
         //{
         //    return NativeMemory.AlignedRealloc(ptr, (nuint)size, (nuint)alignment);
         //}
-        public unsafe NativeMemoryOwner Allocate(int size, int alignment)
+        public unsafe IMemoryOwner<byte> Allocate(int size, int alignment)
         {
             var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
             return new NativeMemoryOwner(ptr, size, alignment);

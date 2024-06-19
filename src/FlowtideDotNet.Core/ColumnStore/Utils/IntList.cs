@@ -37,7 +37,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private bool disposedValue;
         private MemoryHandle? _memoryHandle;
         private readonly IMemoryAllocator memoryAllocator;
-        //private IMemoryOwner<byte>? _memoryOwner;
 
         private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
 
@@ -49,12 +48,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             this.memoryAllocator = memoryAllocator;
         }
 
-        public IntList(ReadOnlyMemory<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        public IntList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _memoryOwner = null;
-            _memoryHandle = memory.Pin();
+            _memoryOwner = memory;
+            _memoryHandle = memory.Memory.Pin();
             _data = _memoryHandle.Value.Pointer;
-            _dataLength = memory.Length;
+            _dataLength = memory.Memory.Length / 4;
             _length = length;
             this.memoryAllocator = memoryAllocator;
         }
@@ -65,7 +64,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         private void EnsureCapacity(int length)
         {
-            if (_dataLength < length || _memoryOwner == null)
+            if (_dataLength < length)
             {
                 var newLength = length * 2;
                 if (newLength < 64)
