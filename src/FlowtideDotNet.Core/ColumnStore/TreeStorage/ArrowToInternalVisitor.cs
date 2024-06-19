@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using SqlParser.Ast;
@@ -33,14 +34,39 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
     /// </summary>
     internal unsafe class ArrowToInternalVisitor : 
         IArrowArrayVisitor<Int64Array>,
-        IArrowArrayVisitor<StringArray>
+        IArrowArrayVisitor<StringArray>,
+        IArrowArrayVisitor<ListArray>,
+        IArrowArrayVisitor<DenseUnionArray>,
+        IArrowArrayVisitor<UnionArray>,
+        IArrowArrayVisitor<NullArray>,
+        IArrowArrayVisitor<MapArray>
     {
         private readonly IMemoryOwner<byte> recordBatchMemoryOwner;
         private readonly BatchMemoryManager batchMemoryManager;
         private readonly void* _rootPtr;
         private int _rootUsageCount;
 
-        public Column? Column { get; private set; }
+        private IDataColumn? _dataColumn;
+        private BitmapList? _bitmapList;
+        private int _nullCount;
+        private ArrowTypeId _typeId;
+
+        public Column? Column
+        {
+            get
+            {
+                if (_dataColumn == null)
+                {
+                    return null;
+                }
+                BitmapList? bitmapList = _bitmapList;
+                if (bitmapList == null)
+                {
+                    bitmapList = new BitmapList(batchMemoryManager);
+                }
+                return new Column(_nullCount, _dataColumn, bitmapList, _typeId);
+            }
+        }
 
         public ArrowToInternalVisitor(IMemoryOwner<byte> recordBatchMemoryOwner, BatchMemoryManager batchMemoryManager)
         {
@@ -65,21 +91,20 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Visit(Int64Array array)
         {
-            BitmapList bitmapList;
-            
+            _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
             }
             else
             {
-                bitmapList = new BitmapList(batchMemoryManager);
+                _bitmapList = null;
             }
 
             Int64Column int64Column = new Int64Column(GetMemoryOwner(array.ValueBuffer), array.Length, batchMemoryManager);
-
-            Column = new Column(array.NullCount, int64Column, bitmapList, ArrowTypeId.Int64);
+            _dataColumn = int64Column;
+            _typeId = ArrowTypeId.Int64;
         }
 
         public void Visit(IArrowArray array)
@@ -90,23 +115,118 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Visit(StringArray array)
         {
-            BitmapList bitmapList;
-
+            _nullCount = array.NullCount;
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
             }
             else
             {
-                bitmapList = new BitmapList(batchMemoryManager);
+                _bitmapList = null;
             }
 
             var offsetMemoryOwner = GetMemoryOwner(array.ValueOffsetsBuffer);
             var dataMemoryOwner = GetMemoryOwner(array.ValueBuffer);
             var stringColumn = new StringColumn(offsetMemoryOwner, array.ValueOffsets.Length, dataMemoryOwner, batchMemoryManager);
 
-            Column = new Column(array.NullCount, stringColumn, bitmapList, ArrowTypeId.String);
+            _dataColumn = stringColumn;
+            _typeId = ArrowTypeId.String;
+        }
+
+        public void Visit(ListArray array)
+        {
+            array.Values.Accept(this);
+            var column = Column;
+
+            if (column == null)
+            {
+                throw new InvalidOperationException("Internal list column is null");
+            }
+
+            _nullCount = array.NullCount;
+            if (array.NullCount > 0)
+            {
+                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+            }
+            else
+            {
+                _bitmapList = null;
+            }
+
+            var offsetMemoryOwner = GetMemoryOwner(array.ValueOffsetsBuffer);
+
+            _dataColumn = new ListColumn(column, offsetMemoryOwner, array.ValueOffsets.Length, batchMemoryManager);
+            _typeId = ArrowTypeId.List;
+        }
+
+        public void Visit(DenseUnionArray array)
+        {
+            _nullCount = 0;
+            _bitmapList = null;
+
+            var typeMemory = GetMemoryOwner(array.TypeBuffer);
+            var offsetMemory = GetMemoryOwner(array.ValueOffsetBuffer);
+
+            List<IDataColumn> columns = new List<IDataColumn>();
+            for (int i = 0; i < array.Fields.Count; i++)
+            {
+                array.Fields[i].Accept(this);
+
+                if (_nullCount > 0 && _typeId != ArrowTypeId.Null)
+                {
+                    throw new InvalidOperationException("Inner columns in a union should not have null values, they should be on the union level");
+                }
+                
+                columns.Add(_dataColumn ?? throw new InvalidOperationException("Internal column is null"));
+            }
+
+            _dataColumn = new UnionColumn(columns, typeMemory, offsetMemory, array.Length, batchMemoryManager);
+            _typeId = ArrowTypeId.Union;
+        }
+
+        public void Visit(UnionArray array)
+        {
+            if (array.Mode == Apache.Arrow.Types.UnionMode.Dense)
+            {
+                Visit((DenseUnionArray)array);
+                return;
+            }
+            throw new NotImplementedException();
+        }
+
+        public void Visit(NullArray array)
+        {
+            _dataColumn = new NullColumn(array.NullCount);
+            _typeId = ArrowTypeId.Null;
+            _bitmapList = null;
+            _nullCount = array.NullCount;
+        }
+
+        public void Visit(MapArray array)
+        {
+            array.Keys.Accept(this);
+            var keyColumn = Column;
+
+            array.Values.Accept(this);
+            var valueColumn = Column;
+
+            _nullCount = array.NullCount;
+            if (array.NullCount > 0)
+            {
+                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+            }
+            else
+            {
+                _bitmapList = null;
+            }
+
+            var offsetMemoryOwner = GetMemoryOwner(array.ValueOffsetsBuffer);
+            
+            _dataColumn = new MapColumn(keyColumn!, valueColumn!, offsetMemoryOwner, array.ValueOffsets.Length, batchMemoryManager);
+            _typeId = ArrowTypeId.Map;
         }
     }
 }

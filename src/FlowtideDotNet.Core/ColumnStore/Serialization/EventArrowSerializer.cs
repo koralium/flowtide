@@ -11,9 +11,12 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -23,8 +26,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
     /// Handles the conversion of an EventBatchData to an Arrow RecordBatch.
     /// This is useful if one wants to use existing apache arrow libraries to work with the data.
     /// </summary>
-    internal static class EventBatchToArrow
+    internal static class EventArrowSerializer
     {
+        private static readonly FieldInfo _memoryOwnerField = GetMethodArrowBufferMemoryOwner();
+        private static FieldInfo GetMethodArrowBufferMemoryOwner()
+        {
+            var fieldInfo = typeof(RecordBatch).GetField("_memoryOwner", BindingFlags.NonPublic | BindingFlags.Instance);
+            return fieldInfo!;
+        }
+
+
         public static RecordBatch BatchToArrow(EventBatchData eventBatchData)
         {
             var schemaBuilder = new Apache.Arrow.Schema.Builder();
@@ -38,6 +49,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 arrays.Add(array);
             }
             return new Apache.Arrow.RecordBatch(schemaBuilder.Build(), arrays, length);
+        }
+
+        public static EventBatchData ArrowToBatch(RecordBatch recordBatch)
+        {
+            var memoryOwner = (IMemoryOwner<byte>?)_memoryOwnerField.GetValue(recordBatch);
+
+            List<IColumn> columns = new List<IColumn>();
+            var visitor = new ArrowToInternalVisitor(memoryOwner!, new ColumnStore.Memory.BatchMemoryManager(recordBatch.ColumnCount));
+            for (int i = 0; i < recordBatch.ColumnCount; i++)
+            {
+                recordBatch.Column(i).Accept(visitor);
+                columns.Add(visitor.Column!);
+            }
+            visitor.Finish();
+
+            return new EventBatchData(columns);
         }
     }
 }

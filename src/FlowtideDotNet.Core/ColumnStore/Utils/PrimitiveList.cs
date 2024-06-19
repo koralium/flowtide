@@ -38,6 +38,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _memoryAllocator = memoryAllocator;
         }
 
+        public PrimitiveList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        {
+            _memoryOwner = memory;
+            _data = _memoryOwner.Memory.Pin().Pointer;
+            _dataLength = memory.Memory.Length / sizeof(T);
+            _length = length;
+            _memoryAllocator = memoryAllocator;
+        }
+
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
         public PrimitiveList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)

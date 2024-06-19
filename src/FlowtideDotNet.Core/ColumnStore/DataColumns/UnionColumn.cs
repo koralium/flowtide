@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -65,6 +66,18 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 new NullColumn()
             };
+        }
+
+        internal UnionColumn(List<IDataColumn> columns, IMemoryOwner<byte> typeListMemory, IMemoryOwner<byte> offsetMemory, int count, IMemoryAllocator memoryAllocator)
+        {
+            _valueColumns = columns;
+            _typeIds = new sbyte[35]; //35 types exist
+            _typeList = new PrimitiveList<sbyte>(typeListMemory, count, memoryAllocator);
+            _offsets = new IntList(offsetMemory, count, memoryAllocator);
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                _typeIds[(int)_valueColumns[i].Type] = (sbyte)i;
+            }
         }
 
 

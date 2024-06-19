@@ -30,6 +30,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public ArrowTypeId Type => ArrowTypeId.Null;
 
+        public NullColumn()
+        {    
+        }
+
+        public NullColumn(int count)
+        {
+            _count = count;
+        }
+
         public int Add<T>(in T value) where T : IDataValue
         {
             return _count++;

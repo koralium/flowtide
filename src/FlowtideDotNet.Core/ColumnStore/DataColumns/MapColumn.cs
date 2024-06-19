@@ -23,6 +23,7 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using System.Buffers;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -50,6 +51,13 @@ namespace FlowtideDotNet.Core.ColumnStore
             _valueColumn = new Column();
             _offsets = new IntList(new NativeMemoryAllocator());
             _offsets.Add(0);
+        }
+
+        internal MapColumn(Column keyColumn, Column valueColumn, IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryAllocator memoryAllocator)
+        {
+            _keyColumn = keyColumn;
+            _valueColumn = valueColumn;
+            _offsets = new IntList(offsetMemory, offsetLength, memoryAllocator);
         }
 
         private (int, int) GetOffsets(in int index)

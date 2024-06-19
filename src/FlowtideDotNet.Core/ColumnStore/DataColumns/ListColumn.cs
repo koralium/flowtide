@@ -20,6 +20,7 @@ using System.Threading.Tasks;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Substrait.Expressions;
+using System.Buffers;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -37,6 +38,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             _internalColumn = new Column();
             _offsets = new IntList(new NativeMemoryAllocator());
             _offsets.Add(0);
+        }
+
+        public ListColumn(Column internalColumn, IMemoryOwner<byte> offsetMemory, int offsetCount, IMemoryAllocator memoryAllocator)
+        {
+            _offsets = new IntList(offsetMemory, offsetCount, memoryAllocator);
+            _internalColumn = internalColumn;
         }
 
         public int Add(in IDataValue value)

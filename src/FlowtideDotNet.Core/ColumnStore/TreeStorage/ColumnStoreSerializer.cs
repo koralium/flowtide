@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         public void Serialize(in BinaryWriter writer, in ColumnKeyStorageContainer values)
         {
             
-            var recordBatch = EventBatchToArrow.BatchToArrow(values._data);
+            var recordBatch = EventArrowSerializer.BatchToArrow(values._data);
             var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
             batchWriter.WriteRecordBatch(recordBatch);
             //batchWriter.WriteEnd();
