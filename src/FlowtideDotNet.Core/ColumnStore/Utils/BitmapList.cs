@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
-    public unsafe class BitmapList : IEnumerable<bool>
+    public unsafe class BitmapList : IReadOnlyList<bool>, IEnumerable<bool>
     {
         private const int firstBitMask = 1 << 31;
         private const int lastBitMask = int.MinValue;
@@ -109,6 +109,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
+        public int Count => _length;
+
         public BitmapList(IMemoryAllocator memoryAllocator)
         {
             _data = null;
@@ -125,6 +127,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         }
 
         private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
+
+        public bool this[int index] => Get(index);
 
         private void EnsureSize(int length)
         {
@@ -152,6 +156,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        public void Add(bool value)
+        {
+            var index = _length;
+            var wordIndex = index >> 5;
+            int bitIndex = 1 << index;
+            EnsureSize(wordIndex + 1);
+
+            if (value)
+            {
+                AccessSpan[wordIndex] |= bitIndex;
+            }
+            else
+            {
+                AccessSpan[wordIndex] &= ~bitIndex;
+            }
+            _length++;
+        }
+
         public void Set(int index)
         {
             var wordIndex = index >> 5;
@@ -162,7 +184,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
             if (_length < index)
             {
-                _length = index;
+                _length = index + 1;
             }
         }
 

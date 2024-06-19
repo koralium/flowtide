@@ -13,10 +13,12 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -26,7 +28,17 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     internal class BoolColumn : IDataColumn
     {
-        private List<bool> _data = new();
+        private readonly BitmapList _data;
+
+        public BoolColumn()
+        {
+            _data = new BitmapList(new NativeMemoryAllocator());
+        }
+
+        public BoolColumn(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
+        {
+            _data = new BitmapList(memory, count, memoryAllocator);
+        }
 
         public int Count => _data.Count;
 
@@ -53,21 +65,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             return index;
         }
 
-        public int BinarySearch(in IDataValue dataValue)
-        {
-            throw new NotImplementedException();
-        }
-
-        public int BinarySearch(in IDataValue dataValue, in int start, in int end)
-        {
-            throw new NotImplementedException();
-        }
-
-        public int CompareToStrict(in int index, in IDataValue value)
-        {
-            throw new NotImplementedException();
-        }
-
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             throw new NotImplementedException();
@@ -88,18 +85,18 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 return 1;
             }
-            return _data[index].CompareTo(value.AsBool);
+            return _data.Get(index).CompareTo(value.AsBool);
         }
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
-            return new BoolValue(_data[index]);
+            return new BoolValue(_data.Get(index));
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             dataValueContainer._type = ArrowTypeId.Boolean;
-            dataValueContainer._boolValue = new BoolValue(_data[index]);
+            dataValueContainer._boolValue = new BoolValue(_data.Get(index));
         }
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child)
@@ -113,11 +110,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (value.AsBool)
             {
-                _data[index] = true;
+                _data.Set(index);
             }
             else
             {
-                _data[index] = false;
+                _data.Unset(index);
             }
             return index;
         }
@@ -126,40 +123,42 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (value.AsBool)
             {
-                _data[index] = true;
+                _data.Set(index);
             }
             else
             {
-                _data[index] = false;
+                _data.Unset(index);
             }
             return index;
         }
 
         public void RemoveAt(in int index)
         {
-            throw new NotImplementedException();
+            _data.RemoveAt(index);
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
             if (value.Type == ArrowTypeId.Null)
             {
-                _data.Insert(index, false);
+                _data.InsertAt(index, false);
                 return;
             }
             if (value.AsBool)
             {                 
-                _data.Insert(index, true);
+                _data.InsertAt(index, true);
             }
             else
             {
-                _data.Insert(index, false);
+                _data.InsertAt(index, false);
             } 
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            throw new NotImplementedException();
+            var valueBuffer = new ArrowBuffer(_data.Memory);
+            var arr = new BooleanArray(valueBuffer, nullBuffer, Count, nullCount, 0);
+            return (arr, new BooleanType());
         }
     }
 }

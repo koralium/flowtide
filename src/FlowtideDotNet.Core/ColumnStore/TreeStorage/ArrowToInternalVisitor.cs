@@ -39,7 +39,8 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         IArrowArrayVisitor<DenseUnionArray>,
         IArrowArrayVisitor<UnionArray>,
         IArrowArrayVisitor<NullArray>,
-        IArrowArrayVisitor<MapArray>
+        IArrowArrayVisitor<MapArray>,
+        IArrowArrayVisitor<BooleanArray>
     {
         private readonly IMemoryOwner<byte> recordBatchMemoryOwner;
         private readonly BatchMemoryManager batchMemoryManager;
@@ -227,6 +228,24 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             
             _dataColumn = new MapColumn(keyColumn!, valueColumn!, offsetMemoryOwner, array.ValueOffsets.Length, batchMemoryManager);
             _typeId = ArrowTypeId.Map;
+        }
+
+        public void Visit(BooleanArray array)
+        {
+            _nullCount = array.NullCount;
+            if (array.NullCount > 0)
+            {
+                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+            }
+            else
+            {
+                _bitmapList = null;
+            }
+
+            var valueMemoryOwner = GetMemoryOwner(array.ValueBuffer);
+            _dataColumn = new BoolColumn(valueMemoryOwner, array.Length, batchMemoryManager);
+            _typeId = ArrowTypeId.Boolean;
         }
     }
 }

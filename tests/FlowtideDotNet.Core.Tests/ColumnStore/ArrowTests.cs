@@ -311,5 +311,34 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(2, deserializedBatch.Columns[0].GetValueAt(2, new MapKeyReferenceSegment() { Key = "key" }).AsLong);
             Assert.Equal("hello2", deserializedBatch.Columns[0].GetValueAt(2, new MapKeyReferenceSegment() { Key = "value" }).ToString());
         }
+
+        [Fact]
+        public void BoolSerializeDeserialize()
+        {
+            Column column = new Column();
+            column.Add(new BoolValue(true));
+            column.Add(NullValue.Instance);
+            column.Add(new BoolValue(false));
+
+            var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(new List<IColumn>()
+            {
+                column
+            }));
+            var result = column.ToArrowArray();
+
+            MemoryStream memoryStream = new MemoryStream();
+            var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            writer.WriteRecordBatch(recordBatch);
+            writer.Dispose();
+            memoryStream.Position = 0;
+            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var deserializedRecordBatch = reader.ReadNextRecordBatch();
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+
+            Assert.True(deserializedBatch.Columns[0].GetValueAt(0, default).AsBool);
+            Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);
+            Assert.False(deserializedBatch.Columns[0].GetValueAt(2, default).AsBool);
+
+        }
     }
 }

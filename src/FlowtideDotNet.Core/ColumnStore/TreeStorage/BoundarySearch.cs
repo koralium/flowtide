@@ -435,7 +435,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             return (lowerbound, upperbound);
         }
 
-        public static (int, int) SearchBoundries<T>(in List<T> list, in T value, in int index, in int end, IColumnComparer<T> comparer)
+        public static (int, int) SearchBoundries<T>(in IReadOnlyList<T> list, in T value, in int index, in int end, IColumnComparer<T> comparer)
         {
             int lo = index;
             int hi = end;
