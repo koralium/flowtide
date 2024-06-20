@@ -22,7 +22,10 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public struct BoolValue : IDataValue
     {
-        private readonly bool value;
+        public static readonly BoolValue True = new BoolValue(true);
+        public static readonly BoolValue False = new BoolValue(false);
+
+        internal bool value;
 
         public BoolValue(bool value)
         {
