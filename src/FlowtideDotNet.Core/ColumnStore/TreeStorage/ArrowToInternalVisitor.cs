@@ -11,8 +11,11 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using Apache.Arrow.Arrays;
+using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using SqlParser.Ast;
 using System;
@@ -32,7 +35,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
     /// This causes alot of pinning of memory, so it is important to dispose of the column when done.
     /// A converted arrow array should be shortlived and not stored for long periods of time.
     /// </summary>
-    internal unsafe class ArrowToInternalVisitor : 
+    internal unsafe class ArrowToInternalVisitor :
         IArrowArrayVisitor<Int64Array>,
         IArrowArrayVisitor<StringArray>,
         IArrowArrayVisitor<ListArray>,
@@ -42,7 +45,8 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         IArrowArrayVisitor<MapArray>,
         IArrowArrayVisitor<BooleanArray>,
         IArrowArrayVisitor<DoubleArray>,
-        IArrowArrayVisitor<BinaryArray>
+        IArrowArrayVisitor<BinaryArray>,
+        IArrowArrayVisitor<FixedSizeBinaryArray>
     {
         private readonly IMemoryOwner<byte> recordBatchMemoryOwner;
         private readonly BatchMemoryManager batchMemoryManager;
@@ -70,6 +74,8 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 return new Column(_nullCount, _dataColumn, bitmapList, _typeId);
             }
         }
+
+        public Field? CurrentField { get; set; }
 
         public ArrowToInternalVisitor(IMemoryOwner<byte> recordBatchMemoryOwner, BatchMemoryManager batchMemoryManager)
         {
@@ -139,8 +145,12 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Visit(ListArray array)
         {
+            var previousField = CurrentField;
+            var listType = (CurrentField!.DataType as ListType)!;
+            CurrentField = listType.Fields[0];
             array.Values.Accept(this);
             var column = Column;
+            CurrentField = previousField;
 
             if (column == null)
             {
@@ -209,11 +219,17 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Visit(MapArray array)
         {
+            var previousField = CurrentField;
+            var type = (MapType)CurrentField!.DataType;
+            var structField = type.Fields[0];
+            var structType = (StructType)structField.DataType;
+            CurrentField = structType.Fields[0];
             array.Keys.Accept(this);
             var keyColumn = Column;
-
+            CurrentField = structType.Fields[1];
             array.Values.Accept(this);
             var valueColumn = Column;
+            CurrentField = previousField;
 
             _nullCount = array.NullCount;
             if (array.NullCount > 0)
@@ -280,11 +296,42 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 _bitmapList = null;
             }
-
             var offsetBuffer = GetMemoryOwner(array.ValueOffsetsBuffer);
             var dataBuffer = GetMemoryOwner(array.ValueBuffer);
+
             _dataColumn = new BinaryColumn(offsetBuffer, array.ValueOffsets.Length, dataBuffer, batchMemoryManager);
             _typeId = ArrowTypeId.Binary;
+        }
+
+        public void Visit(FixedSizeBinaryArray array)
+        {
+            _nullCount = array.NullCount;
+            if (array.NullCount > 0)
+            {
+                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+            }
+            else
+            {
+                _bitmapList = null;
+            }
+
+            if (CurrentField != null && CurrentField.HasMetadata &&
+                CurrentField.Metadata.TryGetValue("ARROW:extension:name", out var typeName))
+            {
+                switch (typeName)
+                {
+                    case FloatingPointDecimalType.ExtensionName:
+                        var dataMemory = GetMemoryOwner(array.ValueBuffer);
+                        _dataColumn = new DecimalColumn(dataMemory, array.Length, batchMemoryManager);
+                        _typeId = ArrowTypeId.Decimal128;
+                        break;
+                    default:
+                        throw new NotImplementedException();
+                }
+                return;
+            }
+            throw new NotImplementedException();
         }
     }
 }

@@ -21,6 +21,7 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -140,7 +141,9 @@ namespace FlowtideDotNet.Core.ColumnStore
         public (IArrowArray, IArrowType) ToArrowArray(Apache.Arrow.ArrowBuffer nullBuffer, int nullCount)
         {
             var (arr, type) = _internalColumn.ToArrowArray();
-            var listType = new ListType(type);
+            var customMetadata = EventArrowSerializer.GetCustomMetadata(type);
+            var field = new Field("item", type, true, customMetadata);
+            var listType = new ListType(field);
             var offsetBuffer = new ArrowBuffer(_offsets.Memory);
             return (new Apache.Arrow.ListArray(listType, Count, offsetBuffer, arr, nullBuffer, nullCount), listType);
         }

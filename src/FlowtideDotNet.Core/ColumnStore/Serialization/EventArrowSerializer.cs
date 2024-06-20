@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System;
 using System.Buffers;
@@ -35,6 +37,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return fieldInfo!;
         }
 
+        internal static Dictionary<string, string>? GetCustomMetadata(IArrowType type)
+        {
+            Dictionary<string, string>? customMetadata = default;
+            if (type is ICustomArrowType customArrowType)
+            {
+                customMetadata = new Dictionary<string, string>()
+                {
+                    {"ARROW:extension:name", customArrowType.CustomTypeName }
+                };
+            }
+            return customMetadata;
+        }
 
         public static RecordBatch BatchToArrow(EventBatchData eventBatchData)
         {
@@ -45,7 +59,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 length = eventBatchData.Columns[i].Count;
                 var (array, type) = eventBatchData.Columns[i].ToArrowArray();
-                schemaBuilder.Field(new Apache.Arrow.Field($"{i}", type, true));
+                Dictionary<string, string>? customMetadata = GetCustomMetadata(type);
+                schemaBuilder.Field(new Apache.Arrow.Field($"{i}", type, true, customMetadata));
                 arrays.Add(array);
             }
             return new Apache.Arrow.RecordBatch(schemaBuilder.Build(), arrays, length);
@@ -57,8 +72,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             List<IColumn> columns = new List<IColumn>();
             var visitor = new ArrowToInternalVisitor(memoryOwner!, new ColumnStore.Memory.BatchMemoryManager(recordBatch.ColumnCount));
+            var schema = recordBatch.Schema;
             for (int i = 0; i < recordBatch.ColumnCount; i++)
             {
+                var field = schema.GetFieldByIndex(i);
+                visitor.CurrentField = field;
                 recordBatch.Column(i).Accept(visitor);
                 columns.Add(visitor.Column!);
             }

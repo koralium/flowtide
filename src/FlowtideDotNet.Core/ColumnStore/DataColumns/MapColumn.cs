@@ -24,6 +24,7 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System.Buffers;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -287,7 +288,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             var valueData = _valueColumn.ToArrowArray();
             //var keyData = _keyColumn.ToArrowArray(new ArrowBuffer(), 0);
 
-            var mapType = new MapType(keyData.Item2, valueData.Item2, keySorted: true);
+            var customKeyMetadata = EventArrowSerializer.GetCustomMetadata(keyData.Item2);
+            var customValueMetadata = EventArrowSerializer.GetCustomMetadata(valueData.Item2);
+            var keyField = new Field("key", keyData.Item2, true, customKeyMetadata);
+            var valueField = new Field("value", valueData.Item2, true, customValueMetadata);
+            var mapType = new MapType(keyField, valueField, true);
 
             var structType = new StructType(new List<Field>()
             {

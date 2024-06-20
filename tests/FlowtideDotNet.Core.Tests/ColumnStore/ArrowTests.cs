@@ -438,5 +438,117 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);
             Assert.Equal(new byte[] { 4, 5, 6 }, deserializedBatch.Columns[0].GetValueAt(2, default).AsBinary);
         }
+
+        [Fact]
+        public void DecimalSerializeDeserialize()
+        {
+            Column column = new Column();
+            column.Add(new DecimalValue(1.0m));
+            column.Add(NullValue.Instance);
+            column.Add(new DecimalValue(2.0m));
+
+            var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(new List<IColumn>()
+            {
+                column
+            }));
+
+            MemoryStream memoryStream = new MemoryStream();
+            var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            writer.WriteRecordBatch(recordBatch);
+            writer.Dispose();
+            memoryStream.Position = 0;
+            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var deserializedRecordBatch = reader.ReadNextRecordBatch();
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+
+            Assert.Equal(1.0m, deserializedBatch.Columns[0].GetValueAt(0, default).AsDecimal);
+            Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);
+            Assert.Equal(2.0m, deserializedBatch.Columns[0].GetValueAt(2, default).AsDecimal);
+        }
+
+        [Fact]
+        public void DecimalToArrow()
+        {
+            Column column = new Column();
+            column.Add(new DecimalValue(1.0m));
+            column.Add(NullValue.Instance);
+            column.Add(new DecimalValue(2.0m));
+
+            var result = column.ToArrowArray();
+            var arr = (Apache.Arrow.Arrays.FixedSizeBinaryArray)result.Item1;
+
+            Assert.Equal(1.0m, Apache.Arrow.SpanExtensions.CastTo<decimal>(arr.GetBytes(0))[0]);
+            Assert.True(arr.IsNull(1));
+            Assert.Equal(2.0m, Apache.Arrow.SpanExtensions.CastTo<decimal>(arr.GetBytes(2))[0]);
+        }
+
+        /// <summary>
+        /// This test checks that list functions with custom types function correctly
+        /// </summary>
+        [Fact]
+        public void TestDecimalInListSerializeDeserialize()
+        {
+            Column column = new Column();
+            column.Add(new ListValue(new List<IDataValue>()
+            {
+                new DecimalValue(1.0m),
+                new DecimalValue(2.0m)
+            }));
+
+            var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(new List<IColumn>()
+            {
+                column
+            }));
+
+            MemoryStream memoryStream = new MemoryStream();
+
+            var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            writer.WriteRecordBatch(recordBatch);
+            writer.Dispose();
+            memoryStream.Position = 0;
+            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var deserializedRecordBatch = reader.ReadNextRecordBatch();
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+
+            var list = deserializedBatch.Columns[0].GetValueAt(0, default).AsList;
+            Assert.Equal(1.0m, list.GetAt(0).AsDecimal);
+            Assert.Equal(2.0m, list.GetAt(1).AsDecimal);
+        }
+
+        /// <summary>
+        /// This test checks that map functions with custom types function correctly
+        /// </summary>
+        [Fact]
+        public void TestDecimalInMapSerializeDeserialize()
+        {
+            Column column = new Column();
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("key"), new DecimalValue(1.0m) },
+                { new StringValue("value"), new DecimalValue(2.0m) }
+            }));
+
+            var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(new List<IColumn>()
+            {
+                column
+            }));
+
+            MemoryStream memoryStream = new MemoryStream();
+
+            var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            writer.WriteRecordBatch(recordBatch);
+            writer.Dispose();
+            memoryStream.Position = 0;
+            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var deserializedRecordBatch = reader.ReadNextRecordBatch();
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+
+            var map = deserializedBatch.Columns[0].GetValueAt(0, new MapKeyReferenceSegment() { Key = "key" }).AsDecimal;
+            Assert.Equal(1.0m, map);
+
+            map = deserializedBatch.Columns[0].GetValueAt(0, new MapKeyReferenceSegment() { Key = "value" }).AsDecimal;
+            Assert.Equal(2.0m, map);
+
+        }
     }
 }

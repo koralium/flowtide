@@ -11,11 +11,16 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using Apache.Arrow.Arrays;
 using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,7 +30,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     internal class DecimalColumn : IDataColumn
     {
-        private List<decimal> _values;
+        private PrimitiveList<decimal> _values;
 
         public int Count => _values.Count;
 
@@ -33,13 +38,25 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public DecimalColumn()
         {
-            _values = new List<decimal>();
+            _values = new PrimitiveList<decimal>(new NativeMemoryAllocator());
+        }
+
+        public DecimalColumn(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        {
+            _values = new PrimitiveList<decimal>(memory, length, memoryAllocator);   
         }
 
         public int Add<T>(in T value) where T : IDataValue
         {
             var index = _values.Count;
-            _values.Add(value.AsDecimal);
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _values.Add(0);
+            }
+            else
+            {
+                _values.Add(value.AsDecimal);
+            }
             return index;
         }
 
@@ -60,7 +77,20 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
         {
-            throw new NotImplementedException();
+            if (validityList != null &&
+                !validityList.Get(index))
+            {
+                if (value.Type == ArrowTypeId.Null)
+                {
+                    return 0;
+                }
+                return -1;
+            }
+            else if (value.Type == ArrowTypeId.Null)
+            {
+                return 1;
+            }
+            return _values[index].CompareTo(value.AsDecimal);
         }
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
@@ -76,32 +106,41 @@ namespace FlowtideDotNet.Core.ColumnStore
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
             where T : IDataValue
         {
-            throw new NotImplementedException();
-        }
-
-        public int Update(in int index, in IDataValue value)
-        {
-            throw new NotImplementedException();
+            return BoundarySearch.SearchBoundries(_values, dataValue.AsDecimal, start, end, DecimalComparer.Instance);
         }
 
         public int Update<T>(in int index, in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            _values.Update(index, value.AsDecimal);
+            return index;
         }
 
         public void RemoveAt(in int index)
         {
-            throw new NotImplementedException();
+            _values.RemoveAt(index);
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _values.InsertAt(index, 0);
+            }
+            else
+            {
+                _values.InsertAt(index, value.AsDecimal);
+            }
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            throw new NotImplementedException();
+            var buffers = new ArrowBuffer[2]
+            {
+                nullBuffer,
+                new ArrowBuffer(_values.Memory)
+            };
+            var array = new FixedSizeBinaryArray(new ArrayData(FloatingPointDecimalType.Default, Count, nullCount, 0, buffers));
+            return (array, FloatingPointDecimalType.Default);
         }
     }
 }
