@@ -243,7 +243,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> GetMemory(in int index)
         {
-            Debug.Assert(_memoryOwner != null);
+            if (_memoryOwner == null)
+            {
+                return Memory<byte>.Empty;
+            }
             var offset = _offsets.Get(index);
             return _memoryOwner.Memory.Slice(offset, _offsets.Get(index + 1) - offset);
         }

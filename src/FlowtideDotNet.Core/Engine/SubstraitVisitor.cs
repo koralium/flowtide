@@ -281,7 +281,7 @@ namespace FlowtideDotNet.Core.Engine
                 for (int i = 0; i < parallelism; i++)
                 {
                     var id = _operatorId++;
-                    var op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                    var op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
                     leftPartitionOperator.Sources[i].LinkTo(op.Targets[0]);
                     rightPartitionOperator.Sources[i].LinkTo(op.Targets[1]);
                     op.LinkTo(partitionCombiner.Targets[i]);

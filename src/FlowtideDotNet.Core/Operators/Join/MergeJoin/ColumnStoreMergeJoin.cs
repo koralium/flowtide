@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
 
         // To be deprecated when functions also work with column store
-        protected readonly Func<RowEvent, RowEvent, bool> _postCondition;
+        protected readonly Func<RowEvent, RowEvent, bool>? _postCondition;
 
 #if DEBUG_WRITE
         // Debug data
@@ -291,14 +291,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     RowIndex = i
                 };
 
-                // DEBUG START
-                //var debugVal = msg.Data.EventBatchData.Columns[0].GetValueAt(i, default);
-                //if (debugVal.AsLong == 7046)
-                //{
-
-                //}
-                // DEBUG END
-
                 await it.Seek(in columnReference, _searchLeftComparer);
 
                 int weight = msg.Data.Weights[i];
@@ -364,8 +356,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     foundOffsets.Add(msg.Data.Weights.Count);
                                     weights.Add(-joinStorageValue.Weight);
                                     iterations.Add(msg.Data.Iterations[i]);
-                                    
-                                    //output.Add(CreateLeftWithNullRightEvent(-kv.Value.Weight, kv.Key, e.Iteration));
                                 }
 
                                 joinStorageValue.JoinWeight += outputWeight;
@@ -381,8 +371,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     foundOffsets.Add(msg.Data.Weights.Count);
                                     weights.Add(joinStorageValue.Weight);
                                     iterations.Add(msg.Data.Iterations[i]);
-
-                                    //output.Add(CreateLeftWithNullRightEvent(kv.Value.Weight, kv.Key, e.Iteration));
                                 }
                             }
                         }
