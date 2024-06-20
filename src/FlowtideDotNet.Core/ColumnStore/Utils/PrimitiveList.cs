@@ -19,10 +19,11 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Collections;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
-    internal unsafe class PrimitiveList<T> : IDisposable
+    internal unsafe class PrimitiveList<T> : IDisposable, IReadOnlyList<T>
         where T: unmanaged
     {
         private void* _data;
@@ -173,6 +174,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        private IEnumerable<T> GetEnumerable()
+        {
+            for (var i = 0; i < _length; i++)
+            {
+                yield return Get(i);
+            }
+        }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
         }
     }
 }

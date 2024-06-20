@@ -21,6 +21,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Comparers
 {
     internal class SpanByteComparer : ISpanByteComparer
     {
+        public static readonly SpanByteComparer Instance = new SpanByteComparer();
         public int Compare(in ReadOnlySpan<byte> x, in ReadOnlySpan<byte> y)
         {
             return x.SequenceCompareTo(y);

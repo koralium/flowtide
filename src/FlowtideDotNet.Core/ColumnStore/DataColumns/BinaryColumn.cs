@@ -10,55 +10,118 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow;
+using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Buffers;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public class BinaryColumn : AbstractBinaryColumn
+    public class BinaryColumn : IDataColumn
     {
-        public override ArrowTypeId Type => ArrowTypeId.Binary;
+        private readonly BinaryList _data;
 
-        public override int CompareToStrict(in int index, in IDataValue value)
+        public BinaryColumn()
         {
-            throw new NotImplementedException();
+            _data = new BinaryList(new NativeMemoryAllocator());
         }
 
-        public override int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
+        public BinaryColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte> dataMemory, IMemoryAllocator memoryAllocator)
         {
-            throw new NotImplementedException();
+            _data = new BinaryList(offsetMemory, offsetLength, dataMemory, memoryAllocator);
         }
 
-        public override IDataValue GetValueAt(in int index, in ReferenceSegment? child)
+        public int Count => _data.Count;
+
+        public ArrowTypeId Type => ArrowTypeId.Binary;
+
+        public int Add<T>(in T value) where T : IDataValue
         {
-            if (index + 1 < _offsets.Count)
+            var index = _data.Count;
+            if (value.Type == ArrowTypeId.Null)
             {
-                return new BinaryValue(_data, _offsets[index], _offsets[index + 1]);
+                _data.Add(Span<byte>.Empty);
+                return index;
             }
             else
             {
-                return new BinaryValue(_data, _offsets[index], _length);
+                _data.Add(value.AsBinary);
+                return index;
             }
         }
 
-        public override void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        {
+            if (validityList != null &&
+                !validityList.Get(index))
+            {
+                if (value.Type == ArrowTypeId.Null)
+                {
+                    return 0;
+                }
+                return -1;
+            }
+            else if (value.Type == ArrowTypeId.Null)
+            {
+                return 1;
+            }
+            return SpanByteComparer.Instance.Compare(_data.Get(index), value.AsBinary);
+        }
+
+        public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             throw new NotImplementedException();
         }
 
-        public override int Update(in int index, in IDataValue value)
+        public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
-            return Add(value);
+            return new BinaryValue(_data.GetMemory(index));
         }
 
-        public override int Add<T>(in T value)
+        public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
-            var span = value.AsBinary;
-            return Add(span);
+            dataValueContainer._type = ArrowTypeId.Binary;
+            dataValueContainer._binaryValue = new BinaryValue(_data.GetMemory(index));
+        }
+
+        public void InsertAt<T>(in int index, in T value) where T : IDataValue
+        {
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _data.Insert(index, Span<byte>.Empty);
+            }
+            else
+            {
+                _data.Insert(index, value.AsBinary);
+            }
+        }
+
+        public void RemoveAt(in int index)
+        {
+            _data.RemoveAt(index);
+        }
+
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
+        {
+            return BoundarySearch.SearchBoundries(_data, dataValue.AsBinary, start, end, SpanByteComparer.Instance);
+        }
+
+        public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
+        {
+            var valueOffsetBuffer = new ArrowBuffer(_data.OffsetMemory);
+            var dataBuffer = new ArrowBuffer(_data.DataMemory);
+            var array = new BinaryArray(BinaryType.Default, Count, valueOffsetBuffer, dataBuffer, nullBuffer, nullCount);
+            return (array, BinaryType.Default);
+        }
+
+        public int Update<T>(in int index, in T value) where T : IDataValue
+        {
+            _data.UpdateAt(index, value.AsBinary);
+            return index;
         }
     }
 }

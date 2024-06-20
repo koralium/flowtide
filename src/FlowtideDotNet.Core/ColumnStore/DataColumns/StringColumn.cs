@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
-            return new StringValue(_binaryList.Get(in index).ToArray());
+            return new StringValue(_binaryList.GetMemory(in index));
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)

@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return new DoubleValue(flxValue.AsDouble);
                 case FlexBuffers.Type.Blob:
                     var blob = flxValue.AsBlob;
-                    return new BinaryValue(blob.ToArray(), 0, blob.Length);
+                    return new BinaryValue(blob.ToArray());
                 case FlexBuffers.Type.Map:
                     return MapToDataValue(flxValue);
                 case FlexBuffers.Type.Vector:

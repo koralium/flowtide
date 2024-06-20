@@ -67,11 +67,11 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(7, end);
 
             (start, end) = column.SearchBoundries(new DoubleValue(9), 0, 9, default);
-            Assert.Equal(~9, start);
-            Assert.Equal(~9, end);
+            Assert.Equal(~10, start);
+            Assert.Equal(~10, end);
 
             var emptyColumn = new DoubleColumn();
-            (start, end) = emptyColumn.SearchBoundries(new DoubleValue(4), 0, 0, default);
+            (start, end) = emptyColumn.SearchBoundries(new DoubleValue(4), 0, -1, default);
             Assert.Equal(~0, start);
             Assert.Equal(~0, end);
         }

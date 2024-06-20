@@ -13,10 +13,12 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -26,7 +28,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     internal class DoubleColumn : IDataColumn
     {
-        private readonly List<double> _data;
+        private readonly PrimitiveList<double> _data;
 
         public int Count => _data.Count;
 
@@ -34,29 +36,27 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public DoubleColumn()
         {
-            _data = new List<double>();
+            _data = new PrimitiveList<double>(new NativeMemoryAllocator());
+        }
+
+        public DoubleColumn(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
+        {
+            _data = new PrimitiveList<double>(memory, count, memoryAllocator);
         }
 
         public int Add<T>(in T value) where T : IDataValue
         {
             var index = _data.Count;
-            _data.Add(value.AsDouble);
-            return index;
-        }
-
-        public int BinarySearch(in IDataValue dataValue)
-        {
-            throw new NotImplementedException();
-        }
-
-        public int BinarySearch(in IDataValue dataValue, in int start, in int end)
-        {
-            throw new NotImplementedException();
-        }
-
-        public int CompareToStrict(in int index, in IDataValue value)
-        {
-            throw new NotImplementedException();
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _data.Add(0);
+                return index;
+            }
+            else
+            {
+                _data.Add(value.AsDouble);
+                return index;
+            }
         }
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
@@ -89,7 +89,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
-            throw new NotImplementedException();
+            dataValueContainer._type = ArrowTypeId.Double;
+            dataValueContainer._doubleValue = new DoubleValue(_data[index]);
         }
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
@@ -107,22 +108,32 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int Update<T>(in int index, in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            _data[index] = value.AsDouble;
+            return index;
         }
 
         public void RemoveAt(in int index)
         {
-            throw new NotImplementedException();
+            _data.RemoveAt(index);
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _data.InsertAt(index, default);
+            }
+            else
+            {
+                _data.InsertAt(index, value.AsDouble);
+            }
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            throw new NotImplementedException();
+            var dataBuffer = new ArrowBuffer(_data.Memory);
+            var array = new DoubleArray(dataBuffer, nullBuffer, Count, nullCount, 0);
+            return (array, new DoubleType());
         }
     }
 }

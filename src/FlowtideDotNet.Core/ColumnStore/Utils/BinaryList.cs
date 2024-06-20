@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.ColumnStore.Memory;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -238,6 +239,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             var offset = _offsets.Get(index);
             return AccessSpan.Slice(offset, _offsets.Get(index + 1) - offset);
+        }
+
+        public Memory<byte> GetMemory(in int index)
+        {
+            Debug.Assert(_memoryOwner != null);
+            var offset = _offsets.Get(index);
+            return _memoryOwner.Memory.Slice(offset, _offsets.Get(index + 1) - offset);
         }
 
         /// <summary>

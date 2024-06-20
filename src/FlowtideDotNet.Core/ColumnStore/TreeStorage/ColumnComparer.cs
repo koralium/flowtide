@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             int index = -1;
             int start = 0;
-            int end = keyContainer.Count;
+            int end = keyContainer.Count - 1;
             for (int i = 0; i < columnCount; i++)
             {
                 // Get value by container to skip boxing for each value

@@ -133,5 +133,20 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
             Assert.True(binaryList.Get(1).SequenceEqual(e2));
         }
+
+        [Fact]
+        public void TestGetMemory()
+        {
+            var e1 = new byte[] { 1, 2, 3 };
+            var e2 = new byte[] { 1, 2, 3, 4 };
+            BinaryList binaryList = new BinaryList(new NativeMemoryAllocator());
+            binaryList.Add(e1);
+            binaryList.Add(e2);
+
+            var index1Mem = binaryList.GetMemory(0);
+            var index2Mem = binaryList.GetMemory(1);
+            Assert.True(binaryList.Get(0).SequenceEqual(e1));
+            Assert.True(binaryList.Get(1).SequenceEqual(e2));
+        }
     }
 }

@@ -23,15 +23,13 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public struct StringValue : IDataValue
     {
-        private byte[] _utf8;
-        private readonly int start;
-        private readonly int end;
+        private Memory<byte> _utf8;
 
         public ArrowTypeId Type => ArrowTypeId.String;
 
         public long AsLong => throw new NotImplementedException();
 
-        public FlxString AsString => new FlxString(_utf8.AsSpan(start, end - start));
+        public FlxString AsString => new FlxString(_utf8.Span);
 
         public bool AsBool => throw new NotImplementedException();
 
@@ -39,36 +37,30 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IListValue AsList => throw new NotImplementedException();
 
-        public Span<byte> AsBinary => _utf8.AsSpan(start, end - start);
+        public Span<byte> AsBinary => _utf8.Span;
 
         public IMapValue AsMap => throw new NotImplementedException();
 
         public decimal AsDecimal => throw new NotImplementedException();
 
-        public StringValue(byte[] utf8, int start, int end)
-        {
-            _utf8 = utf8;
-            this.start = start;
-            this.end = end;
-        }
-
         public StringValue(byte[] utf8)
         {
             _utf8 = utf8;
-            this.start = 0;
-            this.end = utf8.Length;
+        }
+
+        public StringValue(Memory<byte> utf8)
+        {
+            _utf8 = utf8;
         }
 
         public StringValue(string value)
         {
             _utf8 = Encoding.UTF8.GetBytes(value);
-            start = 0;
-            end = _utf8.Length;
         }
 
         public override string ToString()
         {
-            return Encoding.UTF8.GetString(_utf8, start, end - start);
+            return Encoding.UTF8.GetString(_utf8.Span);
         }
     }
 }

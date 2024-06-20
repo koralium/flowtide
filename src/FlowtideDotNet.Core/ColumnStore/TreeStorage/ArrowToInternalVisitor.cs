@@ -40,7 +40,9 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         IArrowArrayVisitor<UnionArray>,
         IArrowArrayVisitor<NullArray>,
         IArrowArrayVisitor<MapArray>,
-        IArrowArrayVisitor<BooleanArray>
+        IArrowArrayVisitor<BooleanArray>,
+        IArrowArrayVisitor<DoubleArray>,
+        IArrowArrayVisitor<BinaryArray>
     {
         private readonly IMemoryOwner<byte> recordBatchMemoryOwner;
         private readonly BatchMemoryManager batchMemoryManager;
@@ -246,6 +248,43 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             var valueMemoryOwner = GetMemoryOwner(array.ValueBuffer);
             _dataColumn = new BoolColumn(valueMemoryOwner, array.Length, batchMemoryManager);
             _typeId = ArrowTypeId.Boolean;
+        }
+
+        public void Visit(DoubleArray array)
+        {
+            _nullCount = array.NullCount;
+            if (array.NullCount > 0)
+            {
+                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+            }
+            else
+            {
+                _bitmapList = null;
+            }
+
+            var valueBuffer = GetMemoryOwner(array.ValueBuffer);
+            _dataColumn = new DoubleColumn(valueBuffer, array.Length, batchMemoryManager);
+            _typeId = ArrowTypeId.Double;
+        }
+
+        public void Visit(BinaryArray array)
+        {
+            _nullCount = array.NullCount;
+            if (array.NullCount > 0)
+            {
+                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+            }
+            else
+            {
+                _bitmapList = null;
+            }
+
+            var offsetBuffer = GetMemoryOwner(array.ValueOffsetsBuffer);
+            var dataBuffer = GetMemoryOwner(array.ValueBuffer);
+            _dataColumn = new BinaryColumn(offsetBuffer, array.ValueOffsets.Length, dataBuffer, batchMemoryManager);
+            _typeId = ArrowTypeId.Binary;
         }
     }
 }
