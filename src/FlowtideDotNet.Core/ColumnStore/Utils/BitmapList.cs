@@ -182,7 +182,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
             AccessSpan[wordIndex] |= bitIndex;
 
-            if (_length < index)
+            if (_length <= index)
             {
                 _length = index + 1;
             }
@@ -203,11 +203,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             var wordIndex = index >> 5;
             int bitIndex = 1 << index;
-            if (wordIndex >= _dataLength)
-            {
-                return;
-            }
+            EnsureSize(wordIndex + 1);
+
             AccessSpan[wordIndex] &= ~bitIndex;
+
+            if (_length <= index)
+            {
+                _length = index + 1;
+            }
         }
 
         public void InsertAt(int index, bool value)
@@ -219,7 +222,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var mod = index % 32;
             int bitIndex = 1 << index;
             var span = AccessSpan;
-            if ((span[_dataLength - 1] & lastBitMask) != 0)
+            if ((_length / 32) >= _dataLength)
             {
                 EnsureSize(_dataLength + 1);
             }
@@ -286,6 +289,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var span = AccessSpan;
             var fromIndex = index >> 5;
             var mod = index % 32;
+            _length--;
             if (mod > 0)
             {
                 var beforeMask = BitPatternArray[mod - 1];

@@ -32,6 +32,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     internal unsafe class NativeLongList : IDisposable
     {
         private void* _data;
+        private long* _longData;
         private int _dataLength;
         private int _length;
         private bool _disposedValue;
@@ -42,6 +43,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public NativeLongList(IMemoryAllocator memoryAllocator)
         {
             _data = null;
+            _longData = null;
             _memoryAllocator = memoryAllocator;
         }
 
@@ -52,6 +54,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _memoryOwner = memory;
             _memoryHandle = _memoryOwner.Memory.Pin();
             _data = _memoryHandle.Value.Pointer;
+            _longData = (long*)_data;
             _dataLength = memory.Memory.Length / sizeof(long);
             _length = length;
             _memoryAllocator = memoryAllocator;
@@ -62,6 +65,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _memoryOwner = null;
             _memoryHandle = memory.Pin();
             _data = _memoryHandle.Value.Pointer;
+            _longData = (long*)_data;
             _dataLength = memory.Length / sizeof(long);
             _length = length;
             _memoryAllocator = memoryAllocator;
@@ -91,6 +95,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     }
                     _memoryHandle = newHandle;
                     _data = _memoryHandle.Value.Pointer;
+                    _longData = (long*)_data;
                 }
                 else
                 {
@@ -105,6 +110,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     }
                     _memoryHandle = newMemoryHandle;
                     _data = newPtr;
+                    _longData = (long*)_data;
                     _memoryOwner.Dispose();
                     _memoryOwner = newMemory;
                 }
@@ -177,6 +183,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref long GetRef(in int index)
+        {
+            return ref _longData[index];
+        }
+
         public void Update(in int index, in long value)
         {
             var span = AccessSpan;
@@ -213,6 +225,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _memoryOwner.Dispose();
                     _memoryOwner = null;
                     _data = null;
+                    _longData = null;
                 }
                 if (_memoryHandle.HasValue)
                 {

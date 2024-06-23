@@ -20,6 +20,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Comparers
 {
     internal class DataValueComparer : IComparer<IDataValue>
     {
+        public static readonly DataValueComparer Instance = new DataValueComparer();
+
         public int Compare(IDataValue? x, IDataValue? y)
         {
             if (x!.Type != y!.Type)

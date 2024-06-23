@@ -258,6 +258,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 if (_type == ArrowTypeId.Null)
                 {
                     _nullCounter++;
+                    _validityList.InsertAt(index, false);
                 }
                 else
                 {
@@ -301,7 +302,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
                 _validityList.RemoveAt(index);
             }
-            _dataColumn!.RemoveAt(in index);
+            if (_dataColumn != null)
+            {
+                _dataColumn!.RemoveAt(in index);
+            }
         }
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)

@@ -59,11 +59,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             return index;
         }
 
-        public int CompareToStrict(in int index, in IDataValue value)
-        {
-            return _data[index].CompareTo(value.AsLong);
-        }
-
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             if (otherColumn is Int64Column int64Column)
@@ -89,18 +84,18 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return 1;
             }
             var longValue = value.AsLong;
-            return _data[index].CompareTo(longValue);
+            return _data.GetRef(index).CompareTo(longValue);
         }
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
-            return new Int64Value(_data[index]);
+            return new Int64Value(_data.GetRef(index));
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             dataValueContainer._type = ArrowTypeId.Int64;
-            dataValueContainer._int64Value = new Int64Value(_data[index]);
+            dataValueContainer._int64Value = new Int64Value(_data.GetRef(index));
         }
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child)

@@ -683,7 +683,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var splitKey = child.keys.Get(child.keys.Count - 1);
             // Add the children to the parent node
             parent.EnterWriteLock();
-            parent.keys.Insert(index, splitKey);
+            parent.keys.Insert_Internal(index, splitKey);
             parent.children.Insert(index + 1, newNodeId);
             parent.ExitWriteLock();
             return (newNode, splitKey);
@@ -852,7 +852,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             child.ExitWriteLock();
 
             parent.EnterWriteLock();
-            parent.keys.Insert(index, splitKey);
+            parent.keys.Insert_Internal(index, splitKey);
             parent.children.Insert(index + 1, newNodeId);
             parent.ExitWriteLock();
 

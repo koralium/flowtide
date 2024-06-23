@@ -19,12 +19,12 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
-    internal class ColumnKeyStorageContainer : IKeyContainer<ColumnRowReference>
+    internal class ColumnValueStorageContainer : IValueContainer<ColumnRowReference>
     {
         private readonly int columnCount;
         internal EventBatchData _data;
 
-        public ColumnKeyStorageContainer(int columnCount)
+        public ColumnValueStorageContainer(int columnCount)
         {
             List<IColumn> columns = new List<IColumn>();
             for (int i = 0; i < columnCount; i++)
@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             this.columnCount = columnCount;
         }
 
-        internal ColumnKeyStorageContainer(int columnCount, EventBatchData eventBatchData)
+        internal ColumnValueStorageContainer(int columnCount, EventBatchData eventBatchData)
         {
             this.columnCount = columnCount;
             _data = eventBatchData;
@@ -51,9 +51,9 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             }
         }
 
-        public void AddRangeFrom(IKeyContainer<ColumnRowReference> container, int start, int count)
+        public void AddRangeFrom(IValueContainer<ColumnRowReference> container, int start, int count)
         {
-            if (container is ColumnKeyStorageContainer columnKeyStorageContainer)
+            if (container is ColumnValueStorageContainer columnKeyStorageContainer)
             {
                 for (int i = start; i < start + count; i++)
                 {
@@ -66,12 +66,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             }
         }
 
-        public int BinarySearch(ColumnRowReference key, IComparer<ColumnRowReference> comparer)
-        {
-            throw new NotImplementedException();
-        }
-
-        public ColumnRowReference Get(in int index)
+        public ColumnRowReference Get(int index)
         {
             return new ColumnRowReference()
             {
@@ -81,14 +76,6 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         }
 
         public void Insert(int index, ColumnRowReference key)
-        {
-            for (int i = 0; i < columnCount; i++)
-            {
-                _data.Columns[i].InsertAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
-            }
-        }
-
-        public void Insert_Internal(int index, ColumnRowReference key)
         {
             for (int i = 0; i < columnCount; i++)
             {

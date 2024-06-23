@@ -370,7 +370,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 int i = lo + ((hi - lo) >> 1);
 
-                int c = comparer.Compare(list[i], in value);
+                int c = comparer.Compare(in list.GetRef(i), in value);
                 if (c == 0)
                 {
                     found = true;
@@ -397,7 +397,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (lo < end)
             {
                 // Check that the next value is the same, if not we are at the of the bounds.
-                int c = comparer.Compare(list[lo + 1], in value);
+                int c = comparer.Compare(in list.GetRef(lo + 1), in value);
                 if (c != 0)
                 {
                     return (lowerbound, lowerbound);
@@ -416,7 +416,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 int i = lo + ((hi - lo) >> 1);
 
-                int c = comparer.Compare(list[i], in value);
+                int c = comparer.Compare(in list.GetRef(i), in value);
                 if (c <= 0)
                 {
                     lo = i + 1;

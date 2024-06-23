@@ -58,6 +58,9 @@ namespace FlowtideDotNet.Core.Optimizer
                 plan.Relations[i] = relation;
             }
 
+            // Try and remove any direct field references if possible
+            DirectFieldSimplification.DirectFieldSimplification.Optimize(plan);
+
             EmitPushdown.EmitPushdown.Optimize(plan);
             return plan;
         }

@@ -405,7 +405,8 @@ namespace FlowtideDotNet.Core.Engine
                 if (info.NormalizationRelation != null)
                 {
                     var normId = _operatorId++;
-                    NormalizationOperator normOp = new NormalizationOperator(info.NormalizationRelation, functionsRegister, DefaultBlockOptions);
+                    //NormalizationOperator normOp = new NormalizationOperator(info.NormalizationRelation, functionsRegister, DefaultBlockOptions);
+                    var normOp = new ColumnNormalizationOperator(info.NormalizationRelation, functionsRegister, DefaultBlockOptions);
 
                     if (state != null)
                     {
@@ -493,7 +494,8 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitNormalizationRelation(NormalizationRelation normalizationRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            NormalizationOperator op = new NormalizationOperator(normalizationRelation, functionsRegister, DefaultBlockOptions);
+            //NormalizationOperator op = new NormalizationOperator(normalizationRelation, functionsRegister, DefaultBlockOptions);
+            var op = new ColumnNormalizationOperator(normalizationRelation, functionsRegister, DefaultBlockOptions);
 
             if (state != null)
             {

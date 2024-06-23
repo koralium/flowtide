@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -17,27 +19,27 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
+namespace FlowtideDotNet.Core.Operators.Normalization
 {
-    internal class ColumnKeyStorageContainer : IKeyContainer<ColumnRowReference>
+    internal class NormalizeKeyStorage : IKeyContainer<ColumnRowReference>
     {
-        private readonly int columnCount;
-        internal EventBatchData _data;
+        private readonly List<int> _columnsToStore;
+        internal readonly EventBatchData _data;
 
-        public ColumnKeyStorageContainer(int columnCount)
+        public NormalizeKeyStorage(List<int> columnsToStore)
         {
+            _columnsToStore = columnsToStore;
             List<IColumn> columns = new List<IColumn>();
-            for (int i = 0; i < columnCount; i++)
+            for (int i = 0; i < columnsToStore.Count; i++)
             {
                 columns.Add(new Column());
             }
             _data = new EventBatchData(columns);
-            this.columnCount = columnCount;
         }
 
-        internal ColumnKeyStorageContainer(int columnCount, EventBatchData eventBatchData)
+        internal NormalizeKeyStorage(List<int> columnsToStore, EventBatchData eventBatchData)
         {
-            this.columnCount = columnCount;
+            _columnsToStore = columnsToStore;
             _data = eventBatchData;
         }
 
@@ -45,7 +47,8 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Add(ColumnRowReference key)
         {
-            for (int i = 0; i < columnCount; i++)
+            // Add is only run internally to copy values in the tree
+            for (int i = 0; i < _columnsToStore.Count; i++)
             {
                 _data.Columns[i].Add(key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
             }
@@ -53,7 +56,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void AddRangeFrom(IKeyContainer<ColumnRowReference> container, int start, int count)
         {
-            if (container is ColumnKeyStorageContainer columnKeyStorageContainer)
+            if (container is NormalizeKeyStorage columnKeyStorageContainer)
             {
                 for (int i = start; i < start + count; i++)
                 {
@@ -82,23 +85,15 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Insert(int index, ColumnRowReference key)
         {
-            for (int i = 0; i < columnCount; i++)
+            for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                _data.Columns[i].InsertAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
-            }
-        }
-
-        public void Insert_Internal(int index, ColumnRowReference key)
-        {
-            for (int i = 0; i < columnCount; i++)
-            {
-                _data.Columns[i].InsertAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
+                _data.Columns[i].InsertAt(index, key.referenceBatch.Columns[_columnsToStore[i]].GetValueAt(key.RowIndex, default));
             }
         }
 
         public void RemoveAt(int index)
         {
-            for (int i = 0; i < columnCount; i++)
+            for (int i = 0; i < _columnsToStore.Count; i++)
             {
                 _data.Columns[i].RemoveAt(index);
             }
@@ -115,9 +110,18 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Update(int index, ColumnRowReference key)
         {
-            for (int i = 0; i < columnCount; i++)
+            // Update is only run internally to copy values in the tree
+            for (int i = 0; i < _columnsToStore.Count; i++)
             {
                 _data.Columns[i].UpdateAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
+            }
+        }
+
+        public void Insert_Internal(int index, ColumnRowReference key)
+        {
+            for (int i = 0; i < _columnsToStore.Count; i++)
+            {
+                _data.Columns[i].InsertAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
             }
         }
     }

@@ -61,6 +61,11 @@ namespace FlowtideDotNet.Storage.Tree
             _list.Insert(index, key);
         }
 
+        public void Insert_Internal(int index, K key)
+        {
+            _list.Insert(index, key);
+        }
+
         public void RemoveAt(int index)
         {
             _list.RemoveAt(index);

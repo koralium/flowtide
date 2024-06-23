@@ -26,6 +26,8 @@ namespace FlowtideDotNet.Storage.Tree
 
         void Insert(int index, K key);
 
+        void Insert_Internal(int index, K key);
+
         void Update(int index, K key);
 
         void RemoveAt(int index);

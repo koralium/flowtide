@@ -28,6 +28,21 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task SelectOneColumnsWithoutIdAndUpdate()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT firstName FROM users");
+            await WaitForUpdate();
+            var firstUser = Users[0];
+            firstUser.FirstName = "Updated";
+            AddOrUpdateUser(firstUser);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { x.FirstName }));
+        }
+
+        [Fact]
         public async Task SelectWithCase()
         {
             GenerateData();
