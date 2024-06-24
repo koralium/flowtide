@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,7 +25,7 @@ namespace FlowtideDotNet.Core.Tests
         [Fact]
         public void TestColumnInt64()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
 
             for (int i = 0; i < 100; i++)
             {
@@ -37,7 +38,7 @@ namespace FlowtideDotNet.Core.Tests
         [Fact]
         public void TestColumnString()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
 
             for (int i = 0; i < 100; i++)
             {

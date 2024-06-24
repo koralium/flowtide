@@ -68,7 +68,7 @@ namespace SqlSampleWithUI
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            for (int i = 0; i < 1_000_000; i++)
+            for (int i = 0; i < 1_000_0; i++)
             {
                 await output.EnterCheckpointLock();
 
@@ -79,7 +79,7 @@ namespace SqlSampleWithUI
                     {
                         for (int z = 0; z < 16; z++)
                         {
-                            b.Add(123);
+                            b.Add((i * 100) + k);
                         }
                     }));
                 }

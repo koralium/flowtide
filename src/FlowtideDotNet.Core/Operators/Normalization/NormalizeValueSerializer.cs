@@ -38,7 +38,12 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         public NormalizeValueStorage Deserialize(in BinaryReader reader)
         {
-            throw new NotImplementedException();
+            using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var recordBatch = arrowReader.ReadNextRecordBatch();
+
+            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch);
+
+            return new NormalizeValueStorage(_columnsToStore, eventBatch, recordBatch.Length);
         }
 
         public void Serialize(in BinaryWriter writer, in NormalizeValueStorage values)

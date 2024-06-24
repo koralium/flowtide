@@ -13,6 +13,7 @@
 using Apache.Arrow.Ipc;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
@@ -28,7 +29,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void Int64SerializeDeserialize()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new Int64Value(1));
             column.Add(NullValue.Instance);
             column.Add(new Int64Value(2));
@@ -55,7 +56,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void StringSerializeDeserialize()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new StringValue("hello"));
             column.Add(NullValue.Instance);
             column.Add(new StringValue("world"));
@@ -82,7 +83,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void DoubleToArrow()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new DoubleValue(1.0));
             column.Add(NullValue.Instance);
             column.Add(new DoubleValue(2.0));
@@ -98,7 +99,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void DoubleSerializeDeserialize()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new DoubleValue(1.0));
             column.Add(NullValue.Instance);
             column.Add(new DoubleValue(2.0));
@@ -125,7 +126,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void ListToArrow()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new ListValue(new List<IDataValue>()
             {
                 new StringValue("1"),
@@ -158,7 +159,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void ListSerializeDeserialize()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new ListValue(new List<IDataValue>()
             {
                 new StringValue("1"),
@@ -199,7 +200,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void UnionToArrow()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new StringValue("1"));
             column.Add(NullValue.Instance);
             column.Add(new Int64Value(1));
@@ -230,7 +231,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void UnionSerializeDeserialize()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new StringValue("1"));
             column.Add(NullValue.Instance);
             column.Add(new Int64Value(1));
@@ -261,7 +262,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void MapToArrow()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
             {
                 { new StringValue("key"), new Int64Value(1) },
@@ -312,7 +313,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void MapSerializeDeserialize()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
             {
                 { new StringValue("key"), new Int64Value(1) },
@@ -353,7 +354,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void BoolToArrow()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new BoolValue(true));
             column.Add(NullValue.Instance);
             column.Add(new BoolValue(false));
@@ -371,7 +372,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void BoolSerializeDeserialize()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new BoolValue(true));
             column.Add(NullValue.Instance);
             column.Add(new BoolValue(false));
@@ -398,7 +399,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void BinaryToArrow()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new BinaryValue(new byte[] { 1, 2, 3 }));
             column.Add(NullValue.Instance);
             column.Add(new BinaryValue(new byte[] { 4, 5, 6 }));
@@ -415,7 +416,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void BinarySerializeDeserialize()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new BinaryValue(new byte[] { 1, 2, 3 }));
             column.Add(NullValue.Instance);
             column.Add(new BinaryValue(new byte[] { 4, 5, 6 }));
@@ -442,7 +443,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void DecimalSerializeDeserialize()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new DecimalValue(1.0m));
             column.Add(NullValue.Instance);
             column.Add(new DecimalValue(2.0m));
@@ -469,7 +470,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void DecimalToArrow()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new DecimalValue(1.0m));
             column.Add(NullValue.Instance);
             column.Add(new DecimalValue(2.0m));
@@ -488,7 +489,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestDecimalInListSerializeDeserialize()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new ListValue(new List<IDataValue>()
             {
                 new DecimalValue(1.0m),
@@ -521,7 +522,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestDecimalInMapSerializeDeserialize()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
             {
                 { new StringValue("key"), new DecimalValue(1.0m) },

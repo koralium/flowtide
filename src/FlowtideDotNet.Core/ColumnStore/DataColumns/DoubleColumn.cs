@@ -29,14 +29,15 @@ namespace FlowtideDotNet.Core.ColumnStore
     internal class DoubleColumn : IDataColumn
     {
         private readonly PrimitiveList<double> _data;
+        private bool disposedValue;
 
         public int Count => _data.Count;
 
         public ArrowTypeId Type => ArrowTypeId.Double;
 
-        public DoubleColumn()
+        public DoubleColumn(IMemoryAllocator memoryAllocator)
         {
-            _data = new PrimitiveList<double>(new NativeMemoryAllocator());
+            _data = new PrimitiveList<double>(memoryAllocator);
         }
 
         public DoubleColumn(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
@@ -134,6 +135,25 @@ namespace FlowtideDotNet.Core.ColumnStore
             var dataBuffer = new ArrowBuffer(_data.Memory);
             var array = new DoubleArray(dataBuffer, nullBuffer, Count, nullCount, 0);
             return (array, new DoubleType());
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _data.Dispose();
+                }
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

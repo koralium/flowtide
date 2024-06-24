@@ -24,10 +24,11 @@ namespace FlowtideDotNet.Core.ColumnStore
     public class BinaryColumn : IDataColumn
     {
         private readonly BinaryList _data;
+        private bool disposedValue;
 
-        public BinaryColumn()
+        public BinaryColumn(IMemoryAllocator memoryAllocator)
         {
-            _data = new BinaryList(new NativeMemoryAllocator());
+            _data = new BinaryList(memoryAllocator);
         }
 
         public BinaryColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte> dataMemory, IMemoryAllocator memoryAllocator)
@@ -122,6 +123,25 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _data.UpdateAt(index, value.AsBinary);
             return index;
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _data.Dispose();
+                }
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

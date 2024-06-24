@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Optimizer.EmitPushdown;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using System;
@@ -64,10 +65,37 @@ namespace FlowtideDotNet.Core.Optimizer.DirectFieldSimplification
 
             if (projectRelation.Expressions.Count == 0)
             {
-                projectRelation.Input.Emit = projectRelation.Emit;
+                var result = CreateInputEmitList(projectRelation.Input, newEmitList);
+                projectRelation.Input.Emit = result;
                 return projectRelation.Input;   
             }
             return projectRelation;
+        }
+
+        private static List<int> CreateInputEmitList(Relation input, List<int> currentEmit)
+        {
+            // Create a new emit for the input
+            var emit = new List<int>();
+            Dictionary<int, int> inputEmitToInternal = new Dictionary<int, int>();
+            if (input.EmitSet)
+            {
+                for (int i = 0; i < input.Emit.Count; i++)
+                {
+                    inputEmitToInternal.Add(i, input.Emit[i]);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < input.OutputLength; i++)
+                {
+                    inputEmitToInternal.Add(i, i);
+                }
+            }
+            foreach (var field in currentEmit)
+            {
+                emit.Add(inputEmitToInternal[field]);
+            }
+            return emit;
         }
     }
 }

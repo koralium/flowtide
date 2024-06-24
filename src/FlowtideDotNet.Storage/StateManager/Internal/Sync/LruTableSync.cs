@@ -303,7 +303,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 if (m_lastSeenCacheHits == cacheHitsLocal)
                 {
                     m_sameCaheHitsCount++;
-                    if (m_sameCaheHitsCount >= 10000 && currentCount > 0)
+                    if (m_sameCaheHitsCount >= 1000 && currentCount > 0)
                     {
                         // No cache hits during a long time, clear the entire cache
                         isCleanup = true;
@@ -325,7 +325,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             // Take cleanup count before increasing memory, to try and reduce semaphore locks
             var toBeRemovedCount = currentCount - cleanupStartLocal;
-            if (maxMemoryUsageInBytes > 0)
+            if (maxMemoryUsageInBytes > 0 && !isCleanup)
             {
                 _currentProcess.Refresh();
                 var percentage = (float)currentCount / maxSize;

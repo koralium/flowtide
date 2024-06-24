@@ -20,26 +20,26 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Memory
 {
-    internal class NativeMemoryAllocator : IMemoryAllocator
-    {
-        //public unsafe void* Allocate(int size, int alignment)
-        //{
-        //    return NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-        //}
+    //internal class NativeMemoryAllocator : IMemoryAllocator
+    //{
+    //    //public unsafe void* Allocate(int size, int alignment)
+    //    //{
+    //    //    return NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
+    //    //}
 
-        //public unsafe void Free(void* ptr)
-        //{
-        //    NativeMemory.AlignedFree(ptr);
-        //}
+    //    //public unsafe void Free(void* ptr)
+    //    //{
+    //    //    NativeMemory.AlignedFree(ptr);
+    //    //}
 
-        //public unsafe void* Reallocate(void* ptr, int size, int alignment)
-        //{
-        //    return NativeMemory.AlignedRealloc(ptr, (nuint)size, (nuint)alignment);
-        //}
-        public unsafe IMemoryOwner<byte> Allocate(int size, int alignment)
-        {
-            var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-            return new NativeMemoryOwner(ptr, size, alignment);
-        }
-    }
+    //    //public unsafe void* Reallocate(void* ptr, int size, int alignment)
+    //    //{
+    //    //    return NativeMemory.AlignedRealloc(ptr, (nuint)size, (nuint)alignment);
+    //    //}
+    //    public unsafe IMemoryOwner<byte> Allocate(int size, int alignment)
+    //    {
+    //        var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
+    //        return new NativeMemoryOwner(ptr, size, alignment);
+    //    }
+    //}
 }

@@ -20,48 +20,48 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Memory
 {
-    public unsafe class NativeMemoryOwner : MemoryManager<byte>
-    {
-        private void* ptr;
-        private int length;
-        private readonly int alignment;
+    //public unsafe class NativeMemoryOwner : MemoryManager<byte>
+    //{
+    //    private void* ptr;
+    //    private int length;
+    //    private readonly int alignment;
 
-        public NativeMemoryOwner(void* ptr, int length, int alignment)
-        {
-            this.ptr = ptr;
-            this.length = length;
-            this.alignment = alignment;
-        }
+    //    public NativeMemoryOwner(void* ptr, int length, int alignment)
+    //    {
+    //        this.ptr = ptr;
+    //        this.length = length;
+    //        this.alignment = alignment;
+    //    }
 
-        public override Span<byte> GetSpan()
-        {
-            return new Span<byte>(ptr, length);
-        }
+    //    public override Span<byte> GetSpan()
+    //    {
+    //        return new Span<byte>(ptr, length);
+    //    }
 
-        public override MemoryHandle Pin(int elementIndex = 0)
-        {
-            return new MemoryHandle(ptr, default, default);
-        }
+    //    public override MemoryHandle Pin(int elementIndex = 0)
+    //    {
+    //        return new MemoryHandle(ptr, default, default);
+    //    }
 
-        public void Reallocate(int newSize)
-        {
-            ptr = NativeMemory.AlignedRealloc(ptr, (nuint)newSize, (nuint)alignment);
-            length = newSize;
-        }
+    //    public void Reallocate(int newSize)
+    //    {
+    //        ptr = NativeMemory.AlignedRealloc(ptr, (nuint)newSize, (nuint)alignment);
+    //        length = newSize;
+    //    }
 
-        public override void Unpin()
-        {
-            return;
-        }
+    //    public override void Unpin()
+    //    {
+    //        return;
+    //    }
 
-        protected override void Dispose(bool disposing)
-        {
-            if (ptr != null)
-            {
-                NativeMemory.AlignedFree(ptr);
-                ptr = null;
-            }
+    //    protected override void Dispose(bool disposing)
+    //    {
+    //        if (ptr != null)
+    //        {
+    //            NativeMemory.AlignedFree(ptr);
+    //            ptr = null;
+    //        }
             
-        }
-    }
+    //    }
+    //}
 }

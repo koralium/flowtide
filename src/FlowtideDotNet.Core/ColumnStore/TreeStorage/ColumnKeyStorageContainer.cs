@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -27,9 +28,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         public ColumnKeyStorageContainer(int columnCount)
         {
             List<IColumn> columns = new List<IColumn>();
+            var batchMemoryManager = new BatchMemoryManager(columnCount);
             for (int i = 0; i < columnCount; i++)
             {
-                columns.Add(new Column());
+                columns.Add(new Column(batchMemoryManager));
             }
             _data = new EventBatchData(columns);
             this.columnCount = columnCount;

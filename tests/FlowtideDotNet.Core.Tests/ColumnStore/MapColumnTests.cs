@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
@@ -26,7 +27,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void FetchSubProperty()
         {
-            Column column = new Column();
+            Column column = new Column(new BatchMemoryManager(1));
             column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
             {
                 { new StringValue("key"), new Int64Value(1) },

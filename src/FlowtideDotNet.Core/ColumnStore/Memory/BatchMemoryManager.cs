@@ -12,6 +12,7 @@
 
 using System;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -22,9 +23,38 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
 {
     internal unsafe class BatchMemoryManager : IMemoryAllocator
     {
-        private class MemoryContainer
+#if DEBUG_MEMORY
+        internal class MemoryDebugInfo
+        {
+            public IMemoryOwner<byte> memory;
+            public string stackTrace;
+
+            public MemoryDebugInfo(IMemoryOwner<byte> memory, string stackTrace)
+            {
+                this.memory = memory;
+                this.stackTrace = stackTrace;
+            }
+        }
+        private static readonly ConcurrentDictionary<IntPtr, MemoryDebugInfo> _allocatedMemory = new ConcurrentDictionary<nint, MemoryDebugInfo>();
+
+        public static IReadOnlyDictionary<IntPtr, MemoryDebugInfo> AllocatedMemory => _allocatedMemory;
+
+        private static void AddAllocatedMemoryToDebug(IntPtr ptr, IMemoryOwner<byte> memory)
+        {
+            var trace = Environment.StackTrace;
+            _allocatedMemory.TryAdd(ptr, new MemoryDebugInfo(memory, trace));
+        }
+
+        private static void RemoveAllocatedMemoryFromDebug(IntPtr ptr)
+        {
+            _allocatedMemory.TryRemove(ptr, out _);
+        }
+
+#endif
+        private unsafe class MemoryContainer
         {
             public IMemoryOwner<byte>? _owner;
+            public void* _ptr;
             public int _usageCount;
         }
         private readonly object _lock = new object();
@@ -37,19 +67,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
             usageCounter = startUsage;
         }
 
-        public void IncreaseUsage()
+        public void IncreaseUsage(int count)
         {
             lock (_lock)
             {
-                usageCounter++;
+                usageCounter += count;
             }
         }
 
-        public void DecreaseUsage()
+        public void DecreaseUsage(int count)
         {
             lock (_lock)
             {
-                usageCounter--;
+                usageCounter -= count;
                 if (usageCounter == 0)
                 {
                     foreach (var ptr in _usage.Keys)
@@ -63,23 +93,30 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
 
         public IMemoryOwner<byte> Allocate(int size, int alignment)
         {
-            var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment); 
+            var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
 
+            var memoryOwner = new BatchMemoryOwner(this, ptr, size);
             lock (_lock)
             {
                 _usage.Add(new IntPtr(ptr), new MemoryContainer()
                 {
-                    _owner = new NativeMemoryOwner(ptr, size, alignment),
+                    _owner = memoryOwner,
+                    _ptr = ptr,
                     _usageCount = 1
                 });
             }
-            
-            return new NativeMemoryOwner(ptr, size, alignment);
+
+#if DEBUG_MEMORY
+            AddAllocatedMemoryToDebug(new IntPtr(ptr), memoryOwner);
+#endif
+
+            return memoryOwner;
         }
 
         internal void Free(void* ptr)
         {
             IMemoryOwner<byte>? memory = null;
+            void* aligned_ptr = default;
             lock (_lock)
             {
                 if (_usage.TryGetValue(new IntPtr(ptr), out var container))
@@ -88,6 +125,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
                     if (container._usageCount == 1)
                     {
                         memory = container._owner;
+                        aligned_ptr = container._ptr;
                         _usage.Remove(new IntPtr(ptr));
                     }
                     else
@@ -98,7 +136,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
             }
             if (memory != null)
             {
-                memory.Dispose();
+#if DEBUG_MEMORY
+                RemoveAllocatedMemoryFromDebug(new IntPtr(ptr));
+#endif
+                // If the pointer is set, then we need to free the memory since the memory came from this instance
+                if (aligned_ptr != null)
+                {
+                    NativeMemory.AlignedFree(aligned_ptr);
+                }
+                else
+                {
+                    // Someone else created the memory, free it here
+                    memory.Dispose();
+                }
             }
         }
 
@@ -112,6 +162,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
         /// <param name="usageCount"></param>
         internal void AddUsedMemory(IntPtr ptr, IMemoryOwner<byte> memory, int usageCount)
         {
+#if DEBUG_MEMORY
+            AddAllocatedMemoryToDebug(ptr, memory);
+#endif
             lock (_lock)
             {
                 _usage.Add(ptr, new MemoryContainer()

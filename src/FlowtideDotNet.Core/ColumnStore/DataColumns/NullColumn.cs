@@ -88,5 +88,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             return index;
         }
+
+        public void Dispose()
+        {
+            // Not required for null column
+        }
     }
 }

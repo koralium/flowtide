@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 {
                     bitmapList = new BitmapList(batchMemoryManager);
                 }
-                return new Column(_nullCount, _dataColumn, bitmapList, _typeId);
+                return new Column(_nullCount, _dataColumn, bitmapList, _typeId, batchMemoryManager);
             }
         }
 
@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
             }
             else
             {
@@ -128,7 +128,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
             }
             else
             {
@@ -161,7 +161,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
             }
             else
             {
@@ -235,7 +235,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
             }
             else
             {
@@ -254,7 +254,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
             }
             else
             {
@@ -272,7 +272,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
             }
             else
             {
@@ -290,7 +290,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
             }
             else
             {
@@ -309,7 +309,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, new NativeMemoryAllocator());
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
             }
             else
             {

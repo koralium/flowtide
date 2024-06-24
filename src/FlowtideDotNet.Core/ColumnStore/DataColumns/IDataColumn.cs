@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public interface IDataColumn
+    public interface IDataColumn : IDisposable
     {
         int Count { get; }
 

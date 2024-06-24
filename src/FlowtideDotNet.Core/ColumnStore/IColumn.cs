@@ -21,7 +21,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public interface IColumn
+    public interface IColumn : IDisposable
     {
         int Count { get; }
 

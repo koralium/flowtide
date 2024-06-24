@@ -29,15 +29,16 @@ namespace FlowtideDotNet.Core.ColumnStore
     {
         private readonly Column _internalColumn;
         private readonly IntList _offsets;
+        private bool disposedValue;
 
         public int Count => _offsets.Count - 1;
 
         public ArrowTypeId Type => ArrowTypeId.List;
 
-        public ListColumn()
+        public ListColumn(IMemoryAllocator memoryAllocator)
         {
-            _internalColumn = new Column();
-            _offsets = new IntList(new NativeMemoryAllocator());
+            _internalColumn = new Column(memoryAllocator);
+            _offsets = new IntList(memoryAllocator);
             _offsets.Add(0);
         }
 
@@ -146,6 +147,27 @@ namespace FlowtideDotNet.Core.ColumnStore
             var listType = new ListType(field);
             var offsetBuffer = new ArrowBuffer(_offsets.Memory);
             return (new Apache.Arrow.ListArray(listType, Count, offsetBuffer, arr, nullBuffer, nullCount), listType);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _internalColumn.Dispose();
+                    _offsets.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

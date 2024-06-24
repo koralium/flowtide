@@ -66,6 +66,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             return innerColumn.CompareTo(otherColumn, offset, otherIndex);
         }
 
+        public void Dispose()
+        {
+            innerColumn.Dispose();
+        }
+
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             var offset = offsets[index];

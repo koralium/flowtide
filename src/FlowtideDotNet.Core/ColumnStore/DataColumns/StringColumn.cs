@@ -30,14 +30,16 @@ namespace FlowtideDotNet.Core.ColumnStore
     public class StringColumn : IDataColumn, IEnumerable<string>
     {
         private static SpanByteComparer s_spanByteComparer = new SpanByteComparer();
-        private BinaryList _binaryList = new BinaryList(new NativeMemoryAllocator());
+        private BinaryList _binaryList;
+        private bool disposedValue;
 
         public int Count => _binaryList.Count;
 
         public ArrowTypeId Type => ArrowTypeId.String;
 
-        public StringColumn()
+        public StringColumn(IMemoryAllocator memoryAllocator)
         {
+            _binaryList = new BinaryList(memoryAllocator);
         }
 
         public StringColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte> dataMemory, IMemoryAllocator memoryAllocator)
@@ -149,6 +151,25 @@ namespace FlowtideDotNet.Core.ColumnStore
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerable().GetEnumerator();
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _binaryList.Dispose();
+                }
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -32,6 +32,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -146,14 +147,17 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)
         {
+            Debug.Assert(_eventsCounter != null);
             var it = _rightTree!.CreateIterator();
             List<Column> rightColumns = new List<Column>();
             List<int> foundOffsets = new List<int>();
             List<int> weights = new List<int>();
             List<uint> iterations = new List<uint>();
+
+            var memoryManager = new BatchMemoryManager(_rightOutputColumns.Count);
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
-                rightColumns.Add(new Column()); 
+                rightColumns.Add(new Column(memoryManager)); 
             }
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
@@ -268,20 +272,28 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
                 await outputWriter.FlushAsync();
 #endif
+                _eventsCounter.Add(outputBatch.Events.Count);
                 yield return outputBatch;
+            }
+            else
+            {
+                msg.Data.EventBatchData.Dispose();
             }
         }
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveRight(StreamEventBatch msg, long time)
         {
+            Debug.Assert(_eventsCounter != null);
             var it = _leftTree!.CreateIterator();
             List<Column> leftColumns = new List<Column>();
             List<int> foundOffsets = new List<int>();
             List<int> weights = new List<int>();
             List<uint> iterations = new List<uint>();
+
+            var memoryManager = new BatchMemoryManager(_leftOutputColumns.Count);
             for (int i = 0; i < _leftOutputColumns.Count; i++)
             {
-                leftColumns.Add(new Column());
+                leftColumns.Add(new Column(memoryManager));
             }
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
@@ -413,6 +425,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
 
+                _eventsCounter.Add(outputBatch.Events.Count);
 #if DEBUG_WRITE
                 foreach (var o in outputBatch.Events)
                 {
@@ -422,6 +435,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #endif
 
                 yield return outputBatch;
+            }
+            else
+            {
+                msg.Data.EventBatchData.Dispose();
             }
         }
 

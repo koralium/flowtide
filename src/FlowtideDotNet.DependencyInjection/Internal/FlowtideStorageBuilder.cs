@@ -56,6 +56,8 @@ namespace FlowtideDotNet.DependencyInjection.Internal
 
         public long? MaxProcessMemory { get; set; }
 
+        public int MinPageCount { get; set; } = 1000;
+
         internal StateManagerOptions Build(IServiceProvider serviceProvider)
         {
             var persistentStorage = serviceProvider.GetKeyedService<IPersistentStorage>(name);
@@ -80,6 +82,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 UseReadCache = UseReadCache,
                 TemporaryStorageOptions = fileCacheOptions,
                 MaxProcessMemory = MaxProcessMemory.Value,
+                MinCachePageCount = MinPageCount
             };
         }
     }

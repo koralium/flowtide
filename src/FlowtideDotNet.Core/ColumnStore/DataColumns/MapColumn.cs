@@ -41,16 +41,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         private Column _valueColumn;
 
         private IntList _offsets;
+        private bool disposedValue;
 
         public int Count => _offsets.Count - 1;
 
         public ArrowTypeId Type => ArrowTypeId.Map;
 
-        public MapColumn()
+        public MapColumn(IMemoryAllocator memoryAllocator)
         {
-            _keyColumn = new Column();
-            _valueColumn = new Column();
-            _offsets = new IntList(new NativeMemoryAllocator());
+            _keyColumn = new Column(memoryAllocator);
+            _valueColumn = new Column(memoryAllocator);
+            _offsets = new IntList(memoryAllocator);
             _offsets.Add(0);
         }
 
@@ -303,6 +304,28 @@ namespace FlowtideDotNet.Core.ColumnStore
             var valueOffsetsBuffer = new ArrowBuffer(_offsets.Memory);
             var mapArr = new MapArray(mapType, Count, valueOffsetsBuffer, structArr, nullBuffer, nullCount);
             return (mapArr, mapType);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _keyColumn.Dispose();
+                    _valueColumn.Dispose();
+                    _offsets.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

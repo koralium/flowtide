@@ -31,14 +31,15 @@ namespace FlowtideDotNet.Core.ColumnStore
     internal class DecimalColumn : IDataColumn
     {
         private PrimitiveList<decimal> _values;
+        private bool disposedValue;
 
         public int Count => _values.Count;
 
         public ArrowTypeId Type => ArrowTypeId.Decimal128;
 
-        public DecimalColumn()
+        public DecimalColumn(IMemoryAllocator memoryAllocator)
         {
-            _values = new PrimitiveList<decimal>(new NativeMemoryAllocator());
+            _values = new PrimitiveList<decimal>(memoryAllocator);
         }
 
         public DecimalColumn(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
@@ -141,6 +142,25 @@ namespace FlowtideDotNet.Core.ColumnStore
             };
             var array = new FixedSizeBinaryArray(new ArrayData(FloatingPointDecimalType.Default, Count, nullCount, 0, buffers));
             return (array, FloatingPointDecimalType.Default);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _values.Dispose();
+                }
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

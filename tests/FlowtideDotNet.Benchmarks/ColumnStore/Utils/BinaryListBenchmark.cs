@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
         [Benchmark]
         public void TestInsert()
         {
-            var bl = new BinaryList(new NativeMemoryAllocator());
+            var bl = new BinaryList(new BatchMemoryManager(1));
 
             foreach (var item in toInsert)
             {

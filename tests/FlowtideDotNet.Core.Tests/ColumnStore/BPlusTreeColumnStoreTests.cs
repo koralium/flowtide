@@ -27,6 +27,7 @@ using System.Text;
 using System.Threading.Tasks;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
 {
@@ -52,7 +53,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                     ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
                 });
 
-            var valueColumn = new Column();
+            var valueColumn = new Column(new BatchMemoryManager(1));
             for (int i = 0; i < 10; i++)
             {
                 valueColumn.Add(new Int64Value(i));

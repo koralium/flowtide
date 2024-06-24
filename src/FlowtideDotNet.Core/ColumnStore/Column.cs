@@ -37,6 +37,7 @@ namespace FlowtideDotNet.Core.ColumnStore
     /// </summary>
     public class Column : IColumn
     {
+        private readonly IMemoryAllocator _memoryAllocator;
         private int _nullCounter;
         private IDataColumn? _dataColumn;
 
@@ -51,18 +52,21 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// The type of data the column is storing, starts with null
         /// </summary>
         private ArrowTypeId _type = ArrowTypeId.Null;
+        private bool disposedValue;
 
-        public Column()
+        public Column(IMemoryAllocator memoryAllocator)
         {
-            _validityList = new BitmapList(new NativeMemoryAllocator());    
+            _memoryAllocator = memoryAllocator;
+            _validityList = new BitmapList(memoryAllocator);    
         }
 
-        internal Column(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type)
+        internal Column(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)
         {
             _nullCounter = nullCounter;
             _dataColumn = dataColumn;
             _validityList = validityList;
             _type = type;
+            _memoryAllocator = memoryAllocator;
         }
 
         public int Count
@@ -85,23 +89,23 @@ namespace FlowtideDotNet.Core.ColumnStore
             switch (type)
             {
                 case ArrowTypeId.Int64:
-                    return new Int64Column();
+                    return new Int64Column(_memoryAllocator);
                 case ArrowTypeId.String:
-                    return new StringColumn();
+                    return new StringColumn(_memoryAllocator);
                 case ArrowTypeId.Boolean:
-                    return new BoolColumn();
+                    return new BoolColumn(_memoryAllocator);
                 case ArrowTypeId.Double:
-                    return new DoubleColumn();
+                    return new DoubleColumn(_memoryAllocator);
                 case ArrowTypeId.List:
-                    return new ListColumn();
+                    return new ListColumn(_memoryAllocator);
                 case ArrowTypeId.Binary:
-                    return new BinaryColumn();
+                    return new BinaryColumn(_memoryAllocator);
                 case ArrowTypeId.Map:
-                    return new MapColumn();
+                    return new MapColumn(_memoryAllocator);
                 case ArrowTypeId.Decimal128:
-                    return new DecimalColumn();
+                    return new DecimalColumn(_memoryAllocator);
                 case ArrowTypeId.Union:
-                    return new UnionColumn();
+                    return new UnionColumn(_memoryAllocator);
                 default:
                     throw new NotImplementedException();
             }
@@ -193,7 +197,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         private UnionColumn ConvertToUnion()
         {
             DataValueContainer dataValueContainer = new DataValueContainer();
-            var unionColumn = new UnionColumn();
+            var unionColumn = new UnionColumn(_memoryAllocator);
             for (int i = 0; i < Count; i++)
             {
                 GetValueAt(in i, in dataValueContainer, default);
@@ -440,6 +444,34 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             var nullBuffer = new ArrowBuffer(_validityList.Memory);
             return _dataColumn!.ToArrowArray(nullBuffer, _nullCounter);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                _validityList.Dispose();
+                if (_dataColumn != null)
+                {
+                    _dataColumn.Dispose();
+                }
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                disposedValue = true;
+            }
+        }
+
+        ~Column()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

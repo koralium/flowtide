@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,7 +26,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestAddAndGetByIndex()
         {
-            var column = new Int64Column();
+            var column = new Int64Column(new BatchMemoryManager(0));
             int i1 = column.Add(new Int64Value(1));
             int i2 = column.Add(new Int64Value(3));
             int i3 = column.Add(new Int64Value(2));
@@ -42,7 +43,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestSearchBoundries()
         {
-            var c1 = new Int64Column();
+            var c1 = new Int64Column(new BatchMemoryManager(0));
             c1.Add(new Int64Value(1));
             c1.Add(new Int64Value(1));
             c1.Add(new Int64Value(1));
@@ -51,7 +52,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(0, start);
             Assert.Equal(2, end);
 
-            var column = new Int64Column();
+            var column = new Int64Column(new BatchMemoryManager(0));
             column.Add(new Int64Value(1));
             column.Add(new Int64Value(2));
             column.Add(new Int64Value(2));
@@ -80,7 +81,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(~10, start);
             Assert.Equal(~10, end);
 
-            var emptyColumn = new Int64Column();
+            var emptyColumn = new Int64Column(new BatchMemoryManager(0));
             (start, end) = emptyColumn.SearchBoundries(new Int64Value(4), 0, -1, default);
             Assert.Equal(~0, start);
             Assert.Equal(~0, end);
@@ -89,7 +90,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestCompareTo()
         {
-            var column = new Int64Column();
+            var column = new Int64Column(new BatchMemoryManager(0));
             column.Add(new Int64Value(0));
             column.Add(new Int64Value(1));
             column.Add(new Int64Value(2));

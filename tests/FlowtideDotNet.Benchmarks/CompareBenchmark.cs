@@ -14,6 +14,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Join;
 using System;
@@ -52,9 +53,9 @@ namespace FlowtideDotNet.Benchmarks
 
         private List<JoinStreamEvent> compactData = new List<JoinStreamEvent>();
         private List<JoinStreamEvent> arrayData = new List<JoinStreamEvent>();
-        private FlowtideDotNet.Core.ColumnStore.Column column = new FlowtideDotNet.Core.ColumnStore.Column();
+        private FlowtideDotNet.Core.ColumnStore.Column column = new FlowtideDotNet.Core.ColumnStore.Column(new BatchMemoryManager(1));
         private List<string> longList = new List<string>();
-        private StringColumn stringColumn = new StringColumn();
+        private StringColumn stringColumn = new StringColumn(new BatchMemoryManager(1));
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -74,7 +75,7 @@ namespace FlowtideDotNet.Benchmarks
             Random r = new Random(123);
             compactData.Clear();
             arrayData.Clear();
-            column = new Core.ColumnStore.Column();
+            column = new Core.ColumnStore.Column(new BatchMemoryManager(1));
             longList.Clear();
             for (int i = 0; i < 1_000_000; i++)
             {

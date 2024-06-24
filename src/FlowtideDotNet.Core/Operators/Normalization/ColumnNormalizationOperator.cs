@@ -14,13 +14,16 @@ using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
+using SqlParser.Ast;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -37,6 +40,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _tree;
         private readonly List<int> _keyColumns;
         private readonly List<int> _otherColumns;
+        private readonly Func<RowEvent, bool>? _filter;
 
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
@@ -49,6 +53,12 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             this._normalizationRelation = normalizationRelation;
             _keyColumns = normalizationRelation.KeyIndex;
             _otherColumns = [];
+
+            if (normalizationRelation.Filter != null)
+            {
+                // Will be changed later on to use functions that can take columns
+                _filter = BooleanCompiler.Compile<RowEvent>(normalizationRelation.Filter, functionsRegister);
+            }
 
             if (normalizationRelation.EmitSet)
             {
@@ -97,13 +107,14 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
             List<int> toEmitOffsets = new List<int>();
             List<int> weights = new List<int>();
-
+            List<uint> iterations = new List<uint>();
 
             List<int> deleteBatchKeyOffsets = new List<int>();
             List<IColumn> deleteBatchColumns = new List<IColumn>();
+            var otherColumnsMemoryManager = new BatchMemoryManager(_otherColumns.Count);
             for (int i = 0; i < _otherColumns.Count; i++)
             {
-                deleteBatchColumns.Add(new Column());
+                deleteBatchColumns.Add(new Column(otherColumnsMemoryManager));
             }
 
             _eventsProcessed.Add(msg.Data.Weights.Count);
@@ -116,61 +127,32 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
                 if (weight > 0)
                 {
-                    var (operation, _) = await _tree!.RMW(
-                    in columnRef,
-                    in columnRef,
-                    (input, current, found) =>
+                    if (_filter != null)
                     {
-                        if (found)
+                        var rowEvent = RowEventToEventBatchData.RowReferenceToRowEvent(weight, 0, new ColumnRowReference() { referenceBatch = msg.Data.EventBatchData, RowIndex = i });
+                        if (_filter(rowEvent))
                         {
-                            // Compare here
-                            for (int i = 0; i < _otherColumns.Count; i++)
-                            {
-                                var compareResult = DataValueComparer.Instance.Compare(
-                                    input.referenceBatch.Columns[_otherColumns[i]].GetValueAt(input.RowIndex, default), 
-                                    current.referenceBatch.Columns[i].GetValueAt(current.RowIndex, default));
-
-                                if (compareResult != 0)
-                                {
-                                    // Did not match, add the current to the delete batch
-                                    deleteBatchKeyOffsets.Add(input.RowIndex);
-                                    for (int k = 0; k < _otherColumns.Count; k++)
-                                    {
-                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[_otherColumns[k]].GetValueAt(current.RowIndex, default));
-                                    }
-                                    return (input, GenericWriteOperation.Upsert);
-                                }
-                            }
-                            return (current, GenericWriteOperation.None);
+                            await Upsert(i, columnRef, toEmitOffsets, weights, deleteBatchKeyOffsets, deleteBatchColumns);
                         }
-                        return (input, GenericWriteOperation.Upsert);
-                    });
-
-                    if (operation == GenericWriteOperation.Upsert)
+                        else
+                        {
+                            await Delete(columnRef, deleteBatchKeyOffsets, deleteBatchColumns);
+                        }
+                    }
+                    else
                     {
-                        toEmitOffsets.Add(i);
-                        weights.Add(1);
+                        await Upsert(i, columnRef, toEmitOffsets, weights, deleteBatchKeyOffsets, deleteBatchColumns);
                     }
                 }
                 else
                 {
-                    var (operation, _) = await _tree!.RMW(
-                    in columnRef,
-                    in columnRef,
-                    (input, current, found) =>
-                    {
-                        if (found)
-                        {
-                            deleteBatchKeyOffsets.Add(input.RowIndex);
-                            for (int k = 0; k < _otherColumns.Count; k++)
-                            {
-                                deleteBatchColumns[k].Add(current.referenceBatch.Columns[_otherColumns[k]].GetValueAt(current.RowIndex, default));
-                            }
-                            return (default, GenericWriteOperation.Delete);
-                        }
-                        return (default, GenericWriteOperation.None);
-                    });
+                    await Delete(columnRef, deleteBatchKeyOffsets, deleteBatchColumns);
                 }
+            }
+
+            for (int i = 0; i < toEmitOffsets.Count; i++)
+            {
+                iterations.Add(0);
             }
 
             if (_normalizationRelation.EmitSet)
@@ -178,9 +160,9 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 List<IColumn> columns = new List<IColumn>();
                 for (int i = 0; i < _normalizationRelation.Emit.Count; i++)
                 {
-                    columns.Add(msg.Data.EventBatchData.Columns[_normalizationRelation.Emit[i]]);
+                    columns.Add(new ColumnWithOffset(msg.Data.EventBatchData.Columns[_normalizationRelation.Emit[i]], toEmitOffsets, false));
                 }
-                yield return new StreamEventBatch(new EventBatchWeighted(msg.Data.Weights, msg.Data.Iterations, new EventBatchData(columns)));
+                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
 
                 if (deleteBatchKeyOffsets.Count > 0)
                 {
@@ -217,6 +199,71 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 yield return msg;
             }
             _eventsCounter.Add(msg.Data.Weights.Count);
+        }
+
+        private async Task Delete(ColumnRowReference columnRef, List<int> deleteBatchKeyOffsets, List<IColumn> deleteBatchColumns)
+        {
+            var (operation, _) = await _tree!.RMW(
+                    in columnRef,
+                    in columnRef,
+                    (input, current, found) =>
+                    {
+                        if (found)
+                        {
+                            deleteBatchKeyOffsets.Add(input.RowIndex);
+                            for (int k = 0; k < _otherColumns.Count; k++)
+                            {
+                                deleteBatchColumns[k].Add(current.referenceBatch.Columns[_otherColumns[k]].GetValueAt(current.RowIndex, default));
+                            }
+                            return (default, GenericWriteOperation.Delete);
+                        }
+                        return (default, GenericWriteOperation.None);
+                    });
+        }
+
+        private async Task Upsert(
+            int index,
+            ColumnRowReference columnRef, 
+            List<int> toEmitOffsets, 
+            List<int> weights, 
+            List<int> deleteBatchKeyOffsets, 
+            List<IColumn> deleteBatchColumns)
+        {
+            var (operation, _) = await _tree!.RMW(
+                    in columnRef,
+                    in columnRef,
+                    (input, current, found) =>
+                    {
+                        if (found)
+                        {
+                            // Compare here
+                            for (int i = 0; i < _otherColumns.Count; i++)
+                            {
+                                var compareResult = DataValueComparer.Instance.Compare(
+                                    input.referenceBatch.Columns[_otherColumns[i]].GetValueAt(input.RowIndex, default),
+                                    current.referenceBatch.Columns[i].GetValueAt(current.RowIndex, default));
+
+                                if (compareResult != 0)
+                                {
+                                    // Did not match, add the current to the delete batch
+                                    deleteBatchKeyOffsets.Add(input.RowIndex);
+                                    for (int k = 0; k < _otherColumns.Count; k++)
+                                    {
+                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[_otherColumns[k]].GetValueAt(current.RowIndex, default));
+                                    }
+                                    return (input, GenericWriteOperation.Upsert);
+                                }
+                            }
+                            return (current, GenericWriteOperation.None);
+                        }
+                        return (input, GenericWriteOperation.Upsert);
+                    });
+
+            if (operation == GenericWriteOperation.Upsert)
+            {
+                toEmitOffsets.Add(index);
+                weights.Add(1);
+            }
         }
 
         protected override async Task InitializeOrRestore(NormalizationState? state, IStateManagerClient stateManagerClient)

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using Apache.Arrow.Memory;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Memory;
@@ -39,7 +40,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         private readonly IntList _offsets;
         private readonly List<IDataColumn> _valueColumns;
         private readonly sbyte[] _typeIds;
+        private readonly IMemoryAllocator _memoryAllocator;
         private int _typeCounter;
+        
 
         /// <summary>
         /// Counter that checks how many deletes have happpened.
@@ -52,16 +55,18 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         /// Too out of order will degrade performance since there wont be as many cache hits.
         /// </summary>
         private int outOfOrderCounter;
+        private bool disposedValue;
 
         public int Count => _typeList.Count;
 
         public ArrowTypeId Type => ArrowTypeId.Union;
 
-        public UnionColumn()
+        public UnionColumn(IMemoryAllocator memoryAllocator)
         {
+            _memoryAllocator = memoryAllocator;
             _typeIds = new sbyte[35]; //35 types exist
-            _typeList = new PrimitiveList<sbyte>(new NativeMemoryAllocator());
-            _offsets = new IntList(new NativeMemoryAllocator());
+            _typeList = new PrimitiveList<sbyte>(memoryAllocator);
+            _offsets = new IntList(memoryAllocator);
             _valueColumns = new List<IDataColumn>()
             {
                 new NullColumn()
@@ -70,6 +75,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         internal UnionColumn(List<IDataColumn> columns, IMemoryOwner<byte> typeListMemory, IMemoryOwner<byte> offsetMemory, int count, IMemoryAllocator memoryAllocator)
         {
+            _memoryAllocator = memoryAllocator;
             _valueColumns = columns;
             _typeIds = new sbyte[35]; //35 types exist
             _typeList = new PrimitiveList<sbyte>(typeListMemory, count, memoryAllocator);
@@ -90,28 +96,28 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 switch (type)
                 {
                     case ArrowTypeId.Int64:
-                        _valueColumns.Add(new Int64Column());
+                        _valueColumns.Add(new Int64Column(_memoryAllocator));
                         break;
                     case ArrowTypeId.String:
-                        _valueColumns.Add(new StringColumn());
+                        _valueColumns.Add(new StringColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Boolean:
-                        _valueColumns.Add(new BoolColumn());
+                        _valueColumns.Add(new BoolColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Double:
-                        _valueColumns.Add(new DoubleColumn());
+                        _valueColumns.Add(new DoubleColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.List:
-                        _valueColumns.Add(new ListColumn());
+                        _valueColumns.Add(new ListColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Binary:
-                        _valueColumns.Add(new BinaryColumn());
+                        _valueColumns.Add(new BinaryColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Map:
-                        _valueColumns.Add(new MapColumn());
+                        _valueColumns.Add(new MapColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Decimal128:
-                        _valueColumns.Add(new DecimalColumn());
+                        _valueColumns.Add(new DecimalColumn(_memoryAllocator));
                         break;
                     default:
                         throw new NotImplementedException();
@@ -287,6 +293,32 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             var typeIdsBuffer = new ArrowBuffer(_typeList.Memory);
             var offsetBuffer = new ArrowBuffer(_offsets.Memory);
             return (new DenseUnionArray(unionType, Count, childArrays, typeIdsBuffer, offsetBuffer), unionType);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _typeList.Dispose();
+                    _offsets.Dispose();
+                    foreach (var column in _valueColumns)
+                    {
+                        column.Dispose();
+                    }
+                    _valueColumns.Clear();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

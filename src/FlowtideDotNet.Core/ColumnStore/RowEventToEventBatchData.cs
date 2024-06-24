@@ -12,6 +12,7 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System;
 using System.Collections.Generic;
@@ -173,9 +174,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             List<int> weights = new List<int>();
             List<uint> iterations = new List<uint>();
             List<IColumn> columns = new List<IColumn>();
+            var batchmanager = new BatchMemoryManager(columnCount);
             for (int i = 0; i < columnCount; i++)
             {
-                columns.Add(new Column());
+                columns.Add(new Column(batchmanager));
             }
 
             foreach(var e in rowEvents)

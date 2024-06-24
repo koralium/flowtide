@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
 using System;
@@ -30,9 +31,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             _columnsToStore = columnsToStore;
             List<IColumn> columns = new List<IColumn>();
+            var memoryManager = new BatchMemoryManager(columnsToStore.Count);
             for (int i = 0; i < columnsToStore.Count; i++)
             {
-                columns.Add(new Column());
+                columns.Add(new Column(memoryManager));
             }
             _data = new EventBatchData(columns);
         }

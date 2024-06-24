@@ -50,18 +50,9 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var recordBatch = arrowReader.ReadNextRecordBatch();
 
-            var memoryOwner = (IMemoryOwner<byte>?)_memoryOwnerField.GetValue(recordBatch);
+            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch);
 
-            List<IColumn> columns = new List<IColumn>();
-            var visitor = new ArrowToInternalVisitor(memoryOwner!, new ColumnStore.Memory.BatchMemoryManager(recordBatch.ColumnCount));
-            for (int i = 0; i < recordBatch.ColumnCount; i++)
-            {
-                recordBatch.Column(i).Accept(visitor);
-                columns.Add(visitor.Column!);
-            }
-            visitor.Finish();
-
-            return new ColumnKeyStorageContainer(recordBatch.ColumnCount, new EventBatchData(columns));
+            return new ColumnKeyStorageContainer(recordBatch.ColumnCount, eventBatch);
         }
 
         public void Serialize(in BinaryWriter writer, in ColumnKeyStorageContainer values)

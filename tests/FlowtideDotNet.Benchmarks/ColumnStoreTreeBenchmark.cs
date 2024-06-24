@@ -15,6 +15,7 @@ using FASTER.core;
 using FastSerialization;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Core.Storage;
@@ -42,7 +43,7 @@ namespace FlowtideDotNet.Benchmarks
         //public int CachePageCount;
         private EventBatchData data = new EventBatchData(new List<IColumn>()
         {
-            new Column()
+            new Column(new BatchMemoryManager(1))
         });
 
         private List<RowEvent> rowEvents = new List<RowEvent>();

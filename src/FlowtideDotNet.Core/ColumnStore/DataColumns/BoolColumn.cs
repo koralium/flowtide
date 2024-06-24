@@ -29,10 +29,11 @@ namespace FlowtideDotNet.Core.ColumnStore
     internal class BoolColumn : IDataColumn
     {
         private readonly BitmapList _data;
+        private bool disposedValue;
 
-        public BoolColumn()
+        public BoolColumn(IMemoryAllocator memoryAllocator)
         {
-            _data = new BitmapList(new NativeMemoryAllocator());
+            _data = new BitmapList(memoryAllocator);
         }
 
         public BoolColumn(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
@@ -159,6 +160,26 @@ namespace FlowtideDotNet.Core.ColumnStore
             var valueBuffer = new ArrowBuffer(_data.Memory);
             var arr = new BooleanArray(valueBuffer, nullBuffer, Count, nullCount, 0);
             return (arr, new BooleanType());
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _data.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

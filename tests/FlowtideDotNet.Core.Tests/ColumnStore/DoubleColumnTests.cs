@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,7 +25,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestAddAndGetByIndex()
         {
-            var column = new DoubleColumn();
+            var column = new DoubleColumn(new BatchMemoryManager(1));
             int i1 = column.Add(new DoubleValue(1));
             int i2 = column.Add(new DoubleValue(3));
             int i3 = column.Add(new DoubleValue(2));
@@ -41,7 +42,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestSearchBoundries()
         {
-            var column = new DoubleColumn();
+            var column = new DoubleColumn(new BatchMemoryManager(1));
             column.Add(new DoubleValue(1));
             column.Add(new DoubleValue(2));
             column.Add(new DoubleValue(2));
@@ -70,7 +71,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(~10, start);
             Assert.Equal(~10, end);
 
-            var emptyColumn = new DoubleColumn();
+            var emptyColumn = new DoubleColumn(new BatchMemoryManager(1));
             (start, end) = emptyColumn.SearchBoundries(new DoubleValue(4), 0, -1, default);
             Assert.Equal(~0, start);
             Assert.Equal(~0, end);
@@ -79,7 +80,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestCompareTo()
         {
-            var column = new DoubleColumn();
+            var column = new DoubleColumn(new BatchMemoryManager(1));
             column.Add(new DoubleValue(0));
             column.Add(new DoubleValue(1));
             column.Add(new DoubleValue(2));

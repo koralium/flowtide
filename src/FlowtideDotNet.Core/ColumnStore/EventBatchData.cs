@@ -19,9 +19,10 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public class EventBatchData
+    public class EventBatchData : IDisposable
     {
         private readonly List<IColumn> columns;
+        private bool disposedValue;
 
         public int Count => columns[0].Count;
 
@@ -50,6 +51,33 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
             }
             return 0;
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    foreach(var column in columns)
+                    {
+                        column.Dispose();
+                    }
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        /// <summary>
+        /// Call only if none of the columns should be passed further.
+        /// This calls dispose on all columns.
+        /// </summary>
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

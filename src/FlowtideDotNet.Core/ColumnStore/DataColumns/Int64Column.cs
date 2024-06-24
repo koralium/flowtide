@@ -31,15 +31,15 @@ namespace FlowtideDotNet.Core.ColumnStore
     {
         //private List<long> _data;
         private NativeLongList _data;
+        private bool disposedValue;
 
         public int Count => _data.Count;
 
         public ArrowTypeId Type => ArrowTypeId.Int64;
 
-        public Int64Column()
+        public Int64Column(IMemoryAllocator memoryAllocator)
         {
-            _data = new NativeLongList(new NativeMemoryAllocator());
-            //_data = new List<long>();
+            _data = new NativeLongList(memoryAllocator);
         }
 
         public Int64Column(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
@@ -133,13 +133,36 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 _data.InsertAt(index, 0);
             }
-            _data.InsertAt(index, value.AsLong);
+            else
+            {
+                _data.InsertAt(index, value.AsLong);
+            }
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
             var valueBuffer = new ArrowBuffer(_data.Memory);
             return (new Int64Array(valueBuffer, nullBuffer, _data.Count, nullCount, 0), Int64Type.Default);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _data.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

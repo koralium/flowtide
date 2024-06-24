@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
-    public unsafe class BitmapList : IReadOnlyList<bool>, IEnumerable<bool>
+    public unsafe class BitmapList : IReadOnlyList<bool>, IEnumerable<bool>, IDisposable
     {
         private const int firstBitMask = 1 << 31;
         private const int lastBitMask = int.MinValue;
@@ -106,6 +106,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private void* _data;
         private int _dataLength;
         private IMemoryOwner<byte>? _memoryOwner;
+        private bool disposedValue;
 
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
@@ -340,6 +341,33 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerable().GetEnumerator();
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (_memoryOwner != null)
+                {
+                    _memoryOwner.Dispose();
+                    _memoryOwner = null;
+                    _data = null;
+                }
+                disposedValue = true;
+            }
+        }
+
+        ~BitmapList()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

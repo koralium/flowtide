@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
 using System;
@@ -31,20 +32,29 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             this._columnsToStore = columnsToStore;
             List<IColumn> columns = new List<IColumn>();
+            var memoryManager = new BatchMemoryManager(columnsToStore.Count);
             for (int i = 0; i < columnsToStore.Count; i++)
             {
-                columns.Add(new Column());
+                columns.Add(new Column(memoryManager));
             }
             _data = new EventBatchData(columns);
+        }
+
+        public NormalizeValueStorage(List<int> columnsToStore, EventBatchData data, int length)
+        {
+            _columnsToStore = columnsToStore;
+            _data = data;
+            _length = length;
         }
 
         public int Count => _length;
 
         public void Add(ColumnRowReference key)
         {
+            // Add is only run internally in the tree, so we dont use the columnsToStore
             for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                _data.Columns[i].Add(key.referenceBatch.Columns[_columnsToStore[i]].GetValueAt(key.RowIndex, default));
+                _data.Columns[i].Add(key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
             }
             _length++;
         }
