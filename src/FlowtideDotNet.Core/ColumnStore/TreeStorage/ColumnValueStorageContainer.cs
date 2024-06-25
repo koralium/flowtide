@@ -68,6 +68,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             }
         }
 
+        public void Dispose()
+        {
+            _data.Dispose();
+        }
+
         public ColumnRowReference Get(int index)
         {
             return new ColumnRowReference()

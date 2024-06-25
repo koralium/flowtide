@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tree
 {
-    public interface IKeyContainer<K>
+    public interface IKeyContainer<K> : IDisposable
     {
         int BinarySearch(K key, IComparer<K> comparer);
 

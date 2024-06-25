@@ -51,6 +51,10 @@ namespace FlowtideDotNet.Storage.Tree
             return _list.BinarySearch(key, comparer);
         }
 
+        public void Dispose()
+        {
+        }
+
         public K Get(in int index)
         {
             return _list[index];

@@ -12,7 +12,7 @@
 
 namespace FlowtideDotNet.Storage.Tree
 {
-    public interface IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> : IAsyncEnumerable<IBPlusTreePageIterator<K, V>>
+    public interface IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> : IAsyncEnumerable<IBPlusTreePageIterator<K, V>>, IDisposable
         where TKeyContainer: IKeyContainer<K>
         where TValueContainer: IValueContainer<V>
     {

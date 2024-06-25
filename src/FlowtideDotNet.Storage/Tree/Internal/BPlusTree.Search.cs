@@ -66,6 +66,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 index = ~index;
             }
             var child = node.children[index];
+            node.Return();
             var childNode = await m_stateClient.GetValue(child, "SearchLeafNodeForReadInternal");
             return await SearchLeafNodeForRead_AfterTask(key, childNode, searchComparer);
         }

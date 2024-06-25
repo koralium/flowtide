@@ -117,5 +117,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 _data.Columns[i].UpdateAt(index, value.referenceBatch.Columns[_columnsToStore[i]].GetValueAt(value.RowIndex, default));
             }
         }
+
+        public void Dispose()
+        {
+            _data.Dispose();
+        }
     }
 }

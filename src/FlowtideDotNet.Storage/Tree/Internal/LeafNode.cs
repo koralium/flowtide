@@ -93,5 +93,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             return Task.CompletedTask;
         }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                values.Dispose();
+            }
+            base.Dispose(disposing);
+        }
     }
 }

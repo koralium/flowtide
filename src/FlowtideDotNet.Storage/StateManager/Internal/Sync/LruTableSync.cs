@@ -137,6 +137,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     node.ValueRef.removed = true;
                     if (cache.TryRemove(key, out _))
                     {
+                        node.ValueRef.value.Return();
                         Interlocked.Decrement(ref m_count);
                     }
                     lock (m_nodes)
@@ -218,6 +219,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         cacheObject = default;
                         return false;
+                    }
+                    if (!node.ValueRef.value.TryRent())
+                    {
+                        throw new InvalidOperationException("Could not rent value from cache");
                     }
                     node.ValueRef.useCount = Math.Min(node.ValueRef.useCount + 1, 5);
                     cacheObject = node.ValueRef.value;
@@ -409,6 +414,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             val.Item1.ValueRef.removed = true;
                             if (cache.TryRemove(val.Item1.ValueRef.key, out _))
                             {
+                                val.Item1.ValueRef.value.Return();
                                 Interlocked.Decrement(ref m_count);
                             }
 

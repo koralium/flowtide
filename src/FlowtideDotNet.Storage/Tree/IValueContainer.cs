@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tree
 {
-    public interface IValueContainer<V>
+    public interface IValueContainer<V> : IDisposable
     {
         void Insert(int index, V value);
 

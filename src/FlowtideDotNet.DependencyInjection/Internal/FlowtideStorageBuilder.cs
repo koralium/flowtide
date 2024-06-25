@@ -82,7 +82,8 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 UseReadCache = UseReadCache,
                 TemporaryStorageOptions = fileCacheOptions,
                 MaxProcessMemory = MaxProcessMemory.Value,
-                MinCachePageCount = MinPageCount
+                MinCachePageCount = MinPageCount,
+                CachePageCount = 1000
             };
         }
     }

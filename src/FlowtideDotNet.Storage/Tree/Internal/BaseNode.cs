@@ -10,22 +10,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal abstract class BaseNode<K, TKeyContainer> : IBPlusTreeNode
+    internal abstract class BaseNode<K, TKeyContainer> : IBPlusTreeNode, IDisposable
         where TKeyContainer: IKeyContainer<K>
     {
         public TKeyContainer keys;
+        private int _rentCount;
+        private bool disposedValue;
 
         public BaseNode(long id, TKeyContainer container)
         {
             keys = container;
             Id = id;
+            // Rent counter always starts at 1.
+            _rentCount = 1;
         }
 
         public long Id { get; }
+
+        public int RentCount => Thread.VolatileRead(ref _rentCount);
 
         public void EnterWriteLock()
         {
@@ -40,5 +47,71 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public abstract Task Print(StringBuilder stringBuilder, Func<long, ValueTask<BaseNode<K, TKeyContainer>>> lookupFunc);
 
         public abstract Task PrintNextPointers(StringBuilder stringBuilder);
+
+#if DEBUG_MEMORY
+        private string lastRentLocation;
+        private List<string> lastReturnLocation = new List<string>();
+#endif
+
+        public bool TryRent()
+        {
+            var localRentCount = Thread.VolatileRead(ref _rentCount);
+            if (localRentCount == 0)
+            {
+                return false;
+            }
+            int incrementedValue;
+            // Run a loop to try and add the new value, if compare exchange fails, add to the new returned value + 1, if 0 return false
+            do
+            {
+                incrementedValue = localRentCount;
+                localRentCount = Interlocked.CompareExchange(ref _rentCount, incrementedValue + 1, localRentCount);
+                if (localRentCount == 0)
+                {
+                    return false;
+                }
+            } while (localRentCount != incrementedValue);
+
+#if DEBUG_MEMORY
+            if (localRentCount == 1)
+            {
+                lastRentLocation = Environment.StackTrace;
+            }
+            else
+            {
+
+            }
+#endif
+
+            return true;
+        }
+
+        public void Return()
+        {
+            var val = Interlocked.Decrement(ref _rentCount);
+            if (val == 0)
+            {
+                Dispose();
+            }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    keys.Dispose();
+                }
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
     }
 }

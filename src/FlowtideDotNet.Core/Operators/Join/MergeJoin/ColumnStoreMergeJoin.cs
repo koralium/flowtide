@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)
         {
             Debug.Assert(_eventsCounter != null);
-            var it = _rightTree!.CreateIterator();
+            using var it = _rightTree!.CreateIterator();
             List<Column> rightColumns = new List<Column>();
             List<int> foundOffsets = new List<int>();
             List<int> weights = new List<int>();
@@ -284,7 +284,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveRight(StreamEventBatch msg, long time)
         {
             Debug.Assert(_eventsCounter != null);
-            var it = _leftTree!.CreateIterator();
+            using var it = _leftTree!.CreateIterator();
             List<Column> leftColumns = new List<Column>();
             List<int> foundOffsets = new List<int>();
             List<int> weights = new List<int>();

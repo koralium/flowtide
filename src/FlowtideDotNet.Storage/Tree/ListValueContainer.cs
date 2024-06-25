@@ -41,6 +41,10 @@ namespace FlowtideDotNet.Storage.Tree
             }
         }
 
+        public void Dispose()
+        {
+        }
+
         public V Get(int index)
         {
             return _values[index];

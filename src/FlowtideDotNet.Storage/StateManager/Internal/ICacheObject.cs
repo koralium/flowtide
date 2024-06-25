@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Runtime.CompilerServices;
+
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
     public interface ICacheObject
@@ -17,5 +19,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         void EnterWriteLock();
 
         void ExitWriteLock();
+
+        /// <summary>
+        /// Try and rent the object, returns true if successful.
+        /// If false, the object is no longer in the cache.
+        /// </summary>
+        /// <returns></returns>
+        bool TryRent();
+
+        void Return();
+
+        int RentCount { get; }
     }
 }

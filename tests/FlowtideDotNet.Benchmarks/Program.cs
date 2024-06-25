@@ -24,8 +24,8 @@ int bitMask = 1 << 32;
 //columnStoreTreeBenchmark.IterationSetup();
 //await columnStoreTreeBenchmark.ColumnarInsertInOrder();
 
-StreamBenchmark streamBenchmark = new StreamBenchmark();
-streamBenchmark.IterationSetup();
-await streamBenchmark.LeftJoin();
+//StreamBenchmark streamBenchmark = new StreamBenchmark();
+//streamBenchmark.IterationSetup();
+//await streamBenchmark.LeftJoin();
 
-//var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

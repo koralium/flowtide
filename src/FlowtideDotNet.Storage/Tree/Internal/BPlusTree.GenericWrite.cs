@@ -93,6 +93,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                     if (isFull)
                     {
+                        rootNode.Return();
                         return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                     }
                 }
@@ -102,9 +103,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                     if (isFull)
                     {
+                        rootNode.Return();
                         return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                     }
                 }
+                rootNode.Return();
                 return ValueTask.FromResult(result);
             }
             else if (rootNode is InternalNode<K, V, TKeyContainer> internalNode)
@@ -153,6 +156,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 if (isFull)
                 {
+                    internalNode.Return();
                     return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
@@ -160,6 +164,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 m_stateClient.Metadata.Root = internalNode.children[0];
                 m_stateClient.Delete(internalNode.Id);
+            }
+            else
+            {
+                internalNode.Return();
             }
             return ValueTask.FromResult(result);
         }
@@ -228,6 +236,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                     if (isFull)
                     {
+                        leafNode.Return();
                         return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                     }
                 }
@@ -267,9 +276,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                     if (isFull)
                     {
+                        leafNode.Return();
                         return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                     }
                 }
+                leafNode.Return();
                 return ValueTask.FromResult(result);
             }
             else if (child is InternalNode<K, V, TKeyContainer> internalNode)
@@ -316,6 +327,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 if (isFull)
                 {
+                    internalNode.Return();
                     return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
@@ -346,6 +358,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     return GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_AfterGetRight(rightNode, internalNode, parentNode, index, result);
                 }
             }
+            internalNode.Return();
             return ValueTask.FromResult(result);
         }
 
@@ -386,6 +399,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 if (isFull)
                 {
+                    rightNode.Return();
+                    internalNode.Return();
                     return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
@@ -406,9 +421,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 if (isFull)
                 {
+                    rightNode.Return();
+                    internalNode.Return();
                     return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
+            rightNode.Return();
+            internalNode.Return();
             return ValueTask.FromResult(result);
         }
 
@@ -449,6 +468,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 if (isFull)
                 {
+                    rightNode.Return();
+                    leafNode.Return();
                     return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
@@ -468,9 +489,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 if (isFull)
                 {
+                    rightNode.Return();
+                    leafNode.Return();
                     return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
+            rightNode.Return();
+            leafNode.Return();
             return ValueTask.FromResult(result);
         }
 
@@ -511,6 +536,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 isFull |= m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
                 isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
 
+                leafNode.Return();
+                leftNode.Return();
                 if (isFull)
                 {
                     return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
@@ -530,6 +557,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var isFull = false;
                 isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
                 isFull |= m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
+
+                leftNode.Return();
 
                 if (isFull)
                 {
@@ -577,6 +606,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 if (isFull)
                 {
+                    leftNode.Return();
+                    internalNode.Return();
                     return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
@@ -599,9 +630,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 if (isFull)
                 {
+                    leftNode.Return();
+                    internalNode.Return();
                     return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                 }
             }
+            leftNode.Return();
+            internalNode.Return();
             return ValueTask.FromResult(result);
         }
 

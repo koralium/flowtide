@@ -142,6 +142,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         m_fileCacheVersion.Remove(kv.Key, out _);
                         m_fileCache.Free(kv.Key);
                     }
+                    val.Return();
                     continue;
                 }
                 {
@@ -222,6 +223,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     var bytes = m_fileCache.Read(key);
                     var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
                     stateManager.AddOrUpdate(key, value, this);
+                    if (!value.TryRent())
+                    {
+                        throw new InvalidOperationException("Could not rent value when fetched from storage.");
+                    }
                     m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
                     return ValueTask.FromResult<V?>(value);
                 }

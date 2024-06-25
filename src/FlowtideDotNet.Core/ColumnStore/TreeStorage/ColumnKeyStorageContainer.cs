@@ -73,6 +73,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             throw new NotImplementedException();
         }
 
+        public void Dispose()
+        {
+            _data.Dispose();
+        }
+
         public ColumnRowReference Get(in int index)
         {
             return new ColumnRowReference()

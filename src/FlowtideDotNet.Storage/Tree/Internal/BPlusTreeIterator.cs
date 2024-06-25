@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         internal class Enumerator : IAsyncEnumerator<IBPlusTreePageIterator<K, V>>
         {
             private readonly BPlusTree<K, V, TKeyContainer, TValueContainer> tree;
-            private LeafNode<K, V, TKeyContainer, TValueContainer>? leafNode;
+            internal LeafNode<K, V, TKeyContainer, TValueContainer>? leafNode;
             private int index;
             private bool started;
 
@@ -32,6 +32,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             public void Reset(LeafNode<K, V, TKeyContainer, TValueContainer>? leafNode, int index)
             {
+                if (this.leafNode != null)
+                {
+                    this.leafNode.Return();
+                }
                 this.leafNode = leafNode;
                 this.index = index;
                 this.started = false;
@@ -65,6 +69,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
                     return MoveNextAsync_Slow(getNextPageTask);
                 }
+                leafNode.Return();
                 leafNode = (getNextPageTask.Result as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
                 index = 0;
                 return ValueTask.FromResult(true);
@@ -73,6 +78,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             private async ValueTask<bool> MoveNextAsync_Slow(ValueTask<IBPlusTreeNode?> getPageTask)
             {
                 var page = await getPageTask;
+                leafNode!.Return();
                 leafNode = (page as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
                 index = 0;
                 return true;
@@ -97,6 +103,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public ValueTask Seek(in K key, in IBplusTreeComparer<K, TKeyContainer>? searchComparer = null)
         {
+            if (enumerator.leafNode != null)
+            {
+                // Return previous rented node
+                enumerator.leafNode.Return();
+                enumerator.leafNode = null;
+            }
             var comparer = searchComparer == null ? tree.m_keyComparer : searchComparer;
             var searchTask = tree.SearchRoot(key, comparer);
             if (!searchTask.IsCompleted)
@@ -125,6 +137,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             index = i;
             if (index >= leafNode.keys.Count && leafNode.next == 0)
             {
+                leafNode.Return();
                 leafNode = null;
             }
             enumerator.Reset(leafNode, index);
@@ -135,6 +148,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             leafNode = await tree.LeftLeaf();
             index = 0;
             enumerator.Reset(leafNode, index);
+        }
+
+        public void Dispose()
+        {
+            if (enumerator.leafNode != null)
+            {
+                enumerator.leafNode.Return();
+                enumerator.leafNode = null;
+            }
         }
     }
 }

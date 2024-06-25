@@ -126,5 +126,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 _data.Columns[i].InsertAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
             }
         }
+
+        public void Dispose()
+        {
+            _data.Dispose();
+        }
     }
 }
