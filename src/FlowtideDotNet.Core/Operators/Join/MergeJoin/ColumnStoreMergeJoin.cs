@@ -272,7 +272,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
                 await outputWriter.FlushAsync();
 #endif
-                _eventsCounter.Add(outputBatch.Events.Count);
+                _eventsCounter.Add(outputBatch.Data.Weights.Count);
                 yield return outputBatch;
             }
             else
@@ -425,7 +425,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
 
-                _eventsCounter.Add(outputBatch.Events.Count);
+                _eventsCounter.Add(outputBatch.Data.Weights.Count);
 #if DEBUG_WRITE
                 foreach (var o in outputBatch.Events)
                 {
@@ -470,7 +470,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             allInput.Flush();
 #endif
             Debug.Assert(_eventsProcessed != null, nameof(_eventsProcessed));
-            _eventsProcessed.Add(msg.Events.Count);
+            _eventsProcessed.Add(msg.Data.Weights.Count);
             if (targetId == 0)
             {
                 return OnRecieveLeft(msg, time);

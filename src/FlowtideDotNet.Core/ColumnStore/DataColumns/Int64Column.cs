@@ -39,12 +39,13 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public Int64Column(IMemoryAllocator memoryAllocator)
         {
-            _data = new NativeLongList(memoryAllocator);
+            _data = NativeLongListFactory.Get(memoryAllocator);// new NativeLongList(memoryAllocator);
         }
 
         public Int64Column(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _data = new NativeLongList(memory, length, memoryAllocator);
+            _data = NativeLongListFactory.Get(memory, length, memoryAllocator);
+            //_data = new NativeLongList(memory, length, memoryAllocator);
         }
 
         public int Add<T>(in T value) where T: IDataValue
@@ -163,6 +164,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
+        {
+            return ArrowTypeId.Int64;
         }
     }
 }

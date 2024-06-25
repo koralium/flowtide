@@ -93,5 +93,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             // Not required for null column
         }
+
+        public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
+        {
+            return ArrowTypeId.Null;
+        }
     }
 }

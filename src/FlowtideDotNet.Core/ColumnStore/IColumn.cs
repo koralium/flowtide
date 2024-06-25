@@ -40,6 +40,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void RemoveAt(in int index);
 
+        ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child);
+
         IDataValue GetValueAt(in int index, in ReferenceSegment? child);
 
         void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child);

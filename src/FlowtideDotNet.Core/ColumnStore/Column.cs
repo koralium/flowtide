@@ -322,6 +322,20 @@ namespace FlowtideDotNet.Core.ColumnStore
             return _dataColumn!.GetValueAt(index, child);
         }
 
+        public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
+        {
+            if (_type == ArrowTypeId.Union)
+            {
+                return _dataColumn!.GetTypeAt(index, child);
+            }
+            if (_nullCounter > 0 &&
+            !_validityList.Get(index))
+            {
+                return ArrowTypeId.Null;
+            }
+            return _type;
+        }
+
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             if (_nullCounter > 0 &&

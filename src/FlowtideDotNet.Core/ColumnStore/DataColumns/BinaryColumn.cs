@@ -143,5 +143,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+
+        public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
+        {
+            return ArrowTypeId.Binary;
+        }
     }
 }

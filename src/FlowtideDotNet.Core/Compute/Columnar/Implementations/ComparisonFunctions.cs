@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using Substrait.Protobuf;
 using System;
 using System.Collections.Generic;
@@ -49,6 +50,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Implementations
                 result._type = ArrowTypeId.Boolean;
             }
 
+            public IDataValue DoSomethingMultiTypeReturn<T1, T2>(ref readonly T1 x, ref readonly T2 y)
+            {
+                return NullValue.Instance;
+            }
+
             // This skips the container and takes in its value type instead, and a flag if the value is null
             // This could be more performant than the container since the container is on the heap.
             // It is possible that the value is not in the cache.
@@ -62,18 +68,19 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Implementations
             }
 
             // Returns a value as a ref readonly, could also be perfomant.
-            public static ref readonly BoolValue EqualsImplementation<T1, T2>(ref readonly T1 x, ref readonly T2 y)
+            public static ref readonly BoolValue EqualsImplementation<T1, T2>(ref readonly T1 x, ref readonly T2 y, out bool isNull)
                 where T1 : IDataValue
                 where T2 : IDataValue
             {
+                isNull = false;
                 return ref BoolValue.True;
             }
 
-            private static void Test()
-            {
-                var val1 = new Int64Value(1);
-                ref readonly var boolVal = ref EqualsImplementation(ref val1, ref val1);
-            }
+            //private static void Test()
+            //{
+            //    var val1 = new Int64Value(1);
+            //    ref readonly var boolVal = ref EqualsImplementation(ref val1, ref val1);
+            //}
         }
 
         public static void EqualsImplementation<T1, T2>(ref readonly T1 x, ref readonly T2 y, ref readonly DataValueContainer result)

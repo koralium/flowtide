@@ -71,6 +71,16 @@ namespace FlowtideDotNet.Core.ColumnStore
             innerColumn.Dispose();
         }
 
+        public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
+        {
+            var offset = offsets[index];
+            if (includeNullValueAtEnd && offset == innerColumn.Count)
+            {
+                return ArrowTypeId.Null;
+            }
+            return innerColumn.GetTypeAt(offset, child);
+        }
+
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             var offset = offsets[index];

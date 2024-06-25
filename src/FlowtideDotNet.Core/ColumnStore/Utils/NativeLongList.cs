@@ -36,15 +36,51 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private int _dataLength;
         private int _length;
         private bool _disposedValue;
-        private readonly IMemoryAllocator _memoryAllocator;
+        private IMemoryAllocator? _memoryAllocator;
         private IMemoryOwner<byte>? _memoryOwner;
         private MemoryHandle? _memoryHandle;
+
+#if DEBUG_MEMORY
+        private string _stackTraceAlloc;
+#endif
+
+        public NativeLongList()
+        {
+        }
+
+        public void Assign(IMemoryAllocator memoryAllocator)
+        {
+            _data = null;
+            _longData = null;
+            _dataLength = 0;
+            _length = 0;
+            _memoryOwner = null;
+            _disposedValue = false;
+            _memoryHandle = default;
+            _memoryAllocator = memoryAllocator;
+        }
+
+        public void Assign(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        {
+            _memoryOwner = memory;
+            _memoryHandle = _memoryOwner.Memory.Pin();
+            _data = _memoryHandle.Value.Pointer;
+            _longData = (long*)_data;
+            _dataLength = memory.Memory.Length / sizeof(long);
+            _length = length;
+            _memoryAllocator = memoryAllocator;
+            _disposedValue = false;
+        }
 
         public NativeLongList(IMemoryAllocator memoryAllocator)
         {
             _data = null;
             _longData = null;
             _memoryAllocator = memoryAllocator;
+
+#if DEBUG_MEMORY
+            _stackTraceAlloc = Environment.StackTrace;
+#endif
         }
 
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
@@ -58,6 +94,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _dataLength = memory.Memory.Length / sizeof(long);
             _length = length;
             _memoryAllocator = memoryAllocator;
+#if DEBUG_MEMORY
+            _stackTraceAlloc = Environment.StackTrace;
+#endif
         }
 
         public NativeLongList(ReadOnlyMemory<byte> memory, int length, IMemoryAllocator memoryAllocator)
@@ -69,6 +108,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _dataLength = memory.Length / sizeof(long);
             _length = length;
             _memoryAllocator = memoryAllocator;
+#if DEBUG_MEMORY
+            _stackTraceAlloc = Environment.StackTrace;
+#endif
         }
 
         private void EnsureCapacity(int length)
@@ -232,12 +274,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _memoryHandle.Value.Dispose();
                     _memoryHandle = null;
                 }
-                
+
                 _disposedValue = true;
+
+                if (disposing)
+                {
+                    NativeLongListFactory.Return(this);
+                }
             }
         }
 
-        ~NativeLongList()
+        ~NativeLongList()   
         {
             Dispose(disposing: false);
         }

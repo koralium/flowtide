@@ -12,6 +12,8 @@
 
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Operators.Read;
@@ -68,25 +70,34 @@ namespace SqlSampleWithUI
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
+            
             for (int i = 0; i < 1_000_00; i++)
             {
                 await output.EnterCheckpointLock();
+                List<IColumn> columns = new List<IColumn>();
+                List<int> weights = new List<int>();
+                List<uint> iterations = new List<uint>();
 
-                List<RowEvent> o = new List<RowEvent>();
+                var memoryManager = new BatchMemoryManager(1);
+                for (int b = 0; b < 16; b++)
+                {
+                    columns.Add(new Column(memoryManager));
+                }
+
                 for (int k = 0; k < 100; k++)
                 {
-                    o.Add(RowEvent.Create(1, 0, b =>
+                    weights.Add(1);
+                    iterations.Add(0);
+                    for (int z = 0; z < 16; z++)
                     {
-                        for (int z = 0; z < 16; z++)
-                        {
-                            b.Add((i * 100) + k);
-                        }
-                    }));
+                        columns[z].Add(new Int64Value((i * 100) + k));
+                    }
                 }
-                await output.SendAsync(new StreamEventBatch(o));
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 output.ExitCheckpointLock();
-                ScheduleCheckpoint(TimeSpan.FromSeconds(1));
+                
             }
+            ScheduleCheckpoint(TimeSpan.FromSeconds(1));
         }
     }
 }

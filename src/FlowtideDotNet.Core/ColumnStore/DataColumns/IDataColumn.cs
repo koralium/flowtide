@@ -52,5 +52,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             where T : IDataValue;
 
         (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount);
+
+        ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child);
     }
 }
