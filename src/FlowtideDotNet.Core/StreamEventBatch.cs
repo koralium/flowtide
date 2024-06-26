@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.ColumnStore;
 
 namespace FlowtideDotNet.Core
@@ -19,7 +20,7 @@ namespace FlowtideDotNet.Core
     /// A schema describes the name of the columns that is used for all events in this batch.
     /// The schema does not contain the data type in the column, since that can differ between events.
     /// </summary>
-    public class StreamEventBatch
+    public class StreamEventBatch : IRentable
     {
         //public IReadOnlyList<RowEvent> Events { get; }
 
@@ -40,6 +41,22 @@ namespace FlowtideDotNet.Core
                 columnCount = events[0].RowData.Length;
             }
             Data = RowEventToEventBatchData.ConvertToEventBatchData(events, columnCount);
+        }
+
+        public void Rent()
+        {
+            for (int i = 0; i < Data.EventBatchData.Columns.Count; i++)
+            {
+                Data.EventBatchData.Columns[i].Rent();
+            }
+        }
+
+        public void Return()
+        {
+            for (int i = 0; i < Data.EventBatchData.Columns.Count; i++)
+            {
+                Data.EventBatchData.Columns[i].Return();
+            }
         }
     }
 }

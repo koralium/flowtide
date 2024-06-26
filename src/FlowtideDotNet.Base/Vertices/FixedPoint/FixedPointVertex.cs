@@ -214,28 +214,57 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                     if (r.Key == 0)
                     {
                         var enumerator = OnIngressRecieve(streamMessage.Data, streamMessage.Time);
-                        return new AsyncEnumerableDowncast<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(enumerator, (source) =>
+                        if (streamMessage.Data is IRentable rentable)
                         {
-                            if (source.Value.Data is IRentable rentable)
+                            return new AsyncEnumerableReturnRentable<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(rentable, enumerator, (source) =>
                             {
-                                rentable.Rent();
-                            }
-                            return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
-                        });
+                                if (source.Value.Data is IRentable rentable)
+                                {
+                                    rentable.Rent();
+                                }
+                                return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
+                            });
+                        }
+                        else
+                        {
+                            return new AsyncEnumerableDowncast<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(enumerator, (source) =>
+                            {
+                                if (source.Value.Data is IRentable rentable)
+                                {
+                                    rentable.Rent();
+                                }
+                                return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
+                            });
+                        }
                     }
                     // Recieve from feedback
                     if (r.Key == 1)
                     {
                         _messageCountSinceLockingEventPrepare++;
                         var enumerator = OnFeedbackRecieve(streamMessage.Data, streamMessage.Time);
-                        return new AsyncEnumerableDowncast<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(enumerator, (source) =>
+
+                        if (streamMessage.Data is IRentable rentable)
                         {
-                            if (source.Value.Data is IRentable rentable)
+                            return new AsyncEnumerableReturnRentable<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(rentable, enumerator, (source) =>
                             {
-                                rentable.Rent();
-                            }
-                            return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
-                        });
+                                if (source.Value.Data is IRentable rentable)
+                                {
+                                    rentable.Rent();
+                                }
+                                return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
+                            });
+                        }
+                        else
+                        {
+                            return new AsyncEnumerableDowncast<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(enumerator, (source) =>
+                            {
+                                if (source.Value.Data is IRentable rentable)
+                                {
+                                    rentable.Rent();
+                                }
+                                return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
+                            });
+                        }
                     }
                 }
                 if (r.Value is Watermark watermark)

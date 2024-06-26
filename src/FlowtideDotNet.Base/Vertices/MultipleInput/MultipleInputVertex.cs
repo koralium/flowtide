@@ -114,13 +114,27 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 if (r.Value is StreamMessage<T> streamMessage)
                 {
                     var enumerator = OnRecieve(r.Key, streamMessage.Data, streamMessage.Time);
-                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
-                        if (source is IRentable rentable)
-                        {
-                            rentable.Rent();
-                        }
-                        return new StreamMessage<T>(source, streamMessage.Time);
-                    });
+
+                    if (streamMessage.Data is IRentable rentable)
+                    {
+                        return new AsyncEnumerableReturnRentable<T, IStreamEvent>(rentable, enumerator, (source) => {
+                            if (source is IRentable rentable)
+                            {
+                                rentable.Rent();
+                            }
+                            return new StreamMessage<T>(source, streamMessage.Time);
+                        });
+                    }
+                    else
+                    {
+                        return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
+                            if (source is IRentable rentable)
+                            {
+                                rentable.Rent();
+                            }
+                            return new StreamMessage<T>(source, streamMessage.Time);
+                        });
+                    }
                 }
                 if (r.Value is Watermark watermark)
                 {

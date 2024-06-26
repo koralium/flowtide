@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Utils;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -54,6 +55,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly Process _currentProcess;
         private readonly CancellationTokenSource m_cleanupTokenSource;
         private readonly LruTableOptions lruTableOptions;
+
+        // AddOrUpdate remove boxing hacks
+        private readonly Func<long, AddOrUpdateContainer, LinkedListNode<LinkedListValue>> _addOrUpdate_newValue_func;
+        private readonly Func<long, LinkedListNode<LinkedListValue>, AddOrUpdateContainer, LinkedListNode<LinkedListValue>> _addOrUpdate_existingValue_func;
 
         public LruTableSync(LruTableOptions lruTableOptions)
         {
@@ -116,6 +121,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 return new Measurement<long>(hits + misses, new KeyValuePair<string, object?>("stream", m_streamName));
             });
             this.lruTableOptions = lruTableOptions;
+            _addOrUpdate_newValue_func = AddOrUpdate_NewValue;
+            _addOrUpdate_existingValue_func = AddOrUpdate_ExistingValue;
         }
 
         public void Clear()
@@ -243,6 +250,58 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             logger.LruTableNoLongerFull(m_streamName);
         }
 
+        #region AddOrUpdate remove boxing hacks
+        private struct AddOrUpdateContainer
+        {
+            public ICacheObject value;
+            public ILruEvictHandler evictHandler;
+
+            public AddOrUpdateContainer(ICacheObject value, ILruEvictHandler evictHandler)
+            {
+                this.value = value;
+                this.evictHandler = evictHandler;
+            }
+        }
+
+        private LinkedListNode<LinkedListValue> AddOrUpdate_NewValue(long key, AddOrUpdateContainer container)
+        {
+            var newNode = new LinkedListNode<LinkedListValue>(new LinkedListValue()
+            {
+                key = key,
+                value = container.value,
+                evictHandler = container.evictHandler,
+                useCount = 0
+            });
+
+            lock (m_nodes)
+            {
+                m_nodes.AddLast(newNode);
+            }
+
+            // Add to count
+            Interlocked.Increment(ref m_count);
+
+            return newNode;
+        }
+
+        private LinkedListNode<LinkedListValue> AddOrUpdate_ExistingValue(long key, LinkedListNode<LinkedListValue> old, AddOrUpdateContainer container)
+        {
+            lock (old)
+            {
+                if (container.value.Equals(old.ValueRef.value))
+                {
+                    old.ValueRef.version = old.ValueRef.version + 1;
+                    return old;
+                }
+                else
+                {
+                    throw new InvalidOperationException("Cannot add a new value to the cache with the same key.");
+                }
+            }
+        }
+
+        #endregion
+
         public bool Add(long key, ICacheObject value, ILruEvictHandler evictHandler)
         {
             bool full = false;
@@ -250,40 +309,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 full = true;
             }
-            cache.AddOrUpdate(key, (key) =>
-            {
-                var newNode = new LinkedListNode<LinkedListValue>(new LinkedListValue()
-                {
-                    key = key,
-                    value = value,
-                    evictHandler = evictHandler,
-                    useCount = 0
-                });
-
-                lock (m_nodes)
-                {
-                    m_nodes.AddLast(newNode);
-                }
-
-                // Add to count
-                Interlocked.Increment(ref m_count);
-
-                return newNode;
-            }, (key, old) =>
-            {
-                lock (old)
-                {
-                    if (value.Equals(old.ValueRef.value))
-                    {
-                        old.ValueRef.version = old.ValueRef.version + 1;
-                        return old;
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Cannot add a new value to the cache with the same key.");
-                    }
-                }
-            });
+            cache.AddOrUpdate(key, _addOrUpdate_newValue_func, _addOrUpdate_existingValue_func, new AddOrUpdateContainer(value, evictHandler));
 
             return full;
         }

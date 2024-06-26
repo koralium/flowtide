@@ -481,6 +481,16 @@ namespace FlowtideDotNet.Core.ColumnStore
             Interlocked.Increment(ref _rentCounter);
         }
 
+        public void Return()
+        {
+            var result = Interlocked.Decrement(ref _rentCounter);
+
+            if (result <= 0)
+            {
+                Dispose();
+            }
+        }
+
         ~Column()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
@@ -489,13 +499,9 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void Dispose()
         {
-            var result = Interlocked.Decrement(ref _rentCounter);
-            if (result <= 0)
-            {
-                // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-                Dispose(disposing: true);
-                GC.SuppressFinalize(this);
-            }
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -236,7 +236,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         rightColumns[z].Add(NullValue.Instance);
                     }
                 }
-                await _leftTree!.RMW(in columnReference, new JoinStorageValue() { Weight = weight, JoinWeight = joinWeight }, (input, current, found) =>
+                await _leftTree!.RMWNoResult(in columnReference, new JoinStorageValue() { Weight = weight, JoinWeight = joinWeight }, (input, current, found) =>
                 {
                     if (found)
                     {
@@ -277,7 +277,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
             else
             {
-                msg.Data.EventBatchData.Dispose();
+                for (int i = 0; i < rightColumns.Count; i++)
+                {
+                    rightColumns[i].Dispose();
+                }
             }
         }
 
@@ -396,7 +399,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         }
                     }
                 }
-                await _rightTree!.RMW(in columnReference, new JoinStorageValue() { Weight = weight, JoinWeight = joinWeight }, (input, current, found) =>
+                await _rightTree!.RMWNoResult(in columnReference, new JoinStorageValue() { Weight = weight, JoinWeight = joinWeight }, (input, current, found) =>
                 {
                     if (found)
                     {
@@ -438,7 +441,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
             else
             {
-                msg.Data.EventBatchData.Dispose();
+                for (int i = 0; i < leftColumns.Count; i++)
+                {
+                    leftColumns[i].Dispose();
+                }
             }
         }
 

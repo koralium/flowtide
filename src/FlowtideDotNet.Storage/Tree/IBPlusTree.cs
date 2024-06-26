@@ -35,6 +35,8 @@ namespace FlowtideDotNet.Storage.Tree
 
         ValueTask Delete(in K key);
 
+        ValueTask<GenericWriteOperation> RMWNoResult(in K key, in V? value, in GenericWriteFunction<V> function);
+
         ValueTask<(GenericWriteOperation operation, V? result)> RMW(in K key, in V? value, in GenericWriteFunction<V> function);
 
         ValueTask<(bool found, V? value)> GetValue(in K key);

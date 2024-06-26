@@ -101,13 +101,27 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 if (streamEvent is StreamMessage<T> streamMessage)
                 {
                     var enumerator = OnRecieve(streamMessage.Data, streamMessage.Time);
-                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
-                        if (source is IRentable rentable)
-                        {
-                            rentable.Rent();
-                        }
-                        return new StreamMessage<T>(source, streamMessage.Time);
-                    });
+
+                    if (streamMessage.Data is IRentable inputRentable)
+                    {
+                        return new AsyncEnumerableReturnRentable<T, IStreamEvent>(inputRentable, enumerator, (source) => {
+                            if (source is IRentable rentable)
+                            {
+                                rentable.Rent();
+                            }
+                            return new StreamMessage<T>(source, streamMessage.Time);
+                        });
+                    }
+                    else
+                    {
+                        return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
+                            if (source is IRentable rentable)
+                            {
+                                rentable.Rent();
+                            }
+                            return new StreamMessage<T>(source, streamMessage.Time);
+                        });
+                    }
                 }
                 if (streamEvent is Watermark watermark)
                 {

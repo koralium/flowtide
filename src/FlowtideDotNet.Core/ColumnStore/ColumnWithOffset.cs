@@ -112,6 +112,16 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotSupportedException("Column with offset does not support RemoveAt.");
         }
 
+        public void Rent()
+        {
+            innerColumn.Rent();
+        }
+
+        public void Return()
+        {
+            innerColumn.Return();
+        }
+
         public (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
         {
             throw new NotSupportedException("Column with offset does not SearchBoundries.");
