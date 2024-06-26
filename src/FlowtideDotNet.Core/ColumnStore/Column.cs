@@ -53,6 +53,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// </summary>
         private ArrowTypeId _type = ArrowTypeId.Null;
         private bool disposedValue;
+        private int _rentCounter;
 
         public Column(IMemoryAllocator memoryAllocator)
         {
@@ -475,6 +476,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
+        public void Rent()
+        {
+            Interlocked.Increment(ref _rentCounter);
+        }
+
         ~Column()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
@@ -483,9 +489,13 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            var result = Interlocked.Decrement(ref _rentCounter);
+            if (result <= 0)
+            {
+                // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+                Dispose(disposing: true);
+                GC.SuppressFinalize(this);
+            }
         }
     }
 }

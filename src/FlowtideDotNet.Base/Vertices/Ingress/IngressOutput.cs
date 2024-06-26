@@ -32,6 +32,10 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         public Task SendAsync(T data)
         {
+            if (data is IRentable rentable)
+            {
+                rentable.Rent();
+            }
             if (_inLock)
             {
                 return _targetBlock.SendAsync(new StreamMessage<T>(data, _ingressState._currentTime), CancellationToken);

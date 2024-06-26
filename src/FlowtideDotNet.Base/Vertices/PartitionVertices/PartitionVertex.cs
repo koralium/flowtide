@@ -89,7 +89,14 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 if (x is StreamMessage<T> message)
                 {
                     var enumerator = PartitionData(message.Data, message.Time);
-                    return new AsyncEnumerableDowncast<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(enumerator, (source) => new KeyValuePair<int, IStreamEvent>(source.Key, source.Value));
+                    return new AsyncEnumerableDowncast<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(enumerator, (source) =>
+                    {
+                        if (source.Value.Data is IRentable rentable)
+                        {
+                            rentable.Rent();
+                        }
+                        return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
+                    });
                 }
                 if (x is TriggerEvent triggerEvent)
                 {

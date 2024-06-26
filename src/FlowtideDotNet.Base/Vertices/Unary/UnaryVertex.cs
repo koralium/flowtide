@@ -89,12 +89,25 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 {
                     var enumerator = OnTrigger(triggerEvent.Name, triggerEvent.State);
                     // Inject data into the stream from the trigger
-                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => new StreamMessage<T>(source, _currentTime));
+                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => 
+                    {
+                        if (source is IRentable rentable)
+                        {
+                            rentable.Rent();
+                        }
+                        return new StreamMessage<T>(source, _currentTime);
+                    });
                 }
                 if (streamEvent is StreamMessage<T> streamMessage)
                 {
                     var enumerator = OnRecieve(streamMessage.Data, streamMessage.Time);
-                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => new StreamMessage<T>(source, streamMessage.Time));
+                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
+                        if (source is IRentable rentable)
+                        {
+                            rentable.Rent();
+                        }
+                        return new StreamMessage<T>(source, streamMessage.Time);
+                    });
                 }
                 if (streamEvent is Watermark watermark)
                 {
@@ -139,6 +152,10 @@ namespace FlowtideDotNet.Base.Vertices.Unary
         {
             await foreach (var e in OnWatermark(watermark))
             {
+                if (e is IRentable rentable)
+                {
+                    rentable.Rent();
+                }
                 yield return new StreamMessage<T>(e, _currentTime);
             }
             yield return watermark;
