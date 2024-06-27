@@ -29,10 +29,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         public ColumnKeyStorageContainer(int columnCount)
         {
             List<IColumn> columns = new List<IColumn>();
-            var batchMemoryManager = new BatchMemoryManager(columnCount);
+            var memoryManager = GlobalMemoryManager.Instance; //new BatchMemoryManager(columnCount);
             for (int i = 0; i < columnCount; i++)
             {
-                columns.Add(new Column(batchMemoryManager));
+                columns.Add(new Column(memoryManager));
             }
             _data = new EventBatchData(columns);
             this.columnCount = columnCount;

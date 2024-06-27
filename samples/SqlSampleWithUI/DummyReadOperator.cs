@@ -75,7 +75,7 @@ namespace SqlSampleWithUI
             for (int i = 0; i < 1_000_000; i++)
             {
                 await output.EnterCheckpointLock();
-                var memoryManager = new BatchMemoryManager(1);
+                var memoryManager = GlobalMemoryManager.Instance; // new BatchMemoryManager(1);
                 List<IColumn> columns = new List<IColumn>();
                 PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
                 PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);

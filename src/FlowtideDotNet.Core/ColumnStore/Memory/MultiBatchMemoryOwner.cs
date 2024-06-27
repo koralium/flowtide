@@ -23,38 +23,38 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
     /// Class used to create memory owners where each owner is a part of a larger memory block.
     /// The root memory is only freed when all the owners are disposed.
     /// </summary>
-    internal unsafe class MultiBatchMemoryOwner : MemoryManager<byte>
-    {
-        private readonly BatchMemoryManager _batchMemoryManager;
-        private readonly void* _rootPtr;
-        private readonly void* _ptr;
-        private readonly int _length;
+    //internal unsafe class MultiBatchMemoryOwner : MemoryManager<byte>
+    //{
+    //    private readonly BatchMemoryManager _batchMemoryManager;
+    //    private readonly void* _rootPtr;
+    //    private readonly void* _ptr;
+    //    private readonly int _length;
 
-        public MultiBatchMemoryOwner(BatchMemoryManager batchMemoryManager, void* rootPtr, void* ptr, int length)
-        {
-            this._batchMemoryManager = batchMemoryManager;
-            this._rootPtr = rootPtr;
-            this._ptr = ptr;
-            this._length = length;
-        }
+    //    public MultiBatchMemoryOwner(BatchMemoryManager batchMemoryManager, void* rootPtr, void* ptr, int length)
+    //    {
+    //        this._batchMemoryManager = batchMemoryManager;
+    //        this._rootPtr = rootPtr;
+    //        this._ptr = ptr;
+    //        this._length = length;
+    //    }
 
-        public override Span<byte> GetSpan()
-        {
-            return new Span<byte>(_ptr, _length);
-        }
+    //    public override Span<byte> GetSpan()
+    //    {
+    //        return new Span<byte>(_ptr, _length);
+    //    }
 
-        public override MemoryHandle Pin(int elementIndex = 0)
-        {
-            return new MemoryHandle(_ptr, default, default);
-        }
+    //    public override MemoryHandle Pin(int elementIndex = 0)
+    //    {
+    //        return new MemoryHandle(_ptr, default, default);
+    //    }
 
-        public override void Unpin()
-        {
-        }
+    //    public override void Unpin()
+    //    {
+    //    }
 
-        protected override void Dispose(bool disposing)
-        {
-            _batchMemoryManager.Free(_rootPtr);
-        }
-    }
+    //    protected override void Dispose(bool disposing)
+    //    {
+    //        _batchMemoryManager.Free(_rootPtr);
+    //    }
+    //}
 }

@@ -55,6 +55,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
 
+        private IBPlusTreeIterator<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _leftIterator;
+        private IBPlusTreeIterator<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _rightIterator;
 
         // To be deprecated when functions also work with column store
         protected readonly Func<RowEvent, RowEvent, bool>? _postCondition;
@@ -149,8 +151,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)
         {
             Debug.Assert(_eventsCounter != null);
-            var memoryManager = new BatchMemoryManager(_rightOutputColumns.Count);
-            using var it = _rightTree!.CreateIterator();
+            Debug.Assert(_rightIterator != null);
+            var memoryManager = GlobalMemoryManager.Instance; //new BatchMemoryManager(_rightOutputColumns.Count);
+            //using var it = _rightTree!.CreateIterator();
             List<Column> rightColumns = new List<Column>();
             PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager);
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
@@ -176,14 +179,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     RowIndex = i
                 };
 
-                await it.Seek(in columnReference, _searchRightComparer);
+                await _rightIterator.Seek(in columnReference, _searchRightComparer);
                 int weight = msg.Data.Weights[i];
                 int joinWeight = 0;
                 if (!_searchRightComparer.noMatch)
                 {
                     bool firstPage = true;
                     
-                    await foreach(var page in it)
+                    await foreach(var page in _rightIterator)
                     {
                         var pageKeyStorage = page.Keys as ColumnKeyStorageContainer;
                         if (!firstPage)
@@ -295,13 +298,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 weights.Dispose();
                 iterations.Dispose();
             }
+            _rightIterator.Reset();
         }
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveRight(StreamEventBatch msg, long time)
         {
             Debug.Assert(_eventsCounter != null);
-            var memoryManager = new BatchMemoryManager(_leftOutputColumns.Count);
-            using var it = _leftTree!.CreateIterator();
+            Debug.Assert(_leftIterator != null);
+            var memoryManager = GlobalMemoryManager.Instance; //new BatchMemoryManager(_leftOutputColumns.Count);
+            //using var it = _leftTree!.CreateIterator();
             List<Column> leftColumns = new List<Column>();
             PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager);
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
@@ -320,7 +325,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     RowIndex = i
                 };
 
-                await it.Seek(in columnReference, _searchLeftComparer);
+                await _leftIterator.Seek(in columnReference, _searchLeftComparer);
 
                 int weight = msg.Data.Weights[i];
                 int joinWeight = 0;
@@ -329,7 +334,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 
                     bool firstPage = true;
                     
-                    await foreach (var page in it)
+                    await foreach (var page in _leftIterator)
                     {
                         bool pageUpdated = false;
                         var pageKeyStorage = page.Keys as ColumnKeyStorageContainer;
@@ -438,6 +443,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 weights.Dispose();
                 iterations.Dispose();
             }
+            _leftIterator.Reset();
         }
 
         // This method exist since its not possible to get by ref in an async method.
@@ -586,6 +592,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Right.OutputLength),
                     ValueSerializer = new JoinWeightsSerializer()
                 });
+
+            _leftIterator = _leftTree.CreateIterator();
+            _rightIterator = _rightTree.CreateIterator();
         }
     }
 }

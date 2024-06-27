@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             var length = reader.ReadInt32();
             var memory = reader.ReadBytes(length);
 
-            var memoryAllocator = new BatchMemoryManager(1);
+            var memoryAllocator = GlobalMemoryManager.Instance; //new BatchMemoryManager(1);
             var nativeMemory = memoryAllocator.Allocate(length, 64);
 
             memory.CopyTo(nativeMemory.Memory.Span);

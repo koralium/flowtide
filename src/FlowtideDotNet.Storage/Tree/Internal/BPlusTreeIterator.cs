@@ -158,5 +158,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 enumerator.leafNode = null;
             }
         }
+
+        public void Reset()
+        {
+            if (enumerator.leafNode != null)
+            {
+                enumerator.leafNode.Return();
+                enumerator.leafNode = null;
+            }
+        }
     }
 }

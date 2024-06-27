@@ -49,7 +49,8 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         IArrowArrayVisitor<FixedSizeBinaryArray>
     {
         private readonly IMemoryOwner<byte> recordBatchMemoryOwner;
-        private readonly BatchMemoryManager batchMemoryManager;
+        //private readonly BatchMemoryManager batchMemoryManager;
+        private readonly PreAllocatedMemoryManager preAllocatedMemoryManager;
         private readonly void* _rootPtr;
         private int _rootUsageCount;
 
@@ -69,9 +70,9 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 BitmapList? bitmapList = _bitmapList;
                 if (bitmapList == null)
                 {
-                    bitmapList = new BitmapList(batchMemoryManager);
+                    bitmapList = new BitmapList(preAllocatedMemoryManager);
                 }
-                return new Column(_nullCount, _dataColumn, bitmapList, _typeId, batchMemoryManager);
+                return new Column(_nullCount, _dataColumn, bitmapList, _typeId, preAllocatedMemoryManager);
             }
         }
 
@@ -80,7 +81,8 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         public ArrowToInternalVisitor(IMemoryOwner<byte> recordBatchMemoryOwner, BatchMemoryManager batchMemoryManager)
         {
             this.recordBatchMemoryOwner = recordBatchMemoryOwner;
-            this.batchMemoryManager = batchMemoryManager;
+            //this.batchMemoryManager = batchMemoryManager;
+            preAllocatedMemoryManager = new PreAllocatedMemoryManager();
             _rootPtr = recordBatchMemoryOwner.Memory.Pin().Pointer;
         }
 
@@ -88,14 +90,15 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             var memoryHandle = buffer.Memory.Pin();
             _rootUsageCount++;
-            IMemoryOwner<byte> bitmapMemoryOwner = new MultiBatchMemoryOwner(batchMemoryManager, _rootPtr, memoryHandle.Pointer, buffer.Memory.Length);
+            IMemoryOwner<byte> bitmapMemoryOwner = new PreAllocatedMemoryOwner(preAllocatedMemoryManager, memoryHandle.Pointer, buffer.Memory.Length); //new PreAllocatedMemoryOwner(batchMemoryManager, _rootPtr, memoryHandle.Pointer, buffer.Memory.Length);
             memoryHandle.Dispose();
             return bitmapMemoryOwner;
         }
 
         public void Finish()
         {
-            batchMemoryManager.AddUsedMemory(new nint(_rootPtr), recordBatchMemoryOwner, _rootUsageCount);
+            preAllocatedMemoryManager.Initialize(recordBatchMemoryOwner, _rootUsageCount);
+            //batchMemoryManager.AddUsedMemory(new nint(_rootPtr), recordBatchMemoryOwner, _rootUsageCount);
         }
 
         public void Visit(Int64Array array)
@@ -104,14 +107,14 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
                 _bitmapList = null;
             }
 
-            Int64Column int64Column = new Int64Column(GetMemoryOwner(array.ValueBuffer), array.Length, batchMemoryManager);
+            Int64Column int64Column = new Int64Column(GetMemoryOwner(array.ValueBuffer), array.Length, preAllocatedMemoryManager);
             _dataColumn = int64Column;
             _typeId = ArrowTypeId.Int64;
         }
@@ -128,7 +131,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -137,7 +140,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
             var offsetMemoryOwner = GetMemoryOwner(array.ValueOffsetsBuffer);
             var dataMemoryOwner = GetMemoryOwner(array.ValueBuffer);
-            var stringColumn = new StringColumn(offsetMemoryOwner, array.ValueOffsets.Length, dataMemoryOwner, batchMemoryManager);
+            var stringColumn = new StringColumn(offsetMemoryOwner, array.ValueOffsets.Length, dataMemoryOwner, preAllocatedMemoryManager);
 
             _dataColumn = stringColumn;
             _typeId = ArrowTypeId.String;
@@ -161,7 +164,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -170,7 +173,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
             var offsetMemoryOwner = GetMemoryOwner(array.ValueOffsetsBuffer);
 
-            _dataColumn = new ListColumn(column, offsetMemoryOwner, array.ValueOffsets.Length, batchMemoryManager);
+            _dataColumn = new ListColumn(column, offsetMemoryOwner, array.ValueOffsets.Length, preAllocatedMemoryManager);
             _typeId = ArrowTypeId.List;
         }
 
@@ -195,7 +198,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 columns.Add(_dataColumn ?? throw new InvalidOperationException("Internal column is null"));
             }
 
-            _dataColumn = new UnionColumn(columns, typeMemory, offsetMemory, array.Length, batchMemoryManager);
+            _dataColumn = new UnionColumn(columns, typeMemory, offsetMemory, array.Length, preAllocatedMemoryManager);
             _typeId = ArrowTypeId.Union;
         }
 
@@ -235,7 +238,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -244,7 +247,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
             var offsetMemoryOwner = GetMemoryOwner(array.ValueOffsetsBuffer);
             
-            _dataColumn = new MapColumn(keyColumn!, valueColumn!, offsetMemoryOwner, array.ValueOffsets.Length, batchMemoryManager);
+            _dataColumn = new MapColumn(keyColumn!, valueColumn!, offsetMemoryOwner, array.ValueOffsets.Length, preAllocatedMemoryManager);
             _typeId = ArrowTypeId.Map;
         }
 
@@ -254,7 +257,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -262,7 +265,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             }
 
             var valueMemoryOwner = GetMemoryOwner(array.ValueBuffer);
-            _dataColumn = new BoolColumn(valueMemoryOwner, array.Length, batchMemoryManager);
+            _dataColumn = new BoolColumn(valueMemoryOwner, array.Length, preAllocatedMemoryManager);
             _typeId = ArrowTypeId.Boolean;
         }
 
@@ -272,7 +275,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -280,7 +283,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             }
 
             var valueBuffer = GetMemoryOwner(array.ValueBuffer);
-            _dataColumn = new DoubleColumn(valueBuffer, array.Length, batchMemoryManager);
+            _dataColumn = new DoubleColumn(valueBuffer, array.Length, preAllocatedMemoryManager);
             _typeId = ArrowTypeId.Double;
         }
 
@@ -290,7 +293,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -299,7 +302,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             var offsetBuffer = GetMemoryOwner(array.ValueOffsetsBuffer);
             var dataBuffer = GetMemoryOwner(array.ValueBuffer);
 
-            _dataColumn = new BinaryColumn(offsetBuffer, array.ValueOffsets.Length, dataBuffer, batchMemoryManager);
+            _dataColumn = new BinaryColumn(offsetBuffer, array.ValueOffsets.Length, dataBuffer, preAllocatedMemoryManager);
             _typeId = ArrowTypeId.Binary;
         }
 
@@ -309,7 +312,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, batchMemoryManager);
+                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -323,7 +326,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 {
                     case FloatingPointDecimalType.ExtensionName:
                         var dataMemory = GetMemoryOwner(array.ValueBuffer);
-                        _dataColumn = new DecimalColumn(dataMemory, array.Length, batchMemoryManager);
+                        _dataColumn = new DecimalColumn(dataMemory, array.Length, preAllocatedMemoryManager);
                         _typeId = ArrowTypeId.Decimal128;
                         break;
                     default:

@@ -29,5 +29,11 @@ namespace FlowtideDotNet.Storage.Tree
         /// <param name="searchComparer">A custom comparer seperate from the key comparer.</param>
         /// <returns></returns>
         ValueTask Seek(in K key, in IBplusTreeComparer<K, TKeyContainer>? searchComparer = null);
+
+        /// <summary>
+        /// Resets the iterator and frees any pages.
+        /// This method allows using the same iterator over a longer course of time.
+        /// </summary>
+        void Reset();
     }
 }

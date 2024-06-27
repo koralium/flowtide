@@ -30,8 +30,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public JoinWeightsValueContainer()
         {
-            var batchMemory = new BatchMemoryManager(1);
-            _values = new PrimitiveList<JoinWeights>(batchMemory);
+            _values = new PrimitiveList<JoinWeights>(GlobalMemoryManager.Instance);
         }
 
         public JoinWeightsValueContainer(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
@@ -45,7 +44,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             for (int i = start; i < start + count; i++)
             {
-                _values.Add(container.GetRef(i));
+                _values.Add(container.Get(i));
             }
         }
 
