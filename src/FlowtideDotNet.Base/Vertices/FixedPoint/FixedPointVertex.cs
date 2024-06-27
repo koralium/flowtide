@@ -220,7 +220,14 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                             {
                                 if (source.Value.Data is IRentable rentable)
                                 {
-                                    rentable.Rent();
+                                    if (source.Key == 0)
+                                    {
+                                        rentable.Rent(_egressSource.LinksCount);
+                                    }
+                                    else
+                                    {
+                                        rentable.Rent(_loopSource.LinksCount);
+                                    }
                                 }
                                 return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
                             });
@@ -231,7 +238,14 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                             {
                                 if (source.Value.Data is IRentable rentable)
                                 {
-                                    rentable.Rent();
+                                    if (source.Key == 0)
+                                    {
+                                        rentable.Rent(_egressSource.LinksCount);
+                                    }
+                                    else
+                                    {
+                                        rentable.Rent(_loopSource.LinksCount);
+                                    }
                                 }
                                 return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
                             });
@@ -249,7 +263,14 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                             {
                                 if (source.Value.Data is IRentable rentable)
                                 {
-                                    rentable.Rent();
+                                    if (source.Key == 0)
+                                    {
+                                        rentable.Rent(_egressSource.LinksCount);
+                                    }
+                                    else
+                                    {
+                                        rentable.Rent(_loopSource.LinksCount);
+                                    }
                                 }
                                 return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
                             });
@@ -260,7 +281,14 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                             {
                                 if (source.Value.Data is IRentable rentable)
                                 {
-                                    rentable.Rent();
+                                    if (source.Key == 0)
+                                    {
+                                        rentable.Rent(_egressSource.LinksCount);
+                                    }
+                                    else
+                                    {
+                                        rentable.Rent(_loopSource.LinksCount);
+                                    }
                                 }
                                 return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
                             });

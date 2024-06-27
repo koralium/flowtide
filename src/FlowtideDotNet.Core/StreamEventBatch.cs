@@ -43,11 +43,11 @@ namespace FlowtideDotNet.Core
             Data = RowEventToEventBatchData.ConvertToEventBatchData(events, columnCount);
         }
 
-        public void Rent()
+        public void Rent(int count)
         {
             for (int i = 0; i < Data.EventBatchData.Columns.Count; i++)
             {
-                Data.EventBatchData.Columns[i].Rent();
+                Data.EventBatchData.Columns[i].Rent(count);
             }
         }
 

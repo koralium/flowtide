@@ -13,15 +13,20 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Base
+namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
-    public interface IRentable
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct JoinWeights
     {
-        void Rent(int count);
+        public int weight;
 
-        void Return();
+        /// <summary>
+        /// The weight of the combined left and right side if a join is found.
+        /// </summary>
+        public int joinWeight;
     }
 }

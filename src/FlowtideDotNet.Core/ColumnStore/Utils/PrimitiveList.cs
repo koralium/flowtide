@@ -50,6 +50,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
+        public Memory<byte> SlicedMemory => _memoryOwner?.Memory.Slice(0, _length * sizeof(T)) ?? new Memory<byte>();
+
         public PrimitiveList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)
         {
             _data = data;
@@ -129,6 +131,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             var span = AccessSpan;
             return span[index];
+        }
+
+        public ref T GetRef(scoped in int index)
+        {
+            var span = AccessSpan;
+            return ref span[index];
         }
 
         public void Update(in int index, in T value)

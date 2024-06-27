@@ -476,9 +476,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public void Rent()
+        public void Rent(int count)
         {
-            Interlocked.Increment(ref _rentCounter);
+            Interlocked.Add(ref _rentCounter, count);
         }
 
         public void Return()

@@ -112,9 +112,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotSupportedException("Column with offset does not support RemoveAt.");
         }
 
-        public void Rent()
+        public void Rent(int count)
         {
-            innerColumn.Rent();
+            innerColumn.Rent(count);
         }
 
         public void Return()

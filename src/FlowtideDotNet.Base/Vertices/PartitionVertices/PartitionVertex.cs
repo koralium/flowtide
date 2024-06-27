@@ -96,7 +96,8 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                         {
                             if (source.Value.Data is IRentable rentable)
                             {
-                                rentable.Rent();
+                                
+                                rentable.Rent(_sources[source.Key].LinksCount);
                             }
                             return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
                         });
@@ -107,7 +108,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                         {
                             if (source.Value.Data is IRentable rentable)
                             {
-                                rentable.Rent();
+                                rentable.Rent(_sources[source.Key].LinksCount);
                             }
                             return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
                         });

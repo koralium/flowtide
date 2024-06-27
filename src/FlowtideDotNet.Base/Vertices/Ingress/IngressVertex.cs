@@ -35,6 +35,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public CancellationTokenSource? _tokenSource;
         public IMeter? _metrics;
         public bool _taskEnabled = false;
+        public int _linkCount;
     }
 
     public abstract class IngressVertex<TData, TState> : ISourceBlock<IStreamEvent>, IStreamIngressVertex
@@ -78,6 +79,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 _ingressState = new IngressState<TData>();
                 _ingressState._checkpointLock = new SemaphoreSlim(1, 1);
                 _ingressState._block = new BufferBlock<IStreamEvent>(options);
+                _ingressState._linkCount = _links.Count;
 
                 ISourceBlock<IStreamEvent> source = _ingressState._block;
                 

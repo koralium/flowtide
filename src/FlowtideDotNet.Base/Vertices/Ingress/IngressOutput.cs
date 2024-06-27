@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         {
             if (data is IRentable rentable)
             {
-                rentable.Rent();
+                rentable.Rent(_ingressState._linkCount);
             }
             if (_inLock)
             {

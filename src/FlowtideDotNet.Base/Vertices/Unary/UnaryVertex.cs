@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                     {
                         if (source is IRentable rentable)
                         {
-                            rentable.Rent();
+                            rentable.Rent(_links.Count);
                         }
                         return new StreamMessage<T>(source, _currentTime);
                     });
@@ -107,7 +107,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                         return new AsyncEnumerableReturnRentable<T, IStreamEvent>(inputRentable, enumerator, (source) => {
                             if (source is IRentable rentable)
                             {
-                                rentable.Rent();
+                                rentable.Rent(_links.Count);
                             }
                             return new StreamMessage<T>(source, streamMessage.Time);
                         });
@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                         return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
                             if (source is IRentable rentable)
                             {
-                                rentable.Rent();
+                                rentable.Rent(_links.Count);
                             }
                             return new StreamMessage<T>(source, streamMessage.Time);
                         });
@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
             {
                 if (e is IRentable rentable)
                 {
-                    rentable.Rent();
+                    rentable.Rent(_links.Count);
                 }
                 yield return new StreamMessage<T>(e, _currentTime);
             }

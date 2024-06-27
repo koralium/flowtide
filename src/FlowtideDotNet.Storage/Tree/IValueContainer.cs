@@ -30,6 +30,8 @@ namespace FlowtideDotNet.Storage.Tree
 
         V Get(int index);
 
+        ref V GetRef(int index);
+
         void AddRangeFrom(IValueContainer<V> container, int start, int count);
 
         void RemoveRange(int start, int count);

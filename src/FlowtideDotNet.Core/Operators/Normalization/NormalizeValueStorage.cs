@@ -122,5 +122,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             _data.Dispose();
         }
+
+        public ref ColumnRowReference GetRef(int index)
+        {
+            throw new NotImplementedException("Get by ref is not supported");
+        }
     }
 }

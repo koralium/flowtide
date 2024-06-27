@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         (IArrowArray, IArrowType) ToArrowArray();
 
-        void Rent();
+        void Rent(int count);
 
         void Return();
     }

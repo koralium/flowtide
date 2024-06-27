@@ -13,6 +13,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -48,6 +49,11 @@ namespace FlowtideDotNet.Storage.Tree
         public V Get(int index)
         {
             return _values[index];
+        }
+
+        public ref V GetRef(int index)
+        {
+            return ref CollectionsMarshal.AsSpan(_values)[index];
         }
 
         public void Insert(int index, V value)

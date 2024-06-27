@@ -21,8 +21,19 @@ using SqlSampleWithUI;
 using FlowtideDotNet.DependencyInjection;
 using FlowtideDotNet.Core.Sources.Generic;
 using FlowtideDotNet.Core.ColumnStore.Memory;
+using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(builder =>
+    {
+        builder.AddPrometheusExporter(o =>
+        {
+
+        });
+        builder.AddMeter("flowtide.*");
+    });
 
 var sqlText = @"
 CREATE TABLE testtable (
@@ -49,7 +60,7 @@ builder.Services.AddFlowtideStream("test")
 .AddStorage(b =>
 {
     b.AddTemporaryDevelopmentStorage();
-    b.MaxProcessMemory = 256 * 1024 * 1024;
+    b.MaxProcessMemory = 6L * 1024 * 1024 * 1024;
     b.MinPageCount = 0;
 });
 
@@ -65,8 +76,9 @@ app.UseCors(b =>
 });
 
 app.UseHealthChecks("/health");
-
+app.UseOpenTelemetryPrometheusScrapingEndpoint();
 app.UseFlowtideUI("/");
+
 
 app.Run();
 //await app.StartAsync();

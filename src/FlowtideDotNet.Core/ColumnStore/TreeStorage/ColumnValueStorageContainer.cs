@@ -82,6 +82,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             };
         }
 
+        public ref ColumnRowReference GetRef(int index)
+        {
+            throw new NotImplementedException("Getting by ref in column value storage is not supported");
+        }
+
         public void Insert(int index, ColumnRowReference key)
         {
             for (int i = 0; i < columnCount; i++)
