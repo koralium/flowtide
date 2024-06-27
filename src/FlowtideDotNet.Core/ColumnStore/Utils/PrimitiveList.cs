@@ -23,7 +23,7 @@ using System.Collections;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
-    internal unsafe class PrimitiveList<T> : IDisposable, IReadOnlyList<T>
+    public unsafe class PrimitiveList<T> : IDisposable, IReadOnlyList<T>
         where T: unmanaged
     {
         private void* _data;
@@ -32,6 +32,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private bool _disposedValue;
         private readonly IMemoryAllocator _memoryAllocator;
         private IMemoryOwner<byte>? _memoryOwner;
+        private int _rentCounter;
 
         public PrimitiveList(IMemoryAllocator memoryAllocator)
         {
@@ -200,6 +201,20 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerable().GetEnumerator();
+        }
+
+        public void Rent(int count)
+        {
+            Interlocked.Add(ref _rentCounter, count);
+        }
+
+        public void Return()
+        {
+            var result = Interlocked.Decrement(ref _rentCounter);
+            if (result <= 0)
+            {
+                Dispose();
+            }
         }
     }
 }

@@ -14,6 +14,7 @@ using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -171,10 +172,11 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public static EventBatchWeighted ConvertToEventBatchData(List<RowEvent> rowEvents, int columnCount)
         {
-            List<int> weights = new List<int>();
-            List<uint> iterations = new List<uint>();
-            List<IColumn> columns = new List<IColumn>();
             var batchmanager = new BatchMemoryManager(columnCount);
+            PrimitiveList<int> weights = new PrimitiveList<int>(batchmanager);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(batchmanager);
+            List<IColumn> columns = new List<IColumn>();
+            
             for (int i = 0; i < columnCount; i++)
             {
                 columns.Add(new Column(batchmanager));

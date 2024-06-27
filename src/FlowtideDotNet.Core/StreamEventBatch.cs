@@ -45,18 +45,12 @@ namespace FlowtideDotNet.Core
 
         public void Rent(int count)
         {
-            for (int i = 0; i < Data.EventBatchData.Columns.Count; i++)
-            {
-                Data.EventBatchData.Columns[i].Rent(count);
-            }
+            Data.Rent(count);
         }
 
         public void Return()
         {
-            for (int i = 0; i < Data.EventBatchData.Columns.Count; i++)
-            {
-                Data.EventBatchData.Columns[i].Return();
-            }
+            Data.Return();
         }
     }
 }

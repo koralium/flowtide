@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Utils;
@@ -105,13 +106,15 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             Debug.Assert(_eventsProcessed != null);
             Debug.Assert(_eventsCounter != null);
 
-            List<int> toEmitOffsets = new List<int>();
-            List<int> weights = new List<int>();
-            List<uint> iterations = new List<uint>();
-
-            List<int> deleteBatchKeyOffsets = new List<int>();
-            List<IColumn> deleteBatchColumns = new List<IColumn>();
             var otherColumnsMemoryManager = new BatchMemoryManager(_otherColumns.Count);
+
+            PrimitiveList<int> toEmitOffsets = new PrimitiveList<int>(otherColumnsMemoryManager);
+            PrimitiveList<int> weights = new PrimitiveList<int>(otherColumnsMemoryManager);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(otherColumnsMemoryManager);
+
+            PrimitiveList<int> deleteBatchKeyOffsets = new PrimitiveList<int>(otherColumnsMemoryManager);
+            List<IColumn> deleteBatchColumns = new List<IColumn>();
+            
             for (int i = 0; i < _otherColumns.Count; i++)
             {
                 deleteBatchColumns.Add(new Column(otherColumnsMemoryManager));
@@ -166,8 +169,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
                 if (deleteBatchKeyOffsets.Count > 0)
                 {
-                    List<int> deleteWeights = new List<int>();
-                    List<uint> deleteIterations = new List<uint>();
+                    PrimitiveList<int> deleteWeights = new PrimitiveList<int>(otherColumnsMemoryManager);
+                    PrimitiveList<uint> deleteIterations = new PrimitiveList<uint>(otherColumnsMemoryManager);
 
                     for (int i = 0; i < deleteBatchKeyOffsets.Count; i++)
                     {
@@ -193,6 +196,13 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
                     yield return new StreamEventBatch(new EventBatchWeighted(deleteWeights, deleteIterations, new EventBatchData(deleteColumns)));
                 }
+                else
+                {
+                    for (int i = 0; i < deleteBatchColumns.Count; i++)
+                    {
+                        deleteBatchColumns[i].Dispose();
+                    }
+                }
             }
             else
             {
@@ -201,7 +211,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             _eventsCounter.Add(msg.Data.Weights.Count);
         }
 
-        private async Task Delete(ColumnRowReference columnRef, List<int> deleteBatchKeyOffsets, List<IColumn> deleteBatchColumns)
+        private async Task Delete(ColumnRowReference columnRef, PrimitiveList<int> deleteBatchKeyOffsets, List<IColumn> deleteBatchColumns)
         {
             var (operation, _) = await _tree!.RMW(
                     in columnRef,
@@ -223,10 +233,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         private async Task Upsert(
             int index,
-            ColumnRowReference columnRef, 
-            List<int> toEmitOffsets, 
-            List<int> weights, 
-            List<int> deleteBatchKeyOffsets, 
+            ColumnRowReference columnRef,
+            PrimitiveList<int> toEmitOffsets, 
+            PrimitiveList<int> weights,
+            PrimitiveList<int> deleteBatchKeyOffsets, 
             List<IColumn> deleteBatchColumns)
         {
             var (operation, _) = await _tree!.RMW(

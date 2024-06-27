@@ -33,6 +33,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -148,13 +149,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)
         {
             Debug.Assert(_eventsCounter != null);
+            var memoryManager = new BatchMemoryManager(_rightOutputColumns.Count);
             using var it = _rightTree!.CreateIterator();
             List<Column> rightColumns = new List<Column>();
-            List<int> foundOffsets = new List<int>();
-            List<int> weights = new List<int>();
-            List<uint> iterations = new List<uint>();
+            PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager);
+            PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
-            var memoryManager = new BatchMemoryManager(_rightOutputColumns.Count);
+            
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
                 rightColumns.Add(new Column(memoryManager)); 
@@ -255,10 +257,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             if (foundOffsets.Count > 0)
             {
                 List<IColumn> outputColumns = new List<IColumn>();
-                for (int i = 0; i < _leftOutputColumns.Count; i++)
+                if (_leftOutputColumns.Count > 0)
                 {
-                    outputColumns.Add(new ColumnWithOffset(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, true));
+                    for (int i = 0; i < _leftOutputColumns.Count; i++)
+                    {
+                        outputColumns.Add(new ColumnWithOffset(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, true));
+                    }
                 }
+                else
+                {
+                    foundOffsets.Dispose();
+                }
+                
                 for (int i = 0; i < rightColumns.Count; i++)
                 {
                     outputColumns.Add(rightColumns[i]);
@@ -281,19 +291,23 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 {
                     rightColumns[i].Dispose();
                 }
+                foundOffsets.Dispose();
+                weights.Dispose();
+                iterations.Dispose();
             }
         }
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveRight(StreamEventBatch msg, long time)
         {
             Debug.Assert(_eventsCounter != null);
+            var memoryManager = new BatchMemoryManager(_leftOutputColumns.Count);
             using var it = _leftTree!.CreateIterator();
             List<Column> leftColumns = new List<Column>();
-            List<int> foundOffsets = new List<int>();
-            List<int> weights = new List<int>();
-            List<uint> iterations = new List<uint>();
+            PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager);
+            PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
-            var memoryManager = new BatchMemoryManager(_leftOutputColumns.Count);
+            
             for (int i = 0; i < _leftOutputColumns.Count; i++)
             {
                 leftColumns.Add(new Column(memoryManager));
@@ -388,10 +402,19 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 {
                     outputColumns.Add(leftColumns[i]);
                 }
-                for (int i = 0; i < _rightOutputColumns.Count; i++)
+                if (_rightOutputColumns.Count > 0)
                 {
-                    outputColumns.Add(new ColumnWithOffset(msg.Data.EventBatchData.Columns[_rightOutputColumns[i]], foundOffsets, true));
+                    for (int i = 0; i < _rightOutputColumns.Count; i++)
+                    {
+                        outputColumns.Add(new ColumnWithOffset(msg.Data.EventBatchData.Columns[_rightOutputColumns[i]], foundOffsets, true));
+                    }
                 }
+                else
+                {
+                    // Dipsose offsets since it was not required
+                    foundOffsets.Dispose();
+                }
+                
                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
 
                 _eventsCounter.Add(outputBatch.Data.Weights.Count);
@@ -411,6 +434,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 {
                     leftColumns[i].Dispose();
                 }
+                foundOffsets.Dispose();
+                weights.Dispose();
+                iterations.Dispose();
             }
         }
 
@@ -420,9 +446,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             in int k, 
             in int weight,
             in StreamEventBatch msg,
-            in List<int> foundOffsets,
-            in List<int> weights,
-            in List<uint> iterations,
+            in PrimitiveList<int> foundOffsets,
+            in PrimitiveList<int> weights,
+            in PrimitiveList<uint> iterations,
             in IValueContainer<JoinWeights> values,
             in ColumnKeyStorageContainer pageKeyStorage,
             in List<Column> leftColumns,

@@ -14,6 +14,7 @@ using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Operators.Read;
@@ -74,11 +75,12 @@ namespace SqlSampleWithUI
             for (int i = 0; i < 1_000_000; i++)
             {
                 await output.EnterCheckpointLock();
-                List<IColumn> columns = new List<IColumn>();
-                List<int> weights = new List<int>();
-                List<uint> iterations = new List<uint>();
-
                 var memoryManager = new BatchMemoryManager(1);
+                List<IColumn> columns = new List<IColumn>();
+                PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
+                PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
+
+                
                 for (int b = 0; b < 16; b++)
                 {
                     columns.Add(new Column(memoryManager));

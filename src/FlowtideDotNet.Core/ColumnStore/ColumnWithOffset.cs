@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
@@ -25,7 +26,7 @@ namespace FlowtideDotNet.Core.ColumnStore
     internal class ColumnWithOffset : IColumn
     {
         private readonly IColumn innerColumn;
-        private readonly List<int> offsets;
+        private readonly PrimitiveList<int> offsets;
         private readonly bool includeNullValueAtEnd;
 
         /// <summary>
@@ -36,7 +37,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <param name="includeNullValueAtEnd">Adds an extra index at the end which always gives out null, useful
         /// when doing left joins or similar to easily add null without needing to modify the inner data columns.
         /// Since these can be used by different operators, all data would need to be copied.</param>
-        public ColumnWithOffset(IColumn innerColumn, List<int> offsets, bool includeNullValueAtEnd)
+        public ColumnWithOffset(IColumn innerColumn, PrimitiveList<int> offsets, bool includeNullValueAtEnd)
         {
             this.innerColumn = innerColumn;
             this.offsets = offsets;
@@ -114,11 +115,13 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void Rent(int count)
         {
+            offsets.Rent(count);
             innerColumn.Rent(count);
         }
 
         public void Return()
         {
+            offsets.Return();
             innerColumn.Return();
         }
 
