@@ -35,21 +35,21 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public static Column Get(IMemoryAllocator memoryAllocator)
         {
-            var list = _pool.Get();
-            list.Assign(memoryAllocator);
-            return list;
+            //var list = _pool.Get();
+            //list.Assign(memoryAllocator);
+            return new Column(memoryAllocator); //list;
         }
 
         public static Column Get(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)
         {
-            var list = _pool.Get();
-            list.Assign(nullCounter, dataColumn, validityList, type, memoryAllocator);
-            return list;
+            //var list = _pool.Get();
+            //list.Assign(nullCounter, dataColumn, validityList, type, memoryAllocator);
+            return new Column(nullCounter, dataColumn, validityList, type, memoryAllocator); //list;
         }
 
         public static void Return(Column list)
         {
-            _pool.Return(list);
+            //_pool.Return(list);
         }
     }
 }

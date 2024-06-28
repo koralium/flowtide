@@ -120,6 +120,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public void Assign(IMemoryAllocator memoryAllocator)
         {
             _data = null;
+            _dataLength = 0;
+            _length = 0;
+            _memoryOwner = null;
             this.memoryAllocator = memoryAllocator;
             disposedValue = false;
         }

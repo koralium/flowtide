@@ -34,21 +34,21 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public static BitmapList Get(IMemoryAllocator memoryAllocator)
         {
-            var list = _pool.Get();
-            list.Assign(memoryAllocator);
-            return list;
+            //var list = _pool.Get();
+            //list.Assign(memoryAllocator);
+            return new BitmapList(memoryAllocator); //list;
         }
 
         public static BitmapList Get(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
-            var list = _pool.Get();
-            list.Assign(memory, length, memoryAllocator);
-            return list;
+            //var list = _pool.Get();
+            //list.Assign(memory, length, memoryAllocator);
+            return new BitmapList(memory, length, memoryAllocator); //list;
         }
 
         public static void Return(BitmapList list)
         {
-            _pool.Return(list);
+            //_pool.Return(list);
         }
     }
 }

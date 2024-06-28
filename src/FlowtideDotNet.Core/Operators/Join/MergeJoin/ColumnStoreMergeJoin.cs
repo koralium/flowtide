@@ -111,6 +111,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     
                 }
             }
+            else
+            {
+                for (int i = 0; i < mergeJoinRelation.OutputLength - relative; i++)
+                {
+                    if (i < maxSize)
+                    {
+                        columns.Add(i);
+                    }
+                }
+            }
             return columns;
         }
 
@@ -199,6 +209,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             if (_searchRightComparer.noMatch)
                             {
                                 break;
+                            }
+                            else
+                            {
+
                             }
                         }
                         firstPage = false;
