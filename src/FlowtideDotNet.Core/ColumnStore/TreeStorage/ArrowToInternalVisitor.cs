@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 BitmapList? bitmapList = _bitmapList;
                 if (bitmapList == null)
                 {
-                    bitmapList = new BitmapList(preAllocatedMemoryManager);
+                    bitmapList = BitmapListFactory.Get(preAllocatedMemoryManager);
                 }
                 return new Column(_nullCount, _dataColumn, bitmapList, _typeId, preAllocatedMemoryManager);
             }
@@ -107,7 +107,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -131,7 +131,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -164,7 +164,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -238,7 +238,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -257,7 +257,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -275,7 +275,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -293,7 +293,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {
@@ -312,7 +312,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             if (array.NullCount > 0)
             {
                 var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
-                _bitmapList = new BitmapList(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
             }
             else
             {

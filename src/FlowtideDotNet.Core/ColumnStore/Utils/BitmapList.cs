@@ -16,6 +16,7 @@ using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -100,8 +101,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             -2147483648, // 30th element with all bits except the lowest 31 bits set
             ~((1 << 32) - 1)
         ];
-        private readonly IMemoryAllocator memoryAllocator;
-        //private int[] _data;
+        private IMemoryAllocator? memoryAllocator;
         private int _length;
         private void* _data;
         private int _dataLength;
@@ -111,6 +111,28 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
         public int Count => _length;
+
+        public BitmapList()
+        {
+            
+        }
+
+        public void Assign(IMemoryAllocator memoryAllocator)
+        {
+            _data = null;
+            this.memoryAllocator = memoryAllocator;
+            disposedValue = false;
+        }
+
+        public void Assign(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        {
+            _memoryOwner = memory;
+            _data = _memoryOwner.Memory.Pin().Pointer;
+            _dataLength = memory.Memory.Length / sizeof(int);
+            _length = length;
+            this.memoryAllocator = memoryAllocator;
+            disposedValue = false;
+        }
 
         public BitmapList(IMemoryAllocator memoryAllocator)
         {
@@ -133,6 +155,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         private void EnsureSize(int length)
         {
+            Debug.Assert(memoryAllocator != null);
             if (length > _dataLength)
             {
                 int allocationSize = length * sizeof(int);
@@ -354,6 +377,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _data = null;
                 }
                 disposedValue = true;
+
+                if (disposing)
+                {
+                    BitmapListFactory.Return(this);
+                }
             }
         }
 

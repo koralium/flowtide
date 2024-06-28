@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public Column(IMemoryAllocator memoryAllocator)
         {
             _memoryAllocator = memoryAllocator;
-            _validityList = new BitmapList(memoryAllocator);    
+            _validityList = BitmapListFactory.Get(memoryAllocator);
         }
 
         internal Column(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)

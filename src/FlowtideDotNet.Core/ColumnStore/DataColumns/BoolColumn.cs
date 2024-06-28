@@ -33,12 +33,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public BoolColumn(IMemoryAllocator memoryAllocator)
         {
-            _data = new BitmapList(memoryAllocator);
+            _data = BitmapListFactory.Get(memoryAllocator);
         }
 
         public BoolColumn(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
         {
-            _data = new BitmapList(memory, count, memoryAllocator);
+            _data = BitmapListFactory.Get(memory, count, memoryAllocator);
         }
 
         public int Count => _data.Count;
