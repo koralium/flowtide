@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core.ColumnStore
     /// </summary>
     public class Column : IColumn
     {
-        private readonly IMemoryAllocator _memoryAllocator;
+        private IMemoryAllocator? _memoryAllocator;
         private int _nullCounter;
         private IDataColumn? _dataColumn;
 
@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// since a column could start as a null column without any data.
         /// The type of data that is stored is then unknown.
         /// </summary>
-        private BitmapList _validityList;
+        private BitmapList? _validityList;
 
         /// <summary>
         /// The type of data the column is storing, starts with null
@@ -55,6 +55,43 @@ namespace FlowtideDotNet.Core.ColumnStore
         private ArrowTypeId _type = ArrowTypeId.Null;
         private bool disposedValue;
         private int _rentCounter;
+
+        public Column()
+        {
+            
+        }
+
+        internal void Assign(IMemoryAllocator memoryAllocator)
+        {
+            _memoryAllocator = memoryAllocator;
+            _dataColumn = null;
+            _nullCounter = 0;
+            _type = ArrowTypeId.Null;
+            _rentCounter = 0;
+            _validityList = BitmapListFactory.Get(memoryAllocator);
+            disposedValue = false;
+        }
+
+        internal void Assign(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)
+        {
+            _nullCounter = nullCounter;
+            _dataColumn = dataColumn;
+            _validityList = validityList;
+            _type = type;
+            _memoryAllocator = memoryAllocator;
+            _rentCounter = 0;
+            disposedValue = false;
+        }
+
+        public static Column Create(IMemoryAllocator memoryAllocator)
+        {
+            return ColumnFactory.Get(memoryAllocator);
+        }
+
+        public static Column Create(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)
+        {
+            return ColumnFactory.Get(nullCounter, dataColumn, validityList, type, memoryAllocator);
+        }
 
         public Column(IMemoryAllocator memoryAllocator)
         {
@@ -88,6 +125,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         private IDataColumn CreateArray(in ArrowTypeId type)
         {
+            Debug.Assert(_memoryAllocator != null);
             switch (type)
             {
                 case ArrowTypeId.Int64:
@@ -116,6 +154,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void Add<T>(in T value)
             where T : IDataValue
         {
+            Debug.Assert(_validityList != null);
             if (value.Type != _type)
             {
                 if (_type == ArrowTypeId.Null)
@@ -187,6 +226,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         private void CheckNullInitialization()
         {
+            Debug.Assert(_validityList != null);
             if (_nullCounter == 0)
             {
                 for (int i = 0; i < Count; i++)
@@ -198,6 +238,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         private UnionColumn ConvertToUnion()
         {
+            Debug.Assert(_memoryAllocator != null);
             DataValueContainer dataValueContainer = new DataValueContainer();
             var unionColumn = new UnionColumn(_memoryAllocator);
             for (int i = 0; i < Count; i++)
@@ -211,6 +252,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void InsertAt<T>(in int index, in T value)
             where T: IDataValue
         {
+            Debug.Assert(_validityList != null);
             if (value.Type != _type)
             {
                 if (_type == ArrowTypeId.Null)
@@ -280,6 +322,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void UpdateAt<T>(in int index, in T value)
             where T : IDataValue
         {
+            Debug.Assert(_validityList != null);
             if (_nullCounter > 0 &&
                     !_validityList.Get(index))
             {
@@ -300,6 +343,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveAt(in int index)
         {
+            Debug.Assert(_validityList != null);
             if (_nullCounter > 0)
             {
                 if (!_validityList.Get(index))
@@ -316,6 +360,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
+            Debug.Assert(_validityList != null);
             if (_nullCounter > 0 &&
             !_validityList.Get(index))
             {
@@ -326,6 +371,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
+            Debug.Assert(_validityList != null);
             if (_type == ArrowTypeId.Union)
             {
                 return _dataColumn!.GetTypeAt(index, child);
@@ -340,6 +386,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
+            Debug.Assert(_validityList != null);
             if (_nullCounter > 0 &&
                 !_validityList.Get(index))
             {
@@ -453,6 +500,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (IArrowArray, IArrowType) ToArrowArray()
         {
+            Debug.Assert(_validityList != null);
             if (_type == ArrowTypeId.Null)
             {
                 return (new Apache.Arrow.NullArray(Count), NullType.Default);
@@ -464,6 +512,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         protected virtual void Dispose(bool disposing)
         {
+            Debug.Assert(_validityList != null);
             if (!disposedValue)
             {
                 _validityList.Dispose();
@@ -474,6 +523,11 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer
                 // TODO: set large fields to null
                 disposedValue = true;
+
+                if (disposing)
+                {
+                    ColumnFactory.Return(this);
+                }
             }
         }
 

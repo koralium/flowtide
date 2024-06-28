@@ -25,15 +25,15 @@ using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenTelemetry()
-    .WithMetrics(builder =>
-    {
-        builder.AddPrometheusExporter(o =>
-        {
+//builder.Services.AddOpenTelemetry()
+//    .WithMetrics(builder =>
+//    {
+//        builder.AddPrometheusExporter(o =>
+//        {
 
-        });
-        builder.AddMeter("flowtide.*");
-    });
+//        });
+//        builder.AddMeter("flowtide.*");
+//    });
 
 var sqlText = @"
 CREATE TABLE testtable (
@@ -76,7 +76,7 @@ app.UseCors(b =>
 });
 
 app.UseHealthChecks("/health");
-app.UseOpenTelemetryPrometheusScrapingEndpoint();
+//app.UseOpenTelemetryPrometheusScrapingEndpoint();
 app.UseFlowtideUI("/");
 
 

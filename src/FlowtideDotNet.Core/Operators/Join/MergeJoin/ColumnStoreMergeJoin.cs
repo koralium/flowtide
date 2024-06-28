@@ -165,7 +165,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
-                rightColumns.Add(new Column(memoryManager)); 
+                rightColumns.Add(Column.Create(memoryManager)); 
             }
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
@@ -318,7 +318,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             
             for (int i = 0; i < _leftOutputColumns.Count; i++)
             {
-                leftColumns.Add(new Column(memoryManager));
+                leftColumns.Add(Column.Create(memoryManager));
             }
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {

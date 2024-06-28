@@ -83,7 +83,7 @@ namespace SqlSampleWithUI
                 
                 for (int b = 0; b < 16; b++)
                 {
-                    columns.Add(new Column(memoryManager));
+                    columns.Add(Column.Create(memoryManager));
                 }
 
                 for (int k = 0; k < 100; k++)

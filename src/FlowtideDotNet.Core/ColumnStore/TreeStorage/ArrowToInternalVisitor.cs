@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 {
                     bitmapList = BitmapListFactory.Get(preAllocatedMemoryManager);
                 }
-                return new Column(_nullCount, _dataColumn, bitmapList, _typeId, preAllocatedMemoryManager);
+                return Column.Create(_nullCount, _dataColumn, bitmapList, _typeId, preAllocatedMemoryManager);
             }
         }
 

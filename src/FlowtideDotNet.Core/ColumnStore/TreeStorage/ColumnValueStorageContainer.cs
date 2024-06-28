@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             var memoryManager = new BatchMemoryManager(columnCount);
             for (int i = 0; i < columnCount; i++)
             {
-                columns.Add(new Column(memoryManager));
+                columns.Add(Column.Create(memoryManager));
             }
             _data = new EventBatchData(columns);
             this.columnCount = columnCount;
