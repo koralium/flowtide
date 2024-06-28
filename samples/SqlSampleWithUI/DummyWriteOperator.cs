@@ -63,7 +63,6 @@ namespace SqlSampleWithUI
 
         protected override Task OnRecieve(StreamEventBatch msg, long time)
         {
-            msg.Data.EventBatchData.Dispose();
             return Task.CompletedTask;
         }
     }

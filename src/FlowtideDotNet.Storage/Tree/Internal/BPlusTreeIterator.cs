@@ -24,10 +24,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             internal LeafNode<K, V, TKeyContainer, TValueContainer>? leafNode;
             private int index;
             private bool started;
+            private BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> pageIterator;
 
             public Enumerator(in BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
             {
                 this.tree = tree;
+                pageIterator = new BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>(tree);
             }
 
             public void Reset(LeafNode<K, V, TKeyContainer, TValueContainer>? leafNode, int index)
@@ -41,7 +43,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 this.started = false;
             }
 
-            public IBPlusTreePageIterator<K, V> Current => new BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>(leafNode!, index, tree);
+            public IBPlusTreePageIterator<K, V> Current => pageIterator;
 
             public ValueTask DisposeAsync()
             {
@@ -52,15 +54,18 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 if (leafNode == null)
                 {
+                    pageIterator.Reset(null, index);
                     return ValueTask.FromResult(false);
                 }
                 if (!started)
                 {
                     started = true;
+                    pageIterator.Reset(leafNode, index);
                     return ValueTask.FromResult(true);
                 }
                 if (leafNode.next == 0)
                 {
+                    pageIterator.Reset(null, index);
                     return ValueTask.FromResult(false);
                 }
                 var getNextPageTask = tree.m_stateClient.GetValue(leafNode.next, "MoveNextAsync2");
@@ -72,6 +77,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 leafNode.Return();
                 leafNode = (getNextPageTask.Result as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
                 index = 0;
+                pageIterator.Reset(leafNode, index);
                 return ValueTask.FromResult(true);
             }
 
@@ -81,6 +87,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 leafNode!.Return();
                 leafNode = (page as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
                 index = 0;
+                pageIterator.Reset(leafNode, index);
                 return true;
             }
         }

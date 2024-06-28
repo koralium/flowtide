@@ -45,25 +45,25 @@ namespace FlowtideDotNet.Benchmarks.Stream
             iterationId++;
         }
 
-        //[Benchmark]
-        //public async Task InnerJoin()
-        //{
-        //    await _stream!.StartStream(@"
-        //    INSERT INTO output
-        //    SELECT u.userkey FROM users u
-        //    INNER JOIN orders o
-        //    ON u.userkey = o.userkey
-        //    INNER JOIN companies c
-        //    ON u.companyid = c.companyid
-        //    ", 1);
-        //    await _stream.WaitForUpdate();
-        //}
+        [Benchmark]
+        public async Task InnerJoin()
+        {
+            await _stream!.StartStream(@"
+            INSERT INTO output
+            SELECT u.userkey FROM users u
+            INNER JOIN orders o
+            ON u.userkey = o.userkey
+            INNER JOIN companies c
+            ON u.companyid = c.companyid
+            ", 1);
+            await _stream.WaitForUpdate();
+        }
 
-        //[IterationCleanup(Target = nameof(InnerJoin))]
-        //public void AfterInnerJoin()
-        //{
-        //    StreamGraphMetadata.SaveGraphData(nameof(InnerJoin), _stream!.GetDiagnosticsGraph());
-        //}
+        [IterationCleanup(Target = nameof(InnerJoin))]
+        public void AfterInnerJoin()
+        {
+            StreamGraphMetadata.SaveGraphData(nameof(InnerJoin), _stream!.GetDiagnosticsGraph());
+        }
 
         [Benchmark]
         public async Task LeftJoin()

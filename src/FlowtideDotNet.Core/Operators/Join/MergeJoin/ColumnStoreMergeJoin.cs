@@ -61,6 +61,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         // To be deprecated when functions also work with column store
         protected readonly Func<RowEvent, RowEvent, bool>? _postCondition;
 
+        private readonly DataValueContainer _dataValueContainer;
+
 #if DEBUG_WRITE
         // Debug data
         private StreamWriter allInput;
@@ -72,6 +74,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         public ColumnStoreMergeJoin(MergeJoinRelation mergeJoinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
             this._mergeJoinRelation = mergeJoinRelation;
+            _dataValueContainer = new DataValueContainer();
             var leftColumns = GetCompareColumns(mergeJoinRelation.LeftKeys, 0);
             var rightColumns = GetCompareColumns(mergeJoinRelation.RightKeys, mergeJoinRelation.Left.OutputLength);
             _leftInsertComparer = new MergeJoinInsertComparer(leftColumns, mergeJoinRelation.Left.OutputLength);
@@ -216,8 +219,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             joinWeight += outputWeight;
                             for (int z = 0; z < rightColumns.Count; z++)
                             {
-                                var val = pageKeyStorage._data.Columns[_rightOutputColumns[z]].GetValueAt(k, default);
-                                rightColumns[z].Add(val);
+                                pageKeyStorage!._data.Columns[_rightOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
+                                rightColumns[z].Add(_dataValueContainer);
                             }
                             foundOffsets.Add(i);
                             iterations.Add(msg.Data.Iterations[i]);
@@ -466,8 +469,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             joinWeight += outputWeight;
             for (int z = 0; z < leftColumns.Count; z++)
             {
-                var val = pageKeyStorage._data.Columns[_leftOutputColumns[z]].GetValueAt(k, default);
-                leftColumns[z].Add(val);
+                pageKeyStorage._data.Columns[_leftOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
+                leftColumns[z].Add(_dataValueContainer);
             }
             foundOffsets.Add(i);
             iterations.Add(msg.Data.Iterations[i]);
@@ -484,8 +487,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     // If offsets where also used on these values, we could just copy the offset
                     for (int z = 0; z < leftColumns.Count; z++)
                     {
-                        var val = pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k, default);
-                        leftColumns[z].Add(val);
+                        pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
+                        leftColumns[z].Add(_dataValueContainer);
                     }
                     foundOffsets.Add(msg.Data.Weights.Count);
                     weights.Add(-joinStorageValue.weight);
@@ -499,8 +502,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     // Became 0 this time, must emit a left with right null
                     for (int z = 0; z < leftColumns.Count; z++)
                     {
-                        var val = pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k, default);
-                        leftColumns[z].Add(val);
+                        pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
+                        leftColumns[z].Add(_dataValueContainer);
                     }
                     foundOffsets.Add(msg.Data.Weights.Count);
                     weights.Add(joinStorageValue.weight);

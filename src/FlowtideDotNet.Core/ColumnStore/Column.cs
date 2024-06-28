@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             switch (type)
             {
                 case ArrowTypeId.Int64:
-                    return new Int64Column(_memoryAllocator);
+                    return Int64ColumnFactory.Get(_memoryAllocator);
                 case ArrowTypeId.String:
                     return new StringColumn(_memoryAllocator);
                 case ArrowTypeId.Boolean:

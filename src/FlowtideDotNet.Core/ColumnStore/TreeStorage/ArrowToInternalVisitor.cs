@@ -114,7 +114,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 _bitmapList = null;
             }
 
-            Int64Column int64Column = new Int64Column(GetMemoryOwner(array.ValueBuffer), array.Length, preAllocatedMemoryManager);
+            Int64Column int64Column = Int64ColumnFactory.Get(GetMemoryOwner(array.ValueBuffer), array.Length, preAllocatedMemoryManager);
             _dataColumn = int64Column;
             _typeId = ArrowTypeId.Int64;
         }
