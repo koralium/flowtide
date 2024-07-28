@@ -10,27 +10,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Storage.StateManager.Internal
+namespace FlowtideDotNet.AcceptanceTests.Entities
 {
-    public interface ICacheObject
+    public class ProjectMember
     {
-        void EnterWriteLock();
+        [Key]
+        public int ProjectMemberKey { get; set; }
 
-        void ExitWriteLock();
+        public string? CompanyId { get; set; }
 
-        /// <summary>
-        /// Try and rent the object, returns true if successful.
-        /// If false, the object is no longer in the cache.
-        /// </summary>
-        /// <returns></returns>
-        bool TryRent();
+        public string? ProjectNumber { get; set; }
 
-        void Return();
-
-        int RentCount { get; }
-
-        bool RemovedFromCache { get; set; }
+        public int UserKey { get; set; }
     }
 }

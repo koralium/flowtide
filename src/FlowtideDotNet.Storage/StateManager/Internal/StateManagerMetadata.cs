@@ -52,6 +52,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
 
         public int RentCount => int.MaxValue;
 
+        public bool RemovedFromCache { get; set; }
+
         public void EnterWriteLock()
         {
             throw new NotImplementedException();

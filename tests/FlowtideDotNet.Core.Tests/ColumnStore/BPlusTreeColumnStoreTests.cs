@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             {
                 valueColumn.Add(new Int64Value(i));
             }
-            var insertBatch = new EventBatchData(new List<IColumn> { valueColumn });
+            var insertBatch = new EventBatchData([ valueColumn ]);
 
             for (int i = 0; i < 4; i++)
             {

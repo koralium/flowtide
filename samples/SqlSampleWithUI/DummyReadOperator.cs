@@ -76,14 +76,14 @@ namespace SqlSampleWithUI
             {
                 await output.EnterCheckpointLock();
                 var memoryManager = GlobalMemoryManager.Instance; // new BatchMemoryManager(1);
-                List<IColumn> columns = new List<IColumn>();
+                IColumn[] columns = new IColumn[16];
                 PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
                 PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
                 
                 for (int b = 0; b < 16; b++)
                 {
-                    columns.Add(Column.Create(memoryManager));
+                    columns[b] = Column.Create(memoryManager);
                 }
 
                 for (int k = 0; k < 100; k++)

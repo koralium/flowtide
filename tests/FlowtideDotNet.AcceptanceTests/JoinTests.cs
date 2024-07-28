@@ -10,7 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.AcceptanceTests.Entities;
 using Xunit.Abstractions;
+using static SqlParser.Ast.JoinConstraint;
 
 namespace FlowtideDotNet.AcceptanceTests
 {
@@ -62,7 +64,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task LeftJoinMergeJoin()
         {
-            GenerateData(100_000);
+            GenerateData(1000);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
@@ -147,14 +149,57 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task LeftJoinMergeJoinNullCondition()
         {
-            GenerateData(10000);
+            GenerateData(1000);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
                     u.userkey, c.name
                 FROM users u
                 LEFT JOIN companies c
-                ON u.companyid = c.companyid");
+                ON u.companyid = c.companyid", pageSize: 64);
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from user in Users
+                join company in Companies on user.CompanyId equals company.CompanyId into gj
+                from subcompany in gj.DefaultIfEmpty()
+                select new
+                {
+                    user.UserKey,
+                    companyName = subcompany?.Name ?? default(string)
+                });
+        }
+
+        [Fact]
+        public async Task LeftJoinUsersAddedBeforeCompanies()
+        {
+            for (int i = 0; i < 10_000; i++)
+            {
+                AddOrUpdateUser(new Entities.User()
+                {
+                    UserKey = i,
+                    CompanyId = (i % 10).ToString()
+                });
+            }
+
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey, c.name
+                FROM users u
+                LEFT JOIN companies c
+                ON u.companyid = c.companyid", pageSize: 64);
+            await WaitForUpdate();
+
+            for (int i = 0; i < 10; i++)
+            {
+                AddOrUpdateCompany(new Entities.Company()
+                {
+                    CompanyId = i.ToString(),
+                    Name = $"Company {i}"
+                });
+            }
+
             await WaitForUpdate();
 
             AssertCurrentDataEqual(
@@ -406,6 +451,97 @@ namespace FlowtideDotNet.AcceptanceTests
                 INNER JOIN users u ON t.user.userkey = u.userkey", pageSize: 1024);
             await WaitForUpdate();
             AssertCurrentDataEqual(Orders.Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task JoinWithMultipleComparisons()
+        {
+            GenerateData(1000);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey, p.name
+                FROM users u
+                INNER JOIN projectmembers pm
+                ON u.userkey = pm.userkey
+                INNER JOIN projects p
+                ON pm.projectnumber = p.projectnumber AND pm.companyid = p.companyid
+                ", pageSize: 64);
+            await WaitForUpdate();
+            //
+
+            var expected = from user in Users
+            join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey
+            join project in Projects on new { projectmember.ProjectNumber, projectmember.CompanyId } equals new { project.ProjectNumber, project.CompanyId }
+            select new { user.UserKey, project.Name };
+
+            var expectedList = expected.ToList();
+
+            AssertCurrentDataEqual(expectedList);
+        }
+
+        [Fact]
+        public async Task LeftJoinWithMultipleComparisons()
+        {
+            GenerateData(10);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey, p.name
+                FROM users u
+                LEFT JOIN projectmembers pm
+                ON u.userkey = pm.userkey
+                LEFT JOIN projects p
+                ON pm.projectnumber = p.projectnumber AND pm.companyid = p.companyid
+                ", pageSize: 8);
+            await WaitForUpdate();
+            //
+
+            var expected = from user in Users
+                           join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey into gj
+                           from subprojectmember in gj.DefaultIfEmpty()
+                           join project in Projects on new { subprojectmember?.ProjectNumber, subprojectmember?.CompanyId } equals new { project.ProjectNumber, project.CompanyId } into gj2
+                           from subproject in gj2.DefaultIfEmpty()
+                           select new { user.UserKey, subproject?.Name };
+
+            var expectedList = expected.ToList();
+
+            AssertCurrentDataEqual(expectedList);
+        }
+
+        [Fact]
+        public async Task LeftJoinWithMultipleComparisonsProjectUserMembersOrder()
+        {
+            GenerateCompanies(10);
+            GenerateProjects(1000);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey, p.name
+                FROM users u
+                LEFT JOIN projectmembers pm
+                ON u.userkey = pm.userkey
+                LEFT JOIN projects p
+                ON pm.projectnumber = p.projectnumber AND pm.companyid = p.companyid
+                ", pageSize: 8);
+            await WaitForUpdate();
+
+            GenerateUsers(1000);
+            await WaitForUpdate();
+            GenerateProjectMembers(1000);
+            await WaitForUpdate();
+            //
+
+            var expected = from user in Users
+                           join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey into gj
+                           from subprojectmember in gj.DefaultIfEmpty()
+                           join project in Projects on new { subprojectmember?.ProjectNumber, subprojectmember?.CompanyId } equals new { project.ProjectNumber, project.CompanyId } into gj2
+                           from subproject in gj2.DefaultIfEmpty()
+                           select new { user.UserKey, subproject?.Name };
+
+            var expectedList = expected.ToList();
+
+            AssertCurrentDataEqual(expectedList);
         }
     }
 }

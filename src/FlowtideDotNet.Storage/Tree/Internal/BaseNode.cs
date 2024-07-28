@@ -34,6 +34,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public int RentCount => Thread.VolatileRead(ref _rentCount);
 
+        public bool RemovedFromCache { get; set; }
+
         public void EnterWriteLock()
         {
             Monitor.Enter(this);
@@ -48,10 +50,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public abstract Task PrintNextPointers(StringBuilder stringBuilder);
 
-#if DEBUG_MEMORY
+//#if DEBUG_MEMORY
         private string lastRentLocation;
         private List<string> lastReturnLocation = new List<string>();
-#endif
+//#endif
 
         public bool TryRent()
         {
@@ -88,6 +90,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public void Return()
         {
+            //lastReturnLocation.Add(Environment.StackTrace);
             var val = Interlocked.Decrement(ref _rentCount);
             if (val == 0)
             {

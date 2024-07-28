@@ -90,6 +90,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public static Column Create(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)
         {
+            if (type == ArrowTypeId.Null && nullCounter > 0)
+            {
+                // Make sure that the validity list contains data
+                // This can be changed later on to only be initialized if the column changes type
+                validityList.Unset(nullCounter - 1);
+            }
             return ColumnFactory.Get(nullCounter, dataColumn, validityList, type, memoryAllocator);
         }
 
@@ -323,22 +329,36 @@ namespace FlowtideDotNet.Core.ColumnStore
             where T : IDataValue
         {
             Debug.Assert(_validityList != null);
-            if (_nullCounter > 0 &&
-                    !_validityList.Get(index))
-            {
-                if (value.Type == ArrowTypeId.Null)
-                {
-                    return;
-                }
-                _validityList.Set(index);
-                _nullCounter--;
-            }
             if (value.Type == ArrowTypeId.Null)
             {
-                _validityList.Unset(index);
-                _nullCounter++;
+                CheckNullInitialization();
+                if (_validityList.Get(index))
+                {
+                    _validityList.Unset(index);
+                    _nullCounter++;
+                }
             }
-            _dataColumn!.Update<T>(index, value);
+            else
+            {
+                if (_type == ArrowTypeId.Null)
+                {
+                    _dataColumn = CreateArray(value.Type);
+                    _type = value.Type;
+                    for (var i = 0; i < _nullCounter; i++)
+                    {
+                        _dataColumn.Add(in NullValue.Instance);
+                    }
+                }
+                _dataColumn!.Update<T>(index, value);
+
+                // Set to not null
+                if (_nullCounter > 0 &&
+                    !_validityList.Get(index))
+                {
+                    _validityList.Set(index);
+                    _nullCounter--;
+                }
+            }
         }
 
         public void RemoveAt(in int index)

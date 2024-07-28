@@ -21,12 +21,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public class EventBatchData : IDisposable
     {
-        private readonly List<IColumn> columns;
+        private readonly IColumn[] columns;
         private bool disposedValue;
 
         public int Count => columns[0].Count;
 
-        public EventBatchData(List<IColumn> columns)
+        public EventBatchData(IColumn[] columns)
         {
             this.columns = columns;
         }
@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <returns></returns>
         public int CompareRows(EventBatchData otherBatch, in int thisIndex, in int otherIndex)
         {
-            for (int i = 0; i < columns.Count; i++)
+            for (int i = 0; i < columns.Length; i++)
             {
                 int compareResult = columns[i].CompareTo(otherBatch.columns[i], thisIndex, otherIndex);
                 if (compareResult != 0)

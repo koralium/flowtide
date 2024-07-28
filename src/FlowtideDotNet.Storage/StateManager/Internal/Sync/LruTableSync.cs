@@ -273,6 +273,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 useCount = 0
             });
 
+            if (container.value.RemovedFromCache)
+            {
+                if (!container.value.TryRent())
+                {
+                    throw new Exception("Already disposed");
+                }
+                container.value.RemovedFromCache = false;
+            }
+
             lock (m_nodes)
             {
                 m_nodes.AddLast(newNode);
@@ -440,6 +449,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             val.Item1.ValueRef.removed = true;
                             if (cache.TryRemove(val.Item1.ValueRef.key, out _))
                             {
+                                val.Item1.ValueRef.value.RemovedFromCache = true;
                                 val.Item1.ValueRef.value.Return();
                                 Interlocked.Decrement(ref m_count);
                             }

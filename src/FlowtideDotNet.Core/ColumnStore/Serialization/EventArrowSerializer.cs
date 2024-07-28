@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         {
             var memoryOwner = (IMemoryOwner<byte>?)_memoryOwnerField.GetValue(recordBatch);
 
-            List<IColumn> columns = new List<IColumn>();
+            IColumn[] columns = new IColumn[recordBatch.ColumnCount];
             var visitor = new ArrowToInternalVisitor(memoryOwner!, new ColumnStore.Memory.BatchMemoryManager(recordBatch.ColumnCount));
             var schema = recordBatch.Schema;
             for (int i = 0; i < recordBatch.ColumnCount; i++)
@@ -78,7 +78,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 var field = schema.GetFieldByIndex(i);
                 visitor.CurrentField = field;
                 recordBatch.Column(i).Accept(visitor);
-                columns.Add(visitor.Column!);
+                columns[i] = visitor.Column!;
             }
             visitor.Finish();
 

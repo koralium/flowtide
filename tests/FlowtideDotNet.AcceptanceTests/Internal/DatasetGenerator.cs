@@ -12,6 +12,7 @@
 
 using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
+using static SqlParser.Ast.Statement;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -22,6 +23,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public List<User> Users { get; private set; }
         public List<Order> Orders { get; private set; }
         public List<Company> Companies { get; private set;}
+        public List<Project> Projects { get; private set; }
+        public List<ProjectMember> ProjectMembers { get; private set; }
 
         public DatasetGenerator(MockDatabase mockDatabase)
         {
@@ -29,14 +32,25 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             Users = new List<User>();
             Orders = new List<Order>();
             Companies = new List<Company>();
+            Projects = new List<Project>();
+            ProjectMembers = new List<ProjectMember>();
+
+            Randomizer.Seed = new Random(8675309);
+            mockDatabase.GetOrCreateTable<Company>("companies");
+            mockDatabase.GetOrCreateTable<User>("users");
+            mockDatabase.GetOrCreateTable<Order>("orders");
+            mockDatabase.GetOrCreateTable<Project>("projects");
+            mockDatabase.GetOrCreateTable<ProjectMember>("projectmembers");
         }
 
         public void Generate(int count = 1000, int seed = 8675309)
         {
             Randomizer.Seed = new Random(seed);
-            GenerateCompanies(1);
+            GenerateCompanies(10);
             GenerateUsers(count);
             GenerateOrders(count);
+            GenerateProjects(count);
+            GenerateProjectMembers(count);
         }
 
         public void AddOrUpdateUser(User user)
@@ -53,6 +67,22 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             var mockTable = mockDatabase.GetOrCreateTable<User>("users");
             mockTable.AddOrUpdate(new List<User>() { user });
+        }
+
+        public void AddOrUpdateCompany(Company company)
+        {
+            var index = Companies.FindIndex(x => x.CompanyId == company.CompanyId);
+
+            if (index >= 0)
+            {
+                Companies[index] = company;
+            }
+            else
+            {
+                Companies.Add(company);
+            }
+            var mockTable = mockDatabase.GetOrCreateTable<Company>("companies");
+            mockTable.AddOrUpdate(new List<Company>() { company });
         }
 
         public void DeleteUser(User user)
@@ -75,7 +105,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             mockTable.Delete(new List<Order>() { order });
         }
 
-        private void GenerateUsers(int count)
+        public void GenerateUsers(int count)
         {
             string?[] nullableStrings = new string?[] { null, "value" };
 
@@ -122,7 +152,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             mockTable.AddOrUpdate(newUsers);
         }
 
-        private void GenerateOrders(int count)
+        public void GenerateOrders(int count)
         {
             var testOrders = new Faker<Order>()
                 .RuleFor(x => x.OrderKey, (f, u) => f.UniqueIndex)
@@ -138,7 +168,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             mockTable.AddOrUpdate(newOrders);
         }
 
-        private void GenerateCompanies(int count)
+        public void GenerateCompanies(int count)
         {
             var testCompanies = new Faker<Company>()
                 .RuleFor(x => x.CompanyId, (f, u) => $"{f.Company.Random.AlphaNumeric(5)}-{f.Company.Random.AlphaNumeric(3)}")
@@ -155,6 +185,41 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             Companies.AddRange(newCompanies);
             var mockTable = mockDatabase.GetOrCreateTable<Company>("companies");
             mockTable.AddOrUpdate(newCompanies);
+        }
+
+        public void GenerateProjects(int count)
+        {
+            var testProjects = new Faker<Project>()
+                .RuleFor(x => x.ProjectKey, (f, u) => f.UniqueIndex)
+                .RuleFor(x => x.CompanyId, (f, u) => Companies[f.Random.Int(0, Companies.Count - 2)].CompanyId)
+                .RuleFor(x => x.ProjectNumber, (f, u) => f.Random.AlphaNumeric(9))
+                .RuleFor(x => x.Name, (f, u) => f.Commerce.ProductName());
+
+            var newProjects = testProjects.Generate(count);
+            Projects.AddRange(newProjects);
+
+            var mockTable = mockDatabase.GetOrCreateTable<Project>("projects");
+            mockTable.AddOrUpdate(newProjects);
+        }
+
+        public void GenerateProjectMembers(int count)
+        {
+            var testProjectMembers = new Faker<ProjectMember>()
+                .StrictMode(false)
+                .Rules((f, u) =>
+                {
+                    u.ProjectMemberKey = f.UniqueIndex;
+                    var project = f.PickRandom(Projects);
+                    u.CompanyId = project.CompanyId;
+                    u.ProjectNumber = project.ProjectNumber;
+                    var user = f.PickRandom(Users);
+                    u.UserKey = user.UserKey;
+                });
+
+            var newProjectMembers = testProjectMembers.Generate(count);
+            ProjectMembers.AddRange(newProjectMembers);
+            var mockTable = mockDatabase.GetOrCreateTable<ProjectMember>("projectmembers");
+            mockTable.AddOrUpdate(newProjectMembers);
         }
     }
 }

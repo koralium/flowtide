@@ -30,11 +30,11 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         public NormalizeKeyStorage(List<int> columnsToStore)
         {
             _columnsToStore = columnsToStore;
-            List<IColumn> columns = new List<IColumn>();
+            IColumn[] columns = new IColumn[columnsToStore.Count];
             var memoryManager = new BatchMemoryManager(columnsToStore.Count);
             for (int i = 0; i < columnsToStore.Count; i++)
             {
-                columns.Add(new Column(memoryManager));
+                columns[i] = new Column(memoryManager);
             }
             _data = new EventBatchData(columns);
         }

@@ -160,10 +160,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
             if (_normalizationRelation.EmitSet)
             {
-                List<IColumn> columns = new List<IColumn>();
+                IColumn[] columns = new IColumn[_normalizationRelation.Emit.Count];
                 for (int i = 0; i < _normalizationRelation.Emit.Count; i++)
                 {
-                    columns.Add(new ColumnWithOffset(msg.Data.EventBatchData.Columns[_normalizationRelation.Emit[i]], toEmitOffsets, false));
+                    columns[i] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_normalizationRelation.Emit[i]], toEmitOffsets, false);
                 }
                 yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
 
@@ -178,7 +178,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                         deleteIterations.Add(0);
                     }
 
-                    List<IColumn> deleteColumns = new List<IColumn>(new IColumn[_normalizationRelation.OutputLength]);
+                    IColumn[] deleteColumns = new IColumn[_normalizationRelation.OutputLength];
                     for (int i = 0; i < _keyColumns.Count; i++)
                     {
                         if (_normalizationRelation.Emit.Contains(_keyColumns[i]))

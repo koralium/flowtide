@@ -237,5 +237,26 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
                 Assert.True(list.Get(i));
             }
         }
+
+        [Fact]
+        public void TestSequence()
+        {
+            //var lines = File.ReadAllLines("./ColumnStore/Utils/alloperations.csv");
+            var list = new BitmapList(new BatchMemoryManager(1));
+
+            list.InsertAt(0, false);
+
+            for (int i = 1; i < 65; i++)
+            {
+                list.InsertAt(i, true);
+            }
+            list.RemoveAt(64);
+            
+            Assert.False(list.Get(0));
+            for (int i = 1; i < 64; i++)
+            {
+                Assert.True(list.Get(i));
+            }
+        }
     }
 }

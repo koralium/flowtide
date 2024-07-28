@@ -336,7 +336,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             var span = AccessSpan;
             // Loop from BitArray.
-            int toIndex = 0;
+            int toIndex = fromIndex;
             int lastIndex = _dataLength - 1;
             unchecked
             {
@@ -371,15 +371,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!Volatile.Read(ref disposedValue))
             {
+                Volatile.Write(ref disposedValue, true);
                 if (_memoryOwner != null)
                 {
                     _memoryOwner.Dispose();
                     _memoryOwner = null;
                     _data = null;
                 }
-                disposedValue = true;
 
                 if (disposing)
                 {

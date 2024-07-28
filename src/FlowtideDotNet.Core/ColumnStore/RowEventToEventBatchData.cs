@@ -175,11 +175,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             var batchmanager = new BatchMemoryManager(columnCount);
             PrimitiveList<int> weights = new PrimitiveList<int>(batchmanager);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(batchmanager);
-            List<IColumn> columns = new List<IColumn>();
-            
+
+            IColumn[] columns = new IColumn[columnCount];
             for (int i = 0; i < columnCount; i++)
             {
-                columns.Add(new Column(batchmanager));
+                columns[i] = new Column(batchmanager);
             }
 
             foreach(var e in rowEvents)

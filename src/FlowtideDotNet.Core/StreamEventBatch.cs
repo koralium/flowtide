@@ -12,6 +12,8 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.ColumnStore;
+using Microsoft.Extensions.Logging;
+using System.Diagnostics.Tracing;
 
 namespace FlowtideDotNet.Core
 {
@@ -24,33 +26,72 @@ namespace FlowtideDotNet.Core
     {
         //public IReadOnlyList<RowEvent> Events { get; }
 
-        public EventBatchWeighted Data { get; }
+        private EventBatchWeighted? _data;
+        private List<RowEvent>? _events;
 
-        public IReadOnlyList<RowEvent> Events => RowEventToEventBatchData.EventBatchWeightedToRowEvents(Data);
+        public EventBatchWeighted Data => GetData();
+
+        public IReadOnlyList<RowEvent> Events => GetEvents();
+
+        private IReadOnlyList<RowEvent> GetEvents()
+        {
+            if (_events != null)
+            {
+                return _events;
+            }
+            if (_data != null)
+            {
+                _events = RowEventToEventBatchData.EventBatchWeightedToRowEvents(_data);
+                return _events;
+            }
+            throw new Exception("No events or data available");
+        }
+
+        private EventBatchWeighted GetData()
+        {
+            if (_data != null)
+            {
+                return _data;
+            }
+            if (_events != null)
+            {
+                var columnCount = 0;
+                if (_events.Count > 0)
+                {
+                    columnCount = _events[0].RowData.Length;
+                }
+                _data = RowEventToEventBatchData.ConvertToEventBatchData(_events, columnCount);
+                _data.Rent(1);
+                return _data;
+            }
+            throw new Exception("No events or data available");
+        }
 
         public StreamEventBatch(EventBatchWeighted data)
         {
-            Data = data;
+            _data = data;
         }
 
         public StreamEventBatch(List<RowEvent> events)
         {
-            var columnCount = 0;
-            if (events.Count > 0)
-            {
-                columnCount = events[0].RowData.Length;
-            }
-            Data = RowEventToEventBatchData.ConvertToEventBatchData(events, columnCount);
+            _events = events;
         }
 
         public void Rent(int count)
         {
-            Data.Rent(count);
+            if (_data != null)
+            {
+                _data.Rent(count);
+            }
         }
 
         public void Return()
         {
-            Data.Return();
+            if (_data != null)
+            {
+                _data.Return();
+            }
+            
         }
     }
 }

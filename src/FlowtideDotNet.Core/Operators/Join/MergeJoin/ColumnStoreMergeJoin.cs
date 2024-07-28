@@ -51,6 +51,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private List<int> _leftOutputColumns;
         private List<int> _rightOutputColumns;
 
+        private List<int> _leftOutputIndices;
+        private List<int> _rightOutputIndices;
+
         // Metrics
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
@@ -83,8 +86,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             _searchLeftComparer = new MergeJoinSearchComparer(leftColumns, rightColumns);
             _searchRightComparer = new MergeJoinSearchComparer(rightColumns, leftColumns);
 
-            _leftOutputColumns = GetOutputColumns(mergeJoinRelation, 0, mergeJoinRelation.Left.OutputLength);
-            _rightOutputColumns = GetOutputColumns(mergeJoinRelation, mergeJoinRelation.Left.OutputLength, mergeJoinRelation.Right.OutputLength);
+            (_leftOutputColumns, _leftOutputIndices) = GetOutputColumns(mergeJoinRelation, 0, mergeJoinRelation.Left.OutputLength);
+            (_rightOutputColumns, _rightOutputIndices) = GetOutputColumns(mergeJoinRelation, mergeJoinRelation.Left.OutputLength, mergeJoinRelation.Right.OutputLength);
 
             if (mergeJoinRelation.PostJoinFilter != null)
             {
@@ -92,9 +95,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
         }
 
-        private static List<int> GetOutputColumns(MergeJoinRelation mergeJoinRelation, int relative, int maxSize)
+        private static (List<int> incomingIndices, List<int> outgoingIndex) GetOutputColumns(MergeJoinRelation mergeJoinRelation, int relative, int maxSize)
         {
             List<int> columns = new List<int>();
+            List<int> outgoingIndices = new List<int>();
             if (mergeJoinRelation.EmitSet)
             {
                 for (int i = 0; i < mergeJoinRelation.Emit.Count; i++)
@@ -106,6 +110,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         if (index < maxSize)
                         {
                             columns.Add(index);
+                            outgoingIndices.Add(i);
                         }
                     }
                     
@@ -118,10 +123,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     if (i < maxSize)
                     {
                         columns.Add(i);
+                        outgoingIndices.Add(i + relative);
                     }
                 }
             }
-            return columns;
+            return (columns, outgoingIndices);
         }
 
         private static List<KeyValuePair<int, ReferenceSegment?>> GetCompareColumns(List<FieldReference> fieldReferences, int relativeIndex)
@@ -156,6 +162,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public override async Task<JoinState?> OnCheckpoint()
         {
+#if DEBUG_WRITE
+            allInput.WriteLine("Checkpoint");
+            await allInput.FlushAsync();
+#endif
             await _leftTree!.Commit();
             await _rightTree!.Commit();
             return new JoinState();
@@ -179,13 +189,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
-                // DEBUG START
-                //var userkeyval = msg.Data.EventBatchData.Columns[0].GetValueAt(i, new MapKeyReferenceSegment() { Key = "userkey" });
-                //if (userkeyval.AsLong == 7046)
-                //{
-
-                //}
-                    // DEBUG END
                 var columnReference = new ColumnRowReference()
                 {
                     referenceBatch = msg.Data.EventBatchData,
@@ -209,10 +212,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             if (_searchRightComparer.noMatch)
                             {
                                 break;
-                            }
-                            else
-                            {
-
                             }
                         }
                         firstPage = false;
@@ -252,7 +251,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 {
                     foundOffsets.Add(i);
                     iterations.Add(msg.Data.Iterations[i]);
-                    weights.Add(1);
+                    weights.Add(weight);
                     for (int z = 0; z < rightColumns.Count; z++)
                     {
                         rightColumns[z].Add(NullValue.Instance);
@@ -276,12 +275,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             if (foundOffsets.Count > 0)
             {
-                List<IColumn> outputColumns = new List<IColumn>();
+                IColumn[] outputColumns = new IColumn[_leftOutputColumns.Count + rightColumns.Count];
                 if (_leftOutputColumns.Count > 0)
                 {
                     for (int i = 0; i < _leftOutputColumns.Count; i++)
                     {
-                        outputColumns.Add(new ColumnWithOffset(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, true));
+                        outputColumns[_leftOutputIndices[i]] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, true);
                     }
                 }
                 else
@@ -291,7 +290,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 
                 for (int i = 0; i < rightColumns.Count; i++)
                 {
-                    outputColumns.Add(rightColumns[i]);
+                    outputColumns[_rightOutputIndices[i]] = rightColumns[i];
                 }
 
                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
@@ -322,8 +321,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_leftIterator != null);
-            var memoryManager = GlobalMemoryManager.Instance; //new BatchMemoryManager(_leftOutputColumns.Count);
-            //using var it = _leftTree!.CreateIterator();
+            var memoryManager = GlobalMemoryManager.Instance;
             List<Column> leftColumns = new List<Column>();
             PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager);
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
@@ -419,16 +417,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             if (foundOffsets.Count > 0)
             {
-                List<IColumn> outputColumns = new List<IColumn>();
+                IColumn[] outputColumns = new IColumn[leftColumns.Count + _rightOutputColumns.Count];
                 for (int i = 0; i < leftColumns.Count; i++)
                 {
-                    outputColumns.Add(leftColumns[i]);
+                    outputColumns[_leftOutputIndices[i]] = leftColumns[i];
                 }
                 if (_rightOutputColumns.Count > 0)
                 {
                     for (int i = 0; i < _rightOutputColumns.Count; i++)
                     {
-                        outputColumns.Add(new ColumnWithOffset(msg.Data.EventBatchData.Columns[_rightOutputColumns[i]], foundOffsets, true));
+                        outputColumns[_rightOutputIndices[i]] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_rightOutputColumns[i]], foundOffsets, true);
                     }
                 }
                 else

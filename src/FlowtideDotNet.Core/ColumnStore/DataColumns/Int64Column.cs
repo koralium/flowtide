@@ -182,6 +182,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (!disposedValue)
             {
+                disposedValue = true;
                 if (disposing)
                 {
                     if (_data != null)
@@ -191,8 +192,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                     }
                     Int64ColumnFactory.Return(this);
                 }
-
-                disposedValue = true;
             }
         }
 
