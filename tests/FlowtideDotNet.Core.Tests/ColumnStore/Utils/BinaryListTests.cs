@@ -148,5 +148,47 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
             Assert.True(binaryList.Get(1).SequenceEqual(e2));
         }
+
+        [Fact]
+        public void TestUpdateFirst()
+        {
+            var e1 = new byte[] { 1, 2, 3 };
+            var e2 = new byte[] { 1, 2, 3, 4 };
+            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            binaryList.Insert(0, e1);
+            binaryList.UpdateAt(0, e2);
+
+            Assert.True(binaryList.Get(0).SequenceEqual(e2));
+        }
+
+        [Fact]
+        public void TestUpdateTwice()
+        {
+            var e1 = new byte[] { 1, 2, 3 };
+            var e2 = new byte[] { 1, 2, 3, 4 };
+            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            binaryList.Insert(0, e1);
+            binaryList.UpdateAt(0, e2);
+            binaryList.UpdateAt(0, e1);
+
+            Assert.True(binaryList.Get(0).SequenceEqual(e1));
+        }
+
+        [Fact]
+        public void TestUpdateMultipleElements()
+        {
+            var e1 = new byte[] { 1, 2, 3 };
+            var e2 = new byte[] { 1, 2, 3, 4 };
+            var e3 = new byte[] { 1, 2, 3, 4, 5 };
+            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            binaryList.Insert(0, e1);
+            binaryList.Insert(1, e3);
+            binaryList.UpdateAt(0, e2);
+            binaryList.UpdateAt(0, e1);
+
+            Assert.True(binaryList.Get(0).SequenceEqual(e1));
+            Assert.True(binaryList.Get(1).SequenceEqual(e3));
+
+        }
     }
 }

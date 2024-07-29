@@ -37,6 +37,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 {
     internal class ColumnNormalizationOperator : UnaryVertex<StreamEventBatch, NormalizationState>
     {
+#if DEBUG_WRITE
+        private StreamWriter allOutput;
+#endif
+
         private readonly NormalizationRelation _normalizationRelation;
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _tree;
         private readonly List<int> _keyColumns;
@@ -45,6 +49,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
+
+        private List<int> _emitList;
 
         public ColumnNormalizationOperator(
             NormalizationRelation normalizationRelation,
@@ -63,6 +69,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
             if (normalizationRelation.EmitSet)
             {
+                _emitList = normalizationRelation.Emit;
                 for (int i = 0; i < normalizationRelation.Emit.Count; i++)
                 {
                     if (!_keyColumns.Contains(normalizationRelation.Emit[i]))
@@ -73,8 +80,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             }
             else
             {
+                _emitList = new List<int>();
                 for (int i = 0; i < normalizationRelation.OutputLength; i++)
                 {
+                    _emitList.Add(i);
                     if (!_keyColumns.Contains(i))
                     {
                         _otherColumns.Add(i);
@@ -97,6 +106,11 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         public override async Task<NormalizationState> OnCheckpoint()
         {
+#if DEBUG_WRITE
+            allOutput.WriteLine("Checkpoint");
+            await allOutput.FlushAsync();
+#endif
+
             await _tree!.Commit();
             return new NormalizationState();
         }
@@ -158,55 +172,59 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 iterations.Add(0);
             }
 
-            if (_normalizationRelation.EmitSet)
+            //if (_normalizationRelation.EmitSet)
+            //{
+            IColumn[] columns = new IColumn[_emitList.Count];
+            for (int i = 0; i < _emitList.Count; i++)
             {
-                IColumn[] columns = new IColumn[_normalizationRelation.Emit.Count];
-                for (int i = 0; i < _normalizationRelation.Emit.Count; i++)
+                columns[i] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_emitList[i]], toEmitOffsets, false);
+            }
+            yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+
+            if (deleteBatchKeyOffsets.Count > 0)
+            {
+                PrimitiveList<int> deleteWeights = new PrimitiveList<int>(otherColumnsMemoryManager);
+                PrimitiveList<uint> deleteIterations = new PrimitiveList<uint>(otherColumnsMemoryManager);
+
+                for (int i = 0; i < deleteBatchKeyOffsets.Count; i++)
                 {
-                    columns[i] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_normalizationRelation.Emit[i]], toEmitOffsets, false);
+                    deleteWeights.Add(-1);
+                    deleteIterations.Add(0);
                 }
-                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
 
-                if (deleteBatchKeyOffsets.Count > 0)
+                IColumn[] deleteColumns = new IColumn[_normalizationRelation.OutputLength];
+                for (int i = 0; i < _keyColumns.Count; i++)
                 {
-                    PrimitiveList<int> deleteWeights = new PrimitiveList<int>(otherColumnsMemoryManager);
-                    PrimitiveList<uint> deleteIterations = new PrimitiveList<uint>(otherColumnsMemoryManager);
-
-                    for (int i = 0; i < deleteBatchKeyOffsets.Count; i++)
+                    var emitIndex = _emitList.IndexOf(_keyColumns[i]);
+                    if (emitIndex >= 0)
                     {
-                        deleteWeights.Add(-1);
-                        deleteIterations.Add(0);
-                    }
-
-                    IColumn[] deleteColumns = new IColumn[_normalizationRelation.OutputLength];
-                    for (int i = 0; i < _keyColumns.Count; i++)
-                    {
-                        if (_normalizationRelation.Emit.Contains(_keyColumns[i]))
-                        {
-                            deleteColumns[_keyColumns[i]] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_keyColumns[i]], deleteBatchKeyOffsets, false);
-                        }
-                    }
-                    for (int i = 0; i < _otherColumns.Count; i++)
-                    {
-                        if (_normalizationRelation.Emit.Contains(_otherColumns[i]))
-                        {
-                            deleteColumns[_otherColumns[i]] = deleteBatchColumns[i];
-                        }
-                    }
-
-                    yield return new StreamEventBatch(new EventBatchWeighted(deleteWeights, deleteIterations, new EventBatchData(deleteColumns)));
-                }
-                else
-                {
-                    for (int i = 0; i < deleteBatchColumns.Count; i++)
-                    {
-                        deleteBatchColumns[i].Dispose();
+                        deleteColumns[emitIndex] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_keyColumns[i]], deleteBatchKeyOffsets, false);
                     }
                 }
+                for (int i = 0; i < _otherColumns.Count; i++)
+                {
+                    if (_emitList.Contains(_otherColumns[i]))
+                    {
+                        deleteColumns[_otherColumns[i]] = deleteBatchColumns[i];
+                    }
+                }
+
+                var outputBatch = new StreamEventBatch(new EventBatchWeighted(deleteWeights, deleteIterations, new EventBatchData(deleteColumns)));
+#if DEBUG_WRITE
+                foreach (var o in outputBatch.Events)
+                {
+                    allOutput.WriteLine($"{o.Weight} {o.ToJson()}");
+                }
+                await allOutput.FlushAsync();
+#endif
+                yield return outputBatch;
             }
             else
             {
-                yield return msg;
+                for (int i = 0; i < deleteBatchColumns.Count; i++)
+                {
+                    deleteBatchColumns[i].Dispose();
+                }
             }
             _eventsCounter.Add(msg.Data.Weights.Count);
         }
@@ -223,7 +241,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                             deleteBatchKeyOffsets.Add(input.RowIndex);
                             for (int k = 0; k < _otherColumns.Count; k++)
                             {
-                                deleteBatchColumns[k].Add(current.referenceBatch.Columns[_otherColumns[k]].GetValueAt(current.RowIndex, default));
+                                deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
                             }
                             return (default, GenericWriteOperation.Delete);
                         }
@@ -278,6 +296,21 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         protected override async Task InitializeOrRestore(NormalizationState? state, IStateManagerClient stateManagerClient)
         {
+#if DEBUG_WRITE
+            if (!Directory.Exists("debugwrite"))
+                {
+                    Directory.CreateDirectory("debugwrite");
+                }
+            if (allOutput == null)
+            {
+                allOutput = File.CreateText($"debugwrite/{StreamName}_{Name}.alloutput.txt");
+            }
+            else
+            {
+                allOutput.WriteLine("Restart");
+                allOutput.Flush();
+            }
+#endif
             Logger.InitializingNormalizationOperator(StreamName, Name);
             if (_eventsCounter == null)
             {

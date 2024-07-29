@@ -26,6 +26,6 @@ int bitMask = 1 << 32;
 
 //StreamBenchmark streamBenchmark = new StreamBenchmark();
 //streamBenchmark.IterationSetup();
-//await streamBenchmark.LeftJoin();
+//await streamBenchmark.InnerJoin();
 
 var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

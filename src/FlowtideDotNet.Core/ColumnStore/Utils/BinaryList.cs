@@ -159,7 +159,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset + data.Length));
                 data.CopyTo(span.Slice(offset));
                 _length += difference;
-                _offsets.Update(index, data.Length, difference);
+                _offsets.Update(index + 1, data.Length, difference);
             }
         }
 
