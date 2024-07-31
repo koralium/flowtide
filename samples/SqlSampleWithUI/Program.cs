@@ -25,16 +25,6 @@ using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//builder.Services.AddOpenTelemetry()
-//    .WithMetrics(builder =>
-//    {
-//        builder.AddPrometheusExporter(o =>
-//        {
-
-//        });
-//        builder.AddMeter("flowtide.*");
-//    });
-
 var sqlText = @"
 CREATE TABLE testtable (
   val any
@@ -76,22 +66,7 @@ app.UseCors(b =>
 });
 
 app.UseHealthChecks("/health");
-//app.UseOpenTelemetryPrometheusScrapingEndpoint();
 app.UseFlowtideUI("/");
 
 
 app.Run();
-//await app.StartAsync();
-
-//while (true)
-//{
-//    var allocated = BatchMemoryManager.AllocatedMemory;
-
-//    long size = 0;
-//    foreach(var kv in allocated)
-//    {
-//        size += kv.Value.memory.Memory.Length;
-//    }
-
-//    await Task.Delay(1000);
-//}
