@@ -20,6 +20,7 @@ using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -68,6 +69,13 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
+            Debug.Assert(_data != null);
+
+            if (otherColumn is BoolColumn boolColumn)
+            {
+                Debug.Assert(boolColumn._data != null);
+                return _data.Get(thisIndex).CompareTo(boolColumn._data.Get(otherIndex));
+            }
             throw new NotImplementedException();
         }
 

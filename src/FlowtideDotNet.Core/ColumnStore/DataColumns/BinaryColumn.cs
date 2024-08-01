@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -75,6 +76,13 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
+            Debug.Assert(_data != null);
+
+            if (otherColumn is BinaryColumn binaryColumn)
+            {
+                Debug.Assert(binaryColumn._data != null);
+                return _data.Get(thisIndex).SequenceCompareTo(binaryColumn._data.Get(otherIndex));
+            }
             throw new NotImplementedException();
         }
 
