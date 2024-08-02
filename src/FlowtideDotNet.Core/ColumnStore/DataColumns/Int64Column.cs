@@ -58,13 +58,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public Int64Column(IMemoryAllocator memoryAllocator)
         {
-            _data = NativeLongListFactory.Get(memoryAllocator);// new NativeLongList(memoryAllocator);
+            _data = NativeLongListFactory.Get(memoryAllocator);
         }
 
         public Int64Column(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _data = NativeLongListFactory.Get(memory, length, memoryAllocator);
-            //_data = new NativeLongList(memory, length, memoryAllocator);
         }
 
         public int Add<T>(in T value) where T: IDataValue

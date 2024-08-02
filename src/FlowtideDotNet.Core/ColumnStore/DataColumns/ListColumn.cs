@@ -83,16 +83,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             return currentOffset;
         }
 
-        public int BinarySearch(in IDataValue dataValue)
-        {
-            throw new NotImplementedException();
-        }
-
-        public int BinarySearch(in IDataValue dataValue, in int start, in int end)
-        {
-            throw new NotImplementedException();
-        }
-
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             throw new NotImplementedException();
