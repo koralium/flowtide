@@ -233,16 +233,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
-        public int BinarySearch(in IDataValue dataValue)
-        {
-            throw new NotImplementedException();
-        }
-
-        public int BinarySearch(in IDataValue dataValue, in int start, in int end)
-        {
-            throw new NotImplementedException();
-        }
-
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
             where T : IDataValue
         {
