@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
         public IMemoryOwner<byte> Allocate(int size, int alignment)
         {
             var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-            return NativeCreatedMemoryOwnerFactory.Get(ptr, size);  //new NativeCreatedMemoryOwner(ptr, size);
+            return NativeCreatedMemoryOwnerFactory.Get(ptr, size);
         }
 
         public void Free()

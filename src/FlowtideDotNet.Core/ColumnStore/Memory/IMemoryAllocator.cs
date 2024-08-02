@@ -22,9 +22,5 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
     public unsafe interface IMemoryAllocator
     {
         IMemoryOwner<byte> Allocate(int size, int alignment);
-
-        //void* Reallocate(void* ptr, int size, int alignment);
-
-        //void Free(void* ptr);
     }
 }
