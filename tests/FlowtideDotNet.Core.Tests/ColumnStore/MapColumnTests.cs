@@ -47,5 +47,30 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var notFoundPropertyData = column.GetValueAt(0, new MapKeyReferenceSegment() { Key = "notFound" });
             Assert.Equal(ArrowTypeId.Null, notFoundPropertyData.Type);
         }
+
+        [Fact]
+        public void UpdateFirstElement()
+        {
+            Column column = new Column(new BatchMemoryManager(1));
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("key"), new Int64Value(1) },
+                { new StringValue("value"), new StringValue("hello1") }
+            }));
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("key"), new Int64Value(2) },
+                { new StringValue("value"), new StringValue("hello2") }
+            }));
+
+            column.UpdateAt(0, new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("key"), new Int64Value(3) },
+                { new StringValue("value"), new StringValue("hello3") }
+            }));
+
+            var valueData = column.GetValueAt(0, new MapKeyReferenceSegment() { Key = "value" });
+            Assert.Equal("hello3", valueData.ToString());
+        }
     }
 }

@@ -230,7 +230,42 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int Update<T>(in int index, in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            var (startOffset, endOffset) = GetOffsets(in index);
+
+            // Check if the value is null, if so, remove the whole map
+            // Null will be added as an empty map
+            if (value.Type == ArrowTypeId.Null)
+            {
+                for (int i = endOffset - 1; i >= startOffset; i--)
+                {
+                    _keyColumn.RemoveAt(i);
+                    _valueColumn.RemoveAt(i);
+                }
+                _offsets.Update(index + 1, startOffset, startOffset - endOffset);
+                return index;
+            }
+
+            var map = value.AsMap;
+            var ordered = map.OrderBy(x => x.Key, new DataValueComparer()).ToList();
+
+            // Remove the old values
+            for (int i = endOffset - 1; i >= startOffset; i--)
+            {
+                _keyColumn.RemoveAt(i);
+                _valueColumn.RemoveAt(i);
+            }
+
+            // Insert the new values
+            for (int i = 0; i < ordered.Count; i++)
+            {
+                _keyColumn.InsertAt(startOffset + i, ordered[i].Key);
+                _valueColumn.InsertAt(startOffset + i, ordered[i].Value);
+            }
+
+            // Update the offsets
+            _offsets.Update(index + 1, ordered.Count, ordered.Count - (endOffset - startOffset));
+
+            return index;
         }
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
