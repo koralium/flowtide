@@ -80,11 +80,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public int CompareToStrict(in int index, in IDataValue value)
-        {
-            throw new NotImplementedException();
-        }
-
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             throw new NotImplementedException();
@@ -106,11 +101,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
             }
             return new ReferenceMapValue(this, index);
-        }
-
-        public int Update(in int index, in IDataValue value)
-        {
-            return Add(value);
         }
 
         public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
