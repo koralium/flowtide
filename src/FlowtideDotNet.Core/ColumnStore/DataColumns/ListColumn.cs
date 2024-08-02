@@ -145,6 +145,16 @@ namespace FlowtideDotNet.Core.ColumnStore
             var currentStart = _offsets.Get(index);
             var currentEnd = _offsets.Get(index + 1);
 
+            if (value.Type == ArrowTypeId.Null)
+            {
+                for (int i = currentEnd - 1; i >= currentStart; i--)
+                {
+                    _internalColumn.RemoveAt(currentStart);
+                }
+                _offsets.Update(index + 1, currentStart, currentStart - currentEnd);
+                return index;
+            }
+
             var list = value.AsList;
             var listLength = list.Count;
             var currentLength = currentEnd - currentStart;

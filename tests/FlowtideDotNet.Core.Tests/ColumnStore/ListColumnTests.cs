@@ -73,6 +73,51 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         }
 
         [Fact]
+        public void UpdateValueToEmptyList()
+        {
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            listColumn.Add(new ListValue(new List<IDataValue>()
+            {
+                new Int64Value(1),
+                new Int64Value(2)
+            }));
+
+            listColumn.Update(0, new ListValue(new List<IDataValue>()));
+
+            var currentValue = listColumn.GetValueAt(0, default);
+            var list = currentValue.AsList;
+            Assert.Equal(0, list.Count);
+        }
+
+        [Fact]
+        public void UpdateValueToNull()
+        {
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            listColumn.Add(new ListValue(new List<IDataValue>()
+            {
+                new Int64Value(1),
+                new Int64Value(2)
+            }));
+            listColumn.Add(new ListValue(new List<IDataValue>()
+            {
+                new Int64Value(3),
+                new Int64Value(4)
+            }));
+
+            listColumn.Update(0, NullValue.Instance);
+
+            var currentValue = listColumn.GetValueAt(0, default);
+            var list = currentValue.AsList;
+            Assert.Equal(0, list.Count);
+
+            currentValue = listColumn.GetValueAt(1, default);
+            list = currentValue.AsList;
+            Assert.Equal(2, list.Count);
+            Assert.Equal(3, list.GetAt(0).AsLong);
+            Assert.Equal(4, list.GetAt(1).AsLong);
+        }
+
+        [Fact]
         public void RemoveFirstElement()
         {
             ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
