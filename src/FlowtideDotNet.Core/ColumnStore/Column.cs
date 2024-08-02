@@ -499,9 +499,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             else if (_nullCounter > 0 && value.Type == ArrowTypeId.Null)
             {
-                // TODO: Must pass the validity bitmap to the search function
                 return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
-                //return _dataColumn!.SearchBoundries(in value, in start, in end, child);
             }
             else
             {
