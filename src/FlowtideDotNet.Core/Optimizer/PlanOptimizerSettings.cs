@@ -22,5 +22,11 @@ namespace FlowtideDotNet.Core.Optimizer
         /// Automatically add a buffer block infront of get timestamp operations to reduce the number of outgoing events.
         /// </summary>
         public bool AddBufferBlockOnGetTimestamp { get; set; } = true;
+
+        /// <summary>
+        /// Tries to remove direct field references in projection.
+        /// Disabled by default, since its not well tested yet.
+        /// </summary>
+        public bool SimplifyProjection { get; set; } = false;
     }
 }

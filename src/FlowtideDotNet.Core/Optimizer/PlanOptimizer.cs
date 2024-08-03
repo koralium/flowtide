@@ -59,7 +59,10 @@ namespace FlowtideDotNet.Core.Optimizer
             }
 
             // Try and remove any direct field references if possible
-            //DirectFieldSimplification.DirectFieldSimplification.Optimize(plan);
+            if (settings.SimplifyProjection)
+            {
+                plan = DirectFieldSimplification.DirectFieldSimplification.Optimize(plan);
+            }
 
             EmitPushdown.EmitPushdown.Optimize(plan);
             return plan;
