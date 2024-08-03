@@ -323,7 +323,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
-            return ArrowTypeId.Union;
+            var valueColumnIndex = _typeList[index];
+            if (valueColumnIndex == 0)
+            {
+                return ArrowTypeId.Null;
+            }
+            return _valueColumns[valueColumnIndex].GetTypeAt(_offsets.Get(index), child);
         }
     }
 }
