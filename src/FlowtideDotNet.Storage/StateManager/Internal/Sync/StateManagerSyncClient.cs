@@ -34,20 +34,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return new StateManagerSyncClient($"{m_name}_{name}", stateManager, tagList);
         }
 
-        //public async ValueTask<IAppendTree<K, V>> GetOrCreateAppendTree<K, V>(string name, BPlusTreeOptions<K, V> options)
-        //{
-        //    var stateClient = await CreateStateClient<IBPlusTreeNode, AppendTreeMetadata>(name, new BPlusTreeSerializer<K, V>(options.KeySerializer, options.ValueSerializer));
-
-        //    if (options.BucketSize == null)
-        //    {
-        //        options.BucketSize = stateClient.BPlusTreePageSize;
-        //    }
-
-        //    var tree = new AppendTree<K, V>(stateClient, options);
-        //    await tree.InitializeAsync();
-        //    return tree;
-        //}
-
         public async ValueTask<IBPlusTree<K, V, TKeyContainer, TValueContainer>> GetOrCreateTree<K, V, TKeyContainer, TValueContainer>(string name, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
             where TKeyContainer : IKeyContainer<K>
             where TValueContainer : IValueContainer<V>

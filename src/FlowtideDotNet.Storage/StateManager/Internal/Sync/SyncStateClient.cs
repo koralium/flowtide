@@ -110,8 +110,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return old + 1;
         }
 
-        
-
         public bool AddOrUpdate(in long key, V value)
         {
             lock (m_lock)
@@ -119,18 +117,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 _addOrUpdateState.value = value;
                  m_modified.AddOrUpdate(key, addorUpdate_newValue_container, addorUpdate_existingValue_container);
                 return _addOrUpdateState.isFull;
-                //bool isFull = false;
-                //m_modified.AddOrUpdate(key, (key) =>
-                //{
-                //    isFull = stateManager.AddOrUpdate(key, value, this);
-                //    return 0;
-                //},
-                //(key, old) =>
-                //{
-                //    isFull = stateManager.AddOrUpdate(key, value, this);
-                //    return old + 1;
-                //});
-                //return isFull;
             }
         }
 

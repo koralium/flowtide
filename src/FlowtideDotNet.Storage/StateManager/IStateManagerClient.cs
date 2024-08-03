@@ -25,8 +25,6 @@ namespace FlowtideDotNet.Storage.StateManager
             where TKeyContainer: IKeyContainer<K>
             where TValueContainer: IValueContainer<V>;
 
-        //ValueTask<IAppendTree<K,V>> GetOrCreateAppendTree<K, V>(string name, BPlusTreeOptions<K, V> options);
-
         IStateManagerClient GetChildManager(string name);
     }
 }

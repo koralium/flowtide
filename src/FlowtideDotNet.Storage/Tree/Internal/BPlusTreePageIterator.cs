@@ -15,7 +15,7 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal class BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> : IBPlusTreePageIterator<K, V>
+    internal class BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> : IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>
         where TKeyContainer: IKeyContainer<K>
         where TValueContainer: IValueContainer<V>
     {
@@ -80,17 +80,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             this.index = index;
         }
 
-        //public BPlusTreePageIterator(in LeafNode<K, V, TKeyContainer, TValueContainer> leaf, in int index, in BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
-        //{
-        //    this.leaf = leaf;
-        //    this.index = index;
-        //    this.tree = tree;
-        //    enumerator = new Enumerator();
-        //}
+        public TKeyContainer Keys => leaf != null ? leaf.keys : throw new InvalidOperationException("Tried getting keys on an inactive iterator");
 
-        public IKeyContainer<K> Keys => leaf != null ? leaf.keys : throw new InvalidOperationException("Tried getting keys on an inactive iterator");
-
-        public IValueContainer<V> Values => leaf != null ? leaf.values : throw new InvalidOperationException("Tried getting keys on an inactive iterator");
+        public TValueContainer Values => leaf != null ? leaf.values : throw new InvalidOperationException("Tried getting keys on an inactive iterator");
 
         public ValueTask SavePage()
         {

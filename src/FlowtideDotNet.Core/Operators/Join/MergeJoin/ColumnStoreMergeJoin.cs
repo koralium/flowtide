@@ -204,7 +204,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     
                     await foreach(var page in _rightIterator)
                     {
-                        var pageKeyStorage = page.Keys as ColumnKeyStorageContainer;
+                        var pageKeyStorage = page.Keys;
                         if (!firstPage)
                         {
                             // Locate indices again
@@ -352,7 +352,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     await foreach (var page in _leftIterator)
                     {
                         bool pageUpdated = false;
-                        var pageKeyStorage = page.Keys as ColumnKeyStorageContainer;
+                        var pageKeyStorage = page.Keys;
                         if (!firstPage)
                         {
                             // Locate indices again

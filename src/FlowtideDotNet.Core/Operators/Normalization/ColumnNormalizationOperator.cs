@@ -172,8 +172,6 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 iterations.Add(0);
             }
 
-            //if (_normalizationRelation.EmitSet)
-            //{
             IColumn[] columns = new IColumn[_emitList.Count];
             for (int i = 0; i < _emitList.Count; i++)
             {

@@ -18,7 +18,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         where TKeyContainer: IKeyContainer<K>
         where TValueContainer : IValueContainer<V>
     {
-        internal class Enumerator : IAsyncEnumerator<IBPlusTreePageIterator<K, V>>
+        internal class Enumerator : IAsyncEnumerator<IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>>
         {
             private readonly BPlusTree<K, V, TKeyContainer, TValueContainer> tree;
             internal LeafNode<K, V, TKeyContainer, TValueContainer>? leafNode;
@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 this.started = false;
             }
 
-            public IBPlusTreePageIterator<K, V> Current => pageIterator;
+            public IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> Current => pageIterator;
 
             public ValueTask DisposeAsync()
             {
@@ -103,7 +103,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             enumerator = new Enumerator(tree);
         }
 
-        public IAsyncEnumerator<IBPlusTreePageIterator<K, V>> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+        public IAsyncEnumerator<IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
             return enumerator;
         }
