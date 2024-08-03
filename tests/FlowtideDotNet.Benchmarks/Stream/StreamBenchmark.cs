@@ -85,50 +85,50 @@ namespace FlowtideDotNet.Benchmarks.Stream
             StreamGraphMetadata.SaveGraphData(nameof(LeftJoin), _stream!.GetDiagnosticsGraph());
         }
 
-        ///// <summary>
-        ///// Runs the following graph:
-        ///// Read[Users] -> Normalization -> Projection -> Write[Output]
-        ///// 
-        ///// The main expected cost is the normalization
-        ///// </summary>
-        ///// <returns></returns>
-        //[Benchmark]
-        //public async Task ProjectionAndNormalization()
-        //{
-        //    await _stream!.StartStream(@"
-        //    INSERT INTO output
-        //    SELECT u.userkey FROM users u
-        //    ", 1);
-        //    await _stream.WaitForUpdate();
-        //}
+        /// <summary>
+        /// Runs the following graph:
+        /// Read[Users] -> Normalization -> Projection -> Write[Output]
+        /// 
+        /// The main expected cost is the normalization
+        /// </summary>
+        /// <returns></returns>
+        [Benchmark]
+        public async Task ProjectionAndNormalization()
+        {
+            await _stream!.StartStream(@"
+            INSERT INTO output
+            SELECT u.userkey FROM users u
+            ", 1);
+            await _stream.WaitForUpdate();
+        }
 
-        //[IterationCleanup(Target = nameof(ProjectionAndNormalization))]
-        //public void AfterProjectionAndNormalization()
-        //{
-        //    StreamGraphMetadata.SaveGraphData(nameof(ProjectionAndNormalization), _stream!.GetDiagnosticsGraph());
-        //}
+        [IterationCleanup(Target = nameof(ProjectionAndNormalization))]
+        public void AfterProjectionAndNormalization()
+        {
+            StreamGraphMetadata.SaveGraphData(nameof(ProjectionAndNormalization), _stream!.GetDiagnosticsGraph());
+        }
 
 
-        ///// <summary>
-        ///// Runs the following graph:
-        ///// 
-        ///// Read[Users] -> Normalization -> Aggregation -> Projection -> Write[Output]
-        ///// </summary>
-        ///// <returns></returns>
-        //[Benchmark]
-        //public async Task SumAggregation()
-        //{
-        //    await _stream!.StartStream(@"
-        //    INSERT INTO output
-        //    SELECT sum(u.userkey) FROM users u
-        //    ", 1);
-        //    await _stream.WaitForUpdate();
-        //}
+        /// <summary>
+        /// Runs the following graph:
+        /// 
+        /// Read[Users] -> Normalization -> Aggregation -> Projection -> Write[Output]
+        /// </summary>
+        /// <returns></returns>
+        [Benchmark]
+        public async Task SumAggregation()
+        {
+            await _stream!.StartStream(@"
+            INSERT INTO output
+            SELECT sum(u.userkey) FROM users u
+            ", 1);
+            await _stream.WaitForUpdate();
+        }
 
-        //[IterationCleanup(Target = nameof(SumAggregation))]
-        //public void AfterSumAggregation()
-        //{
-        //    StreamGraphMetadata.SaveGraphData(nameof(SumAggregation), _stream!.GetDiagnosticsGraph());
-        //}
+        [IterationCleanup(Target = nameof(SumAggregation))]
+        public void AfterSumAggregation()
+        {
+            StreamGraphMetadata.SaveGraphData(nameof(SumAggregation), _stream!.GetDiagnosticsGraph());
+        }
     }
 }

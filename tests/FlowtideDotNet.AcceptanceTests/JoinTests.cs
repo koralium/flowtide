@@ -46,9 +46,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task InnerJoinMergeJoinNullConditionEqual()
         {
-            // TODO: Fix error with this case when left first then right in join.
-            // There is an error with bitmap list
-            GenerateData(10);
+            GenerateData();
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
@@ -530,7 +528,6 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             GenerateProjectMembers(1000);
             await WaitForUpdate();
-            //
 
             var expected = from user in Users
                            join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey into gj
