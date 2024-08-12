@@ -12,7 +12,9 @@
 
 namespace FlowtideDotNet.Storage.Tree
 {
-    public interface IBPlusTreePageIterator<K, V> : IEnumerable<KeyValuePair<K, V>>
+    public interface IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> : IEnumerable<KeyValuePair<K, V>>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         /// <summary>
         /// Saves the current page, allows the user to modify values on the page and then trigger a save.
@@ -20,8 +22,8 @@ namespace FlowtideDotNet.Storage.Tree
         /// <returns></returns>
         ValueTask SavePage();
 
-        List<K> Keys { get; }
+        TKeyContainer Keys { get; }
 
-        List<V> Values { get; }
+        TValueContainer Values { get; }
     }
 }

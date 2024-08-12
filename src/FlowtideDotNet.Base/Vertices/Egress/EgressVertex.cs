@@ -56,11 +56,11 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         {
             if (_executionDataflowBlockOptions.GetSupportsParallelExecution())
             {
-                _targetBlock = new ParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
+                _targetBlock = new ParallelEgressVertex<T>(_executionDataflowBlockOptions, HandleRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
             }
             else
             {
-                _targetBlock = new NonParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
+                _targetBlock = new NonParallelEgressVertex<T>(_executionDataflowBlockOptions, HandleRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
             }
         }
 
@@ -120,6 +120,15 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         }
 
         protected abstract Task<TState> OnCheckpoint(long checkpointTime);
+
+        private async Task HandleRecieve(T msg, long time)
+        {
+            await OnRecieve(msg, time).ConfigureAwait(false);
+            if (msg is IRentable rentable)
+            {
+                rentable.Return();
+            }
+        }
 
         protected abstract Task OnRecieve(T msg, long time);
 

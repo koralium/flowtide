@@ -18,6 +18,7 @@ namespace FlowtideDotNet.AspNetCore.Extensions
 {
     public static class FlowtideServiceCollectionExtensions
     {
+        [Obsolete("Use AddFlowtideStream(string name) instead.")]
         public static IServiceCollection AddFlowtideStream(this IServiceCollection services, Action<FlowtideBuilder> builder, string name = "stream")
         {
             FlowtideBuilder differentialComputeBuilder = new FlowtideBuilder(name);

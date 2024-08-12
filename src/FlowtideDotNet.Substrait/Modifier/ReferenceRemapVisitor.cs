@@ -36,5 +36,14 @@ namespace FlowtideDotNet.Substrait.Modifier
             }
             return referenceRelation;
         }
+
+        public override Relation VisitStandardOutputExchangeReferenceRelation(StandardOutputExchangeReferenceRelation standardOutputExchangeReferenceRelation, object? state)
+        {
+            if (idMap.TryGetValue(standardOutputExchangeReferenceRelation.RelationId, out int newId))
+            {
+                standardOutputExchangeReferenceRelation.RelationId = newId;
+            }
+            return standardOutputExchangeReferenceRelation;
+        }
     }
 }

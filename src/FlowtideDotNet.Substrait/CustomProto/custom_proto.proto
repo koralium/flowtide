@@ -20,10 +20,6 @@ message NormalizationRelation {
     substrait.Expression filter = 2;
 }
 
-message ReferenceRelation {
-    int32 referenceId = 1;
-}
-
 message BufferRelation {
 
 }
@@ -64,4 +60,18 @@ message TableFunctionRelation {
       JOIN_TYPE_INNER = 1;
       JOIN_TYPE_LEFT = 3;
     }
+}
+
+message SubStreamRootRelation {
+    // Name of the substream this relation should execute on.
+    // Multiple relations can exist that have the same name, then they should all execute on the same substream.
+    string substream_name = 1;
+}
+
+message PullExchangeReferenceRelation {
+    // Name of the substream to fetch data from.
+    string substream_name = 1;
+
+    // Identifier that is used when fetching data from the other stream.
+    int32 exchange_target_id = 2;
 }

@@ -75,7 +75,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task TreeIterationWithUpdate()
         {
-            GenerateData();
+            GenerateData(1000);
             await this.StartStream(@"
             with user_manager_cte AS (
                 SELECT 

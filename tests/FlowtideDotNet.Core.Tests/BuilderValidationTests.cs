@@ -10,8 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Exceptions;
+using FlowtideDotNet.Core.Sinks;
 using FlowtideDotNet.Core.Tests.Failure;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Substrait.Sql;
@@ -53,7 +55,7 @@ namespace FlowtideDotNet.Core.Tests
                     .AddPlan(plan)
                     .Build();
             });
-            Assert.Equal("No read write factory has been added.", e.Message);
+            Assert.Equal("No connector manager or ReadWriteFactory has been added.", e.Message);
         }
 
         [Fact]
@@ -71,17 +73,17 @@ namespace FlowtideDotNet.Core.Tests
             builder.Sql("INSERT INTO test SELECT c1 FROM a");
             var plan = builder.GetPlan();
 
-            var factory = new ReadWriteFactory();
+            var factory = new ConnectorManager();
             factory.AddConsoleSink(".*");
 
-            var e = Assert.Throws<FlowtideException>(() =>
+            var e = Assert.Throws<FlowtideNoConnectorFoundException>(() =>
             {
                 var stream = new FlowtideBuilder("test")
                     .AddPlan(plan)
-                    .AddReadWriteFactory(factory)
+                    .AddConnectorManager(factory)
                     .Build();
             });
-            Assert.Equal("No read resolver matched the read relation for table: 'a'.", e.Message);
+            Assert.Equal("No connector can handle the read relation 'a'.", e.Message);
         }
 
         [Fact]
@@ -99,20 +101,17 @@ namespace FlowtideDotNet.Core.Tests
             builder.Sql("INSERT INTO test SELECT c1 FROM a");
             var plan = builder.GetPlan();
 
-            var factory = new ReadWriteFactory();
-            factory.AddReadResolver((rel, functionsRegister, opt) =>
-            {
-                return new ReadOperatorInfo(new FailureIngress(opt));
-            });
+            var factory = new ConnectorManager();
+            factory.AddSource(new FailureIngressFactory("*"));
 
-            var e = Assert.Throws<FlowtideException>(() =>
+            var e = Assert.Throws<FlowtideNoConnectorFoundException>(() =>
             {
                 var stream = new FlowtideBuilder("test")
                     .AddPlan(plan)
-                    .AddReadWriteFactory(factory)
+                    .AddConnectorManager(factory)
                     .Build();
             });
-            Assert.Equal("No write resolver matched the write relation for table 'test'.", e.Message);
+            Assert.Equal("No connector can handle the write relation 'test'.", e.Message);
         }
 
         [Fact]
@@ -131,26 +130,23 @@ namespace FlowtideDotNet.Core.Tests
             var plan = builder.GetPlan();
 
             int checkpointCount = 0;
-            var factory = new ReadWriteFactory();
-            factory.AddWriteResolver((rel, opt) =>
+            var factory = new ConnectorManager();
+            factory.AddSink(new FailureEgressFactory("*", new FailureEgressOptions()
             {
-                return new FailureEgress(opt, new FailureEgressOptions()
+                OnCompaction = () =>
                 {
-                    OnCompaction = () =>
-                    {
-                        checkpointCount++;
-                    }
-                });
-            });
-            factory.AddReadResolver((rel, functionsRegister, opt) =>
-            {
-                return new ReadOperatorInfo(new TestIngress(opt));
-            });
+                    checkpointCount++;
+                }
+            }));
+            factory.AddSource(new TestIngressFactory("*"));
 
-            var cache = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions());
+            var cache = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
+            {
+                DirectoryPath = "./data/tempFiles/validateSamePlan"
+            });
             var stream = new FlowtideBuilder("test")
                     .AddPlan(plan)
-                    .AddReadWriteFactory(factory)
+                    .AddConnectorManager(factory)
                     .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                     {
                         PersistentStorage = cache
@@ -176,7 +172,7 @@ namespace FlowtideDotNet.Core.Tests
 
             var stream2 = new FlowtideBuilder("test")
                     .AddPlan(plan2)
-                    .AddReadWriteFactory(factory)
+                    .AddConnectorManager(factory)
                     .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                     {
                         PersistentStorage = cache

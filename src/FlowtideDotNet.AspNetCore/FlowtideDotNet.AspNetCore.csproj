@@ -46,6 +46,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FlowtideDotNet.Core\FlowtideDotNet.Core.csproj" />
+    <ProjectReference Include="..\FlowtideDotNet.DependencyInjection\FlowtideDotNet.DependencyInjection.csproj" />
   </ItemGroup>
 
 </Project>

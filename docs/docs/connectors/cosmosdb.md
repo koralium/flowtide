@@ -20,10 +20,10 @@ All CosmosDB insertions must contain a column called 'id' and also a column that
 Its implementation waits fully until the stream has reached a steady state at a time T until it writes data to the container.
 This means that its table output can always be traced back to a state from the source systems.
 
-To use the *CosmosDB Sink* add the following line to the *ReadWriteFactory*:
+To use the *CosmosDB Sink* add the following line to the *IConnectorManager*:
 
 ```csharp
-factory.AddCosmosDbSink("your regexp on table names", connectionString, databaseName, containerName);
+connectorManager.AddCosmosDbSink("your regexp on table names", connectionString, databaseName, containerName);
 ```
 
 ### Example
@@ -37,7 +37,7 @@ sqlBuilder.Sql(@"
     FROM users
 ");
 
-factory.AddCosmosDbSink("cosmos", connectionString, databaseName, containerName);
+connectorManager.AddCosmosDbSink("cosmos", connectionString, databaseName, containerName);
 
 ...
 ```

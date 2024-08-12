@@ -15,21 +15,16 @@ using FlowtideDotNet.Substrait;
 using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.AspNetCore.WebTest;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using FlowtideDotNet.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
 SubstraitDeserializer substraitDeserializer = new SubstraitDeserializer();
 var plan = substraitDeserializer.Deserialize(File.ReadAllText("queryplan.json"));
 
-var factory = new ReadWriteFactory();
-factory.AddReadResolver((readRel, functionsRegister, opt) =>
-{
-    return new ReadOperatorInfo(new DummyReadOperator(opt));
-});
-factory.AddWriteResolver((writeRel, opt) =>
-{
-    return new DummyWriteOperator(opt);
-});
+var connectorManager = new ConnectorManager();
+connectorManager.AddSource(new DummyReadFactory("*"));
+connectorManager.AddSink(new DummyWriteFactory("*"));
 
 PlanModifier planModifier = new PlanModifier();
 planModifier.AddRootPlan(plan);
@@ -39,7 +34,7 @@ plan = planModifier.Modify();
 builder.Services.AddFlowtideStream(b =>
 {
     b.AddPlan(plan);
-    b.AddReadWriteFactory(factory);
+    b.AddConnectorManager(connectorManager);
     b.WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
     {
         PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()

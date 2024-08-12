@@ -12,23 +12,25 @@
 
 namespace FlowtideDotNet.Storage.Tree
 {
-    public class BPlusTreeOptions<K, V>
+    public class BPlusTreeOptions<K, V, TKeyContainer, TValueContainer>
+        where TKeyContainer: IKeyContainer<K>
+        where TValueContainer: IValueContainer<V>
     {
         /// <summary>
         /// Override the default page size. This should only be set if the operator works best with a specific size.
         /// </summary>
         public int? BucketSize { get; set; }
 
-        public required IComparer<K> Comparer { get; set; }
+        public required IBplusTreeComparer<K, TKeyContainer> Comparer { get; set; } 
 
         /// <summary>
         /// Serializer for the keys
         /// </summary>
-        public required IBplusTreeSerializer<K> KeySerializer { get; set; }
+        public required IBPlusTreeKeySerializer<K, TKeyContainer> KeySerializer { get; set; }
 
         /// <summary>
         /// Serializer for values
         /// </summary>
-        public required IBplusTreeSerializer<V> ValueSerializer { get; set; }
+        public required IBplusTreeValueSerializer<V, TValueContainer> ValueSerializer { get; set; }
     }
 }

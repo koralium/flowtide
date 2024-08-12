@@ -13,6 +13,7 @@
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Core.Sinks;
 using System.Text.RegularExpressions;
+using FlowtideDotNet.Core.Sinks.Blackhole;
 
 namespace FlowtideDotNet.Core.Engine
 {

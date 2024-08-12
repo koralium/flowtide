@@ -31,99 +31,82 @@ to another connector as well.
 Create a minimal API AspNetCore application and install the following nuget package:
 
 * FlowtideDotNet.AspNetCore
-* FlowtideDotNet.SqlServer
+* FlowtideDotNet.Connector.SqlServer
 
-### Creating a plan
+## Writing the SQL code
 
 The first step is to create an execution plan, this can be be done with any substrait plan creator.
-But it is also possible to do it with SQL inside flowtide. This tutorial will only show how to create a plan with SQL.
-
-Add the following to your _Program.cs_:
+But it is also possible to do it with SQL inside flowtide. This tutorial will show you how to create a plan with SQL.
 
 ```csharp
-
-var sqlBuilder = new SqlPlanBuilder();
-
-sqlBuilder.Sql(@"
-CREATE TABLE {sqlserver database name}.{schema name}.{tablename} (
-  val any
-);
-
-CREATE TABLE {sqlserver database name}.{schema name}.{othertablename} (
-  val any
-);
-
+var sqlText = @"
 INSERT INTO {sqlserver database name}.{schema name}.{destinationname}
 SELECT t.val FROM {sqlserver database name}.{schema name}.{tablename} t
 LEFT JOIN {sqlserver database name}.{schema name}.{othertablename} o
 ON t.val = o.val
 WHERE t.val = 123;
-");
-
-var plan = sqlBuilder.GetPlan();
+";
 ```
 
-Replace all values with that are between { } with your own table names in your SQL Server.
+Replace all values with that are between \{ \} with your own table names in your SQL Server.
 
-### Setting up a read and write factory
+## Configure the stream
 
-Each stream requires a factory that provides it with source and sink operators. These provide the actual implementation when talking with other sources.
+Next we will add a Flowtide stream to the service collection and add our SQL text as a execution plan:
 
+```csharp
+builder.Services.AddFlowtideStream("myStream)
+  .AddSqlTextAsPlan(sqlText)
+```
+
+The stream name is added on all logs and metrics, so keeping it unique in your environment can help when setting up monitoring.
+
+## Add connectors
+
+So far we have written SQL code and started configuring the stream. But we have not yet instructed Flowtide what it should connect to.
 Some examples of sinks and sources are:
 
 * MS SQL
 * Kafka
-* MongoDB
 * Elasticsearch
 * And more
 
-This example will add a connection for SQL Server:
+This is done by using the *AddConnectors* method:
 
 ```csharp
-var factory = new ReadWriteFactory();
-// Wildcard that all sources should use the following configuration
-factory.AddSqlServerSource("*", () => "Server={your server};Database={your database};Trusted_Connection=True;");
-// Wildcard that all sinks will use this configuration
-factory.AddSqlServerSink("*", () => "Server={your server};Database={your database};Trusted_Connection=True;");
+builder.Services.AddFlowtideStream("myStream)
+  ...
+  .AddConnectors(connectorManager => {
+    // Add a SQL Server database as an available source
+    connectorManager.AddSqlServerSource(() => "Server={your server};Database={your database};Trusted_Connection=True;");
+    // Add another SQL Server database as a sink
+    connectorManager.AddSqlServerSink(() => "Server={your server};Database={your database};Trusted_Connection=True;");
+  })
 ```
 
-### Running the stream
+## Configuring state storage
 
-Finally to run the stream we add the following code:
+A Flowtide stream requires state storage to function. This can be stored on a file system or on a cloud storage solution.
+
+In this tutorial we will use a local development storage. This storage gets cleared between each test run which make it good for development.
 
 ```csharp
-builder.Services.AddFlowtideStream(b =>
-{
-    b.AddPlan(plan)
-    .AddReadWriteFactory(factory)
-    .WithStateOptions(new StateManagerOptions()
-    {
-        // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage
-        PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
-        {
-        })
-    });
+builder.Services.AddFlowtideStream("myStream)
+  ...
+  .AddStorage(storage => {
+    storage.AddTemporaryDevelopmentStorage();
+  });
+```
+
+If you want to use persistent storage on the local file system, you can instead use:
+
+```csharp
+.AddStorage(storage => {
+  storage.AddFasterKVFileSystemStorage("./stateData");
 });
 ```
 
-#### Persistent storage
-
-The previous example does not use persistent storage, to use persistent storage, you can instead use the FasterKV storage:
-
-```csharp
-PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
-{
-    RemoveOutdatedCheckpoints = true,
-    MemorySize = 1024 * 1024 * 128,
-    PageSize = 1024 * 1024 * 16,
-    LogDevice = Devices.CreateLogDevice("./data/persistent/log"),
-    CheckpointDir = "./data/checkpoints"
-})
-```
-
-The stream will then be persistent between checkpoints.
-
-### Adding the UI
+## Adding the UI
 
 If you want to add the UI to visualize the progress of the stream, add the following code after "var app = builder.Build();".
 
@@ -131,52 +114,32 @@ If you want to add the UI to visualize the progress of the stream, add the follo
 app.UseFlowtideUI("/stream");
 ```
 
-### Full example
+## Full example
 
 Here is the full code example to get started:
 
 ```csharp
-
 var builder = WebApplication.CreateBuilder(args);
 
-var sqlBuilder = new SqlPlanBuilder();
-
-sqlBuilder.Sql(@"
-CREATE TABLE {sqlserver database name}.{schema name}.{tablename} (
-  val any
-);
-
-CREATE TABLE {sqlserver database name}.{schema name}.{othertablename} (
-  val any
-);
-
+var sqlText = @"
 INSERT INTO {sqlserver database name}.{schema name}.{destinationname}
 SELECT t.val FROM {sqlserver database name}.{schema name}.{tablename} t
 LEFT JOIN {sqlserver database name}.{schema name}.{othertablename} o
 ON t.val = o.val
 WHERE t.val = 123;
-");
+";
 
-var plan = sqlBuilder.GetPlan();
-
-var factory = new ReadWriteFactory();
-// Wildcard that all sources should use the following configuration
-factory.AddSqlServerSource("*", () => "Server={your server};Database={your database};Trusted_Connection=True;");
-// Wildcard that all sinks will use this configuration
-factory.AddSqlServerSink("*", () => "Server={your server};Database={your database};Trusted_Connection=True;");
-
-builder.Services.AddFlowtideStream(b =>
-{
-    b.AddPlan(plan)
-    .AddReadWriteFactory(factory)
-    .WithStateOptions(new StateManagerOptions()
-    {
-        // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage
-        PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
-        {
-        })
-    });
-});
+builder.Services.AddFlowtideStream("myStream)
+  .AddSqlTextAsPlan(sqlText)
+  .AddConnectors(connectorManager => {
+    // Add a SQL Server database as an available source
+    connectorManager.AddSqlServerSource(() => "Server={your server};Database={your database};Trusted_Connection=True;");
+    // Add another SQL Server database as a sink
+    connectorManager.AddSqlServerSink(() => "Server={your server};Database={your database};Trusted_Connection=True;");
+  })
+  .AddStorage(storage => {
+    storage.AddTemporaryDevelopmentStorage();
+  });
 
 var app = builder.Build();
 app.UseFlowtideUI("/stream");

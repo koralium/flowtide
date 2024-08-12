@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core
             _vector = vector;
         }
 
-        public CompactRowData(Memory<byte> memory)
+        public CompactRowData(byte[] memory)
         {
             _memory = memory;
             _vector = FlxValue.FromMemory(memory).AsVector;

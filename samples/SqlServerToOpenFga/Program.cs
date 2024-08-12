@@ -7,6 +7,8 @@ using System.Text.Json;
 using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,34 +36,23 @@ if (authModel == null || authModel.AuthorizationModel == null)
     throw new InvalidOperationException("Could not find authorization model for store 'demo'");
 }
 
-var query = File.ReadAllText("query.sql");
-SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
-sqlPlanBuilder.AddSqlServerProvider(() => builder.Configuration.GetConnectionString("SqlServer")!);
-sqlPlanBuilder.Sql(query);
-var plan = sqlPlanBuilder.GetPlan();
-
 openFgaConfig.StoreId = store.Id;
 openFgaConfig.AuthorizationModelId = authModel.AuthorizationModel.Id;
 
-ReadWriteFactory readWriteFactory = new ReadWriteFactory()
-    .AddSqlServerSource("demo.*", () => builder.Configuration.GetConnectionString("SqlServer")!)
-    .AddOpenFGASink("*", new FlowtideDotNet.Connector.OpenFGA.OpenFgaSinkOptions()
+builder.Services.AddFlowtideStream("stream")
+    .AddSqlFileAsPlan("query.sql")
+    .AddConnectors(connectorManager =>
     {
-        ClientConfiguration = openFgaConfig
-    });
-
-builder.Services.AddFlowtideStream(x =>
-{
-    x.AddPlan(plan)
-    .AddReadWriteFactory(readWriteFactory)
-    .WithStateOptions(new StateManagerOptions()
-    {
-        // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage
-        PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
+        connectorManager.AddSqlServerSource(() => builder.Configuration.GetConnectionString("SqlServer")!);
+        connectorManager.AddOpenFGASink("*", new FlowtideDotNet.Connector.OpenFGA.OpenFgaSinkOptions()
         {
-        })
+            ClientConfiguration = openFgaConfig
+        });
+    })
+    .AddStorage(storage =>
+    {
+        storage.AddTemporaryDevelopmentStorage();
     });
-});
 
 var app = builder.Build();
 app.UseFlowtideUI("/stream");

@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
     {
         private readonly FlowtideCosmosOptions cosmosOptions;
         private readonly WriteRelation writeRelation;
-        private IBPlusTree<RowEvent, int>? m_modified;
+        private IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>? m_modified;
         private bool m_hasModified;
         private Container? m_container;
         private Func<RowEvent, PartitionKey>? m_eventToPartitionKey;
@@ -287,11 +287,12 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
 
-            m_modified = await stateManagerClient.GetOrCreateTree<RowEvent, int>("temporary", new Storage.Tree.BPlusTreeOptions<RowEvent, int>()
+            m_modified = await stateManagerClient.GetOrCreateTree("temporary", 
+                new Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
-                Comparer = PrimaryKeyComparer,
-                ValueSerializer = new IntSerializer(),
-                KeySerializer = new StreamEventBPlusTreeSerializer()
+                Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer!),
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer())
             });
 
             // Clear the modified tree in case of a crash

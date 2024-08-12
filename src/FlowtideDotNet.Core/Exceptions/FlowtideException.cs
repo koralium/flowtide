@@ -14,7 +14,7 @@ using System.Runtime.Serialization;
 
 namespace FlowtideDotNet.Core.Exceptions
 {
-    internal class FlowtideException : Exception
+    public class FlowtideException : Exception
     {
         public FlowtideException()
         {

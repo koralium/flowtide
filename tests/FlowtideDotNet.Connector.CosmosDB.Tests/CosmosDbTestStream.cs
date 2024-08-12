@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Engine;
 using Microsoft.Azure.Cosmos;
 
@@ -37,9 +38,14 @@ namespace FlowtideDotNet.Connector.CosmosDB.Tests
             await dbProps.Database.CreateContainerIfNotExistsAsync(testName, "/pk");
         }
 
-        protected override void AddWriteResolvers(ReadWriteFactory factory)
+        protected override void AddWriteResolvers(IConnectorManager factory)
         {
-            factory.AddCosmosDbSink("*", testConnString, testName, testName);
+            factory.AddCosmosDbSink("*", new FlowtideCosmosOptions()
+            {
+                ConnectionString = testConnString,
+                ContainerName = testName,
+                DatabaseName = testName
+            });
         }
     }
 }

@@ -21,6 +21,10 @@ using FASTER.core;
 using FluentAssertions;
 using System.Diagnostics;
 using FlowtideDotNet.Core.Tests.SmokeTests.Count;
+using FlowtideDotNet.Core.Connectors;
+using Microsoft.Extensions.Logging.Console;
+using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace FlowtideDotNet.Core.Tests.SmokeTests
 {
@@ -38,7 +42,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             deserializer = new SubstraitDeserializer();
         }
 
-        public abstract void AddReadResolvers(ReadWriteFactory readWriteFactory);
+        public abstract void AddReadResolvers(IConnectorManager connectorManager);
 
         public async Task DisposeAsync()
         {
@@ -54,8 +58,9 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             return Task.CompletedTask;
         }
 
-        private async Task StartStream<TResult>(string planLocation, Action<List<TResult>> datachange, List<int> primaryKeysOutput, PlanOptimizerSettings? settings = null)
+        private async Task StartStream<TResult>(string testName, string planLocation, Action<List<TResult>> datachange, List<int> primaryKeysOutput, PlanOptimizerSettings? settings = null)
         {
+            differentialComputeBuilder = new FlowtideBuilder(testName);
             var plantext = File.ReadAllText(planLocation);
             var plan = deserializer.Deserialize(plantext);
             PlanModifier planModifier = new PlanModifier();
@@ -65,30 +70,39 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
 
             modifiedPlan = PlanOptimizer.Optimize(modifiedPlan, settings);
 
-            ReadWriteFactory readWriteFactory = new ReadWriteFactory();
-            AddReadResolvers(readWriteFactory);
+            ConnectorManager connectorManager = new ConnectorManager();
+            AddReadResolvers(connectorManager);
 
             bool gotData = false;
 
             _streamScheduler = new DefaultStreamScheduler();
-            readWriteFactory.AddWriteResolver((rel, opt) =>
+            connectorManager.AddSink(new TestWriteOperatorFactory<TResult>("*", primaryKeysOutput, (rows) =>
             {
-                return new SmokeTests.TestWriteOperator<TResult>(primaryKeysOutput, (rows) =>
-                {
-                    changesCounter++;
-                    gotData = true;
-                    datachange(rows);
-                    return Task.CompletedTask;
-                }, rel, opt);
+                changesCounter++;
+                gotData = true;
+                datachange(rows);
+                return Task.CompletedTask;
+            }));
+
+            var loggerFactory = LoggerFactory.Create(b =>
+            {
+                var logger = new LoggerConfiguration()
+                    .MinimumLevel.Debug()
+                    .WriteTo.File($"debugwrite/{testName.Replace("/", "_")}.log")
+                    .CreateLogger();
+                b.AddSerilog(logger);
+                b.AddDebug();
             });
+
             var checkpointManager = new DeviceLogCommitCheckpointManager(
                 new InMemoryDeviceFactory(),
                 new DefaultCheckpointNamingScheme($"checkpoints/"));
             var logDevice = new ManagedLocalStorageDevice("logdevice", deleteOnClose: true);
             dataflowStream = differentialComputeBuilder
                 .AddPlan(modifiedPlan, false)
-                .AddReadWriteFactory(readWriteFactory)
+                .AddConnectorManager(connectorManager)
                 .WithScheduler(_streamScheduler)
+                .WithLoggerFactory(loggerFactory)
                 .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                 {
                     CachePageCount = 100000,
@@ -106,7 +120,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             // add all line items
             await AddLineItems(TpchData.GetLineItems());
             List<LineItem>? actualData = default;
-            await StartStream<LineItem>("./SmokeTests/SelectLineItems/queryplan.json", rows =>
+            await StartStream<LineItem>("SelectLineItems", "./SmokeTests/SelectLineItems/queryplan.json", rows =>
             {
                 actualData = rows;
             }, new List<int>() { 0, 1});
@@ -131,7 +145,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             var lineItems = TpchData.GetLineItems();
             await AddLineItems(lineItems.Take(1000));
             List<CountResult>? actualData = default;
-            await StartStream<CountResult>("./SmokeTests/Count/queryplan.json", rows =>
+            await StartStream<CountResult>("CountLineItems", "./SmokeTests/Count/queryplan.json", rows =>
             {
                 actualData = rows;
             }, new List<int>() { 0 });
@@ -161,7 +175,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
         {
             await AddLineItems(TpchData.GetLineItems());
             List<LineItem>? actualData = default;
-            await StartStream<LineItem>("./SmokeTests/FilterLineItemsOnShipmode/queryplan.json", rows =>
+            await StartStream<LineItem>("FilterLineItemsOnShipmode", "./SmokeTests/FilterLineItemsOnShipmode/queryplan.json", rows =>
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 });
@@ -189,7 +203,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await AddLineItems(TpchData.GetLineItems());
             await AddOrders(TpchData.GetOrders());
             List<LineItemJoinOrderResult>? actualData = default;
-            await StartStream<LineItemJoinOrderResult>("./SmokeTests/LineItemLeftJoinOrders/queryplan.json", rows =>
+            await StartStream<LineItemJoinOrderResult>("LineItemLeftJoinOrders", "./SmokeTests/LineItemLeftJoinOrders/queryplan.json", rows =>
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 });
@@ -230,7 +244,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await AddLineItems(TpchData.GetLineItems());
             await AddOrders(TpchData.GetOrders());
             List<LineItemJoinOrderResult>? actualData = default;
-            await StartStream<LineItemJoinOrderResult>("./SmokeTests/LineItemLeftJoinOrders/queryplan.json", rows =>
+            await StartStream<LineItemJoinOrderResult>("LineItemLeftJoinOrdersNLJ", "./SmokeTests/LineItemLeftJoinOrders/queryplan.json", rows =>
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
@@ -286,7 +300,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await AddLineItems(TpchData.GetLineItems());
             await AddOrders(TpchData.GetOrders());
             List<LineItemJoinOrderResult>? actualData = default;
-            await StartStream<LineItemJoinOrderResult>("./SmokeTests/LineItemInnerJoinOrders/queryplan.json", rows =>
+            await StartStream<LineItemJoinOrderResult>("LineItemInnerJoinOrders", "./SmokeTests/LineItemInnerJoinOrders/queryplan.json", rows =>
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 });
@@ -327,7 +341,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await AddLineItems(TpchData.GetLineItems());
             await AddOrders(TpchData.GetOrders());
             List<LineItemJoinOrderResult>? actualData = default;
-            await StartStream<LineItemJoinOrderResult>("./SmokeTests/LineItemInnerJoinOrders/queryplan.json", rows =>
+            await StartStream<LineItemJoinOrderResult>("LineItemInnerJoinOrdersNLJ", "./SmokeTests/LineItemInnerJoinOrders/queryplan.json", rows =>
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true});
@@ -368,7 +382,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await AddLineItems(TpchData.GetLineItems());
             await AddShipmodes(TpchData.GetShipmodes());
             List<StringJoinResult>? actualData = default;
-            await StartStream<StringJoinResult>("./SmokeTests/StringJoin/queryplan.json", rows =>
+            await StartStream<StringJoinResult>("StringJoin", "./SmokeTests/StringJoin/queryplan.json", rows =>
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 });
@@ -408,7 +422,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await AddLineItems(new List<LineItem>() { TpchData.GetLineItems().First(x => x.Shipmode == "TRUCK") });
             
             List<StringJoinResult>? actualData = default;
-            await StartStream<StringJoinResult>("./SmokeTests/LeftJoinUpdateLeftValues/queryplan.json", rows =>
+            await StartStream<StringJoinResult>("LeftJoinUpdateLeftValues", "./SmokeTests/LeftJoinUpdateLeftValues/queryplan.json", rows =>
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 });
@@ -492,7 +506,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await AddLineItems(new List<LineItem>() { TpchData.GetLineItems().First(x => x.Shipmode == "TRUCK") });
 
             List<StringJoinResult>? actualData = default;
-            await StartStream<StringJoinResult>("./SmokeTests/LeftJoinUpdateLeftValues/queryplan.json", rows =>
+            await StartStream<StringJoinResult>("LeftJoinUpdateLeftValuesNLJ", "./SmokeTests/LeftJoinUpdateLeftValues/queryplan.json", rows =>
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
@@ -576,7 +590,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await AddLineItems(new List<LineItem>() { TpchData.GetLineItems().First(x => x.Shipmode == "TRUCK") });
 
             List<StringJoinResult>? actualData = default;
-            await StartStream<StringJoinResult>("./SmokeTests/StringJoin/queryplan.json", rows =>
+            await StartStream<StringJoinResult>("InnerJoinUpdateLeftValuesNLJ", "./SmokeTests/StringJoin/queryplan.json", rows =>
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
@@ -646,7 +660,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await AddLineItems(new List<LineItem>() { TpchData.GetLineItems().First(x => x.Shipmode == "TRUCK") });
 
             List<StringJoinResult>? actualData = default;
-            await StartStream<StringJoinResult>("./SmokeTests/StringJoin/queryplan.json", rows =>
+            await StartStream<StringJoinResult>("InnerJoinWithCrash", "./SmokeTests/StringJoin/queryplan.json", rows =>
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 });

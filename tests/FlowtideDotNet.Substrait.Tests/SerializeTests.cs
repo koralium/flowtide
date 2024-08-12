@@ -35,8 +35,7 @@ namespace FlowtideDotNet.Substrait.Tests
             var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
                 CustomProtobuf.IterationReferenceReadRelation.Descriptor,
                 CustomProtobuf.IterationRelation.Descriptor,
-                CustomProtobuf.NormalizationRelation.Descriptor,
-                CustomProtobuf.ReferenceRelation.Descriptor);
+                CustomProtobuf.NormalizationRelation.Descriptor);
             var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
                 .WithIndentation();
             var formatter = new Google.Protobuf.JsonFormatter(settings);
@@ -62,8 +61,7 @@ namespace FlowtideDotNet.Substrait.Tests
                 var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
                     CustomProtobuf.IterationReferenceReadRelation.Descriptor,
                     CustomProtobuf.IterationRelation.Descriptor,
-                    CustomProtobuf.NormalizationRelation.Descriptor,
-                    CustomProtobuf.ReferenceRelation.Descriptor);
+                    CustomProtobuf.NormalizationRelation.Descriptor);
                 var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
                     .WithIndentation();
                 var formatter = new Google.Protobuf.JsonFormatter(settings);
@@ -89,8 +87,7 @@ namespace FlowtideDotNet.Substrait.Tests
                 var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
                     CustomProtobuf.IterationReferenceReadRelation.Descriptor,
                     CustomProtobuf.IterationRelation.Descriptor,
-                    CustomProtobuf.NormalizationRelation.Descriptor,
-                    CustomProtobuf.ReferenceRelation.Descriptor);
+                    CustomProtobuf.NormalizationRelation.Descriptor);
                 var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
                     .WithIndentation();
                 var formatter = new Google.Protobuf.JsonFormatter(settings);
@@ -119,8 +116,7 @@ namespace FlowtideDotNet.Substrait.Tests
                 var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
                     CustomProtobuf.IterationReferenceReadRelation.Descriptor,
                     CustomProtobuf.IterationRelation.Descriptor,
-                    CustomProtobuf.NormalizationRelation.Descriptor,
-                    CustomProtobuf.ReferenceRelation.Descriptor);
+                    CustomProtobuf.NormalizationRelation.Descriptor);
                 var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
                     .WithIndentation();
                 var formatter = new Google.Protobuf.JsonFormatter(settings);

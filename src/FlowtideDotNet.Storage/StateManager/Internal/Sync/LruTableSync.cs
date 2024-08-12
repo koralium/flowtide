@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Utils;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -54,6 +55,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly Process _currentProcess;
         private readonly CancellationTokenSource m_cleanupTokenSource;
         private readonly LruTableOptions lruTableOptions;
+
+        // AddOrUpdate remove boxing hacks
+        private readonly Func<long, AddOrUpdateContainer, LinkedListNode<LinkedListValue>> _addOrUpdate_newValue_func;
+        private readonly Func<long, LinkedListNode<LinkedListValue>, AddOrUpdateContainer, LinkedListNode<LinkedListValue>> _addOrUpdate_existingValue_func;
 
         public LruTableSync(LruTableOptions lruTableOptions)
         {
@@ -116,6 +121,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 return new Measurement<long>(hits + misses, new KeyValuePair<string, object?>("stream", m_streamName));
             });
             this.lruTableOptions = lruTableOptions;
+            _addOrUpdate_newValue_func = AddOrUpdate_NewValue;
+            _addOrUpdate_existingValue_func = AddOrUpdate_ExistingValue;
         }
 
         public void Clear()
@@ -137,11 +144,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     node.ValueRef.removed = true;
                     if (cache.TryRemove(key, out _))
                     {
+                        node.ValueRef.value.Return();
                         Interlocked.Decrement(ref m_count);
                     }
                     lock (m_nodes)
                     {
-                        m_nodes.Remove(node);
+                        if (node.List != null)
+                        {
+                            m_nodes.Remove(node);
+                        }                        
                     }
                 }
                 
@@ -216,6 +227,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         cacheObject = default;
                         return false;
                     }
+                    if (!node.ValueRef.value.TryRent())
+                    {
+                        throw new InvalidOperationException("Could not rent value from cache");
+                    }
                     node.ValueRef.useCount = Math.Min(node.ValueRef.useCount + 1, 5);
                     cacheObject = node.ValueRef.value;
                     Interlocked.Increment(ref m_cacheHits);
@@ -235,6 +250,67 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             logger.LruTableNoLongerFull(m_streamName);
         }
 
+        #region AddOrUpdate remove boxing hacks
+        private struct AddOrUpdateContainer
+        {
+            public ICacheObject value;
+            public ILruEvictHandler evictHandler;
+
+            public AddOrUpdateContainer(ICacheObject value, ILruEvictHandler evictHandler)
+            {
+                this.value = value;
+                this.evictHandler = evictHandler;
+            }
+        }
+
+        private LinkedListNode<LinkedListValue> AddOrUpdate_NewValue(long key, AddOrUpdateContainer container)
+        {
+            var newNode = new LinkedListNode<LinkedListValue>(new LinkedListValue()
+            {
+                key = key,
+                value = container.value,
+                evictHandler = container.evictHandler,
+                useCount = 0
+            });
+
+            if (container.value.RemovedFromCache)
+            {
+                if (!container.value.TryRent())
+                {
+                    throw new Exception("Already disposed");
+                }
+                container.value.RemovedFromCache = false;
+            }
+
+            lock (m_nodes)
+            {
+                m_nodes.AddLast(newNode);
+            }
+
+            // Add to count
+            Interlocked.Increment(ref m_count);
+
+            return newNode;
+        }
+
+        private LinkedListNode<LinkedListValue> AddOrUpdate_ExistingValue(long key, LinkedListNode<LinkedListValue> old, AddOrUpdateContainer container)
+        {
+            lock (old)
+            {
+                if (container.value.Equals(old.ValueRef.value))
+                {
+                    old.ValueRef.version = old.ValueRef.version + 1;
+                    return old;
+                }
+                else
+                {
+                    throw new InvalidOperationException("Cannot add a new value to the cache with the same key.");
+                }
+            }
+        }
+
+        #endregion
+
         public bool Add(long key, ICacheObject value, ILruEvictHandler evictHandler)
         {
             bool full = false;
@@ -242,40 +318,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 full = true;
             }
-            cache.AddOrUpdate(key, (key) =>
-            {
-                var newNode = new LinkedListNode<LinkedListValue>(new LinkedListValue()
-                {
-                    key = key,
-                    value = value,
-                    evictHandler = evictHandler,
-                    useCount = 0
-                });
-
-                lock (m_nodes)
-                {
-                    m_nodes.AddLast(newNode);
-                }
-
-                // Add to count
-                Interlocked.Increment(ref m_count);
-
-                return newNode;
-            }, (key, old) =>
-            {
-                lock (old)
-                {
-                    if (value.Equals(old.ValueRef.value))
-                    {
-                        old.ValueRef.version = old.ValueRef.version + 1;
-                        return old;
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Cannot add a new value to the cache with the same key.");
-                    }
-                }
-            });
+            cache.AddOrUpdate(key, _addOrUpdate_newValue_func, _addOrUpdate_existingValue_func, new AddOrUpdateContainer(value, evictHandler));
 
             return full;
         }
@@ -300,7 +343,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 if (m_lastSeenCacheHits == cacheHitsLocal)
                 {
                     m_sameCaheHitsCount++;
-                    if (m_sameCaheHitsCount >= 10000 && currentCount > 0)
+                    if (m_sameCaheHitsCount >= 1000 && currentCount > 0)
                     {
                         // No cache hits during a long time, clear the entire cache
                         isCleanup = true;
@@ -322,7 +365,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             // Take cleanup count before increasing memory, to try and reduce semaphore locks
             var toBeRemovedCount = currentCount - cleanupStartLocal;
-            if (maxMemoryUsageInBytes > 0)
+            if (maxMemoryUsageInBytes > 0 && !isCleanup)
             {
                 _currentProcess.Refresh();
                 var percentage = (float)currentCount / maxSize;
@@ -406,12 +449,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             val.Item1.ValueRef.removed = true;
                             if (cache.TryRemove(val.Item1.ValueRef.key, out _))
                             {
+                                val.Item1.ValueRef.value.RemovedFromCache = true;
+                                val.Item1.ValueRef.value.Return();
                                 Interlocked.Decrement(ref m_count);
                             }
 
                             lock (m_nodes)
                             {
-                                m_nodes.Remove(val.Item1);
+                                if (val.Item1.List != null)
+                                {
+                                    m_nodes.Remove(val.Item1);
+                                }
                             }
                         }
                     }

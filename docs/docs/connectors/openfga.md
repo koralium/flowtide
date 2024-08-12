@@ -22,10 +22,10 @@ Optional:
 
 * **user_relation** - optional user relation, example in OpenFGA: 'user:1#\{userRelation\}'
 
-To use the *OpenFGA Sink* add the following line to the *ReadWriteFactory*:
+To use the *OpenFGA Sink* add the following line to the *ConnectorManager*:
 
 ```csharp
-factory.AddOpenFGASink("regex pattern for tablename", new OpenFGASinkOptions
+connectorManager.AddOpenFGASink("regex pattern for tablename", new OpenFGASinkOptions
 {
     ClientConfiguration = clientConfiguration
 });
@@ -70,10 +70,10 @@ The OpenFGA source allows you to read data from OpenFGA, which can be useful to 
 It can be combined with the authorization model permission to query parser which creates a view from your model
 for a specific permission which can then be materialized with your data.
 
-The source is added to the read write factory with the following line:
+The source is added to the *ConnectorManager* with the following line:
 
 ```csharp
-factory.AddOpenFGASource("regex pattern for tablename", new OpenFGASourceOptions
+connectorManager.AddOpenFGASource("regex pattern for tablename", new OpenFGASourceOptions
 {
     ClientConfiguration = clientConfiguration
 });
@@ -114,7 +114,7 @@ var modelPlan = OpenFgaToFlowtide.Convert(yourModel, "{type name}", "{relation n
 sqlPlanBuilder.AddPlanAsView("permissions", modelPlan);
 
 // Add a source that matches the input table name for openfga
-factory.AddOpenFGASource("{input table name}", new OpenFGASourceOptions
+connectorManager.AddOpenFGASource("{input table name}", new OpenFGASourceOptions
 {
     ClientConfiguration = clientConfiguration
 });

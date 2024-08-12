@@ -30,6 +30,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core;
 using System.Diagnostics.Metrics;
+using FlowtideDotNet.Core.Connectors;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 {
@@ -51,12 +52,12 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             await sqlServerFixture.DbContext.BulkInsertAsync(orders);
         }
 
-        public override void AddReadResolvers(ReadWriteFactory readWriteFactory)
+        public override void AddReadResolvers(IConnectorManager connectorManager)
         {
-            readWriteFactory.AddSqlServerSource(".*", () => sqlServerFixture.ConnectionString, (rel) =>
+            connectorManager.AddSqlServerSource(() => sqlServerFixture.ConnectionString, (rel) =>
             {
                 var name = rel.NamedTable.Names[0];
-                rel.NamedTable.Names = new List<string>() { "tpch", "dbo", name };
+                return $"tpch.dbo.{name}";
             });
         }
 
@@ -147,14 +148,14 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             sqlPlanBuilder.Sql("SELECT id FROM tpch.dbo.notracking");
             var plan = sqlPlanBuilder.GetPlan();
 
-            ReadWriteFactory readWriteFactory = new ReadWriteFactory();
-            readWriteFactory.AddSqlServerSource("*", () => sqlServerFixture.ConnectionString);
+            ConnectorManager connectorManager = new ConnectorManager();
+            connectorManager.AddSqlServerSource(() => sqlServerFixture.ConnectionString);
 
             var e = Assert.Throws<InvalidOperationException>(() =>
             {
                 var stream = new FlowtideBuilder("stream")
                 .AddPlan(plan)
-                .AddReadWriteFactory(readWriteFactory)
+                .AddConnectorManager(connectorManager)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
                     PersistentStorage = new FileCachePersistentStorage(new Storage.FileCacheOptions())

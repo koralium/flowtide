@@ -24,10 +24,10 @@ Optional:
 * **subject_relation** - optional subject relation.
 
 
-To use the *SpiceDB Sink* add the following line to the *ReadWriteFactory*:
+To use the *SpiceDB Sink* add the following line to the *ConnectorManager*:
 
 ```csharp
-factory.AddSpiceDbSink("regex pattern for tablename", new SpiceDbSinkOptions
+connectorManager.AddSpiceDbSink("regex pattern for tablename", new SpiceDbSinkOptions
 {
     Channel = grpcChannel, // Grpc channel used to connect to SpiceDB
     GetMetadata = () =>
@@ -86,7 +86,7 @@ Filter conditions on resource type, relation and subject type will tried to be p
 Example on using the spicedb source:
 
 ```csharp
-factory.AddSpiceDbSource("regex pattern for tablename", new SpiceDbSourceOptions
+connectorManager.AddSpiceDbSource("regex pattern for tablename", new SpiceDbSourceOptions
 {
     Channel = grpcChannel,
     GetMetadata = () =>

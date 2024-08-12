@@ -19,25 +19,25 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Tests.Failure
 {
-    internal class TestFactory : IReadWriteFactory
-    {
-        private readonly Func<ReadRelation, DataflowBlockOptions, IStreamIngressVertex> ingressFunc;
-        private readonly Func<WriteRelation, ExecutionDataflowBlockOptions, IStreamEgressVertex> egressFunc;
+    //internal class TestFactory : IReadWriteFactory
+    //{
+    //    private readonly Func<ReadRelation, DataflowBlockOptions, IStreamIngressVertex> ingressFunc;
+    //    private readonly Func<WriteRelation, ExecutionDataflowBlockOptions, IStreamEgressVertex> egressFunc;
 
-        public TestFactory(Func<ReadRelation, DataflowBlockOptions, IStreamIngressVertex> ingressFunc, Func<WriteRelation, ExecutionDataflowBlockOptions, IStreamEgressVertex> egressFunc)
-        {
-            this.ingressFunc = ingressFunc;
-            this.egressFunc = egressFunc;
-        }
+    //    public TestFactory(Func<ReadRelation, DataflowBlockOptions, IStreamIngressVertex> ingressFunc, Func<WriteRelation, ExecutionDataflowBlockOptions, IStreamEgressVertex> egressFunc)
+    //    {
+    //        this.ingressFunc = ingressFunc;
+    //        this.egressFunc = egressFunc;
+    //    }
 
-        public ReadOperatorInfo GetReadOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
-        {
-            return new ReadOperatorInfo(ingressFunc(readRelation, dataflowBlockOptions));
-        }
+    //    public ReadOperatorInfo GetReadOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
+    //    {
+    //        return new ReadOperatorInfo(ingressFunc(readRelation, dataflowBlockOptions));
+    //    }
 
-        public IStreamEgressVertex GetWriteOperator(WriteRelation readRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
-        {
-            return egressFunc(readRelation, executionDataflowBlockOptions);
-        }
-    }
+    //    public IStreamEgressVertex GetWriteOperator(WriteRelation readRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
+    //    {
+    //        return egressFunc(readRelation, executionDataflowBlockOptions);
+    //    }
+    //}
 }

@@ -64,13 +64,13 @@ namespace FlowtideDotNet.Core.Flexbuffer
             return new FlxValueRef(span, offset, byteWidth, packedType);
         }
 
-        public static FlxValue FromMemory(Memory<byte> memory)
+        public static FlxValue FromMemory(byte[] memory)
         {
             if (memory.Length < 3)
             {
                 throw new InvalidOperationException($"Invalid buffer {memory}");
             }
-            var span = memory.Span;
+            var span = memory;
             var byteWidth = span[span.Length - 1];
             var packedType = span[span.Length - 2];
             var offset = span.Length - byteWidth - 2;

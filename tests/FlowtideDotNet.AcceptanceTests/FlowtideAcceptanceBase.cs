@@ -29,10 +29,12 @@ namespace FlowtideDotNet.AcceptanceTests
         public IReadOnlyList<User> Users => flowtideTestStream.Users;
         public IReadOnlyList<Order> Orders => flowtideTestStream.Orders;
         public IReadOnlyList<Company> Companies => flowtideTestStream.Companies;
+        public IReadOnlyList<Project> Projects => flowtideTestStream.Projects;
+        public IReadOnlyList<ProjectMember> ProjectMembers => flowtideTestStream.ProjectMembers;
         public IFunctionsRegister FunctionsRegister => flowtideTestStream.FunctionsRegister;
         public ISqlFunctionRegister SqlFunctionRegister => flowtideTestStream.SqlFunctionRegister;
 
-        protected Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions);
+        protected Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default, int pageSize = 1024) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize);
 
         public List<FlxVector> GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 
@@ -44,6 +46,36 @@ namespace FlowtideDotNet.AcceptanceTests
         protected void GenerateData(int count = 1000)
         {
             flowtideTestStream.Generate(count);
+        }
+
+        protected void GenerateUsers(int count = 1000)
+        {
+            flowtideTestStream.GenerateUsers(count);
+        }
+
+        protected void GenerateOrders(int count = 1000)
+        {
+            flowtideTestStream.GenerateOrders(count);
+        }
+
+        protected void GenerateCompanies(int count = 1)
+        {
+            flowtideTestStream.GenerateCompanies(count);
+        }
+
+        protected void GenerateProjects(int count = 1000)
+        {
+            flowtideTestStream.GenerateProjects(count);
+        }
+
+        protected void GenerateProjectMembers(int count = 1000)
+        {
+            flowtideTestStream.GenerateProjectMembers(count);
+        }
+
+        protected void AddOrUpdateCompany(Company company)
+        {
+            flowtideTestStream.AddOrUpdateCompany(company);
         }
 
         protected Task WaitForUpdate()
@@ -81,6 +113,7 @@ namespace FlowtideDotNet.AcceptanceTests
             var baseType = this.GetType();
             var testName = GetTestClassName(testOutputHelper);
             flowtideTestStream = new FlowtideTestStream($"{baseType.Name}/{testName}");
+            //flowtideTestStream.CachePageCount = 10;
         }
 
         private static string GetTestClassName(ITestOutputHelper output)

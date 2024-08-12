@@ -34,6 +34,13 @@ using FlowtideDotNet.Core.Operators.TimestampProvider;
 using FlowtideDotNet.Core.Operators.Buffer;
 using FlowtideDotNet.Core.Operators.TopN;
 using FlowtideDotNet.Core.Operators.TableFunction;
+using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices.Egress;
+using System.Threading.Tasks;
+using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Core.Operators.Join;
+using FlowtideDotNet.Base.Vertices.Unary;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -54,14 +61,34 @@ namespace FlowtideDotNet.Core.Engine
 
         private readonly Plan plan;
         private readonly DataflowStreamBuilder dataflowStreamBuilder;
-        private readonly IReadWriteFactory readFactory;
-        private readonly int queueSize;
+        private readonly IConnectorManager? connectorManager;
+        private readonly IReadWriteFactory? readWriteFactory;
         private readonly FunctionsRegister functionsRegister;
         private readonly int parallelism;
         private readonly TimeSpan getTimestampInterval;
+        private readonly bool _useColumnStore;
         private int _operatorId = 0;
         private Dictionary<int, RelationTree> _doneRelations;
         private Dictionary<string, IterationOperator> _iterationOperators = new Dictionary<string, IterationOperator>();
+        private readonly TaskScheduler? _taskScheduler;
+        private readonly int _queueSize;
+
+        private ExecutionDataflowBlockOptions DefaultBlockOptions
+        {
+            get
+            {
+                var options = new ExecutionDataflowBlockOptions()
+                {
+                    BoundedCapacity = _queueSize,
+                    MaxDegreeOfParallelism = 1
+                };
+                if (_taskScheduler != null)
+                {
+                    options.TaskScheduler = _taskScheduler;
+                }
+                return options;
+            }
+        }
 
         public void BuildPlan()
         {
@@ -100,30 +127,45 @@ namespace FlowtideDotNet.Core.Engine
         public SubstraitVisitor(
             Plan plan, 
             DataflowStreamBuilder dataflowStreamBuilder, 
-            IReadWriteFactory readFactory, 
+            IConnectorManager? connectorManager,
+            IReadWriteFactory? readWriteFactory,
             int queueSize, 
             FunctionsRegister functionsRegister,
             int parallelism,
-            TimeSpan getTimestampInterval)
+            TimeSpan getTimestampInterval,
+            bool useColumnStore,
+            TaskScheduler? taskScheduler = default)
         {
             this.plan = plan;
             this.dataflowStreamBuilder = dataflowStreamBuilder;
-            this.readFactory = readFactory;
-            this.queueSize = queueSize;
+            this.connectorManager = connectorManager;
+            this.readWriteFactory = readWriteFactory;
             this.functionsRegister = functionsRegister;
             this.parallelism = parallelism;
             this.getTimestampInterval = getTimestampInterval;
+            _useColumnStore = useColumnStore;
+            _queueSize = queueSize;
+            _taskScheduler = taskScheduler;
             _doneRelations = new Dictionary<int, RelationTree>();
         }
+
+        //private ExecutionDataflowBlockOptions CreateBlockOptions()
+        //{
+        //    var options = new ExecutionDataflowBlockOptions()
+        //    {
+        //        BoundedCapacity = _queueSize,
+        //        MaxDegreeOfParallelism = 1
+        //    };
+        //    if (taskScheduler != null)
+        //    {
+        //        options.TaskScheduler = taskScheduler;
+        //    }
+        //}
 
         public override IStreamVertex VisitFilterRelation(FilterRelation filterRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new FilterOperator(filterRelation, functionsRegister, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions()
-            {
-                BoundedCapacity = queueSize,
-                MaxDegreeOfParallelism = 1
-            });
+            var op = new FilterOperator(filterRelation, functionsRegister, DefaultBlockOptions);
 
             if (state != null)
             {
@@ -138,7 +180,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitProjectRelation(ProjectRelation projectRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new ProjectOperator(projectRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1});
+            var op = new ProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
 
             if (state != null)
             {
@@ -156,21 +198,17 @@ namespace FlowtideDotNet.Core.Engine
             {
                 
                 var partitionOperatorId = _operatorId++;
-                var partitionOperator = new PartitionOperator(new PartitionOperatorOptions(aggregateRelation.Groupings[0].GroupingExpressions), functionsRegister, parallelism, new ExecutionDataflowBlockOptions()
-                {
-                    BoundedCapacity = 100,
-                    MaxDegreeOfParallelism = 1
-                });
+                var partitionOperator = new PartitionOperator(new PartitionOperatorOptions(aggregateRelation.Groupings[0].GroupingExpressions), functionsRegister, parallelism, DefaultBlockOptions);
                 dataflowStreamBuilder.AddPropagatorBlock(partitionOperatorId.ToString(), partitionOperator);
 
                 var partitionCombinerId = _operatorId++;
-                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch, object>(parallelism, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch, object>(parallelism, DefaultBlockOptions);
                 dataflowStreamBuilder.AddPropagatorBlock(partitionCombinerId.ToString(), partitionCombiner);
 
                 for (int i = 0; i < parallelism; i++)
                 {
                     var aggregateOperatorId = _operatorId++;
-                    var aggregateOperator = new AggregateOperator(aggregateRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                    var aggregateOperator = new AggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
                     // Link partition output to the aggregate operator
                     partitionOperator.Sources[i].LinkTo(aggregateOperator);
                     dataflowStreamBuilder.AddPropagatorBlock(aggregateOperatorId.ToString(), aggregateOperator);
@@ -188,7 +226,7 @@ namespace FlowtideDotNet.Core.Engine
             else
             {
                 var id = _operatorId++;
-                var op = new AggregateOperator(aggregateRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                var op = new AggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
 
                 if (state != null)
                 {
@@ -205,11 +243,7 @@ namespace FlowtideDotNet.Core.Engine
         {
             var id = _operatorId++;
 
-            var op = new UnwrapOperator(unwrapRelation, functionsRegister, new ExecutionDataflowBlockOptions()
-            {
-                BoundedCapacity = queueSize,
-                MaxDegreeOfParallelism = 1
-            });
+            var op = new UnwrapOperator(unwrapRelation, functionsRegister, DefaultBlockOptions);
 
             if (state != null)
             {
@@ -227,11 +261,7 @@ namespace FlowtideDotNet.Core.Engine
             if (parallelism > 1)
             {
                 var leftPartitionOperatorId = _operatorId++;
-                var leftPartitionOperator = new PartitionOperator(new PartitionOperatorOptions(mergeJoinRelation.LeftKeys.ToList<Substrait.Expressions.Expression>()), functionsRegister, parallelism, new ExecutionDataflowBlockOptions()
-                {
-                    BoundedCapacity = queueSize,
-                    MaxDegreeOfParallelism = 1
-                });
+                var leftPartitionOperator = new PartitionOperator(new PartitionOperatorOptions(mergeJoinRelation.LeftKeys.ToList<Substrait.Expressions.Expression>()), functionsRegister, parallelism, DefaultBlockOptions);
                 dataflowStreamBuilder.AddPropagatorBlock(leftPartitionOperatorId.ToString(), leftPartitionOperator);
                 var rightPartitionOperatorId = _operatorId++;
                 var rightPartitionOperator = new PartitionOperator(new PartitionOperatorOptions(mergeJoinRelation.RightKeys.Select(x =>
@@ -247,25 +277,25 @@ namespace FlowtideDotNet.Core.Engine
                         };
                     }
                     return x;
-                }).ToList<Substrait.Expressions.Expression>()), functionsRegister, parallelism, new ExecutionDataflowBlockOptions()
-                {
-                    BoundedCapacity = queueSize,
-                    MaxDegreeOfParallelism = 1
-                });
+                }).ToList<Substrait.Expressions.Expression>()), functionsRegister, parallelism, DefaultBlockOptions);
                 dataflowStreamBuilder.AddPropagatorBlock(rightPartitionOperatorId.ToString(), rightPartitionOperator);
 
                 var partitionCombinerId = _operatorId++;
-                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch, object>(parallelism, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch, object>(parallelism, DefaultBlockOptions);
                 dataflowStreamBuilder.AddPropagatorBlock(partitionCombinerId.ToString(), partitionCombiner);
 
                 for (int i = 0; i < parallelism; i++)
                 {
                     var id = _operatorId++;
-                    var op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, new ExecutionDataflowBlockOptions()
+                    MultipleInputVertex<StreamEventBatch, JoinState> op;
+                    if (_useColumnStore)
                     {
-                        BoundedCapacity = queueSize,
-                        MaxDegreeOfParallelism = 1
-                    });
+                        op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                    }
+                    else
+                    {
+                        op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                    }
                     leftPartitionOperator.Sources[i].LinkTo(op.Targets[0]);
                     rightPartitionOperator.Sources[i].LinkTo(op.Targets[1]);
                     op.LinkTo(partitionCombiner.Targets[i]);
@@ -285,11 +315,16 @@ namespace FlowtideDotNet.Core.Engine
             {
                 var id = _operatorId++;
 
-                var op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, new ExecutionDataflowBlockOptions()
+                MultipleInputVertex<StreamEventBatch, JoinState> op;
+                if (_useColumnStore)
                 {
-                    BoundedCapacity = queueSize,
-                    MaxDegreeOfParallelism = 1
-                });
+                    op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                }
+                else
+                {
+                    op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                }
+                
                 if (state != null)
                 {
                     op.LinkTo(state);
@@ -310,11 +345,7 @@ namespace FlowtideDotNet.Core.Engine
             if (joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Inner)
             {
                 //throw new NotSupportedException();
-                var op = new BlockNestedJoinOperator(joinRelation, functionsRegister, new ExecutionDataflowBlockOptions()
-                {
-                    BoundedCapacity = queueSize,
-                    MaxDegreeOfParallelism = 1
-                });
+                var op = new BlockNestedJoinOperator(joinRelation, functionsRegister, DefaultBlockOptions);
 
                 if (state != null)
                 {
@@ -339,11 +370,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitSetRelation(SetRelation setRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new SetOperator(setRelation, new ExecutionDataflowBlockOptions()
-            {
-                BoundedCapacity = queueSize,
-                MaxDegreeOfParallelism = 1
-            });
+            var op = new SetOperator(setRelation, DefaultBlockOptions);
             
             if (state != null)
             {
@@ -361,7 +388,7 @@ namespace FlowtideDotNet.Core.Engine
         private IStreamVertex VisitGetTimestampTable(ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new TimestampProviderOperator(getTimestampInterval, new DataflowBlockOptions() { BoundedCapacity = queueSize });
+            var op = new TimestampProviderOperator(getTimestampInterval, DefaultBlockOptions);
             if (op is ISourceBlock<IStreamEvent> sourceBlock)
             {
                 if (state != null)
@@ -383,25 +410,51 @@ namespace FlowtideDotNet.Core.Engine
             {
                 return VisitGetTimestampTable(state);
             }
-
-            var info = readFactory.GetReadOperator(readRelation, functionsRegister, new DataflowBlockOptions() { BoundedCapacity = queueSize });
-
-            var previousState = state;
-            if (info.NormalizationRelation != null)
+            IStreamIngressVertex? op;
+            ITargetBlock<IStreamEvent>? previousState;
+            // TODO: Remove this if statement after readwritefactory is removed
+            if (connectorManager != null)
             {
-                var normId = _operatorId++;
-                NormalizationOperator normOp = new NormalizationOperator(info.NormalizationRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                var sourceFactory = connectorManager.GetSourceFactory(readRelation);
+                op = sourceFactory.CreateSource(readRelation, functionsRegister, DefaultBlockOptions);
+                previousState = state;
+            }
+            #region ReadwriteFactory obsolete
+            else if (readWriteFactory != null)
+            {
+                var info = readWriteFactory.GetReadOperator(readRelation, functionsRegister, DefaultBlockOptions);
 
-                if (state != null)
+                previousState = state;
+                if (info.NormalizationRelation != null)
                 {
-                    normOp.LinkTo(state);
+                    var normId = _operatorId++;
+                    UnaryVertex<StreamEventBatch, NormalizationState> normOp;
+                    if (_useColumnStore)
+                    {
+                        normOp = new ColumnNormalizationOperator(info.NormalizationRelation, functionsRegister, DefaultBlockOptions);
+                    }
+                    else
+                    {
+                        normOp = new NormalizationOperator(info.NormalizationRelation, functionsRegister, DefaultBlockOptions);
+                    }
+
+                    if (state != null)
+                    {
+                        normOp.LinkTo(state);
+                    }
+                    previousState = normOp;
+                    dataflowStreamBuilder.AddPropagatorBlock(normId.ToString(), normOp);
                 }
-                previousState = normOp;
-                dataflowStreamBuilder.AddPropagatorBlock(normId.ToString(), normOp);
+                op = info.IngressVertex;
+            }
+            #endregion
+            else
+            {
+                throw new InvalidOperationException("No ConnectorManager or ReadWriteFactory");
             }
 
+
             var id = _operatorId++;
-            var op = info.IngressVertex;
             if (op is ISourceBlock<IStreamEvent> sourceBlock)
             {
                 if (previousState != null)
@@ -420,7 +473,21 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitWriteRelation(WriteRelation writeRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = readFactory.GetWriteOperator(writeRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+
+            IStreamEgressVertex? op = default;
+            if (connectorManager != null)
+            {
+                var sinkFactory = connectorManager.GetSinkFactory(writeRelation);
+                op = sinkFactory.CreateSink(writeRelation, functionsRegister, DefaultBlockOptions);
+            }
+            else if (readWriteFactory != null)
+            {
+                op = readWriteFactory.GetWriteOperator(writeRelation, functionsRegister, DefaultBlockOptions);
+            }
+            else
+            {
+                throw new InvalidOperationException("No ConnectorManager or ReadWriteFactory");
+            }
 
             if (op is ITargetBlock<IStreamEvent> target)
             {
@@ -457,7 +524,15 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitNormalizationRelation(NormalizationRelation normalizationRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            NormalizationOperator op = new NormalizationOperator(normalizationRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            UnaryVertex<StreamEventBatch, NormalizationState> op;
+            if (_useColumnStore)
+            {
+                op = new ColumnNormalizationOperator(normalizationRelation, functionsRegister, DefaultBlockOptions);
+            }
+            else
+            {
+                op = new NormalizationOperator(normalizationRelation, functionsRegister, DefaultBlockOptions);
+            }
 
             if (state != null)
             {
@@ -472,7 +547,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitVirtualTableReadRelation(VirtualTableReadRelation virtualTableReadRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            VirtualTableOperator op = new VirtualTableOperator(virtualTableReadRelation, new DataflowBlockOptions() { BoundedCapacity = queueSize });
+            VirtualTableOperator op = new VirtualTableOperator(virtualTableReadRelation, DefaultBlockOptions);
 
             if (state != null)
             {
@@ -490,7 +565,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitIterationRelation(IterationRelation iterationRelation, ITargetBlock<IStreamEvent> state)
         {
             var id = _operatorId++;
-            var op = new IterationOperator(iterationRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            var op = new IterationOperator(iterationRelation, functionsRegister, DefaultBlockOptions);
             if (state != null)
             {
                 op.EgressSource.LinkTo(state);
@@ -498,7 +573,7 @@ namespace FlowtideDotNet.Core.Engine
             if (iterationRelation.Input == null)
             {
                 var ingressId = _operatorId++;
-                var readDummy = new IterationDummyRead(new DataflowBlockOptions() { BoundedCapacity = queueSize });
+                var readDummy = new IterationDummyRead(DefaultBlockOptions);
                 readDummy.LinkTo(op.IngressTarget);
                 dataflowStreamBuilder.AddIngressBlock(ingressId.ToString(), readDummy);
             }
@@ -526,7 +601,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitBufferRelation(BufferRelation bufferRelation, ITargetBlock<IStreamEvent> state)
         {
             var id = _operatorId++;
-            var op = new BufferOperator(bufferRelation, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            var op = new BufferOperator(bufferRelation, DefaultBlockOptions);
             if (state != null)
             {
                 op.LinkTo(state);
@@ -539,7 +614,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitTopNRelation(TopNRelation topNRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new TopNOperator(topNRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+            var op = new TopNOperator(topNRelation, functionsRegister, DefaultBlockOptions);
             if (state != null)
             {
                 op.LinkTo(state);
@@ -561,7 +636,7 @@ namespace FlowtideDotNet.Core.Engine
             if (tableFunctionRelation.Input == null)
             {
                 // Used as a root for data such as in FROM func()
-                var op = new TableFunctionReadOperator(tableFunctionRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                var op = new TableFunctionReadOperator(tableFunctionRelation, functionsRegister, DefaultBlockOptions);
                 if (state != null)
                 {
                     op.LinkTo(state);
@@ -573,7 +648,7 @@ namespace FlowtideDotNet.Core.Engine
             else
             {
                 // Used in a join or similar
-                var op = new TableFunctionJoinOperator(tableFunctionRelation, functionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = queueSize, MaxDegreeOfParallelism = 1 });
+                var op = new TableFunctionJoinOperator(tableFunctionRelation, functionsRegister, DefaultBlockOptions);
 
                 if (state != null)
                 {

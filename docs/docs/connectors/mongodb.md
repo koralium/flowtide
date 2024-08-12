@@ -18,10 +18,10 @@ The nuget package for the connector is:
 Its implementation waits fully until the stream has reached a steady state at a time T until it writes data to the collection.
 This means that its table output can always be traced back to a state from the source systems.
 
-To use the *MongoDB Sink* add the following line to the *ReadWriteFactory*:
+To use the *MongoDB Sink* add the following line to the *ConnectorManager*:
 
 ```csharp
-factory.AddMongoDbSink("regex pattern for tablename", new FlowtideMongoDBSinkOptions()
+connectorManager.AddMongoDbSink("regex pattern for tablename", new FlowtideMongoDBSinkOptions()
     {
         Collection = collection, //MongoDB collection
         Database = databaseName, // MongoDB database
@@ -38,7 +38,7 @@ This can be helpful when the stream is changed and you want to write to the same
 To do this we add the following code:
 
 ```csharp
-factory.AddMongoDbSink("regex pattern for tablename", new FlowtideMongoDBSinkOptions()
+connectorManager.AddMongoDbSink("regex pattern for tablename", new FlowtideMongoDBSinkOptions()
     {
         ...
         TransformDocument = (doc) => {
@@ -61,7 +61,7 @@ It is possible to listen to watermark updates, this is done by setting the *OnWa
 Example:
 
 ```csharp
-factory.AddMongoDbSink("regex pattern for tablename", new FlowtideMongoDBSinkOptions()
+connectorManager.AddMongoDbSink("regex pattern for tablename", new FlowtideMongoDBSinkOptions()
     {
         ...
         OnWatermarkUpdate = async (watermark) => {

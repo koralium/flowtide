@@ -14,7 +14,7 @@ using Azure.Core;
 
 namespace FlowtideDotNet.Connector.Sharepoint
 {
-    public class SharepointSinkOptions
+    public class SharepointSinkOptions : SharepointOptions
     {
         /// <summary>
         /// Name of the columns that should be treated as the primary key.
@@ -22,30 +22,9 @@ namespace FlowtideDotNet.Connector.Sharepoint
         public required List<string> PrimaryKeyColumnNames { get; set; }
 
         /// <summary>
-        /// The URL of the Sharepoint tenant without 'https://'
-        /// Example: {tenant}.sharepoint.com
-        /// </summary>
-        public required string SharepointUrl { get; set; }
-
-        /// <summary>
-        /// The name of the Sharepoint site
-        /// </summary>
-        public required string Site { get; set; }
-        
-        /// <summary>
-        /// Token credential to use for authentication
-        /// </summary>
-        public required TokenCredential TokenCredential { get; set; }
-
-        /// <summary>
         /// Do not delete items from Sharepoint
         /// </summary>
         public bool DisableDelete { get; set; }
-
-        /// <summary>
-        /// Stop the stream if a UPN is not found
-        /// </summary>
-        public bool ThrowOnPersonOrGroupNotFound { get; set; }
 
         /// <summary>
         /// Preprocess the row before it is sent to Sharepoint.
