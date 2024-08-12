@@ -751,7 +751,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 }
             };
 
-            var result = new ExpressionData(likeFunction, expr.Name);
+            var result = new ExpressionData(likeFunction, expr.Name, new BoolType() { Nullable = true });
 
             if (like.Negated)
             {
