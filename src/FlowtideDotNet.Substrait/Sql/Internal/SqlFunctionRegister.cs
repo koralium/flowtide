@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
@@ -25,28 +26,28 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
     internal class SqlFunctionRegister : ISqlFunctionRegister
     {
-        private readonly Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression>> _scalarFunctions;
-        private readonly Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction>> _aggregateFunctions;
+        private readonly Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, ScalarResponse>> _scalarFunctions;
+        private readonly Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateResponse>> _aggregateFunctions;
         private readonly Dictionary<string, Func<SqlTableFunctionArgument, TableFunction>> _tableFunctions;
 
         public SqlFunctionRegister()
         {
-            _scalarFunctions = new Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression>>(StringComparer.OrdinalIgnoreCase);
-            _aggregateFunctions = new Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction>>(StringComparer.OrdinalIgnoreCase);
+            _scalarFunctions = new Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, ScalarResponse>>(StringComparer.OrdinalIgnoreCase);
+            _aggregateFunctions = new Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateResponse>>(StringComparer.OrdinalIgnoreCase);
             _tableFunctions = new Dictionary<string, Func<SqlTableFunctionArgument, TableFunction>>(StringComparer.OrdinalIgnoreCase);
         }
 
-        public void RegisterScalarFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression> mapFunc)
+        public void RegisterScalarFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, ScalarResponse> mapFunc)
         {
             _scalarFunctions.Add(name, mapFunc);
         }
 
-        public Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, Expression> GetScalarMapper(string name)
+        public Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, ScalarResponse> GetScalarMapper(string name)
         {
             return _scalarFunctions[name];
         }
 
-        public Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction> GetAggregateMapper(string name)
+        public Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateResponse> GetAggregateMapper(string name)
         {
             return _aggregateFunctions[name];
         }
@@ -77,7 +78,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return FunctionType.NotExist;
         }
 
-        public void RegisterAggregateFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateFunction> mapFunc)
+        public void RegisterAggregateFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateResponse> mapFunc)
         {
             _aggregateFunctions.Add(name, mapFunc);
         }

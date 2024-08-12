@@ -123,7 +123,17 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             var tableName = string.Join(".", createTable.Name.Values.Select(x=> x.Value));
             var columnNames = createTable.Columns.Select(x => x.Name.Value).ToList();
-            tablesMetadata.AddTable(tableName, columnNames);
+
+            NamedStruct schema = new NamedStruct()
+            {
+                Names = columnNames,
+                Struct = new Struct()
+                {
+                    Types = createTable.Columns.Select(x => SqlToSubstraitType.GetType(x.DataType)).ToList()
+                }
+            };
+
+            tablesMetadata.AddTable(tableName, schema);
             return null;
         }
 
@@ -403,11 +413,13 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 var mapper = sqlFunctionRegister.GetAggregateMapper(foundMeasure.Name);
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+
+                var aggregateResponse = mapper(foundMeasure, exprVisitor, parent.EmitData);
                 aggRel.Measures.Add(new AggregateMeasure()
                 {
-                    Measure = mapper(foundMeasure, exprVisitor, parent.EmitData)
+                    Measure = aggregateResponse.AggregateFunction
                 });
-                aggEmitData.Add(foundMeasure, emitcount, $"$expr{emitcount}");
+                aggEmitData.Add(foundMeasure, emitcount, $"$expr{emitcount}", aggregateResponse.Type);
                 emitcount++;
             }
 
@@ -676,6 +688,13 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     }
                 }
 
+                if (t.Schema.Struct == null)
+                {
+                    t.Schema.Struct = new Struct()
+                    {
+                        Types = t.Schema.Names.Select(x => new AnyType() as SubstraitBaseType).ToList()
+                    };
+                }
                 var readRelation = new ReadRelation()
                 {
                     NamedTable = new FlowtideDotNet.Substrait.Type.NamedTable()

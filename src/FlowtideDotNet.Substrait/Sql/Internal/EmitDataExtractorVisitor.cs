@@ -135,19 +135,28 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
                 if (s is SelectItem.ExpressionWithAlias exprAlias)
                 {
-                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(exprAlias.Alias) })), outputCounter, exprAlias.Alias);
+                    SubstraitBaseType returnType = new AnyType();
+                    if (parent != null)
+                    {
+                        var condition = exprVisitor.Visit(exprAlias.Expression, parent);
+                        returnType = condition.Type;
+                    }
+                    
+                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(exprAlias.Alias) })), outputCounter, exprAlias.Alias, returnType);
                     outputCounter++;
                 }
                 if (s is SelectItem.UnnamedExpression unnamedExpr)
                 {
                     var conditionName = $"$expr{outputCounter}";
+                    SubstraitBaseType returnType = new AnyType();
                     if (parent != null)
                     {
                         var condition = exprVisitor.Visit(unnamedExpr.Expression, parent);
                         conditionName = condition.Name;
+                        returnType = condition.Type;
                     }
                     
-                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(conditionName) })), outputCounter, conditionName);
+                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(conditionName) })), outputCounter, conditionName, returnType);
                     outputCounter++;
                 }
             }
@@ -165,7 +174,17 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                 for (int i = 0; i < t.Schema.Names.Count; i++)
                 {
-                    emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(t.Schema.Names[i]) })), i, t.Schema.Names[i]);
+                    SubstraitBaseType? returnType = default;
+                    if (t.Schema.Struct != null)
+                    {
+                        returnType = t.Schema.Struct.Types[i];
+                    }
+                    else
+                    {
+                        returnType = new AnyType();
+                    }
+                    
+                    emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(t.Schema.Names[i]) })), i, t.Schema.Names[i], returnType);
                 }
 
                 if (table.Alias != null)

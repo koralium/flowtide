@@ -43,7 +43,14 @@ namespace FlowtideDotNet.Substrait.Tests
             Assert.True(exists);
 
             table.Should().BeEquivalentTo(
-                new TableMetadata("testtable", new List<string>() { "c1", "c2" })
+                new TableMetadata("testtable", new NamedStruct()
+                {
+                    Names = new List<string>() { "c1", "c2" },
+                    Struct = new Struct()
+                    {
+                        Types = new List<SubstraitBaseType>() { new AnyType(), new AnyType() }
+                    }
+                })
                 , opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
         }
 
@@ -996,7 +1003,14 @@ namespace FlowtideDotNet.Substrait.Tests
             {
                 if (tableName.Equals("testtable", StringComparison.OrdinalIgnoreCase))
                 {
-                    tableMetadata = new TableMetadata("testtable", new List<string>() { "c1", "c2" });
+                    tableMetadata = new TableMetadata("testtable", new NamedStruct()
+                    {
+                        Names = new List<string>() { "c1", "c2" },
+                        Struct = new Struct()
+                        {
+                            Types = new List<SubstraitBaseType>() { new AnyType(), new AnyType() }
+                        }
+                    });
                     return true;
                 }
                 tableMetadata = default;
