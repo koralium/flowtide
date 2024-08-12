@@ -56,6 +56,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public IReadOnlyList<Company> Companies => generator.Companies;
 
+        public IReadOnlyList<Project> Projects => generator.Projects;
+
+        public IReadOnlyList<ProjectMember> ProjectMembers => generator.ProjectMembers;
+
         public IFunctionsRegister FunctionsRegister => flowtideBuilder.FunctionsRegister;
 
         public ISqlFunctionRegister SqlFunctionRegister => sqlPlanBuilder.FunctionRegister;
@@ -86,6 +90,31 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.Generate(count);
         }
 
+        public void GenerateUsers(int count = 1000)
+        {
+            generator.GenerateUsers(count);
+        }
+
+        public void GenerateOrders(int count = 1000)
+        {
+            generator.GenerateOrders(count);
+        }
+
+        public void GenerateCompanies(int count = 1)
+        {
+            generator.GenerateCompanies(count);
+        }
+
+        public void GenerateProjects(int count = 1000)
+        {
+            generator.GenerateProjects(count);
+        }
+
+        public void GenerateProjectMembers(int count = 1000)
+        {
+            generator.GenerateProjectMembers(count);
+        }
+
         public void AddOrUpdateUser(User user)
         {
             generator.AddOrUpdateUser(user);
@@ -101,6 +130,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.DeleteOrder(order);
         }
 
+        public void AddOrUpdateCompany(Company company)
+        {
+            generator.AddOrUpdateCompany(company);
+        }
+
         [MemberNotNull(nameof(_connectorManager))]
         public void SetupConnectorManager()
         {
@@ -112,7 +146,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
-        public async Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default, TimeSpan? timestampInterval = default)
+        public async Task StartStream(
+            string sql, 
+            int parallelism = 1, 
+            StateSerializeOptions? stateSerializeOptions = default, 
+            TimeSpan? timestampInterval = default,
+            int pageSize = 1024)
         {
             if (stateSerializeOptions == null)
             {
@@ -138,6 +177,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     .WriteTo.File($"debugwrite/{testName.Replace("/", "_")}.log")
                     .CreateLogger();
                 b.AddSerilog(logger);
+                b.AddDebug();
             });
 #endif
 
@@ -156,6 +196,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     CachePageCount = CachePageCount,
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _persistentStorage,
+                    DefaultBPlusTreePageSize = pageSize,
                     TemporaryStorageOptions = new Storage.FileCacheOptions()
                     {
                         DirectoryPath = $"./data/tempFiles/{testName}/tmp"

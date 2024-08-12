@@ -111,7 +111,10 @@ namespace FlowtideDotNet.Core.Tests
             }));
             factory.AddSource(new TestIngressFactory("*"));
 
-            var cache = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions());
+            var cache = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
+            {
+                DirectoryPath = "./data/tempFiles/validateSamePlan"
+            });
             var stream = new FlowtideBuilder("test")
                     .AddPlan(plan)
                     .AddConnectorManager(factory)

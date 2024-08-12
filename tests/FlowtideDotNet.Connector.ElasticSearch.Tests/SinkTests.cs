@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             bool success = false;
             do
             {
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "5");
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "15");
                 success = resp.ApiCall.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             bool success = false;
             do
             {
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "5");
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "15");
                 success = resp.ApiCall.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             bool success = false;
             do
             {
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "5");
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "15");
                 success = resp.ApiCall.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
@@ -123,7 +123,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             bool success = false;
             do
             {
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "5");
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "15");
                 success = resp.ApiCall.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);

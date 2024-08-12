@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Engine;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -34,5 +35,6 @@ namespace FlowtideDotNet.DependencyInjection
 
         IFlowtideDIBuilder AddStorage(Action<IFlowtideStorageBuilder> storageOptions);
 
+        IFlowtideDIBuilder AddCustomOptions(Action<FlowtideBuilder> options);
     }
 }

@@ -103,12 +103,38 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 if (r.Value is TriggerEvent triggerEvent)
                 {
                     var enumerator = OnTrigger(triggerEvent.Name, triggerEvent.State);
-                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => new StreamMessage<T>(source, _currentTime));
+                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
+                        if (source is IRentable rentable)
+                        {
+                            rentable.Rent(_links.Count);
+                        }
+                        return new StreamMessage<T>(source, _currentTime);
+                    });
                 }
                 if (r.Value is StreamMessage<T> streamMessage)
                 {
                     var enumerator = OnRecieve(r.Key, streamMessage.Data, streamMessage.Time);
-                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => new StreamMessage<T>(source, streamMessage.Time));
+
+                    if (streamMessage.Data is IRentable rentable)
+                    {
+                        return new AsyncEnumerableReturnRentable<T, IStreamEvent>(rentable, enumerator, (source) => {
+                            if (source is IRentable rentable)
+                            {
+                                rentable.Rent(_links.Count);
+                            }
+                            return new StreamMessage<T>(source, streamMessage.Time);
+                        });
+                    }
+                    else
+                    {
+                        return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
+                            if (source is IRentable rentable)
+                            {
+                                rentable.Rent(_links.Count);
+                            }
+                            return new StreamMessage<T>(source, streamMessage.Time);
+                        });
+                    }
                 }
                 if (r.Value is Watermark watermark)
                 {
@@ -253,6 +279,10 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             {
                 await foreach(var e in OnWatermark(newWatermark))
                 {
+                    if (e is IRentable rentable)
+                    {
+                        rentable.Rent(_links.Count);
+                    }
                     yield return new StreamMessage<T>(e, _currentTime);
                 }
                 _currentWatermark = newWatermark;

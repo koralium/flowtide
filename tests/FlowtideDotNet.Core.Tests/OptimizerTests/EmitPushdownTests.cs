@@ -304,5 +304,118 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                     }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
                 );
         }
+
+        [Fact]
+        public void EmitIsPushedThroughFilterRelation()
+        {
+            var plan = new Plan()
+            {
+                Relations = new List<Substrait.Relations.Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Expressions = new List<Expression>(),
+                        Emit = new List<int>(){0, 1, 3, 5},
+                        Input = new FilterRelation()
+                        {
+                            Condition = new ScalarFunction()
+                            {
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.Equal,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 4
+                                        }
+                                    },
+                                    new StringLiteral() { Value = "test" }
+                                }
+                            },
+                            Input = new ReadRelation()
+                            {
+                                NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                                BaseSchema = new Substrait.Type.NamedStruct()
+                                {
+                                    Names = new List<string>() { "Col1", "Col2", "Col3", "Col4", "Col5", "Col6", "Col7"},
+                                    Struct = new Substrait.Type.Struct()
+                                    {
+                                        Types = new List<Substrait.Type.SubstraitBaseType>()
+                                        {
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var optimizedPlan = EmitPushdown.Optimize(plan);
+
+            optimizedPlan.Should()
+                .BeEquivalentTo(
+                    new Plan()
+                    {
+                        Relations = new List<Substrait.Relations.Relation>()
+                        {
+                            new ProjectRelation()
+                            {
+                                Expressions = new List<Expression>(),
+                                Emit = new List<int>(){0, 1, 2, 3},
+                                Input = new FilterRelation()
+                                {
+                                    Emit = new List<int>() {0, 1, 2, 4},
+                                    Condition = new ScalarFunction()
+                                    {
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.Equal,
+                                        Arguments = new List<Expression>()
+                                        {
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = 3
+                                                }
+                                            },
+                                            new StringLiteral() { Value = "test" }
+                                        }
+                                    },
+                                    Input = new ReadRelation()
+                                    {
+                                        Emit = new List<int>(){ 0, 1, 2, 3, 4 },
+                                        NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                                        BaseSchema = new Substrait.Type.NamedStruct()
+                                        {
+                                            Names = new List<string>() { "Col1", "Col2", "Col4", "Col5", "Col6"},
+                                            Struct = new Substrait.Type.Struct()
+                                            {
+                                                Types = new List<Substrait.Type.SubstraitBaseType>()
+                                                {
+                                                    new AnyType(),
+                                                    new AnyType(),
+                                                    new AnyType(),
+                                                    new AnyType(),
+                                                    new AnyType()
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                );
+        }
     }
 }

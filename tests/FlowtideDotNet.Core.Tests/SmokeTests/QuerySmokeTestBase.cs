@@ -60,6 +60,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
 
         private async Task StartStream<TResult>(string testName, string planLocation, Action<List<TResult>> datachange, List<int> primaryKeysOutput, PlanOptimizerSettings? settings = null)
         {
+            differentialComputeBuilder = new FlowtideBuilder(testName);
             var plantext = File.ReadAllText(planLocation);
             var plan = deserializer.Deserialize(plantext);
             PlanModifier planModifier = new PlanModifier();
@@ -83,6 +84,16 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 return Task.CompletedTask;
             }));
 
+            var loggerFactory = LoggerFactory.Create(b =>
+            {
+                var logger = new LoggerConfiguration()
+                    .MinimumLevel.Debug()
+                    .WriteTo.File($"debugwrite/{testName.Replace("/", "_")}.log")
+                    .CreateLogger();
+                b.AddSerilog(logger);
+                b.AddDebug();
+            });
+
             var checkpointManager = new DeviceLogCommitCheckpointManager(
                 new InMemoryDeviceFactory(),
                 new DefaultCheckpointNamingScheme($"checkpoints/"));
@@ -91,6 +102,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 .AddPlan(modifiedPlan, false)
                 .AddConnectorManager(connectorManager)
                 .WithScheduler(_streamScheduler)
+                .WithLoggerFactory(loggerFactory)
                 .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                 {
                     CachePageCount = 100000,

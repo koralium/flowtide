@@ -12,7 +12,9 @@
 
 namespace FlowtideDotNet.Storage.Tree
 {
-    public interface IBPlusTreeIterator<K, V> : IAsyncEnumerable<IBPlusTreePageIterator<K, V>>
+    public interface IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> : IAsyncEnumerable<IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>>, IDisposable
+        where TKeyContainer: IKeyContainer<K>
+        where TValueContainer: IValueContainer<V>
     {
         /// <summary>
         /// Goes to the beginning of the values
@@ -26,6 +28,12 @@ namespace FlowtideDotNet.Storage.Tree
         /// <param name="key"></param>
         /// <param name="searchComparer">A custom comparer seperate from the key comparer.</param>
         /// <returns></returns>
-        ValueTask Seek(in K key, in IComparer<K>? searchComparer = null);
+        ValueTask Seek(in K key, in IBplusTreeComparer<K, TKeyContainer>? searchComparer = null);
+
+        /// <summary>
+        /// Resets the iterator and frees any pages.
+        /// This method allows using the same iterator over a longer course of time.
+        /// </summary>
+        void Reset();
     }
 }

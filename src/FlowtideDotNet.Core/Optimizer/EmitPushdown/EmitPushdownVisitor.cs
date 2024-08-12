@@ -593,5 +593,80 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             }
             return base.VisitMergeJoinRelation(mergeJoinRelation, state);
         }
+
+        public override Relation VisitFilterRelation(FilterRelation filterRelation, object state)
+        {
+            if (filterRelation.Input.OutputLength >= filterRelation.OutputLength)
+            {
+                var input = filterRelation.Input;
+
+                var usageVisitor = new ExpressionFieldUsageVisitor(filterRelation.Input.OutputLength);
+                if (filterRelation.Condition != null)
+                {
+                    usageVisitor.Visit(filterRelation.Condition, default);
+                }
+
+                if (!usageVisitor.CanOptimize)
+                {
+                    return filterRelation;
+                }
+
+                var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
+
+                if (filterRelation.EmitSet)
+                {
+                    foreach (var field in filterRelation.Emit!)
+                    {
+                        if (field < input.OutputLength)
+                        {
+                            // Add all fields that are in the emit that are from the input
+                            if (!usedFields.Contains(field))
+                            {
+                                usedFields.Add(field);
+                            }
+                        }
+                    }
+                }
+
+                if (usedFields.Count <= input.OutputLength)
+                {
+                    var inputEmitResult = CreateInputEmitList(input, usedFields);
+                    var replaceVisitor = new ExpressionFieldReplaceVisitor(inputEmitResult.OldToNew);
+                    if (filterRelation.Condition != null)
+                    {
+                        replaceVisitor.Visit(filterRelation.Condition, default);
+                    }
+
+                    if (filterRelation.EmitSet)
+                    {
+                        var diff = input.OutputLength - inputEmitResult.Emit.Count;
+                        for (int i = 0; i < filterRelation.Emit.Count; i++)
+                        {
+                            if (filterRelation.Emit[i] >= input.OutputLength)
+                            {
+                                filterRelation.Emit[i] = filterRelation.Emit[i] - diff;
+                            }
+                            else
+                            {
+                                if (inputEmitResult.OldToNew.TryGetValue(filterRelation.Emit[i], out var newMapping))
+                                {
+                                    filterRelation.Emit[i] = newMapping;
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException("Could not find new mapping during optmization.");
+                                }
+                            }
+
+                        }
+                    }
+
+                    input.Emit = inputEmitResult.Emit;
+                }
+
+
+            }
+            return base.VisitFilterRelation(filterRelation, state);
+        }
     }
 }
