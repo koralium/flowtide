@@ -34,8 +34,18 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 DataType.StringType => new StringType(),
                 DataType.Date => new DateType(),
                 DataType.None => new AnyType(),
+                DataType.Custom => HandleCustom((dataType as DataType.Custom)!),
                 _ => throw new NotImplementedException($"Unknown data type {dataType}")
             };
+        }
+
+        private static SubstraitBaseType HandleCustom(DataType.Custom dataType)
+        {
+            if (dataType.Name == "any")
+            {
+                return new AnyType();
+            }
+            throw new NotImplementedException($"Unknown custom data type {dataType.Name}");
         }
     }
 }

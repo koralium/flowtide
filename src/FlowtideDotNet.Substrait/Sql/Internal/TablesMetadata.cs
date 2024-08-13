@@ -43,17 +43,36 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             _tableProviders.Add(tableProvider);
         }
 
+        private static NamedStruct CopyNamedStruct(NamedStruct existing)
+        {
+            Struct? @struct = default;
+            if (existing.Struct != null)
+            {
+                @struct = new Struct()
+                {
+                    Types = existing.Struct.Types.ToList()
+                };
+            }
+            return new NamedStruct()
+            {
+                Names = existing.Names.ToList(),
+                Struct = @struct
+            };
+        }
+
         public bool TryGetTable(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
-            if (_tables.TryGetValue(tableName, out tableMetadata))
+            if (_tables.TryGetValue(tableName, out var tableMetadataInfo))
             {
+                tableMetadata = new TableMetadata(tableName, CopyNamedStruct(tableMetadataInfo.Schema));
                 return true;
             }
             foreach(var tableProvider in _tableProviders)
             {
-                if (tableProvider.TryGetTableInformation(tableName, out tableMetadata))
+                if (tableProvider.TryGetTableInformation(tableName, out var tableMetadataFromProvider))
                 {
-                    _tables.TryAdd(tableName, tableMetadata);
+                    _tables.TryAdd(tableName, tableMetadataFromProvider);
+                    tableMetadata = new TableMetadata(tableName, CopyNamedStruct(tableMetadataFromProvider.Schema));
                     return true;
                 }
             }

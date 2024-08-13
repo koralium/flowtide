@@ -974,7 +974,7 @@ namespace FlowtideDotNet.Substrait.Tests
             var b1 = new SqlPlanBuilder();
             b1.Sql(@"
                 CREATE TABLE test (
-                    c1 amy,
+                    c1 any,
                     c2 any
                 );
 

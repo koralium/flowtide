@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Exceptions;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
@@ -57,7 +58,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 case BinaryOperator.Eq:
                     if (left.Type.Type != AnyType.Instance.Type && right.Type.Type != AnyType.Instance.Type && left.Type.Type != right.Type.Type)
                     {
-                        throw new InvalidOperationException($"Missmatch type in equality: '{binaryOp.ToSql()}', type({left.Type.Type.ToString()}) = type({right.Type.Type.ToString()})");
+                        throw new SubstraitParseException($"Missmatch type in equality: '{binaryOp.ToSql()}', type({left.Type.Type.ToString()}) = type({right.Type.Type.ToString()})");
                     }
                     var func = new ScalarFunction()
                     {

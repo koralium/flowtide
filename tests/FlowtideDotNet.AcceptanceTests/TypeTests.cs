@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Exceptions;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -59,14 +60,14 @@ namespace FlowtideDotNet.AcceptanceTests
         /// <summary>
         /// This test case covers a typical error that was made before type validation.
         /// Users would use sql server bit values 0 and 1 in boolean comparisons.
-        /// This test makes sure that an error is thrown if equality is checked between to missmatching types.
+        /// This test makes sure that an error is thrown if equality is checked between two missmatching types.
         /// </summary>
         /// <returns></returns>
         [Fact]
         public async Task TestEqualityDifferentTypes()
         {
             GenerateData();
-            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            var ex = await Assert.ThrowsAsync<SubstraitParseException>(async () =>
             {
                 await StartStream(@"
                 INSERT INTO output
@@ -76,6 +77,8 @@ namespace FlowtideDotNet.AcceptanceTests
                 WHERE active = 1
                 ");
             });
+
+            Assert.Equal("Missmatch type in equality: 'active = 1', type(Bool) = type(Int64)", ex.Message);
         }
     }
 }
