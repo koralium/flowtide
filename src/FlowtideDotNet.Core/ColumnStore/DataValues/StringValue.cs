@@ -64,5 +64,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return Encoding.UTF8.GetString(_utf8.Span);
         }
+
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = ArrowTypeId.String;
+            container._stringValue = this;
+        }
     }
 }

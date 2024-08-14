@@ -41,5 +41,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public decimal AsDecimal => throw new NotImplementedException();
 
         public bool IsNull => true;
+
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = ArrowTypeId.Null;
+        }
     }
 }

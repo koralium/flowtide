@@ -55,6 +55,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public bool IsNull => false;
 
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = ArrowTypeId.List;
+            container._listValue = this;
+        }
+
         public IDataValue GetAt(in int index)
         {
             return dataValues[index];

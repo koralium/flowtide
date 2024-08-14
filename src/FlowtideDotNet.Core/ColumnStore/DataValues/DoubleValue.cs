@@ -53,6 +53,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             return AsDouble.CompareTo(other.AsDouble);
         }
 
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = ArrowTypeId.Double;
+            container._doubleValue = this;
+        }
+
         public override string ToString()
         {
             return AsDouble.ToString();

@@ -51,5 +51,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public decimal AsDecimal => throw new NotImplementedException();
 
         public bool IsNull => false;
+
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = ArrowTypeId.Boolean;
+            container._boolValue = this;
+        }
     }
 }

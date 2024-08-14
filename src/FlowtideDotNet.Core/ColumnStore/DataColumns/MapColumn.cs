@@ -85,6 +85,38 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
+        public int GetElementLength(in int index)
+        {
+            var (startOffset, endOffset) = GetOffsets(in index);
+            return endOffset - startOffset;
+        }
+
+        public void GetKeyAt(in int rowIndex, in int keyIndex, in DataValueContainer dataValueContainer)
+        {
+            var (startOffset, endOffset) = GetOffsets(in rowIndex);
+            var actualIndex = startOffset + keyIndex;
+            if (actualIndex >= endOffset)
+            {
+                dataValueContainer._type = ArrowTypeId.Null;
+                return;
+            }
+
+            _keyColumn.GetValueAt(actualIndex, dataValueContainer, default);
+        }
+
+        public void GetMapValueAt(in int rowIndex, in int keyIndex, in DataValueContainer dataValueContainer)
+        {
+            var (startOffset, endOffset) = GetOffsets(in rowIndex);
+            var actualIndex = startOffset + keyIndex;
+            if (actualIndex >= endOffset)
+            {
+                dataValueContainer._type = ArrowTypeId.Null;
+                return;
+            }
+
+            _valueColumn.GetValueAt(actualIndex, dataValueContainer, default);
+        }
+
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             if (child != null)

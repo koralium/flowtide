@@ -20,5 +20,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public interface IMapValue : IDataValue, IEnumerable<KeyValuePair<IDataValue, IDataValue>>
     {
+        int GetLength();
+        void GetKeyAt(in int index, DataValueContainer result);
+        void GetValueAt(in int index, DataValueContainer result);
     }
 }

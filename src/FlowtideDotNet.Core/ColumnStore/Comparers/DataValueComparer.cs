@@ -10,11 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 
 namespace FlowtideDotNet.Core.ColumnStore.Comparers
 {
@@ -23,6 +19,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Comparers
         public static readonly DataValueComparer Instance = new DataValueComparer();
 
         public int Compare(IDataValue? x, IDataValue? y)
+        {
+            return CompareTo(x!, y!);
+        }
+
+        public static int CompareTo<T1, T2>(T1 x, T2 y)
+            where T1 : IDataValue
+            where T2 : IDataValue
         {
             if (x!.Type != y!.Type)
             {
@@ -45,9 +48,74 @@ namespace FlowtideDotNet.Core.ColumnStore.Comparers
                     return x.AsBinary.SequenceCompareTo(y.AsBinary);
                 case ArrowTypeId.Decimal128:
                     return x.AsDecimal.CompareTo(y.AsDecimal);
+                case ArrowTypeId.Map:
+                    return CompareMaps(x.AsMap, y.AsMap);
+                case ArrowTypeId.List:
+                    return CompareList(x.AsList, y.AsList);
                 default:
                     throw new NotImplementedException();
             }
+        }
+
+        private static int CompareMaps(IMapValue x, IMapValue y)
+        {
+            var xLength = x.GetLength();
+            var yLength = y.GetLength();
+
+            if (xLength != yLength)
+            {
+                return xLength - yLength;
+            }
+
+            var xContainer = new DataValueContainer();
+            var yContainer = new DataValueContainer();
+
+            for (int i = 0; i < xLength; i++)
+            {
+                x.GetKeyAt(i, xContainer);
+                y.GetKeyAt(i, yContainer);
+                int keyCompare = CompareTo(xContainer, yContainer);
+                if (keyCompare != 0)
+                {
+                    return keyCompare;
+                }
+            }
+
+            for (int i = 0; i < xLength; i++)
+            {
+                x.GetValueAt(i, xContainer);
+                y.GetValueAt(i, yContainer);
+                int valCompare = CompareTo(xContainer, yContainer);
+                if (valCompare != 0)
+                {
+                    return valCompare;
+                }
+            }
+            return 0;
+        }
+
+        private static int CompareList(IListValue x, IListValue y)
+        {
+            var xCount = x.Count;
+            var yCount = y.Count;
+
+            if (xCount != yCount)
+            {
+                return xCount - yCount;
+            }
+
+            for (int i = 0; i < xCount; i++)
+            {
+                var xVal = x.GetAt(i);
+                var yVal = y.GetAt(i);
+                int compare = CompareTo(xVal, yVal);
+                if (compare != 0)
+                {
+                    return compare;
+                }
+            }
+
+            return 0;
         }
     }
 }

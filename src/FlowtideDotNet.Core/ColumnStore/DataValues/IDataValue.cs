@@ -41,5 +41,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         decimal AsDecimal { get; }
 
         bool IsNull { get; }
+
+        void CopyToContainer(DataValueContainer container);
     }
 }
