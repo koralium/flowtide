@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
@@ -21,6 +22,11 @@ namespace FlowtideDotNet.Core.Compute
 {
     public interface IFunctionsRegister
     {
+        void RegisterColumnScalarFunction(
+            string uri, 
+            string name, 
+            Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, System.Linq.Expressions.Expression> mapFunc);
+
         /// <summary>
         /// Register a scalar function, this is the low level call where the user has to visit the arguments with the visitor.
         /// </summary>
@@ -86,6 +92,8 @@ namespace FlowtideDotNet.Core.Compute
         bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition);
 
         bool TryGetAggregateFunction(string uri, string name, [NotNullWhen(true)] out AggregateFunctionDefinition? aggregateFunctionDefinition);
+
+        bool TryGetColumnScalarFunction(string uri, string name, [NotNullWhen(true)] out ColumnFunctionDefinition? functionDefinition);
 
         /// <summary>
         /// Register a table function, this is the low level call which requires the user to visit the expressions with the visitor.

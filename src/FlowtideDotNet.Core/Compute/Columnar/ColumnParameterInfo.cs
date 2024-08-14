@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar
 {
-    internal class ColumnParameterInfo
+    public class ColumnParameterInfo
     {
         public ColumnParameterInfo(IReadOnlyList<ParameterExpression> batchParameters, IReadOnlyList<ParameterExpression> indexParameters, IReadOnlyList<int> relativeIndices, Expression resultDataValue)
         {

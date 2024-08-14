@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.Serializers;
@@ -45,7 +46,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _tree;
         private readonly List<int> _keyColumns;
         private readonly List<int> _otherColumns;
-        private readonly Func<RowEvent, bool>? _filter;
+        private readonly Func<EventBatchData, int, bool>? _filter;
 
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
@@ -64,7 +65,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             if (normalizationRelation.Filter != null)
             {
                 // Will be changed later on to use functions that can take columns
-                _filter = BooleanCompiler.Compile<RowEvent>(normalizationRelation.Filter, functionsRegister);
+                _filter = ColumnBooleanCompiler.Compile(normalizationRelation.Filter, functionsRegister);
             }
 
             if (normalizationRelation.EmitSet)
@@ -146,8 +147,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 {
                     if (_filter != null)
                     {
-                        var rowEvent = RowEventToEventBatchData.RowReferenceToRowEvent(weight, 0, new ColumnRowReference() { referenceBatch = msg.Data.EventBatchData, RowIndex = i });
-                        if (_filter(rowEvent))
+                        if (_filter(msg.Data.EventBatchData, i))
                         {
                             await Upsert(i, columnRef, toEmitOffsets, weights, deleteBatchKeyOffsets, deleteBatchColumns);
                         }

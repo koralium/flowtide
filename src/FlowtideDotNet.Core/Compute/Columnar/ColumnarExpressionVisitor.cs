@@ -56,6 +56,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar
 
         public override System.Linq.Expressions.Expression? VisitScalarFunction(ScalarFunction scalarFunction, ColumnParameterInfo state)
         {
+            if (functionsRegister.TryGetColumnScalarFunction(scalarFunction.ExtensionUri, scalarFunction.ExtensionName, out var functionDef))
+            {
+                return functionDef.MapFunc(scalarFunction, state, this);
+            }
             if (functionsRegister.TryGetScalarFunction(scalarFunction.ExtensionUri, scalarFunction.ExtensionName, out var function))
             {
                 // Use old implementation for now where rows are created from the columns at a specific index
