@@ -180,7 +180,9 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitProjectRelation(ProjectRelation projectRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new ProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
+
+            var op = new ColumnProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
+            //var op = new ProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
 
             if (state != null)
             {

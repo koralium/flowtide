@@ -45,5 +45,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IMapValue AsMap => throw new NotImplementedException();
 
         public decimal AsDecimal => throw new NotImplementedException();
+
+        public bool IsNull => false;
     }
 }

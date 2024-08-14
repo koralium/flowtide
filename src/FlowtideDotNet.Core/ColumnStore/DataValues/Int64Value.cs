@@ -47,6 +47,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public decimal AsDecimal => throw new NotImplementedException();
 
+        public bool IsNull => false;
+
         public override string ToString()
         {
             return _value.ToString();

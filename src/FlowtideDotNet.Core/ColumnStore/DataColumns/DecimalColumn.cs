@@ -99,6 +99,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
+            dataValueContainer._type = ArrowTypeId.Decimal128;
             dataValueContainer._decimalValue = new DecimalValue(_values[index]);
         }
 

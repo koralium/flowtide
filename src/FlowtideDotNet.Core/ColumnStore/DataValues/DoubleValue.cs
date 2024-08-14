@@ -46,6 +46,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public decimal AsDecimal => throw new NotImplementedException();
 
+        public bool IsNull => false;
+
         public int CompareTo(in IDataValue other)
         {
             return AsDouble.CompareTo(other.AsDouble);

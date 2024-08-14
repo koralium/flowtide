@@ -208,6 +208,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     if (keyLocationStart < 0)
                     {
                         dataValueContainer._type = ArrowTypeId.Null;
+                        return;
                     }
                     _valueColumn.GetValueAt(keyLocationStart, dataValueContainer, child.Child);
                     return;

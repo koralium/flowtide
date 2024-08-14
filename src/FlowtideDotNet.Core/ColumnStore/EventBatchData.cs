@@ -33,6 +33,11 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IReadOnlyList<IColumn> Columns => columns;
 
+        public IColumn GetColumn(in int index)
+        {
+            return columns[index];
+        }
+
         /// <summary>
         /// Compares two rows from different batches.
         /// </summary>

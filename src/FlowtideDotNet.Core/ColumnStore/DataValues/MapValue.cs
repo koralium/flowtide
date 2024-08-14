@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
@@ -24,11 +25,19 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     internal struct MapValue : IMapValue
     {
-        private readonly IEnumerable<KeyValuePair<IDataValue, IDataValue>> keyValuePairs;
+        private readonly IReadOnlyList<KeyValuePair<IDataValue, IDataValue>> keyValuePairs;
 
         public MapValue(IEnumerable<KeyValuePair<IDataValue, IDataValue>> keyValuePairs)
         {
-            this.keyValuePairs = keyValuePairs;
+            var arr = keyValuePairs.ToArray();
+            Array.Sort(arr, new KeyValuePairDataValueComparer());
+            this.keyValuePairs = arr;
+        }
+
+        public MapValue(params KeyValuePair<IDataValue, IDataValue>[] values)
+        {
+            Array.Sort(values, new KeyValuePairDataValueComparer());
+            keyValuePairs = values;
         }
 
         public ArrowTypeId Type => ArrowTypeId.Map;
@@ -48,6 +57,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IMapValue AsMap => this;
 
         public decimal AsDecimal => throw new NotImplementedException();
+
+        public bool IsNull => false;
 
         public IEnumerator<KeyValuePair<IDataValue, IDataValue>> GetEnumerator()
         {
