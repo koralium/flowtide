@@ -55,5 +55,42 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             var lambda = System.Linq.Expressions.Expression.Lambda<Func<EventBatchData, int, bool>>(expr, batchParam, intParam);
             return lambda.Compile();
         }
+
+        public static Func<EventBatchData, int, EventBatchData, int, bool> CompileTwoInputs(Substrait.Expressions.Expression expression, IFunctionsRegister functionsRegister, int leftSize)
+        {
+            var batchParam1 = System.Linq.Expressions.Expression.Parameter(typeof(EventBatchData));
+            var intParam1 = System.Linq.Expressions.Expression.Parameter(typeof(int));
+
+            var batchParam2 = System.Linq.Expressions.Expression.Parameter(typeof(EventBatchData));
+            var intParam2 = System.Linq.Expressions.Expression.Parameter(typeof(int));
+
+            var visitor = new ColumnarExpressionVisitor(functionsRegister);
+            var resultContainer = System.Linq.Expressions.Expression.Constant(new DataValueContainer());
+            var expr = visitor.Visit(expression, new ColumnParameterInfo(
+                new List<ParameterExpression>() { batchParam1, batchParam2 }
+                , new List<ParameterExpression>() { intParam1, intParam2 }, 
+                new List<int> { 0, leftSize }, resultContainer));
+
+            if (expr == null)
+            {
+                throw new InvalidOperationException("Could not compile a filter.");
+            }
+
+            if (!expr.Type.Equals(typeof(bool)))
+            {
+                MethodInfo? genericToBoolMethod = typeof(DataValueBoolFunctions).GetMethod("ToBool", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                var toBoolMethod = genericToBoolMethod!.MakeGenericMethod(expr.Type);
+
+                if (toBoolMethod == null)
+                {
+                    throw new InvalidOperationException("Could not found ToBool method");
+                }
+
+                expr = System.Linq.Expressions.Expression.Call(toBoolMethod, expr);
+            }
+
+            var lambda = System.Linq.Expressions.Expression.Lambda<Func<EventBatchData, int, EventBatchData, int, bool>>(expr, batchParam1, intParam1, batchParam2, intParam2);
+            return lambda.Compile();
+        }
     }
 }

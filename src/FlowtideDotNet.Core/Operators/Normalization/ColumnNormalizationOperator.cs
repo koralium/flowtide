@@ -64,7 +64,6 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
             if (normalizationRelation.Filter != null)
             {
-                // Will be changed later on to use functions that can take columns
                 _filter = ColumnBooleanCompiler.Compile(normalizationRelation.Filter, functionsRegister);
             }
 

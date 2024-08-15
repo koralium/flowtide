@@ -34,6 +34,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Core.Compute.Columnar;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -61,8 +62,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private IBPlusTreeIterator<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _leftIterator;
         private IBPlusTreeIterator<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _rightIterator;
 
-        // To be deprecated when functions also work with column store
-        protected readonly Func<RowEvent, RowEvent, bool>? _postCondition;
+        protected readonly Func<EventBatchData, int, EventBatchData, int, bool>? _postCondition;
 
         private readonly DataValueContainer _dataValueContainer;
 
@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             if (mergeJoinRelation.PostJoinFilter != null)
             {
-                _postCondition = BooleanCompiler.Compile<RowEvent>(mergeJoinRelation.PostJoinFilter, functionsRegister, mergeJoinRelation.Left.OutputLength);
+                _postCondition = ColumnBooleanCompiler.CompileTwoInputs(mergeJoinRelation.PostJoinFilter, functionsRegister, mergeJoinRelation.Left.OutputLength);
             }
         }
 
@@ -220,9 +220,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         {
                             if (_postCondition != null)
                             {
-                                var rightEvent = RowEventToEventBatchData.RowReferenceToRowEvent(1, 0, new ColumnRowReference() { referenceBatch = pageKeyStorage!._data, RowIndex = k });
-                                var leftEvent = RowEventToEventBatchData.RowReferenceToRowEvent(1, 0, columnReference);
-                                if (!_postCondition(leftEvent, rightEvent))
+                                if (!_postCondition(columnReference.referenceBatch, columnReference.RowIndex, pageKeyStorage._data, k))
                                 {
                                     _searchRightComparer.end = int.MinValue;
                                     break;
@@ -368,9 +366,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         {
                             if (_postCondition != null)
                             {
-                                var leftEvent = RowEventToEventBatchData.RowReferenceToRowEvent(1, 0, new ColumnRowReference() { referenceBatch = pageKeyStorage!._data, RowIndex = k });
-                                var rightEvent = RowEventToEventBatchData.RowReferenceToRowEvent(1, 0, columnReference);
-                                if (!_postCondition(leftEvent, rightEvent))
+                                if (!_postCondition(pageKeyStorage._data, k, columnReference.referenceBatch, columnReference.RowIndex))
                                 {
                                     _searchLeftComparer.end = int.MinValue;
                                     break;
