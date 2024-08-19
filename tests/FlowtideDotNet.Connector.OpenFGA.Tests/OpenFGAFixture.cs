@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 .WithPortBinding(8081, false)
                 .WithPortBinding(3000, false)
                 .WithCommand("run")
-                .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("HTTP server listening on '0.0.0.0:8080'..."));
+                .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("starting HTTP server"));
             _container = builder.Build();
         }
         public async Task DisposeAsync()
