@@ -10,37 +10,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Operators.Read;
-using FlowtideDotNet.Storage.StateManager;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Logging;
-using FlowtideDotNet.Substrait.Relations;
-using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.SqlServer.SqlServer;
-using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Tests.SqlServer;
+using Microsoft.Data.SqlClient;
 using System.Diagnostics;
-using FlowtideDotNet.Connector.SqlServer.SqlServer;
+using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Substrait.Tests.SqlServer
+namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
-    internal class SqlServerState
+    internal class ColumnSqlServerDataSource : ReadBaseOperator<SqlServerState>
     {
-        public long ChangeTrackingVersion { get; set; }
-    }
-    internal class SqlServerDataSource : ReadBaseOperator<SqlServerState>
-    {
-#if DEBUG_WRITE
-        private StreamWriter allInput;
-#endif
         private readonly Func<string> connectionStringFunc;
         private readonly string _tableName;
         private readonly ReadRelation readRelation;
         private readonly HashSet<string> _watermarks;
         private SqlConnection? sqlConnection;
         private SqlServerState? _state;
-        private Func<SqlDataReader, RowEvent>? _streamEventCreator;
+        private Action<SqlDataReader, IColumn>[]? _convertFunctions;
         private Task? _changesTask;
         private string _displayName;
         private List<string>? primaryKeys;
@@ -48,12 +43,12 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         private string? filter;
         private ICounter<long>? _eventsProcessed;
 
-        public SqlServerDataSource(Func<string> connectionStringFunc, string tableName, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
+        public ColumnSqlServerDataSource(Func<string> connectionStringFunc, string tableName, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
             this.connectionStringFunc = connectionStringFunc;
             _tableName = tableName;
             this.readRelation = readRelation;
-            
+
             _watermarks = new HashSet<string>() { _tableName };
             _displayName = "SqlServer-" + tableName;
 
@@ -73,12 +68,9 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     }
                 }
             }
-            
-            //_streamEventCreator = SqlServerUtils.GetStreamEventCreator(readRelation);
         }
 
         public override string DisplayName => _displayName;
-
 
         public override Task DeleteAsync()
         {
@@ -99,14 +91,23 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         {
             Debug.Assert(_state != null);
             Debug.Assert(sqlConnection != null);
-            Debug.Assert(_streamEventCreator != null);
+            Debug.Assert(_convertFunctions != null);
             Debug.Assert(primaryKeys != null);
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_eventsProcessed != null);
 
             await output.EnterCheckpointLock();
 
-            List<RowEvent> result = new List<RowEvent>();
+            IColumn[] outputColumns = new IColumn[_convertFunctions.Length];
+            PrimitiveList<int> weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < _convertFunctions.Length; i++)
+            {
+                outputColumns[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
+            }
+
+            bool error = false;
             var previousChangeVersion = _state.ChangeTrackingVersion;
             try
             {
@@ -121,33 +122,31 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
                 while (await reader.ReadAsync())
                 {
-                    var streamEvent = _streamEventCreator(reader);
+                    for (int i = 0; i < _convertFunctions.Length; i++)
+                    {
+                        _convertFunctions[i](reader, outputColumns[i]);
+                    }
                     changeVersion = reader.GetInt64(changeVersionOrdinal);
                     var operation = reader.GetString(changeOpOrdinal);
 
+                    iterations.Add(0);
                     switch (operation)
                     {
                         case "U":
                         case "I":
-                            streamEvent.Weight = 1;
+                            weights.Add(1);
                             break;
                         case "D":
-                            streamEvent.Weight = -1;
+                            weights.Add(-1);
                             break;
                     }
-#if DEBUG_WRITE
-                    allInput.WriteLine($"{streamEvent.Weight} {streamEvent.ToJson()}");
-#endif
-                    result.Add(streamEvent);
                 }
                 reader.Close();
-#if DEBUG_WRITE
-                await allInput.FlushAsync();
-#endif
+
                 _state.ChangeTrackingVersion = changeVersion;
                 SetHealth(true);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 SetHealth(false);
                 Logger.ExceptionFetchingChanges(ex, StreamName, Name);
@@ -157,20 +156,20 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 sqlConnection = new SqlConnection(connectionStringFunc());
                 await sqlConnection.OpenAsync();
                 _state.ChangeTrackingVersion = previousChangeVersion;
-                result.Clear();
+                error = true;
             }
-            
 
-            if (result.Count > 0)
+
+            if (!error && weights.Count > 0)
             {
-                _eventsCounter.Add(result.Count);
-                _eventsProcessed.Add(result.Count);
-                Logger.ChangesFoundInTable(result.Count, _tableName, StreamName, Name);
-                await output.SendAsync(new StreamEventBatch(result));
+                _eventsCounter.Add(weights.Count);
+                _eventsProcessed.Add(weights.Count);
+                Logger.ChangesFoundInTable(weights.Count, _tableName, StreamName, Name);
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns))));
                 await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.ChangeTrackingVersion));
                 this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }
-            
+
             output.ExitCheckpointLock();
         }
 
@@ -179,15 +178,22 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return Task.FromResult<IReadOnlySet<string>>(_watermarks);
         }
 
+        private async Task GetColumnTypes()
+        {
+            Debug.Assert(sqlConnection != null);
+            using var command = sqlConnection.CreateCommand();
+            command.CommandText = SqlServerUtils.CreateSelectStatementTop1(readRelation);
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                var columnSchema = await reader.GetColumnSchemaAsync();
+                _convertFunctions = SqlServerUtils.GetColumnEventCreator(columnSchema).ToArray();
+            }
+
+            primaryKeys = await SqlServerUtils.GetPrimaryKeys(sqlConnection, _tableName);
+        }
+
         protected override async Task InitializeOrRestore(long restoreTime, SqlServerState? state, IStateManagerClient stateManagerClient)
         {
-#if DEBUG_WRITE
-            if (!Directory.Exists("debugwrite"))
-            {
-                Directory.CreateDirectory("debugwrite");
-            }
-            allInput = File.CreateText($"debugwrite/{StreamName}_{Name}.all.txt");
-#endif
             if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
@@ -196,7 +202,6 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-
             Logger.InitializingSqlServerSource(_tableName, StreamName, Name);
             if (state == null)
             {
@@ -209,20 +214,6 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             sqlConnection = new SqlConnection(connectionStringFunc());
             await sqlConnection.OpenAsync();
             await GetColumnTypes();
-        }
-
-        private async Task GetColumnTypes()
-        {
-            Debug.Assert(sqlConnection != null);
-            using var command = sqlConnection.CreateCommand();
-            command.CommandText = SqlServerUtils.CreateSelectStatementTop1(readRelation);
-            using (var reader = await command.ExecuteReaderAsync())
-            {
-                var columnSchema = await reader.GetColumnSchemaAsync();
-                _streamEventCreator = SqlServerUtils.GetStreamEventCreator(columnSchema);
-            }
-                
-            primaryKeys = await SqlServerUtils.GetPrimaryKeys(sqlConnection, _tableName);
         }
 
         internal List<string> GetPrimaryKeys()
@@ -239,42 +230,36 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return SqlServerUtils.IsChangeTrackingEnabled(conn, _tableName).GetAwaiter().GetResult();
         }
 
-        public override ValueTask DisposeAsync()
-        {
-            if (sqlConnection != null)
-            {
-                return sqlConnection.DisposeAsync();
-            }
-            return ValueTask.CompletedTask;
-        }
-
         protected override Task<SqlServerState> OnCheckpoint(long checkpointTime)
         {
-#if DEBUG_WRITE
-            allInput.WriteLine("Checkpoint");
-            allInput.Flush();
-#endif
             Debug.Assert(_state != null);
             return Task.FromResult(_state);
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-#if DEBUG_WRITE
-            allInput.WriteLine($"Initial");
-#endif
             Debug.Assert(_state != null);
             Debug.Assert(sqlConnection != null);
-            Debug.Assert(_streamEventCreator != null);
+            Debug.Assert(_convertFunctions != null);
             Debug.Assert(primaryKeys != null);
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_eventsProcessed != null);
-            
-            // Check if we have never read the initial data before
+
             if (_state.ChangeTrackingVersion < 0)
             {
                 Logger.SelectingAllData(_tableName, StreamName, Name);
                 await output.EnterCheckpointLock();
+
+                IColumn[] outputColumns = new IColumn[_convertFunctions.Length];
+                PrimitiveList<int> weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+                PrimitiveList<uint> iterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+
+                for (int i = 0; i < _convertFunctions.Length; i++)
+                {
+                    outputColumns[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
+                }
+
+                List<EventBatchWeighted> weightedBatches = new List<EventBatchWeighted>();
 
                 // Get current change tracking version
                 _state.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(sqlConnection);
@@ -282,43 +267,94 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 Dictionary<string, object> primaryKeyValues = new Dictionary<string, object>();
 
                 int batchSize = 10000;
-                List<RowEvent> cache = new List<RowEvent>();
                 int retryCount = 0;
-                while(true)
+                while (true)
                 {
                     try
                     {
-                        (cache, primaryKeyValues) = await SqlServerUtils.InitialSelect(readRelation, sqlConnection, primaryKeys, batchSize, primaryKeyValues, _streamEventCreator, filter, output.CancellationToken);
-
-                        List<RowEvent> outdata = new List<RowEvent>();
-
-                        foreach (var ev in cache)
+                        using var command = sqlConnection.CreateCommand();
+                        if (primaryKeyValues.Count == 0)
                         {
-                            outdata.Add(ev);
-
-                            if (outdata.Count >= 100)
+                            command.CommandText = SqlServerUtils.CreateInitialSelectStatement(readRelation, primaryKeys, batchSize, false, filter);
+                        }
+                        else
+                        {
+                            command.CommandText = SqlServerUtils.CreateInitialSelectStatement(readRelation, primaryKeys, batchSize, true, filter);
+                            foreach (var pk in primaryKeyValues)
                             {
-                                _eventsCounter.Add(outdata.Count);
-                                _eventsProcessed.Add(outdata.Count);
-                                await output.SendAsync(new StreamEventBatch(outdata));
-                                outdata = new List<RowEvent>();
+                                command.Parameters.Add(new SqlParameter(pk.Key, pk.Value));
                             }
                         }
-                        if (outdata.Count > 0)
+
+                        using var reader = await command.ExecuteReaderAsync(output.CancellationToken);
+
+                        // Can probably cache this in the operator to skip memory allocation
+                        List<int> primaryKeyOrdinals = new List<int>();
+                        foreach (var pk in primaryKeys)
                         {
-                            _eventsCounter.Add(outdata.Count);
-                            _eventsProcessed.Add(outdata.Count);
-                            await output.SendAsync(new StreamEventBatch(outdata));
+                            primaryKeyOrdinals.Add(reader.GetOrdinal(pk));
                         }
+
+                        int elementCount = 0;
+
+                        while (await reader.ReadAsync())
+                        {
+                            elementCount++;
+                            weights.Add(1);
+                            iterations.Add(0);
+                            for (int i = 0; i < _convertFunctions.Length; i++)
+                            {
+                                _convertFunctions[i](reader, outputColumns[i]);
+                            }
+                            
+                            primaryKeyValues.Clear();
+                            for (int i = 0; i < primaryKeyOrdinals.Count; i++)
+                            {
+                                primaryKeyValues.Add(primaryKeys[i], reader.GetValue(primaryKeyOrdinals[i]));
+                            }
+
+                            if (weights.Count >= 100)
+                            {
+                                weightedBatches.Add(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+                                weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+                                iterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+                                outputColumns = new IColumn[_convertFunctions.Length];
+                                for (int i = 0; i < _convertFunctions.Length; i++)
+                                {
+                                    outputColumns[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
+                                }
+                            }
+                        }
+
+                        if (weights.Count > 0)
+                        {
+                            weightedBatches.Add(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+                            weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+                            iterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+                            outputColumns = new IColumn[_convertFunctions.Length];
+                            for (int i = 0; i < _convertFunctions.Length; i++)
+                            {
+                                outputColumns[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
+                            }
+                        }
+
+                        foreach(var weightedBatch in weightedBatches)
+                        {
+                            _eventsCounter.Add(weightedBatch.Count);
+                            _eventsProcessed.Add(weightedBatch.Count);
+                            await output.SendAsync(new StreamEventBatch(weightedBatch));
+                        }
+                        weightedBatches.Clear();
+
                         retryCount = 0;
                         SetHealth(true);
 
-                        if (cache.Count != batchSize)
+                        if (elementCount != batchSize)
                         {
                             break;
                         }
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
                         SetHealth(false);
                         Logger.ErrorReadingData(e, _tableName, StreamName, Name);
@@ -331,7 +367,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         Logger.RetryingCount(retryCount, StreamName, Name);
                         await sqlConnection.DisposeAsync();
 
-                        
+
                         // Recreate the connection
                         sqlConnection = new SqlConnection(connectionStringFunc());
                         await sqlConnection.OpenAsync(output.CancellationToken);
@@ -355,6 +391,15 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             }
 
             await this.RegisterTrigger("change_tracking", TimeSpan.FromSeconds(1));
+        }
+
+        public override ValueTask DisposeAsync()
+        {
+            if (sqlConnection != null)
+            {
+                return sqlConnection.DisposeAsync();
+            }
+            return ValueTask.CompletedTask;
         }
     }
 }

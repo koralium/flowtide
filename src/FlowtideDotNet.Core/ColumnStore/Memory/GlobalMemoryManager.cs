@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Memory
 {
-    internal unsafe class GlobalMemoryManager : IMemoryAllocator
+    public unsafe class GlobalMemoryManager : IMemoryAllocator
     {
         public static readonly GlobalMemoryManager Instance = new GlobalMemoryManager();
         public IMemoryOwner<byte> Allocate(int size, int alignment)
