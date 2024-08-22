@@ -16,6 +16,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
     {
         public static void RegisterFunctions(FunctionsRegister functionsRegister)
         {
+            Columnar.Functions.BuiltInComparisonFunctions.AddComparisonFunctions(functionsRegister);
             BuiltInComparisonFunctions.AddComparisonFunctions(functionsRegister);
             BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);
             BuiltInStringFunctions.AddStringFunctions(functionsRegister);

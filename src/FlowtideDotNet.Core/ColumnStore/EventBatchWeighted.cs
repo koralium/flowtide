@@ -28,8 +28,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         private readonly EventBatchData eventBatchData;
 
         public EventBatchData EventBatchData => eventBatchData;
-        public IReadOnlyList<int> Weights => weights;
-        public IReadOnlyList<uint> Iterations => iterations;
+        public PrimitiveList<int> Weights => weights;
+        public PrimitiveList<uint> Iterations => iterations;
+
+        public int Count => weights.Count;
 
         public EventBatchWeighted(PrimitiveList<int> weights, PrimitiveList<uint> iterations, EventBatchData eventBatchData)
         {

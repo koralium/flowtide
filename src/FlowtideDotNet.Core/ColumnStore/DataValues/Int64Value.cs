@@ -47,6 +47,14 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public decimal AsDecimal => throw new NotImplementedException();
 
+        public bool IsNull => false;
+
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = ArrowTypeId.Int64;
+            container._int64Value = this;
+        }
+
         public override string ToString()
         {
             return _value.ToString();

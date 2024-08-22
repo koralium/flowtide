@@ -10,38 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore
+namespace FlowtideDotNet.Core.ColumnStore.Comparers
 {
-    public interface IDataValue
+    internal class KeyValuePairDataValueComparer : IComparer<KeyValuePair<IDataValue, IDataValue>>
     {
-        ArrowTypeId Type { get; }
-
-        long AsLong { get; }
-
-        FlxString AsString { get; }
-
-        bool AsBool { get; }
-
-        double AsDouble { get; }
-
-        IListValue AsList { get; }
-
-        Span<byte> AsBinary { get; }
-
-        IMapValue AsMap { get; }
-
-        decimal AsDecimal { get; }
-
-        bool IsNull { get; }
-
-        void CopyToContainer(DataValueContainer container);
+        private static DataValueComparer s_dataValueComparer = new DataValueComparer();
+        public int Compare(KeyValuePair<IDataValue, IDataValue> x, KeyValuePair<IDataValue, IDataValue> y)
+        {
+            return s_dataValueComparer.Compare(x.Key, y.Key);
+        }
     }
 }

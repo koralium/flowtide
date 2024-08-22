@@ -10,38 +10,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.Flexbuffer;
+using FlowtideDotNet.Core.ColumnStore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore
+namespace FlowtideDotNet.Core.Compute.Columnar
 {
-    public interface IDataValue
+    internal static class DataValueBoolFunctions
     {
-        ArrowTypeId Type { get; }
-
-        long AsLong { get; }
-
-        FlxString AsString { get; }
-
-        bool AsBool { get; }
-
-        double AsDouble { get; }
-
-        IListValue AsList { get; }
-
-        Span<byte> AsBinary { get; }
-
-        IMapValue AsMap { get; }
-
-        decimal AsDecimal { get; }
-
-        bool IsNull { get; }
-
-        void CopyToContainer(DataValueContainer container);
+        public static bool ToBool<T>(T value)
+            where T : IDataValue
+        {
+            if (value.Type == ArrowTypeId.Boolean)
+            {
+                return value.AsBool;
+            }
+            if (value.Type == ArrowTypeId.Int64)
+            {
+                return value.AsLong > 0;
+            }
+            return false;
+        }
     }
 }

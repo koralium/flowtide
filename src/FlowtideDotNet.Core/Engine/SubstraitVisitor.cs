@@ -165,7 +165,16 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitFilterRelation(FilterRelation filterRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new FilterOperator(filterRelation, functionsRegister, DefaultBlockOptions);
+            UnaryVertex<StreamEventBatch, object?>? op;
+            
+            if (_useColumnStore)
+            {
+                op = new ColumnFilterOperator(filterRelation, functionsRegister, DefaultBlockOptions);
+            }
+            else
+            {
+                op = new FilterOperator(filterRelation, functionsRegister, DefaultBlockOptions);
+            }
 
             if (state != null)
             {
@@ -180,7 +189,17 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitProjectRelation(ProjectRelation projectRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new ProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
+
+            UnaryVertex<StreamEventBatch, object?>? op;
+
+            if (_useColumnStore)
+            {
+                op = new ColumnProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
+            }
+            else
+            {
+                op = new ProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
+            }
 
             if (state != null)
             {

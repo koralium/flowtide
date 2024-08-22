@@ -54,6 +54,14 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public decimal AsDecimal => throw new NotImplementedException();
 
+        public bool IsNull => false;
+
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = ArrowTypeId.List;
+            container._listValue = this;
+        }
+
         public IDataValue GetAt(in int index)
         {
             return column.GetValueAt(start + index, default);

@@ -43,6 +43,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public decimal AsDecimal => throw new NotImplementedException();
 
+        public bool IsNull => false;
+
         public StringValue(byte[] utf8)
         {
             _utf8 = utf8;
@@ -61,6 +63,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         public override string ToString()
         {
             return Encoding.UTF8.GetString(_utf8.Span);
+        }
+
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = ArrowTypeId.String;
+            container._stringValue = this;
         }
     }
 }

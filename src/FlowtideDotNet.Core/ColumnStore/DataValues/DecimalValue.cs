@@ -46,5 +46,13 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IMapValue AsMap => throw new NotImplementedException();
 
         public decimal AsDecimal => value;
+
+        public bool IsNull => false;
+
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = ArrowTypeId.Decimal128;
+            container._decimalValue = this;
+        }
     }
 }

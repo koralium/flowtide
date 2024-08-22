@@ -28,6 +28,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
             this.dataValues = dataValues;
         }
 
+        public ListValue(params IDataValue[] dataValues)
+        {
+            this.dataValues = dataValues;
+        }
+
         public int Count => dataValues.Count;
 
         public ArrowTypeId Type => ArrowTypeId.List;
@@ -47,6 +52,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public IMapValue AsMap => throw new NotImplementedException();
 
         public decimal AsDecimal => throw new NotImplementedException();
+
+        public bool IsNull => false;
+
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = ArrowTypeId.List;
+            container._listValue = this;
+        }
 
         public IDataValue GetAt(in int index)
         {
