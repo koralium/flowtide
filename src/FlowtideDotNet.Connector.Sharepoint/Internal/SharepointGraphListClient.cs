@@ -249,6 +249,10 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 {
                     return new GroupPersonDecoder();
                 }
+                if (columnDefinition.Number != null)
+                {
+                    return new NumberDecoder(columnDefinition.Number);
+                }
             }
 
             return GetSpecialColumnDecoder(columnName);

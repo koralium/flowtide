@@ -596,6 +596,18 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
         public override Relation VisitFilterRelation(FilterRelation filterRelation, object state)
         {
+            if (filterRelation.Input is ReferenceRelation referenceRelation)
+            {
+                return filterRelation;
+            }
+            if (filterRelation.Input is IterationReferenceReadRelation)
+            {
+                return filterRelation;
+            }
+            if (filterRelation.Input is IterationRelation)
+            {
+                return filterRelation;
+            }
             if (filterRelation.Input.OutputLength >= filterRelation.OutputLength)
             {
                 var input = filterRelation.Input;
