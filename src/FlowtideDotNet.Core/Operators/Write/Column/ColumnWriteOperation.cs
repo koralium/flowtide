@@ -21,6 +21,10 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 {
     public struct ColumnWriteOperation
     {
+        /// <summary>
+        /// Contains the batch where the data resides.
+        /// If it is a delete operation, only the primary key columns will be present in order they were provided.
+        /// </summary>
         public EventBatchData EventBatchData { get; set; }
 
         public int Index { get; set; }
