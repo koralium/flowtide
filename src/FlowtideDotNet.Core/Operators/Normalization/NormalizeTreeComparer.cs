@@ -27,6 +27,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         private DataValueContainer dataValueContainer;
         private readonly List<int> _keyColumns;
 
+        public bool SeekNextPageForValue => false;
+
         public NormalizeTreeComparer(List<int> keyColumns)
         {
             dataValueContainer = new DataValueContainer();
