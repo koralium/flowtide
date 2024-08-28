@@ -26,6 +26,9 @@ namespace FlowtideDotNet.Storage.Tree
         {
             this.comparer = comparer;
         }
+
+        public bool SeekNextPageForValue => false;
+
         public int CompareTo(in K x, in K y)
         {
             return comparer.Compare(x, y);

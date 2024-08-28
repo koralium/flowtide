@@ -42,6 +42,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
             }
         }
+
+        public bool SeekNextPageForValue => false;
+
         public int CompareTo(in ColumnRowReference x, in ColumnRowReference y)
         {
             throw new NotImplementedException();
