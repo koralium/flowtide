@@ -142,11 +142,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public void UpdateAt(int index, Span<byte> data)
         {
             var offset = _offsets.Get(index);
-            var length = _length;
-            if (index != _offsets.Count - 1)
-            {
-                length = _offsets.Get(index + 1);
-            }
+            var endOffset = _offsets.Get(index + 1);
+            var length = endOffset - offset;
             if (length == data.Length)
             {
                 data.CopyTo(AccessSpan.Slice(offset));
@@ -159,8 +156,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset + data.Length));
                 data.CopyTo(span.Slice(offset));
                 _length += difference;
-                _offsets.Update(index + 1, data.Length, difference);
-            }
+                _offsets.Update(index + 1, offset + data.Length, difference);
+            }   
         }
 
         /// <summary>
@@ -239,6 +236,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             var offset = _offsets.Get(index);
             return AccessSpan.Slice(offset, _offsets.Get(index + 1) - offset);
+            
         }
 
         public Memory<byte> GetMemory(in int index)
