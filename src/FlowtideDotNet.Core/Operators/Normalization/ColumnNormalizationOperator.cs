@@ -171,12 +171,18 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 iterations.Add(0);
             }
 
-            IColumn[] columns = new IColumn[_emitList.Count];
-            for (int i = 0; i < _emitList.Count; i++)
+            if (weights.Count > 0)
             {
-                columns[i] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_emitList[i]], toEmitOffsets, false);
+                IColumn[] columns = new IColumn[_emitList.Count];
+
+                for (int i = 0; i < _emitList.Count; i++)
+                {
+                    columns[i] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_emitList[i]], toEmitOffsets, false);
+                }
+
+                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
             }
-            yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+            
 
             if (deleteBatchKeyOffsets.Count > 0)
             {
