@@ -10,6 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
+using FlowtideDotNet.Core.ColumnStore;
+using Microsoft.Extensions.Logging;
+using System.Diagnostics.Tracing;
+
 namespace FlowtideDotNet.Core
 {
     /// <summary>
@@ -17,13 +22,76 @@ namespace FlowtideDotNet.Core
     /// A schema describes the name of the columns that is used for all events in this batch.
     /// The schema does not contain the data type in the column, since that can differ between events.
     /// </summary>
-    public class StreamEventBatch
+    public class StreamEventBatch : IRentable
     {
-        public IReadOnlyList<RowEvent> Events { get; }
+        //public IReadOnlyList<RowEvent> Events { get; }
 
-        public StreamEventBatch(IReadOnlyList<RowEvent> events)
+        private EventBatchWeighted? _data;
+        private List<RowEvent>? _events;
+
+        public EventBatchWeighted Data => GetData();
+
+        public IReadOnlyList<RowEvent> Events => GetEvents();
+
+        private IReadOnlyList<RowEvent> GetEvents()
         {
-            Events = events;
+            if (_events != null)
+            {
+                return _events;
+            }
+            if (_data != null)
+            {
+                _events = RowEventToEventBatchData.EventBatchWeightedToRowEvents(_data);
+                return _events;
+            }
+            throw new Exception("No events or data available");
+        }
+
+        private EventBatchWeighted GetData()
+        {
+            if (_data != null)
+            {
+                return _data;
+            }
+            if (_events != null)
+            {
+                var columnCount = 0;
+                if (_events.Count > 0)
+                {
+                    columnCount = _events[0].RowData.Length;
+                }
+                _data = RowEventToEventBatchData.ConvertToEventBatchData(_events, columnCount);
+                _data.Rent(1);
+                return _data;
+            }
+            throw new Exception("No events or data available");
+        }
+
+        public StreamEventBatch(EventBatchWeighted data)
+        {
+            _data = data;
+        }
+
+        public StreamEventBatch(List<RowEvent> events)
+        {
+            _events = events;
+        }
+
+        public void Rent(int count)
+        {
+            if (_data != null)
+            {
+                _data.Rent(count);
+            }
+        }
+
+        public void Return()
+        {
+            if (_data != null)
+            {
+                _data.Return();
+            }
+            
         }
     }
 }

@@ -18,3 +18,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Permify")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Sharepoint")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Benchmarks")]
+[assembly: InternalsVisibleTo("SqlSampleWithUI")]

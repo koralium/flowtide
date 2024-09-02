@@ -20,6 +20,8 @@ using FlowtideDotNet.Substrait.Sql;
 using SqlSampleWithUI;
 using FlowtideDotNet.DependencyInjection;
 using FlowtideDotNet.Core.Sources.Generic;
+using FlowtideDotNet.Core.ColumnStore.Memory;
+using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,8 +37,7 @@ CREATE TABLE other (
 INSERT INTO output
 SELECT t.val FROM testtable t
 LEFT JOIN other o
-ON t.val = o.val
-WHERE t.val = 123;
+ON t.val = o.val;
 ";
 
 builder.Services.AddFlowtideStream("test")
@@ -49,6 +50,8 @@ builder.Services.AddFlowtideStream("test")
 .AddStorage(b =>
 {
     b.AddTemporaryDevelopmentStorage();
+    b.MaxProcessMemory = 2L * 1024 * 1024 * 1024;
+    b.MinPageCount = 0;
 });
 
 builder.Services.AddCors();
@@ -63,7 +66,6 @@ app.UseCors(b =>
 });
 
 app.UseHealthChecks("/health");
-
 app.UseFlowtideUI("/");
 
 

@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Runtime.CompilerServices;
+
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
     internal class StateManagerMetadata<T> : StateManagerMetadata
@@ -48,6 +50,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         /// </summary>
         public ulong PageCommitsAtLastCompaction { get; set; }
 
+        public int RentCount => int.MaxValue;
+
+        public bool RemovedFromCache { get; set; }
+
         public void EnterWriteLock()
         {
             throw new NotImplementedException();
@@ -56,6 +62,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         public void ExitWriteLock()
         {
             throw new NotImplementedException();
+        }
+
+        public bool TryRent()
+        {
+            return true;
+        }
+
+        public void Return()
+        {
         }
     }
 }

@@ -13,6 +13,7 @@
 using BenchmarkDotNet.Running;
 using DifferntialCompute.Benchmarks;
 using FlowtideDotNet.Benchmarks;
+using FlowtideDotNet.Benchmarks.ColumnStore.Utils;
 using FlowtideDotNet.Benchmarks.Stream;
 
 var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

@@ -37,6 +37,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly Histogram<float> m_temporaryReadMsHistogram;
         private readonly TagList tagList;
 
+        // Method containers for addOrUpdate methods to skip casting to Func all the time
+        private Func<long, int> addorUpdate_newValue_container;
+        private Func<long, int, int> addorUpdate_existingValue_container;
+
         /// <summary>
         /// Value of how many pages have changed since last commit.
         /// </summary>
@@ -68,6 +72,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             m_temporaryReadMsHistogram = meter.CreateHistogram<float>("flowtide_temporary_read_ms");
             tagList = options.TagList;
             tagList.Add("state_client", name);
+            addorUpdate_newValue_container = AddOrUpdate_NewValue;
+            addorUpdate_existingValue_container = AddOrUpdate_ExistingValue;
         }
 
         public TMetadata? Metadata
@@ -84,22 +90,33 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public int BPlusTreePageSize => m_bplusTreePageSize;
 
+        private class AddOrUpdateState
+        {
+            public bool isFull;
+            public V? value;
+        }
+
+        private AddOrUpdateState _addOrUpdateState = new AddOrUpdateState();
+
+        private int AddOrUpdate_NewValue(long key)
+        {
+            _addOrUpdateState.isFull = stateManager.AddOrUpdate(key, _addOrUpdateState.value!, this);
+            return 0;
+        }
+
+        private int AddOrUpdate_ExistingValue(long key, int old)
+        {
+            _addOrUpdateState.isFull = stateManager.AddOrUpdate(key, _addOrUpdateState.value!, this);
+            return old + 1;
+        }
+
         public bool AddOrUpdate(in long key, V value)
         {
             lock (m_lock)
             {
-                bool isFull = false;
-                m_modified.AddOrUpdate(key, (key) =>
-                {
-                    isFull = stateManager.AddOrUpdate(key, value, this);
-                    return 0;
-                },
-                (key, old) =>
-                {
-                    isFull = stateManager.AddOrUpdate(key, value, this);
-                    return old + 1;
-                });
-                return isFull;
+                _addOrUpdateState.value = value;
+                 m_modified.AddOrUpdate(key, addorUpdate_newValue_container, addorUpdate_existingValue_container);
+                return _addOrUpdateState.isFull;
             }
         }
 
@@ -142,6 +159,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         m_fileCacheVersion.Remove(kv.Key, out _);
                         m_fileCache.Free(kv.Key);
                     }
+                    val.Return();
                     continue;
                 }
                 {
@@ -222,6 +240,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     var bytes = m_fileCache.Read(key);
                     var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
                     stateManager.AddOrUpdate(key, value, this);
+                    if (!value.TryRent())
+                    {
+                        throw new InvalidOperationException("Could not rent value when fetched from storage.");
+                    }
                     m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
                     return ValueTask.FromResult<V?>(value);
                 }
@@ -237,6 +259,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             var bytes = await session.Read(key);
             var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
             stateManager.AddOrUpdate(key, value, this);
+            if (!value.TryRent())
+            {
+                throw new InvalidOperationException("Could not rent value when fetched from storage.");
+            }
             m_persistenceReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
             return value;
         }

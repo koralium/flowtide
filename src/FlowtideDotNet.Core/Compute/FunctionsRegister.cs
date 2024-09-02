@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Diagnostics.CodeAnalysis;
@@ -20,6 +21,7 @@ namespace FlowtideDotNet.Core.Compute
 {
     internal class FunctionsRegister : IFunctionsRegister
     {
+        private readonly Dictionary<string, ColumnFunctionDefinition> _columnScalarFunctions;
         private readonly Dictionary<string, FunctionDefinition> _scalarFunctions;
         private readonly Dictionary<string, AggregateFunctionDefinition> _aggregateFunctions;
         private readonly Dictionary<string, TableFunctionDefinition> _tableFunctions;
@@ -29,11 +31,23 @@ namespace FlowtideDotNet.Core.Compute
             _scalarFunctions = new Dictionary<string, FunctionDefinition>(StringComparer.OrdinalIgnoreCase);
             _aggregateFunctions = new Dictionary<string, AggregateFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
             _tableFunctions = new Dictionary<string, TableFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
+
+            _columnScalarFunctions = new Dictionary<string, ColumnFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
         }
 
         public bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition)
         {
             return _scalarFunctions.TryGetValue($"{uri}:{name}", out functionDefinition);
+        }
+
+        public bool TryGetColumnScalarFunction(string uri, string name, [NotNullWhen(true)] out ColumnFunctionDefinition? functionDefinition)
+        {
+            return _columnScalarFunctions.TryGetValue($"{uri}:{name}", out functionDefinition);
+        }
+
+        public void RegisterColumnScalarFunction(string uri, string name, Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, System.Linq.Expressions.Expression> mapFunc)
+        {
+            _columnScalarFunctions.Add($"{uri}:{name}", new ColumnFunctionDefinition(uri, name, mapFunc));
         }
 
         public void RegisterScalarFunction(string uri, string name, Func<ScalarFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc)

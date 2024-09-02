@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Connector.Permify.Tests
                 .WithCommand("--database-max-open-connections", "20")
                 .WithCommand("--database-max-idle-connections", "1")
                 .WithCommand("--service-watch-enabled")
-                .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("http server successfully started"));
+                .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("Fine-grained Authorization Service"));
             _container = builder.Build();
 
         }

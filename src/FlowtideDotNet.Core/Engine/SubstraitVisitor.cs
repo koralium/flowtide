@@ -38,6 +38,9 @@ using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Base.Vertices.Egress;
 using System.Threading.Tasks;
+using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Core.Operators.Join;
+using FlowtideDotNet.Base.Vertices.Unary;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -63,6 +66,7 @@ namespace FlowtideDotNet.Core.Engine
         private readonly FunctionsRegister functionsRegister;
         private readonly int parallelism;
         private readonly TimeSpan getTimestampInterval;
+        private readonly bool _useColumnStore;
         private int _operatorId = 0;
         private Dictionary<int, RelationTree> _doneRelations;
         private Dictionary<string, IterationOperator> _iterationOperators = new Dictionary<string, IterationOperator>();
@@ -129,6 +133,7 @@ namespace FlowtideDotNet.Core.Engine
             FunctionsRegister functionsRegister,
             int parallelism,
             TimeSpan getTimestampInterval,
+            bool useColumnStore,
             TaskScheduler? taskScheduler = default)
         {
             this.plan = plan;
@@ -138,6 +143,7 @@ namespace FlowtideDotNet.Core.Engine
             this.functionsRegister = functionsRegister;
             this.parallelism = parallelism;
             this.getTimestampInterval = getTimestampInterval;
+            _useColumnStore = useColumnStore;
             _queueSize = queueSize;
             _taskScheduler = taskScheduler;
             _doneRelations = new Dictionary<int, RelationTree>();
@@ -159,7 +165,16 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitFilterRelation(FilterRelation filterRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new FilterOperator(filterRelation, functionsRegister, DefaultBlockOptions);
+            UnaryVertex<StreamEventBatch, object?>? op;
+            
+            if (_useColumnStore)
+            {
+                op = new ColumnFilterOperator(filterRelation, functionsRegister, DefaultBlockOptions);
+            }
+            else
+            {
+                op = new FilterOperator(filterRelation, functionsRegister, DefaultBlockOptions);
+            }
 
             if (state != null)
             {
@@ -174,7 +189,17 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitProjectRelation(ProjectRelation projectRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new ProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
+
+            UnaryVertex<StreamEventBatch, object?>? op;
+
+            if (_useColumnStore)
+            {
+                op = new ColumnProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
+            }
+            else
+            {
+                op = new ProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
+            }
 
             if (state != null)
             {
@@ -281,7 +306,15 @@ namespace FlowtideDotNet.Core.Engine
                 for (int i = 0; i < parallelism; i++)
                 {
                     var id = _operatorId++;
-                    var op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                    MultipleInputVertex<StreamEventBatch, JoinState> op;
+                    if (_useColumnStore)
+                    {
+                        op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                    }
+                    else
+                    {
+                        op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                    }
                     leftPartitionOperator.Sources[i].LinkTo(op.Targets[0]);
                     rightPartitionOperator.Sources[i].LinkTo(op.Targets[1]);
                     op.LinkTo(partitionCombiner.Targets[i]);
@@ -301,7 +334,16 @@ namespace FlowtideDotNet.Core.Engine
             {
                 var id = _operatorId++;
 
-                var op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                MultipleInputVertex<StreamEventBatch, JoinState> op;
+                if (_useColumnStore)
+                {
+                    op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                }
+                else
+                {
+                    op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                }
+                
                 if (state != null)
                 {
                     op.LinkTo(state);
@@ -405,7 +447,15 @@ namespace FlowtideDotNet.Core.Engine
                 if (info.NormalizationRelation != null)
                 {
                     var normId = _operatorId++;
-                    NormalizationOperator normOp = new NormalizationOperator(info.NormalizationRelation, functionsRegister, DefaultBlockOptions);
+                    UnaryVertex<StreamEventBatch, NormalizationState> normOp;
+                    if (_useColumnStore)
+                    {
+                        normOp = new ColumnNormalizationOperator(info.NormalizationRelation, functionsRegister, DefaultBlockOptions);
+                    }
+                    else
+                    {
+                        normOp = new NormalizationOperator(info.NormalizationRelation, functionsRegister, DefaultBlockOptions);
+                    }
 
                     if (state != null)
                     {
@@ -493,7 +543,15 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitNormalizationRelation(NormalizationRelation normalizationRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            NormalizationOperator op = new NormalizationOperator(normalizationRelation, functionsRegister, DefaultBlockOptions);
+            UnaryVertex<StreamEventBatch, NormalizationState> op;
+            if (_useColumnStore)
+            {
+                op = new ColumnNormalizationOperator(normalizationRelation, functionsRegister, DefaultBlockOptions);
+            }
+            else
+            {
+                op = new NormalizationOperator(normalizationRelation, functionsRegister, DefaultBlockOptions);
+            }
 
             if (state != null)
             {
