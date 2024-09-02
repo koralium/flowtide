@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             ~((1 << 29) - 1), // 28th element with all bits except the lowest 29 bits set
             ~((1 << 30) - 1), // 29th element with all bits except the lowest 30 bits set
             -2147483648, // 30th element with all bits except the lowest 31 bits set
-            ~((1 << 32) - 1)
+            0
         ];
         private IMemoryAllocator? memoryAllocator;
         private int _length;

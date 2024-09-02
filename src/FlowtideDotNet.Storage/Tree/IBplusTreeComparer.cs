@@ -46,5 +46,11 @@ namespace FlowtideDotNet.Storage.Tree
         /// <param name="index"></param>
         /// <returns></returns>
         int CompareTo(in K key, in TKeyContainer keyContainer, in int index);
+
+        /// <summary>
+        /// Set to true if seek in iterator should check the next page for the value if it is not found in the current page
+        /// and the key to search was the largest in the page.
+        /// </summary>
+        bool SeekNextPageForValue { get; }
     }
 }

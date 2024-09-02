@@ -188,7 +188,21 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
 
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
             Assert.True(binaryList.Get(1).SequenceEqual(e3));
+        }
 
+        [Fact]
+        public void TestUpdateLastElement()
+        {
+            var e1 = new byte[] { 1, 2, 3 };
+            var e2 = new byte[] { 1, 2, 3, 4 };
+            var e3 = new byte[] { 1, 2, 3, 4, 5 };
+            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            binaryList.Insert(0, e1);
+            binaryList.Insert(1, e2);
+            binaryList.UpdateAt(1, e3);
+
+            Assert.True(binaryList.Get(0).SequenceEqual(e1));
+            Assert.True(binaryList.Get(1).SequenceEqual(e3));
         }
     }
 }

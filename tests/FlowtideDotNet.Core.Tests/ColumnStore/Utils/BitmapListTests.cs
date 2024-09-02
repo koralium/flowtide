@@ -258,5 +258,116 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
                 Assert.True(list.Get(i));
             }
         }
+
+        [Fact]
+        public void TestInsertSpecialCaseShiftLeftAtBorder()
+        {
+            var list = new BitmapList(new BatchMemoryManager(1));
+
+            for (int i = 0; i < 583; i++)
+            {
+                list.Unset(i);
+            }
+            list.Set(584);
+            list.Unset(585);
+            for (int i = 586; i <= 606; i++)
+            {
+                list.Unset(i);
+            }
+
+            list.InsertAt(607, false);
+            
+            for (int i = 0; i < 583; i++)
+            {
+                Assert.False(list.Get(i));
+            }
+            Assert.True(list.Get(584));
+            for (int i = 585; i <= 607; i++)
+            {
+                Assert.False(list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertRandomInOrder()
+        {
+            var list = new BitmapList(new BatchMemoryManager(1));
+
+            Random r = new Random(123);
+
+            List<bool> expected = new List<bool>();
+
+            for (int i = 0; i < 1_00_000; i++)
+            {
+                var v = r.Next(0, 2);
+                if (v == 0)
+                {
+                    list.InsertAt(i, false);
+                    expected.Add(false);
+                }
+                else
+                {
+                    list.InsertAt(i, true);
+                    expected.Add(true);
+                }
+            }
+            
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+
+            for (int i = 0; i < 10_000; i++)
+            {
+                var index = r.Next(0, expected.Count);
+                list.RemoveAt(index);
+                expected.RemoveAt(index);
+            }
+
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertRandomRandomOrder()
+        {
+            var list = new BitmapList(new BatchMemoryManager(1));
+
+            Random r = new Random(123);
+
+            List<bool> expected = new List<bool>();
+
+            for (int i = 0; i < 1_00_000; i++)
+            {
+                var v = r.Next(0, 2);
+                bool val = true;
+                if (v == 0)
+                {
+                    val = false;
+                }
+                var index = r.Next(0, expected.Count);
+                list.InsertAt(index, val);
+                expected.Insert(index, val);
+            }
+
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+
+            for (int i = 0; i < 10_000; i++)
+            {
+                var index = r.Next(0, expected.Count);
+                list.RemoveAt(index);
+                expected.RemoveAt(index);
+            }
+
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
     }
 }
