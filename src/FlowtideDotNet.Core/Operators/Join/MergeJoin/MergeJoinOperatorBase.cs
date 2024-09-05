@@ -153,7 +153,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 if (output.Count > 100)
                                 {
                                     _eventsCounter.Add(output.Count);
-                                    yield return new StreamEventBatch(output);
+                                    yield return new StreamEventBatch(output, mergeJoinRelation.OutputLength);
                                     output = new List<RowEvent>();
                                 }
                                 
@@ -179,7 +179,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     if (output.Count > 100)
                     {
                         _eventsCounter.Add(output.Count);
-                        yield return new StreamEventBatch(output);
+                        yield return new StreamEventBatch(output, mergeJoinRelation.OutputLength);
                         output = new List<RowEvent>();
                     }
                     
@@ -226,7 +226,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
 #endif
-                yield return new StreamEventBatch(output);
+                yield return new StreamEventBatch(output, mergeJoinRelation.OutputLength);
             }
 #if DEBUG_WRITE
             await leftInput.FlushAsync();
@@ -288,7 +288,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 if (output.Count > 100)
                                 {
                                     _eventsCounter.Add(output.Count);
-                                    yield return new StreamEventBatch(output);
+                                    yield return new StreamEventBatch(output, mergeJoinRelation.OutputLength);
                                     output = new List<RowEvent>();
                                 }
                                 
@@ -335,7 +335,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
 #endif
-                yield return new StreamEventBatch(output);
+                yield return new StreamEventBatch(output, mergeJoinRelation.OutputLength);
             }
 #if DEBUG_WRITE
             await rightInput.FlushAsync();

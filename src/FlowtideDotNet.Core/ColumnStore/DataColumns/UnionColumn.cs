@@ -330,5 +330,36 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
             return _valueColumns[valueColumnIndex].GetTypeAt(_offsets.Get(index), child);
         }
+
+        public void Clear()
+        {
+            _typeList.Clear();
+            _offsets.Clear();
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                _valueColumns[i].Clear();
+            }
+        }
+
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            CheckArrayExist(ArrowTypeId.List);
+
+            var typeByte = (byte)ArrowTypeId.List;
+            var arrayIndex = _typeIds[typeByte];
+            _valueColumns[arrayIndex].AddToNewList(in value);
+        }
+
+        public int EndNewList()
+        {
+            CheckArrayExist(ArrowTypeId.List);
+            var typeByte = (byte)ArrowTypeId.List;
+            var arrayIndex = _typeIds[typeByte];
+            var offset = _valueColumns[arrayIndex].EndNewList();
+            int index = _typeList.Count;
+            _typeList.InsertAt(index, arrayIndex);
+            _offsets.InsertAt(index, offset);
+            return index;
+        }
     }
 }

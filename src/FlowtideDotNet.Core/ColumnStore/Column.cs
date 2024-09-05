@@ -24,6 +24,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -575,6 +576,87 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public void Clear()
+        {
+            if (_nullCounter > 0)
+            {
+                Debug.Assert(_validityList != null);
+                _validityList.Clear();
+                _nullCounter = 0;
+            }
+            if (_dataColumn != null)
+            {
+                _dataColumn.Clear();
+            }
+        }
+
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            if (_type == ArrowTypeId.List)
+            {
+                _dataColumn!.AddToNewList(value);
+            }
+            else if (_type == ArrowTypeId.Null)
+            {
+                CheckNullInitialization();
+                _dataColumn = CreateArray(ArrowTypeId.List);
+                _type = ArrowTypeId.List;
+
+                // Add null values as undefined values to the array.
+                for (var i = 0; i < _nullCounter; i++)
+                {
+                    _dataColumn.Add(in NullValue.Instance);
+                }
+                _dataColumn.AddToNewList(value);
+            }
+            else if (_type == ArrowTypeId.Union)
+            {
+                _dataColumn!.AddToNewList(value);
+            }
+            else
+            {
+                var unionColumn = ConvertToUnion();
+                _type = ArrowTypeId.Union;
+                _dataColumn = unionColumn;
+                _nullCounter = 0;
+                _dataColumn.AddToNewList(value);
+            }
+            
+        }
+
+        public int EndNewList()
+        {
+            if (_type == ArrowTypeId.List)
+            {
+                return _dataColumn!.EndNewList();
+            }
+            else if (_type == ArrowTypeId.Null)
+            {
+                CheckNullInitialization();
+                _dataColumn = CreateArray(ArrowTypeId.List);
+                _type = ArrowTypeId.List;
+
+                // Add null values as undefined values to the array.
+                for (var i = 0; i < _nullCounter; i++)
+                {
+                    _dataColumn.Add(in NullValue.Instance);
+                }
+                return _dataColumn!.EndNewList();
+            }
+            else if (_type == ArrowTypeId.Union)
+            {
+                return _dataColumn!.EndNewList();
+            }
+            else
+            {
+                var unionColumn = ConvertToUnion();
+                _type = ArrowTypeId.Union;
+                _dataColumn = unionColumn;
+                _nullCounter = 0;
+                return _dataColumn!.EndNewList();
+            }
         }
     }
 }

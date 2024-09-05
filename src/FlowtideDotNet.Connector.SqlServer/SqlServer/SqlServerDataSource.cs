@@ -166,7 +166,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 _eventsCounter.Add(result.Count);
                 _eventsProcessed.Add(result.Count);
                 Logger.ChangesFoundInTable(result.Count, _tableName, StreamName, Name);
-                await output.SendAsync(new StreamEventBatch(result));
+                await output.SendAsync(new StreamEventBatch(result, readRelation.OutputLength));
                 await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.ChangeTrackingVersion));
                 this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }
@@ -301,7 +301,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             {
                                 _eventsCounter.Add(outdata.Count);
                                 _eventsProcessed.Add(outdata.Count);
-                                await output.SendAsync(new StreamEventBatch(outdata));
+                                await output.SendAsync(new StreamEventBatch(outdata, readRelation.OutputLength));
                                 outdata = new List<RowEvent>();
                             }
                         }
@@ -309,7 +309,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         {
                             _eventsCounter.Add(outdata.Count);
                             _eventsProcessed.Add(outdata.Count);
-                            await output.SendAsync(new StreamEventBatch(outdata));
+                            await output.SendAsync(new StreamEventBatch(outdata, readRelation.OutputLength));
                         }
                         retryCount = 0;
                         SetHealth(true);

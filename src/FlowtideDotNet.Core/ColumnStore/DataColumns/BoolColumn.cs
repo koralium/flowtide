@@ -194,5 +194,20 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return ArrowTypeId.Boolean;
         }
+
+        public void Clear()
+        {
+            _data.Clear();
+        }
+
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public int EndNewList()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

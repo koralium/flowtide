@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
             {
                 Debug.Assert(_eventsOutCounter != null, nameof(_eventsOutCounter));
                 _eventsOutCounter.Add(output.Count);
-                yield return new StreamEventBatch(output);
+                yield return new StreamEventBatch(output, relation.OutputLength);
             }
         }
 

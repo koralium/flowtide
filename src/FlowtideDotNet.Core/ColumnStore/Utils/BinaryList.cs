@@ -293,5 +293,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+
+        public void Clear()
+        {
+            _offsets.Clear();
+            _offsets.Add(0);
+            _length = 0;
+        }
     }
 }

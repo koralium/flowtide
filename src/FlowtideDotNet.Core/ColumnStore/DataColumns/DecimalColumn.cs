@@ -166,5 +166,20 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return ArrowTypeId.Decimal128;
         }
+
+        public void Clear()
+        {
+            _values.Clear();
+        }
+
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public int EndNewList()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

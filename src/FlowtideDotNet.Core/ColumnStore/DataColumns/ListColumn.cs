@@ -23,6 +23,7 @@ using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using static Substrait.Protobuf.Expression.Types.Literal.Types;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -261,6 +262,35 @@ namespace FlowtideDotNet.Core.ColumnStore
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             return ArrowTypeId.List;
+        }
+
+        public void Clear()
+        {
+            _offsets.Clear();
+            _offsets.Add(0);
+            _internalColumn.Clear();
+        }
+
+        /// <summary>
+        /// Allows adding values to a new list directly without creating a list value type.
+        /// This allows for more efficient list creation.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="value"></param>
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            _internalColumn.Add(value);
+        }
+
+        /// <summary>
+        /// Signals an end to a list created with AddToNewList.
+        /// </summary>
+        /// <returns></returns>
+        public int EndNewList()
+        {
+            var currentOffset = _offsets.Count - 1;
+            _offsets.Add(_internalColumn.Count);
+            return currentOffset;
         }
     }
 }

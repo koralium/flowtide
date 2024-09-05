@@ -199,6 +199,35 @@ namespace FlowtideDotNet.Core.ColumnStore
                     }
                     return 0;
                 }
+                else if (map is MapValue mapValue)
+                {
+                    var length = endOffset - startOffset;
+                    var otherLength = mapValue.GetLength();
+
+                    if (length != otherLength)
+                    {
+                        return length - otherLength;
+                    }
+
+                    var dataValueContainer = new DataValueContainer();
+                    for (int i = 0; i < length; i++)
+                    {
+                        mapValue.GetKeyAt(i, dataValueContainer);   
+                        var keyCompareVal = _keyColumn.CompareTo(startOffset + i, dataValueContainer, default);
+                        if (keyCompareVal != 0)
+                        {
+                            return keyCompareVal;
+                        }
+                        //var valueVal = _valueColumn.GetValueAt(startOffset + i, default);
+                        mapValue.GetValueAt(i, dataValueContainer);
+                        var valueCompareVal = _valueColumn.CompareTo(startOffset + i, dataValueContainer, default);
+                        if (valueCompareVal != 0)
+                        {
+                            return valueCompareVal;
+                        }
+                    }
+                    return 0;
+                }
                 else
                 {
                     throw new NotImplementedException();
@@ -379,6 +408,24 @@ namespace FlowtideDotNet.Core.ColumnStore
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             return ArrowTypeId.Map;
+        }
+
+        public void Clear()
+        {
+            _offsets.Clear();
+            _offsets.Add(0);
+            _keyColumn.Clear();
+            _valueColumn.Clear();
+        }
+
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public int EndNewList()
+        {
+            throw new NotImplementedException();
         }
     }
 }

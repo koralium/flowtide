@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
             await output.SendAsync(new StreamEventBatch(new List<RowEvent>()
             {
                 streamEvent
-            }));
+            }, 3));
             await output.SendWatermark(new FlowtideDotNet.Base.Watermark("test", 1));
             output.ExitCheckpointLock();
             await this.RegisterTrigger("on_check", TimeSpan.FromSeconds(5));
