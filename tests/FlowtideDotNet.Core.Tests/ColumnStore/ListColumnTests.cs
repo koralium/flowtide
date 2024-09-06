@@ -381,7 +381,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 new Int64Value(4),
                 new Int64Value(5),
                 new Int64Value(6)
-            }), 0, 2, default);
+            }), 0, 2, default, false);
 
             Assert.Equal(1, start);
             Assert.Equal(1, end);

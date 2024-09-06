@@ -29,7 +29,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public class StringColumn : IDataColumn, IEnumerable<string>
     {
-        private static SpanByteComparer s_spanByteComparer = new SpanByteComparer();
         private BinaryList _binaryList;
         private bool disposedValue;
 
@@ -74,14 +73,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 return 1;
             }
-            return s_spanByteComparer.Compare(_binaryList.Get(index), value.AsString.Span);
+            return SpanByteComparer.Instance.Compare(_binaryList.Get(index), value.AsString.Span);
         }
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             if (otherColumn is StringColumn stringColumn)
             {
-                return s_spanByteComparer.Compare(_binaryList.Get(thisIndex), stringColumn._binaryList.Get(otherIndex));
+                return SpanByteComparer.Instance.Compare(_binaryList.Get(thisIndex), stringColumn._binaryList.Get(otherIndex));
             }
             throw new NotImplementedException();
         }
@@ -117,9 +116,17 @@ namespace FlowtideDotNet.Core.ColumnStore
             _binaryList.RemoveAt(index);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) where T : IDataValue
         {
-            return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end, s_spanByteComparer);
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end, SpanByteComparerDesc.Instance);
+            }
+            else
+            {
+                return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end, SpanByteComparer.Instance);
+            }
+            
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)

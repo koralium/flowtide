@@ -124,11 +124,15 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._int64Value = new Int64Value(_data.GetRef(index));
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child)
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T: IDataValue
         {
             Debug.Assert(_data != null);
             var val = dataValue.AsLong;
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundries(_data, val, start, end, Int64ComparerDesc.Instance);
+            }
             return BoundarySearch.SearchBoundries(_data, val, start, end, Int64Comparer.Instance);
         }
 

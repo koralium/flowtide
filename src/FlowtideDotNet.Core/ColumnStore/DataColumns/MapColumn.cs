@@ -146,6 +146,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
                 return -1;
             }
+            else if (value.Type == ArrowTypeId.Null)
+            {
+                return 1;
+            }
             if (child != null)
             {
                 if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
@@ -320,10 +324,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             return index;
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
             where T : IDataValue
         {
-            return BoundarySearch.SearchBoundriesForMapColumn(this, dataValue, start, end, child, default);
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundriesForDataColumnDesc(this, dataValue, start, end, child, default);
+            }
+            return BoundarySearch.SearchBoundriesForDataColumn(this, dataValue, start, end, child, default);
         }
 
         public void RemoveAt(in int index)

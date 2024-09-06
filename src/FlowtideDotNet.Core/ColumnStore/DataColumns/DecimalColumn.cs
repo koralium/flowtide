@@ -103,9 +103,13 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._decimalValue = new DecimalValue(_values[index]);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
             where T : IDataValue
         {
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundries(_values, dataValue.AsDecimal, start, end, DecimalComparerDesc.Instance);
+            }
             return BoundarySearch.SearchBoundries(_values, dataValue.AsDecimal, start, end, DecimalComparer.Instance);
         }
 

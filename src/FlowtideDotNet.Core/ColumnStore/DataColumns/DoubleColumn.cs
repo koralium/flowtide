@@ -102,10 +102,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._doubleValue = new DoubleValue(_data[index]);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
             where T : IDataValue
         {
             var val = dataValue.AsDouble;
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundries<double>(_data, val, start, end, DoubleComparerDesc.Instance);
+            }
             return BoundarySearch.SearchBoundries<double>(_data, val, start, end, DoubleComparer.Instance);
         }
 

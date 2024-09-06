@@ -162,8 +162,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
         {
-            var type = _typeList[index];
-
+            var typeIndex = _typeList[index];
+            var type = (sbyte)_valueColumns[typeIndex].Type;
             if (type == (sbyte)value.Type)
             {
                 var valueColumnIndex = _typeIds[(byte)type];
@@ -226,9 +226,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             valueColumn.GetValueAt(_offsets.Get(index), dataValueContainer, child);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) where T : IDataValue
         {
-            return BoundarySearch.SearchBoundriesForColumn(this, in dataValue, in start, in end);
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundriesForDataColumnDesc(this, in dataValue, in start, in end, child, default);
+            }
+            return BoundarySearch.SearchBoundriesForDataColumn(this, in dataValue, in start, in end, child, default);
         }
 
         public int Update<T>(in int index, in T value) where T : IDataValue

@@ -460,7 +460,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child)
+        public (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child, bool desc = false)
             where T : IDataValue
         {
             if (_type == value.Type)
@@ -476,13 +476,21 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // TODO: Check if there is any null values, if so null bitmap must be passed in.
                 if (_nullCounter > 0)
                 {
-                    return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
+                    if (!desc)
+                    {
+                        return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
+                    }
+                    else
+                    {
+                        return BoundarySearch.SearchBoundriesForDataColumnDesc(in _dataColumn!, in value, in start, end, child, _validityList);
+                    }
+                    
                 }
-                return _dataColumn!.SearchBoundries(in value, in start, in end, child);
+                return _dataColumn!.SearchBoundries(in value, in start, in end, child, desc);
             }
             else if (_type == ArrowTypeId.Union)
             {
-                return _dataColumn!.SearchBoundries(in value, in start, in end, child);
+                return _dataColumn!.SearchBoundries(in value, in start, in end, child, desc);
             }
             else if (_type == ArrowTypeId.Null)
             {
@@ -496,11 +504,18 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
                 }
-                return _dataColumn!.SearchBoundries(in value, in start, in end, child);
+                return _dataColumn!.SearchBoundries(in value, in start, in end, child, desc);
             }
             else if (_nullCounter > 0 && value.Type == ArrowTypeId.Null)
             {
-                return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
+                if (!desc)
+                {
+                    return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
+                }
+                else
+                {
+                    return BoundarySearch.SearchBoundriesForDataColumnDesc(in _dataColumn!, in value, in start, end, child, _validityList);
+                }
             }
             else
             {

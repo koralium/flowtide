@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         int Update<T>(in int index, in T value)
             where T: IDataValue;
 
-        (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child)
+        (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue;
 
         void RemoveAt(in int index);

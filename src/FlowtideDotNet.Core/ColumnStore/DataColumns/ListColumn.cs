@@ -101,6 +101,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
                 return -1;
             }
+            else if (value.Type == ArrowTypeId.Null)
+            {
+                return 1;
+            }
             var otherList = value.AsList;
             
             var startOffset = _offsets.Get(index);
@@ -135,9 +139,13 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._type = ArrowTypeId.List;
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
             where T : IDataValue
         {
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundriesForDataColumnDesc(this, in dataValue, start, end, child, default);
+            }
             return BoundarySearch.SearchBoundriesForDataColumn(this, in dataValue, start, end, child, default);
         }
 
