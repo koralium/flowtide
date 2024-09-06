@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             }
             var arg = visitor.Visit(function.Arguments[0], parametersInfo);
             
-            var expr = GetListAggBody(arg.Type);
+            var expr = GetListAggBody(arg!.Type);
             var body = expr.Body;
             var replacer = new ParameterReplacerVisitor(expr.Parameters[0], arg!);
             System.Linq.Expressions.Expression e = replacer.Visit(body);
@@ -105,11 +105,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             e = replacer.Visit(e);
             return e;
         }
-
-        //private static Expression<Func<IDataValue, ColumnReference, long, ColumnListAggAggregationSingleton, ColumnRowReference, ValueTask>> GetListAggBody()
-        //{
-        //    return (ev, state, weight, singleton, groupingKey) => DoListAgg(ev, state, weight, singleton, groupingKey);
-        //}
 
         private static System.Linq.Expressions.LambdaExpression GetListAggBody(System.Type inputType)
         {
@@ -153,8 +148,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
                 }
                 return (input, GenericWriteOperation.Upsert);
             });
-
-            return;
         }
 
         private static async ValueTask ListAggGetValue(ColumnReference state, ColumnRowReference groupingKey, ColumnListAggAggregationSingleton singleton, ColumnStore.Column outputColumn)

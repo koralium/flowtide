@@ -42,6 +42,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             _dataValueContainer = new DataValueContainer();
         }
 
+        internal ListAggKeyStorageContainer(EventBatchData eventBatchData)
+        {
+            _data = eventBatchData;
+            _dataValueContainer = new DataValueContainer();
+        }
+
         public int Count => _data.Count;
 
         public void Add(ListAggColumnRowReference key)

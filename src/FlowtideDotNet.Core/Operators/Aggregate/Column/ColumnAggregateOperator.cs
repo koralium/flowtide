@@ -123,9 +123,17 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             return Task.CompletedTask;
         }
 
-        public override Task<AggregateOperatorState> OnCheckpoint()
+        public override async Task<AggregateOperatorState> OnCheckpoint()
         {
-            return Task.FromResult(new AggregateOperatorState());
+            Debug.Assert(_tree != null);
+            await _tree.Commit();
+
+            // Commit each measure
+            foreach (var measure in m_measures)
+            {
+                await measure.Commit();
+            }
+            return new AggregateOperatorState();
         }
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)

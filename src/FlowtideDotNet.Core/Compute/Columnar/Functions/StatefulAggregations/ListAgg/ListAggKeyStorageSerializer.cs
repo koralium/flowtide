@@ -10,7 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow.Ipc;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Core.Operators.Normalization;
 using FlowtideDotNet.Storage.Tree;
 using System;
@@ -36,12 +39,19 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
 
         public ListAggKeyStorageContainer Deserialize(in BinaryReader reader)
         {
-            throw new NotImplementedException();
+            using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var recordBatch = arrowReader.ReadNextRecordBatch();
+
+            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch);
+
+            return new ListAggKeyStorageContainer(eventBatch);
         }
 
         public void Serialize(in BinaryWriter writer, in ListAggKeyStorageContainer values)
         {
-            throw new NotImplementedException();
+            var recordBatch = EventArrowSerializer.BatchToArrow(values._data);
+            var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
+            batchWriter.WriteRecordBatch(recordBatch);
         }
     }
 }

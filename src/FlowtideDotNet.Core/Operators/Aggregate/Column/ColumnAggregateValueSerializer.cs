@@ -10,6 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow.Ipc;
+using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Normalization;
 using FlowtideDotNet.Storage.Tree;
@@ -36,12 +39,44 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public ColumnAggregateValueContainer Deserialize(in BinaryReader reader)
         {
-            throw new NotImplementedException();
+            var previousValueLength = reader.ReadInt32();
+            var previousValueMemory = reader.ReadBytes(previousValueLength);
+            var memoryAllocator = GlobalMemoryManager.Instance;
+            var previousValueNativeMemory = memoryAllocator.Allocate(previousValueLength, 64);
+
+            previousValueMemory.CopyTo(previousValueNativeMemory.Memory.Span);
+
+            
+
+            var weightLength = reader.ReadInt32();
+            var weightMemory = reader.ReadBytes(weightLength);
+            var weightNativeMemory = memoryAllocator.Allocate(weightLength, 64);
+            weightMemory.CopyTo(weightNativeMemory.Memory.Span);
+
+            
+
+            using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var recordBatch = arrowReader.ReadNextRecordBatch();
+
+            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch);
+            var previousValueList = new ColumnStore.Utils.PrimitiveList<bool>(previousValueNativeMemory, recordBatch.Length, memoryAllocator);
+            var weightsList = new ColumnStore.Utils.PrimitiveList<int>(weightNativeMemory, recordBatch.Length, memoryAllocator);
+
+            return new ColumnAggregateValueContainer(measureCount, eventBatch, weightsList, previousValueList);
         }
 
         public void Serialize(in BinaryWriter writer, in ColumnAggregateValueContainer values)
         {
-            throw new NotImplementedException();
+            var previousValueMemory = values._previousValueSent.SlicedMemory;
+            writer.Write(previousValueMemory.Length);
+            writer.Write(previousValueMemory.Span);
+            var weightMemory = values._weights.SlicedMemory;
+            writer.Write(weightMemory.Length);
+            writer.Write(weightMemory.Span);
+
+            var recordBatch = EventArrowSerializer.BatchToArrow(values._eventBatch);
+            var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
+            batchWriter.WriteRecordBatch(recordBatch);
         }
     }
 }

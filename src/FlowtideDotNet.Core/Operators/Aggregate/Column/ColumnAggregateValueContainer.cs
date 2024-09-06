@@ -45,6 +45,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             _previousValueSent = new PrimitiveList<bool>(GlobalMemoryManager.Instance);
         }
 
+        public ColumnAggregateValueContainer(int measureCount, EventBatchData eventBatch, PrimitiveList<int> weights, PrimitiveList<bool> previousValueSent)
+        {
+            this.columnCount = measureCount * 2;
+            _eventBatch = eventBatch;
+            _weights = weights;
+            _previousValueSent = previousValueSent;
+        }
+
         public int Count => _eventBatch.Count;
 
         public void Add(ColumnAggregateStateReference key)

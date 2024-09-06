@@ -13,6 +13,7 @@
 using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.MinMax;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
@@ -29,6 +30,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
     {
         public static void AddBuiltInArithmaticFunctions(FunctionsRegister functionsRegister)
         {
+            ColumnMinMaxAggregation.RegisterMin(functionsRegister);
+            ColumnMinMaxAggregation.RegisterMax(functionsRegister);
+
             functionsRegister.RegisterStreamingColumnAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum,
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>
                 {

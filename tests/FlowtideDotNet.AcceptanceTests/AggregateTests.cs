@@ -135,6 +135,8 @@ namespace FlowtideDotNet.AcceptanceTests
                 ");
             await WaitForUpdate();
 
+            await Task.Delay(1000);
+
             await Crash();
 
             GenerateData(1000);
