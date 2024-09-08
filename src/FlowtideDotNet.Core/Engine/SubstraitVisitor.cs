@@ -246,7 +246,16 @@ namespace FlowtideDotNet.Core.Engine
             else
             {
                 var id = _operatorId++;
-                var op = new ColumnAggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions); //new AggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
+
+                UnaryVertex<StreamEventBatch, AggregateOperatorState>? op;
+                if (_useColumnStore)
+                {
+                    op = new ColumnAggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
+                }
+                else
+                {
+                    op = new AggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
+                }
 
                 if (state != null)
                 {
