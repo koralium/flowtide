@@ -49,6 +49,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private int _egressCrashOnCheckpointCount;
         private IPersistentStorage? _persistentStorage;
         private ConnectorManager? _connectorManager;
+        private bool _dataUpdated;
 
         public IReadOnlyList<User> Users  => generator.Users;
 
@@ -222,6 +223,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             lock (_lock)
             {
                 _actualData = actualData;
+                _dataUpdated = true;
             }
         }
 
@@ -229,7 +231,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             lock (_lock)
             {
-                updateCounter++;
+                if (_dataUpdated)
+                {
+                    updateCounter++;
+                }
+                _dataUpdated = false;
             }
         }
     
