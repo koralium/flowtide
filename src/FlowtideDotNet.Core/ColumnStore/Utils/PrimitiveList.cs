@@ -216,5 +216,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 Dispose();
             }
         }
+
+        public void Clear()
+        {
+            _length = 0;
+        }
     }
 }

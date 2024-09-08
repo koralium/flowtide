@@ -237,7 +237,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                 {
                     b.Add(1);
                 })
-            }), 0));
+            }, 1), 0));
 
             await sink.SendAsync(new Checkpoint(0, 1));
 

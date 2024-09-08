@@ -114,8 +114,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data.RemoveAt(index);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) where T : IDataValue
         {
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundries(_data, dataValue.AsBinary, start, end, SpanByteComparerDesc.Instance);
+            }
             return BoundarySearch.SearchBoundries(_data, dataValue.AsBinary, start, end, SpanByteComparer.Instance);
         }
 
@@ -155,6 +159,21 @@ namespace FlowtideDotNet.Core.ColumnStore
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             return ArrowTypeId.Binary;
+        }
+
+        public void Clear()
+        {
+            _data.Clear();
+        }
+
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public int EndNewList()
+        {
+            throw new NotImplementedException();
         }
     }
 }

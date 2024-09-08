@@ -227,14 +227,14 @@ namespace FlowtideDotNet.Core.Operators.Read
 
                 if (outputList.Count > 100)
                 {
-                    await output.SendAsync(new StreamEventBatch(outputList));
+                    await output.SendAsync(new StreamEventBatch(outputList, readRelation.OutputLength));
                     outputList = new List<RowEvent>();
                     sentUpdates = true;
                 }
             }
             if (outputList.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(outputList));
+                await output.SendAsync(new StreamEventBatch(outputList, readRelation.OutputLength));
                 outputList = new List<RowEvent>();
                 sentUpdates = true;
             }
@@ -318,14 +318,14 @@ namespace FlowtideDotNet.Core.Operators.Read
 
                 if (outputList.Count > 100)
                 {
-                    await output.SendAsync(new StreamEventBatch(outputList));
+                    await output.SendAsync(new StreamEventBatch(outputList, readRelation.OutputLength));
                     outputList = new List<RowEvent>();
                 }
             }
 
             if (outputList.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(outputList));
+                await output.SendAsync(new StreamEventBatch(outputList, readRelation.OutputLength));
                 outputList = new List<RowEvent>();
             }
 
@@ -391,7 +391,7 @@ namespace FlowtideDotNet.Core.Operators.Read
 
                     if (outputList.Count > 100)
                     {
-                        await output.SendAsync(new StreamEventBatch(outputList));
+                        await output.SendAsync(new StreamEventBatch(outputList, readRelation.OutputLength));
                         outputList = new List<RowEvent>();
                     }
                 }
@@ -401,7 +401,7 @@ namespace FlowtideDotNet.Core.Operators.Read
 
             if (outputList.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(outputList));
+                await output.SendAsync(new StreamEventBatch(outputList, readRelation.OutputLength));
                 outputList = new List<RowEvent>();
             }
             // Send the new max watermark

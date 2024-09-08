@@ -50,8 +50,10 @@ namespace FlowtideDotNet.Core.Operators.Partition
         {
             Debug.Assert(_eventsProcessed != null);
             _eventsProcessed.Add(data.Events.Count);
+            int columnCount = 0;
             foreach(var e in data.Events)
             {
+                columnCount = e.Length;
                 var hash = _partitionFunction(e);
                 var partitionId = hash % targetNumber;
                 if (outputs[partitionId] == null)
@@ -64,7 +66,7 @@ namespace FlowtideDotNet.Core.Operators.Partition
             {
                 if (outputs[i] != null)
                 {
-                    yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(i, new StreamMessage<StreamEventBatch>(new StreamEventBatch(outputs[i]!), time));
+                    yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(i, new StreamMessage<StreamEventBatch>(new StreamEventBatch(outputs[i]!, columnCount), time));
                     outputs[i] = null;
                 }
             }

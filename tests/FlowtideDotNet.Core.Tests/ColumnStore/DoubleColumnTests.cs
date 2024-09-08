@@ -55,24 +55,24 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new DoubleValue(6));
             column.Add(new DoubleValue(7));
 
-            var (start, end) = column.SearchBoundries(new DoubleValue(2), 0, 9, default);
+            var (start, end) = column.SearchBoundries(new DoubleValue(2), 0, 9, default, false);
             Assert.Equal(1, start);
             Assert.Equal(4, end);
 
-            (start, end) = column.SearchBoundries(new DoubleValue(3), 0, 9, default);
+            (start, end) = column.SearchBoundries(new DoubleValue(3), 0, 9, default, false);
             Assert.Equal(5, start);
             Assert.Equal(5, end);
 
-            (start, end) = column.SearchBoundries(new DoubleValue(4), 0, 9, default);
+            (start, end) = column.SearchBoundries(new DoubleValue(4), 0, 9, default, false);
             Assert.Equal(6, start);
             Assert.Equal(7, end);
 
-            (start, end) = column.SearchBoundries(new DoubleValue(9), 0, 9, default);
+            (start, end) = column.SearchBoundries(new DoubleValue(9), 0, 9, default, false);
             Assert.Equal(~10, start);
             Assert.Equal(~10, end);
 
             var emptyColumn = new DoubleColumn(new BatchMemoryManager(1));
-            (start, end) = emptyColumn.SearchBoundries(new DoubleValue(4), 0, -1, default);
+            (start, end) = emptyColumn.SearchBoundries(new DoubleValue(4), 0, -1, default, false);
             Assert.Equal(~0, start);
             Assert.Equal(~0, end);
         }

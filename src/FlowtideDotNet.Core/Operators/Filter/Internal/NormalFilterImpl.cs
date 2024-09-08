@@ -22,12 +22,14 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
     {
         private readonly Func<RowEvent, bool> _expression;
         private readonly List<int>? _emitList;
+        private readonly FilterRelation filterRelation;
         private FlexBuffer _flexBuffer;
         public NormalFilterImpl(FilterRelation filterRelation, FunctionsRegister functionsRegister)
         {
             _expression = BooleanCompiler.Compile<RowEvent>(filterRelation.Condition, functionsRegister);
             _emitList = filterRelation.Emit;
             _flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
+            this.filterRelation = filterRelation;
         }
 
         public Task Compact()
@@ -90,7 +92,7 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
 
             if (output.Count > 0)
             {
-                yield return new StreamEventBatch(output);
+                yield return new StreamEventBatch(output, filterRelation.OutputLength);
             }
         }
 
