@@ -24,10 +24,12 @@ using System.Buffers;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using static Substrait.Protobuf.Expression.Types.Literal.Types;
+using System.Collections;
+using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public class ListColumn : IDataColumn
+    public class ListColumn : IDataColumn, IEnumerable<IEnumerable<IDataValue>>
     {
         private readonly Column _internalColumn;
         private readonly IntList _offsets;
@@ -221,7 +223,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (value.Type == ArrowTypeId.Null)
             {
-                _offsets.Add(_internalColumn.Count);
+                var endOffset = _offsets.Get(index);
+                _offsets.InsertAt(index, endOffset);
                 return;
             }
             var list = value.AsList;
@@ -299,6 +302,35 @@ namespace FlowtideDotNet.Core.ColumnStore
             var currentOffset = _offsets.Count - 1;
             _offsets.Add(_internalColumn.Count);
             return currentOffset;
+        }
+
+        private IEnumerable<IDataValue> GetListValues(int index)
+        {
+            var startOffset = _offsets.Get(index);
+            var endOffset = _offsets.Get(index + 1);
+
+            for (int i = startOffset; i < endOffset; i++)
+            {
+                yield return _internalColumn.GetValueAt(i, default);
+            }
+        }
+
+        private IEnumerable<IEnumerable<IDataValue>> GetEnumerable()
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                yield return GetListValues(i);
+            }
+        }
+
+        public IEnumerator<IEnumerable<IDataValue>> GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
         }
     }
 }

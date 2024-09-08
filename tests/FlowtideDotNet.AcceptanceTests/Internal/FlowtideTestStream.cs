@@ -190,6 +190,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .WithLoggerFactory(loggerFactory)
 #endif
                 .AddConnectorManager(_connectorManager)
+                .WithNotificationReciever(new NotificationReciever(CheckpointComplete))
                 .SetGetTimestampUpdateInterval(timestampInterval.Value)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
@@ -221,10 +222,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             lock (_lock)
             {
                 _actualData = actualData;
-                updateCounter++;
             }
         }
 
+        private void CheckpointComplete()
+        {
+            lock (_lock)
+            {
+                updateCounter++;
+            }
+        }
+    
         /// <summary>
         /// Simulate a crash on the stream, waits until the stream has failed.
         /// </summary>

@@ -42,8 +42,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             _dataValueContainer = new DataValueContainer();
         }
 
-        internal ListAggKeyStorageContainer(EventBatchData eventBatchData)
+        internal ListAggKeyStorageContainer(int groupingKeyLength, EventBatchData eventBatchData)
         {
+            _groupingKeyLength = groupingKeyLength;
             _data = eventBatchData;
             _dataValueContainer = new DataValueContainer();
         }

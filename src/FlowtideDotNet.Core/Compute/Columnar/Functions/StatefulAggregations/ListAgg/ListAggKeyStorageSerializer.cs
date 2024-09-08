@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
 
             var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch);
 
-            return new ListAggKeyStorageContainer(eventBatch);
+            return new ListAggKeyStorageContainer(_groupingKeyLength, eventBatch);
         }
 
         public void Serialize(in BinaryWriter writer, in ListAggKeyStorageContainer values)

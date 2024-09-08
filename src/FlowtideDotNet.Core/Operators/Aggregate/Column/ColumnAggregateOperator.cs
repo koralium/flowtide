@@ -67,6 +67,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         private IBPlusTreeIterator<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>? _treeIterator;
         private IBPlusTree<ColumnRowReference, int, AggregateKeyStorageContainer, ListValueContainer<int>>? _temporaryTree;
 
+#if DEBUG_WRITE
+        private StreamWriter allInput;
+        private StreamWriter outputWriter;
+#endif
+
         public ColumnAggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             m_measures = new List<IColumnAggregateContainer>();
@@ -127,6 +132,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         {
             Debug.Assert(_tree != null);
             await _tree.Commit();
+
+#if DEBUG_WRITE
+            allInput.WriteLine("Checkpoint");
+            allInput.Flush();
+#endif
 
             // Commit each measure
             foreach (var measure in m_measures)
@@ -227,7 +237,17 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     });
                 }
 
-                yield return new StreamEventBatch(new EventBatchWeighted(outputWeights, outputIterations, new EventBatchData(outputColumns)));
+                var outputBatch = new StreamEventBatch(new EventBatchWeighted(outputWeights, outputIterations, new EventBatchData(outputColumns)));
+
+#if DEBUG_WRITE
+                foreach(var ev in outputBatch.Events)
+                {
+                    outputWriter.WriteLine($"{ev.Weight} {ev.ToJson()}");
+                }
+                outputWriter.Flush();
+#endif
+
+                yield return outputBatch;
             }
             else
             {
@@ -320,7 +340,17 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     }
                 }
 
-                yield return new StreamEventBatch(new EventBatchWeighted(outputWeights, outputIterations, new EventBatchData(outputColumns)));
+                var outputBatch = new StreamEventBatch(new EventBatchWeighted(outputWeights, outputIterations, new EventBatchData(outputColumns)));
+
+#if DEBUG_WRITE
+                foreach (var ev in outputBatch.Events)
+                {
+                    outputWriter.WriteLine($"{ev.Weight} {ev.ToJson()}");
+                }
+                outputWriter.Flush();
+#endif
+
+                yield return outputBatch;
 
                 await _temporaryTree.Clear();
             }
@@ -341,6 +371,15 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             {
                 m_temporaryStateValues[i].Clear();
             }
+
+#if DEBUG_WRITE
+            foreach (var ev in msg.Events)
+            {
+                allInput.WriteLine($"{ev.Weight} {ev.ToJson()}");
+            }
+            allInput.Flush();
+#endif
+
 
             var data = msg.Data;
             for (int i = 0; i < data.Count; i++)
@@ -454,6 +493,24 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         protected override async Task InitializeOrRestore(AggregateOperatorState? state, IStateManagerClient stateManagerClient)
         {
+#if DEBUG_WRITE
+            if (!Directory.Exists("debugwrite"))
+            {
+                Directory.CreateDirectory("debugwrite");
+            }
+            if (allInput == null)
+            {
+                allInput = File.CreateText($"debugwrite/{StreamName}_{Name}.all.txt");
+                outputWriter = File.CreateText($"debugwrite/{StreamName}_{Name}.output.txt");
+            }
+            else
+            {
+                allInput.WriteLine("Restart");
+                allInput.Flush();
+            }
+
+#endif
+
             if (m_aggregateRelation.Measures != null && m_aggregateRelation.Measures.Count > 0)
             {
                 m_measures.Clear();

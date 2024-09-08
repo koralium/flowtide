@@ -20,6 +20,7 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -29,7 +30,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    internal class Int64Column : IDataColumn
+    internal class Int64Column : IDataColumn, IEnumerable<long>
     {
         //private List<long> _data;
         private NativeLongList? _data;
@@ -224,6 +225,26 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int EndNewList()
         {
             throw new NotImplementedException();
+        }
+
+        private IEnumerable<long> GetEnumerable()
+        {
+            Debug.Assert(_data != null);
+
+            for (int i = 0; i < _data.Count; i++)
+            {
+                yield return _data.Get(i);
+            }
+        }
+
+        public IEnumerator<long> GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
         }
     }
 }
