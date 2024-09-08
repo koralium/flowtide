@@ -83,6 +83,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         public void Dispose()
         {
             _eventBatch.Dispose();
+            _weights.Dispose();
+            _previousValueSent.Dispose();
         }
 
         public ColumnAggregateStateReference Get(int index)

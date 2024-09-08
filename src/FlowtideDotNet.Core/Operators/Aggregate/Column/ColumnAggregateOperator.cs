@@ -188,12 +188,16 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                         await m_measures[i].GetValue(emptyRow, new ColumnReference(val.referenceBatch.Columns[i], val.RowIndex), outputColumns[i]);
                         var previousValueColumn = val.referenceBatch.Columns[m_measures.Count + i];
                         var previousValue = previousValueColumn.GetValueAt(val.RowIndex, default);
-                        var newValue = outputColumns[i].GetValueAt(outputColumns[i].Count - 1, default);
+                        var newValueIndex = outputColumns[i].Count - 1;
+                        
                         if (val.valueSent)
                         {
                             deleteAdded = true;
                             outputColumns[i].Add(previousValue);
                         }
+                        // Must fetch this after the previous value has been added to the output
+                        // Since it could force a resize of the column and invalidate the memory.
+                        var newValue = outputColumns[i].GetValueAt(newValueIndex, default);
                         previousValueColumn.UpdateAt(val.RowIndex, newValue);
                     }
                     if (!val.valueSent)
@@ -314,11 +318,17 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             await m_measures[i].GetValue(kv.Key, new ColumnReference(val.referenceBatch.Columns[i], val.RowIndex), outputColumns[groupExpressions.Count + i]);
                             var previousValueColumn = val.referenceBatch.Columns[m_measures.Count + i];
                             var previousValue = previousValueColumn.GetValueAt(val.RowIndex, default);
-                            var newValue = outputColumns[groupExpressions.Count + i].GetValueAt(outputColumns[groupExpressions.Count + i].Count - 1, default);
+
+                            var newValueIndex = outputColumns[groupExpressions.Count + i].Count - 1;
+                            
                             if (val.valueSent)
                             {
                                 outputColumns[groupExpressions.Count + i].Add(previousValue);
                             }
+
+                            // Fetch the value added to the output
+                            // If the previous value was added to the output column a resize could have happened and the memory invalidated.
+                            var newValue = outputColumns[groupExpressions.Count + i].GetValueAt(newValueIndex, default);
                             previousValueColumn.UpdateAt(val.RowIndex, newValue);
                         }
 
