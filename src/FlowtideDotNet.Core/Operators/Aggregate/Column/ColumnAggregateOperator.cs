@@ -57,6 +57,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         private ColumnStore.Column[] m_temporaryStateValues;
         private EventBatchData m_temporaryStateBatch;
 
+        private readonly int m_outputCount;
+        private readonly List<int> m_groupOutputIndices;
+        private readonly List<int> m_measureOutputIndices;
+
         /// <summary>
         /// Helper column that only contains a null value.
         /// This is used to help avoid creating a new column for each null value.
@@ -77,6 +81,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             m_measures = new List<IColumnAggregateContainer>();
             m_aggregateRelation = aggregateRelation;
             m_functionsRegister = functionsRegister;
+            m_outputCount = aggregateRelation.OutputLength;
 
             if (aggregateRelation.Groupings != null && aggregateRelation.Groupings.Count > 0)
             {
@@ -114,6 +119,38 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             }
 
             m_temporaryStateBatch = new EventBatchData(m_temporaryStateValues);
+
+            m_groupOutputIndices = new List<int>();
+            for (int i = 0; i < m_groupValues.Length; i++)
+            {
+                if (aggregateRelation.EmitSet)
+                {
+                    var emitIndex = aggregateRelation.Emit.IndexOf(i);
+                    m_groupOutputIndices.Add(emitIndex);
+                }
+                else
+                {
+                    m_groupOutputIndices.Add(i);
+                }
+            }
+
+            m_measureOutputIndices = new List<int>();
+            if (aggregateRelation.Measures != null)
+            {
+                for (int i = 0; i < aggregateRelation.Measures.Count; i++)
+                {
+                    if (aggregateRelation.EmitSet)
+                    {
+                        var emitIndex = aggregateRelation.Emit.IndexOf(i + m_groupValues.Length);
+                        m_measureOutputIndices.Add(emitIndex);
+                    }
+                    else
+                    {
+                        m_measureOutputIndices.Add(i + m_groupValues.Length);
+                    }
+                }
+            }
+            
         }
 
         public override string DisplayName => "Aggregation";
@@ -154,7 +191,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             PrimitiveList<int> outputWeights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
             PrimitiveList<uint> outputIterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
 
-            var outputColumnCount = (groupExpressions?.Count ?? 0) + m_measures.Count;
+            var outputColumnCount = m_outputCount; //(groupExpressions?.Count ?? 0) + m_measures.Count;
             ColumnStore.Column[] outputColumns = new ColumnStore.Column[outputColumnCount];
 
             for (int i = 0; i < outputColumnCount; i++)
@@ -185,20 +222,24 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                     for (int i = 0; i < m_measures.Count; i++)
                     {
-                        await m_measures[i].GetValue(emptyRow, new ColumnReference(val.referenceBatch.Columns[i], val.RowIndex), outputColumns[i]);
-                        var previousValueColumn = val.referenceBatch.Columns[m_measures.Count + i];
-                        var previousValue = previousValueColumn.GetValueAt(val.RowIndex, default);
-                        var newValueIndex = outputColumns[i].Count - 1;
-                        
-                        if (val.valueSent)
+                        var measureEmitIndex = m_measureOutputIndices[i];
+                        if (measureEmitIndex >= 0)
                         {
-                            deleteAdded = true;
-                            outputColumns[i].Add(previousValue);
+                            await m_measures[i].GetValue(emptyRow, new ColumnReference(val.referenceBatch.Columns[i], val.RowIndex), outputColumns[measureEmitIndex]);
+                            var previousValueColumn = val.referenceBatch.Columns[m_measures.Count + i];
+                            var previousValue = previousValueColumn.GetValueAt(val.RowIndex, default);
+                            var newValueIndex = outputColumns[measureEmitIndex].Count - 1;
+
+                            if (val.valueSent)
+                            {
+                                deleteAdded = true;
+                                outputColumns[measureEmitIndex].Add(previousValue);
+                            }
+                            // Must fetch this after the previous value has been added to the output
+                            // Since it could force a resize of the column and invalidate the memory.
+                            var newValue = outputColumns[measureEmitIndex].GetValueAt(newValueIndex, default);
+                            previousValueColumn.UpdateAt(val.RowIndex, newValue);
                         }
-                        // Must fetch this after the previous value has been added to the output
-                        // Since it could force a resize of the column and invalidate the memory.
-                        var newValue = outputColumns[i].GetValueAt(newValueIndex, default);
-                        previousValueColumn.UpdateAt(val.RowIndex, newValue);
                     }
                     if (!val.valueSent)
                     {
@@ -221,14 +262,20 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     // Not found happens when there was no row that matched
                     for (int i = 0; i < m_measures.Count; i++)
                     {
-                        var stateColumn = m_temporaryStateValues[i];
-                        stateColumn.Add(NullValue.Instance);
-                        await m_measures[i].GetValue(emptyRow, new ColumnReference(stateColumn, notFoundRowIndex), outputColumns[i]);
+                        var measureEmitIndex = m_measureOutputIndices[i];
+
+                        if (measureEmitIndex >= 0)
+                        {
+                            var stateColumn = m_temporaryStateValues[i];
+                            stateColumn.Add(NullValue.Instance);
+                            await m_measures[i].GetValue(emptyRow, new ColumnReference(stateColumn, notFoundRowIndex), outputColumns[measureEmitIndex]);
+
+                            // Fetch the value added to the output
+                            var newValue = outputColumns[measureEmitIndex].GetValueAt(outputColumns[measureEmitIndex].Count - 1, default);
+                            // Add it to the state for previous value, so the value can be removed if changed
+                            m_temporaryStateValues[m_measures.Count + i].Add(newValue);
+                        }
                         
-                        // Fetch the value added to the output
-                        var newValue = outputColumns[i].GetValueAt(outputColumns[i].Count - 1, default);
-                        // Add it to the state for previous value, so the value can be removed if changed
-                        m_temporaryStateValues[m_measures.Count + i].Add(newValue);
                     }
                     outputIterations.Add(0);
                     outputWeights.Add(1);
@@ -284,14 +331,22 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                                 // Copy key values into output
                                 for (int i = 0; i < kv.Key.referenceBatch.Columns.Count; i++)
                                 {
-                                    outputColumns[i].Add(kv.Key.referenceBatch.Columns[i].GetValueAt(kv.Key.RowIndex, default));
+                                    var emitIndex = m_groupOutputIndices[i];
+                                    if (emitIndex >= 0)
+                                    {
+                                        outputColumns[emitIndex].Add(kv.Key.referenceBatch.Columns[i].GetValueAt(kv.Key.RowIndex, default));
+                                    }
                                 }
                                 // Add the previous value sent to output
                                 for (int i = 0; i < m_measures.Count; i++)
                                 {
-                                    var previousValueColumn = val.referenceBatch.Columns[m_measures.Count + i];
-                                    var previousValue = previousValueColumn.GetValueAt(val.RowIndex, default);
-                                    outputColumns[groupExpressions.Count + i].Add(previousValue);
+                                    var measureEmitIndex = m_measureOutputIndices[i];
+                                    if (measureEmitIndex >= 0)
+                                    {
+                                        var previousValueColumn = val.referenceBatch.Columns[m_measures.Count + i];
+                                        var previousValue = previousValueColumn.GetValueAt(val.RowIndex, default);
+                                        outputColumns[measureEmitIndex].Add(previousValue);
+                                    }
                                 }
                                 outputIterations.Add(0);
                                 outputWeights.Add(-1);
@@ -303,33 +358,41 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                         // Copy key values into output
                         for (int i = 0; i < kv.Key.referenceBatch.Columns.Count; i++)
                         {
-                            var colVal = kv.Key.referenceBatch.Columns[i].GetValueAt(kv.Key.RowIndex, default);
-                            outputColumns[i].Add(colVal);
-                            if (val.valueSent)
+                            var emitIndex = m_groupOutputIndices[i];
+                            if (emitIndex >= 0)
                             {
-                                // Add the key value a second time if value has already been sent to add it for deletes.
-                                outputColumns[i].Add(colVal);
+                                var colVal = kv.Key.referenceBatch.Columns[i].GetValueAt(kv.Key.RowIndex, default);
+                                outputColumns[emitIndex].Add(colVal);
+                                if (val.valueSent)
+                                {
+                                    // Add the key value a second time if value has already been sent to add it for deletes.
+                                    outputColumns[emitIndex].Add(colVal);
+                                }
                             }
                         }
 
                         // Add measure values
                         for (int i = 0; i < m_measures.Count; i++)
                         {
-                            await m_measures[i].GetValue(kv.Key, new ColumnReference(val.referenceBatch.Columns[i], val.RowIndex), outputColumns[groupExpressions.Count + i]);
-                            var previousValueColumn = val.referenceBatch.Columns[m_measures.Count + i];
-                            var previousValue = previousValueColumn.GetValueAt(val.RowIndex, default);
-
-                            var newValueIndex = outputColumns[groupExpressions.Count + i].Count - 1;
-                            
-                            if (val.valueSent)
+                            var measureEmitIndex = m_measureOutputIndices[i];
+                            if (measureEmitIndex >= 0)
                             {
-                                outputColumns[groupExpressions.Count + i].Add(previousValue);
-                            }
+                                await m_measures[i].GetValue(kv.Key, new ColumnReference(val.referenceBatch.Columns[i], val.RowIndex), outputColumns[measureEmitIndex]);
+                                var previousValueColumn = val.referenceBatch.Columns[m_measures.Count + i];
+                                var previousValue = previousValueColumn.GetValueAt(val.RowIndex, default);
 
-                            // Fetch the value added to the output
-                            // If the previous value was added to the output column a resize could have happened and the memory invalidated.
-                            var newValue = outputColumns[groupExpressions.Count + i].GetValueAt(newValueIndex, default);
-                            previousValueColumn.UpdateAt(val.RowIndex, newValue);
+                                var newValueIndex = outputColumns[measureEmitIndex].Count - 1;
+
+                                if (val.valueSent)
+                                {
+                                    outputColumns[measureEmitIndex].Add(previousValue);
+                                }
+
+                                // Fetch the value added to the output
+                                // If the previous value was added to the output column a resize could have happened and the memory invalidated.
+                                var newValue = outputColumns[measureEmitIndex].GetValueAt(newValueIndex, default);
+                                previousValueColumn.UpdateAt(val.RowIndex, newValue);
+                            }
                         }
 
                         outputIterations.Add(0);
