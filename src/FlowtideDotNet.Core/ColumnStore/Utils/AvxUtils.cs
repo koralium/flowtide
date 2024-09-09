@@ -26,8 +26,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public unsafe static void AddValueToElements(Span<int> source, int addition)
         {
-            int vectorSize = Vector256<int>.Count; // Size of AVX2 vector (256 bits / 32 bits per int = 8)
-            Vector256<int> valueVector = Vector256.Create(addition);
+            
 
             fixed (int* pArray = source)
             {
@@ -36,6 +35,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
                 if (Avx2.IsSupported)
                 {
+                    int vectorSize = Vector256<int>.Count; // Size of AVX2 vector (256 bits / 32 bits per int = 8)
+                    Vector256<int> valueVector = Vector256.Create(addition);
+
                     if ((long)pArray % 32 == 0)
                     {
                         for (; i <= source.Length - vectorSize; i += vectorSize)
