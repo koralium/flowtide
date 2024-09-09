@@ -36,31 +36,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
                 if (Avx2.IsSupported)
                 {
-                    int alignedLength = length - (length % vectorSize);
-
-                    // Process in chunks of vector size
-                    for (; i < alignedLength; i += vectorSize * 4)
+                    if ((long)pArray % 32 == 0)
                     {
-                        // Prefetch data to L1 cache to reduce memory latency
-                        Sse.Prefetch0(pArray + i + vectorSize * 4);
-                        
-                        // Load 4 vectors at once
-                        Vector256<int> vector1 = Avx.LoadVector256(pArray + i);
-                        Vector256<int> vector2 = Avx.LoadVector256(pArray + i + vectorSize);
-                        Vector256<int> vector3 = Avx.LoadVector256(pArray + i + vectorSize * 2);
-                        Vector256<int> vector4 = Avx.LoadVector256(pArray + i + vectorSize * 3);
-
-                        // Add the constant value to each vector
-                        vector1 = Avx2.Add(vector1, valueVector);
-                        vector2 = Avx2.Add(vector2, valueVector);
-                        vector3 = Avx2.Add(vector3, valueVector);
-                        vector4 = Avx2.Add(vector4, valueVector);
-
-                        // Store the results back to the array
-                        Avx.Store(pArray + i, vector1);
-                        Avx.Store(pArray + i + vectorSize, vector2);
-                        Avx.Store(pArray + i + vectorSize * 2, vector3);
-                        Avx.Store(pArray + i + vectorSize * 3, vector4);
+                        for (; i <= source.Length - vectorSize; i += vectorSize)
+                        {
+                            Vector256<int> vector = Avx.LoadAlignedVector256(pArray + i);
+                            vector = Avx2.Add(vector, valueVector);
+                            Avx.Store(pArray + i, vector);
+                        }
+                    }
+                    else
+                    {
+                        // Non aligned
+                        for (; i <= source.Length - vectorSize; i += vectorSize)
+                        {
+                            Vector256<int> vector = Avx.LoadVector256(pArray + i);
+                            vector = Avx2.Add(vector, valueVector);
+                            Avx.Store(pArray + i, vector);
+                        }
                     }
                 }
 
@@ -70,7 +63,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     source[i] += addition;
                 }
             }
-
         }
 
         /// <summary>
