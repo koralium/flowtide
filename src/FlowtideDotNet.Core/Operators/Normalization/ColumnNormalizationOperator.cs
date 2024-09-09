@@ -120,7 +120,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             Debug.Assert(_eventsProcessed != null);
             Debug.Assert(_eventsCounter != null);
 
-            var otherColumnsMemoryManager = new BatchMemoryManager(_otherColumns.Count);
+            var otherColumnsMemoryManager = GlobalMemoryManager.Instance;
 
             PrimitiveList<int> toEmitOffsets = new PrimitiveList<int>(otherColumnsMemoryManager);
             PrimitiveList<int> weights = new PrimitiveList<int>(otherColumnsMemoryManager);

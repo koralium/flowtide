@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             this._columnsToStore = columnsToStore;
             IColumn[] columns = new IColumn[columnsToStore.Count];
-            var memoryManager = new BatchMemoryManager(columnsToStore.Count);
+            var memoryManager = GlobalMemoryManager.Instance;
             for (int i = 0; i < columnsToStore.Count; i++)
             {
                 columns[i] = new Column(memoryManager);

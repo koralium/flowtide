@@ -172,7 +172,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public static EventBatchWeighted ConvertToEventBatchData(List<RowEvent> rowEvents, int columnCount)
         {
-            var batchmanager = new BatchMemoryManager(columnCount);
+            var batchmanager = GlobalMemoryManager.Instance;
             PrimitiveList<int> weights = new PrimitiveList<int>(batchmanager);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(batchmanager);
 
