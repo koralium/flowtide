@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         public ColumnValueStorageContainer(int columnCount)
         {
             IColumn[] columns = new IColumn[columnCount];
-            var memoryManager = new BatchMemoryManager(columnCount);
+            var memoryManager = GlobalMemoryManager.Instance;
             for (int i = 0; i < columnCount; i++)
             {
                 columns[i] = Column.Create(memoryManager);

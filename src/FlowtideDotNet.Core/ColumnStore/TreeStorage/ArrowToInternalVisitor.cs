@@ -49,7 +49,6 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         IArrowArrayVisitor<FixedSizeBinaryArray>
     {
         private readonly IMemoryOwner<byte> recordBatchMemoryOwner;
-        //private readonly BatchMemoryManager batchMemoryManager;
         private readonly PreAllocatedMemoryManager preAllocatedMemoryManager;
         private readonly void* _rootPtr;
         private int _rootUsageCount;
@@ -78,10 +77,9 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public Field? CurrentField { get; set; }
 
-        public ArrowToInternalVisitor(IMemoryOwner<byte> recordBatchMemoryOwner, BatchMemoryManager batchMemoryManager)
+        public ArrowToInternalVisitor(IMemoryOwner<byte> recordBatchMemoryOwner, IMemoryAllocator memoryManager)
         {
             this.recordBatchMemoryOwner = recordBatchMemoryOwner;
-            //this.batchMemoryManager = batchMemoryManager;
             preAllocatedMemoryManager = new PreAllocatedMemoryManager();
             _rootPtr = recordBatchMemoryOwner.Memory.Pin().Pointer;
         }

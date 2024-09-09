@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System;
@@ -71,7 +72,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             var memoryOwner = (IMemoryOwner<byte>?)_memoryOwnerField.GetValue(recordBatch);
 
             IColumn[] columns = new IColumn[recordBatch.ColumnCount];
-            var visitor = new ArrowToInternalVisitor(memoryOwner!, new ColumnStore.Memory.BatchMemoryManager(recordBatch.ColumnCount));
+            var visitor = new ArrowToInternalVisitor(memoryOwner!, GlobalMemoryManager.Instance);
             var schema = recordBatch.Schema;
             for (int i = 0; i < recordBatch.ColumnCount; i++)
             {
