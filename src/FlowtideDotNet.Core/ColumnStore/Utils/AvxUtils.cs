@@ -26,8 +26,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public unsafe static void AddValueToElements(Span<int> source, int addition)
         {
-            
-
             fixed (int* pArray = source)
             {
                 int i = 0;
