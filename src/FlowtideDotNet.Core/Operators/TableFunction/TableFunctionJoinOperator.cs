@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             }
 
             _eventsCounter.Add(output.Count);
-            return new SingleAsyncEnumerable<StreamEventBatch>(new StreamEventBatch(output));
+            return new SingleAsyncEnumerable<StreamEventBatch>(new StreamEventBatch(output, _tableFunctionRelation.OutputLength));
         }
 
         protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)

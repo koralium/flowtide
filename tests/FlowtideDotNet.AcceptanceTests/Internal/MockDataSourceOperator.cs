@@ -61,7 +61,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 if (o.Count > 100)
                 {
                     sentData = true;
-                    await output.SendAsync(new StreamEventBatch(o));
+                    await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
                     o = new List<RowEvent>();
                 }
             }
@@ -69,7 +69,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (o.Count > 0)
             {
                 sentData = true;
-                await output.SendAsync(new StreamEventBatch(o));
+                await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
             }
             _lastestOffset = fetchedOffset;
 
@@ -128,14 +128,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
                 if (o.Count > 100)
                 {
-                    await output.SendAsync(new StreamEventBatch(o));
+                    await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
                     o = new List<RowEvent>();
                 }
             }
 
             if (o.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(o));
+                await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
             }
             _lastestOffset = fetchedOffset;
             await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));

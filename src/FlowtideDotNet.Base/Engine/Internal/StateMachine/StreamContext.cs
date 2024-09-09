@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly Dictionary<string, IStreamVertex> _blockLookup;
         internal readonly IStateHandler stateHandler;
         internal readonly StreamMetrics _streamMetrics;
-        private readonly IStreamNotificationReciever? _notificationReciever;
+        internal readonly IStreamNotificationReciever? _notificationReciever;
         internal readonly ILoggerFactory loggerFactory;
         internal readonly object _checkpointLock;
         internal readonly Dictionary<string, List<OperatorTrigger>> _triggers;

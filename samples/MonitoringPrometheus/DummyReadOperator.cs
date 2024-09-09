@@ -71,7 +71,7 @@ namespace MonitoringPrometheus
                     }
                 }));
             }
-            await output.SendAsync(new StreamEventBatch(o));
+            await output.SendAsync(new StreamEventBatch(o, 16));
             await output.SendWatermark(new FlowtideDotNet.Base.Watermark("dummy", _watermarkCounter++));
             output.ExitCheckpointLock();
             ScheduleCheckpoint(TimeSpan.FromSeconds(1));
@@ -109,7 +109,7 @@ namespace MonitoringPrometheus
                         }
                     }));
                 }
-                await output.SendAsync(new StreamEventBatch(o));
+                await output.SendAsync(new StreamEventBatch(o, 16));
                 await output.SendWatermark(new FlowtideDotNet.Base.Watermark("dummy", _watermarkCounter++));
                 output.ExitCheckpointLock();
                 ScheduleCheckpoint(TimeSpan.FromSeconds(1));

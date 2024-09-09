@@ -49,6 +49,25 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, Count = x.Count() }));
         }
 
+        /// <summary>
+        /// Tests that checks that emit is working correctly from aggregate operator
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task AggregateWithGroupOnlyAggregate()
+        {
+            GenerateData(10000);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    '1' as c, count(*)
+                FROM orders
+                GROUP BY userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { c = "1", Count = x.Count() }));
+        }
+
         [Fact]
         public async Task AggregateOnJoinedData()
         {

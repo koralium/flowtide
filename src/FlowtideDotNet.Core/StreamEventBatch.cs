@@ -28,6 +28,8 @@ namespace FlowtideDotNet.Core
 
         private EventBatchWeighted? _data;
         private List<RowEvent>? _events;
+        // Remove later when row events have been removed
+        private int _columnCount;
 
         public EventBatchWeighted Data => GetData();
 
@@ -55,7 +57,7 @@ namespace FlowtideDotNet.Core
             }
             if (_events != null)
             {
-                var columnCount = 0;
+                var columnCount = _columnCount;
                 if (_events.Count > 0)
                 {
                     columnCount = _events[0].RowData.Length;
@@ -70,11 +72,13 @@ namespace FlowtideDotNet.Core
         public StreamEventBatch(EventBatchWeighted data)
         {
             _data = data;
+            _columnCount = _data.EventBatchData.Columns.Count;
         }
 
-        public StreamEventBatch(List<RowEvent> events)
+        public StreamEventBatch(List<RowEvent> events, int columnCount)
         {
             _events = events;
+            _columnCount = columnCount;
         }
 
         public void Rent(int count)

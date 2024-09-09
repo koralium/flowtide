@@ -48,16 +48,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new BoolValue(false));
             column.Add(new BoolValue(true));
 
-            var (start, end) = column.SearchBoundries(new BoolValue(false), 0,3, default);
+            var (start, end) = column.SearchBoundries(new BoolValue(false), 0,3, default, false);
             Assert.Equal(0, start);
             Assert.Equal(2, end);
 
-            (start, end) = column.SearchBoundries(new BoolValue(true), 0, 3, default);
+            (start, end) = column.SearchBoundries(new BoolValue(true), 0, 3, default, false);
             Assert.Equal(3, start);
             Assert.Equal(3, end);
 
             var emptyColumn = new BoolColumn(new BatchMemoryManager(1));
-            (start, end) = emptyColumn.SearchBoundries(new BoolValue(true), 0, -1, default);
+            (start, end) = emptyColumn.SearchBoundries(new BoolValue(true), 0, -1, default, false);
             Assert.Equal(~0, start);
             Assert.Equal(~0, end);
         }

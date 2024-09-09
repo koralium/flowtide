@@ -49,6 +49,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private int _egressCrashOnCheckpointCount;
         private IPersistentStorage? _persistentStorage;
         private ConnectorManager? _connectorManager;
+        private bool _dataUpdated;
 
         public IReadOnlyList<User> Users  => generator.Users;
 
@@ -190,6 +191,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .WithLoggerFactory(loggerFactory)
 #endif
                 .AddConnectorManager(_connectorManager)
+                .WithNotificationReciever(new NotificationReciever(CheckpointComplete))
                 .SetGetTimestampUpdateInterval(timestampInterval.Value)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
@@ -221,10 +223,22 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             lock (_lock)
             {
                 _actualData = actualData;
-                updateCounter++;
+                _dataUpdated = true;
             }
         }
 
+        private void CheckpointComplete()
+        {
+            lock (_lock)
+            {
+                if (_dataUpdated)
+                {
+                    updateCounter++;
+                }
+                _dataUpdated = false;
+            }
+        }
+    
         /// <summary>
         /// Simulate a crash on the stream, waits until the stream has failed.
         /// </summary>
