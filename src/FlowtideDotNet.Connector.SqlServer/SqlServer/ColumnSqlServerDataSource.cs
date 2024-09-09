@@ -169,6 +169,16 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.ChangeTrackingVersion));
                 this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }
+            else
+            {
+                // Dispose columns, weights and iterations since they are not required.
+                for(int i = 0; i < outputColumns.Length; i++)
+                {
+                    outputColumns[i].Dispose();
+                }
+                weights.Dispose();
+                iterations.Dispose();
+            }
 
             output.ExitCheckpointLock();
         }
