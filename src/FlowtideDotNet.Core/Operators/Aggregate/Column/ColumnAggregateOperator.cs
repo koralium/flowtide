@@ -180,6 +180,22 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             {
                 await measure.Commit();
             }
+
+            // Reset all cache columns
+            for (int i = 0; i < m_groupValues.Length; i++)
+            {
+                m_groupValues[i].Dispose();
+                m_groupValues[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
+            }
+            for (int i = 0; i < m_temporaryStateValues.Length; i++)
+            {
+                m_temporaryStateValues[i].Dispose();
+                m_temporaryStateValues[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
+            }
+            // Reset iterator
+            _treeIterator!.Dispose();
+            _treeIterator = _tree.CreateIterator();
+
             return new AggregateOperatorState();
         }
 
@@ -303,7 +319,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             else
             {
                 // This iterator can probably be created in init instead to save on memory allocations
-                var iterator = _temporaryTree.CreateIterator();
+                using var iterator = _temporaryTree.CreateIterator();
                 await iterator.SeekFirst();
 
                 await foreach (var page in iterator)

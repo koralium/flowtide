@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -54,6 +55,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
         {
             if (ptr != null)
             {
+                MemoryDebug.allocations.Remove(new nint(ptr), out _);
                 NativeMemory.AlignedFree(ptr);
                 ptr = null;
                 length = 0;

@@ -94,6 +94,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return Task.CompletedTask;
         }
 
+        //~LeafNode()
+        //{
+        //    Dispose(false);
+        //}
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)

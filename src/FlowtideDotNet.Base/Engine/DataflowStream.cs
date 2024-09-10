@@ -67,6 +67,7 @@ namespace FlowtideDotNet.Base.Engine
                         diagnosticsWriter.WriteLine(str);
                         await diagnosticsWriter.FlushAsync();
 #endif
+                        var mem = MemoryDebug.allocations;
                         // Run garbage collection once every 10 seconds
                         GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
                         count = 1;

@@ -166,6 +166,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             allInput.WriteLine("Checkpoint");
             await allInput.FlushAsync();
 #endif
+            _leftIterator!.Reset();
+
+            _rightIterator!.Reset();
+
             await _leftTree!.Commit();
             await _rightTree!.Commit();
             return new JoinState();

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -32,6 +33,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
 
         public void Initialize(IMemoryOwner<byte> memoryOwner, int usageCount)
         {
+            //var memInfo = new MemoryDebugInfo(memoryOwner.Memory.Length, Environment.StackTrace);
+            //MemoryDebug.allocations.AddOrUpdate(new nint(memoryOwner.Memory.Pin().Pointer), memInfo, (key, old) => memInfo);
             _memoryOwner = memoryOwner;
             _usageCount = usageCount;
         }
@@ -48,6 +51,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
             var result = Interlocked.Decrement(ref _usageCount);
             if (result <= 0)
             {
+                //MemoryDebug.allocations.Remove(new nint(_memoryOwner.Memory.Pin().Pointer), out _);
                 _memoryOwner.Dispose();
             }
         }

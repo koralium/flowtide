@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -22,8 +23,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int _rentCount;
         private bool disposedValue;
 
+        private string _initstacktrace;
+
         public BaseNode(long id, TKeyContainer container)
         {
+            _initstacktrace = Environment.StackTrace;
             keys = container;
             Id = id;
             // Rent counter always starts at 1.
@@ -50,8 +54,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public abstract Task PrintNextPointers(StringBuilder stringBuilder);
 
+        //private List<string> _rentLocations = new List<string>();
+        //private List<string> _returnLocations = new List<string>();
+
         public bool TryRent()
         {
+            //lock (this)
+            //{
+            //    _rentLocations.Add(Environment.StackTrace);
+            //}
+            
             var localRentCount = Thread.VolatileRead(ref _rentCount);
             if (localRentCount == 0)
             {
@@ -74,6 +86,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public void Return()
         {
+            //lock (this)
+            //{
+            //    _returnLocations.Add(Environment.StackTrace);
+            //}
+            
             var val = Interlocked.Decrement(ref _rentCount);
             if (val == 0)
             {
@@ -91,6 +108,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 disposedValue = true;
             }
+        }
+
+        ~BaseNode()
+        {
+            Dispose(true);
         }
 
         public void Dispose()

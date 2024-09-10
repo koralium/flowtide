@@ -10,26 +10,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base;
 using System;
-using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.Memory
+namespace FlowtideDotNet.Base
 {
-    internal unsafe class GlobalMemoryManager : IMemoryAllocator
+    public class MemoryDebugInfo
     {
-        public static readonly GlobalMemoryManager Instance = new GlobalMemoryManager();
-        public IMemoryOwner<byte> Allocate(int size, int alignment)
+        public int Length { get; set; }
+
+        public string StackTrace { get; set; }
+
+        public MemoryDebugInfo(int length, string stackTrace)
         {
-            var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-            var trace = new MemoryDebugInfo(size, Environment.StackTrace);
-            MemoryDebug.allocations.AddOrUpdate(new IntPtr(ptr), trace, (k, v) => trace);
-            return NativeCreatedMemoryOwnerFactory.Get(ptr, size); //new NativeCreatedMemoryOwner(ptr, size);
+            Length = length;
+            StackTrace = stackTrace;
         }
+    }
+    public static class MemoryDebug
+    {
+        public static ConcurrentDictionary<IntPtr, MemoryDebugInfo> allocations = new ConcurrentDictionary<nint, MemoryDebugInfo>();
     }
 }
