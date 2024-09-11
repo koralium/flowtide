@@ -51,16 +51,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public abstract Task PrintNextPointers(StringBuilder stringBuilder);
 
-        //private List<string> _rentLocations = new List<string>();
-        //private List<string> _returnLocations = new List<string>();
-
         public bool TryRent()
         {
-            //lock (this)
-            //{
-            //    _rentLocations.Add(Environment.StackTrace);
-            //}
-            
             var localRentCount = Thread.VolatileRead(ref _rentCount);
             if (localRentCount == 0)
             {
@@ -83,11 +75,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public void Return()
         {
-            //lock (this)
-            //{
-            //    _returnLocations.Add(Environment.StackTrace);
-            //}
-            
             var val = Interlocked.Decrement(ref _rentCount);
             if (val == 0)
             {

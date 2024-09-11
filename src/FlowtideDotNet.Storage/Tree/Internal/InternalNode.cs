@@ -60,11 +60,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
         }
 
-        //~InternalNode()
-        //{
-        //    Dispose(false);
-        //}
-
         public override Task PrintNextPointers(StringBuilder stringBuilder)
         {
             return Task.CompletedTask;
