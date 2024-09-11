@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             var memoryManager = GlobalMemoryManager.Instance;
             for (int i = 0; i < columnsToStore.Count; i++)
             {
-                columns[i] = new Column(memoryManager);
+                columns[i] = Column.Create(memoryManager);
             }
             _data = new EventBatchData(columns);
         }

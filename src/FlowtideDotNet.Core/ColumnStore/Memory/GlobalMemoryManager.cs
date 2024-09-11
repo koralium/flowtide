@@ -27,9 +27,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
         public IMemoryOwner<byte> Allocate(int size, int alignment)
         {
             var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-            var trace = new MemoryDebugInfo(size, Environment.StackTrace);
-            MemoryDebug.allocations.AddOrUpdate(new IntPtr(ptr), trace, (k, v) => trace);
-            return NativeCreatedMemoryOwnerFactory.Get(ptr, size); //new NativeCreatedMemoryOwner(ptr, size);
+            return NativeCreatedMemoryOwnerFactory.Get(ptr, size);
         }
     }
 }

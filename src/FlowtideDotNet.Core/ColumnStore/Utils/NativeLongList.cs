@@ -292,7 +292,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public void Dispose()
         {
             Dispose(disposing: true);
-            GC.SuppressFinalize(this);
         }
 
         public void Clear()

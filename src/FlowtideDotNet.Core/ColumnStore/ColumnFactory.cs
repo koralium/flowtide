@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return new Column();
             }
         }
-        private static ObjectPool<Column> _pool = new DefaultObjectPool<Column>(new ObjectPoolProvider(), 10000);
+        private static ObjectPool<Column> _pool = new DefaultObjectPool<Column>(new ObjectPoolProvider(), 10_000);
 
         public static Column Get(IMemoryAllocator memoryAllocator)
         {

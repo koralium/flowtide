@@ -23,11 +23,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int _rentCount;
         private bool disposedValue;
 
-        private string _initstacktrace;
-
         public BaseNode(long id, TKeyContainer container)
         {
-            _initstacktrace = Environment.StackTrace;
             keys = container;
             Id = id;
             // Rent counter always starts at 1.
