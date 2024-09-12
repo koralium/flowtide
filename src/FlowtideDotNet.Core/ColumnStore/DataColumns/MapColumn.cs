@@ -319,7 +319,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             // Update the offsets
-            _offsets.Update(index + 1, ordered.Count, ordered.Count - (endOffset - startOffset));
+            _offsets.Update(index + 1, startOffset + ordered.Count, ordered.Count - (endOffset - startOffset));
 
             return index;
         }

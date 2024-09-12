@@ -38,9 +38,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Operators\Aggregate\DatetimeFunctionTests_GetTimestampInAggregate_3.all.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="SmokeTests\Count\queryplan.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -71,6 +68,10 @@
     <None Update="SmokeTests\StringJoin\queryplan.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Operators\Aggregate\" />
   </ItemGroup>
 
 </Project>
