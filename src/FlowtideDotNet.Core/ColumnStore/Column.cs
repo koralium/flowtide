@@ -414,10 +414,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                 dataValueContainer._type = ArrowTypeId.Null;
                 return;
             }
-            if (disposedValue)
-            {
-                throw new ObjectDisposedException(_disposeLocation);
-            }
             _dataColumn!.GetValueAt(in index, in dataValueContainer, child);
         }
 
@@ -548,14 +544,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             return _dataColumn!.ToArrowArray(nullBuffer, _nullCounter);
         }
 
-        private string _disposeLocation;
-
         protected virtual void Dispose(bool disposing)
         {
             Debug.Assert(_validityList != null);
             if (!disposedValue)
             {
-                _disposeLocation = Environment.StackTrace;
                 _validityList.Dispose();
                 if (_dataColumn != null)
                 {
@@ -595,7 +588,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void Dispose()
         {
-            
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
