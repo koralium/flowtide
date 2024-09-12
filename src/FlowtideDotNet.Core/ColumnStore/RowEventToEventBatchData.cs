@@ -179,7 +179,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             IColumn[] columns = new IColumn[columnCount];
             for (int i = 0; i < columnCount; i++)
             {
-                columns[i] = new Column(batchmanager);
+                columns[i] = Column.Create(batchmanager);
             }
 
             foreach(var e in rowEvents)

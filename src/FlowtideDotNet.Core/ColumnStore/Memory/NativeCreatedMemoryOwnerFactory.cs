@@ -34,14 +34,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
 
         public static NativeCreatedMemoryOwner Get(void* ptr, int length)
         {
-            var memory = _pool.Get();
-            memory.Assign(ptr, length);
-            return memory;
+            var mem = new NativeCreatedMemoryOwner();
+            mem.Assign(ptr, length);
+            return mem;
+            //var memory = _pool.Get();
+            //memory.Assign(ptr, length);
+            //return memory;
         }
 
         public static void Return(NativeCreatedMemoryOwner memory)
         {
-            _pool.Return(memory);
+            //_pool.Return(memory);
         }
     }
 }

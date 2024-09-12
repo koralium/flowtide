@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ListColumn(IMemoryAllocator memoryAllocator)
         {
-            _internalColumn = new Column(memoryAllocator);
+            _internalColumn = Column.Create(memoryAllocator);
             _offsets = new IntList(memoryAllocator);
             _offsets.Add(0);
         }

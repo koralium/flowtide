@@ -49,8 +49,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public MapColumn(IMemoryAllocator memoryAllocator)
         {
-            _keyColumn = new Column(memoryAllocator);
-            _valueColumn = new Column(memoryAllocator);
+            _keyColumn = Column.Create(memoryAllocator);
+            _valueColumn = Column.Create(memoryAllocator);
             _offsets = new IntList(memoryAllocator);
             _offsets.Add(0);
         }
@@ -319,7 +319,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             // Update the offsets
-            _offsets.Update(index + 1, ordered.Count, ordered.Count - (endOffset - startOffset));
+            _offsets.Update(index + 1, startOffset + ordered.Count, ordered.Count - (endOffset - startOffset));
 
             return index;
         }

@@ -31,25 +31,27 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return new Column();
             }
         }
-        private static ObjectPool<Column> _pool = new DefaultObjectPool<Column>(new ObjectPoolProvider(), 10000);
+        private static ObjectPool<Column> _pool = new DefaultObjectPool<Column>(new ObjectPoolProvider(), 10_000);
 
         public static Column Get(IMemoryAllocator memoryAllocator)
         {
-            var list = _pool.Get();
-            list.Assign(memoryAllocator);
-            return list;
+            return new Column(memoryAllocator);
+            //var list = _pool.Get();
+            //list.Assign(memoryAllocator);
+            //return list;
         }
 
         public static Column Get(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)
         {
-            var list = _pool.Get();
-            list.Assign(nullCounter, dataColumn, validityList, type, memoryAllocator);
-            return list;
+            return new Column(nullCounter, dataColumn, validityList, type, memoryAllocator);
+            //var list = _pool.Get();
+            //list.Assign(nullCounter, dataColumn, validityList, type, memoryAllocator);
+            //return list;
         }
 
         public static void Return(Column list)
         {
-            _pool.Return(list);
+            //_pool.Return(list);
         }
     }
 }

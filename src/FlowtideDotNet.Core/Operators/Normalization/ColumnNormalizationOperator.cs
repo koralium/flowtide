@@ -131,7 +131,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             
             for (int i = 0; i < _otherColumns.Count; i++)
             {
-                deleteBatchColumns.Add(new Column(otherColumnsMemoryManager));
+                deleteBatchColumns.Add(Column.Create(otherColumnsMemoryManager));
             }
 
             _eventsProcessed.Add(msg.Data.Weights.Count);

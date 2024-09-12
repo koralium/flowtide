@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -26,7 +27,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
         public IMemoryOwner<byte> Allocate(int size, int alignment)
         {
             var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-            return NativeCreatedMemoryOwnerFactory.Get(ptr, size); //new NativeCreatedMemoryOwner(ptr, size);
+            return NativeCreatedMemoryOwnerFactory.Get(ptr, size);
         }
     }
 }

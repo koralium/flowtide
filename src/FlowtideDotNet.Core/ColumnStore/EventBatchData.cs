@@ -64,9 +64,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 if (disposing)
                 {
-                    foreach(var column in columns)
+                    for (int i = 0; i < columns.Length; i++)
                     {
-                        column.Dispose();
+                        columns[i].Dispose();
+                        columns[i] = null!;
                     }
                 }
 
