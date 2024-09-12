@@ -204,6 +204,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(_tree != null, "Tree should not be null");
             Debug.Assert(_temporaryTree != null, "Temporary tree should not be null");
 
+#if DEBUG_WRITE
+            allInput.WriteLine("Watermark");
+            allInput.Flush();
+            outputWriter.WriteLine("Watermark");
+#endif
+
             PrimitiveList<int> outputWeights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
             PrimitiveList<uint> outputIterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
 
@@ -236,6 +242,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                     var val = page.Values.Get(comparer.start);
 
+                    page.EnterWriteLock();
                     for (int i = 0; i < m_measures.Count; i++)
                     {
                         var measureEmitIndex = m_measureOutputIndices[i];
@@ -261,6 +268,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     {
                         page.Values._previousValueSent.Update(comparer.start, true);
                     }
+                    page.ExitWriteLock();
                     outputIterations.Add(0);
                     outputWeights.Add(1);
                     if (deleteAdded)
@@ -387,6 +395,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             }
                         }
 
+                        treePage.EnterWriteLock();
                         // Add measure values
                         for (int i = 0; i < m_measures.Count; i++)
                         {
@@ -410,6 +419,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                                 previousValueColumn.UpdateAt(val.RowIndex, newValue);
                             }
                         }
+                        
 
                         outputIterations.Add(0);
                         outputWeights.Add(1);
@@ -424,6 +434,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             // Mark the value as sent
                             treePage.Values._previousValueSent.Update(comparer.start, true);
                         }
+                        treePage.ExitWriteLock();
 
                         await treePage.SavePage();
                     }
@@ -517,6 +528,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                         var state = page.Values.Get(index);
 
+                        page.EnterWriteLock();
                         if (m_measures.Count > 0)
                         {
                             for (int k = 0; k < m_measures.Count; k++)
@@ -532,6 +544,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                         var currentWeight = page.Values._weights.Get(index);
                         page.Values._weights.Update(index, currentWeight + msg.Data.Weights.Get(i));
+
+                        page.ExitWriteLock();
 
                         await page.SavePage();
                     }

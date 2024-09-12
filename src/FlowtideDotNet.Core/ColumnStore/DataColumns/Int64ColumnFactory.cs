@@ -35,21 +35,23 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public static Int64Column Get(IMemoryAllocator memoryAllocator)
         {
-            var list = _pool.Get();
-            list.Assign(memoryAllocator);
-            return list;
+            //var list = _pool.Get();
+            //list.Assign(memoryAllocator);
+            //return list;
+            return new Int64Column(memoryAllocator);
         }
 
         public static Int64Column Get(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
-            var list = _pool.Get();
-            list.Assign(memory, length, memoryAllocator);
-            return list;
+            return new Int64Column(memory, length, memoryAllocator);
+            //var list = _pool.Get();
+            //list.Assign(memory, length, memoryAllocator);
+            //return list;
         }
 
         public static void Return(Int64Column list)
         {
-            _pool.Return(list);
+            //_pool.Return(list);
         }
     }
 }

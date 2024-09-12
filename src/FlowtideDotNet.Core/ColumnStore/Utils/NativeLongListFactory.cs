@@ -34,21 +34,23 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public static NativeLongList Get(IMemoryAllocator memoryAllocator)
         {   
-            var list = _pool.Get();
-            list.Assign(memoryAllocator);
-            return list;
+            return new NativeLongList(memoryAllocator);
+            //var list = _pool.Get();
+            //list.Assign(memoryAllocator);
+            //return list;
         }
 
         public static NativeLongList Get(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
-            var list = _pool.Get();
-            list.Assign(memory, length, memoryAllocator);
-            return list;
+            return new NativeLongList(memory, length, memoryAllocator);
+            //var list = _pool.Get();
+            //list.Assign(memory, length, memoryAllocator);
+            //return list;
         }
 
         public static void Return(NativeLongList list)
         {
-            _pool.Return(list);
+            //_pool.Return(list);
         }
     }
 }
