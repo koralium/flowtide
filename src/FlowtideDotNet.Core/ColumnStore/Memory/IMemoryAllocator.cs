@@ -19,8 +19,8 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Memory
 {
-    public unsafe interface IMemoryAllocator
-    {
-        IMemoryOwner<byte> Allocate(int size, int alignment);
-    }
+    //public unsafe interface IMemoryAllocator
+    //{
+    //    IMemoryOwner<byte> Allocate(int size, int alignment);
+    //}
 }

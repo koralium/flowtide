@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -26,10 +27,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         internal EventBatchData _data;
         private DataValueContainer _dataValueContainer;
 
-        public ColumnKeyStorageContainer(int columnCount)
+        public ColumnKeyStorageContainer(int columnCount, IMemoryAllocator memoryAllocator)
         {
             IColumn[] columns = new IColumn[columnCount];
-            var memoryManager = GlobalMemoryManager.Instance; //new BatchMemoryManager(columnCount);
+            var memoryManager = memoryAllocator;
             for (int i = 0; i < columnCount; i++)
             {
                 columns[i] = Column.Create(memoryManager);

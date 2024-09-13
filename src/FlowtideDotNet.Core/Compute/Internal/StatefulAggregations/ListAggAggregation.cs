@@ -12,6 +12,7 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -74,7 +75,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
     {
         private static FlxValue NullValue = FlxValue.FromBytes(FlexBuffer.Null());
 
-        private static async Task<ListAggAggregationSingleton> Initialize(int groupingLength, IStateManagerClient stateManagerClient)
+        private static async Task<ListAggAggregationSingleton> Initialize(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
             List<int> insertPrimaryKeys = new List<int>();
             for (int i = 0; i < groupingLength + 1; i++)

@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Normalization;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -27,38 +28,35 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
     internal class ColumnAggregateValueSerializer : IBplusTreeValueSerializer<ColumnAggregateStateReference, ColumnAggregateValueContainer>
     {
         private readonly int measureCount;
+        private readonly IMemoryAllocator memoryAllocator;
 
-        public ColumnAggregateValueSerializer(int measureCount)
+        public ColumnAggregateValueSerializer(int measureCount, IMemoryAllocator memoryAllocator)
         {
             this.measureCount = measureCount;
+            this.memoryAllocator = memoryAllocator;
         }
         public ColumnAggregateValueContainer CreateEmpty()
         {
-            return new ColumnAggregateValueContainer(measureCount);
+            return new ColumnAggregateValueContainer(measureCount, memoryAllocator);
         }
 
         public ColumnAggregateValueContainer Deserialize(in BinaryReader reader)
         {
             var previousValueLength = reader.ReadInt32();
             var previousValueMemory = reader.ReadBytes(previousValueLength);
-            var memoryAllocator = GlobalMemoryManager.Instance;
             var previousValueNativeMemory = memoryAllocator.Allocate(previousValueLength, 64);
 
             previousValueMemory.CopyTo(previousValueNativeMemory.Memory.Span);
-
-            
 
             var weightLength = reader.ReadInt32();
             var weightMemory = reader.ReadBytes(weightLength);
             var weightNativeMemory = memoryAllocator.Allocate(weightLength, 64);
             weightMemory.CopyTo(weightNativeMemory.Memory.Span);
 
-            
-
             using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var recordBatch = arrowReader.ReadNextRecordBatch();
 
-            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch);
+            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, memoryAllocator);
             var previousValueList = new ColumnStore.Utils.PrimitiveList<bool>(previousValueNativeMemory, recordBatch.Length, memoryAllocator);
             var weightsList = new ColumnStore.Utils.PrimitiveList<int>(weightNativeMemory, recordBatch.Length, memoryAllocator);
 

@@ -179,7 +179,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_rightIterator != null);
-            var memoryManager = GlobalMemoryManager.Instance; //new BatchMemoryManager(_rightOutputColumns.Count);
+            var memoryManager = MemoryAllocator;
             //using var it = _rightTree!.CreateIterator();
             List<Column> rightColumns = new List<Column>();
             PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager);
@@ -323,7 +323,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_leftIterator != null);
-            var memoryManager = GlobalMemoryManager.Instance;
+            var memoryManager = MemoryAllocator;
             List<Column> leftColumns = new List<Column>();
             PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager);
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
@@ -597,15 +597,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 new BPlusTreeOptions<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>()
                 {
                     Comparer = _leftInsertComparer,
-                    KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Left.OutputLength),
-                    ValueSerializer = new JoinWeightsSerializer()
+                    KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Left.OutputLength, MemoryAllocator),
+                    ValueSerializer = new JoinWeightsSerializer(MemoryAllocator)
                 });
             _rightTree = await stateManagerClient.GetOrCreateTree("right",
                 new BPlusTreeOptions<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>()
                 {
                     Comparer = _rightInsertComparer,
-                    KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Right.OutputLength),
-                    ValueSerializer = new JoinWeightsSerializer()
+                    KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Right.OutputLength, MemoryAllocator),
+                    ValueSerializer = new JoinWeightsSerializer(MemoryAllocator)
                 });
 
             _leftIterator = _leftTree.CreateIterator();

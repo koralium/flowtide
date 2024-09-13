@@ -26,6 +26,7 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using static Substrait.Protobuf.Expression.Types.Literal.Types;
 using System.Collections;
 using static SqlParser.Ast.TableConstraint;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {

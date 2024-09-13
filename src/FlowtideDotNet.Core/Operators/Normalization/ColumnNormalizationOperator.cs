@@ -120,7 +120,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             Debug.Assert(_eventsProcessed != null);
             Debug.Assert(_eventsCounter != null);
 
-            var otherColumnsMemoryManager = GlobalMemoryManager.Instance;
+            var otherColumnsMemoryManager = MemoryAllocator;
 
             PrimitiveList<int> toEmitOffsets = new PrimitiveList<int>(otherColumnsMemoryManager);
             PrimitiveList<int> weights = new PrimitiveList<int>(otherColumnsMemoryManager);
@@ -328,8 +328,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 new BPlusTreeOptions<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>()
                 {
                     Comparer = new NormalizeTreeComparer(_normalizationRelation.KeyIndex),
-                    KeySerializer = new NormalizeKeyStorageSerializer(_normalizationRelation.KeyIndex),
-                    ValueSerializer = new NormalizeValueSerializer(_otherColumns)
+                    KeySerializer = new NormalizeKeyStorageSerializer(_normalizationRelation.KeyIndex, MemoryAllocator),
+                    ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator)
                 });
         }
     }

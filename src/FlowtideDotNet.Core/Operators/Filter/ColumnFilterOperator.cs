@@ -59,12 +59,12 @@ namespace FlowtideDotNet.Core.Operators.Filter
         {
 
             PrimitiveList<int>[] offsets = new PrimitiveList<int>[_filterRelation.OutputLength];
-            PrimitiveList<int> weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
-            PrimitiveList<uint> iterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
             for (int i = 0; i < offsets.Length; i++)
             {
-                offsets[i] = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+                offsets[i] = new PrimitiveList<int>(MemoryAllocator);
             }
 
             var data = msg.Data;

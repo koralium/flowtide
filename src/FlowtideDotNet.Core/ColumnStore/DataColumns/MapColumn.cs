@@ -25,6 +25,7 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System.Buffers;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {

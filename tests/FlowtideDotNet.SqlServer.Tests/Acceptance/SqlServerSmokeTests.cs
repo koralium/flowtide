@@ -31,6 +31,7 @@ using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core;
 using System.Diagnostics.Metrics;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 {
@@ -215,13 +216,16 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             StreamMetrics streamMetrics = new StreamMetrics("stream");
             var nodeMetrics = streamMetrics.GetOrCreateVertexMeter("node1", () => "node1");
 
+            var streamMemoryManager = new StreamMemoryManager("stream");
+            var memoryManager = streamMemoryManager.CreateOperatorMemoryManager("op");
+
             var vertexHandler = new VertexHandler("mergejoinstream", "op", (time) =>
             {
 
             }, (v1, v2, time) =>
             {
                 return Task.CompletedTask;
-            }, nodeMetrics, stateClient, new NullLoggerFactory());
+            }, nodeMetrics, stateClient, new NullLoggerFactory(), memoryManager);
             var sink = new SqlServerSink(new Connector.SqlServer.SqlServerSinkOptions() { ConnectionStringFunc = () => sqlServerFixture.ConnectionString }, writeRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
 
             sink.Setup("mergejoinstream", "op");

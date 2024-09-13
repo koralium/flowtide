@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 {
@@ -29,10 +30,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         private DataValueContainer _dataValueContainer;
         private int _length;
 
-        public AggregateKeyStorageContainer(int columnCount)
+        public AggregateKeyStorageContainer(int columnCount, IMemoryAllocator memoryAllocator)
         {
             IColumn[] columns = new IColumn[columnCount];
-            var memoryManager = GlobalMemoryManager.Instance; //new BatchMemoryManager(columnCount);
+            var memoryManager = memoryAllocator;
             for (int i = 0; i < columnCount; i++)
             {
                 columns[i] = ColumnStore.Column.Create(memoryManager);

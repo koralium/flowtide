@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Core.Operators.Project
 
             for (int i = 0; i < _expressions.Length; i++)
             {
-                projectionColumns[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
+                projectionColumns[i] = ColumnFactory.Get(MemoryAllocator);
             }
 
             for (int i = 0; i < data.Count; i++)

@@ -13,8 +13,8 @@
 using Apache.Arrow.Ipc;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void Int64SerializeDeserialize()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new Int64Value(1));
             column.Add(NullValue.Instance);
             column.Add(new Int64Value(2));
@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             memoryStream.Position = 0;
             var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
-            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
             Assert.Equal(1, deserializedBatch.Columns[0].GetValueAt(0, default).AsLong);
             Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);
@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void StringSerializeDeserialize()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new StringValue("hello"));
             column.Add(NullValue.Instance);
             column.Add(new StringValue("world"));
@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             memoryStream.Position = 0;
             var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
-            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
             Assert.Equal("hello", deserializedBatch.Columns[0].GetValueAt(0, default).ToString());
             Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);
@@ -83,7 +83,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void DoubleToArrow()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new DoubleValue(1.0));
             column.Add(NullValue.Instance);
             column.Add(new DoubleValue(2.0));
@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void DoubleSerializeDeserialize()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new DoubleValue(1.0));
             column.Add(NullValue.Instance);
             column.Add(new DoubleValue(2.0));
@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             memoryStream.Position = 0;
             var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
-            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
             Assert.Equal(1.0, deserializedBatch.Columns[0].GetValueAt(0, default).AsDouble);
             Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);
@@ -126,7 +126,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void ListToArrow()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new ListValue(new List<IDataValue>()
             {
                 new StringValue("1"),
@@ -159,7 +159,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void ListSerializeDeserialize()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new ListValue(new List<IDataValue>()
             {
                 new StringValue("1"),
@@ -184,7 +184,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             memoryStream.Position = 0;
             var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
-            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
             var firstElement = deserializedBatch.Columns[0].GetValueAt(0, default);
             Assert.Equal("1" ,firstElement.AsList.GetAt(0).ToString());
@@ -204,7 +204,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void ListSerializeDeserializeUpdateElementWithSmallerList()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new ListValue(new List<IDataValue>()
             {
                 new StringValue("1"),
@@ -293,7 +293,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             memoryStream.Position = 0;
             var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
-            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
             deserializedBatch.Columns[0].UpdateAt(1, new ListValue(new List<IDataValue>()
             {
@@ -320,7 +320,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void UnionToArrow()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new StringValue("1"));
             column.Add(NullValue.Instance);
             column.Add(new Int64Value(1));
@@ -351,7 +351,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void UnionSerializeDeserialize()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new StringValue("1"));
             column.Add(NullValue.Instance);
             column.Add(new Int64Value(1));
@@ -370,7 +370,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             memoryStream.Position = 0;
             var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
-            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
             Assert.Equal("1", deserializedBatch.Columns[0].GetValueAt(0, default).ToString());
             Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);
@@ -382,7 +382,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void MapToArrow()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
             {
                 { new StringValue("key"), new Int64Value(1) },
@@ -433,7 +433,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void MapSerializeDeserialize()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
             {
                 { new StringValue("key"), new Int64Value(1) },
@@ -459,7 +459,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             memoryStream.Position = 0;
             var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
-            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
 
             Assert.Equal(1, deserializedBatch.Columns[0].GetValueAt(0, new MapKeyReferenceSegment() { Key = "key"}).AsLong);
@@ -474,7 +474,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void BoolToArrow()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new BoolValue(true));
             column.Add(NullValue.Instance);
             column.Add(new BoolValue(false));
@@ -492,7 +492,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void BoolSerializeDeserialize()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new BoolValue(true));
             column.Add(NullValue.Instance);
             column.Add(new BoolValue(false));
@@ -509,7 +509,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             memoryStream.Position = 0;
             var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
-            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
             Assert.True(deserializedBatch.Columns[0].GetValueAt(0, default).AsBool);
             Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);
@@ -519,7 +519,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void BinaryToArrow()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new BinaryValue(new byte[] { 1, 2, 3 }));
             column.Add(NullValue.Instance);
             column.Add(new BinaryValue(new byte[] { 4, 5, 6 }));
@@ -536,7 +536,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void BinarySerializeDeserialize()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new BinaryValue(new byte[] { 1, 2, 3 }));
             column.Add(NullValue.Instance);
             column.Add(new BinaryValue(new byte[] { 4, 5, 6 }));
@@ -553,7 +553,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             memoryStream.Position = 0;
             var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
-            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
             Assert.Equal(new byte[] { 1, 2, 3 }, deserializedBatch.Columns[0].GetValueAt(0, default).AsBinary);
             Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);
@@ -563,7 +563,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void DecimalSerializeDeserialize()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new DecimalValue(1.0m));
             column.Add(NullValue.Instance);
             column.Add(new DecimalValue(2.0m));
@@ -580,7 +580,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             memoryStream.Position = 0;
             var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
-            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
             Assert.Equal(1.0m, deserializedBatch.Columns[0].GetValueAt(0, default).AsDecimal);
             Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);
@@ -590,7 +590,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void DecimalToArrow()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new DecimalValue(1.0m));
             column.Add(NullValue.Instance);
             column.Add(new DecimalValue(2.0m));
@@ -609,7 +609,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestDecimalInListSerializeDeserialize()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new ListValue(new List<IDataValue>()
             {
                 new DecimalValue(1.0m),
@@ -629,7 +629,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             memoryStream.Position = 0;
             var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
-            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
             var list = deserializedBatch.Columns[0].GetValueAt(0, default).AsList;
             Assert.Equal(1.0m, list.GetAt(0).AsDecimal);
@@ -642,7 +642,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestDecimalInMapSerializeDeserialize()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
             {
                 { new StringValue("key"), new DecimalValue(1.0m) },
@@ -662,7 +662,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             memoryStream.Position = 0;
             var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
-            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch);
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
             var map = deserializedBatch.Columns[0].GetValueAt(0, new MapKeyReferenceSegment() { Key = "key" }).AsDecimal;
             Assert.Equal(1.0m, map);

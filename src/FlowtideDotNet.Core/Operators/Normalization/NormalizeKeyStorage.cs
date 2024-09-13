@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -27,11 +28,11 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         private readonly List<int> _columnsToStore;
         internal readonly EventBatchData _data;
 
-        public NormalizeKeyStorage(List<int> columnsToStore)
+        public NormalizeKeyStorage(List<int> columnsToStore, IMemoryAllocator memoryAllocator)
         {
             _columnsToStore = columnsToStore;
             IColumn[] columns = new IColumn[columnsToStore.Count];
-            var memoryManager = GlobalMemoryManager.Instance;
+            var memoryManager = memoryAllocator;
             for (int i = 0; i < columnsToStore.Count; i++)
             {
                 columns[i] = Column.Create(memoryManager);

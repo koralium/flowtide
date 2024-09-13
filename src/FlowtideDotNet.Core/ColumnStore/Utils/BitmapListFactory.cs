@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Storage.Memory;
 using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Buffers;

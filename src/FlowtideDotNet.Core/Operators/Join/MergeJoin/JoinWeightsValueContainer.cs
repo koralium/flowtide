@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Buffers;
@@ -28,9 +29,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public Memory<byte> Memory => _values.SlicedMemory;
 
-        public JoinWeightsValueContainer()
+        public JoinWeightsValueContainer(IMemoryAllocator memoryAllocator)
         {
-            _values = new PrimitiveList<JoinWeights>(GlobalMemoryManager.Instance);
+            _values = new PrimitiveList<JoinWeights>(memoryAllocator);
         }
 
         public JoinWeightsValueContainer(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)

@@ -11,8 +11,8 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
         [Benchmark]
         public void AddLongList()
         {
-            var allocator = new BatchMemoryManager(1);
+            var allocator = GlobalMemoryManager.Instance;
             using var longList = new NativeLongList(allocator);
             for (int i = 0; i < 1_000_000; i++)
             {

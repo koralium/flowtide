@@ -15,6 +15,7 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -67,12 +68,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return new Apache.Arrow.RecordBatch(schemaBuilder.Build(), arrays, length);
         }
 
-        public static EventBatchData ArrowToBatch(RecordBatch recordBatch)
+        public static EventBatchData ArrowToBatch(RecordBatch recordBatch, IMemoryAllocator memoryAllocator)
         {
             var memoryOwner = (IMemoryOwner<byte>?)_memoryOwnerField.GetValue(recordBatch);
 
             IColumn[] columns = new IColumn[recordBatch.ColumnCount];
-            var visitor = new ArrowToInternalVisitor(memoryOwner!, GlobalMemoryManager.Instance);
+            var visitor = new ArrowToInternalVisitor(memoryOwner!, memoryAllocator);
             var schema = recordBatch.Schema;
             for (int i = 0; i < recordBatch.ColumnCount; i++)
             {
