@@ -17,6 +17,7 @@ using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.ListAg
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
 using FlowtideDotNet.Core.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -53,7 +54,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
 
     internal class ColumnListAggAggregation
     {
-        private static async Task<ColumnListAggAggregationSingleton> Initialize(int groupingLength, IStateManagerClient stateManagerClient)
+        private static async Task<ColumnListAggAggregationSingleton> Initialize(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
             List<int> insertPrimaryKeys = new List<int>();
             for (int i = 0; i < groupingLength + 1; i++)
@@ -69,7 +70,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ListAggColumnRowReference, int, ListAggKeyStorageContainer, ListValueContainer<int>>()
                 {
                     Comparer = new ListAggInsertComparer(groupingLength),
-                    KeySerializer = new ListAggKeyStorageSerializer(groupingLength),
+                    KeySerializer = new ListAggKeyStorageSerializer(groupingLength, memoryAllocator),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
                 });
 

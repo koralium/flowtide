@@ -23,12 +23,13 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 {
     internal static class ColumnMeasureCompiler
     {
-        public static Task<IColumnAggregateContainer> CompileMeasure(int groupingLength, IStateManagerClient stateManagerClient, AggregateFunction aggregateFunction, FunctionsRegister functionsRegister)
+        public static Task<IColumnAggregateContainer> CompileMeasure(int groupingLength, IStateManagerClient stateManagerClient, AggregateFunction aggregateFunction, FunctionsRegister functionsRegister, IMemoryAllocator memoryAllocator)
         {
             if (functionsRegister.TryGetColumnAggregateFunction(aggregateFunction.ExtensionUri, aggregateFunction.ExtensionName, out var definition))
             {
@@ -48,6 +49,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 var container = definition.CreateContainer(
                     groupingLength,
                     stateManagerClient,
+                    memoryAllocator,
                     aggregateFunction,
                     parametersInfo,
                     expressionVisitor,

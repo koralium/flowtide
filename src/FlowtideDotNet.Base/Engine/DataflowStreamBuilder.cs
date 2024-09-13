@@ -15,6 +15,7 @@ using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 
@@ -143,7 +144,8 @@ namespace FlowtideDotNet.Base.Engine
                 _stateManagerOptions,
                 _loggerFactory,
                 _streamVersionInformation,
-                _dataflowStreamOptions);
+                _dataflowStreamOptions,
+                new StreamMemoryManager(_streamName));
 
             return new DataflowStream(streamContext);
         }

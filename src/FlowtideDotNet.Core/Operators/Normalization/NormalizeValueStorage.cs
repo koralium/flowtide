@@ -11,8 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -28,11 +28,11 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         internal readonly EventBatchData _data;
         private int _length;
 
-        public NormalizeValueStorage(List<int> columnsToStore)
+        public NormalizeValueStorage(List<int> columnsToStore, IMemoryAllocator memoryAllocator)
         {
             this._columnsToStore = columnsToStore;
             IColumn[] columns = new IColumn[columnsToStore.Count];
-            var memoryManager = GlobalMemoryManager.Instance;
+            var memoryManager = memoryAllocator;
             for (int i = 0; i < columnsToStore.Count; i++)
             {
                 columns[i] = Column.Create(memoryManager);

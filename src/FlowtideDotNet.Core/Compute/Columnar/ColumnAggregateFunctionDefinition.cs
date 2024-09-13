@@ -14,6 +14,7 @@ using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
@@ -31,6 +32,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
         public abstract Task<IColumnAggregateContainer> CreateContainer(
             int groupingLength,
             IStateManagerClient stateManagerClient,
+            IMemoryAllocator memoryAllocator,
             AggregateFunction aggregateFunction,
             ColumnParameterInfo parametersInfo,
             ColumnarExpressionVisitor visitor,
@@ -120,6 +122,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
         public override async Task<IColumnAggregateContainer> CreateContainer(
             int groupingLength,
             IStateManagerClient stateManagerClient,
+            IMemoryAllocator memoryAllocator,
             AggregateFunction aggregateFunction,
             ColumnParameterInfo parametersInfo,
             ColumnarExpressionVisitor visitor,
@@ -129,7 +132,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             ParameterExpression weightParameter,
             ParameterExpression groupingKeyParameter)
         {
-            var singleton = await InitializeFunction(groupingLength, stateManagerClient);
+            var singleton = await InitializeFunction(groupingLength, stateManagerClient, memoryAllocator);
 
             var singletonParameter = System.Linq.Expressions.Expression.Parameter(typeof(T));
             var mapResult = MapFunc(aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter, singletonParameter, groupingKeyParameter);

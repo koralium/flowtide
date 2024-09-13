@@ -13,6 +13,7 @@
 using Apache.Arrow.Ipc;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -25,15 +26,17 @@ namespace FlowtideDotNet.Core.Operators.Normalization
     internal class NormalizeValueSerializer : IBplusTreeValueSerializer<ColumnRowReference, NormalizeValueStorage>
     {
         private readonly List<int> _columnsToStore;
+        private readonly IMemoryAllocator _memoryAllocator;
 
-        public NormalizeValueSerializer(List<int> columnsToStore)
+        public NormalizeValueSerializer(List<int> columnsToStore, IMemoryAllocator memoryAllocator)
         {
             _columnsToStore = columnsToStore;
+            _memoryAllocator = memoryAllocator;
         }
 
         public NormalizeValueStorage CreateEmpty()
         {
-            return new NormalizeValueStorage(_columnsToStore);    
+            return new NormalizeValueStorage(_columnsToStore, _memoryAllocator);    
         }
 
         public NormalizeValueStorage Deserialize(in BinaryReader reader)
@@ -41,7 +44,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var recordBatch = arrowReader.ReadNextRecordBatch();
 
-            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch);
+            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, _memoryAllocator);
 
             return new NormalizeValueStorage(_columnsToStore, eventBatch, recordBatch.Length);
         }

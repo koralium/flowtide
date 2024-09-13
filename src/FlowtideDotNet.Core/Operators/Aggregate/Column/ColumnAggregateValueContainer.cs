@@ -11,10 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Operators.Normalization;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -30,19 +30,19 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         internal EventBatchData _eventBatch;
         internal PrimitiveList<int> _weights;
         internal PrimitiveList<bool> _previousValueSent;
-        public ColumnAggregateValueContainer(int measureCount)
+        public ColumnAggregateValueContainer(int measureCount, IMemoryAllocator memoryAllocator)
         {
             this.columnCount = measureCount * 2;
             ColumnStore.Column[] columns = new ColumnStore.Column[columnCount];
 
             for (int i = 0; i < columnCount; i++)
             {
-                columns[i] = ColumnStore.Column.Create(GlobalMemoryManager.Instance);
+                columns[i] = ColumnStore.Column.Create(memoryAllocator);
             }
 
             _eventBatch = new EventBatchData(columns);
-            _weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
-            _previousValueSent = new PrimitiveList<bool>(GlobalMemoryManager.Instance);
+            _weights = new PrimitiveList<int>(memoryAllocator);
+            _previousValueSent = new PrimitiveList<bool>(memoryAllocator);
         }
 
         public ColumnAggregateValueContainer(int measureCount, EventBatchData eventBatch, PrimitiveList<int> weights, PrimitiveList<bool> previousValueSent)

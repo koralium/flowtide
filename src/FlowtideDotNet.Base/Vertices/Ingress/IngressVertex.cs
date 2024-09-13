@@ -20,6 +20,7 @@ using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
 using System.Text;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Base.Vertices.Ingress
 {
@@ -58,6 +59,8 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         protected IMeter Metrics => _ingressState?._metrics ?? throw new NotSupportedException("Initialize must be called before accessing metrics");
 
         public ILogger Logger => _logger ?? throw new NotSupportedException("Logging must be done after Initialize");
+
+        protected IMemoryAllocator MemoryAllocator => _ingressState?._vertexHandler?.MemoryManager ?? throw new NotSupportedException("Initialize must be called before accessing memory allocator");
 
         protected IngressVertex(DataflowBlockOptions options)
         {

@@ -14,6 +14,7 @@ using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Egress.Internal;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -33,6 +34,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private bool _isHealthy = true;
         private CancellationTokenSource? _cancellationTokenSource;
         private IHistogram<float>? _latencyHistogram;
+        private IMemoryAllocator? _memoryAllocator;
 
         public string Name { get; private set; }
 
@@ -45,6 +47,8 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         public ILogger Logger { get; private set; }
 
         protected CancellationToken CancellationToken => _cancellationTokenSource?.Token ?? throw new InvalidOperationException("Cancellation token can only be fetched after initialization.");
+
+        protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
         protected EgressVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
@@ -149,7 +153,8 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
         {
-             _cancellationTokenSource = new CancellationTokenSource();
+            _memoryAllocator = vertexHandler.MemoryManager;
+            _cancellationTokenSource = new CancellationTokenSource();
             Name = name;
             StreamName = vertexHandler.StreamName;
             Metrics = vertexHandler.Metrics;

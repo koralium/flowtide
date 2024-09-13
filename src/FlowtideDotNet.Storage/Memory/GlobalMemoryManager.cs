@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -19,15 +18,27 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.Memory
+namespace FlowtideDotNet.Storage.Memory
 {
-    internal unsafe class GlobalMemoryManager : IMemoryAllocator
+    /// <summary>
+    /// Memory manager that is global in a process, should not be used as much as possible since
+    /// the memory allocated with this does not contribute to metric gathering from a stream.
+    /// </summary>
+    public unsafe class GlobalMemoryManager : IMemoryAllocator
     {
         public static readonly GlobalMemoryManager Instance = new GlobalMemoryManager();
         public IMemoryOwner<byte> Allocate(int size, int alignment)
         {
             var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-            return NativeCreatedMemoryOwnerFactory.Get(ptr, size);
+            return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
+        }
+
+        public void RegisterAllocationToMetrics(int size)
+        {
+        }
+
+        public void RegisterFreeToMetrics(int size)
+        {
         }
     }
 }
