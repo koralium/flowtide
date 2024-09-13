@@ -387,10 +387,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                         }
                     }
                 }
-#if DEBUG_WRITE
-                allInput.WriteLine($"Initial Done");
-                await allInput.FlushAsync();
-#endif
+
                 // Send watermark information after all initial data has been loaded
                 await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.ChangeTrackingVersion));
 
