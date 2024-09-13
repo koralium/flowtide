@@ -14,22 +14,27 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.Memory
+namespace FlowtideDotNet.Storage.Memory
 {
-    internal unsafe class PreAllocatedMemoryOwner : MemoryManager<byte>
+    internal unsafe class NativeCreatedMemoryOwner : MemoryManager<byte>
     {
-        private readonly PreAllocatedMemoryManager _manager;
-        private readonly void* ptr;
-        private readonly int length;
+        private void* ptr;
+        private int length;
+        private IMemoryAllocator? memoryManager;
 
-        public PreAllocatedMemoryOwner(PreAllocatedMemoryManager memoryManager, void* ptr, int length)
+        public NativeCreatedMemoryOwner()
         {
-            _manager = memoryManager;
+        }
+
+        public void Assign(void* ptr, int length, IMemoryAllocator memoryManager)
+        {
             this.ptr = ptr;
             this.length = length;
+            this.memoryManager = memoryManager;
         }
 
         public override Span<byte> GetSpan()
@@ -48,7 +53,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
 
         protected override void Dispose(bool disposing)
         {
-            _manager.Free();
+            if (ptr != null)
+            {
+                NativeMemory.AlignedFree(ptr);
+                memoryManager!.RegisterFreeToMetrics(length);
+                ptr = null;
+                length = 0;
+            }
         }
     }
 }

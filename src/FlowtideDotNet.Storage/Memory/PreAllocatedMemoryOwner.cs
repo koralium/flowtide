@@ -10,29 +10,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.Memory
+namespace FlowtideDotNet.Storage.Memory
 {
-    internal unsafe class NativeCreatedMemoryOwner : MemoryManager<byte>
+    public unsafe class PreAllocatedMemoryOwner : MemoryManager<byte>
     {
-        private void* ptr;
-        private int length;
+        private readonly PreAllocatedMemoryManager _manager;
+        private readonly void* ptr;
+        private readonly int length;
 
-        public NativeCreatedMemoryOwner()
+        public PreAllocatedMemoryOwner(PreAllocatedMemoryManager memoryManager, void* ptr, int length)
         {
-            
-        }
-
-        public void Assign(void* ptr, int length)
-        {
+            _manager = memoryManager;
             this.ptr = ptr;
             this.length = length;
         }
@@ -53,13 +48,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
 
         protected override void Dispose(bool disposing)
         {
-            if (ptr != null)
-            {
-                NativeMemory.AlignedFree(ptr);
-                ptr = null;
-                length = 0;
-                NativeCreatedMemoryOwnerFactory.Return(this);
-            }
+            _manager.Free();
         }
     }
 }

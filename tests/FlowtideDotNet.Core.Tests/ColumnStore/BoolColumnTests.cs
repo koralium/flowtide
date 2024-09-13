@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestAddAndGetByIndex()
         {
-            var column = new BoolColumn(new BatchMemoryManager(1));
+            var column = new BoolColumn(GlobalMemoryManager.Instance);
             int i1 = column.Add(new BoolValue(true));
             int i2 = column.Add(new BoolValue(false));
             int i3 = column.Add(new BoolValue(true));
@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestSearchBoundries()
         {
-            var column = new BoolColumn(new BatchMemoryManager(1));
+            var column = new BoolColumn(GlobalMemoryManager.Instance);
             column.Add(new BoolValue(false));
             column.Add(new BoolValue(false));
             column.Add(new BoolValue(false));
@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(3, start);
             Assert.Equal(3, end);
 
-            var emptyColumn = new BoolColumn(new BatchMemoryManager(1));
+            var emptyColumn = new BoolColumn(GlobalMemoryManager.Instance);
             (start, end) = emptyColumn.SearchBoundries(new BoolValue(true), 0, -1, default, false);
             Assert.Equal(~0, start);
             Assert.Equal(~0, end);
@@ -65,7 +65,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestCompareTo()
         {
-            var column = new BoolColumn(new BatchMemoryManager(1));
+            var column = new BoolColumn(GlobalMemoryManager.Instance);
             column.Add(new BoolValue(false));
             column.Add(new BoolValue(true));
             Assert.Equal(-1, column.CompareTo(0, new BoolValue(true), default, default));

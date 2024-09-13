@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using System;
 using System.Buffers.Binary;
 using System.Buffers;
@@ -20,6 +19,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Collections;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {

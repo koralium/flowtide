@@ -14,6 +14,7 @@ using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -54,6 +55,8 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         private bool _sentLockingEvent;
         private int _targetPrepareCount = 0;
         private bool singleReadSource;
+        private IMemoryAllocator? _memoryAllocator;
+        protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
         public ITargetBlock<IStreamEvent> IngressTarget => _ingressTarget;
         public ITargetBlock<IStreamEvent> FeedbackTarget => _feedbackTarget;
@@ -359,6 +362,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
 
         public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
         {
+            _memoryAllocator = vertexHandler.MemoryManager;
             _name = name;
             _currentTime = newTime;
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);

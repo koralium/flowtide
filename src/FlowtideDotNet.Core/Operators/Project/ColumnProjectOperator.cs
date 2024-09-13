@@ -13,7 +13,6 @@
 using FlexBuffers;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
@@ -68,7 +67,7 @@ namespace FlowtideDotNet.Core.Operators.Project
 
             for (int i = 0; i < _expressions.Length; i++)
             {
-                projectionColumns[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
+                projectionColumns[i] = ColumnFactory.Get(MemoryAllocator);
             }
 
             for (int i = 0; i < data.Count; i++)

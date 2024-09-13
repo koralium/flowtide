@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 
@@ -29,7 +30,8 @@ namespace FlowtideDotNet.Base.Engine.Internal
             Func<string, string, TimeSpan?, Task> registerTrigger, 
             IMeter metrics, 
             IStateManagerClient stateClient,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            IOperatorMemoryManager memoryManager)
         {
             StreamName = streamName;
             this.operatorName = operatorName;
@@ -38,6 +40,7 @@ namespace FlowtideDotNet.Base.Engine.Internal
             Metrics = metrics;
             StateClient = stateClient;
             LoggerFactory = loggerFactory;
+            MemoryManager = memoryManager;
         }
 
         public string StreamName { get; }
@@ -47,6 +50,8 @@ namespace FlowtideDotNet.Base.Engine.Internal
         public IStateManagerClient StateClient { get; }
 
         public ILoggerFactory LoggerFactory { get; }
+
+        public IOperatorMemoryManager MemoryManager { get; }
 
         public string OperatorId => operatorName;
 

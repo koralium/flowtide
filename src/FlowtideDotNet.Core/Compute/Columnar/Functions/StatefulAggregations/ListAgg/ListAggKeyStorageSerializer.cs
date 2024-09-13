@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Core.Operators.Normalization;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -27,14 +28,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
     internal class ListAggKeyStorageSerializer : IBPlusTreeKeySerializer<ListAggColumnRowReference, ListAggKeyStorageContainer>
     {
         private readonly int _groupingKeyLength;
+        private readonly IMemoryAllocator _memoryAllocator;
 
-        public ListAggKeyStorageSerializer(int groupingKeyLength)
+        public ListAggKeyStorageSerializer(int groupingKeyLength, IMemoryAllocator memoryAllocator)
         {
             _groupingKeyLength = groupingKeyLength;
+            _memoryAllocator = memoryAllocator;
         }
         public ListAggKeyStorageContainer CreateEmpty()
         {
-            return new ListAggKeyStorageContainer(_groupingKeyLength);
+            return new ListAggKeyStorageContainer(_groupingKeyLength, _memoryAllocator);
         }
 
         public ListAggKeyStorageContainer Deserialize(in BinaryReader reader)
@@ -42,7 +45,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var recordBatch = arrowReader.ReadNextRecordBatch();
 
-            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch);
+            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, _memoryAllocator);
 
             return new ListAggKeyStorageContainer(_groupingKeyLength, eventBatch);
         }

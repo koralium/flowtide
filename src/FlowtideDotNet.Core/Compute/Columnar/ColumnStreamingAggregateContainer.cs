@@ -23,6 +23,7 @@ using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Linq.Expressions;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.Compute.Columnar
 {
@@ -85,7 +86,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar
 
         public override Task<IColumnAggregateContainer> CreateContainer(
             int groupingLength, 
-            IStateManagerClient stateManagerClient, 
+            IStateManagerClient stateManagerClient,
+            IMemoryAllocator memoryAllocator,
             AggregateFunction aggregateFunction, 
             ColumnParameterInfo parametersInfo, 
             ColumnarExpressionVisitor visitor, 
