@@ -83,8 +83,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Pe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Permify.Tests", "tests\FlowtideDotNet.Connector.Permify.Tests\FlowtideDotNet.Connector.Permify.Tests.csproj", "{079CC855-A000-4E1C-9128-FE025A57FFCD}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDebug", "..\..\dev\FlowtideDebug\FlowtideDebug\FlowtideDebug.csproj", "{0D23B015-1336-4BF5-992A-A7BF8733F849}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -239,10 +237,6 @@ Global
 		{079CC855-A000-4E1C-9128-FE025A57FFCD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{079CC855-A000-4E1C-9128-FE025A57FFCD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{079CC855-A000-4E1C-9128-FE025A57FFCD}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0D23B015-1336-4BF5-992A-A7BF8733F849}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0D23B015-1336-4BF5-992A-A7BF8733F849}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0D23B015-1336-4BF5-992A-A7BF8733F849}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0D23B015-1336-4BF5-992A-A7BF8733F849}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
