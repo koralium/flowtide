@@ -12,7 +12,6 @@
 
 using Apache.Arrow.Memory;
 using FASTER.core;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Buffers;

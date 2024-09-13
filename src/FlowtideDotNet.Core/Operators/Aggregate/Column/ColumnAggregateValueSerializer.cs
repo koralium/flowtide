@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using Apache.Arrow.Ipc;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Normalization;

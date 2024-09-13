@@ -18,7 +18,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using FlowtideDotNet.Core.ColumnStore.Utils;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
