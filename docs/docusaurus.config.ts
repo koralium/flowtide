@@ -38,10 +38,10 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          remarkPlugins: [
-            [remarkKroki, { server: 'https://kroki.io', alias: ['blockdiag', 'kroki' ]}],
-            // [remarkGridTables, {}]
-          ],
+           remarkPlugins: [
+             [remarkKroki, { server: 'https://kroki.io', alias: ['blockdiag', 'kroki' ]}],
+             // [remarkGridTables, {}]
+           ],
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
