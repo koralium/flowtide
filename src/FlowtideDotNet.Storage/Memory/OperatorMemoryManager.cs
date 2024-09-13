@@ -27,7 +27,6 @@ namespace FlowtideDotNet.Storage.Memory
     {
         private readonly string m_streamName;
         private readonly string m_operatorName;
-        private TagList tagList;
         private long _allocatedMemory;
         private long _freedMemory;
         private long _allocationCount;
@@ -38,11 +37,6 @@ namespace FlowtideDotNet.Storage.Memory
             this.m_streamName = streamName;
             this.m_operatorName = operatorName;
 
-            tagList = new TagList
-            {
-                { "stream", m_streamName },
-                { "operator", m_operatorName }
-            };
             meter.CreateObservableGauge("flowtide.memory.allocated_bytes", () =>
             {
                 return new Measurement<long>(_allocatedMemory, new KeyValuePair<string, object?>("stream", m_streamName), new KeyValuePair<string, object?>("operator", m_operatorName));
