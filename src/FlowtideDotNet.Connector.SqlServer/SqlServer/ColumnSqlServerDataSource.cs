@@ -14,7 +14,6 @@ using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.SqlServer.SqlServer;
@@ -99,12 +98,12 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             await output.EnterCheckpointLock();
 
             IColumn[] outputColumns = new IColumn[_convertFunctions.Length];
-            PrimitiveList<int> weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
-            PrimitiveList<uint> iterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
             for (int i = 0; i < _convertFunctions.Length; i++)
             {
-                outputColumns[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
+                outputColumns[i] = ColumnFactory.Get(MemoryAllocator);
             }
 
             bool error = false;
@@ -261,12 +260,12 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 await output.EnterCheckpointLock();
 
                 IColumn[] outputColumns = new IColumn[_convertFunctions.Length];
-                PrimitiveList<int> weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
-                PrimitiveList<uint> iterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+                PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+                PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
                 for (int i = 0; i < _convertFunctions.Length; i++)
                 {
-                    outputColumns[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
+                    outputColumns[i] = ColumnFactory.Get(MemoryAllocator);
                 }
 
                 List<EventBatchWeighted> weightedBatches = new List<EventBatchWeighted>();
@@ -326,12 +325,12 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                             if (weights.Count >= 100)
                             {
                                 weightedBatches.Add(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
-                                weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
-                                iterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+                                weights = new PrimitiveList<int>(MemoryAllocator);
+                                iterations = new PrimitiveList<uint>(MemoryAllocator);
                                 outputColumns = new IColumn[_convertFunctions.Length];
                                 for (int i = 0; i < _convertFunctions.Length; i++)
                                 {
-                                    outputColumns[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
+                                    outputColumns[i] = ColumnFactory.Get(MemoryAllocator);
                                 }
                             }
                         }
@@ -339,12 +338,12 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                         if (weights.Count > 0)
                         {
                             weightedBatches.Add(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
-                            weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
-                            iterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+                            weights = new PrimitiveList<int>(MemoryAllocator);
+                            iterations = new PrimitiveList<uint>(MemoryAllocator);
                             outputColumns = new IColumn[_convertFunctions.Length];
                             for (int i = 0; i < _convertFunctions.Length; i++)
                             {
-                                outputColumns[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
+                                outputColumns[i] = ColumnFactory.Get(MemoryAllocator);
                             }
                         }
 
