@@ -10,29 +10,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.DataColumns;
-using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Tests.ColumnStore
+namespace FlowtideDotNet.Storage.Memory
 {
-    public class UnionColumnTests
+    /// <summary>
+    /// Used in an operator to manage memory allocation and deallocation.
+    /// Exist in operator level to allow gathering of metrics how much memory each operator uses.
+    /// </summary>
+    public interface IOperatorMemoryManager : IMemoryAllocator
     {
-        [Fact]
-        public void TestGetTypeAt()
-        {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
-
-            unionColumn.Add(new Int64Value(1));
-            unionColumn.Add(new StringValue("hello"));
-
-            Assert.Equal(ArrowTypeId.Int64, unionColumn.GetTypeAt(0, default));
-            Assert.Equal(ArrowTypeId.String, unionColumn.GetTypeAt(1, default));
-        }
     }
 }

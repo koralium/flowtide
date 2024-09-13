@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Linq.Expressions;
@@ -82,7 +83,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         public override Task<IAggregateContainer> CreateContainer(
             int groupingLength, 
-            IStateManagerClient stateManagerClient, 
+            IStateManagerClient stateManagerClient,
+            IMemoryAllocator memoryAllocator,
             AggregateFunction aggregateFunction, 
             ParametersInfo parametersInfo, 
             ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo> visitor, 

@@ -12,7 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void FetchSubProperty()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
             {
                 { new StringValue("key"), new Int64Value(1) },
@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void UpdateFirstElement()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
             {
                 { new StringValue("key"), new Int64Value(1) },
@@ -71,6 +71,37 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var valueData = column.GetValueAt(0, new MapKeyReferenceSegment() { Key = "value" });
             Assert.Equal("hello3", valueData.ToString());
+        }
+
+        [Fact]
+        public void UpdateSecondElement()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("key"), new Int64Value(1) },
+                { new StringValue("value"), new StringValue("hello1") }
+            }));
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("key"), new Int64Value(2) },
+                { new StringValue("value"), new StringValue("hello2") }
+            }));
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("key"), new Int64Value(2) },
+                { new StringValue("value"), new StringValue("hello3") }
+            }));
+
+            column.UpdateAt(1, new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("key"), new Int64Value(3) },
+                { new StringValue("value"), new StringValue("hello4") }
+            }));
+
+            
+            var valueData = column.GetValueAt(1, new MapKeyReferenceSegment() { Key = "value" });
+            Assert.Equal("hello4", valueData.ToString());
         }
     }
 }

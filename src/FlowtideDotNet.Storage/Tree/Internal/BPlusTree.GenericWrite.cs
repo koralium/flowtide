@@ -386,11 +386,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             if (rightNode.keys.Count >= m_stateClient.Metadata.BucketLength / 2)
             {
                 var parentKey = parentNode.keys.Get(index);
-                var newSplitKey = DistributeBetweenNodesInternal(internalNode, rightNode, parentKey);
+                var (newSplitKey, splitKeyDisposable) = DistributeBetweenNodesInternal(internalNode, rightNode, parentKey);
 
                 parentNode.EnterWriteLock();
                 parentNode.keys.Update(index, newSplitKey);
                 parentNode.ExitWriteLock();
+
+                // Done with the split key, it was updated into parent, can now dispose it
+                splitKeyDisposable.Dispose();
 
                 var isFull = false;
                 isFull |= m_stateClient.AddOrUpdate(rightNode.Id, rightNode);
@@ -593,11 +596,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 // Borrow
                 var parentKey = parentNode.keys.Get(index - 1);
-                var newSplitKey = DistributeBetweenNodesInternal(leftNode, internalNode, parentKey);
+                var (newSplitKey, splitKeyDisposable) = DistributeBetweenNodesInternal(leftNode, internalNode, parentKey);
 
                 parentNode.EnterWriteLock();
                 parentNode.keys.Update(index - 1, newSplitKey);
                 parentNode.ExitWriteLock();
+
+                // Done with the split key, it was updated into parent, can now dispose it
+                splitKeyDisposable.Dispose();
 
                 var isFull = false;
                 isFull |= m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
@@ -754,6 +760,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 rightKeys.AddRangeFrom(rightNode.keys, remainder, rightNodeSize);
                 rightValues.AddRangeFrom(rightNode.values, remainder, rightNodeSize);
+
+                // Dispose previous keys and values
+                rightNode.keys.Dispose();
+                rightNode.values.Dispose();
+
                 rightNode.keys = rightKeys;
                 rightNode.values = rightValues;
             }
@@ -777,6 +788,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 leftNode.keys.RemoveRange(leftNode.keys.Count - remainder, remainder);
                 leftNode.values.RemoveRange(leftNode.values.Count - remainder, remainder);
+
+                // Dispose previous keys and values
+                rightNode.keys.Dispose();
+                rightNode.values.Dispose();
+
                 rightNode.keys = rightKeys;
                 rightNode.values = rightValues;
             }
@@ -794,7 +810,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             leftNode.next = rightNode.next;
         }
 
-        internal K DistributeBetweenNodesInternal(InternalNode<K, V, TKeyContainer> leftNode, InternalNode<K, V, TKeyContainer> rightNode, K parentKey)
+        internal (K, IDisposable) DistributeBetweenNodesInternal(InternalNode<K, V, TKeyContainer> leftNode, InternalNode<K, V, TKeyContainer> rightNode, K parentKey)
         {
             leftNode.EnterWriteLock();
             rightNode.EnterWriteLock();
@@ -803,6 +819,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var half = totalCount / 2;
 
             K? splitKey = default;
+            IDisposable? splitKeyDisposable = default;
             if (leftNode.keys.Count < half)
             {
                 var remainder = half - leftNode.keys.Count;
@@ -821,6 +838,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 rightKeys.AddRangeFrom(rightNode.keys, remainder, rightNodeSize);
                 rightChildren.AddRange(rightNode.children.GetRange(remainder, rightNode.children.Count - remainder));
+
+                // Set the right node keys as disposable since it will no longer be used
+                splitKeyDisposable = rightNode.keys;
+
                 rightNode.keys = rightKeys;
                 rightNode.children = rightChildren;
             }
@@ -844,6 +865,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 leftNode.keys.RemoveRange(leftNode.keys.Count - remainder, remainder);
                 leftNode.children.RemoveRange(leftNode.children.Count - remainder, remainder);
+
+                // // Set the right node keys as disposable since it will no longer be used
+                splitKeyDisposable = rightNode.keys;
+
                 rightNode.keys = rightKeys;
                 rightNode.children = rightChildren;
                 splitKey = leftNode.keys.Get(leftNode.keys.Count - 1);
@@ -852,7 +877,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             rightNode.ExitWriteLock();
             leftNode.ExitWriteLock();
 
-            return splitKey;
+            return (splitKey, splitKeyDisposable);
         }
 
         internal void MergeInternalNodesIntoLeft(in InternalNode<K, V, TKeyContainer> leftNode, in InternalNode<K, V, TKeyContainer> rightNode, in K parentKey)

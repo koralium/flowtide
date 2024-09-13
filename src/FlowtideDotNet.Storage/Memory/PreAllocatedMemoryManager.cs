@@ -19,27 +19,31 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.Memory
+namespace FlowtideDotNet.Storage.Memory
 {
-    internal unsafe class PreAllocatedMemoryManager : IMemoryAllocator
+    public unsafe class PreAllocatedMemoryManager : IMemoryAllocator
     {
         private IMemoryOwner<byte>? _memoryOwner;
         private int _usageCount;
+        private readonly IMemoryAllocator _operatorMemoryManager;
 
-        public PreAllocatedMemoryManager()
+        public PreAllocatedMemoryManager(IMemoryAllocator operatorMemoryManager)
         {
+            this._operatorMemoryManager = operatorMemoryManager;
         }
 
         public void Initialize(IMemoryOwner<byte> memoryOwner, int usageCount)
         {
             _memoryOwner = memoryOwner;
             _usageCount = usageCount;
+            _operatorMemoryManager.RegisterAllocationToMetrics(memoryOwner.Memory.Length);
         }
 
         public IMemoryOwner<byte> Allocate(int size, int alignment)
         {
             var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-            return NativeCreatedMemoryOwnerFactory.Get(ptr, size);
+            _operatorMemoryManager.RegisterAllocationToMetrics(size);
+            return NativeCreatedMemoryOwnerFactory.Get(ptr, size, _operatorMemoryManager);
         }
 
         public void Free()
@@ -48,8 +52,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
             var result = Interlocked.Decrement(ref _usageCount);
             if (result <= 0)
             {
+                _operatorMemoryManager.RegisterFreeToMetrics(_memoryOwner.Memory.Length);
                 _memoryOwner.Dispose();
             }
+        }
+
+        public void RegisterAllocationToMetrics(int size)
+        {
+            _operatorMemoryManager.RegisterAllocationToMetrics(size);
+        }
+
+        public void RegisterFreeToMetrics(int size)
+        {
+            _operatorMemoryManager.RegisterFreeToMetrics(size);
         }
     }
 }

@@ -11,16 +11,19 @@
 // limitations under the License.
 
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.Memory
+namespace FlowtideDotNet.Storage.Memory
 {
-    public unsafe interface IMemoryAllocator
+    /// <summary>
+    /// Manages the memory for one stream.
+    /// Can be used to keep track of total memory used in a stream.
+    /// </summary>
+    public interface IStreamMemoryManager
     {
-        IMemoryOwner<byte> Allocate(int size, int alignment);
+        IOperatorMemoryManager CreateOperatorMemoryManager(string operatorName);
     }
 }

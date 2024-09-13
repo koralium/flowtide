@@ -41,6 +41,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 this.leafNode = leafNode;
                 this.index = index;
                 this.started = false;
+                pageIterator.Reset(leafNode, index);
             }
 
             public IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> Current => pageIterator;
@@ -211,6 +212,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 enumerator.leafNode.Return();
                 enumerator.leafNode = null;
             }
+            enumerator.Reset(default, 0);
+            leafNode = null;
         }
     }
 }

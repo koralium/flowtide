@@ -18,22 +18,23 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.Memory
+namespace FlowtideDotNet.Storage.Memory
 {
     internal unsafe class NativeCreatedMemoryOwner : MemoryManager<byte>
     {
         private void* ptr;
         private int length;
+        private IMemoryAllocator? memoryManager;
 
         public NativeCreatedMemoryOwner()
         {
-            
         }
 
-        public void Assign(void* ptr, int length)
+        public void Assign(void* ptr, int length, IMemoryAllocator memoryManager)
         {
             this.ptr = ptr;
             this.length = length;
+            this.memoryManager = memoryManager;
         }
 
         public override Span<byte> GetSpan()
@@ -55,9 +56,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Memory
             if (ptr != null)
             {
                 NativeMemory.AlignedFree(ptr);
+                memoryManager!.RegisterFreeToMetrics(length);
                 ptr = null;
                 length = 0;
-                NativeCreatedMemoryOwnerFactory.Return(this);
             }
         }
     }
