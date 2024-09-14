@@ -39,5 +39,9 @@ namespace FlowtideDotNet.Core.ColumnStore
         IMapValue AsMap { get; }
 
         decimal AsDecimal { get; }
+
+        bool IsNull { get; }
+
+        void CopyToContainer(DataValueContainer container);
     }
 }

@@ -41,6 +41,7 @@ using System.Threading.Tasks;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Core.Operators.Join;
 using FlowtideDotNet.Base.Vertices.Unary;
+using FlowtideDotNet.Core.Operators.Aggregate.Column;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -165,7 +166,16 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitFilterRelation(FilterRelation filterRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new FilterOperator(filterRelation, functionsRegister, DefaultBlockOptions);
+            UnaryVertex<StreamEventBatch, object?>? op;
+            
+            if (_useColumnStore)
+            {
+                op = new ColumnFilterOperator(filterRelation, functionsRegister, DefaultBlockOptions);
+            }
+            else
+            {
+                op = new FilterOperator(filterRelation, functionsRegister, DefaultBlockOptions);
+            }
 
             if (state != null)
             {
@@ -180,7 +190,17 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitProjectRelation(ProjectRelation projectRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new ProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
+
+            UnaryVertex<StreamEventBatch, object?>? op;
+
+            if (_useColumnStore)
+            {
+                op = new ColumnProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
+            }
+            else
+            {
+                op = new ProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
+            }
 
             if (state != null)
             {
@@ -226,7 +246,16 @@ namespace FlowtideDotNet.Core.Engine
             else
             {
                 var id = _operatorId++;
-                var op = new AggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
+
+                UnaryVertex<StreamEventBatch, AggregateOperatorState>? op;
+                if (_useColumnStore)
+                {
+                    op = new ColumnAggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
+                }
+                else
+                {
+                    op = new AggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
+                }
 
                 if (state != null)
                 {

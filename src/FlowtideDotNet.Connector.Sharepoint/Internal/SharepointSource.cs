@@ -173,7 +173,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     outputData.Add(new RowEvent(weight, 0, new ArrayRowData(data)));
                 }
                 _state.ODataNextUrl = page.OdataDeltaLink;
-                await output.SendAsync(new StreamEventBatch(outputData));
+                await output.SendAsync(new StreamEventBatch(outputData, readRelation.OutputLength));
             }
             return calledDecodersNewBatch;
         }

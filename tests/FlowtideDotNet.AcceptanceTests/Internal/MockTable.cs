@@ -194,6 +194,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                             }
                         });
                     }
+                    else if (column is List<string> listString)
+                    {
+                        b.Vector(b =>
+                        {
+                            foreach (var item in listString)
+                            {
+                                b.Add(item);
+                            }
+                        });
+                    }
                     else if (column is List<KeyValuePair<string, int>> listKeyInt)
                     {
                         b.Vector(v =>

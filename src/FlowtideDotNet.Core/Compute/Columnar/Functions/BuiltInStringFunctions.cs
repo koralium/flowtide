@@ -10,23 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.StringAgg;
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.Memory
+namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
-    internal unsafe class GlobalMemoryManager : IMemoryAllocator
+    internal static class BuiltInStringFunctions
     {
-        public static readonly GlobalMemoryManager Instance = new GlobalMemoryManager();
-        public IMemoryOwner<byte> Allocate(int size, int alignment)
+        public static void RegisterFunctions(IFunctionsRegister functionsRegister)
         {
-            var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-            return NativeCreatedMemoryOwnerFactory.Get(ptr, size); //new NativeCreatedMemoryOwner(ptr, size);
+            ColumnStringAggAggregation.Register(functionsRegister);
         }
     }
 }

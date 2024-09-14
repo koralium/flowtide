@@ -50,9 +50,32 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public decimal AsDecimal => throw new NotImplementedException();
 
+        public bool IsNull => false;
+
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = ArrowTypeId.Map;
+            container._mapValue = this;
+        }
+
         public IEnumerator<KeyValuePair<IDataValue, IDataValue>> GetEnumerator()
         {
             return mapColumn.GetKeyValuePairs(index).GetEnumerator();
+        }
+
+        public void GetKeyAt(in int index, DataValueContainer result)
+        {
+            mapColumn.GetKeyAt(this.index, index, result);
+        }
+
+        public int GetLength()
+        {
+            return mapColumn.GetElementLength(index);
+        }
+
+        public void GetValueAt(in int index, DataValueContainer result)
+        {
+            mapColumn.GetMapValueAt(this.index, index, result);
         }
 
         IEnumerator IEnumerable.GetEnumerator()

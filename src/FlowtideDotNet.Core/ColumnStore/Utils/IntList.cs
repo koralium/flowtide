@@ -12,7 +12,7 @@
 
 using Apache.Arrow.Memory;
 using FASTER.core;
-using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Buffers;
 using System.Collections;
@@ -201,6 +201,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public void Clear()
+        {
+            _length = 0;
         }
     }
 }

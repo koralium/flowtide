@@ -75,6 +75,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 await run._context._stateManager.CheckpointAsync(false);
                 _context._logger.StateManagerCheckpointDone(_context.streamName);
 
+                if (_context._notificationReciever != null)
+                {
+                    _context._notificationReciever.OnCheckpointComplete();
+                }
+
                 await run._context.stateHandler.WriteLatestState(run._context.streamName, run._context._lastState);
 
                 await _context.ForEachIngressBlockAsync((key, block) =>
@@ -125,7 +130,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private void CheckpointCompleted()
         {
             Debug.Assert(_context != null, nameof(_context));
-
             lock (_context._checkpointLock)
             {
                 _context._initialCheckpointTaken = true;

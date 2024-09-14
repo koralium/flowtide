@@ -71,14 +71,14 @@ namespace FlowtideDotNet.Core.Operators.Buffer
                 if (output.Count > 100)
                 {
                     _eventsCounter.Add(output.Count);
-                    yield return new StreamEventBatch(output);
+                    yield return new StreamEventBatch(output, bufferRelation.OutputLength);
                     output = new List<RowEvent>();
                 }
             }
             if (output.Count > 0)
             {
                 _eventsCounter.Add(output.Count);
-                yield return new StreamEventBatch(output);
+                yield return new StreamEventBatch(output, bufferRelation.OutputLength);
             }
             await _tree.Clear();
         }

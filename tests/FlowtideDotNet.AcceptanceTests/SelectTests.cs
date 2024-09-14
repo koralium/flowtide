@@ -131,5 +131,23 @@ namespace FlowtideDotNet.AcceptanceTests
             // Expect an array where all columns are null since the field was not found in the map
             AssertCurrentDataEqual(Orders.Select(x => new { UserKey = default(int?) }));
         }
+
+        [Fact]
+        public async Task SelectWithEqual()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT userkey = 23 FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.UserKey == 23 }));
+        }
+
+        [Fact]
+        public async Task SelectWithNotEqual()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT userkey != 23 FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.UserKey != 23 }));
+        }
     }
 }

@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
     {
         private IReadOnlySet<string>? _watermarkNames;
         private readonly Func<RowEvent, IEnumerable<RowEvent>> _func;
+        private readonly TableFunctionRelation _tableFunctionRelation;
         private bool _hasSentInitial = false;
         private RowEvent _emptyRow;
 
@@ -38,6 +39,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
         {
             _func = TableFunctionCompiler.CompileWithArg(tableFunctionRelation.TableFunction, functionsRegister);
             _emptyRow = new RowEvent();
+            this._tableFunctionRelation = tableFunctionRelation;
         }
 
         public override string DisplayName => "TableFunction";
@@ -113,7 +115,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
                 _eventsProcessed.Add(outputEvents.Count);
 
                 // Send the events
-                await output.SendAsync(new StreamEventBatch(outputEvents));
+                await output.SendAsync(new StreamEventBatch(outputEvents, _tableFunctionRelation.OutputLength));
                 await output.SendWatermark(new Base.Watermark(Name, 1));
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                 _hasSentInitial = true;

@@ -14,12 +14,13 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -29,7 +30,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    internal class Int64Column : IDataColumn
+    internal class Int64Column : IDataColumn, IEnumerable<long>
     {
         //private List<long> _data;
         private NativeLongList? _data;
@@ -124,11 +125,15 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._int64Value = new Int64Value(_data.GetRef(index));
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child)
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T: IDataValue
         {
             Debug.Assert(_data != null);
             var val = dataValue.AsLong;
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundries(_data, val, start, end, Int64ComparerDesc.Instance);
+            }
             return BoundarySearch.SearchBoundries(_data, val, start, end, Int64Comparer.Instance);
         }
 
@@ -204,6 +209,42 @@ namespace FlowtideDotNet.Core.ColumnStore
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             return ArrowTypeId.Int64;
+        }
+
+        public void Clear()
+        {
+            Debug.Assert(_data != null);
+            _data.Clear();
+        }
+
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public int EndNewList()
+        {
+            throw new NotImplementedException();
+        }
+
+        private IEnumerable<long> GetEnumerable()
+        {
+            Debug.Assert(_data != null);
+
+            for (int i = 0; i < _data.Count; i++)
+            {
+                yield return _data.Get(i);
+            }
+        }
+
+        public IEnumerator<long> GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
         }
     }
 }

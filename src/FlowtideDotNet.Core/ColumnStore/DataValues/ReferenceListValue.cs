@@ -21,7 +21,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public struct ReferenceListValue : IListValue
+    public struct ReferenceListValue : IListValue, IEnumerable<IDataValue>
     {
         private readonly Column column;
         private readonly int start;
@@ -54,9 +54,35 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public decimal AsDecimal => throw new NotImplementedException();
 
+        public bool IsNull => false;
+
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = ArrowTypeId.List;
+            container._listValue = this;
+        }
+
         public IDataValue GetAt(in int index)
         {
             return column.GetValueAt(start + index, default);
+        }
+
+        private IEnumerable<IDataValue> ListValues()
+        {
+            for (int i = start; i < end; i++)
+            {
+                yield return column.GetValueAt(i, default);
+            }
+        }
+
+        public IEnumerator<IDataValue> GetEnumerator()
+        {
+            return ListValues().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return ListValues().GetEnumerator();
         }
     }
 }

@@ -18,13 +18,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using FlowtideDotNet.Core.ColumnStore.Utils;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System.Buffers;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -49,8 +49,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public MapColumn(IMemoryAllocator memoryAllocator)
         {
-            _keyColumn = new Column(memoryAllocator);
-            _valueColumn = new Column(memoryAllocator);
+            _keyColumn = Column.Create(memoryAllocator);
+            _valueColumn = Column.Create(memoryAllocator);
             _offsets = new IntList(memoryAllocator);
             _offsets.Add(0);
         }
@@ -85,6 +85,38 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
+        public int GetElementLength(in int index)
+        {
+            var (startOffset, endOffset) = GetOffsets(in index);
+            return endOffset - startOffset;
+        }
+
+        public void GetKeyAt(in int rowIndex, in int keyIndex, in DataValueContainer dataValueContainer)
+        {
+            var (startOffset, endOffset) = GetOffsets(in rowIndex);
+            var actualIndex = startOffset + keyIndex;
+            if (actualIndex >= endOffset)
+            {
+                dataValueContainer._type = ArrowTypeId.Null;
+                return;
+            }
+
+            _keyColumn.GetValueAt(actualIndex, dataValueContainer, default);
+        }
+
+        public void GetMapValueAt(in int rowIndex, in int keyIndex, in DataValueContainer dataValueContainer)
+        {
+            var (startOffset, endOffset) = GetOffsets(in rowIndex);
+            var actualIndex = startOffset + keyIndex;
+            if (actualIndex >= endOffset)
+            {
+                dataValueContainer._type = ArrowTypeId.Null;
+                return;
+            }
+
+            _valueColumn.GetValueAt(actualIndex, dataValueContainer, default);
+        }
+
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             if (child != null)
@@ -113,6 +145,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return 0;
                 }
                 return -1;
+            }
+            else if (value.Type == ArrowTypeId.Null)
+            {
+                return 1;
             }
             if (child != null)
             {
@@ -167,6 +203,35 @@ namespace FlowtideDotNet.Core.ColumnStore
                     }
                     return 0;
                 }
+                else if (map is MapValue mapValue)
+                {
+                    var length = endOffset - startOffset;
+                    var otherLength = mapValue.GetLength();
+
+                    if (length != otherLength)
+                    {
+                        return length - otherLength;
+                    }
+
+                    var dataValueContainer = new DataValueContainer();
+                    for (int i = 0; i < length; i++)
+                    {
+                        mapValue.GetKeyAt(i, dataValueContainer);   
+                        var keyCompareVal = _keyColumn.CompareTo(startOffset + i, dataValueContainer, default);
+                        if (keyCompareVal != 0)
+                        {
+                            return keyCompareVal;
+                        }
+                        //var valueVal = _valueColumn.GetValueAt(startOffset + i, default);
+                        mapValue.GetValueAt(i, dataValueContainer);
+                        var valueCompareVal = _valueColumn.CompareTo(startOffset + i, dataValueContainer, default);
+                        if (valueCompareVal != 0)
+                        {
+                            return valueCompareVal;
+                        }
+                    }
+                    return 0;
+                }
                 else
                 {
                     throw new NotImplementedException();
@@ -208,6 +273,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     if (keyLocationStart < 0)
                     {
                         dataValueContainer._type = ArrowTypeId.Null;
+                        return;
                     }
                     _valueColumn.GetValueAt(keyLocationStart, dataValueContainer, child.Child);
                     return;
@@ -253,15 +319,19 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             // Update the offsets
-            _offsets.Update(index + 1, ordered.Count, ordered.Count - (endOffset - startOffset));
+            _offsets.Update(index + 1, startOffset + ordered.Count, ordered.Count - (endOffset - startOffset));
 
             return index;
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
             where T : IDataValue
         {
-            return BoundarySearch.SearchBoundriesForMapColumn(this, dataValue, start, end, child, default);
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundriesForDataColumnDesc(this, dataValue, start, end, child, default);
+            }
+            return BoundarySearch.SearchBoundriesForDataColumn(this, dataValue, start, end, child, default);
         }
 
         public void RemoveAt(in int index)
@@ -346,6 +416,24 @@ namespace FlowtideDotNet.Core.ColumnStore
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             return ArrowTypeId.Map;
+        }
+
+        public void Clear()
+        {
+            _offsets.Clear();
+            _offsets.Add(0);
+            _keyColumn.Clear();
+            _valueColumn.Clear();
+        }
+
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public int EndNewList()
+        {
+            throw new NotImplementedException();
         }
     }
 }

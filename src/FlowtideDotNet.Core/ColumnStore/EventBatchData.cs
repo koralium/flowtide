@@ -33,6 +33,11 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IReadOnlyList<IColumn> Columns => columns;
 
+        public IColumn GetColumn(in int index)
+        {
+            return columns[index];
+        }
+
         /// <summary>
         /// Compares two rows from different batches.
         /// </summary>
@@ -59,9 +64,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 if (disposing)
                 {
-                    foreach(var column in columns)
+                    for (int i = 0; i < columns.Length; i++)
                     {
-                        column.Dispose();
+                        columns[i].Dispose();
+                        columns[i] = null!;
                     }
                 }
 

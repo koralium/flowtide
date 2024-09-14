@@ -23,6 +23,8 @@ using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Base.Metrics;
 using System.Text;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Base.Vertices.Unary
 {
@@ -51,6 +53,8 @@ namespace FlowtideDotNet.Base.Vertices.Unary
 
         private ILogger? _logger;
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
+
+        protected IMemoryAllocator MemoryAllocator => _vertexHandler?.MemoryManager ?? throw new NotSupportedException("Initialize must be called before accessing memory allocator");
 
         protected UnaryVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {

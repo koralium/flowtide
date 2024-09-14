@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
-    internal struct ColumnRowReference
+    public struct ColumnRowReference
     {
         public int RowIndex;
         public EventBatchData referenceBatch;

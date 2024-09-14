@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         int Update<T>(in int index, in T value)
             where T: IDataValue;
 
-        (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child)
+        (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue;
 
         void RemoveAt(in int index);
@@ -54,5 +54,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount);
 
         ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child);
+
+        void Clear();
+
+        void AddToNewList<T>(in T value) where T : IDataValue;
+
+        int EndNewList();
     }
 }

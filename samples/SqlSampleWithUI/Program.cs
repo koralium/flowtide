@@ -20,7 +20,6 @@ using FlowtideDotNet.Substrait.Sql;
 using SqlSampleWithUI;
 using FlowtideDotNet.DependencyInjection;
 using FlowtideDotNet.Core.Sources.Generic;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);

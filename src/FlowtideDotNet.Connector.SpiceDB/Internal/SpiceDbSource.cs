@@ -44,6 +44,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
     {
         private PermissionsService.PermissionsServiceClient? m_client;
         private readonly SpiceDbSourceOptions m_spiceDbSourceOptions;
+        private readonly ReadRelation _readRelation;
         private FlowtideSpiceDbSourceState? m_state;
         private readonly SpiceDbRowEncoder m_rowEncoder;
         private WatchService.WatchServiceClient? m_watchClient;
@@ -58,6 +59,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         public SpiceDbSource(SpiceDbSourceOptions spiceDbSourceOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
             this.m_spiceDbSourceOptions = spiceDbSourceOptions;
+            this._readRelation = readRelation;
             m_rowEncoder = SpiceDbRowEncoder.Create(readRelation.BaseSchema.Names);
 
             if (readRelation.Filter != null)
@@ -271,7 +273,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                         }
                         if (outputData.Count > 0)
                         {
-                            await output.SendAsync(new StreamEventBatch(outputData));
+                            await output.SendAsync(new StreamEventBatch(outputData, _readRelation.OutputLength));
                             await output.SendWatermark(GetCurrentWatermark());
                             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                         }
@@ -378,7 +380,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                                 {
                                     retries = 0;
                                     cursor = r.AfterResultCursor;
-                                    await output.SendAsync(new StreamEventBatch(outputData));
+                                    await output.SendAsync(new StreamEventBatch(outputData, _readRelation.OutputLength));
                                     outputData = new List<RowEvent>();
                                 }
                                 if (firstToken == null)
@@ -389,7 +391,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                             }
                             if (outputData.Count > 0)
                             {
-                                await output.SendAsync(new StreamEventBatch(outputData));
+                                await output.SendAsync(new StreamEventBatch(outputData, _readRelation.OutputLength));
                             }
                             m_state.TypeTimestamps[readType] = minRevision;
                             break;

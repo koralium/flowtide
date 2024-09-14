@@ -14,10 +14,10 @@ using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.Serializers;
@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _tree;
         private readonly List<int> _keyColumns;
         private readonly List<int> _otherColumns;
-        private readonly Func<RowEvent, bool>? _filter;
+        private readonly Func<EventBatchData, int, bool>? _filter;
 
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
@@ -63,8 +63,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
             if (normalizationRelation.Filter != null)
             {
-                // Will be changed later on to use functions that can take columns
-                _filter = BooleanCompiler.Compile<RowEvent>(normalizationRelation.Filter, functionsRegister);
+                _filter = ColumnBooleanCompiler.Compile(normalizationRelation.Filter, functionsRegister);
             }
 
             if (normalizationRelation.EmitSet)
@@ -120,7 +119,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             Debug.Assert(_eventsProcessed != null);
             Debug.Assert(_eventsCounter != null);
 
-            var otherColumnsMemoryManager = new BatchMemoryManager(_otherColumns.Count);
+            var otherColumnsMemoryManager = MemoryAllocator;
 
             PrimitiveList<int> toEmitOffsets = new PrimitiveList<int>(otherColumnsMemoryManager);
             PrimitiveList<int> weights = new PrimitiveList<int>(otherColumnsMemoryManager);
@@ -131,7 +130,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             
             for (int i = 0; i < _otherColumns.Count; i++)
             {
-                deleteBatchColumns.Add(new Column(otherColumnsMemoryManager));
+                deleteBatchColumns.Add(Column.Create(otherColumnsMemoryManager));
             }
 
             _eventsProcessed.Add(msg.Data.Weights.Count);
@@ -146,8 +145,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 {
                     if (_filter != null)
                     {
-                        var rowEvent = RowEventToEventBatchData.RowReferenceToRowEvent(weight, 0, new ColumnRowReference() { referenceBatch = msg.Data.EventBatchData, RowIndex = i });
-                        if (_filter(rowEvent))
+                        if (_filter(msg.Data.EventBatchData, i))
                         {
                             await Upsert(i, columnRef, toEmitOffsets, weights, deleteBatchKeyOffsets, deleteBatchColumns);
                         }
@@ -172,12 +170,18 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 iterations.Add(0);
             }
 
-            IColumn[] columns = new IColumn[_emitList.Count];
-            for (int i = 0; i < _emitList.Count; i++)
+            if (weights.Count > 0)
             {
-                columns[i] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_emitList[i]], toEmitOffsets, false);
+                IColumn[] columns = new IColumn[_emitList.Count];
+
+                for (int i = 0; i < _emitList.Count; i++)
+                {
+                    columns[i] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_emitList[i]], toEmitOffsets, false);
+                }
+
+                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
             }
-            yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+            
 
             if (deleteBatchKeyOffsets.Count > 0)
             {
@@ -323,8 +327,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 new BPlusTreeOptions<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>()
                 {
                     Comparer = new NormalizeTreeComparer(_normalizationRelation.KeyIndex),
-                    KeySerializer = new NormalizeKeyStorageSerializer(_normalizationRelation.KeyIndex),
-                    ValueSerializer = new NormalizeValueSerializer(_otherColumns)
+                    KeySerializer = new NormalizeKeyStorageSerializer(_normalizationRelation.KeyIndex, MemoryAllocator),
+                    ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator)
                 });
         }
     }

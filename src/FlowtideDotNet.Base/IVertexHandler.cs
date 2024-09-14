@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 
@@ -27,6 +28,8 @@ namespace FlowtideDotNet.Base
         IStateManagerClient StateClient { get; }
 
         ILoggerFactory LoggerFactory { get; }
+
+        IOperatorMemoryManager MemoryManager { get; }
 
         /// <summary>
         /// Schedules a checkpoint

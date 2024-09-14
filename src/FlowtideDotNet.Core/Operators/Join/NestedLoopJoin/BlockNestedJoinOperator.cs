@@ -271,7 +271,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 
             await _leftTemporary.Clear();
 
-            yield return new StreamEventBatch(output);
+            yield return new StreamEventBatch(output, joinRelation.OutputLength);
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)

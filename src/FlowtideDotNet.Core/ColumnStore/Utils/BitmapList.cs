@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Buffers;
 using System.Collections;
@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             ~((1 << 29) - 1), // 28th element with all bits except the lowest 29 bits set
             ~((1 << 30) - 1), // 29th element with all bits except the lowest 30 bits set
             -2147483648, // 30th element with all bits except the lowest 31 bits set
-            ~((1 << 32) - 1)
+            0
         ];
         private IMemoryAllocator? memoryAllocator;
         private int _length;
@@ -399,6 +399,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public void Clear()
+        {
+            _length = 0;
         }
     }
 }

@@ -10,17 +10,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.Memory
+namespace FlowtideDotNet.Core.Compute.Columnar
 {
-    public unsafe interface IMemoryAllocator
+    internal interface IColumnAggregateContainer
     {
-        IMemoryOwner<byte> Allocate(int size, int alignment);
+        ValueTask Compute(ColumnRowReference key, EventBatchData rowBatch, int rowIndex, ColumnReference state, long weight);
+
+        void Disponse();
+
+        Task Commit();
+
+        ValueTask GetValue(ColumnRowReference key, ColumnReference state, Column outputColumn);
     }
 }

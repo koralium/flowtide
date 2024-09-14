@@ -153,7 +153,7 @@ namespace FlowtideDotNet.Core.Operators.Set
 #endif
                 Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
                 _eventsCounter.Add(output.Count);
-                yield return new StreamEventBatch(output);
+                yield return new StreamEventBatch(output, setRelation.OutputLength);
             }
 #if DEBUG_WRITE
             await outputWriter.FlushAsync();

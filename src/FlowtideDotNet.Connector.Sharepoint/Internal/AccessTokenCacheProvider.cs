@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         public override AccessToken GetToken(TokenRequestContext requestContext, CancellationToken cancellationToken)
         {
             var scopes = string.Join(" ", requestContext.Scopes);
-            if (accessTokens.TryGetValue(scopes, out var cachedToken) && cachedToken.ExpiresOn > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(5)))
+            if (accessTokens.TryGetValue(scopes, out var cachedToken) && cachedToken.ExpiresOn > DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(10)))
             {
                 return cachedToken;
             }
@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         public override ValueTask<AccessToken> GetTokenAsync(TokenRequestContext requestContext, CancellationToken cancellationToken)
         {
             var scopes = string.Join(" ", requestContext.Scopes);
-            if (accessTokens.TryGetValue(scopes, out var cachedToken) && cachedToken.ExpiresOn > DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(5)))
+            if (accessTokens.TryGetValue(scopes, out var cachedToken) && cachedToken.ExpiresOn > DateTimeOffset.UtcNow.Add(TimeSpan.FromMinutes(10)))
             {
                 return ValueTask.FromResult(cachedToken);
             }

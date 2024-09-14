@@ -32,8 +32,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Core.Compute.Columnar;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -61,8 +61,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private IBPlusTreeIterator<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _leftIterator;
         private IBPlusTreeIterator<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _rightIterator;
 
-        // To be deprecated when functions also work with column store
-        protected readonly Func<RowEvent, RowEvent, bool>? _postCondition;
+        protected readonly Func<EventBatchData, int, EventBatchData, int, bool>? _postCondition;
 
         private readonly DataValueContainer _dataValueContainer;
 
@@ -91,7 +90,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             if (mergeJoinRelation.PostJoinFilter != null)
             {
-                _postCondition = BooleanCompiler.Compile<RowEvent>(mergeJoinRelation.PostJoinFilter, functionsRegister, mergeJoinRelation.Left.OutputLength);
+                _postCondition = ColumnBooleanCompiler.CompileTwoInputs(mergeJoinRelation.PostJoinFilter, functionsRegister, mergeJoinRelation.Left.OutputLength);
             }
         }
 
@@ -166,6 +165,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             allInput.WriteLine("Checkpoint");
             await allInput.FlushAsync();
 #endif
+            _leftIterator!.Reset();
+
+            _rightIterator!.Reset();
+
             await _leftTree!.Commit();
             await _rightTree!.Commit();
             return new JoinState();
@@ -175,7 +178,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_rightIterator != null);
-            var memoryManager = GlobalMemoryManager.Instance; //new BatchMemoryManager(_rightOutputColumns.Count);
+            var memoryManager = MemoryAllocator;
             //using var it = _rightTree!.CreateIterator();
             List<Column> rightColumns = new List<Column>();
             PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager);
@@ -220,9 +223,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         {
                             if (_postCondition != null)
                             {
-                                var rightEvent = RowEventToEventBatchData.RowReferenceToRowEvent(1, 0, new ColumnRowReference() { referenceBatch = pageKeyStorage!._data, RowIndex = k });
-                                var leftEvent = RowEventToEventBatchData.RowReferenceToRowEvent(1, 0, columnReference);
-                                if (!_postCondition(leftEvent, rightEvent))
+                                if (!_postCondition(columnReference.referenceBatch, columnReference.RowIndex, pageKeyStorage._data, k))
                                 {
                                     _searchRightComparer.end = int.MinValue;
                                     break;
@@ -321,7 +322,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_leftIterator != null);
-            var memoryManager = GlobalMemoryManager.Instance;
+            var memoryManager = MemoryAllocator;
             List<Column> leftColumns = new List<Column>();
             PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager);
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
@@ -368,9 +369,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         {
                             if (_postCondition != null)
                             {
-                                var leftEvent = RowEventToEventBatchData.RowReferenceToRowEvent(1, 0, new ColumnRowReference() { referenceBatch = pageKeyStorage!._data, RowIndex = k });
-                                var rightEvent = RowEventToEventBatchData.RowReferenceToRowEvent(1, 0, columnReference);
-                                if (!_postCondition(leftEvent, rightEvent))
+                                if (!_postCondition(pageKeyStorage._data, k, columnReference.referenceBatch, columnReference.RowIndex))
                                 {
                                     _searchLeftComparer.end = int.MinValue;
                                     break;
@@ -597,15 +596,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 new BPlusTreeOptions<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>()
                 {
                     Comparer = _leftInsertComparer,
-                    KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Left.OutputLength),
-                    ValueSerializer = new JoinWeightsSerializer()
+                    KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Left.OutputLength, MemoryAllocator),
+                    ValueSerializer = new JoinWeightsSerializer(MemoryAllocator)
                 });
             _rightTree = await stateManagerClient.GetOrCreateTree("right",
                 new BPlusTreeOptions<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>()
                 {
                     Comparer = _rightInsertComparer,
-                    KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Right.OutputLength),
-                    ValueSerializer = new JoinWeightsSerializer()
+                    KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Right.OutputLength, MemoryAllocator),
+                    ValueSerializer = new JoinWeightsSerializer(MemoryAllocator)
                 });
 
             _leftIterator = _leftTree.CreateIterator();

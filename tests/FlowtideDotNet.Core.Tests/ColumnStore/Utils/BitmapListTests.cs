@@ -10,8 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestRemoveAtFirst()
         {
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
             list.Set(0);
             list.Set(31);
             list.Set(33);
@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestRemoveAtMiddle()
         {
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
             list.Set(2);
             list.Set(16);
             list.Set(28);
@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestRemoveAtLast()
         {
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
             list.Set(2);
             list.Set(16);
             list.Set(28);
@@ -75,7 +75,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestRemoveAtLastNextBitTrue()
         {
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
             list.Set(2);
             list.Set(16);
             list.Set(28);
@@ -96,7 +96,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestInsertAt()
         {
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
             list.Set(2);
             list.Set(16);
             list.Set(28);
@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestInsertAtSecondInteger()
         {
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
             list.Set(2);
             list.Set(16);
             list.Set(28);
@@ -137,7 +137,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestInitialization()
         {
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
             for (int i = 0; i < 64; i++)
             {
                 Assert.False(list.Get(i));
@@ -147,7 +147,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestSetAndUnsetBits()
         {
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
             list.Set(0);
             Assert.True(list.Get(0));
             list.Unset(0);
@@ -163,7 +163,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestBoundaryConditions()
         {
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
             list.Set(0);
             list.Set(31);
             list.Set(32);
@@ -186,7 +186,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestInsertRemoveInEmptyList()
         {
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
             list.InsertAt(0, true);
             Assert.True(list.Get(0));
 
@@ -197,7 +197,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestInsertRemoveSingleBitList()
         {
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
             list.Set(10);
             list.InsertAt(5, true);
             Assert.True(list.Get(5));
@@ -211,7 +211,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestLargeIndexSet()
         {
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
             list.Set(1024);
             Assert.True(list.Get(1024));
             Assert.False(list.Get(1023));
@@ -223,7 +223,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestInsertAtEndOfIndex()
         {
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
             for (int i = 1; i < 32; i++)
             {
                 list.InsertAt(i, true);
@@ -242,7 +242,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         public void TestSequence()
         {
             //var lines = File.ReadAllLines("./ColumnStore/Utils/alloperations.csv");
-            var list = new BitmapList(new BatchMemoryManager(1));
+            var list = new BitmapList(GlobalMemoryManager.Instance);
 
             list.InsertAt(0, false);
 
@@ -256,6 +256,117 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             for (int i = 1; i < 64; i++)
             {
                 Assert.True(list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertSpecialCaseShiftLeftAtBorder()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 583; i++)
+            {
+                list.Unset(i);
+            }
+            list.Set(584);
+            list.Unset(585);
+            for (int i = 586; i <= 606; i++)
+            {
+                list.Unset(i);
+            }
+
+            list.InsertAt(607, false);
+            
+            for (int i = 0; i < 583; i++)
+            {
+                Assert.False(list.Get(i));
+            }
+            Assert.True(list.Get(584));
+            for (int i = 585; i <= 607; i++)
+            {
+                Assert.False(list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertRandomInOrder()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+
+            Random r = new Random(123);
+
+            List<bool> expected = new List<bool>();
+
+            for (int i = 0; i < 1_00_000; i++)
+            {
+                var v = r.Next(0, 2);
+                if (v == 0)
+                {
+                    list.InsertAt(i, false);
+                    expected.Add(false);
+                }
+                else
+                {
+                    list.InsertAt(i, true);
+                    expected.Add(true);
+                }
+            }
+            
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+
+            for (int i = 0; i < 10_000; i++)
+            {
+                var index = r.Next(0, expected.Count);
+                list.RemoveAt(index);
+                expected.RemoveAt(index);
+            }
+
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertRandomRandomOrder()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+
+            Random r = new Random(123);
+
+            List<bool> expected = new List<bool>();
+
+            for (int i = 0; i < 1_00_000; i++)
+            {
+                var v = r.Next(0, 2);
+                bool val = true;
+                if (v == 0)
+                {
+                    val = false;
+                }
+                var index = r.Next(0, expected.Count);
+                list.InsertAt(index, val);
+                expected.Insert(index, val);
+            }
+
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+
+            for (int i = 0; i < 10_000; i++)
+            {
+                var index = r.Next(0, expected.Count);
+                list.RemoveAt(index);
+                expected.RemoveAt(index);
+            }
+
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
             }
         }
     }

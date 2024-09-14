@@ -15,11 +15,11 @@ using FASTER.core;
 using FastSerialization;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Benchmarks
         //public int CachePageCount;
         private EventBatchData data = new EventBatchData(
         [
-            new Column(new BatchMemoryManager(1))
+            new Column(GlobalMemoryManager.Instance)
         ]);
 
         private List<RowEvent> rowEvents = new List<RowEvent>();
@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Benchmarks
             {
                 BucketSize = 1024,
                 Comparer = new ColumnComparer(1),
-                KeySerializer = new ColumnStoreSerializer(1),
+                KeySerializer = new ColumnStoreSerializer(1, GlobalMemoryManager.Instance),
                 ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
             }).GetAwaiter().GetResult();
             tree.Clear();

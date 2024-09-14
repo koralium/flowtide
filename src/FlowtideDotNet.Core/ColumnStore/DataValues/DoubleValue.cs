@@ -46,9 +46,17 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public decimal AsDecimal => throw new NotImplementedException();
 
+        public bool IsNull => false;
+
         public int CompareTo(in IDataValue other)
         {
             return AsDouble.CompareTo(other.AsDouble);
+        }
+
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = ArrowTypeId.Double;
+            container._doubleValue = this;
         }
 
         public override string ToString()

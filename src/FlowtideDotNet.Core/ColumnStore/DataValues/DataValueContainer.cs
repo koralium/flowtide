@@ -54,5 +54,20 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IMapValue AsMap => _mapValue!.AsMap;
 
         public decimal AsDecimal => _decimalValue.AsDecimal;
+
+        public bool IsNull => _type == ArrowTypeId.Null;
+
+        public void CopyToContainer(DataValueContainer container)
+        {
+            container._type = _type;
+            container._stringValue = _stringValue;
+            container._binaryValue = _binaryValue;
+            container._int64Value = _int64Value;
+            container._doubleValue = _doubleValue;
+            container._boolValue = _boolValue;
+            container._decimalValue = _decimalValue;
+            container._listValue = _listValue;
+            container._mapValue = _mapValue;
+        }
     }
 }

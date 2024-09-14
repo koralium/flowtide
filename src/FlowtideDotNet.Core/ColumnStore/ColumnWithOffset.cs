@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             innerColumn.Return();
         }
 
-        public (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
+        public (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child, bool desc = false) where T : IDataValue
         {
             throw new NotSupportedException("Column with offset does not SearchBoundries.");
         }

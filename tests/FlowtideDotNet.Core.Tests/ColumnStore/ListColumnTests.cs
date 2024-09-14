@@ -12,7 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -287,6 +287,44 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         }
 
         [Fact]
+        public void InsertNullInMiddleOfList()
+        {
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            listColumn.Add(new ListValue(new List<IDataValue>()
+            {
+                new Int64Value(1),
+                new Int64Value(2),
+                new Int64Value(3)
+            }));
+            listColumn.Add(new ListValue(new List<IDataValue>()
+            {
+                new Int64Value(4),
+                new Int64Value(5)
+            }));
+
+            listColumn.InsertAt(1, NullValue.Instance);
+
+            Assert.Equal(3, listColumn.Count);
+
+            var currentValue = listColumn.GetValueAt(0, default);
+            var list = currentValue.AsList;
+            Assert.Equal(3, list.Count);
+            Assert.Equal(1, list.GetAt(0).AsLong);
+            Assert.Equal(2, list.GetAt(1).AsLong);
+            Assert.Equal(3, list.GetAt(2).AsLong);
+
+            currentValue = listColumn.GetValueAt(1, default);
+            list = currentValue.AsList;
+            Assert.Equal(0, list.Count);
+
+            currentValue = listColumn.GetValueAt(2, default);
+            list = currentValue.AsList;
+            Assert.Equal(2, list.Count);
+            Assert.Equal(4, list.GetAt(0).AsLong);
+            Assert.Equal(5, list.GetAt(1).AsLong);
+        }
+
+        [Fact]
         public void InsertAtEndOfList()
         {
             ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
@@ -381,7 +419,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 new Int64Value(4),
                 new Int64Value(5),
                 new Int64Value(6)
-            }), 0, 2, default);
+            }), 0, 2, default, false);
 
             Assert.Equal(1, start);
             Assert.Equal(1, end);
