@@ -12,6 +12,7 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
@@ -43,6 +44,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
     {
         private readonly AggregateRelation m_aggregateRelation;
         private readonly FunctionsRegister m_functionsRegister;
+
+        private ICounter<long>? _eventsCounter;
+        private ICounter<long>? _eventsProcessed;
 
         /// <summary>
         /// Temporary until column based aggregates are implemented
@@ -178,6 +182,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(_tree != null, "Tree should not be null");
             Debug.Assert(_temporaryTree != null, "Temporary tree should not be null");
             Debug.Assert(m_groupValuesBatch != null);
+            Debug.Assert(_eventsCounter != null);
 
 #if DEBUG_WRITE
             allInput.WriteLine("Watermark");
@@ -217,7 +222,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                     var val = page.Values.Get(comparer.start);
 
-                    page.EnterWriteLock();
                     for (int i = 0; i < m_measures.Count; i++)
                     {
                         var measureEmitIndex = m_measureOutputIndices[i];
@@ -243,7 +247,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     {
                         page.Values._previousValueSent.Update(comparer.start, true);
                     }
-                    page.ExitWriteLock();
+
                     outputIterations.Add(0);
                     outputWeights.Add(1);
                     if (deleteAdded)
@@ -287,6 +291,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     });
                 }
 
+                _eventsCounter.Add(outputWeights.Count);
                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(outputWeights, outputIterations, new EventBatchData(outputColumns)));
 
 #if DEBUG_WRITE
@@ -370,7 +375,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             }
                         }
 
-                        treePage.EnterWriteLock();
+                        
                         // Add measure values
                         for (int i = 0; i < m_measures.Count; i++)
                         {
@@ -409,13 +414,38 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             // Mark the value as sent
                             treePage.Values._previousValueSent.Update(comparer.start, true);
                         }
-                        treePage.ExitWriteLock();
 
                         await treePage.SavePage();
+
+                        if (outputWeights.Count >= 1000)
+                        {
+                            _eventsCounter.Add(outputWeights.Count);
+                            var batch = new StreamEventBatch(new EventBatchWeighted(outputWeights, outputIterations, new EventBatchData(outputColumns)));
+#if DEBUG_WRITE
+                            foreach (var ev in batch.Events)
+                            {
+                                outputWriter.WriteLine($"{ev.Weight} {ev.ToJson()}");
+                            }
+                            outputWriter.Flush();
+#endif
+                            yield return batch;
+
+                            // Reset all the batch columns
+                            outputWeights = new PrimitiveList<int>(MemoryAllocator);
+                            outputIterations = new PrimitiveList<uint>(MemoryAllocator);
+                            outputColumns = new ColumnStore.Column[outputColumnCount];
+                            for (int i = 0; i < outputColumnCount; i++)
+                            {
+                                outputColumns[i] = ColumnFactory.Get(MemoryAllocator);
+                            }
+                        }
                     }
                 }
 
-                var outputBatch = new StreamEventBatch(new EventBatchWeighted(outputWeights, outputIterations, new EventBatchData(outputColumns)));
+                if (outputWeights.Count > 0)
+                {
+                    _eventsCounter.Add(outputWeights.Count);
+                    var outputBatch = new StreamEventBatch(new EventBatchWeighted(outputWeights, outputIterations, new EventBatchData(outputColumns)));
 
 #if DEBUG_WRITE
                 foreach (var ev in outputBatch.Events)
@@ -425,7 +455,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 outputWriter.Flush();
 #endif
 
-                yield return outputBatch;
+                    yield return outputBatch;
+                }
+
 
                 await _temporaryTree.Clear();
             }
@@ -437,6 +469,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(_tree != null, "Tree should not be null");
             Debug.Assert(_temporaryTree != null, "Temporary tree should not be null");
             Debug.Assert(_treeIterator != null);
+            Debug.Assert(_eventsProcessed != null);
 
             for(int i = 0; i < m_groupValues.Length; i++)
             {
@@ -457,6 +490,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
 
             var data = msg.Data;
+
+            _eventsProcessed.Add(data.Count);
+
             for (int i = 0; i < data.Count; i++)
             {
                 var groupIndex = i;
@@ -503,7 +539,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                         var state = page.Values.Get(index);
 
-                        page.EnterWriteLock();
                         if (m_measures.Count > 0)
                         {
                             for (int k = 0; k < m_measures.Count; k++)
@@ -519,8 +554,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                         var currentWeight = page.Values._weights.Get(index);
                         page.Values._weights.Update(index, currentWeight + msg.Data.Weights.Get(i));
-
-                        page.ExitWriteLock();
 
                         await page.SavePage();
                     }
@@ -588,6 +621,15 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             }
 
 #endif
+            // Setup metrics
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
 
             if (m_aggregateRelation.Groupings != null && m_aggregateRelation.Groupings.Count > 0)
             {
