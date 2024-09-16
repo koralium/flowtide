@@ -12,6 +12,7 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
@@ -43,6 +44,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
     {
         private readonly AggregateRelation m_aggregateRelation;
         private readonly FunctionsRegister m_functionsRegister;
+
+        private ICounter<long>? _eventsCounter;
+        private ICounter<long>? _eventsProcessed;
 
         /// <summary>
         /// Temporary until column based aggregates are implemented
@@ -178,6 +182,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(_tree != null, "Tree should not be null");
             Debug.Assert(_temporaryTree != null, "Temporary tree should not be null");
             Debug.Assert(m_groupValuesBatch != null);
+            Debug.Assert(_eventsCounter != null);
 
 #if DEBUG_WRITE
             allInput.WriteLine("Watermark");
@@ -286,6 +291,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     });
                 }
 
+                _eventsCounter.Add(outputWeights.Count);
                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(outputWeights, outputIterations, new EventBatchData(outputColumns)));
 
 #if DEBUG_WRITE
@@ -413,6 +419,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                         if (outputWeights.Count >= 1000)
                         {
+                            _eventsCounter.Add(outputWeights.Count);
                             var batch = new StreamEventBatch(new EventBatchWeighted(outputWeights, outputIterations, new EventBatchData(outputColumns)));
 #if DEBUG_WRITE
                             foreach (var ev in batch.Events)
@@ -437,6 +444,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                 if (outputWeights.Count > 0)
                 {
+                    _eventsCounter.Add(outputWeights.Count);
                     var outputBatch = new StreamEventBatch(new EventBatchWeighted(outputWeights, outputIterations, new EventBatchData(outputColumns)));
 
 #if DEBUG_WRITE
@@ -461,6 +469,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(_tree != null, "Tree should not be null");
             Debug.Assert(_temporaryTree != null, "Temporary tree should not be null");
             Debug.Assert(_treeIterator != null);
+            Debug.Assert(_eventsProcessed != null);
 
             for(int i = 0; i < m_groupValues.Length; i++)
             {
@@ -481,6 +490,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
 
             var data = msg.Data;
+
+            _eventsProcessed.Add(data.Count);
+
             for (int i = 0; i < data.Count; i++)
             {
                 var groupIndex = i;
@@ -609,6 +621,15 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             }
 
 #endif
+            // Setup metrics
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
 
             if (m_aggregateRelation.Groupings != null && m_aggregateRelation.Groupings.Count > 0)
             {

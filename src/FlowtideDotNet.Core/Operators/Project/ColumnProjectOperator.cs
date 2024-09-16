@@ -11,15 +11,19 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -31,6 +35,8 @@ namespace FlowtideDotNet.Core.Operators.Project
     {
         private readonly ProjectRelation projectRelation;
         private readonly Action<EventBatchData, int, Column>[] _expressions;
+        private ICounter<long>? _eventsCounter;
+        private ICounter<long>? _eventsProcessed;
 
         public ColumnProjectOperator(ProjectRelation projectRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -59,9 +65,14 @@ namespace FlowtideDotNet.Core.Operators.Project
             return Task.FromResult<object?>(default);
         }
 
-        public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
+            Debug.Assert(_eventsProcessed != null);
+            Debug.Assert(_eventsCounter != null);
             var data = msg.Data;
+
+            _eventsProcessed.Add(data.Count);
+            _eventsCounter.Add(data.Count);
 
             Column[] projectionColumns = new Column[_expressions.Length];
 
@@ -96,7 +107,7 @@ namespace FlowtideDotNet.Core.Operators.Project
                 }
 
                 var newBatch = new EventBatchData(outputColumns);
-                yield return new StreamEventBatch(new EventBatchWeighted(data.Weights, data.Iterations, newBatch));
+                return new SingleAsyncEnumerable<StreamEventBatch>(new StreamEventBatch(new EventBatchWeighted(data.Weights, data.Iterations, newBatch)));
             }
             else
             {
@@ -110,12 +121,21 @@ namespace FlowtideDotNet.Core.Operators.Project
                     outputColumns[i + data.EventBatchData.Columns.Count] = projectionColumns[i];
                 }
                 var newBatch = new EventBatchData(outputColumns);
-                yield return new StreamEventBatch(new EventBatchWeighted(data.Weights, data.Iterations, newBatch));
+                return new SingleAsyncEnumerable<StreamEventBatch>(new StreamEventBatch(new EventBatchWeighted(data.Weights, data.Iterations, newBatch)));
             }
         }
 
         protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
         {
+            Logger.InitializingProjectOperator(StreamName, Name);
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
             return Task.CompletedTask;
         }
     }
