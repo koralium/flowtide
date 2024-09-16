@@ -19,6 +19,7 @@ using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Linq.Expressions;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.MinMax
 {
@@ -168,14 +169,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
             outputColumn.Add(value);
         }
 
-        private static Task<MinMaxColumnAggregationSingleton> InitializeMin(int groupingLength, IStateManagerClient stateManagerClient)
+        private static Task<MinMaxColumnAggregationSingleton> InitializeMin(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
-            return InitializeMinMax(groupingLength, stateManagerClient, new MinInsertComparer(groupingLength), new MinSearchComparer(groupingLength), "mintree");
+            return InitializeMinMax(groupingLength, stateManagerClient, new MinInsertComparer(groupingLength), new MinSearchComparer(groupingLength), "mintree", memoryAllocator);
         }
 
-        private static Task<MinMaxColumnAggregationSingleton> InitializeMax(int groupingLength, IStateManagerClient stateManagerClient)
+        private static Task<MinMaxColumnAggregationSingleton> InitializeMax(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
-            return InitializeMinMax(groupingLength, stateManagerClient, new MaxInsertComparer(groupingLength), new MaxSearchComparer(groupingLength), "maxtree");
+            return InitializeMinMax(groupingLength, stateManagerClient, new MaxInsertComparer(groupingLength), new MaxSearchComparer(groupingLength), "maxtree", memoryAllocator);
         }
 
         private static async Task Commit(MinMaxColumnAggregationSingleton singleton)
@@ -188,13 +189,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
             IStateManagerClient stateManagerClient,
             IBplusTreeComparer<ListAggColumnRowReference, ListAggKeyStorageContainer> comparer,
             IMinMaxSearchComparer searchComparer,
-            string treeName)
+            string treeName,
+            IMemoryAllocator memoryAllocator)
         {
             var tree = await stateManagerClient.GetOrCreateTree(treeName,
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ListAggColumnRowReference, int, ListAggKeyStorageContainer, ListValueContainer<int>>()
                 {
                     Comparer = comparer,
-                    KeySerializer = new ListAggKeyStorageSerializer(groupingLength),
+                    KeySerializer = new ListAggKeyStorageSerializer(groupingLength, memoryAllocator),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
                 });
 

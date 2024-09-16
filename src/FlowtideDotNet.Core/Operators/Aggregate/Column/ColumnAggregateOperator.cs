@@ -15,7 +15,6 @@ using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute;
@@ -52,7 +51,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         private List<Action<EventBatchData, int, ColumnStore.Column>>? groupExpressions;
         private ColumnStore.Column[] m_groupValues;
-        private EventBatchData m_groupValuesBatch;
+        private EventBatchData? m_groupValuesBatch;
 
         private ColumnStore.Column[] m_temporaryStateValues;
         private EventBatchData m_temporaryStateBatch;
@@ -83,45 +82,20 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             m_functionsRegister = functionsRegister;
             m_outputCount = aggregateRelation.OutputLength;
 
-            if (aggregateRelation.Groupings != null && aggregateRelation.Groupings.Count > 0)
+            int groupLength = 0;
+            if (m_aggregateRelation.Groupings != null && m_aggregateRelation.Groupings.Count > 0)
             {
-                if (aggregateRelation.Groupings.Count > 1)
+                if (m_aggregateRelation.Groupings.Count > 1)
                 {
                     throw new InvalidOperationException("Aggregate operator only supports one grouping set at this point");
                 }
 
-                var grouping = aggregateRelation.Groupings[0];
-
-                m_groupValues = new ColumnStore.Column[grouping.GroupingExpressions.Count];
-
-                for (int i = 0; i < grouping.GroupingExpressions.Count; i++)
-                {
-                    m_groupValues[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
-                }
-
-                groupExpressions = new List<Action<EventBatchData, int, ColumnStore.Column>>();
-                foreach (var expr in grouping.GroupingExpressions)
-                {
-                    groupExpressions.Add(ColumnProjectCompiler.Compile(expr, functionsRegister));
-                }
+                var grouping = m_aggregateRelation.Groupings[0];
+                groupLength = grouping.GroupingExpressions.Count;
             }
-            else
-            {
-                m_groupValues = new ColumnStore.Column[0];
-            }
-            m_groupValuesBatch = new EventBatchData(m_groupValues);
-
-            m_temporaryStateValues = new ColumnStore.Column[(aggregateRelation.Measures?.Count ?? 0) * 2];
-
-            for (int i = 0; i < m_temporaryStateValues.Length; i++)
-            {
-                m_temporaryStateValues[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
-            }
-
-            m_temporaryStateBatch = new EventBatchData(m_temporaryStateValues);
 
             m_groupOutputIndices = new List<int>();
-            for (int i = 0; i < m_groupValues.Length; i++)
+            for (int i = 0; i < groupLength; i++)
             {
                 if (aggregateRelation.EmitSet)
                 {
@@ -141,12 +115,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 {
                     if (aggregateRelation.EmitSet)
                     {
-                        var emitIndex = aggregateRelation.Emit.IndexOf(i + m_groupValues.Length);
+                        var emitIndex = aggregateRelation.Emit.IndexOf(i + groupLength);
                         m_measureOutputIndices.Add(emitIndex);
                     }
                     else
                     {
-                        m_measureOutputIndices.Add(i + m_groupValues.Length);
+                        m_measureOutputIndices.Add(i + groupLength);
                     }
                 }
             }
@@ -180,6 +154,22 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             {
                 await measure.Commit();
             }
+
+            // Reset all cache columns
+            for (int i = 0; i < m_groupValues.Length; i++)
+            {
+                m_groupValues[i].Dispose();
+                m_groupValues[i] = ColumnFactory.Get(MemoryAllocator);
+            }
+            for (int i = 0; i < m_temporaryStateValues.Length; i++)
+            {
+                m_temporaryStateValues[i].Dispose();
+                m_temporaryStateValues[i] = ColumnFactory.Get(MemoryAllocator);
+            }
+            // Reset iterator
+            _treeIterator!.Dispose();
+            _treeIterator = _tree.CreateIterator();
+
             return new AggregateOperatorState();
         }
 
@@ -187,16 +177,23 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         {
             Debug.Assert(_tree != null, "Tree should not be null");
             Debug.Assert(_temporaryTree != null, "Temporary tree should not be null");
+            Debug.Assert(m_groupValuesBatch != null);
 
-            PrimitiveList<int> outputWeights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
-            PrimitiveList<uint> outputIterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+#if DEBUG_WRITE
+            allInput.WriteLine("Watermark");
+            allInput.Flush();
+            outputWriter.WriteLine("Watermark");
+#endif
+
+            PrimitiveList<int> outputWeights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> outputIterations = new PrimitiveList<uint>(MemoryAllocator);
 
             var outputColumnCount = m_outputCount; //(groupExpressions?.Count ?? 0) + m_measures.Count;
             ColumnStore.Column[] outputColumns = new ColumnStore.Column[outputColumnCount];
 
             for (int i = 0; i < outputColumnCount; i++)
             {
-                outputColumns[i] = ColumnFactory.Get(GlobalMemoryManager.Instance);
+                outputColumns[i] = ColumnFactory.Get(MemoryAllocator);
             }
 
             for (int i = 0; i < m_temporaryStateValues.Length; i++)
@@ -220,6 +217,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                     var val = page.Values.Get(comparer.start);
 
+                    page.EnterWriteLock();
                     for (int i = 0; i < m_measures.Count; i++)
                     {
                         var measureEmitIndex = m_measureOutputIndices[i];
@@ -245,6 +243,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     {
                         page.Values._previousValueSent.Update(comparer.start, true);
                     }
+                    page.ExitWriteLock();
                     outputIterations.Add(0);
                     outputWeights.Add(1);
                     if (deleteAdded)
@@ -303,7 +302,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             else
             {
                 // This iterator can probably be created in init instead to save on memory allocations
-                var iterator = _temporaryTree.CreateIterator();
+                using var iterator = _temporaryTree.CreateIterator();
                 await iterator.SeekFirst();
 
                 await foreach (var page in iterator)
@@ -371,6 +370,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             }
                         }
 
+                        treePage.EnterWriteLock();
                         // Add measure values
                         for (int i = 0; i < m_measures.Count; i++)
                         {
@@ -394,6 +394,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                                 previousValueColumn.UpdateAt(val.RowIndex, newValue);
                             }
                         }
+                        
 
                         outputIterations.Add(0);
                         outputWeights.Add(1);
@@ -408,6 +409,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             // Mark the value as sent
                             treePage.Values._previousValueSent.Update(comparer.start, true);
                         }
+                        treePage.ExitWriteLock();
 
                         await treePage.SavePage();
                     }
@@ -501,6 +503,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                         var state = page.Values.Get(index);
 
+                        page.EnterWriteLock();
                         if (m_measures.Count > 0)
                         {
                             for (int k = 0; k < m_measures.Count; k++)
@@ -516,6 +519,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                         var currentWeight = page.Values._weights.Get(index);
                         page.Values._weights.Update(index, currentWeight + msg.Data.Weights.Get(i));
+
+                        page.ExitWriteLock();
 
                         await page.SavePage();
                     }
@@ -584,13 +589,53 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
 #endif
 
+            if (m_aggregateRelation.Groupings != null && m_aggregateRelation.Groupings.Count > 0)
+            {
+                if (m_aggregateRelation.Groupings.Count > 1)
+                {
+                    throw new InvalidOperationException("Aggregate operator only supports one grouping set at this point");
+                }
+
+                var grouping = m_aggregateRelation.Groupings[0];
+
+                m_groupValues = new ColumnStore.Column[grouping.GroupingExpressions.Count];
+
+                for (int i = 0; i < grouping.GroupingExpressions.Count; i++)
+                {
+                    m_groupValues[i] = ColumnFactory.Get(MemoryAllocator);
+                }
+
+                if (groupExpressions == null)
+                {
+                    groupExpressions = new List<Action<EventBatchData, int, ColumnStore.Column>>();
+                    foreach (var expr in grouping.GroupingExpressions)
+                    {
+                        groupExpressions.Add(ColumnProjectCompiler.Compile(expr, m_functionsRegister));
+                    }
+                }
+            }
+            else
+            {
+                m_groupValues = new ColumnStore.Column[0];
+            }
+            m_groupValuesBatch = new EventBatchData(m_groupValues);
+
+            m_temporaryStateValues = new ColumnStore.Column[(m_aggregateRelation.Measures?.Count ?? 0) * 2];
+
+            for (int i = 0; i < m_temporaryStateValues.Length; i++)
+            {
+                m_temporaryStateValues[i] = ColumnFactory.Get(MemoryAllocator);
+            }
+
+            m_temporaryStateBatch = new EventBatchData(m_temporaryStateValues);
+
             if (m_aggregateRelation.Measures != null && m_aggregateRelation.Measures.Count > 0)
             {
                 m_measures.Clear();
                 for (int i = 0; i < m_aggregateRelation.Measures.Count; i++)
                 {
                     var measure = m_aggregateRelation.Measures[i];
-                    var aggregateContainer = await ColumnMeasureCompiler.CompileMeasure(groupExpressions?.Count ?? 0, stateManagerClient.GetChildManager(i.ToString()), measure.Measure, m_functionsRegister);
+                    var aggregateContainer = await ColumnMeasureCompiler.CompileMeasure(groupExpressions?.Count ?? 0, stateManagerClient.GetChildManager(i.ToString()), measure.Measure, m_functionsRegister, MemoryAllocator);
                     m_measures.Add(aggregateContainer);
                 }
             }
@@ -598,15 +643,15 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             _tree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>()
                 {
-                    KeySerializer = new AggregateKeySerializer(m_groupValues.Length),
-                    ValueSerializer = new ColumnAggregateValueSerializer(m_measures.Count),
+                    KeySerializer = new AggregateKeySerializer(m_groupValues.Length, MemoryAllocator),
+                    ValueSerializer = new ColumnAggregateValueSerializer(m_measures.Count, MemoryAllocator),
                     Comparer = new AggregateInsertComparer(m_groupValues.Length)
                 });
             _treeIterator = _tree.CreateIterator();
             _temporaryTree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1_temp",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, ListValueContainer<int>>()
                 {
-                    KeySerializer = new AggregateKeySerializer(m_groupValues.Length),
+                    KeySerializer = new AggregateKeySerializer(m_groupValues.Length, MemoryAllocator),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
                     Comparer = new AggregateInsertComparer(m_groupValues.Length)
                 });

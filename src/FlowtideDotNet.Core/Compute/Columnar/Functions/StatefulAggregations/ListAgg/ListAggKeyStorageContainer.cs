@@ -11,9 +11,9 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Normalization;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -29,11 +29,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
         internal EventBatchData _data;
         private DataValueContainer _dataValueContainer;
 
-        public ListAggKeyStorageContainer(int groupingKeyLength)
+        public ListAggKeyStorageContainer(int groupingKeyLength, IMemoryAllocator memoryAllocator)
         {
             this._groupingKeyLength = groupingKeyLength;
             IColumn[] columns = new IColumn[groupingKeyLength + 1];
-            var memoryManager = GlobalMemoryManager.Instance;
+            var memoryManager = memoryAllocator;
             for (int i = 0; i < (groupingKeyLength + 1); i++)
             {
                 columns[i] = Column.Create(memoryManager);

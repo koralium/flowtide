@@ -23,6 +23,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.Metrics;
 using FlowtideDotNet.Base.Utils;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
@@ -46,6 +47,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly IStateHandler stateHandler;
         internal readonly StreamMetrics _streamMetrics;
         internal readonly IStreamNotificationReciever? _notificationReciever;
+        private readonly StateManagerOptions stateManagerOptions;
+        private readonly ILoggerFactory? loggerFactory1;
         internal readonly ILoggerFactory loggerFactory;
         internal readonly object _checkpointLock;
         internal readonly Dictionary<string, List<OperatorTrigger>> _triggers;
@@ -54,6 +57,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private readonly object _contextLock = new object();
         internal readonly StreamVersionInformation? _streamVersionInformation;
         internal readonly DataflowStreamOptions _dataflowStreamOptions;
+        internal readonly IStreamMemoryManager _streamMemoryManager;
         private readonly Meter _contextMeter;
 
         internal StreamState? _lastState;
@@ -97,7 +101,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             StateManagerOptions stateManagerOptions,
             ILoggerFactory? loggerFactory,
             StreamVersionInformation? streamVersionInformation,
-            DataflowStreamOptions dataflowStreamOptions)
+            DataflowStreamOptions dataflowStreamOptions,
+            IStreamMemoryManager streamMemoryManager)
         {
             this.streamName = streamName;
             this.propagatorBlocks = propagatorBlocks;
@@ -108,8 +113,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _streamScheduler = streamScheduler;
             _streamMetrics = new StreamMetrics(streamName);
             _notificationReciever = notificationReciever;
+            this.stateManagerOptions = stateManagerOptions;
+            loggerFactory1 = loggerFactory;
             _streamVersionInformation = streamVersionInformation;
             this._dataflowStreamOptions = dataflowStreamOptions;
+            _streamMemoryManager = streamMemoryManager;
             _contextMeter = new Meter($"flowtide.{streamName}");
             _contextMeter.CreateObservableGauge<float>("flowtide_health", () =>
             {

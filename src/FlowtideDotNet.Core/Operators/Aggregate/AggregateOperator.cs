@@ -420,7 +420,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 for (int i = 0; i < aggregateRelation.Measures.Count; i++)
                 {
                     var measure = aggregateRelation.Measures[i];
-                    var aggregateContainer = await MeasureCompiler.CompileMeasure(groupExpressions?.Count ?? 0, stateManagerClient.GetChildManager(i.ToString()), measure.Measure, functionsRegister);
+                    var aggregateContainer = await MeasureCompiler.CompileMeasure(groupExpressions?.Count ?? 0, stateManagerClient.GetChildManager(i.ToString()), measure.Measure, functionsRegister, MemoryAllocator);
                     _measures.Add(aggregateContainer);
                 }
             }

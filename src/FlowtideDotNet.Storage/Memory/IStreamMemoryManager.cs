@@ -11,22 +11,19 @@
 // limitations under the License.
 
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.Memory
+namespace FlowtideDotNet.Storage.Memory
 {
-    internal unsafe class GlobalMemoryManager : IMemoryAllocator
+    /// <summary>
+    /// Manages the memory for one stream.
+    /// Can be used to keep track of total memory used in a stream.
+    /// </summary>
+    public interface IStreamMemoryManager
     {
-        public static readonly GlobalMemoryManager Instance = new GlobalMemoryManager();
-        public IMemoryOwner<byte> Allocate(int size, int alignment)
-        {
-            var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
-            return NativeCreatedMemoryOwnerFactory.Get(ptr, size); //new NativeCreatedMemoryOwner(ptr, size);
-        }
+        IOperatorMemoryManager CreateOperatorMemoryManager(string operatorName);
     }
 }

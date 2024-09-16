@@ -113,5 +113,17 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             enumerator.Reset(leaf, index);
             return enumerator;
         }
+
+        public void EnterWriteLock()
+        {
+            Debug.Assert(leaf != null);
+            leaf.EnterWriteLock();
+        }
+
+        public void ExitWriteLock()
+        {
+            Debug.Assert(leaf != null);
+            leaf.ExitWriteLock();
+        }
     }
 }

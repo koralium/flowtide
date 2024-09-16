@@ -17,9 +17,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.Memory
+namespace FlowtideDotNet.Storage.Memory
 {
-    internal unsafe class PreAllocatedMemoryOwner : MemoryManager<byte>
+    public unsafe class PreAllocatedMemoryOwner : MemoryManager<byte>
     {
         private readonly PreAllocatedMemoryManager _manager;
         private readonly void* ptr;

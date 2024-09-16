@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Diagnostics.CodeAnalysis;
@@ -57,7 +58,7 @@ namespace FlowtideDotNet.Core.Compute
             Func<byte[]?, FlxValue> stateToValueFunc);
 
 
-        delegate Task<T> AggregateInitializeFunction<T>(int groupingLength, IStateManagerClient stateManagerClient);
+        delegate Task<T> AggregateInitializeFunction<T>(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator);
 
         delegate System.Linq.Expressions.Expression ColumnAggregateMapFunction(
             AggregateFunction function,
