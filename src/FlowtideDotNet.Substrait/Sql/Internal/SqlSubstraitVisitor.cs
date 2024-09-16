@@ -256,7 +256,17 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             var tableName = string.Join(".", createTable.Name.Values.Select(x=> x.Value));
             var columnNames = createTable.Columns.Select(x => x.Name.Value).ToList();
-            tablesMetadata.AddTable(tableName, columnNames);
+
+            NamedStruct schema = new NamedStruct()
+            {
+                Names = columnNames,
+                Struct = new Struct()
+                {
+                    Types = createTable.Columns.Select(x => SqlToSubstraitType.GetType(x.DataType)).ToList()
+                }
+            };
+
+            tablesMetadata.AddTable(tableName, schema);
             return null;
         }
 
@@ -301,7 +311,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     // With queries should be registered as views in the plan
                     // So they can be reused multiple times in the query
                     sqlPlanBuilder._planModifier.AddPlanAsView(alias, plan);
-                    tablesMetadata.AddTable(alias, cteEmitData.GetNames());
+                    tablesMetadata.AddTable(alias, cteEmitData.GetNamedStruct());
                 }
             }
             var node = Visit(query.Body, state);
@@ -527,7 +537,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
                     var result = exprVisitor.Visit(group, parent.EmitData);
                     grouping.GroupingExpressions.Add(result.Expr);
-                    aggEmitData.Add(group, emitcount, result.Name);
+                    aggEmitData.Add(group, emitcount, result.Name, result.Type);
                     emitcount++;
                 }
             }
@@ -536,11 +546,13 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 var mapper = sqlFunctionRegister.GetAggregateMapper(foundMeasure.Name);
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+
+                var aggregateResponse = mapper(foundMeasure, exprVisitor, parent.EmitData);
                 aggRel.Measures.Add(new AggregateMeasure()
                 {
-                    Measure = mapper(foundMeasure, exprVisitor, parent.EmitData)
+                    Measure = aggregateResponse.AggregateFunction
                 });
-                aggEmitData.Add(foundMeasure, emitcount, $"$expr{emitcount}");
+                aggEmitData.Add(foundMeasure, emitcount, $"$expr{emitcount}", aggregateResponse.Type);
                 emitcount++;
             }
 
@@ -571,7 +583,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     var condition = exprVisitor.Visit(exprAlias.Expression, parent.EmitData);
                     expressions.Add(condition.Expr);
-                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(exprAlias.Alias) })), outputCounter, exprAlias.Alias);
+                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(exprAlias.Alias) })), outputCounter, exprAlias.Alias, condition.Type);
                     outputCounter++;
                     emitList.Add(emitCounter);
                     emitCounter++;
@@ -580,7 +592,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     var condition = exprVisitor.Visit(unnamedExpr.Expression, parent.EmitData);
                     expressions.Add(condition.Expr);
-                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(condition.Name) })), outputCounter, condition.Name);
+                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(condition.Name) })), outputCounter, condition.Name, condition.Type);
                     outputCounter++;
                     emitList.Add(emitCounter);
                     emitCounter++;
@@ -627,7 +639,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     }
                 };
                 expressions.Add(expr);
-                projectEmitData.Add(parentExpressions[i].Expression[0], outputCounter, parentExpressions[i].Name);
+                projectEmitData.Add(parentExpressions[i].Expression[0], outputCounter, parentExpressions[i].Name, parentExpressions[i].Type);
                 outputCounter++;
                 emitList.Add(emitCounter);
                 emitCounter++;
@@ -694,9 +706,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             };
 
             EmitData emitData = new EmitData();
-            foreach(var column in tableFunction.TableSchema.Names)
+            for (int i = 0; i < tableFunction.TableSchema.Names.Count; i++)
             {
-                emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(column) })), emitData.Count, column);
+                SubstraitBaseType type = new AnyType();
+                if (tableFunction.TableSchema.Struct != null)
+                {
+                    type = tableFunction.TableSchema.Struct.Types[i];
+                }
+                emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(tableFunction.TableSchema.Names[i]) })), i, tableFunction.TableSchema.Names[i], type);
             }
 
             return new RelationData(rel, emitData);
@@ -716,9 +733,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 );
 
             EmitData tableFuncEmitData = new EmitData();
-            foreach (var column in tableFunction.TableSchema.Names)
+            for (int i = 0; i < tableFunction.TableSchema.Names.Count; i++)
             {
-                tableFuncEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(column) })), tableFuncEmitData.Count, column);
+                SubstraitBaseType type = new AnyType();
+                if (tableFunction.TableSchema.Struct != null)
+                {
+                    type = tableFunction.TableSchema.Struct.Types[i];
+                }
+                tableFuncEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(tableFunction.TableSchema.Names[i]) })), tableFuncEmitData.Count, tableFunction.TableSchema.Names[i], type);
             }
 
             // Create the emit data for the table function with the parent data
@@ -890,30 +912,38 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 var emitData = new EmitData();
 
-                for (int i = 0; i < t.Columns.Count; i++)
+                for (int i = 0; i < t.Schema.Names.Count; i++)
                 {
-                    emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(t.Columns[i]) })), i, t.Columns[i]);
+                    SubstraitBaseType type = new AnyType();
+                    if (t.Schema.Struct != null)
+                    {
+                        type = t.Schema.Struct.Types[i];
+                    }
+                    emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(t.Schema.Names[i]) })), i, t.Schema.Names[i], type);
                 }
 
                 if (table.Alias != null)
                 {
-                    for (int i = 0; i < t.Columns.Count; i++)
+                    for (int i = 0; i < t.Schema.Names.Count; i++)
                     {
-                        emitData.AddWithAlias(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(table.Alias.Name), new Ident(t.Columns[i]) })), i);
+                        emitData.AddWithAlias(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(table.Alias.Name), new Ident(t.Schema.Names[i]) })), i);
                     }
                 }
 
+                if (t.Schema.Struct == null)
+                {
+                    t.Schema.Struct = new Struct()
+                    {
+                        Types = t.Schema.Names.Select(x => new AnyType() as SubstraitBaseType).ToList()
+                    };
+                }
                 var readRelation = new ReadRelation()
                 {
                     NamedTable = new FlowtideDotNet.Substrait.Type.NamedTable()
                     {
                         Names = table.Name.Values.Select(x => x.Value).ToList()
                     },
-                    BaseSchema = new FlowtideDotNet.Substrait.Type.NamedStruct()
-                    {
-                        Names = t.Columns.ToList(),
-                        Struct = new Struct() { Types = t.Columns.Select(x => new AnyType() as SubstraitBaseType).ToList() }
-                    }
+                    BaseSchema = t.Schema
                 };
                 return new RelationData(readRelation, emitData);
             }

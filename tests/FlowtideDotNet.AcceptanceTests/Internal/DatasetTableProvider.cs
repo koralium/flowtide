@@ -28,7 +28,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             if (mockDatabase.Tables.TryGetValue(tableName, out var mockTable))
             {
-                tableMetadata = new TableMetadata(tableName, mockTable.Columns);
+                tableMetadata = new TableMetadata(tableName, new Substrait.Type.NamedStruct()
+                {
+                    Names = mockTable.Columns.ToList(),
+                    Struct = new Substrait.Type.Struct()
+                    {
+                        Types = mockTable.Types.ToList()
+                    }
+                });
                 return true;
             }
             tableMetadata = null;

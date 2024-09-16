@@ -12,6 +12,7 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Type;
 using SqlParser.Ast;
 using Xunit.Abstractions;
 
@@ -31,12 +32,15 @@ namespace FlowtideDotNet.AcceptanceTests
                 (func, visitor, emitData) =>
                 {
                     List<Substrait.Expressions.Expression> args = new List<Substrait.Expressions.Expression>();
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = "/custom.yaml",
-                        ExtensionName = "static",
-                        Arguments = args
-                    };
+                    return new Substrait.Sql.ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = "/custom.yaml",
+                            ExtensionName = "static",
+                            Arguments = args
+                        },
+                        new AnyType()
+                        );
                 });
 
             FunctionsRegister.RegisterScalarFunction("/custom.yaml", "static",
@@ -77,13 +81,16 @@ namespace FlowtideDotNet.AcceptanceTests
                     {
                         throw new ArgumentException("Named arguments is not supported for addnumbers");
                     }
-                    
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = "/custom.yaml",
-                        ExtensionName = "addnumbers",
-                        Arguments = args
-                    };
+
+                    return new Substrait.Sql.ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = "/custom.yaml",
+                            ExtensionName = "addnumbers",
+                            Arguments = args
+                        },
+                        new AnyType()
+                        );
                 });
 
             FunctionsRegister.RegisterScalarFunctionWithExpression("/custom.yaml", "addnumbers",

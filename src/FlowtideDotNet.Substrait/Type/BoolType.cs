@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    internal class BoolType : SubstraitBaseType
+    public class BoolType : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.Bool;
     }

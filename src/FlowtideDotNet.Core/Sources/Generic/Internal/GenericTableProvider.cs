@@ -21,10 +21,16 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 
         public GenericTableProvider(string name)
         {
-            _tableMetadata = new TableMetadata(name, typeof(T).GetProperties().Select(x =>
+            var properties = typeof(T).GetProperties();
+            var columnNames = properties.Select(x =>
             {
                 return x.Name;
-            }).ToList());
+            }).ToList();
+
+            _tableMetadata = new TableMetadata(name, new Substrait.Type.NamedStruct()
+            {
+                Names = columnNames
+            });
         }
 
         public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)

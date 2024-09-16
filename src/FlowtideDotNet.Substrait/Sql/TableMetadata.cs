@@ -10,18 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Type;
+
 namespace FlowtideDotNet.Substrait.Sql
 {
     public class TableMetadata
     {
-        public TableMetadata(string name, List<string> columns)
+        public TableMetadata(string name, NamedStruct schema)
         {
             Name = name;
-            Columns = columns;
+            Schema = schema;
         }
 
         public string Name { get; }
 
-        public List<string> Columns { get; }
+        public NamedStruct Schema { get; }
     }
 }

@@ -19,6 +19,7 @@ using System.Data;
 using System.Data.Common;
 using System.Text;
 using Microsoft.Extensions.Primitives;
+using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
@@ -91,6 +92,52 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     }
                 });
             };
+        }
+
+        public static SubstraitBaseType GetSubstraitType(string dataTypeName)
+        {
+            switch (dataTypeName.ToLower())
+            {
+                case "nchar":
+                case "char":
+                case "varchar":
+                case "nvarchar":
+                case "ntext":
+                case "text":
+                case "xml":
+                    return new StringType();
+                case "tinyint":
+                case "smallint":
+                case "int":
+                    return new Int64Type();
+                case "money":
+                case "decimal":
+                    return new DecimalType();
+                case "date":
+                case "datetime":
+                case "smalldatetime":
+                case "datetime2":
+                    return new Int64Type();
+                case "time":
+                    return new Int64Type();
+                case "bit":
+                    return new BoolType();
+                case "bigint":
+                    return new Int64Type();
+                case "real":
+                    return new Fp64Type();
+                case "float":
+                    return new Fp64Type();
+                case "uniqueidentifier":
+                    return new StringType();
+                case "binary":
+                case "varbinary":
+                    return new BinaryType();
+                case "image":
+                    return new BinaryType();
+                default:
+                    return new AnyType();
+            }
         }
 
         public static Func<SqlDataReader, RowEvent> GetStreamEventCreator(ReadOnlyCollection<DbColumn> dbColumns)

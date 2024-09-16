@@ -13,11 +13,13 @@
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    public sealed class NamedStruct : IEquatable<NamedStruct>
+    public sealed class NamedStruct : SubstraitBaseType, IEquatable<NamedStruct>
     {
         public required List<string> Names { get; set; }
 
         public Struct? Struct { get; set; }
+
+        public override SubstraitType Type => SubstraitType.Struct;
 
         public override bool Equals(object? obj)
         {

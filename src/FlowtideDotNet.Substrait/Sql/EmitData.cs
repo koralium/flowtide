@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 using SqlParser.Ast;
 using System.Diagnostics.CodeAnalysis;
@@ -31,12 +32,14 @@ namespace FlowtideDotNet.Substrait.Sql
         private readonly Dictionary<Expression, EmitInformation> emitList;
         private SortedDictionary<string, Expression.CompoundIdentifier> compundIdentifiers;
         private List<string> _names;
+        private List<SubstraitBaseType> _types;
 
         public EmitData()
         {
             emitList = new Dictionary<Expression, EmitInformation>();
             compundIdentifiers = new SortedDictionary<string, Expression.CompoundIdentifier>(StringComparer.OrdinalIgnoreCase);
             _names = new List<string>();
+            _types = new List<SubstraitBaseType>();
         }
 
         public EmitData Clone()
@@ -53,6 +56,10 @@ namespace FlowtideDotNet.Substrait.Sql
             foreach (var name in _names)
             {
                 clone._names.Add(name);
+            }
+            foreach (var type in _types)
+            {
+                clone._types.Add(type);
             }
             return clone;
         }
@@ -71,6 +78,10 @@ namespace FlowtideDotNet.Substrait.Sql
             foreach (var name in _names)
             {
                 clone._names.Add(name);
+            }
+            foreach (var type in _types)
+            {
+                clone._types.Add(type);
             }
             foreach (var ci in compundIdentifiers)
             {
@@ -111,9 +122,13 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 _names.Add(name);
             }
+            foreach (var type in left._types)
+            {
+                _types.Add(type);
+            }
         }
 
-        public void Add(Expression expr, int index, string name)
+        public void Add(Expression expr, int index, string name, SubstraitBaseType type)
         {
             if (expr is Expression.CompoundIdentifier compound)
             {
@@ -130,6 +145,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 emitList.Add(expr, existingIndex);
             }
             _names.Insert(index, name);
+            _types.Insert(index, type);
             existingIndex.Index.Add(index);
         }
 
@@ -148,7 +164,11 @@ namespace FlowtideDotNet.Substrait.Sql
             existingIndex.Index.Add(index);
         }
 
-        public bool TryGetEmitIndex(Expression expression, [NotNullWhen(true)] out Expressions.StructReferenceSegment? segment, [NotNullWhen(true)] out string? name)
+        public bool TryGetEmitIndex(
+            Expression expression, 
+            [NotNullWhen(true)] out Expressions.StructReferenceSegment? segment, 
+            [NotNullWhen(true)] out string? name,
+            [NotNullWhen(true)] out SubstraitBaseType? type)
         {
             if (emitList.TryGetValue(expression, out var emitInfo))
             {
@@ -161,6 +181,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     Field = emitInfo.Index[0]
                 };
                 name = GetName(emitInfo.Index[0]);
+                type = _types[emitInfo.Index[0]];
                 return true;
             }
 
@@ -180,6 +201,7 @@ namespace FlowtideDotNet.Substrait.Sql
                         Field = emitInfo2.Index[0]
                     };
                     name = GetName(emitInfo2.Index[0]);
+                    type = _types[emitInfo2.Index[0]];
                     return true;
                 }
                 // Try and iterate each property of the compound identifier, if found add remainder as map key reference
@@ -212,6 +234,9 @@ namespace FlowtideDotNet.Substrait.Sql
                         }
 
                         name = $"{GetName(emitInfoPartial.Index[0])}.{string.Join('.', mapIdentifiers)}";
+
+                        // TODO: For now we just return any type, but we should try to find the correct type
+                        type = new AnyType();
                         return true;
                     }
                 }
@@ -219,6 +244,7 @@ namespace FlowtideDotNet.Substrait.Sql
 
             segment = null;
             name = null;
+            type = null;
             return false;
         }
 
@@ -232,7 +258,25 @@ namespace FlowtideDotNet.Substrait.Sql
             return _names.ToList();
         }
 
-        public record ExpressionInformation(int Index, string Name, IReadOnlyList<Expression> Expression);
+        public List<SubstraitBaseType> GetTypes()
+        {
+            return _types.ToList();
+        }
+
+        public NamedStruct GetNamedStruct()
+        {
+            var namedStruct = new NamedStruct()
+            {
+                Names = _names.ToList(),
+                Struct = new Struct()
+                {
+                    Types = _types.ToList()
+                }
+            };
+            return namedStruct;
+        }
+
+        public record ExpressionInformation(int Index, string Name, IReadOnlyList<Expression> Expression, SubstraitBaseType Type);
 
         private static bool ExpressionStartsWith(Expression expression, ObjectName? objectName)
         {
@@ -254,7 +298,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 .Where(x => ExpressionStartsWith(x.Key, objectName))
                 .SelectMany(x => x.Value.Index.Select(y => new { index = y, expression = x.Key }))
                 .GroupBy(x => x.index)
-                .Select(x => new ExpressionInformation(x.Key, GetName(x.Key), x.Select(z => z.expression).ToList()))
+                .Select(x => new ExpressionInformation(x.Key, GetName(x.Key), x.Select(z => z.expression).ToList(), _types[x.Key]))
                 .OrderBy(x => x.Index)
                 .ToList();
 
