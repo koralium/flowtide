@@ -169,7 +169,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            var valueBuffer = new ArrowBuffer(_data.Memory);
+            var valueBuffer = new ArrowBuffer(_data.MemorySlice);
             var arr = new BooleanArray(valueBuffer, nullBuffer, Count, nullCount, 0);
             return (arr, new BooleanType());
         }

@@ -36,9 +36,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
     /// </summary>
     internal class UnionColumn : IDataColumn
     {
+        private readonly object _lock = new object();
         private readonly PrimitiveList<sbyte> _typeList;
-        private readonly IntList _offsets;
-        private readonly List<IDataColumn> _valueColumns;
+        private IntList _offsets;
+        private List<IDataColumn> _valueColumns;
         private readonly sbyte[] _typeIds;
         private readonly IMemoryAllocator _memoryAllocator;
         private int _typeCounter;
@@ -87,37 +88,37 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         }
 
 
-        private void CheckArrayExist(in ArrowTypeId type)
+        private void CheckArrayExist(in ArrowTypeId type, sbyte[] typeIds, List<IDataColumn> valueColumns)
         {
             var typeByte = (byte)type;
-            if (_typeIds[typeByte] == 0)
+            if (typeIds[typeByte] == 0)
             {
-                _typeIds[typeByte] = (sbyte)_valueColumns.Count;
+                typeIds[typeByte] = (sbyte)valueColumns.Count;
                 switch (type)
                 {
                     case ArrowTypeId.Int64:
-                        _valueColumns.Add(Int64ColumnFactory.Get(_memoryAllocator));
+                        valueColumns.Add(Int64ColumnFactory.Get(_memoryAllocator));
                         break;
                     case ArrowTypeId.String:
-                        _valueColumns.Add(new StringColumn(_memoryAllocator));
+                        valueColumns.Add(new StringColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Boolean:
-                        _valueColumns.Add(new BoolColumn(_memoryAllocator));
+                        valueColumns.Add(new BoolColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Double:
-                        _valueColumns.Add(new DoubleColumn(_memoryAllocator));
+                        valueColumns.Add(new DoubleColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.List:
-                        _valueColumns.Add(new ListColumn(_memoryAllocator));
+                        valueColumns.Add(new ListColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Binary:
-                        _valueColumns.Add(new BinaryColumn(_memoryAllocator));
+                        valueColumns.Add(new BinaryColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Map:
                         _valueColumns.Add(new MapColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Decimal128:
-                        _valueColumns.Add(new DecimalColumn(_memoryAllocator));
+                        valueColumns.Add(new DecimalColumn(_memoryAllocator));
                         break;
                     default:
                         throw new NotImplementedException();
@@ -127,25 +128,28 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void InsertAt<T>(in int index, in T value) where T: IDataValue
         {
-            if (index != _typeList.Count)
+            lock (_lock)
             {
-                outOfOrderCounter++;
-            }
-            if (value.Type == ArrowTypeId.Null)
-            {
-                _typeList.Add((sbyte)ArrowTypeId.Null);
-                _valueColumns[0].Add(value);
-                _offsets.Add(0);
-                return;
-            }
+                if (index != _typeList.Count)
+                {
+                    outOfOrderCounter++;
+                }
+                if (value.Type == ArrowTypeId.Null)
+                {
+                    _typeList.InsertAt(index, (sbyte)ArrowTypeId.Null);
+                    _valueColumns[0].InsertAt(index, value);
+                    _offsets.InsertAt(index, 0);
+                    return;
+                }
 
-            var typeByte = (byte)value.Type;
-            CheckArrayExist(value.Type);
-            var arrayIndex = _typeIds[typeByte];
-            _typeList.InsertAt(index, arrayIndex);
-            var valueColumn = _valueColumns[arrayIndex];
-            var offset = valueColumn.Add(in value);
-            _offsets.InsertAt(index, offset);
+                var typeByte = (byte)value.Type;
+                CheckArrayExist(value.Type, _typeIds, _valueColumns);
+                var arrayIndex = _typeIds[typeByte];
+                _typeList.InsertAt(index, arrayIndex);
+                var valueColumn = _valueColumns[arrayIndex];
+                var offset = valueColumn.Add(in value);
+                _offsets.InsertAt(index, offset);
+            }
         }
 
         public int Add<T>(in T value) where T : IDataValue
@@ -160,7 +164,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             throw new NotImplementedException();
         }
 
-        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo_NoLock<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
         {
             var typeIndex = _typeList[index];
             var type = (sbyte)_valueColumns[typeIndex].Type;
@@ -176,54 +180,69 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        {
+            lock (_lock)
+            {
+                return CompareTo_NoLock(index, in value, in child, in validityList);
+            }
+        }
+
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
-            var thisType = _typeList[thisIndex];
-            if (otherColumn is UnionColumn unionColumn)
+            lock (_lock)
             {
-                var otherType = unionColumn._typeList[otherIndex];
-
-                if (thisType == otherType)
+                var thisValueColumnIndex = _typeList[thisIndex];
+                var thisType = _valueColumns[thisValueColumnIndex].Type;
+                if (otherColumn is UnionColumn unionColumn)
                 {
-                    if (thisType == 0)
+                    var otherValueColumnIndex = unionColumn._typeList[otherIndex];
+                    var otherType = unionColumn._valueColumns[otherValueColumnIndex].Type;
+                    if (thisType == otherType)
                     {
-                        return 0;
+                        if (thisType == 0)
+                        {
+                            return 0;
+                        }
+                        var thisValueColumn = _valueColumns[thisValueColumnIndex];
+                        var otherValueColumn = unionColumn._valueColumns[otherValueColumnIndex];
+                        return thisValueColumn.CompareTo(in otherValueColumn, _offsets.Get(thisIndex), unionColumn._offsets.Get(otherIndex));
                     }
-                    var thisValueColumnIndex = _typeIds[(byte)thisType];
-                    var otherValueColumnIndex = unionColumn._typeIds[(byte)otherType];
-                    var thisValueColumn = _valueColumns[thisValueColumnIndex];
-                    var otherValueColumn = unionColumn._valueColumns[otherValueColumnIndex];
-                    return thisValueColumn.CompareTo(in otherValueColumn, _offsets.Get(thisIndex), unionColumn._offsets.Get(otherIndex));
+                    else
+                    {
+                        return thisType - otherType;
+                    }
                 }
                 else
                 {
-                    return thisType - otherType;
+                    var value = otherColumn.GetValueAt(otherIndex, default);
+                    return CompareTo_NoLock(thisIndex, value, default, default);
                 }
-            }
-            else
-            {
-                var value = otherColumn.GetValueAt(otherIndex, default);
-                return CompareTo(thisIndex, value, default, default);
             }
         }
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
-            var valueColumnIndex = _typeList[index];
-            if (valueColumnIndex == 0)
+            lock (_lock)
             {
-                return new NullValue();
+                var valueColumnIndex = _typeList[index];
+                if (valueColumnIndex == 0)
+                {
+                    return new NullValue();
+                }
+                var valueColumn = _valueColumns[valueColumnIndex];
+                return valueColumn.GetValueAt(_offsets.Get(index), child);
             }
-            var valueColumn = _valueColumns[valueColumnIndex];
-            return valueColumn.GetValueAt(_offsets.Get(index), child);
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
-            var type = _typeList[index];
-            var valueColumnIndex = _typeIds[(byte)type];
-            var valueColumn = _valueColumns[valueColumnIndex];
-            valueColumn.GetValueAt(_offsets.Get(index), dataValueContainer, child);
+            lock (_lock)
+            {
+                var valueColumnIndex = _typeList[index];
+                var valueColumn = _valueColumns[valueColumnIndex];
+                valueColumn.GetValueAt(_offsets.Get(index), dataValueContainer, child);
+            }
         }
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) where T : IDataValue
@@ -237,41 +256,93 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public int Update<T>(in int index, in T value) where T : IDataValue
         {
-            var currentType = _typeList[index];
-
-            if (currentType != (sbyte)value.Type)
+            lock (_lock)
             {
-                CheckArrayExist(value.Type);
-                var typeByte = (byte)value.Type;
-                _typeList[index] = (sbyte)value.Type;
-                var valueColumnIndex = _typeIds[typeByte];
-                var valueColumn = _valueColumns[valueColumnIndex];
-                _offsets.Update(index, valueColumn.Add(in value));
-                _deletesCounter++;
-            }
-            else
-            {
-                // Same type
-                var valueColumnIndex = _typeIds[(byte)currentType];
-                var valueColumn = _valueColumns[valueColumnIndex];
-                var currentOffset = _offsets.Get(index);
-                var newOffset = valueColumn.Update(_offsets.Get(index), in value);
+                var currentType = _typeList[index];
 
-                // Check if the offset has changed, then treat it as a insert and a delete.
-                if (currentOffset != newOffset)
+                if (currentType != (sbyte)value.Type)
                 {
-                    _offsets.Update(index, newOffset);
-                    _deletesCounter++;
+                    if (value.Type == ArrowTypeId.Null)
+                    {
+                        _typeList.Update(index, (sbyte)ArrowTypeId.Null);
+                        _valueColumns[0].Update(index, value);
+                        _offsets.Update(index, 0);
+                    }
+                    else
+                    {
+                        CheckArrayExist(value.Type, _typeIds, _valueColumns);
+                        var typeByte = (byte)value.Type;
+                        var valueColumnIndex = _typeIds[typeByte];
+                        _typeList[index] = (sbyte)valueColumnIndex;
+                        var valueColumn = _valueColumns[valueColumnIndex];
+                        _offsets.Update(index, valueColumn.Add(in value));
+                        _deletesCounter++;
+                    }
                 }
+                else
+                {
+                    // Same type
+                    var valueColumnIndex = _typeIds[(byte)currentType];
+                    var valueColumn = _valueColumns[valueColumnIndex];
+                    var currentOffset = _offsets.Get(index);
+                    var newOffset = valueColumn.Update(_offsets.Get(index), in value);
+
+                    // Check if the offset has changed, then treat it as a insert and a delete.
+                    if (currentOffset != newOffset)
+                    {
+                        _offsets.Update(index, newOffset);
+                        _deletesCounter++;
+                    }
+                }
+                return index;
             }
-            return index;
         }
 
         public void RemoveAt(in int index)
         {
-            _deletesCounter++;
-            _typeList.RemoveAt(index);
-            _offsets.RemoveAt(index);
+            lock (_lock)
+            {
+                _deletesCounter++;
+                _typeList.RemoveAt(index);
+                _offsets.RemoveAt(index);
+            }
+        }
+
+        private void Rebuild()
+        {
+            var typeIds = new sbyte[35];
+            List<IDataColumn> newValueColumns = [new NullColumn()];
+            var newOffsets = new IntList(_memoryAllocator);
+            for (int i = 1; i < _valueColumns.Count; i++)
+            {
+                CheckArrayExist(_valueColumns[i].Type, typeIds, newValueColumns);
+            }
+            var dataValueContainer = new DataValueContainer();
+            for (int i = 0; i < _offsets.Count; i++)
+            {
+                var valueColumnIndex = _typeList.Get(i);
+                var offset = _offsets.Get(i);
+
+                _valueColumns[valueColumnIndex].GetValueAt(offset, dataValueContainer, default);
+                var newIndex = newValueColumns[valueColumnIndex].Add(in dataValueContainer);
+                newOffsets.Add(newIndex);
+            }
+            lock (_lock)
+            {
+                var oldColumns = _valueColumns;
+                var oldOffsets = _offsets;
+                _valueColumns = newValueColumns;
+                _offsets = newOffsets;
+
+                for (int i = 0; i < oldColumns.Count; i++)
+                {
+                    oldColumns[i].Dispose();
+                }
+                oldOffsets.Dispose();
+                _deletesCounter = 0;
+                outOfOrderCounter = 0;
+
+            }
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
@@ -279,6 +350,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             if (_deletesCounter > 0 || outOfOrderCounter > 0)
             {
                 // Need to rebuild the arrays before converting to arrow.
+                Rebuild();
             }
             List<Field> fields = new List<Field>();
             List<int> typeIds = new List<int>();
@@ -327,43 +399,55 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
-            var valueColumnIndex = _typeList[index];
-            if (valueColumnIndex == 0)
+            lock (_lock)
             {
-                return ArrowTypeId.Null;
+                var valueColumnIndex = _typeList[index];
+                if (valueColumnIndex == 0)
+                {
+                    return ArrowTypeId.Null;
+                }
+                return _valueColumns[valueColumnIndex].GetTypeAt(_offsets.Get(index), child);
             }
-            return _valueColumns[valueColumnIndex].GetTypeAt(_offsets.Get(index), child);
         }
 
         public void Clear()
         {
-            _typeList.Clear();
-            _offsets.Clear();
-            for (int i = 0; i < _valueColumns.Count; i++)
+            lock (_lock)
             {
-                _valueColumns[i].Clear();
+                _typeList.Clear();
+                _offsets.Clear();
+                for (int i = 0; i < _valueColumns.Count; i++)
+                {
+                    _valueColumns[i].Clear();
+                }
             }
         }
 
         public void AddToNewList<T>(in T value) where T : IDataValue
         {
-            CheckArrayExist(ArrowTypeId.List);
+            lock (_lock)
+            {
+                CheckArrayExist(ArrowTypeId.List, _typeIds, _valueColumns);
 
-            var typeByte = (byte)ArrowTypeId.List;
-            var arrayIndex = _typeIds[typeByte];
-            _valueColumns[arrayIndex].AddToNewList(in value);
+                var typeByte = (byte)ArrowTypeId.List;
+                var arrayIndex = _typeIds[typeByte];
+                _valueColumns[arrayIndex].AddToNewList(in value);
+            }
         }
 
         public int EndNewList()
         {
-            CheckArrayExist(ArrowTypeId.List);
-            var typeByte = (byte)ArrowTypeId.List;
-            var arrayIndex = _typeIds[typeByte];
-            var offset = _valueColumns[arrayIndex].EndNewList();
-            int index = _typeList.Count;
-            _typeList.InsertAt(index, arrayIndex);
-            _offsets.InsertAt(index, offset);
-            return index;
+            lock (_lock)
+            {
+                CheckArrayExist(ArrowTypeId.List, _typeIds, _valueColumns);
+                var typeByte = (byte)ArrowTypeId.List;
+                var arrayIndex = _typeIds[typeByte];
+                var offset = _valueColumns[arrayIndex].EndNewList();
+                int index = _typeList.Count;
+                _typeList.InsertAt(index, arrayIndex);
+                _offsets.InsertAt(index, offset);
+                return index;
+            }
         }
     }
 }
