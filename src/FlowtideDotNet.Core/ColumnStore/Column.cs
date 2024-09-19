@@ -441,6 +441,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             else
             {
+                if (_nullCounter > 0 && dataValue.IsNull)
+                {
+                    if (_validityList!.Get(index))
+                    {
+                        return 1;
+                    }
+                    return 0;
+                }
                 return _type - dataValue.Type;
             }
         }
