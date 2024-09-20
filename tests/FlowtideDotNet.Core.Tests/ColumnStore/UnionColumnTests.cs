@@ -54,6 +54,23 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         }
 
         [Fact]
+        public void TestUpdateToIntToStringColumnAreadyExists()
+        {
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new Int64Value(1));
+            column.Add(new StringValue("hello"));
+
+            Assert.Equal(1, column.GetValueAt(0, default).AsLong);
+
+            column.UpdateAt(0, new StringValue("world"));
+
+            Assert.Equal("world", column.GetValueAt(0, default).AsString.ToString());
+            Assert.Equal("hello", column.GetValueAt(1, default).AsString.ToString());
+        }
+
+        [Fact]
         public void TestInsertNull()
         {
             UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
@@ -72,6 +89,49 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.True(column.GetValueAt(2, default).IsNull);
             Assert.Equal("hello", column.GetValueAt(3, default).AsString.ToString());
             Assert.Equal(123, column.GetValueAt(4, default).AsDecimal);
+        }
+
+        [Fact]
+        public void TestInsertStrings()
+        {
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new Int64Value(1));
+            column.Add(new StringValue("hello"));
+            column.Add(new DecimalValue(123));
+
+            column.InsertAt(0, new StringValue("world"));
+
+            column.InsertAt(2, new StringValue("foo"));
+
+            Assert.Equal("world", column.GetValueAt(0, default).AsString.ToString());
+            Assert.Equal(1, column.GetValueAt(1, default).AsLong);
+            Assert.Equal("foo", column.GetValueAt(2, default).AsString.ToString());
+            Assert.Equal("hello", column.GetValueAt(3, default).AsString.ToString());
+            Assert.Equal(123, column.GetValueAt(4, default).AsDecimal);
+        }
+
+        [Fact]
+        public void TestDelete()
+        {
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new Int64Value(1));
+            column.Add(new StringValue("hello"));
+            column.Add(new DecimalValue(123));
+
+            column.InsertAt(0, new StringValue("world"));
+
+            column.InsertAt(2, new StringValue("foo"));
+
+            column.RemoveAt(2);
+
+            Assert.Equal("world", column.GetValueAt(0, default).AsString.ToString());
+            Assert.Equal(1, column.GetValueAt(1, default).AsLong);
+            Assert.Equal("hello", column.GetValueAt(2, default).AsString.ToString());
+            Assert.Equal(123, column.GetValueAt(3, default).AsDecimal);
         }
     }
 }

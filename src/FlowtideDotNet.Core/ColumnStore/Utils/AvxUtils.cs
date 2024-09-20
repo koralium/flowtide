@@ -66,6 +66,114 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         }
 
         /// <summary>
+        /// Copies data from one array to another with addition if the conditional value is met.
+        /// No avx operations are done right now as the conditional value is a byte.
+        /// This complicates the avx operations as we need to do a comparison on the byte value.
+        /// </summary>
+        /// <param name="array"></param>
+        /// <param name="conditionalValues"></param>
+        /// <param name="sourceIndex"></param>
+        /// <param name="destIndex"></param>
+        /// <param name="length"></param>
+        /// <param name="valueToAdd"></param>
+        /// <param name="conditionalValue"></param>
+        public static unsafe void InPlaceMemCopyConditionalAddition(Span<int> array, Span<sbyte> conditionalValues, int sourceIndex, int destIndex, int length, int valueToAdd, sbyte conditionalValue)
+        {
+            unsafe
+            {
+                fixed (int* pArray = array)
+                fixed(sbyte* pCond = conditionalValues)
+                {
+                    // Check if there is overlap
+                    if (sourceIndex < destIndex && sourceIndex + length > destIndex)
+                    {
+                        int i = length;
+                        for (int j = i - 1; j >= 0; j--)
+                        {
+                            if (conditionalValues[sourceIndex + j] == conditionalValue)
+                            {
+                                array[destIndex + j] = array[sourceIndex + j] + valueToAdd;
+                            }
+                            else
+                            {
+                                array[destIndex + j] = array[sourceIndex + j];
+                            }
+                        }
+                    }
+                    else
+                    {
+                        int i = 0;
+                        for (; i < length; i++)
+                        {
+                            if (conditionalValues[sourceIndex + i] == conditionalValue)
+                            {
+                                array[destIndex + i] = array[sourceIndex + i] + valueToAdd;
+                            }
+                            else
+                            {
+                                array[destIndex + i] = array[sourceIndex + i];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        public static unsafe int FindFirstOccurence(Span<sbyte> array, int startIndex, sbyte valueToFind)
+        {
+            unsafe
+            {
+                fixed (sbyte* pArray = array)
+                {
+                    int i = startIndex;
+                    if (Avx2.IsSupported)
+                    {
+                        int vectorSize = Vector256<sbyte>.Count;
+                        Vector256<sbyte> targetVec = Vector256.Create(valueToFind);
+
+                        // Process chunks of 8 integers at a time
+                        for (; i <= array.Length - vectorSize; i += vectorSize)
+                        {
+                            // Load 8 integers from the array into a Vector256<int>
+                            Vector256<sbyte> arrayVec = Avx.LoadVector256(pArray + i);
+
+                            // Compare arrayVec with targetVec, resulting in a mask
+                            Vector256<sbyte> mask = Avx2.CompareEqual(arrayVec, targetVec);
+
+                            // Move the mask to an integer (each 32-bit element in the vector will have 0xFFFFFFFF for a match, 0 otherwise)
+                            int maskBits = Avx2.MoveMask(mask);
+
+                            // Check if any match occurred (MoveMask returns a non-zero value if a match is found)
+                            if (maskBits != 0)
+                            {
+                                // Determine the first matching element by inspecting the mask bits
+                                for (int j = 0; j < vectorSize; j++)
+                                {
+                                    if (mask.GetElement(j) == -1) // 0xFFFFFFFF indicates a match
+                                    {
+                                        return i + j; // Return the index of the first match
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Process the remaining elements in the array that don't fit into a full 256-bit register
+                    for (; i < array.Length; i++)
+                    {
+                        if (array[i] == valueToFind)
+                        {
+                            return i;
+                        }
+                    }
+
+                    // If no match is found, return -1
+                    return -1;
+                }
+            }
+        }
+
+        /// <summary>
         /// Copy data with addition on the same array
         /// </summary>
         /// <param name="array"></param>
