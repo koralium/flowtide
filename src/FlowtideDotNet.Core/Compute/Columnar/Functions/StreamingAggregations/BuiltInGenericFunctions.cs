@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
 
         private static void DoCount(EventBatchData data, int index, ColumnReference state, long weight)
         {
-            var currentState = state.column.GetValueAt(state.index, default);
+            var currentState = state.GetValue();
             long count = 0;
             if (currentState.Type == ArrowTypeId.Int64)
             {
@@ -71,12 +71,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
 
             }
             var newCount = count + weight;
-            state.column.UpdateAt(state.index, new Int64Value(newCount));
+            state.Update(new Int64Value(newCount));
         }
 
         private static void GetCountValue(ColumnReference state, Column outputColumn)
         {
-            var stateValue = state.column.GetValueAt(state.index, default);
+            var stateValue = state.GetValue();
             if (stateValue.Type == ArrowTypeId.Null)
             {
                 outputColumn.Add(new Int64Value(0));

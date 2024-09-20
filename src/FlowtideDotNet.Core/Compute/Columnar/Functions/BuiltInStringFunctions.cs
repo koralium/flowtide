@@ -10,12 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.StringAgg;
+using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -27,7 +30,67 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         public static void RegisterFunctions(IFunctionsRegister functionsRegister)
         {
             ColumnStringAggAggregation.Register(functionsRegister);
-            
+
+            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Concat,
+                (func, parameters, visitor) =>
+                {
+                    List<System.Linq.Expressions.Expression> expressions = new List<System.Linq.Expressions.Expression>();
+                    var stringBuilder = new StringBuilder();
+
+                    var appendMethod = typeof(StringBuilder).GetMethod("Append", new System.Type[] { typeof(string) });
+                    var toStringMethod = typeof(FlxString).GetMethod("ToString", new System.Type[] { });
+                    var stringBuilderConstant = System.Linq.Expressions.Expression.Constant(stringBuilder);
+
+                    DataValueContainer nullContainer = new DataValueContainer();
+                    nullContainer._type = ArrowTypeId.Null;
+                    var nullConstant = System.Linq.Expressions.Expression.Constant(nullContainer);
+
+                    DataValueContainer temporaryContainer = new DataValueContainer();
+                    var temporaryVariable = System.Linq.Expressions.Expression.Constant(temporaryContainer);
+
+                    var returnTarget = System.Linq.Expressions.Expression.Label(typeof(IDataValue));
+
+                    var stringBuilderToStringExpr = System.Linq.Expressions.Expression.Call(stringBuilderConstant, "ToString", new System.Type[] { });
+
+
+                    var newStringValueExpr = System.Linq.Expressions.Expression.New(typeof(StringValue).GetConstructor(new System.Type[] { typeof(string) })!, stringBuilderToStringExpr);
+                    var castToIDataValue = System.Linq.Expressions.Expression.Convert(newStringValueExpr, typeof(IDataValue));
+                    var returnLabel = System.Linq.Expressions.Expression.Label(returnTarget, castToIDataValue);
+
+                    var nullValueReturn = System.Linq.Expressions.Expression.Return(returnTarget, nullConstant);
+
+                    List<System.Linq.Expressions.Expression> blockExpressions = new List<System.Linq.Expressions.Expression>();
+
+                    var stringBuilderClearExpr = System.Linq.Expressions.Expression.Call(stringBuilderConstant, "Clear", new System.Type[] { });
+
+                    // Start with clearing the string builder
+                    blockExpressions.Add(stringBuilderClearExpr);
+
+                    foreach (var expr in func.Arguments)
+                    {
+                        var v = visitor.Visit(expr, parameters)!;
+                        var typeField = System.Linq.Expressions.Expression.PropertyOrField(v, "Type");
+                        var typeIsNullCheck = System.Linq.Expressions.Expression.Equal(typeField, System.Linq.Expressions.Expression.Constant(ArrowTypeId.Null));
+                        var typeIsStringCheck = System.Linq.Expressions.Expression.Equal(typeField, System.Linq.Expressions.Expression.Constant(ArrowTypeId.String));
+
+                        var asStringField = System.Linq.Expressions.Expression.PropertyOrField(v, "AsString");
+                        var toStringCall = System.Linq.Expressions.Expression.Call(asStringField, toStringMethod);
+                        var castToString = ColumnCastImplementations.CallCastToString(v, temporaryVariable);
+                        var asStringFromCastToString = System.Linq.Expressions.Expression.PropertyOrField(castToString, "AsString");
+                        var toStringFromCastToString = System.Linq.Expressions.Expression.Call(asStringFromCastToString, toStringMethod);
+                        var appendLine = System.Linq.Expressions.Expression.Call(stringBuilderConstant, appendMethod, toStringCall);
+                        var appendLineCastedToString = System.Linq.Expressions.Expression.Call(stringBuilderConstant, appendMethod, toStringFromCastToString);
+                        var checkIfString = System.Linq.Expressions.Expression.IfThenElse(typeIsStringCheck, appendLine, appendLineCastedToString);
+                        var nullCheck = System.Linq.Expressions.Expression.IfThenElse(typeIsNullCheck, nullValueReturn, checkIfString);
+                        blockExpressions.Add(nullCheck);
+                    }
+                    blockExpressions.Add(returnLabel);
+                    var blockExpression = System.Linq.Expressions.Expression.Block(blockExpressions);
+
+
+                    return blockExpression;
+                });
+
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.Upper, typeof(BuiltInStringFunctions), nameof(UpperImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.Lower, typeof(BuiltInStringFunctions), nameof(LowerImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.Trim, typeof(BuiltInStringFunctions), nameof(TrimImplementation));

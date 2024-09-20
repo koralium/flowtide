@@ -227,7 +227,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                         var measureEmitIndex = m_measureOutputIndices[i];
                         if (measureEmitIndex >= 0)
                         {
-                            await m_measures[i].GetValue(emptyRow, new ColumnReference(val.referenceBatch.Columns[i], val.RowIndex), outputColumns[measureEmitIndex]);
+                            await m_measures[i].GetValue(emptyRow, new ColumnReference(val.referenceBatch.Columns[i], val.RowIndex, page), outputColumns[measureEmitIndex]);
                             var previousValueColumn = val.referenceBatch.Columns[m_measures.Count + i];
                             var previousValue = previousValueColumn.GetValueAt(val.RowIndex, default);
                             var newValueIndex = outputColumns[measureEmitIndex].Count - 1;
@@ -245,7 +245,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     }
                     if (!val.valueSent)
                     {
+                        page.EnterWriteLock();
                         page.Values._previousValueSent.Update(comparer.start, true);
+                        page.ExitWriteLock();
                     }
 
                     outputIterations.Add(0);
@@ -271,7 +273,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                         {
                             var stateColumn = m_temporaryStateValues[i];
                             stateColumn.Add(NullValue.Instance);
-                            await m_measures[i].GetValue(emptyRow, new ColumnReference(stateColumn, notFoundRowIndex), outputColumns[measureEmitIndex]);
+                            await m_measures[i].GetValue(emptyRow, new ColumnReference(stateColumn, notFoundRowIndex, default), outputColumns[measureEmitIndex]);
 
                             // Fetch the value added to the output
                             var newValue = outputColumns[measureEmitIndex].GetValueAt(outputColumns[measureEmitIndex].Count - 1, default);
@@ -382,7 +384,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             var measureEmitIndex = m_measureOutputIndices[i];
                             if (measureEmitIndex >= 0)
                             {
-                                await m_measures[i].GetValue(kv.Key, new ColumnReference(val.referenceBatch.Columns[i], val.RowIndex), outputColumns[measureEmitIndex]);
+                                await m_measures[i].GetValue(kv.Key, new ColumnReference(val.referenceBatch.Columns[i], val.RowIndex, treePage), outputColumns[measureEmitIndex]);
                                 var previousValueColumn = val.referenceBatch.Columns[m_measures.Count + i];
                                 var previousValue = previousValueColumn.GetValueAt(val.RowIndex, default);
 
@@ -396,7 +398,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                                 // Fetch the value added to the output
                                 // If the previous value was added to the output column a resize could have happened and the memory invalidated.
                                 var newValue = outputColumns[measureEmitIndex].GetValueAt(newValueIndex, default);
+                                treePage.EnterWriteLock();
                                 previousValueColumn.UpdateAt(val.RowIndex, newValue);
+                                treePage.ExitWriteLock();
                             }
                         }
                         
@@ -412,12 +416,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                         else
                         {
                             // Mark the value as sent
+                            treePage.EnterWriteLock();
                             treePage.Values._previousValueSent.Update(comparer.start, true);
+                            treePage.ExitWriteLock();
                         }
 
                         await treePage.SavePage();
 
-                        if (outputWeights.Count >= 1000)
+                        if (outputWeights.Count >= 100)
                         {
                             _eventsCounter.Add(outputWeights.Count);
                             var batch = new StreamEventBatch(new EventBatchWeighted(outputWeights, outputIterations, new EventBatchData(outputColumns)));
@@ -548,13 +554,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                                 {
                                     referenceBatch = m_groupValuesBatch,
                                     RowIndex = groupIndex
-                                }, data.EventBatchData, i, new ColumnReference(stateColumn, index), msg.Data.Weights.Get(i));
+                                }, data.EventBatchData, i, new ColumnReference(stateColumn, index, page), msg.Data.Weights.Get(i));
                             }
                         }
 
+                        page.EnterWriteLock();
                         var currentWeight = page.Values._weights.Get(index);
                         page.Values._weights.Update(index, currentWeight + msg.Data.Weights.Get(i));
-
+                        page.ExitWriteLock();
                         await page.SavePage();
                     }
                 }
@@ -575,7 +582,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             {
                                 referenceBatch = m_groupValuesBatch,
                                 RowIndex = groupIndex
-                            }, data.EventBatchData, i, new ColumnReference(col, temporaryStateIndex), msg.Data.Weights.Get(i));
+                            }, data.EventBatchData, i, new ColumnReference(col, temporaryStateIndex, default), msg.Data.Weights.Get(i));
                         }
                         for (int k = 0; k < m_measures.Count; k++)
                         {

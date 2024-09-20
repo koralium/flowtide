@@ -10,23 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Storage.StateManager.Internal
+namespace FlowtideDotNet.Storage.StateManager
 {
-    public interface ICacheObject : ILockableObject
+    public interface ILockableObject
     {
-        /// <summary>
-        /// Try and rent the object, returns true if successful.
-        /// If false, the object is no longer in the cache.
-        /// </summary>
-        /// <returns></returns>
-        bool TryRent();
+        void EnterWriteLock();
 
-        void Return();
-
-        int RentCount { get; }
-
-        bool RemovedFromCache { get; set; }
+        void ExitWriteLock();
     }
 }

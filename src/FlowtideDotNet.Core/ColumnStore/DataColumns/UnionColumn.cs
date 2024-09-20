@@ -277,6 +277,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         var valueColumn = _valueColumns[valueColumnIndex];
                         _offsets.Update(index, valueColumn.Add(in value));
                         _deletesCounter++;
+                        CheckIfRebuildNeeded();
                     }
                 }
                 else
@@ -292,6 +293,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     {
                         _offsets.Update(index, newOffset);
                         _deletesCounter++;
+                        CheckIfRebuildNeeded();
                     }
                 }
                 return index;
@@ -305,6 +307,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 _deletesCounter++;
                 _typeList.RemoveAt(index);
                 _offsets.RemoveAt(index);
+                CheckIfRebuildNeeded();
+            }
+        }
+
+        private void CheckIfRebuildNeeded()
+        {
+            if (_deletesCounter > 1000)
+            {
+                Rebuild();
             }
         }
 
@@ -327,31 +338,23 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 var newIndex = newValueColumns[valueColumnIndex].Add(in dataValueContainer);
                 newOffsets.Add(newIndex);
             }
-            lock (_lock)
+
+            var oldColumns = _valueColumns;
+            var oldOffsets = _offsets;
+            _valueColumns = newValueColumns;
+            _offsets = newOffsets;
+
+            for (int i = 0; i < oldColumns.Count; i++)
             {
-                var oldColumns = _valueColumns;
-                var oldOffsets = _offsets;
-                _valueColumns = newValueColumns;
-                _offsets = newOffsets;
-
-                for (int i = 0; i < oldColumns.Count; i++)
-                {
-                    oldColumns[i].Dispose();
-                }
-                oldOffsets.Dispose();
-                _deletesCounter = 0;
-                outOfOrderCounter = 0;
-
+                oldColumns[i].Dispose();
             }
+            oldOffsets.Dispose();
+            _deletesCounter = 0;
+            outOfOrderCounter = 0;
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            if (_deletesCounter > 0 || outOfOrderCounter > 0)
-            {
-                // Need to rebuild the arrays before converting to arrow.
-                Rebuild();
-            }
             List<Field> fields = new List<Field>();
             List<int> typeIds = new List<int>();
             List<IArrowArray> childArrays = new List<IArrowArray>();
