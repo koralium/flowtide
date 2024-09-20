@@ -24,6 +24,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             ArithmaticStreamingFunctions.AddBuiltInArithmaticFunctions(functionsRegister);
             Columnar.Functions.BuiltInStringFunctions.RegisterFunctions(functionsRegister);
             Columnar.Functions.BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);
+            Columnar.Functions.BuiltInDatetimeFunctions.AddBuiltInDatetimeFunctions(functionsRegister);
 
             BuiltInComparisonFunctions.AddComparisonFunctions(functionsRegister);
             BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);

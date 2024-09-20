@@ -127,6 +127,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length--;
         }
 
+        public void RemoveAtConditionalAddition(int index, Span<sbyte> conditionalValues, sbyte conditionalValue, int additionOnMoved)
+        {
+            AvxUtils.InPlaceMemCopyConditionalAddition(AccessSpan, conditionalValues, index + 1, index, _length - index - 1, additionOnMoved, conditionalValue);
+            _length--;
+        }
+
         public void InsertAt(int index, int item)
         {
             EnsureCapacity(_length + 1);
@@ -144,6 +150,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var dest = span.Slice(index + 1);
             AvxUtils.InPlaceMemCopyWithAddition(span, index, index + 1, _length - index, additionOnMoved);
             //AvxUtils.MemCpyWithAdd(source, dest, additionOnMoved);
+            span[index] = item;
+            _length++;
+        }
+
+        /// <summary>
+        /// Special function that allows sending in a sbyte array which contains values and only the elements that matches the sent in
+        /// conditional value should be added with the additionOnMoved value.
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="item"></param>
+        /// <param name="conditionalValues"></param>
+        /// <param name="conditionalValue"></param>
+        /// <param name="additionOnMoved"></param>
+        public void InsertAtConditionalAddition(int index, int item, Span<sbyte> conditionalValues, sbyte conditionalValue, int additionOnMoved)
+        {
+            EnsureCapacity(_length + 1);
+            var span = AccessSpan;
+            AvxUtils.InPlaceMemCopyConditionalAddition(span, conditionalValues, index, index + 1, _length - index, additionOnMoved, conditionalValue);
             span[index] = item;
             _length++;
         }

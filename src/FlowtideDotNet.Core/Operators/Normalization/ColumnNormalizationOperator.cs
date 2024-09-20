@@ -205,9 +205,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 }
                 for (int i = 0; i < _otherColumns.Count; i++)
                 {
-                    if (_emitList.Contains(_otherColumns[i]))
+                    var emitIndex = _emitList.IndexOf(_otherColumns[i]);
+                    if (emitIndex >= 0)
                     {
-                        deleteColumns[_otherColumns[i]] = deleteBatchColumns[i];
+                        deleteColumns[emitIndex] = deleteBatchColumns[i];
                     }
                 }
 
@@ -279,7 +280,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                                     deleteBatchKeyOffsets.Add(input.RowIndex);
                                     for (int k = 0; k < _otherColumns.Count; k++)
                                     {
-                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[_otherColumns[k]].GetValueAt(current.RowIndex, default));
+                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
                                     }
                                     return (input, GenericWriteOperation.Upsert);
                                 }
