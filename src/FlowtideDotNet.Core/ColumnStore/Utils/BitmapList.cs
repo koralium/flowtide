@@ -416,5 +416,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             _length = 0;
         }
+
+        public int GetByteSize(int start, int end)
+        {
+            return (((end - start) + 31) / 32) * 4;
+        }
     }
 }

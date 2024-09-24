@@ -57,6 +57,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         private bool disposedValue;
         private int _rentCounter;
 
+        public int ByteSize => GetByteSize();
+
         public Column()
         {
             
@@ -695,6 +697,25 @@ namespace FlowtideDotNet.Core.ColumnStore
                 _nullCounter = 0;
                 return _dataColumn!.EndNewList();
             }
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return 0;
+            }
+            
+            return _dataColumn!.GetByteSize(start, end) + _validityList!.GetByteSize(start, end);
+        }
+
+        public int GetByteSize()
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return 0;
+            }
+            return _dataColumn!.GetByteSize() + _validityList!.GetByteSize(0, Count - 1);
         }
     }
 }

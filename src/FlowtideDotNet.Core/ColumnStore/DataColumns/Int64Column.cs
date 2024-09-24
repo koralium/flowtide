@@ -246,5 +246,15 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return GetEnumerable().GetEnumerator();
         }
+
+        public int GetByteSize(int start, int end)
+        {
+            return (end - start + 1) * sizeof(long);
+        }
+
+        public int GetByteSize()
+        {
+            return Count * sizeof(long);
+        }
     }
 }

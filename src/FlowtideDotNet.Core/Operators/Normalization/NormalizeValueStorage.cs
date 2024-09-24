@@ -131,5 +131,15 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             throw new NotImplementedException("Get by ref is not supported");
         }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
+        }
     }
 }

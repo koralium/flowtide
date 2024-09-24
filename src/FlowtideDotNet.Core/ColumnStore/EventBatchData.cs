@@ -85,5 +85,25 @@ namespace FlowtideDotNet.Core.ColumnStore
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+
+        public int GetByteSize()
+        {
+            int size = 0;
+            for (int i = 0; i < columns.Length; i++)
+            {
+                size += columns[i].GetByteSize();
+            }
+            return size;
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            int size = 0;
+            for (int i = 0; i < columns.Length; i++)
+            {
+                size += columns[i].GetByteSize(start, end);
+            }
+            return size;
+        }
     }
 }

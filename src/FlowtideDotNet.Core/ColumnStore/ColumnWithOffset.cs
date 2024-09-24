@@ -72,6 +72,22 @@ namespace FlowtideDotNet.Core.ColumnStore
             innerColumn.Dispose();
         }
 
+        public int GetByteSize()
+        {
+            return innerColumn.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            int size = 0;
+            for (int i = start; i <= end; i++)
+            {
+                var offset = offsets[i];
+                size += innerColumn.GetByteSize(offset, offset);
+            }
+            return size;
+        }
+
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             var offset = offsets[index];

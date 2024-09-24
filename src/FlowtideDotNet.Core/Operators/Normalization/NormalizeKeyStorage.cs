@@ -131,5 +131,15 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             _data.Dispose();
         }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
+        }
     }
 }

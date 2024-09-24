@@ -332,5 +332,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return GetEnumerable().GetEnumerator();
         }
+
+        public int GetByteSize(int start, int end)
+        {
+            var startOffset = _offsets.Get(start);
+            var endOffset = _offsets.Get(end + 1);
+            return _internalColumn.GetByteSize(startOffset, endOffset) + ((end - start + 1) * sizeof(int));
+        }
+
+        public int GetByteSize()
+        {
+            return _internalColumn.GetByteSize() + (_offsets.Count * sizeof(int));
+        }
     }
 }

@@ -213,5 +213,15 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             throw new NotImplementedException();
         }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
+        }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize(0, Count - 1);
+        }
     }
 }

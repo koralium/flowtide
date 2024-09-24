@@ -17,5 +17,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
     internal interface IBPlusTreeNode : ICacheObject
     {
         long Id { get; }
+
+        int GetByteSize();
+
+        int GetByteSize(int start, int end);
     }
 }

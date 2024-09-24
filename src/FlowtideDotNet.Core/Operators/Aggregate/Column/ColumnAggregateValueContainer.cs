@@ -98,6 +98,16 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             };
         }
 
+        public int GetByteSize()
+        {
+            return _eventBatch.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _eventBatch.GetByteSize(start, end);
+        }
+
         public ref ColumnAggregateStateReference GetRef(int index)
         {
             throw new NotImplementedException("Get by ref is not supported");

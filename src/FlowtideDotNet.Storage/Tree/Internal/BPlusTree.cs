@@ -25,6 +25,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private readonly BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> m_options;
         internal IBplusTreeComparer<K, TKeyContainer> m_keyComparer;
         private int minSize;
+        private int byteMinSize;
+        private bool m_isByteBased;
 
         public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options) 
         {
@@ -32,7 +34,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             this.m_stateClient = stateClient;
             this.m_options = options;
             minSize = options.BucketSize.Value / 3;
+            byteMinSize = (16 * 1024) / 3;
             this.m_keyComparer = options.Comparer;
+            m_isByteBased = m_options.UseByteBasedPageSizes;
         }
 
         public Task InitializeAsync()
@@ -49,11 +53,21 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
                     Root = rootId,
                     BucketLength = m_options.BucketSize.Value,
-                    Left = rootId
+                    Left = rootId,
+                    PageSizeBytes = 16 * 1024
                 };
                 m_stateClient.AddOrUpdate(rootId, root);
             }
+            
             return Task.CompletedTask;
+            //else
+            //{
+            //    var root = await m_stateClient.GetValue(m_stateClient.Metadata.Root, "Initialize");
+            //    if (root.GetByteSize() >= 0)
+            //    {
+            //        m_isByteBased = true;
+            //    }
+            //}
         }
 
         public async Task<string> Print()
@@ -198,7 +212,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 Root = rootId,
                 BucketLength = m_options.BucketSize.Value,
-                Left = rootId
+                Left = rootId,
+                PageSizeBytes = 16 * 1024
             };
             m_stateClient.AddOrUpdate(rootId, root);
         }
