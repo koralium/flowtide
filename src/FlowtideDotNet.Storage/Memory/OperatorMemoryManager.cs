@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Storage.Memory
             {
                 return new Measurement<long>(_allocationCount, new KeyValuePair<string, object?>("stream", m_streamName), new KeyValuePair<string, object?>("operator", m_operatorName));
             });
-            meter.CreateObservableCounter("flowtide.memory.freed_bytes", () =>
+            meter.CreateObservableGauge("flowtide.memory.freed_bytes", () =>
             {
                 return new Measurement<long>(_freedMemory, new KeyValuePair<string, object?>("stream", m_streamName), new KeyValuePair<string, object?>("operator", m_operatorName));
             }, "bytes");
