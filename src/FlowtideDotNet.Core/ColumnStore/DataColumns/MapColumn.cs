@@ -25,10 +25,11 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System.Buffers;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
+using System.Collections;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public class MapColumn : IDataColumn
+    public class MapColumn : IDataColumn, IEnumerable<List<KeyValuePair<IDataValue, IDataValue>>>
     {
         /// <summary>
         /// Contains all the property keys, must always be strings
@@ -434,6 +435,33 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int EndNewList()
         {
             throw new NotImplementedException();
+        }
+
+        private IEnumerable<List<KeyValuePair<IDataValue, IDataValue>>> GetEnumerable()
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                var (startOffset, endOffset) = GetOffsets(in i);
+
+                List<KeyValuePair<IDataValue, IDataValue>> output = new List<KeyValuePair<IDataValue, IDataValue>>();
+                for (int j = startOffset; j < endOffset; j++)
+                {
+                    var key = _keyColumn.GetValueAt(j, default);
+                    var value = _valueColumn.GetValueAt(j, default);
+                    output.Add(new KeyValuePair<IDataValue, IDataValue>(key, value));
+                }
+                yield return output;
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        IEnumerator<List<KeyValuePair<IDataValue, IDataValue>>> IEnumerable<List<KeyValuePair<IDataValue, IDataValue>>>.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
         }
     }
 }

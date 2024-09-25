@@ -133,5 +133,25 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("hello", column.GetValueAt(2, default).AsString.ToString());
             Assert.Equal(123, column.GetValueAt(3, default).AsDecimal);
         }
+
+        /// <summary>
+        /// Checks bug that occured that after conversion to the union column, the value was not inserted in the correct position.
+        /// </summary>
+        [Fact]
+        public void ConvertToUnionInsertInMiddle()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new StringValue("1"));
+            column.Add(new StringValue("2"));
+            column.Add(new StringValue("3"));
+
+            column.InsertAt(1, new Int64Value(123));
+
+            Assert.Equal("1", column.GetValueAt(0, default).AsString.ToString());
+            Assert.Equal(123, column.GetValueAt(1, default).AsLong);
+            Assert.Equal("2", column.GetValueAt(2, default).AsString.ToString());
+            Assert.Equal("3", column.GetValueAt(3, default).AsString.ToString());
+        }
     }
 }
