@@ -306,7 +306,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     _type = ArrowTypeId.Union;
                     _validityList.Clear();
                     _nullCounter = 0;
-                    _dataColumn.Add(value);
+                    _dataColumn.InsertAt(index, value);
                 }
             }
             // Same type
