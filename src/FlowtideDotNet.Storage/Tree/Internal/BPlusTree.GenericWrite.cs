@@ -22,6 +22,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public ValueTask<GenericWriteOperation> GenericWrite(in K key, in V? value, in GenericWriteFunction<V> function)
         {
+            if (m_isByteBased)
+            {
+                return GenericWriteByteBased(in key, in value, in function);
+            }
             return GenericWriteRoot(key, value, function);
         }
 
@@ -652,6 +656,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             in V? value,
             in GenericWriteFunction<V> function)
         {
+            if (leafNode.Id == 80)
+            {
+
+            }
             var index = m_keyComparer.FindIndex(key, leafNode.keys);
             if (index < 0)
             {

@@ -226,6 +226,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public ValueTask<V?> GetValue(in long key, string from)
         {
+            if (key == 50)
+            {
+
+            }
             Debug.Assert(options.ValueSerializer != null);
             lock (m_lock)
             {

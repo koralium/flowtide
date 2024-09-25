@@ -1,0 +1,49 @@
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Storage.Tree;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
+{
+    internal class ListKeyWithSizeSerializer<K> : IBPlusTreeKeySerializer<K, ListKeyContainerWithSize<K>>
+    {
+        private readonly IBplusTreeSerializer<K> serializer;
+        private readonly int sizePerElement;
+
+        public ListKeyWithSizeSerializer(IBplusTreeSerializer<K> serializer, int sizePerElement)
+        {
+            this.serializer = serializer;
+            this.sizePerElement = sizePerElement;
+        }
+        public ListKeyContainerWithSize<K> CreateEmpty()
+        {
+            return new ListKeyContainerWithSize<K>(sizePerElement);
+        }
+
+        public ListKeyContainerWithSize<K> Deserialize(in BinaryReader reader)
+        {
+            var container = new ListKeyContainerWithSize<K>(sizePerElement);
+            serializer.Deserialize(reader, container._list);
+            return container;
+        }
+
+        public void Serialize(in BinaryWriter writer, in ListKeyContainerWithSize<K> values)
+        {
+            serializer.Serialize(writer, values._list);
+        }
+    }
+}
