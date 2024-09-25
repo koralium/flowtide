@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.SqlServer;
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
 using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
@@ -36,7 +37,7 @@ namespace FlowtideDotNet.Core.Engine
                 }
                 transform?.Invoke(relation);
 
-                var source = new SqlServerDataSource(connectionStringFunc, relation.NamedTable.DotSeperated, relation, dataflowopt);
+                var source = new ColumnSqlServerDataSource(connectionStringFunc, relation.NamedTable.DotSeperated, relation, dataflowopt);
                 var primaryKeys = source.GetPrimaryKeys();
 
                 if (!source.IsChangeTrackingEnabled())
