@@ -206,7 +206,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                     // Convert from single buffer to union buffer
                     var unionColumn = ConvertToUnion();
                     _type = ArrowTypeId.Union;
+                    var previousColumn = _dataColumn;
                     _dataColumn = unionColumn;
+                    previousColumn.Dispose();
                     _validityList.Clear();
                     _nullCounter = 0;
                     _dataColumn.Add(value);
@@ -304,11 +306,16 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     // Convert from single buffer to union buffer
                     var unionColumn = ConvertToUnion();
+                    var previousColumn = _dataColumn;
                     _dataColumn = unionColumn;
+                    if (previousColumn != null)
+                    {
+                        previousColumn.Dispose();
+                    }
                     _type = ArrowTypeId.Union;
                     _validityList.Clear();
                     _nullCounter = 0;
-                    _dataColumn.Add(value);
+                    _dataColumn.InsertAt(index, value);
                 }
             }
             // Same type
@@ -651,7 +658,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 var unionColumn = ConvertToUnion();
                 _type = ArrowTypeId.Union;
+                var previousColumn = _dataColumn;
                 _dataColumn = unionColumn;
+                if (previousColumn != null)
+                {
+                    previousColumn.Dispose();
+                }
                 if (_validityList != null)
                 {
                     _validityList.Clear();
@@ -689,7 +701,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 var unionColumn = ConvertToUnion();
                 _type = ArrowTypeId.Union;
+                var previousColumn = _dataColumn;
                 _dataColumn = unionColumn;
+                if (previousColumn != null)
+                {
+                    previousColumn.Dispose();
+                }
                 if (_validityList != null)
                 {
                     _validityList.Clear();

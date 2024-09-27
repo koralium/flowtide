@@ -3,17 +3,16 @@ import React, { useEffect, useState } from 'react';
 import {ReactFlow, Node, Position, Edge, Background, Controls} from 'reactflow';
 import dagre from '@dagrejs/dagre';
 
-
-// 
-
 import 'reactflow/dist/style.css';
 import { GraphNodeRender } from './noderender';
+import { useStreamGraphData } from '../hooks/useStreamGraphData';
 
 export interface StreamGraphNode {
     id: string,
     displayName: any
-    counters?: Array<{ name: string, total: { rateLastMinute: number, sum: number} }>
-    gauges?: Array<{ name: string, value: number }>
+    busy: number
+    backpressure: number
+    eventsPerSecond: number
 }
 
 export interface StreamGraphEdge {
@@ -30,8 +29,15 @@ const nodeTypes = {
     custom: GraphNodeRender
 }
 
-export const StreamGraph: React.FunctionComponent<StreamGraphProps> = (props: StreamGraphProps) => {
+export const StreamDisplay = () => {
+    const streamData = useStreamGraphData()
 
+    return (
+        <StreamGraph nodes={streamData.nodes} edges={streamData.edges} />
+    )
+}
+
+export const StreamGraph = (props: StreamGraphProps) => {
     const [nodes, setNodes] = useState<Node<any, string | undefined>[]>([])
     const [edges, setEdges] = useState<Edge<any>[]>([])
     
@@ -61,24 +67,8 @@ export const StreamGraph: React.FunctionComponent<StreamGraphProps> = (props: St
             const nodeWithPosition = dagreGraph.node(node.id);
 
             const data: any = {
-                label: node.id + ": " + node.displayName
-            }
-
-            if (node.counters) {
-                const eventcounter = node.counters.find(x => x.name === "flowtide_events")
-                if(eventcounter) {
-                    data.rateLastMinute = eventcounter.total.rateLastMinute
-                }
-            }
-            if (node.gauges){
-                const busy = node.gauges.find(x => x.name === "flowtide_busy")
-                if (busy) {
-                    data.busy = busy.value;
-                }
-                const backpressure = node.gauges.find(x => x.name === "flowtide_backpressure")
-                if (backpressure){
-                    data.backpressure = backpressure.value;
-                }
+                label: node.id + ": " + node.displayName,
+                ...node
             }
 
             const result: Node<any, string | undefined> = {
@@ -108,11 +98,24 @@ export const StreamGraph: React.FunctionComponent<StreamGraphProps> = (props: St
             })
         })
 
+        console.log("New data")
         console.log(outputNodes)
+        console.log(outputEdges)
 
         setNodes(outputNodes)
         setEdges(outputEdges)
     }, [props.nodes, props.edges])
+
+    // if (props.loading) {
+    //     return <div>Loading...</div>
+    // }
+
+    if (nodes.length == 0){
+        console.log("Zero nodes")
+    }
+    if (edges.length == 0){
+        console.log("zero edges")
+    }
 
     const proOptions = { hideAttribution: false };
 

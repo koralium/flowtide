@@ -1,3 +1,21 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html,
+body {
+  @apply bg-white dark:bg-gray-950;
+
+  @media (prefers-color-scheme: dark) {
+    color-scheme: dark;
+  }
+}
+
+.react-flow__attribution {
+    background-color: rgba(0,0,0,0) !important;
+  }
+  
+  .react-flow__controls-button {
+    background-color: #c5c5c5 !important;
+    border-bottom: 1px solid #878787 !important;
+  }

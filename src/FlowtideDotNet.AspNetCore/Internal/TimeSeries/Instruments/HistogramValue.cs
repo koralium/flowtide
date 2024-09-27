@@ -10,8 +10,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
+{
+    internal class HistogramValue
+    {
+        public IReadOnlyDictionary<string, string> Tags { get; }
 
-[assembly: InternalsVisibleTo("FlowtideDotNet.Storage.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.AspNetCore")]
+        public double Value { get; set; }
+
+        public long Count { get; set; }
+
+        public HistogramValue(IReadOnlyDictionary<string, string> tags)
+        {
+            Tags = tags;
+        }
+    }
+}

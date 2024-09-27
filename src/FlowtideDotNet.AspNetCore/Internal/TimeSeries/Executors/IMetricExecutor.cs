@@ -10,8 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+namespace FlowtideDotNet.AspNetCore.TimeSeries
+{
+    internal interface IMetricExecutor
+    {
+        SerieType SerieType { get; }
+        IReadOnlyDictionary<string, string> Tags { get; }
+        string Name { get; }
 
-[assembly: InternalsVisibleTo("FlowtideDotNet.Storage.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.AspNetCore")]
+        IAsyncEnumerable<MetricResult> GetValues(long startTimestamp, long endTimestamp, int stepWidth);
+    }
+}
