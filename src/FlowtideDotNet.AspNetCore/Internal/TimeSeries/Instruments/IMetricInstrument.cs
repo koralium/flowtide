@@ -10,8 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
+{
+    internal interface IMetricInstrument
+    {
+        void Record(ReadOnlySpan<KeyValuePair<string, object?>> tags, double value);
 
-[assembly: InternalsVisibleTo("FlowtideDotNet.Storage.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.AspNetCore")]
+        ValueTask StoreMeasurements(long timestamp, MetricSeries series);
+    }
+}

@@ -40,6 +40,10 @@
     
   </Target>
 
+	<ItemGroup>
+		<PackageReference Include="PromQL.Parser" Version="3.2.0" />
+	</ItemGroup>
+
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

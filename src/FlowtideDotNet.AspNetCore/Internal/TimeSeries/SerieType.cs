@@ -10,8 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
-
-[assembly: InternalsVisibleTo("FlowtideDotNet.Storage.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.AspNetCore")]
+namespace FlowtideDotNet.AspNetCore.TimeSeries
+{
+    internal enum SerieType
+    {
+        Scalar = 0,
+        Vector = 1,
+        Matrix = 2
+    }
+}

@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.AspNetCore.Internal.TimeSeries.Middleware;
+using FlowtideDotNet.AspNetCore.TimeSeries;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,8 +19,26 @@ namespace FlowtideDotNet.AspNetCore.Extensions
 {
     public static class UIApplicationBuilderExtensions
     {
+        private static void StartMetrics(this IApplicationBuilder app, string path)
+        {
+            var options = new MetricOptions()
+            {
+                CaptureRate = TimeSpan.FromSeconds(1),
+                Prefixes = new List<string>()
+                {
+                    "flowtide"
+                }
+            };
+            var metricSeries = new MetricSeries(options);
+            metricSeries.Initialize().Wait();
+
+            var metricGatherer = new MetricGatherer(options, metricSeries);
+            app.UseMiddleware<MetricMiddleware>(metricGatherer, metricSeries, path);
+        }
+
         public static IApplicationBuilder UseFlowtideUI(this IApplicationBuilder app, string path = "/ui/stream")
         {
+            app.StartMetrics(path);
             var stream = app.ApplicationServices.GetRequiredService<FlowtideDotNet.Base.Engine.DataflowStream>();
             return app.UseFlowtideUI(stream, path);
         }
