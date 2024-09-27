@@ -88,6 +88,16 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             return _list[index];
         }
 
+        public int GetByteSize()
+        {
+            return _list.SlicedMemory.Length;
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return (end - start + 1) * sizeof(long);
+        }
+
         public void Insert(int index, long key)
         {
             _list.InsertAt(index, key);
@@ -105,11 +115,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
-            {
-                RemoveAt(i);
-            }
+            _list.RemoveRange(start, count);
         }
 
         public void Update(int index, long key)
