@@ -232,6 +232,20 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        public void RemoveRange(int index, int count)
+        {
+            var offset = _offsets.Get(index);
+            var length = _offsets.Get(index + count) - offset;
+
+            _offsets.RemoveRange(index, count, -length);
+
+            var span = AccessSpan;
+
+            // Move all elements after the index
+            span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset));
+            _length -= length;
+        }
+
         public Span<byte> Get(in int index)
         {
             var offset = _offsets.Get(index);

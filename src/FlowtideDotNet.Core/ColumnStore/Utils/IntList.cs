@@ -21,6 +21,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
@@ -127,10 +128,28 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length--;
         }
 
+        public void RemoveRange(int index, int count, int additionOnMoved)
+        {
+            AvxUtils.InPlaceMemCopyWithAddition(AccessSpan, index + count, index, _length - index - count, additionOnMoved);
+            _length -= count;
+        }
+
+        public void RemoveRange(int index, int count)
+        {
+            AccessSpan.Slice(index + count, _length - index - count).CopyTo(AccessSpan.Slice(index));
+            _length--;
+        }
+
         public void RemoveAtConditionalAddition(int index, Span<sbyte> conditionalValues, sbyte conditionalValue, int additionOnMoved)
         {
             AvxUtils.InPlaceMemCopyConditionalAddition(AccessSpan, conditionalValues, index + 1, index, _length - index - 1, additionOnMoved, conditionalValue);
             _length--;
+        }
+
+        public void RemoveRangeTypeBasedAddition(int index, int count, Span<sbyte> typeIds, Span<int> toAdd)
+        {
+            AvxUtils.InPlaceMemCopyAdditionByType(AccessSpan, typeIds, index + count, index, _length - index - count, toAdd);
+            _length -= count;
         }
 
         public void InsertAt(int index, int item)

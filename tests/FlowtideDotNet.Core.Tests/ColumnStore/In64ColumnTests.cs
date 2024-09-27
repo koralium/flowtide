@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
@@ -97,6 +98,76 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(-1, column.CompareTo(0, new Int64Value(1), default, default));
             Assert.Equal(0, column.CompareTo(1, new Int64Value(1), default, default));
             Assert.Equal(1, column.CompareTo(2, new Int64Value(1), default, default));
+        }
+
+        [Fact]
+        public void RemoveRangeNotNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<long?> expected = new List<long?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                column.Add(new Int64Value(i));
+                expected.Add(i);
+            }
+
+            column.RemoveRange(100, 100);
+
+            Assert.Equal(900, column.Count);
+
+            for (int i = 0; i < 100; i++)
+            {
+                if (expected[i] != null)
+                {
+                    Assert.Equal(expected[i], column.GetValueAt(i, default).AsLong);
+                }
+                else
+                {
+                    Assert.True(column.GetValueAt(i, default).IsNull);
+                }
+            }
+        }
+
+        [Fact]
+        public void RemoveRangeWithNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<long?> expected = new List<long?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                if (r.Next(0, 2) == 0)
+                {
+                    column.Add(new Int64Value(i));
+                    expected.Add(i);
+                }
+                else
+                {
+                    column.Add(NullValue.Instance);
+                    expected.Add(null);
+                }
+            }
+
+            column.RemoveRange(100, 100);
+            expected.RemoveRange(100, 100);
+
+            Assert.Equal(900, column.Count);
+            Assert.Equal(expected.Count(x => !x.HasValue), column.GetNullCount());
+
+            for (int i = 0; i < 900; i++)
+            {
+                if (expected[i] != null)
+                {
+                    Assert.Equal(expected[i], column.GetValueAt(i, default).AsLong);
+                }
+                else
+                {
+                    Assert.True(column.GetValueAt(i, default).IsNull);
+                }
+            }
         }
     }
 }

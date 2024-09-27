@@ -246,5 +246,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return GetEnumerable().GetEnumerator();
         }
+
+        public void RemoveRange(int start, int count)
+        {
+            Debug.Assert(_data != null);
+            _data.RemoveRange(start, count);
+        }
     }
 }

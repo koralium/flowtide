@@ -113,5 +113,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             throw new NotImplementedException();
         }
+
+        public void RemoveRange(int start, int count)
+        {
+            _count -= count;
+        }
     }
 }
