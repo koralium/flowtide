@@ -213,5 +213,14 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             throw new NotImplementedException();
         }
+
+        public void RemoveRange(int start, int count)
+        {
+            var end = start + count;
+            for (int i = end - 1; i >= start; i--)
+            {
+                _data.RemoveAt(i);
+            }
+        }
     }
 }

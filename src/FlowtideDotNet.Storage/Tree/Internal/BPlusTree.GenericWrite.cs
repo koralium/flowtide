@@ -906,15 +906,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             var splitKey = child.keys.Get(m_stateClient.Metadata.BucketLength / 2 - 1);
 
-            child.EnterWriteLock();
-            child.keys.RemoveRange(m_stateClient.Metadata.BucketLength / 2 - 1, m_stateClient.Metadata.BucketLength / 2 + 1);
-            child.children.RemoveRange(m_stateClient.Metadata.BucketLength / 2, m_stateClient.Metadata.BucketLength / 2 + 1);
-            child.ExitWriteLock();
-
+            // Insert the split key to parent before removing from child since the removal from child can clear memory.
             parent.EnterWriteLock();
             parent.keys.Insert_Internal(index, splitKey);
             parent.children.Insert(index + 1, newNodeId);
             parent.ExitWriteLock();
+
+            child.EnterWriteLock();
+            child.keys.RemoveRange(m_stateClient.Metadata.BucketLength / 2 - 1, m_stateClient.Metadata.BucketLength / 2 + 1);
+            child.children.RemoveRange(m_stateClient.Metadata.BucketLength / 2, m_stateClient.Metadata.BucketLength / 2 + 1);
+            child.ExitWriteLock();
 
             return (newNode, splitKey);
         }

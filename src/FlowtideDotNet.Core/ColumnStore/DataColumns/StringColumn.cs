@@ -198,5 +198,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             throw new NotImplementedException();
         }
+
+        public void RemoveRange(int start, int count)
+        {
+            _binaryList.RemoveRange(start, count);
+        }
     }
 }

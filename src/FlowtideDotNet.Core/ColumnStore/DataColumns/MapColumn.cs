@@ -26,6 +26,7 @@ using System.Buffers;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
 using System.Collections;
+using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -293,11 +294,8 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Null will be added as an empty map
             if (value.Type == ArrowTypeId.Null)
             {
-                for (int i = endOffset - 1; i >= startOffset; i--)
-                {
-                    _keyColumn.RemoveAt(i);
-                    _valueColumn.RemoveAt(i);
-                }
+                _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+                _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
                 _offsets.Update(index + 1, startOffset, startOffset - endOffset);
                 return index;
             }
@@ -306,11 +304,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             var ordered = map.OrderBy(x => x.Key, new DataValueComparer()).ToList();
 
             // Remove the old values
-            for (int i = endOffset - 1; i >= startOffset; i--)
-            {
-                _keyColumn.RemoveAt(i);
-                _valueColumn.RemoveAt(i);
-            }
+            _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+            _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
+
 
             // Insert the new values
             for (int i = 0; i < ordered.Count; i++)
@@ -462,6 +458,19 @@ namespace FlowtideDotNet.Core.ColumnStore
         IEnumerator<List<KeyValuePair<IDataValue, IDataValue>>> IEnumerable<List<KeyValuePair<IDataValue, IDataValue>>>.GetEnumerator()
         {
             return GetEnumerable().GetEnumerator();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            var startOffset = _offsets.Get(start);
+            var endOffset = _offsets.Get(start + count);
+
+            // Remove offsets
+            _offsets.RemoveRange(start, count, startOffset - endOffset);
+
+            // Remove the keys and values
+            _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+            _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
         }
     }
 }
