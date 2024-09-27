@@ -443,5 +443,27 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             _typeList.RemoveRange(start, count);
         }
+
+        public int GetByteSize(int start, int end)
+        {
+            int size = 0;
+            for (int i = start; i <= end; i++)
+            {
+                var valueColumnIndex = _typeList[i];
+                var valueColumn = _valueColumns[valueColumnIndex];
+                size += valueColumn.GetByteSize(_offsets.Get(i), _offsets.Get(i));
+            }
+            return size + ((end - start + 1) * sizeof(int));
+        }
+
+        public int GetByteSize()
+        {
+            int size = 0;
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                size += _valueColumns[i].GetByteSize();
+            }
+            return size + (Count * sizeof(int));
+        }
     }
 }

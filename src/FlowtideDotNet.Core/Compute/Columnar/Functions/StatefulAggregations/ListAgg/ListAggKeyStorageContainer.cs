@@ -95,6 +95,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             };
         }
 
+        public int GetByteSize()
+        {
+            return _data.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
+        }
+
         public void Insert(int index, ListAggColumnRowReference key)
         {
             // Insert grouping keys

@@ -252,5 +252,15 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_data != null);
             _data.RemoveRange(start, count);
         }
+
+        public int GetByteSize(int start, int end)
+        {
+            return (end - start + 1) * sizeof(long);
+        }
+
+        public int GetByteSize()
+        {
+            return Count * sizeof(long);
+        }
     }
 }

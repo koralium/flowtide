@@ -51,6 +51,16 @@ namespace FlowtideDotNet.Storage.Tree
             return _values[index];
         }
 
+        public int GetByteSize()
+        {
+            return -1;
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return -1;
+        }
+
         public ref V GetRef(int index)
         {
             return ref CollectionsMarshal.AsSpan(_values)[index];

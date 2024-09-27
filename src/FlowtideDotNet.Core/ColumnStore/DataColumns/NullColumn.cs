@@ -118,5 +118,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             _count -= count;
         }
+
+        public int GetByteSize(int start, int end)
+        {
+            return 0;
+        }
+
+        public int GetByteSize()
+        {
+            return 0;
+        }
     }
 }

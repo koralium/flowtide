@@ -82,6 +82,16 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             };
         }
 
+        public int GetByteSize()
+        {
+            return _data.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
+        }
+
         public ref ColumnRowReference GetRef(int index)
         {
             throw new NotImplementedException("Getting by ref in column value storage is not supported");

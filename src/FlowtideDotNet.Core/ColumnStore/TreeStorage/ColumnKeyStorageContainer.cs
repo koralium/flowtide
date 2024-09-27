@@ -140,5 +140,15 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 _data.Columns[i].UpdateAt(index, _dataValueContainer);
             }
         }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
+        }
     }
 }

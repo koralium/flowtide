@@ -203,5 +203,15 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _binaryList.RemoveRange(start, count);
         }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _binaryList.GetByteSize(start, end);
+        }
+
+        public int GetByteSize()
+        {
+            return _binaryList.GetByteSize(0, Count - 1);
+        }
     }
 }

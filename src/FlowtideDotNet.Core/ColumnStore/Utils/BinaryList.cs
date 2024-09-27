@@ -314,5 +314,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _offsets.Add(0);
             _length = 0;
         }
+
+        public int GetByteSize(int start, int end)
+        {
+            var startOffset = _offsets.Get(start);
+            var endOffset = _offsets.Get(end + 1);
+            return endOffset - startOffset + ((end - start + 1) * sizeof(int));
+        }
     }
 }

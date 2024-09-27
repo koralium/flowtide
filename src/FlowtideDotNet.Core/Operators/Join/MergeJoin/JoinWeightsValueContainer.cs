@@ -86,5 +86,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             _values.Update(index, value);
         }
+
+        public int GetByteSize()
+        {
+            return _values.Count * 8;
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return (end - start + 1) * 8;
+        }
     }
 }
