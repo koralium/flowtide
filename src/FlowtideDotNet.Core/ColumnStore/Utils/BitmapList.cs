@@ -343,6 +343,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        public void RemoveRange(in int index, in int count)
+        {
+            int end = index + count;
+
+            for (int i = end - 1; i >= index; i--)
+            {
+                RemoveAt(i);
+            }
+        }
+
         private void ShiftRight(int fromIndex)
         {
             var span = AccessSpan;

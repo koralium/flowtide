@@ -119,6 +119,36 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        public static unsafe void InPlaceMemCopyAdditionByType(Span<int> array, Span<sbyte> typeIds, int sourceIndex, int destIndex, int length, Span<int> toAdd)
+        {
+            unsafe
+            {
+                fixed (int* pArray = array)
+                fixed (sbyte* pCond = typeIds)
+                {
+                    // Check if there is overlap
+                    if (sourceIndex < destIndex && sourceIndex + length > destIndex)
+                    {
+                        int i = length;
+                        for (int j = i - 1; j >= 0; j--)
+                        {
+                            var typeId = typeIds[sourceIndex + j];
+                            array[destIndex + j] = array[sourceIndex + j] + toAdd[typeId];
+                        }
+                    }
+                    else
+                    {
+                        int i = 0;
+                        for (; i < length; i++)
+                        {
+                            var typeId = typeIds[sourceIndex + i];
+                            array[destIndex + i] = array[sourceIndex + i] + toAdd[typeId];
+                        }
+                    }
+                }
+            }
+        }
+
         public static unsafe int FindFirstOccurence(Span<sbyte> array, int startIndex, sbyte valueToFind)
         {
             unsafe

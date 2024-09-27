@@ -395,6 +395,26 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
+        public void RemoveRange(in int index, in int count)
+        {
+            Debug.Assert(_validityList != null);
+            if (_nullCounter > 0)
+            {
+                for (var i = 0; i < count; i++)
+                {
+                    if (!_validityList.Get(index + i))
+                    {
+                        _nullCounter--;
+                    }
+                }
+                _validityList.RemoveRange(index, count);
+            }
+            if (_dataColumn != null)
+            {
+                _dataColumn!.RemoveRange(index, count);
+            }
+        }
+
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             Debug.Assert(_validityList != null);
@@ -714,6 +734,11 @@ namespace FlowtideDotNet.Core.ColumnStore
                 _nullCounter = 0;
                 return _dataColumn!.EndNewList();
             }
+        }
+
+        internal int GetNullCount()
+        {
+            return _nullCounter;
         }
 
         public int GetByteSize(int start, int end)
