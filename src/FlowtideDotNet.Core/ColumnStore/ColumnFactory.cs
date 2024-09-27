@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    internal static class ColumnFactory
+    public static class ColumnFactory
     {
         private class ObjectPoolProvider : DefaultPooledObjectPolicy<Column>
         {

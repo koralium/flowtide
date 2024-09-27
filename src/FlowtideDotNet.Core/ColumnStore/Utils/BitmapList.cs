@@ -110,6 +110,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
+        public Memory<byte> MemorySlice => GetMemorySlice();
+
+        private Memory<byte> GetMemorySlice()
+        {
+            if (_memoryOwner == null)
+            {
+                return new Memory<byte>();
+            }
+            return _memoryOwner.Memory.Slice(0, ((_length + 31) / 32) * 4);
+        }
+
         public int Count => _length;
 
         public BitmapList()

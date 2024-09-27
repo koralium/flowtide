@@ -49,6 +49,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _memoryAllocator = memoryAllocator;
         }
 
+        public Span<T> Span => new Span<T>(_data, _length);
+
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
         public Memory<byte> SlicedMemory => _memoryOwner?.Memory.Slice(0, _length * sizeof(T)) ?? new Memory<byte>();

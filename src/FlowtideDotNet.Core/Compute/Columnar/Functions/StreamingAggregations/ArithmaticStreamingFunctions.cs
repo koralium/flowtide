@@ -86,18 +86,18 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
         private static void DoSum<T>(T value, ColumnReference state, long weight)
             where T : IDataValue
         {
-            var currentState = state.column.GetValueAt(state.index, default);
+            var currentState = state.GetValue();
             if (currentState.Type == ArrowTypeId.Int64)
             {
                 if (value.Type == ArrowTypeId.Int64)
                 {
                     var count = currentState.AsLong + (value.AsLong * weight);
-                    state.column.UpdateAt(state.index, new Int64Value(count));
+                    state.Update(new Int64Value(count));
                 }
                 else if (value.Type == ArrowTypeId.Double)
                 {
                     var floatCount = currentState.AsLong + (value.AsDouble * weight);
-                    state.column.UpdateAt(state.index, new DoubleValue(floatCount));
+                    state.Update(new DoubleValue(floatCount));
                 }
             }
             else if (currentState.Type == ArrowTypeId.Double)
@@ -105,12 +105,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
                 if (value.Type == ArrowTypeId.Int64)
                 {
                     var count = currentState.AsDouble + (value.AsLong * weight);
-                    state.column.UpdateAt(state.index, new DoubleValue(count));
+                    state.Update(new DoubleValue(count));
                 }
                 else if (value.Type == ArrowTypeId.Double)
                 {
                     var count = currentState.AsDouble + (value.AsDouble * weight);
-                    state.column.UpdateAt(state.index, new DoubleValue(count));
+                    state.Update(new DoubleValue(count));
                 }
             }
             else if (currentState.Type == ArrowTypeId.Null)
@@ -118,25 +118,25 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
                 if (value.Type == ArrowTypeId.Int64)
                 {
                     var count = (value.AsLong * weight);
-                    state.column.UpdateAt(state.index, new Int64Value(count));
+                    state.Update(new Int64Value(count));
                 }
                 else if (value.Type == ArrowTypeId.Double)
                 {
                     var count = (value.AsDouble * weight);
-                    state.column.UpdateAt(state.index, new DoubleValue(count));
+                    state.Update(new DoubleValue(count));
                 }
             }
         }
 
         private static void GetSumValue(ColumnReference state, ColumnStore.Column outputColumn)
         {
-            var stateVal = state.column.GetValueAt(state.index, default);
+            var stateVal = state.GetValue();
             outputColumn.Add(stateVal);
         }
 
         private static void GetSum0Value(ColumnReference state, ColumnStore.Column outputColumn)
         {
-            var stateVal = state.column.GetValueAt(state.index, default);
+            var stateVal = state.GetValue();
             
             if (stateVal.Type == ArrowTypeId.Null)
             {

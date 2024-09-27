@@ -204,7 +204,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                     // Convert from single buffer to union buffer
                     var unionColumn = ConvertToUnion();
                     _type = ArrowTypeId.Union;
+                    var previousColumn = _dataColumn;
                     _dataColumn = unionColumn;
+                    previousColumn.Dispose();
+                    _validityList.Clear();
                     _nullCounter = 0;
                     _dataColumn.Add(value);
                 }
@@ -301,9 +304,16 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     // Convert from single buffer to union buffer
                     var unionColumn = ConvertToUnion();
+                    var previousColumn = _dataColumn;
                     _dataColumn = unionColumn;
+                    if (previousColumn != null)
+                    {
+                        previousColumn.Dispose();
+                    }
+                    _type = ArrowTypeId.Union;
+                    _validityList.Clear();
                     _nullCounter = 0;
-                    _dataColumn.Add(value);
+                    _dataColumn.InsertAt(index, value);
                 }
             }
             // Same type
@@ -330,7 +340,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             where T : IDataValue
         {
             Debug.Assert(_validityList != null);
-            if (value.Type == ArrowTypeId.Null)
+            if (_type == ArrowTypeId.Union)
+            {
+                _dataColumn!.Update<T>(index, value);
+            }
+            else if (value.Type == ArrowTypeId.Null)
             {
                 CheckNullInitialization();
                 if (_validityList.Get(index))
@@ -434,6 +448,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             else
             {
+                if (_nullCounter > 0 && dataValue.IsNull)
+                {
+                    if (_validityList!.Get(index))
+                    {
+                        return 1;
+                    }
+                    return 0;
+                }
                 return _type - dataValue.Type;
             }
         }
@@ -540,7 +562,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return (new Apache.Arrow.NullArray(Count), NullType.Default);
             }
 
-            var nullBuffer = new ArrowBuffer(_validityList.Memory);
+            var nullBuffer = new ArrowBuffer(_validityList.MemorySlice);
             return _dataColumn!.ToArrowArray(nullBuffer, _nullCounter);
         }
 
@@ -634,7 +656,16 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 var unionColumn = ConvertToUnion();
                 _type = ArrowTypeId.Union;
+                var previousColumn = _dataColumn;
                 _dataColumn = unionColumn;
+                if (previousColumn != null)
+                {
+                    previousColumn.Dispose();
+                }
+                if (_validityList != null)
+                {
+                    _validityList.Clear();
+                }
                 _nullCounter = 0;
                 _dataColumn.AddToNewList(value);
             }
@@ -668,7 +699,16 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 var unionColumn = ConvertToUnion();
                 _type = ArrowTypeId.Union;
+                var previousColumn = _dataColumn;
                 _dataColumn = unionColumn;
+                if (previousColumn != null)
+                {
+                    previousColumn.Dispose();
+                }
+                if (_validityList != null)
+                {
+                    _validityList.Clear();
+                }
                 _nullCounter = 0;
                 return _dataColumn!.EndNewList();
             }
