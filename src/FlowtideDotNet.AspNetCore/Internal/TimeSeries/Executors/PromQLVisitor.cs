@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.AspNetCore.Internal.TimeSeries.Executors;
 using PromQL.Parser;
 using PromQL.Parser.Ast;
 
@@ -185,35 +186,55 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
         {
             expr.Expr.Accept(this);
             var result = _callStack.Pop();
+
+            Dictionary<string, GroupingContainer>? groups = default;
+            if (expr.GroupingLabels.Length > 0)
+            {
+                groups = new Dictionary<string, GroupingContainer>();
+                foreach (var serie in result.series)
+                {
+                    var key = string.Join(",", expr.GroupingLabels.Select(x => serie.Tags[x]));
+                    if (!groups.TryGetValue(key, out var group))
+                    {
+                        // Create a dictionary that contains the grouping labels and the values from the series
+                        Dictionary<string, string> groupTags = new Dictionary<string, string>();
+
+                        foreach (var label in expr.GroupingLabels)
+                        {
+                            groupTags.Add(label, serie.Tags[label]);
+                        }
+
+                        group = new GroupingContainer(groupTags, new List<IMetricExecutor>());
+                        groups.Add(key, group);
+                    }
+                    group.series.Add(serie);
+                }
+            }
             if (expr.Operator.Name == "sum")
             {
-                if (expr.GroupingLabels.Length > 0)
+                if (groups != null)
                 {
-                    Dictionary<string, GroupingContainer> groups = new Dictionary<string, GroupingContainer>();
-                    foreach (var serie in result.series)
-                    {
-                        var key = string.Join(",", expr.GroupingLabels.Select(x => serie.Tags[x]));
-                        if (!groups.TryGetValue(key, out var group))
-                        {
-                            // Create a dictionary that contains the grouping labels and the values from the series
-                            Dictionary<string, string> groupTags = new Dictionary<string, string>();
-
-                            foreach (var label in expr.GroupingLabels)
-                            {
-                                groupTags.Add(label, serie.Tags[label]);
-                            }
-
-                            group = new GroupingContainer(groupTags, new List<IMetricExecutor>());
-                            groups.Add(key, group);
-                        }
-                        group.series.Add(serie);
-                    }
                     _callStack.Push(new VisitResult(groups.Select(x => new SumExecutor(x.Value.series, x.Value.tags))));
                 }
                 else
                 {
                     _callStack.Push(new VisitResult([new SumExecutor(result.series.ToList())]));
                 }
+            }
+            else if (expr.Operator.Name == "avg")
+            {
+                if (groups != null)
+                {
+                    _callStack.Push(new VisitResult(groups.Select(x => new AverageExecutor(x.Value.series, x.Value.tags))));
+                }
+                else
+                {
+                    _callStack.Push(new VisitResult([new AverageExecutor(result.series.ToList())]));
+                }
+            }
+            else
+            {
+                throw new NotImplementedException();
             }
         }
 

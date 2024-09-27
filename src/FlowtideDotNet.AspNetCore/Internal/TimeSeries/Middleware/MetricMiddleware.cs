@@ -27,12 +27,18 @@ namespace FlowtideDotNet.AspNetCore.Internal.TimeSeries.Middleware
         private readonly RequestDelegate _next;
         private readonly MetricGatherer _gatherer;
         private readonly MetricSeries _series;
+        private readonly string _rootPath;
 
-        public MetricMiddleware(RequestDelegate next, MetricGatherer gatherer, MetricSeries series)
+        public MetricMiddleware(RequestDelegate next, MetricGatherer gatherer, MetricSeries series, string rootPath)
         {
             _next = next;
             this._gatherer = gatherer;
             this._series = series;
+            this._rootPath = rootPath;
+            if (_rootPath.EndsWith("/"))
+            {
+                _rootPath = _rootPath.Substring(0, _rootPath.Length - 1);
+            }
         }
 
         public Task Invoke(HttpContext httpContext)
@@ -42,18 +48,23 @@ namespace FlowtideDotNet.AspNetCore.Internal.TimeSeries.Middleware
 
             var requestPath = httpContext.Request.Path.ToString();
 
-            if (requestPath == "/v1/api/query")
+            if (requestPath.StartsWith(_rootPath))
             {
-                return HandleQuery(httpContext);
+                var remaining = requestPath.Substring(_rootPath.Length);
+                if (remaining == "/v1/api/query")
+                {
+                    return HandleQuery(httpContext);
+                }
+                else if (remaining == "/v1/api/query_range")
+                {
+                    return HandleQueryRange(httpContext);
+                }
+                else if (remaining == "/v1/api/series")
+                {
+                    return HandleSeries(httpContext);
+                }
             }
-            else if (requestPath == "/v1/api/query_range")
-            {
-                return HandleQueryRange(httpContext);
-            }
-            else if(requestPath == "/v1/api/series")
-            {
-                return HandleSeries(httpContext);
-            }
+            
             return _next(httpContext);
         }
 

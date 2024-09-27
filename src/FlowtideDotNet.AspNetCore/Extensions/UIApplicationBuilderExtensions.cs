@@ -19,7 +19,7 @@ namespace FlowtideDotNet.AspNetCore.Extensions
 {
     public static class UIApplicationBuilderExtensions
     {
-        private static void StartMetrics(this IApplicationBuilder app)
+        private static void StartMetrics(this IApplicationBuilder app, string path)
         {
             var options = new MetricOptions()
             {
@@ -33,12 +33,12 @@ namespace FlowtideDotNet.AspNetCore.Extensions
             metricSeries.Initialize().Wait();
 
             var metricGatherer = new MetricGatherer(options, metricSeries);
-            app.UseMiddleware<MetricMiddleware>(metricGatherer, metricSeries);
+            app.UseMiddleware<MetricMiddleware>(metricGatherer, metricSeries, path);
         }
 
         public static IApplicationBuilder UseFlowtideUI(this IApplicationBuilder app, string path = "/ui/stream")
         {
-            app.StartMetrics();
+            app.StartMetrics(path);
             var stream = app.ApplicationServices.GetRequiredService<FlowtideDotNet.Base.Engine.DataflowStream>();
             return app.UseFlowtideUI(stream, path);
         }
