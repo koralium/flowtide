@@ -10,8 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+namespace FlowtideDotNet.AspNetCore.TimeSeries
+{
+    internal struct MetricResult
+    {
+        public double value;
+        public long timestamp;
 
-[assembly: InternalsVisibleTo("FlowtideDotNet.Storage.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.AspNetCore")]
+        public MetricResult(double value, long timestamp)
+        {
+            this.value = value;
+            this.timestamp = timestamp;
+        }
+    }
+}

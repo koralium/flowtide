@@ -1,48 +1,38 @@
-import React from "react"
-import { StreamGraphNode } from "./streamgraph/streamgraph"
-
-export interface NodeTableProps {
-    nodes: Array<StreamGraphNode>
-}
+import { useGetTimeSpan } from "../hooks/useGetTimeSpan"
+import { useOperatorTableData } from "../hooks/useOperatorTableData"
+import { memoryFormat } from "../utils/memoryformat"
 
 
-export const NodeTable = (props: NodeTableProps) => {
+export const OperatorTable = () => {
 
-    const rows = props.nodes.map(x => {
-        const eventcounter = x.counters?.find(y => y.name === "flowtide_events")
+    const {result, loading, error } = useOperatorTableData()
 
-        let events = 0;
-        if (eventcounter) {
-            events = eventcounter.total.sum
-        }
-
-        let busyValue = 0
-        let backpressureValue = 0
-        const busy = x.gauges?.find(y => y.name === "flowtide_busy")
-        if (busy) {
-            busyValue = busy.value;
-        }
-        const backpressure = x.gauges?.find(y => y.name === "flowtide_backpressure")
-        if (backpressure){
-            backpressureValue = backpressure.value;
-        }
-
+    if (error) {
         return (
-            <tr key={x.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+            <div>{error}</div>
+        )
+    }
+
+    const rows = result.map(x => {
+        return (
+            <tr key={x.id} className="border-b dark:border-gray-700">
                 <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                     {x.id}
                 </th>
                 <td className="px-6 py-4">
-                    {x.displayName}
+                    {x.name}
                 </td>
                 <td className="px-6 py-4">
-                    {events}
+                    {x.totalEvents}
                 </td>
                 <td className="px-6 py-4">
-                    {busyValue}
+                    {x.busy}
                 </td>
                 <td className="px-6 py-4">
-                    {backpressureValue}
+                    {x.backpressure}
+                </td>
+                <td className="px-6 py-4">
+                    {memoryFormat(x.memoryUsage)}
                 </td>
             </tr>
         )
@@ -51,7 +41,7 @@ export const NodeTable = (props: NodeTableProps) => {
     return (
         <div className="relative overflow-x-auto">
             <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-slate-900 dark:text-gray-400">
                     <tr>
                         <th scope="col" className="px-6 py-3">
                             Id
@@ -67,6 +57,9 @@ export const NodeTable = (props: NodeTableProps) => {
                         </th>
                         <th scope="col" className="px-6 py-3">
                             Backpressure
+                        </th>
+                        <th scope="col" className="px-6 py-3">
+                            Memory Usage
                         </th>
                     </tr>
                 </thead>

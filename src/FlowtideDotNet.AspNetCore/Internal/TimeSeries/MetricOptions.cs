@@ -10,8 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+namespace FlowtideDotNet.AspNetCore.TimeSeries
+{
+    public class MetricOptions
+    {
+        public List<string> Prefixes { get; set; }
 
-[assembly: InternalsVisibleTo("FlowtideDotNet.Storage.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.AspNetCore")]
+        /// <summary>
+        /// Time between capturing the values to time series.
+        /// </summary>
+        public TimeSpan CaptureRate { get; set; }
+    }
+}
