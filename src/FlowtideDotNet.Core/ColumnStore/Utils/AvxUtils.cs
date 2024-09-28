@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="length"></param>
         /// <param name="valueToAdd"></param>
         /// <param name="conditionalValue"></param>
-        public static unsafe void InPlaceMemCopyConditionalAddition(Span<int> array, Span<sbyte> conditionalValues, int sourceIndex, int destIndex, int length, int valueToAdd, sbyte conditionalValue)
+        public static unsafe void InPlaceMemCopyConditionalAdditionScalar(Span<int> array, Span<sbyte> conditionalValues, int sourceIndex, int destIndex, int length, int valueToAdd, sbyte conditionalValue)
         {
             unsafe
             {
@@ -113,6 +113,97 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                             {
                                 array[destIndex + i] = array[sourceIndex + i];
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        public static unsafe void InPlaceMemCopyConditionalAddition(Span<int> array, Span<sbyte> conditionalValues, int sourceIndex, int destIndex, int length, int valueToAdd, sbyte conditionalValue)
+        {
+            if (!Avx2.IsSupported)
+            {
+                // Fallback to scalar implementation if AVX2 is not supported
+                InPlaceMemCopyConditionalAdditionScalar(array, conditionalValues, sourceIndex, destIndex, length, valueToAdd, conditionalValue);
+                return;
+            }
+
+            fixed (int* pArray = array)
+            fixed (sbyte* pCond = conditionalValues)
+            {
+                int i = 0;
+                int vecLength = Vector256<int>.Count; // Number of elements per AVX2 vector (8 for int)
+
+                Vector256<int> valueToAddVec = Vector256.Create(valueToAdd);
+                Vector128<sbyte> conditionalValueVec = Vector128.Create(conditionalValue);
+
+                // Check if there is overlap
+                if (sourceIndex < destIndex && sourceIndex + length > destIndex)
+                {
+                    // Process from end to start (backward) to handle overlap
+                    for (int j = length - vecLength; j >= 0; j -= vecLength)
+                    {
+                        // Load 8 ints from source array and 8 conditionals
+                        Vector256<int> srcVec = Avx2.LoadVector256(pArray + sourceIndex + j);
+                        Vector128<sbyte> condVec = Avx2.LoadVector128(pCond + sourceIndex + j);
+
+                        // Compare the conditionals with the target conditional value
+                        Vector128<sbyte> cmpResult = Avx2.CompareEqual(condVec, conditionalValueVec);
+
+                        var newVec = Avx2.ConvertToVector256Int32(cmpResult);
+
+                        // Mask the source vector to conditionally add valueToAdd
+                        Vector256<int> addedVec = Avx2.Add(srcVec, Avx2.And(newVec, valueToAddVec));
+
+                        // Store the result
+                        Avx2.Store(pArray + destIndex + j, addedVec);
+                    }
+
+                    // Process remaining elements (less than vecLength)
+                    for (int j = (length % vecLength) - 1; j >= 0; j--)
+                    {
+                        if (pCond[sourceIndex + j] == conditionalValue)
+                        {
+                            pArray[destIndex + j] = pArray[sourceIndex + j] + valueToAdd;
+                        }
+                        else
+                        {
+                            pArray[destIndex + j] = pArray[sourceIndex + j];
+                        }
+                    }
+                }
+                else
+                {
+                    // Process from start to end (forward) for non-overlap case
+                    for (i = 0; i <= length - vecLength; i += vecLength)
+                    {
+                        // Load 8 ints from source array and 8 conditionals
+                        Vector256<int> srcVec = Avx2.LoadVector256(pArray + sourceIndex + i);
+                        Vector128<sbyte> condVec = Avx2.LoadVector128(pCond + sourceIndex + i);
+
+                        // Compare the conditionals with the target conditional value
+                        Vector128<sbyte> cmpResult = Avx2.CompareEqual(condVec, conditionalValueVec);
+
+                        var newVec = Avx2.ConvertToVector256Int32(cmpResult);
+
+                        // Use the mask to conditionally add valueToAddVec
+                        Vector256<int> addedVec = Avx2.Add(srcVec, Avx2.And(newVec, valueToAddVec));
+
+
+                        // Store the result
+                        Avx2.Store(pArray + destIndex + i, addedVec);
+                    }
+
+                    // Process remaining elements (less than vecLength)
+                    for (; i < length; i++)
+                    {
+                        if (pCond[sourceIndex + i] == conditionalValue)
+                        {
+                            pArray[destIndex + i] = pArray[sourceIndex + i] + valueToAdd;
+                        }
+                        else
+                        {
+                            pArray[destIndex + i] = pArray[sourceIndex + i];
                         }
                     }
                 }

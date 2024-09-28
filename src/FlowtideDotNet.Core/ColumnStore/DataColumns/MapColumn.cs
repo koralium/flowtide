@@ -250,15 +250,18 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return startOffset;
             }
             var map = value.AsMap;
-            // Sort keys so its possible to binary search after a key.
-            // In future, can check if it is a reference map value or not to skip sorting
-            var ordered = map.OrderBy(x => x.Key, new DataValueComparer()).ToList();
-            
-            foreach (var pair in ordered)
+
+            var mapLength = map.GetLength();
+
+            DataValueContainer dataValueContainer = new DataValueContainer();
+            for (int i = 0; i < mapLength; i++)
             {
-                _keyColumn.Add(pair.Key);
-                _valueColumn.Add(pair.Value);
+                map.GetKeyAt(i, dataValueContainer);
+                _keyColumn.Add(dataValueContainer);
+                map.GetValueAt(i, dataValueContainer);
+                _valueColumn.Add(dataValueContainer);
             }
+
             _offsets.Add(_valueColumn.Count);
 
             return startOffset;
@@ -352,17 +355,18 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return;
             }
             var map = value.AsMap;
-            // Sort keys so its possible to binary search after a key.
-            // In future, can check if it is a reference map value or not to skip sorting
-            var ordered = map.OrderBy(x => x.Key, new DataValueComparer()).ToList();
 
+            var mapLength = map.GetLength();
+            var dataValueContainer = new DataValueContainer();
             var currentOffset = _offsets.Get(index);
-            for (int i = 0; i < ordered.Count; i++)
+            for (int i = 0; i < mapLength; i++)
             {
-                _keyColumn.InsertAt(currentOffset + i, ordered[i].Key);
-                _valueColumn.InsertAt(currentOffset + i, ordered[i].Value);
+                map.GetKeyAt(i, dataValueContainer);
+                _keyColumn.InsertAt(currentOffset + i, dataValueContainer);
+                map.GetValueAt(i, dataValueContainer);
+                _valueColumn.InsertAt(currentOffset + i, dataValueContainer);
             }
-            _offsets.InsertAt(index, currentOffset, ordered.Count);
+            _offsets.InsertAt(index, currentOffset, mapLength);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(Apache.Arrow.ArrowBuffer nullBuffer, int nullCount)
