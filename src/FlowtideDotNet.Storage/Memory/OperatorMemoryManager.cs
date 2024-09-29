@@ -67,6 +67,17 @@ namespace FlowtideDotNet.Storage.Memory
             if (memory is NativeCreatedMemoryOwner native)
             {
                 var newPtr = NativeMemory.AlignedRealloc(native.ptr, (nuint)size, (nuint)alignment);
+                if (newPtr == native.ptr)
+                {
+                    var diff = size - memory.Memory.Length;
+                    RegisterAllocationToMetrics(diff);
+                }
+                else
+                {
+                    RegisterAllocationToMetrics(size);
+                    RegisterFreeToMetrics(native.length);
+                }
+                
                 native.ptr = newPtr;
                 native.length = size;
                 return native;
@@ -74,6 +85,8 @@ namespace FlowtideDotNet.Storage.Memory
             else
             {
                 var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
+                RegisterAllocationToMetrics(size);
+                RegisterFreeToMetrics(memory.Memory.Length);
                 // Copy the memory
                 var existingMemory = memory.Memory;
                 NativeMemory.Copy(existingMemory.Pin().Pointer, ptr, (nuint)existingMemory.Length);
