@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     /// </summary>
     internal unsafe class IntList : IDisposable
     {
-        private void* _data;
+        private int* _data;
         IMemoryOwner<byte>? _memoryOwner;
         private int _dataLength;
         private int _length;
@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             _memoryOwner = memory;
             _memoryHandle = memory.Memory.Pin();
-            _data = _memoryHandle.Value.Pointer;
+            _data = (int*)_memoryHandle.Value.Pointer;
             _dataLength = memory.Memory.Length / 4;
             _length = length;
             this.memoryAllocator = memoryAllocator;
@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                         _memoryHandle.Value.Dispose();
                     }
                     _memoryHandle = newMemoryHandle;
-                    _data = _memoryHandle.Value.Pointer;
+                    _data = (int*)_memoryHandle.Value.Pointer;
                 }
                 else
                 {
@@ -96,7 +96,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     NativeMemory.Copy(_data, newMemoryHandle.Pointer, (nuint)(_dataLength * sizeof(int)));
                     _memoryHandle!.Value.Dispose();
                     _memoryHandle = newMemoryHandle;
-                    _data = newPtr;
+                    _data = (int*)newPtr;
                     _memoryOwner.Dispose();
                     _memoryOwner = newMemory;
                 }
@@ -107,7 +107,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public void Add(int item)
         {
             EnsureCapacity(_length + 1);
-            AccessSpan[_length++] = item;
+            _data[_length++] = item;
         }
 
         public void RemoveAt(int index)
@@ -137,7 +137,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public void RemoveRange(int index, int count)
         {
             AccessSpan.Slice(index + count, _length - index - count).CopyTo(AccessSpan.Slice(index));
-            _length--;
+            _length -= count;
         }
 
         public void RemoveAtConditionalAddition(int index, Span<sbyte> conditionalValues, sbyte conditionalValue, int additionOnMoved)
@@ -146,9 +146,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length--;
         }
 
-        public void RemoveRangeTypeBasedAddition(int index, int count, Span<sbyte> typeIds, Span<int> toAdd)
+        public void RemoveRangeTypeBasedAddition(int index, int count, Span<sbyte> typeIds, Span<int> toAdd, int typeCount)
         {
-            AvxUtils.InPlaceMemCopyAdditionByType(AccessSpan, typeIds, index + count, index, _length - index - count, toAdd);
+            AvxUtils.InPlaceMemCopyAdditionByType(AccessSpan, typeIds, index + count, index, _length - index - count, toAdd, typeCount);
             _length -= count;
         }
 
@@ -193,7 +193,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public void Update(int index, int item)
         {
-            AccessSpan[index] = item;
+            _data[index] = item;
         }
 
         /// <summary>
@@ -205,13 +205,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="additionOnAbove"></param>
         public void Update(int index, int item, int additionOnAbove)
         {
-            AccessSpan[index] = item;
+            _data[index] = item;
             AvxUtils.AddValueToElements(AccessSpan.Slice(index + 1, _length - index - 1), additionOnAbove);
         }
 
         public int Get(in int index)
         {
-            return AccessSpan[index];
+            return _data[index];
         }
 
         protected virtual void Dispose(bool disposing)
