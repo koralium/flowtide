@@ -338,11 +338,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var (startOffset, endOffset) = GetOffsets(index);
 
-            for (int i = endOffset - 1; i >= startOffset; i--)
-            {
-                _keyColumn.RemoveAt(i);
-                _valueColumn.RemoveAt(i);
-            }
+            _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+            _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
             // Remove the offset and shift all the offsets after it
             _offsets.RemoveAt(index, startOffset - endOffset);
         }

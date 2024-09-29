@@ -135,7 +135,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
                 index = groupingKey.RowIndex,
                 insertValue = column
             };
-            await singleton.Tree.RMW(columnRowRef, (int)weight, (input, current, exists) =>
+            await singleton.Tree.RMWNoResult(columnRowRef, (int)weight, (input, current, exists) =>
             {
                 if (exists)
                 {

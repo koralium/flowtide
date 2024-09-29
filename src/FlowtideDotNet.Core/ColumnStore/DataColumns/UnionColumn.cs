@@ -411,6 +411,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
 
             var end = start + count;
+
             for (int i = start; i < end; i++)
             {
                 var type = _typeList.Get(i);
@@ -423,6 +424,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 endOffsets[type] = offset;
             }
 
+            bool anyColumnHaveDataRemoved = false;
             for (int i = 0; i < _valueColumns.Count; i++)
             {
                 var startOffset = startOffets[i];
@@ -434,12 +436,20 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 {
                     continue;
                 }
-
+                anyColumnHaveDataRemoved = true;
                 // Remove the range from the value column
                 _valueColumns[i].RemoveRange(startOffset, endOffset - startOffset);
             }
 
-            _offsets.RemoveRangeTypeBasedAddition(start, count, _typeList.Span, new Span<int>(difference, 127));
+            if (anyColumnHaveDataRemoved)
+            {
+                _offsets.RemoveRangeTypeBasedAddition(start, count, _typeList.Span, new Span<int>(difference, 127), _valueColumns.Count);
+            }
+            else
+            {
+                _offsets.RemoveRange(start, count);
+            }
+            
 
             _typeList.RemoveRange(start, count);
         }
