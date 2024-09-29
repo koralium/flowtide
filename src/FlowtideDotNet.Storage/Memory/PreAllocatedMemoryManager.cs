@@ -66,5 +66,25 @@ namespace FlowtideDotNet.Storage.Memory
         {
             _operatorMemoryManager.RegisterFreeToMetrics(size);
         }
+
+        public IMemoryOwner<byte> Realloc(IMemoryOwner<byte> memory, int size, int alignment)
+        {
+            if (memory is NativeCreatedMemoryOwner native)
+            {
+                var newPtr = NativeMemory.AlignedRealloc(native.ptr, (nuint)size, (nuint)alignment);
+                native.ptr = newPtr;
+                native.length = size;
+                return native;
+            }
+            else
+            {
+                var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
+                // Copy the memory
+                var existingMemory = memory.Memory;
+                NativeMemory.Copy(existingMemory.Pin().Pointer, ptr, (nuint)existingMemory.Length);
+                memory.Dispose();
+                return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
+            }
+        }
     }
 }

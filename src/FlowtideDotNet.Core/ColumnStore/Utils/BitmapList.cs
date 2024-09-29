@@ -182,12 +182,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 else
                 {
                     int oldSize = _dataLength * sizeof(int);
-                    var newMemory = memoryAllocator.Allocate(allocationSize, 64);
-                    var newPtr = newMemory.Memory.Pin().Pointer;
-                    NativeMemory.Copy(_data, newPtr, (nuint)oldSize);
-                    _memoryOwner.Dispose();
-                    _memoryOwner = newMemory;
-                    _data = newPtr;
+                    _memoryOwner = memoryAllocator.Realloc(_memoryOwner, allocationSize, 64);
+                    _data = _memoryOwner.Memory.Pin().Pointer;
                     NativeMemory.Fill((byte*)(_data) + oldSize, (nuint)(allocationSize - oldSize), 0);
                 }
                 _dataLength = length;

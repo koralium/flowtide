@@ -17,6 +17,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using TerraFX.Interop.Mimalloc;
 
 namespace FlowtideDotNet.Storage.Memory
 {
@@ -31,6 +32,26 @@ namespace FlowtideDotNet.Storage.Memory
         {
             var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
             return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
+        }
+
+        public IMemoryOwner<byte> Realloc(IMemoryOwner<byte> memory, int size, int alignment)
+        {
+            if (memory is NativeCreatedMemoryOwner native)
+            {
+                var newPtr = NativeMemory.AlignedRealloc(native.ptr, (nuint)size, (nuint)alignment);
+                native.ptr = newPtr;
+                native.length = size;
+                return native;
+            }
+            else
+            {
+                var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
+                // Copy the memory
+                var existingMemory = memory.Memory;
+                NativeMemory.Copy(existingMemory.Pin().Pointer, ptr, (nuint)existingMemory.Length);
+                memory.Dispose();
+                return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
+            }
         }
 
         public void RegisterAllocationToMetrics(int size)
