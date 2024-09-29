@@ -11,14 +11,15 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
@@ -27,14 +28,14 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         private readonly List<int> _columnsToStore;
         internal readonly EventBatchData _data;
 
-        public NormalizeKeyStorage(List<int> columnsToStore)
+        public NormalizeKeyStorage(List<int> columnsToStore, IMemoryAllocator memoryAllocator)
         {
             _columnsToStore = columnsToStore;
             IColumn[] columns = new IColumn[columnsToStore.Count];
-            var memoryManager = new BatchMemoryManager(columnsToStore.Count);
+            var memoryManager = memoryAllocator;
             for (int i = 0; i < columnsToStore.Count; i++)
             {
-                columns[i] = new Column(memoryManager);
+                columns[i] = Column.Create(memoryManager);
             }
             _data = new EventBatchData(columns);
         }
@@ -103,10 +104,9 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
+            for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                RemoveAt(i);
+                _data.Columns[i].RemoveRange(start, count);
             }
         }
 
@@ -130,6 +130,16 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         public void Dispose()
         {
             _data.Dispose();
+        }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
         }
     }
 }

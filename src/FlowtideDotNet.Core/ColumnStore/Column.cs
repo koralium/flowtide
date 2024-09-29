@@ -14,9 +14,9 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
@@ -24,6 +24,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -55,6 +56,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         private ArrowTypeId _type = ArrowTypeId.Null;
         private bool disposedValue;
         private int _rentCounter;
+
+        public int ByteSize => GetByteSize();
 
         public Column()
         {
@@ -203,7 +206,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                     // Convert from single buffer to union buffer
                     var unionColumn = ConvertToUnion();
                     _type = ArrowTypeId.Union;
+                    var previousColumn = _dataColumn;
                     _dataColumn = unionColumn;
+                    previousColumn.Dispose();
+                    _validityList.Clear();
                     _nullCounter = 0;
                     _dataColumn.Add(value);
                 }
@@ -300,9 +306,16 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     // Convert from single buffer to union buffer
                     var unionColumn = ConvertToUnion();
+                    var previousColumn = _dataColumn;
                     _dataColumn = unionColumn;
+                    if (previousColumn != null)
+                    {
+                        previousColumn.Dispose();
+                    }
+                    _type = ArrowTypeId.Union;
+                    _validityList.Clear();
                     _nullCounter = 0;
-                    _dataColumn.Add(value);
+                    _dataColumn.InsertAt(index, value);
                 }
             }
             // Same type
@@ -329,7 +342,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             where T : IDataValue
         {
             Debug.Assert(_validityList != null);
-            if (value.Type == ArrowTypeId.Null)
+            if (_type == ArrowTypeId.Union)
+            {
+                _dataColumn!.Update<T>(index, value);
+            }
+            else if (value.Type == ArrowTypeId.Null)
             {
                 CheckNullInitialization();
                 if (_validityList.Get(index))
@@ -375,6 +392,26 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (_dataColumn != null)
             {
                 _dataColumn!.RemoveAt(in index);
+            }
+        }
+
+        public void RemoveRange(in int index, in int count)
+        {
+            Debug.Assert(_validityList != null);
+            if (_nullCounter > 0)
+            {
+                for (var i = 0; i < count; i++)
+                {
+                    if (!_validityList.Get(index + i))
+                    {
+                        _nullCounter--;
+                    }
+                }
+                _validityList.RemoveRange(index, count);
+            }
+            if (_dataColumn != null)
+            {
+                _dataColumn!.RemoveRange(index, count);
             }
         }
 
@@ -433,6 +470,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             else
             {
+                if (_nullCounter > 0 && dataValue.IsNull)
+                {
+                    if (_validityList!.Get(index))
+                    {
+                        return 1;
+                    }
+                    return 0;
+                }
                 return _type - dataValue.Type;
             }
         }
@@ -459,7 +504,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
-        public (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child)
+        public (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child, bool desc = false)
             where T : IDataValue
         {
             if (_type == value.Type)
@@ -475,13 +520,21 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // TODO: Check if there is any null values, if so null bitmap must be passed in.
                 if (_nullCounter > 0)
                 {
-                    return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
+                    if (!desc)
+                    {
+                        return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
+                    }
+                    else
+                    {
+                        return BoundarySearch.SearchBoundriesForDataColumnDesc(in _dataColumn!, in value, in start, end, child, _validityList);
+                    }
+                    
                 }
-                return _dataColumn!.SearchBoundries(in value, in start, in end, child);
+                return _dataColumn!.SearchBoundries(in value, in start, in end, child, desc);
             }
             else if (_type == ArrowTypeId.Union)
             {
-                return _dataColumn!.SearchBoundries(in value, in start, in end, child);
+                return _dataColumn!.SearchBoundries(in value, in start, in end, child, desc);
             }
             else if (_type == ArrowTypeId.Null)
             {
@@ -495,11 +548,18 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
                 }
-                return _dataColumn!.SearchBoundries(in value, in start, in end, child);
+                return _dataColumn!.SearchBoundries(in value, in start, in end, child, desc);
             }
             else if (_nullCounter > 0 && value.Type == ArrowTypeId.Null)
             {
-                return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
+                if (!desc)
+                {
+                    return BoundarySearch.SearchBoundriesForDataColumn(in _dataColumn!, in value, in start, end, child, _validityList);
+                }
+                else
+                {
+                    return BoundarySearch.SearchBoundriesForDataColumnDesc(in _dataColumn!, in value, in start, end, child, _validityList);
+                }
             }
             else
             {
@@ -524,7 +584,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return (new Apache.Arrow.NullArray(Count), NullType.Default);
             }
 
-            var nullBuffer = new ArrowBuffer(_validityList.Memory);
+            var nullBuffer = new ArrowBuffer(_validityList.MemorySlice);
             return _dataColumn!.ToArrowArray(nullBuffer, _nullCounter);
         }
 
@@ -575,6 +635,129 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public void Clear()
+        {
+            if (_nullCounter > 0)
+            {
+                Debug.Assert(_validityList != null);
+                _validityList.Clear();
+                _nullCounter = 0;
+            }
+            if (_dataColumn != null)
+            {
+                _dataColumn.Clear();
+            }
+        }
+
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            if (_type == ArrowTypeId.List)
+            {
+                _dataColumn!.AddToNewList(value);
+            }
+            else if (_type == ArrowTypeId.Null)
+            {
+                CheckNullInitialization();
+                _dataColumn = CreateArray(ArrowTypeId.List);
+                _type = ArrowTypeId.List;
+
+                // Add null values as undefined values to the array.
+                for (var i = 0; i < _nullCounter; i++)
+                {
+                    _dataColumn.Add(in NullValue.Instance);
+                }
+                _dataColumn.AddToNewList(value);
+            }
+            else if (_type == ArrowTypeId.Union)
+            {
+                _dataColumn!.AddToNewList(value);
+            }
+            else
+            {
+                var unionColumn = ConvertToUnion();
+                _type = ArrowTypeId.Union;
+                var previousColumn = _dataColumn;
+                _dataColumn = unionColumn;
+                if (previousColumn != null)
+                {
+                    previousColumn.Dispose();
+                }
+                if (_validityList != null)
+                {
+                    _validityList.Clear();
+                }
+                _nullCounter = 0;
+                _dataColumn.AddToNewList(value);
+            }
+            
+        }
+
+        public int EndNewList()
+        {
+            if (_type == ArrowTypeId.List)
+            {
+                return _dataColumn!.EndNewList();
+            }
+            else if (_type == ArrowTypeId.Null)
+            {
+                CheckNullInitialization();
+                _dataColumn = CreateArray(ArrowTypeId.List);
+                _type = ArrowTypeId.List;
+
+                // Add null values as undefined values to the array.
+                for (var i = 0; i < _nullCounter; i++)
+                {
+                    _dataColumn.Add(in NullValue.Instance);
+                }
+                return _dataColumn!.EndNewList();
+            }
+            else if (_type == ArrowTypeId.Union)
+            {
+                return _dataColumn!.EndNewList();
+            }
+            else
+            {
+                var unionColumn = ConvertToUnion();
+                _type = ArrowTypeId.Union;
+                var previousColumn = _dataColumn;
+                _dataColumn = unionColumn;
+                if (previousColumn != null)
+                {
+                    previousColumn.Dispose();
+                }
+                if (_validityList != null)
+                {
+                    _validityList.Clear();
+                }
+                _nullCounter = 0;
+                return _dataColumn!.EndNewList();
+            }
+        }
+
+        internal int GetNullCount()
+        {
+            return _nullCounter;
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return 0;
+            }
+            
+            return _dataColumn!.GetByteSize(start, end) + _validityList!.GetByteSize(start, end);
+        }
+
+        public int GetByteSize()
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return 0;
+            }
+            return _dataColumn!.GetByteSize() + _validityList!.GetByteSize(0, Count - 1);
         }
     }
 }

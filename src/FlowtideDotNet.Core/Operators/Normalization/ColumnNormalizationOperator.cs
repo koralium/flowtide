@@ -14,7 +14,6 @@ using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute;
@@ -120,7 +119,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             Debug.Assert(_eventsProcessed != null);
             Debug.Assert(_eventsCounter != null);
 
-            var otherColumnsMemoryManager = new BatchMemoryManager(_otherColumns.Count);
+            var otherColumnsMemoryManager = MemoryAllocator;
 
             PrimitiveList<int> toEmitOffsets = new PrimitiveList<int>(otherColumnsMemoryManager);
             PrimitiveList<int> weights = new PrimitiveList<int>(otherColumnsMemoryManager);
@@ -131,7 +130,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             
             for (int i = 0; i < _otherColumns.Count; i++)
             {
-                deleteBatchColumns.Add(new Column(otherColumnsMemoryManager));
+                deleteBatchColumns.Add(Column.Create(otherColumnsMemoryManager));
             }
 
             _eventsProcessed.Add(msg.Data.Weights.Count);
@@ -206,9 +205,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 }
                 for (int i = 0; i < _otherColumns.Count; i++)
                 {
-                    if (_emitList.Contains(_otherColumns[i]))
+                    var emitIndex = _emitList.IndexOf(_otherColumns[i]);
+                    if (emitIndex >= 0)
                     {
-                        deleteColumns[_otherColumns[i]] = deleteBatchColumns[i];
+                        deleteColumns[emitIndex] = deleteBatchColumns[i];
                     }
                 }
 
@@ -280,7 +280,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                                     deleteBatchKeyOffsets.Add(input.RowIndex);
                                     for (int k = 0; k < _otherColumns.Count; k++)
                                     {
-                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[_otherColumns[k]].GetValueAt(current.RowIndex, default));
+                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
                                     }
                                     return (input, GenericWriteOperation.Upsert);
                                 }
@@ -328,8 +328,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 new BPlusTreeOptions<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>()
                 {
                     Comparer = new NormalizeTreeComparer(_normalizationRelation.KeyIndex),
-                    KeySerializer = new NormalizeKeyStorageSerializer(_normalizationRelation.KeyIndex),
-                    ValueSerializer = new NormalizeValueSerializer(_otherColumns)
+                    KeySerializer = new NormalizeKeyStorageSerializer(_normalizationRelation.KeyIndex, MemoryAllocator),
+                    ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator)
                 });
         }
     }

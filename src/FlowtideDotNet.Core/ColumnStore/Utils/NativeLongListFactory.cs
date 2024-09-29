@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Storage.Memory;
 using Microsoft.Extensions.ObjectPool;
 using System;
 using System.Buffers;
@@ -33,22 +33,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private static ObjectPool<NativeLongList> _pool = new DefaultObjectPool<NativeLongList>(new ObjectPoolProvider(), 10000);
 
         public static NativeLongList Get(IMemoryAllocator memoryAllocator)
-        {
-            var list = _pool.Get();
-            list.Assign(memoryAllocator);
-            return list;
+        {   
+            return new NativeLongList(memoryAllocator);
+            //var list = _pool.Get();
+            //list.Assign(memoryAllocator);
+            //return list;
         }
 
         public static NativeLongList Get(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
-            var list = _pool.Get();
-            list.Assign(memory, length, memoryAllocator);
-            return list;
+            return new NativeLongList(memory, length, memoryAllocator);
+            //var list = _pool.Get();
+            //list.Assign(memory, length, memoryAllocator);
+            //return list;
         }
 
         public static void Return(NativeLongList list)
         {
-            _pool.Return(list);
+            //_pool.Return(list);
         }
     }
 }

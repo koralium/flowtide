@@ -75,51 +75,55 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             StartCleanupTask();
             _currentProcess = Process.GetCurrentProcess();
 
-            meter.CreateObservableGauge("flowtide_lru_table_size", () => 
+            if (!string.IsNullOrEmpty(m_streamName))
             {
-                return new Measurement<int>(Volatile.Read(ref m_count), new KeyValuePair<string, object?>("stream", m_streamName));
-            });
-            meter.CreateObservableGauge("flowtide_lru_table_max_size", () => 
-            {
-                return new Measurement<int>(this.maxSize, new KeyValuePair<string, object?>("stream", m_streamName));
-            });
-            meter.CreateObservableGauge("flowtide_lru_table_cleanup_start", () => 
-            { 
-                return new Measurement<int>(cleanupStart, new KeyValuePair<string, object?>("stream", m_streamName)); 
-            });
-            meter.CreateObservableGauge("flowtide_lru_table_cache_hits_percentage", () =>
-            {
-                var hit = Volatile.Read(ref m_cacheHits);
-                var misses = Volatile.Read(ref m_cacheMisses);
-                var total = hit + misses;
-                if (total > m_metrics_lastSeenTotal)
+                meter.CreateObservableGauge("flowtide_lru_table_size", () =>
                 {
-                    var newTotal = total - m_metrics_lastSeenTotal;
-                    var newHits = hit - m_metrics_lastSeenHits;
-                    m_metrics_lastSeenTotal = total;
-                    m_metrics_lastSeenHits = hit;
-                    m_metrics_lastSentPercentage = (float)newHits / newTotal;
-                    return new Measurement<float>(m_metrics_lastSentPercentage, new KeyValuePair<string, object?>("stream", m_streamName));
-                }
-                else
+                    return new Measurement<int>(Volatile.Read(ref m_count), new KeyValuePair<string, object?>("stream", m_streamName));
+                });
+                meter.CreateObservableGauge("flowtide_lru_table_max_size", () =>
                 {
-                    return new Measurement<float>(m_metrics_lastSentPercentage, new KeyValuePair<string, object?>("stream", m_streamName));
-                }
-            });
-            meter.CreateObservableCounter("flowtide_lru_table_cache_hits", () =>
-            {
-                return new Measurement<long>(Volatile.Read(ref m_cacheHits), new KeyValuePair<string, object?>("stream", m_streamName));
-            });
-            meter.CreateObservableCounter("flowtide_lru_table_cache_misses", () =>
-            {
-                return new Measurement<long>(Volatile.Read(ref m_cacheMisses), new KeyValuePair<string, object?>("stream", m_streamName));
-            });
-            meter.CreateObservableCounter("flowtide_lru_table_cache_tries", () =>
-            {
-                var hits = Volatile.Read(ref m_cacheHits);
-                var misses = Volatile.Read(ref m_cacheMisses);
-                return new Measurement<long>(hits + misses, new KeyValuePair<string, object?>("stream", m_streamName));
-            });
+                    return new Measurement<int>(this.maxSize, new KeyValuePair<string, object?>("stream", m_streamName));
+                });
+                meter.CreateObservableGauge("flowtide_lru_table_cleanup_start", () =>
+                {
+                    return new Measurement<int>(cleanupStart, new KeyValuePair<string, object?>("stream", m_streamName));
+                });
+                meter.CreateObservableGauge("flowtide_lru_table_cache_hits_percentage", () =>
+                {
+                    var hit = Volatile.Read(ref m_cacheHits);
+                    var misses = Volatile.Read(ref m_cacheMisses);
+                    var total = hit + misses;
+                    if (total > m_metrics_lastSeenTotal)
+                    {
+                        var newTotal = total - m_metrics_lastSeenTotal;
+                        var newHits = hit - m_metrics_lastSeenHits;
+                        m_metrics_lastSeenTotal = total;
+                        m_metrics_lastSeenHits = hit;
+                        m_metrics_lastSentPercentage = (float)newHits / newTotal;
+                        return new Measurement<float>(m_metrics_lastSentPercentage, new KeyValuePair<string, object?>("stream", m_streamName));
+                    }
+                    else
+                    {
+                        return new Measurement<float>(m_metrics_lastSentPercentage, new KeyValuePair<string, object?>("stream", m_streamName));
+                    }
+                });
+                meter.CreateObservableCounter("flowtide_lru_table_cache_hits", () =>
+                {
+                    return new Measurement<long>(Volatile.Read(ref m_cacheHits), new KeyValuePair<string, object?>("stream", m_streamName));
+                });
+                meter.CreateObservableCounter("flowtide_lru_table_cache_misses", () =>
+                {
+                    return new Measurement<long>(Volatile.Read(ref m_cacheMisses), new KeyValuePair<string, object?>("stream", m_streamName));
+                });
+                meter.CreateObservableCounter("flowtide_lru_table_cache_tries", () =>
+                {
+                    var hits = Volatile.Read(ref m_cacheHits);
+                    var misses = Volatile.Read(ref m_cacheMisses);
+                    return new Measurement<long>(hits + misses, new KeyValuePair<string, object?>("stream", m_streamName));
+                });
+            }
+            
             this.lruTableOptions = lruTableOptions;
             _addOrUpdate_newValue_func = AddOrUpdate_NewValue;
             _addOrUpdate_existingValue_func = AddOrUpdate_ExistingValue;

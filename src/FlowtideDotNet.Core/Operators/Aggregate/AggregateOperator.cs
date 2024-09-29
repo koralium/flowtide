@@ -157,7 +157,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
                     if (outputs.Count > 100)
                     {
-                        yield return new StreamEventBatch(outputs);
+                        yield return new StreamEventBatch(outputs, aggregateRelation.OutputLength);
                         outputs = new List<RowEvent>();
                     }
                     
@@ -191,7 +191,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
                     if (outputs.Count > 100)
                     {
-                        yield return new StreamEventBatch(outputs);
+                        yield return new StreamEventBatch(outputs, aggregateRelation.OutputLength);
                         outputs = new List<RowEvent>();
                     }
                     
@@ -278,7 +278,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
                         if (outputs.Count > 100)
                         {
-                            yield return new StreamEventBatch(outputs);
+                            yield return new StreamEventBatch(outputs, aggregateRelation.OutputLength);
                             outputs = new List<RowEvent>();
                         }
                         
@@ -291,7 +291,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 // Output only 100 rows per batch to reduce memory consumption
                 if (outputs.Count > 100)
                 {
-                    yield return new StreamEventBatch(outputs);
+                    yield return new StreamEventBatch(outputs, aggregateRelation.OutputLength);
                     outputs = new List<RowEvent>();
                 }
 
@@ -300,7 +300,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
             if (outputs.Count > 0)
             {
-                yield return new StreamEventBatch(outputs);
+                yield return new StreamEventBatch(outputs, aggregateRelation.OutputLength);
             }
         }
 
@@ -420,7 +420,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 for (int i = 0; i < aggregateRelation.Measures.Count; i++)
                 {
                     var measure = aggregateRelation.Measures[i];
-                    var aggregateContainer = await MeasureCompiler.CompileMeasure(groupExpressions?.Count ?? 0, stateManagerClient.GetChildManager(i.ToString()), measure.Measure, functionsRegister);
+                    var aggregateContainer = await MeasureCompiler.CompileMeasure(groupExpressions?.Count ?? 0, stateManagerClient.GetChildManager(i.ToString()), measure.Measure, functionsRegister, MemoryAllocator);
                     _measures.Add(aggregateContainer);
                 }
             }

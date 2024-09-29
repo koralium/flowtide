@@ -10,13 +10,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations;
+
 namespace FlowtideDotNet.Core.Compute.Internal
 {
     internal static class BuiltinFunctions
     {
         public static void RegisterFunctions(FunctionsRegister functionsRegister)
         {
+            // Column functions
             Columnar.Functions.BuiltInComparisonFunctions.AddComparisonFunctions(functionsRegister);
+            BuiltInGenericFunctions.AddBuiltInAggregateGenericFunctions(functionsRegister);
+            ArithmaticStreamingFunctions.AddBuiltInArithmaticFunctions(functionsRegister);
+            Columnar.Functions.BuiltInStringFunctions.RegisterFunctions(functionsRegister);
+            Columnar.Functions.BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);
+            Columnar.Functions.BuiltInDatetimeFunctions.AddBuiltInDatetimeFunctions(functionsRegister);
+
             BuiltInComparisonFunctions.AddComparisonFunctions(functionsRegister);
             BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);
             BuiltInStringFunctions.AddStringFunctions(functionsRegister);

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -93,11 +94,28 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
         }
 
+        ~BaseNode()
+        {
+            Dispose(true);
+        }
+
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+
+        public virtual int GetByteSize()
+        {
+            return keys.GetByteSize();
+        }
+
+        public virtual int GetByteSize(int start, int end)
+        {
+            return keys.GetByteSize(start, end);
+        }
+
+        public int ByteSize => GetByteSize();
     }
 }

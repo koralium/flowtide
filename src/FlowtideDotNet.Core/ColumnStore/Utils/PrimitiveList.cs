@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using System;
 using System.Buffers.Binary;
 using System.Buffers;
@@ -20,6 +19,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Collections;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
@@ -48,6 +48,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length = length;
             _memoryAllocator = memoryAllocator;
         }
+
+        public Span<T> Span => new Span<T>(_data, _length);
 
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
@@ -79,12 +81,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 }
                 else
                 {
-                    var newMemory = _memoryAllocator.Allocate(allocSize, 64);
-                    var newPtr = newMemory.Memory.Pin().Pointer;
-                    NativeMemory.Copy(_data, newPtr, (nuint)(_dataLength * sizeof(T)));
-                    _data = newPtr;
-                    _memoryOwner.Dispose();
-                    _memoryOwner = newMemory;
+                    _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, allocSize, 64);
+                    _data = _memoryOwner.Memory.Pin().Pointer;
                 }
                 _dataLength = newLength;
             }
@@ -215,6 +213,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             {
                 Dispose();
             }
+        }
+
+        public void Clear()
+        {
+            _length = 0;
         }
     }
 }

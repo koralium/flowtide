@@ -128,6 +128,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                             }
                         });
                     }
+                    else if (column is List<string> listString)
+                    {
+                        b.Vector(b =>
+                        {
+                            foreach (var item in listString)
+                            {
+                                b.Add(item);
+                            }
+                        });
+                    }
                     else if (column is List<KeyValuePair<string, int>> listKeyInt)
                     {
                         b.Vector(v =>
@@ -137,6 +147,33 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                                 v.Map(m =>
                                 {
                                     m.Add(item.Key, item.Value);
+                                });
+                            }
+                        });
+                    }
+                    else if (column is List<KeyValuePair<string, object>[]> listKeyValArr)
+                    {
+                        b.Vector(v =>
+                        {
+                            foreach (var item in listKeyValArr)
+                            {
+                                v.Map(m =>
+                                {
+                                    foreach (var kv in item)
+                                    {
+                                        if (kv.Value == null)
+                                        {
+                                            m.AddNull(kv.Key);
+                                        }
+                                        else if (kv.Value is int intV)
+                                        {
+                                            m.Add(kv.Key, intV);
+                                        }
+                                        else if (kv.Value is string stringV)
+                                        {
+                                            m.Add(kv.Key, stringV);
+                                        }   
+                                    }
                                 });
                             }
                         });

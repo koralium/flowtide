@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Linq.Expressions;
@@ -21,6 +22,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
         public abstract Task<IAggregateContainer> CreateContainer(
             int groupingLength,
             IStateManagerClient stateManagerClient,
+            IMemoryAllocator memoryAllocator,
             AggregateFunction aggregateFunction,
             ParametersInfo parametersInfo,
             ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo> visitor,

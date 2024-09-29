@@ -30,7 +30,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar
 {
-    internal class ColumnarExpressionVisitor : ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>
+    public class ColumnarExpressionVisitor : ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>
     {
         private readonly IFunctionsRegister functionsRegister;
 

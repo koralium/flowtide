@@ -112,7 +112,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
             var tableName = customTableNameFunc?.Invoke(readRelation) ?? readRelation.NamedTable.DotSeperated;
-            return new SqlServerDataSource(_connectionStringFunc, tableName, readRelation, dataflowBlockOptions);
+            return new ColumnSqlServerDataSource(_connectionStringFunc, tableName, readRelation, dataflowBlockOptions);
         }
     }
 }

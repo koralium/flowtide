@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         int CompareTo(in IColumn otherColumn, in int thisIndex, in int otherIndex);
 
-        (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child)
+        (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child, bool desc = false)
             where T : IDataValue;
 
         (IArrowArray, IArrowType) ToArrowArray();
@@ -59,5 +59,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         void Rent(int count);
 
         void Return();
+
+        void RemoveRange(in int index, in int count);
+
+        int GetByteSize();
+
+        int GetByteSize(int start, int end);
     }
 }

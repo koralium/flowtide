@@ -85,11 +85,11 @@ namespace FlowtideDotNet.Core.Operators.Iteration
 
             if (egressOutput.Count > 0)
             {
-                yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(0, new StreamMessage<StreamEventBatch>(new StreamEventBatch(egressOutput), time));
+                yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(0, new StreamMessage<StreamEventBatch>(new StreamEventBatch(egressOutput, _iterationRelation.OutputLength), time));
             }
             if (loopOutput.Count > 0)
             {
-                yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(1, new StreamMessage<StreamEventBatch>(new StreamEventBatch(loopOutput), time));
+                yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(1, new StreamMessage<StreamEventBatch>(new StreamEventBatch(loopOutput, _iterationRelation.OutputLength), time));
             }
         }
 

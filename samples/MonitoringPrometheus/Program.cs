@@ -45,6 +45,7 @@ builder.Services.AddFlowtideStream("PrometheusSample")
     })
     .AddStorage(storage =>
     {
+        storage.MinPageCount = 0;
         storage.AddTemporaryDevelopmentStorage();
     });
 

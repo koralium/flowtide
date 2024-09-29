@@ -11,8 +11,11 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Diagnostics.CodeAnalysis;
@@ -55,8 +58,17 @@ namespace FlowtideDotNet.Core.Compute
             Func<byte[]?, FlxValue> stateToValueFunc);
 
 
-        delegate Task<T> AggregateInitializeFunction<T>(int groupingLength, IStateManagerClient stateManagerClient);
-        
+        delegate Task<T> AggregateInitializeFunction<T>(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator);
+
+        delegate System.Linq.Expressions.Expression ColumnAggregateMapFunction(
+            AggregateFunction function,
+            ColumnParameterInfo parametersInfo,
+            ColumnarExpressionVisitor visitor,
+            ParameterExpression stateParameters,
+            ParameterExpression weightParameter,
+            ParameterExpression singletonAccess,
+            ParameterExpression groupingKeyParameter);
+
         delegate System.Linq.Expressions.Expression AggregateMapFunction(
             AggregateFunction function,
             ParametersInfo parametersInfo,
@@ -67,6 +79,8 @@ namespace FlowtideDotNet.Core.Compute
             ParameterExpression groupingKeyParameter);
 
         delegate ValueTask<FlxValue> AggregateStateToValueFunction<T>(byte[]? state, RowEvent groupingKey, T singleton);
+
+        delegate ValueTask ColumnAggregateStateToValueFunction<T>(ColumnReference state, ColumnRowReference groupingKey, T singleton, ColumnStore.Column outputColumn);
 
         /// <summary>
         /// Register a stateful aggregate function.
@@ -88,6 +102,15 @@ namespace FlowtideDotNet.Core.Compute
             Func<T, Task> commitFunction,
             AggregateMapFunction mapFunc,
             AggregateStateToValueFunction<T> stateToValueFunc);
+
+        void RegisterStatefulColumnAggregateFunction<T>(
+            string uri,
+            string name,
+            AggregateInitializeFunction<T> initializeFunction,
+            Action<T> disposeFunction,
+            Func<T, Task> commitFunction,
+            ColumnAggregateMapFunction mapFunc,
+            ColumnAggregateStateToValueFunction<T> stateToValueFunc);
 
         bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition);
 

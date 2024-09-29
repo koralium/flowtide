@@ -41,6 +41,7 @@ using System.Threading.Tasks;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Core.Operators.Join;
 using FlowtideDotNet.Base.Vertices.Unary;
+using FlowtideDotNet.Core.Operators.Aggregate.Column;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -245,7 +246,16 @@ namespace FlowtideDotNet.Core.Engine
             else
             {
                 var id = _operatorId++;
-                var op = new AggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
+
+                UnaryVertex<StreamEventBatch, AggregateOperatorState>? op;
+                if (_useColumnStore)
+                {
+                    op = new ColumnAggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
+                }
+                else
+                {
+                    op = new AggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
+                }
 
                 if (state != null)
                 {

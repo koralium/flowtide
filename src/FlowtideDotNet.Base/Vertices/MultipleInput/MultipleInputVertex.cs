@@ -23,6 +23,7 @@ using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Base.Metrics;
 using System.Text;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Base.Vertices.MultipleInput
 {
@@ -39,6 +40,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private IReadOnlySet<string>[]? _targetWatermarkNames;
         private Watermark[]? _targetWatermarks;
         private Watermark? _currentWatermark;
+        private bool[]? _targetSentDataSinceLastWatermark;
+        private bool[]? _targetSentWatermark;
 
         private ParallelSource<IStreamEvent>? _parallelSource;
         private long _currentTime;
@@ -47,6 +50,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private readonly List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)> _links = new List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)>();
         private bool _isHealthy = true;
         private CancellationTokenSource? tokenSource;
+        private IMemoryAllocator? _memoryAllocator;
 
         private string? _name;
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
@@ -61,6 +65,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         private ILogger? _logger;
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
+
+        protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
         protected MultipleInputVertex(int targetCount, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
@@ -113,6 +119,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 }
                 if (r.Value is StreamMessage<T> streamMessage)
                 {
+                    Debug.Assert(_targetSentDataSinceLastWatermark != null);
+                    _targetSentDataSinceLastWatermark[r.Key] = true;
                     var enumerator = OnRecieve(r.Key, streamMessage.Data, streamMessage.Time);
 
                     if (streamMessage.Data is IRentable rentable)
@@ -160,6 +168,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
             _targetInCheckpoint = new ILockingEvent[targetCount];
             _targetWatermarks = new Watermark[targetCount];
+            _targetSentDataSinceLastWatermark = new bool[targetCount];
+            _targetSentWatermark = new bool[targetCount];
 
             foreach (var t in _targetHolders)
             {
@@ -235,6 +245,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         {
             Debug.Assert(_targetWatermarkNames != null, nameof(_targetWatermarkNames));
             Debug.Assert(_targetWatermarks != null, nameof(_targetWatermarks));
+            Debug.Assert(_targetSentWatermark != null);
+            Debug.Assert(_targetSentDataSinceLastWatermark != null);
 
             if (_currentWatermark == null) 
             {
@@ -243,7 +255,22 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     SourceOperatorId = watermark.SourceOperatorId
                 };
             }
+            _targetSentWatermark[targetId] = true;
             _targetWatermarks[targetId] = watermark;
+
+            for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
+            {
+                if (_targetSentDataSinceLastWatermark[i] && !_targetSentWatermark[i])
+                {
+                    break;
+                }
+            }
+            for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
+            {
+                _targetSentDataSinceLastWatermark[i] = false;
+                _targetSentWatermark[i] = false;
+            }
+
             var currentDict = _currentWatermark.Watermarks;
             foreach (var kv in watermark.Watermarks)
             {
@@ -476,6 +503,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
         {
+            _memoryAllocator = vertexHandler.MemoryManager;
             _name = name;
             _streamName = vertexHandler.StreamName;
             _metrics = vertexHandler.Metrics;

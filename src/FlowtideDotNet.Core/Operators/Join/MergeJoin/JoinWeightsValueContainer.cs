@@ -10,8 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Buffers;
@@ -28,9 +28,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public Memory<byte> Memory => _values.SlicedMemory;
 
-        public JoinWeightsValueContainer()
+        public JoinWeightsValueContainer(IMemoryAllocator memoryAllocator)
         {
-            _values = new PrimitiveList<JoinWeights>(GlobalMemoryManager.Instance);
+            _values = new PrimitiveList<JoinWeights>(memoryAllocator);
         }
 
         public JoinWeightsValueContainer(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
@@ -85,6 +85,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         public void Update(int index, JoinWeights value)
         {
             _values.Update(index, value);
+        }
+
+        public int GetByteSize()
+        {
+            return _values.Count * 8;
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return (end - start + 1) * 8;
         }
     }
 }

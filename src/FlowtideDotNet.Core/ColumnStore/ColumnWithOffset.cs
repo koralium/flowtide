@@ -72,6 +72,22 @@ namespace FlowtideDotNet.Core.ColumnStore
             innerColumn.Dispose();
         }
 
+        public int GetByteSize()
+        {
+            return innerColumn.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            int size = 0;
+            for (int i = start; i <= end; i++)
+            {
+                var offset = offsets[i];
+                size += innerColumn.GetByteSize(offset, offset);
+            }
+            return size;
+        }
+
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             var offset = offsets[index];
@@ -113,6 +129,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotSupportedException("Column with offset does not support RemoveAt.");
         }
 
+        public void RemoveRange(in int index, in int count)
+        {
+            throw new NotSupportedException("Column with offset does not support RemoveRange.");
+        }
+
         public void Rent(int count)
         {
             offsets.Rent(count);
@@ -125,7 +146,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             innerColumn.Return();
         }
 
-        public (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
+        public (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child, bool desc = false) where T : IDataValue
         {
             throw new NotSupportedException("Column with offset does not SearchBoundries.");
         }
