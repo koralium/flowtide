@@ -36,7 +36,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private int _dataLength;
         private int _length;
         private bool disposedValue;
-        private MemoryHandle? _memoryHandle;
         private readonly IMemoryAllocator memoryAllocator;
 
         private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
@@ -52,8 +51,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public IntList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = memory;
-            _memoryHandle = memory.Memory.Pin();
-            _data = (int*)_memoryHandle.Value.Pointer;
+            _data = (int*)memory.Memory.Pin().Pointer;
             _dataLength = memory.Memory.Length / 4;
             _length = length;
             this.memoryAllocator = memoryAllocator;
@@ -78,27 +76,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 {
                     _memoryOwner = memoryAllocator.Allocate(allocLength, 64);
                     var newMemoryHandle = _memoryOwner.Memory.Pin();
-
-                    if (_memoryHandle.HasValue)
-                    {
-                        // Copy read only data ower
-                        NativeMemory.Copy(_data, newMemoryHandle.Pointer, (nuint)(_dataLength * sizeof(int)));
-                        _memoryHandle.Value.Dispose();
-                    }
-                    _memoryHandle = newMemoryHandle;
-                    _data = (int*)_memoryHandle.Value.Pointer;
+                    _data = (int*)newMemoryHandle.Pointer;
                 }
                 else
                 {
-                    var newMemory = memoryAllocator.Allocate(allocLength, 64);
-                    var newMemoryHandle = newMemory.Memory.Pin();
-                    var newPtr = newMemoryHandle.Pointer;
-                    NativeMemory.Copy(_data, newMemoryHandle.Pointer, (nuint)(_dataLength * sizeof(int)));
-                    _memoryHandle!.Value.Dispose();
-                    _memoryHandle = newMemoryHandle;
-                    _data = (int*)newPtr;
-                    _memoryOwner.Dispose();
-                    _memoryOwner = newMemory;
+                    _memoryOwner = memoryAllocator.Realloc(_memoryOwner, allocLength, 64);
+                    _data = (int*)_memoryOwner.Memory.Pin().Pointer;
                 }
                 _dataLength = newLength;
             }
@@ -223,11 +206,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _memoryOwner.Dispose();
                     _memoryOwner = null;
                     _data = null;
-                }
-                if (_memoryHandle.HasValue)
-                {
-                    _memoryHandle.Value.Dispose();
-                    _memoryHandle = null;
                 }
                 disposedValue = true;
             }

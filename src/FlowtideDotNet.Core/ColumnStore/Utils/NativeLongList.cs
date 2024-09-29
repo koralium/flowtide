@@ -38,7 +38,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private bool _disposedValue;
         private IMemoryAllocator? _memoryAllocator;
         private IMemoryOwner<byte>? _memoryOwner;
-        private MemoryHandle? _memoryHandle;
 
 #if DEBUG_MEMORY
         private string _stackTraceAlloc;
@@ -56,15 +55,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length = 0;
             _memoryOwner = null;
             _disposedValue = false;
-            _memoryHandle = default;
             _memoryAllocator = memoryAllocator;
         }
 
         public void Assign(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = memory;
-            _memoryHandle = _memoryOwner.Memory.Pin();
-            _data = _memoryHandle.Value.Pointer;
+            _data = _memoryOwner.Memory.Pin().Pointer;
             _longData = (long*)_data;
             _dataLength = memory.Memory.Length / sizeof(long);
             _length = length;
@@ -88,8 +85,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public NativeLongList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = memory;
-            _memoryHandle = _memoryOwner.Memory.Pin();
-            _data = _memoryHandle.Value.Pointer;
+            _data = _memoryOwner.Memory.Pin().Pointer;
             _longData = (long*)_data;
             _dataLength = memory.Memory.Length / sizeof(long);
             _length = length;
@@ -102,8 +98,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public NativeLongList(ReadOnlyMemory<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = null;
-            _memoryHandle = memory.Pin();
-            _data = _memoryHandle.Value.Pointer;
+            _data = memory.Pin().Pointer;
             _longData = (long*)_data;
             _dataLength = memory.Length / sizeof(long);
             _length = length;
@@ -126,35 +121,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
                 if (_memoryOwner == null)
                 {
-                    _memoryOwner = _memoryAllocator.Allocate(allocSize, 64);
+                    _memoryOwner = _memoryAllocator!.Allocate(allocSize, 64);
                     var newHandle = _memoryOwner.Memory.Pin();
-                    // Check if a memory handle already exist, in that case there is some read only memory
-                    if (_memoryHandle != null)
-                    {
-                        // Copy the old data into the new memory
-                        NativeMemory.Copy(_data, newHandle.Pointer, (nuint)(_dataLength * sizeof(long)));
-                        _memoryHandle.Value.Dispose();
-                    }
-                    _memoryHandle = newHandle;
-                    _data = _memoryHandle.Value.Pointer;
+
+                    _data = newHandle.Pointer;
                     _longData = (long*)_data;
                 }
                 else
                 {
-                    var newMemory = _memoryAllocator.Allocate(allocSize, 64);
-
-                    var newMemoryHandle = newMemory.Memory.Pin();
-                    var newPtr = newMemoryHandle.Pointer;
-                    NativeMemory.Copy(_data, newPtr, (nuint)(_dataLength * sizeof(long)));
-                    if (_memoryHandle != null)
-                    {
-                        _memoryHandle.Value.Dispose();
-                    }
-                    _memoryHandle = newMemoryHandle;
+                    _memoryOwner = _memoryAllocator!.Realloc(_memoryOwner, allocSize, 64);
+                    var newPtr = _memoryOwner.Memory.Pin().Pointer;
                     _data = newPtr;
                     _longData = (long*)_data;
-                    _memoryOwner.Dispose();
-                    _memoryOwner = newMemory;
                 }
                 _dataLength = newLength;
             }
@@ -268,11 +246,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _memoryOwner = null;
                     _data = null;
                     _longData = null;
-                }
-                if (_memoryHandle.HasValue)
-                {
-                    _memoryHandle.Value.Dispose();
-                    _memoryHandle = null;
                 }
 
                 _disposedValue = true;
