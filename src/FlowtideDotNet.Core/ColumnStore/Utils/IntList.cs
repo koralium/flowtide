@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public IntList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = memory;
-            _data = memory.Memory.Pin().Pointer;
+            _data = (int*)memory.Memory.Pin().Pointer;
             _dataLength = memory.Memory.Length / 4;
             _length = length;
             this.memoryAllocator = memoryAllocator;
@@ -76,12 +76,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 {
                     _memoryOwner = memoryAllocator.Allocate(allocLength, 64);
                     var newMemoryHandle = _memoryOwner.Memory.Pin();
-                    _data = newMemoryHandle.Pointer;
+                    _data = (int*)newMemoryHandle.Pointer;
                 }
                 else
                 {
                     _memoryOwner = memoryAllocator.Realloc(_memoryOwner, allocLength, 64);
-                    _data = _memoryOwner.Memory.Pin().Pointer;
+                    _data = (int*)_memoryOwner.Memory.Pin().Pointer;
                 }
                 _dataLength = newLength;
             }

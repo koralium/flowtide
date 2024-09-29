@@ -82,12 +82,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 else
                 {
                     _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, allocSize, 64);
-                    //var newMemory = _memoryAllocator.Allocate(allocSize, 64);
-                    //var newPtr = newMemory.Memory.Pin().Pointer;
-                    //NativeMemory.Copy(_data, newPtr, (nuint)(_dataLength * sizeof(T)));
                     _data = _memoryOwner.Memory.Pin().Pointer;
-                    //_memoryOwner.Dispose();
-                    //_memoryOwner = newMemory;
                 }
                 _dataLength = newLength;
             }
