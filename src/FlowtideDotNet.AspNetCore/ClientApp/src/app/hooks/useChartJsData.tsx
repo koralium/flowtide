@@ -4,23 +4,30 @@ import { Metric, PromRangeQueryResult } from "./usePromRangeQuery";
 
 export const useChartJsData = (queries: Array<PromRangeQueryResult>, labelFunc: (metric: Metric) => string) => {
 
-   // const [result, setResult] = useState<any>()
+   const [result, setResult] = useState<any>([])
+   const [lastStartEnd, setLastStartEnd] = useState({start: 0, end: 0})
 
-   
+   useEffect(() => {
 
-   for (let i = 0; i < queries.length; i++) {
+    for (let i = 0; i < queries.length; i++) {
         if (queries[i].loading) {
-            return {
-                result: [],
-                loading: true
-            };
+            return;
         }
     }
+
+    let currentstart = Number.MAX_SAFE_INTEGER;
+    let currentend = 0;
 
     const dataSets = queries.flatMap(x => {
         const dataArray = x.result.flatMap(y => {
             
             const d = y.values.map(z => {
+                if (z.time.valueOf() < currentstart) {
+                    currentstart = z.time.valueOf()
+                }
+                if (z.time.valueOf() > currentend) {
+                    currentend = z.time.valueOf()
+                }
                 return {
                     x: z.time.valueOf(),
                     y: z.value
@@ -35,16 +42,16 @@ export const useChartJsData = (queries: Array<PromRangeQueryResult>, labelFunc: 
         return dataArray
     
     })
-    // useEffect(() => {
 
-        //dataSets[0].data[0]
-
-    //     setResult(dataSets)
-
-    // }, [queries])
+    if (currentstart !== lastStartEnd.start || currentend !== lastStartEnd.end) {
+        setLastStartEnd({start: currentstart, end: currentend})
+        setResult(dataSets)
+    }
+    
+   }, [queries])
     
     return {
-        result: dataSets,
+        result: result,
         loading: false
     }
 }

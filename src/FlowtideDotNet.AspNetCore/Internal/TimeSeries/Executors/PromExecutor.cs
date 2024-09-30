@@ -33,71 +33,146 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         public async Task Series(Stream stream)
         {
-            var allSeries = metricSeries.GetAllSeries();
-
-            var writer = new System.Text.Json.Utf8JsonWriter(stream, new System.Text.Json.JsonWriterOptions()
+            await metricSeries.Lock();
+            try
             {
-                Indented = true
-            });
+                var allSeries = metricSeries.GetAllSeries();
 
-            writer.WriteStartObject();
-            writer.WriteString("status", "success");
-            writer.WriteStartArray("data");
-
-            foreach (var series in allSeries)
-            {
-                writer.WriteStartObject();
-                writer.WriteString("__name__", series.Name);
-                foreach (var tag in series.Tags)
+                var writer = new System.Text.Json.Utf8JsonWriter(stream, new System.Text.Json.JsonWriterOptions()
                 {
-                    writer.WriteString(tag.Key, tag.Value);
+                    Indented = true
+                });
+
+                writer.WriteStartObject();
+                writer.WriteString("status", "success");
+                writer.WriteStartArray("data");
+
+                foreach (var series in allSeries)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("__name__", series.Name);
+                    foreach (var tag in series.Tags)
+                    {
+                        writer.WriteString(tag.Key, tag.Value);
+                    }
+                    writer.WriteEndObject();
                 }
+                writer.WriteEndArray();
                 writer.WriteEndObject();
+                await writer.FlushAsync();
             }
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-            await writer.FlushAsync();
+            finally
+            {
+                metricSeries.Unlock();
+            }
+            
         }
 
         public async Task InstantQuery(Stream stream, string query, long? time)
         {
-            long endTime;
-            if (!time.HasValue)
+            await metricSeries.Lock();
+            try
             {
-                time = metricSeries.LastIngestedTime;
-                endTime = metricSeries.LastIngestedTime;
+                long endTime;
+                if (!time.HasValue)
+                {
+                    time = metricSeries.LastIngestedTime;
+                    endTime = metricSeries.LastIngestedTime;
+                }
+                else
+                {
+                    // Set end time to half the capture rate to only get one value
+                    endTime = time.Value + (long)(metricSeries.Rate.TotalMilliseconds / 2);
+                }
+
+                var ast = PromQL.Parser.Parser.ParseExpression(query);
+                var visitor = new PromQLVisitor(metricSeries);
+
+                ast.Accept(visitor);
+                var result = visitor.GetResult();
+
+                var writer = new System.Text.Json.Utf8JsonWriter(stream, new System.Text.Json.JsonWriterOptions()
+                {
+                    Indented = true
+                });
+
+                writer.WriteStartObject();
+                writer.WriteString("status", "success");
+                writer.WriteStartObject("data");
+                writer.WriteString("resultType", "vector");
+
+                writer.WriteStartArray("result");
+
+                var newLine = writer.Options.Indented ? Environment.NewLine : "";
+                var valueIndention = "          ";
+                foreach (var series in result)
+                {
+                    var iterator = series.GetValues(time.Value, endTime, (int)metricSeries.Rate.TotalMilliseconds).GetAsyncEnumerator();
+
+                    if (await iterator.MoveNextAsync())
+                    {
+                        writer.WriteStartObject();
+                        writer.WriteStartObject("metric");
+                        writer.WriteString("__name__", series.Name);
+                        foreach (var tag in series.Tags)
+                        {
+                            writer.WriteString(tag.Key, tag.Value);
+                        }
+
+                        writer.WriteEndObject();
+
+                        writer.WriteStartArray("value");
+
+                        var value = iterator.Current;
+                        writer.WriteRawValue($"{newLine}{valueIndention}{(value.timestamp / 1000m).ToString("F3", CultureInfo.InvariantCulture)}");
+                        writer.WriteRawValue($"{newLine}{valueIndention}\"{value.value.ToString("0.###", CultureInfo.InvariantCulture)}\"");
+                        await iterator.DisposeAsync();
+                        writer.WriteEndArray();
+
+                        writer.WriteEndObject();
+                    }
+                }
+
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+                await writer.FlushAsync();
             }
-            else
+            finally
             {
-                // Set end time to half the capture rate to only get one value
-                endTime = time.Value + (long)(metricSeries.Rate.TotalMilliseconds / 2);
+                metricSeries.Unlock();
             }
+            
+        }
 
-            var ast = PromQL.Parser.Parser.ParseExpression(query);
-            var visitor = new PromQLVisitor(metricSeries);
+        public async Task RangeQuery(Stream stream, string query, long startTimestamp, long endTimestamp, int stepWidth)
+        {
+            await metricSeries.Lock();
 
-            ast.Accept(visitor);
-            var result = visitor.GetResult();
-
-            var writer = new System.Text.Json.Utf8JsonWriter(stream, new System.Text.Json.JsonWriterOptions()
+            try
             {
-                Indented = true
-            });
+                var ast = PromQL.Parser.Parser.ParseExpression(query);
+                var visitor = new PromQLVisitor(metricSeries);
 
-            writer.WriteStartObject();
-            writer.WriteString("status", "success");
-            writer.WriteStartObject("data");
-            writer.WriteString("resultType", "vector");
+                ast.Accept(visitor);
+                var result = visitor.GetResult();
 
-            writer.WriteStartArray("result");
+                var writer = new System.Text.Json.Utf8JsonWriter(stream, new System.Text.Json.JsonWriterOptions()
+                {
+                    Indented = true
+                });
 
-            var newLine = writer.Options.Indented ? Environment.NewLine : "";
-            var valueIndention = "          ";
-            foreach (var series in result)
-            {
-                var iterator = series.GetValues(time.Value, endTime, (int)metricSeries.Rate.TotalMilliseconds).GetAsyncEnumerator();
+                writer.WriteStartObject();
+                writer.WriteString("status", "success");
+                writer.WriteStartObject("data");
+                writer.WriteString("resultType", "matrix");
 
-                if (await iterator.MoveNextAsync())
+                writer.WriteStartArray("result");
+
+                var newLine = writer.Options.Indented ? Environment.NewLine : "";
+                var valueIndention = "          ";
+
+                foreach (var series in result)
                 {
                     writer.WriteStartObject();
                     writer.WriteStartObject("metric");
@@ -109,73 +184,25 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
                     writer.WriteEndObject();
 
-                    writer.WriteStartArray("value");
-
-                    var value = iterator.Current;
-                    writer.WriteRawValue($"{newLine}{valueIndention}{(value.timestamp / 1000m).ToString("F3", CultureInfo.InvariantCulture)}");
-                    writer.WriteRawValue($"{newLine}{valueIndention}\"{value.value.ToString("0.###", CultureInfo.InvariantCulture)}\"");
-                    await iterator.DisposeAsync();
+                    writer.WriteStartArray("values");
+                    await foreach (var value in series.GetValues(startTimestamp, endTimestamp, stepWidth))
+                    {
+                        writer.WriteRawValue($"{newLine}{valueIndention}[ {(value.timestamp / 1000m).ToString("F3", CultureInfo.InvariantCulture)}, \"{value.value.ToString("0.###", CultureInfo.InvariantCulture)}\" ]", true);
+                    }
                     writer.WriteEndArray();
 
                     writer.WriteEndObject();
                 }
-            }
 
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-            await writer.FlushAsync();
-        }
-
-        public async Task RangeQuery(Stream stream, string query, long startTimestamp, long endTimestamp, int stepWidth)
-        {
-            var ast = PromQL.Parser.Parser.ParseExpression(query);
-            var visitor = new PromQLVisitor(metricSeries);
-            
-            ast.Accept(visitor);
-            var result = visitor.GetResult();
-
-            var writer = new System.Text.Json.Utf8JsonWriter(stream, new System.Text.Json.JsonWriterOptions()
-            {
-                Indented = true
-            });
-
-            writer.WriteStartObject();
-            writer.WriteString("status", "success");
-            writer.WriteStartObject("data");
-            writer.WriteString("resultType", "matrix");
-
-            writer.WriteStartArray("result");
-
-            var newLine = writer.Options.Indented ? Environment.NewLine : "";
-            var valueIndention = "          ";
-
-            foreach (var series in result)
-            {
-                writer.WriteStartObject();
-                writer.WriteStartObject("metric");
-                writer.WriteString("__name__", series.Name);
-                foreach (var tag in series.Tags)
-                {
-                    writer.WriteString(tag.Key, tag.Value);
-                }
-                
-                writer.WriteEndObject();
-
-                writer.WriteStartArray("values");
-                await foreach (var value in series.GetValues(startTimestamp, endTimestamp, stepWidth))
-                {
-                    writer.WriteRawValue($"{newLine}{valueIndention}[ {(value.timestamp / 1000m).ToString("F3", CultureInfo.InvariantCulture)}, \"{value.value.ToString("0.###", CultureInfo.InvariantCulture)}\" ]", true);
-                }
                 writer.WriteEndArray();
-
                 writer.WriteEndObject();
+                writer.WriteEndObject();
+                await writer.FlushAsync();
             }
-
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-            await writer.FlushAsync();
+            finally
+            {
+                metricSeries.Unlock();
+            }
         }
     }
 }

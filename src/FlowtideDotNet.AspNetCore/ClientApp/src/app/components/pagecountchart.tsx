@@ -24,6 +24,6 @@ export const PageCountChart = () => {
     })
 
     return (
-        <TimeChart height={400} width={600} datasets={chartJsDataResult.result as any} />
+        <TimeChart height={400} width={"100%"} datasets={chartJsDataResult.result as any} />
     )
 }

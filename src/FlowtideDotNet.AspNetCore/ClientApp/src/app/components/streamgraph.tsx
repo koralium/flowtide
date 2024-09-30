@@ -98,10 +98,6 @@ export const StreamGraph = (props: StreamGraphProps) => {
             })
         })
 
-        console.log("New data")
-        console.log(outputNodes)
-        console.log(outputEdges)
-
         setNodes(outputNodes)
         setEdges(outputEdges)
     }, [props.nodes, props.edges])
