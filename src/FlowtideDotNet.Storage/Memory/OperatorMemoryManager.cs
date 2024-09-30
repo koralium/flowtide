@@ -66,16 +66,17 @@ namespace FlowtideDotNet.Storage.Memory
         {
             if (memory is NativeCreatedMemoryOwner native)
             {
+                var previousLength = native.length;
                 var newPtr = NativeMemory.AlignedRealloc(native.ptr, (nuint)size, (nuint)alignment);
                 if (newPtr == native.ptr)
                 {
-                    var diff = size - memory.Memory.Length;
+                    var diff = size - previousLength;
                     RegisterAllocationToMetrics(diff);
                 }
                 else
                 {
                     RegisterAllocationToMetrics(size);
-                    RegisterFreeToMetrics(native.length);
+                    RegisterFreeToMetrics(previousLength);
                 }
                 
                 native.ptr = newPtr;

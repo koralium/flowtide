@@ -17,7 +17,7 @@ export const MemoryUsageChart = () => {
     return (
         <TimeChart 
             height={400} 
-            width={600} 
+            width={"100%"} 
             datasets={chartJsDataResult.result as any} 
             formatValue={(v) => memoryFormat(v)}
             />

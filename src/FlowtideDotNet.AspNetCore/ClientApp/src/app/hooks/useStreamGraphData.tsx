@@ -23,7 +23,7 @@ export const useStreamGraphData = (): StreamGraphNodeResult => {
     const metadataQuery = usePromInstantQuery("flowtide_metadata", timespan.end)
     const busyQuery = usePromInstantQuery("flowtide_busy", timespan.end)
     const backpressureQuery = usePromInstantQuery("flowtide_backpressure", timespan.end)
-    const eventsPerSecondQuery = usePromInstantQuery("rate(flowtide_events_processed_total[1s])", timespan.end)
+    const eventsPerSecondQuery = usePromInstantQuery("rate(flowtide_events_total[1s])", timespan.end)
 
     // Edge queries
     const linksQuery = usePromInstantQuery("flowtide_link", timespan.end)
@@ -41,10 +41,12 @@ export const useStreamGraphData = (): StreamGraphNodeResult => {
             3: "backpressure"
         })
 
-    const linksResult = useJoinInstantQueries([linksQuery],"operator", {
+    const linksResult = useJoinInstantQueries([linksQuery],"id", {
         "source": "source",
         "target": "target"
     }, {})
+
+    //debugger
 
     if (joinResult.loading || linksResult.loading) {
         return { nodes: [], edges: [], loading: true, error: undefined };

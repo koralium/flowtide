@@ -16,7 +16,7 @@ export const CacheHitsChart = () => {
     return (
         <TimeChart 
             height={400} 
-            width={600} 
+            width={"100%"} 
             datasets={chartJsDataResult.result as any} 
             formatValue={(v) => (v * 100).toString() + "%"}
             />

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { InstantQueryResult } from "./usePromRangeQuery";
 
 export interface JoinResult {
@@ -12,26 +13,25 @@ export const useJoinInstantQueries = (
     labelsToKeepAndRename: { [key: string]: string},
     valueIdsToKeepAndRename: { [key: number]: string}): JoinResult => 
 {
-    
-    for (const element of queries) {
-        if (element.loading) {
-            return {
-                result: [],
-                loading: true,
-                error: element.error
+
+    const [lastUsedDate, setLastUsedDate] = useState(0)
+    const [finalResult, setFinalResult] = useState<Array<{ [key: string]: string | number }>>([])
+
+    useEffect(() => {
+
+        
+        for (const element of queries) {
+            if (element.loading) {
+                return
+            }
+            if (element.error) {
+                return
             }
         }
-        if (element.error) {
-            return {
-                result: [],
-                loading: false,
-                error: element.error
-            }
-        }
-    }
 
-    const map: { [key: string]: any} = {}
+        const map: { [key: string]: any} = {}
 
+    let lastDate: number = 0;
     
     for (let q = 0; q < queries.length; q++) {
         const res = queries[q].result
@@ -53,6 +53,7 @@ export const useJoinInstantQueries = (
                     mapValue[value] = labelToKeep
                 }
             }
+            lastDate = row.value.time.valueOf()
             for (const [key, value] of Object.entries(valueIdsToKeepAndRename)) {
                 
                 if (key == q.toString()) {
@@ -61,7 +62,6 @@ export const useJoinInstantQueries = (
             }
         }
     }
-
 
     const output: Array<{ [key: string]: string | number }> = []
 
@@ -80,11 +80,16 @@ export const useJoinInstantQueries = (
         }
         output.push(value)
     }
-    
-    
+
+    if (lastDate !== lastUsedDate){
+        setLastUsedDate(lastDate)
+        setFinalResult(output)
+    }
+
+    }, [queries])
 
     return {
-        result: output,
+        result: finalResult,
         loading: false,
         error: undefined
     }

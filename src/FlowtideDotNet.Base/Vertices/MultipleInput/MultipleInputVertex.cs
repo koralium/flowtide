@@ -262,7 +262,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             {
                 if (_targetSentDataSinceLastWatermark[i] && !_targetSentWatermark[i])
                 {
-                    break;
+                    yield break;
                 }
             }
             for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)

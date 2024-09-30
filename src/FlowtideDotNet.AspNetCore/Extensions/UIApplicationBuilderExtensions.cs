@@ -23,7 +23,7 @@ namespace FlowtideDotNet.AspNetCore.Extensions
         {
             var options = new MetricOptions()
             {
-                CaptureRate = TimeSpan.FromSeconds(1),
+                CaptureRate = TimeSpan.FromSeconds(5),
                 Prefixes = new List<string>()
                 {
                     "flowtide"
