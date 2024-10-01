@@ -136,10 +136,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
+            for (int i = 0; i < (_groupingKeyLength + 1); i++)
             {
-                RemoveAt(i);
+                _data.Columns[i].RemoveRange(start, count);
             }
         }
 

@@ -103,5 +103,128 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var valueData = column.GetValueAt(1, new MapKeyReferenceSegment() { Key = "value" });
             Assert.Equal("hello4", valueData.ToString());
         }
+
+        [Fact]
+        public void RemoveRangeNonNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<SortedDictionary<string, string>?> expected = new List<SortedDictionary<string, string>?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var dictSize = r.Next(20);
+
+                SortedDictionary<string, string> rowexpected = new SortedDictionary<string, string>();
+                Dictionary<IDataValue, IDataValue> actual = new Dictionary<IDataValue, IDataValue>();
+                for (int k = 0; k < dictSize; k++)
+                {
+                    rowexpected.Add(k.ToString(), k.ToString());
+                    actual.Add(new StringValue(k.ToString()), new StringValue(k.ToString()));
+                }
+                expected.Add(rowexpected);
+                column.Add(new MapValue(actual));
+            }
+
+            column.RemoveRange(100, 100);
+            expected.RemoveRange(100, 100);
+
+            Assert.Equal(expected.Count(x => x == null), column.GetNullCount());
+            Assert.Equal(900, column.Count);
+
+            for (int i = 0; i < 900; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                if (expected[i] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    var dict = actual.AsMap;
+                    var dictLength = dict.GetLength();
+                    var expectedVal = expected[i]!;
+                    Assert.Equal(expectedVal.Count, dictLength);
+
+                    var expectedKeys = expectedVal.Keys.ToList();
+                    DataValueContainer dataValueContainer = new DataValueContainer();
+                    for (int k = 0; k < dictLength; k++)
+                    {
+                        dict.GetKeyAt(k, dataValueContainer);
+                        Assert.Equal(expectedKeys[k], dataValueContainer.AsString.ToString());
+
+                        dict.GetValueAt(k, dataValueContainer);
+                        Assert.Equal(expectedVal[expectedKeys[k]], dataValueContainer.AsString.ToString());
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        public void RemoveRangeWithNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<SortedDictionary<string, string>?> expected = new List<SortedDictionary<string, string>?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var isNull = r.Next(2) == 0;
+
+                if (isNull)
+                {
+                    expected.Add(null);
+                    column.Add(NullValue.Instance);
+                }
+                else
+                {
+                    var dictSize = r.Next(20);
+
+                    SortedDictionary<string, string> rowexpected = new SortedDictionary<string, string>();
+                    Dictionary<IDataValue, IDataValue> actual = new Dictionary<IDataValue, IDataValue>();
+                    for (int k = 0; k < dictSize; k++)
+                    {
+                        rowexpected.Add(k.ToString(), k.ToString());
+                        actual.Add(new StringValue(k.ToString()), new StringValue(k.ToString()));
+                    }
+                    expected.Add(rowexpected);
+                    column.Add(new MapValue(actual));
+                }
+
+            }
+
+            column.RemoveRange(100, 100);
+            expected.RemoveRange(100, 100);
+
+            Assert.Equal(expected.Count(x => x == null), column.GetNullCount());
+            Assert.Equal(900, column.Count);
+
+            for (int i = 0; i < 900; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                if (expected[i] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    var dict = actual.AsMap;
+                    var dictLength = dict.GetLength();
+                    var expectedVal = expected[i]!;
+                    Assert.Equal(expectedVal.Count, dictLength);
+
+                    var expectedKeys = expectedVal.Keys.ToList();
+                    DataValueContainer dataValueContainer = new DataValueContainer();
+                    for (int k = 0; k < dictLength; k++)
+                    {
+                        dict.GetKeyAt(k, dataValueContainer);
+                        Assert.Equal(expectedKeys[k], dataValueContainer.AsString.ToString());
+
+                        dict.GetValueAt(k, dataValueContainer);
+                        Assert.Equal(expectedVal[expectedKeys[k]], dataValueContainer.AsString.ToString());
+                    }                    
+                }
+            }
+        }
     }
 }

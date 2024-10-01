@@ -186,6 +186,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotImplementedException();
         }
 
+        public void RemoveRange(int start, int count)
+        {
+            _values.RemoveRange(start, count);
+        }
+
         public int GetByteSize(int start, int end)
         {
             return (end - start + 1) * sizeof(decimal);

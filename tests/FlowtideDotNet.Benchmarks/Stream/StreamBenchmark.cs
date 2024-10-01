@@ -130,5 +130,37 @@ namespace FlowtideDotNet.Benchmarks.Stream
         {
             StreamGraphMetadata.SaveGraphData(nameof(SumAggregation), _stream!.GetDiagnosticsGraph());
         }
+
+        [Benchmark]
+        public async Task ListAggWithMapAggregation()
+        {
+            await _stream!.StartStream(@"
+            INSERT INTO output
+            SELECT 
+            p.ProjectKey,
+            list_agg(map(
+              'userkey',
+              u.userkey,
+              'firstName',
+              u.firstName,
+              'lastName',
+              u.lastName,
+              'active',
+              u.active
+            )) FROM projects p
+            LEFT JOIN projectmembers pm
+            ON p.ProjectNumber = pm.ProjectNumber AND p.companyid = pm.companyid
+            LEFT JOIN users u
+            ON pm.userkey = u.userkey
+            GROUP BY p.ProjectKey
+            ", 1);
+            await _stream.WaitForUpdate();
+        }
+
+        [IterationCleanup(Target = nameof(ListAggWithMapAggregation))]
+        public void AfterListAggWithMapAggregation()
+        {
+            StreamGraphMetadata.SaveGraphData(nameof(ListAggWithMapAggregation), _stream!.GetDiagnosticsGraph());
+        }
     }
 }

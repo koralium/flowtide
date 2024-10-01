@@ -25,6 +25,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static SqlParser.Ast.Expression;
+using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -389,10 +390,74 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return index;
         }
 
+        public unsafe void RemoveRange(int start, int count)
+        {
+            // All value columns store the data in order so it is possible to remove the range from all value columns.
+            // The type list can be iterated and start offset and end offset can be calculated for each value column.
+            // The values are stored using stack alloc
+            // A difference stack is also allocated that contains the negative difference between the start and end offset for each value column.
+            // That column is used when removing offsets to subtract the value from all offsets being moved down.
+
+            // Max number of different types is 127
+            var startOffets = stackalloc int[127];
+            var endOffsets = stackalloc int[127];
+            var difference = stackalloc int[127];
+
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                startOffets[i] = 0;
+                endOffsets[i] = 0;
+                difference[i] = 0;
+            }
+
+            var end = start + count;
+
+            for (int i = start; i < end; i++)
+            {
+                var type = _typeList.Get(i);
+                var offset = _offsets.Get(i);
+
+                if (startOffets[type] == 0)
+                {
+                    startOffets[type] = offset;
+                }
+                endOffsets[type] = offset;
+            }
+
+            bool anyColumnHaveDataRemoved = false;
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                var startOffset = startOffets[i];
+                var endOffset = endOffsets[i];
+
+                difference[i] = startOffset - endOffset;
+
+                if (endOffset == 0)
+                {
+                    continue;
+                }
+                anyColumnHaveDataRemoved = true;
+                // Remove the range from the value column
+                _valueColumns[i].RemoveRange(startOffset, endOffset - startOffset);
+            }
+
+            if (anyColumnHaveDataRemoved)
+            {
+                _offsets.RemoveRangeTypeBasedAddition(start, count, _typeList.Span, new Span<int>(difference, 127), _valueColumns.Count);
+            }
+            else
+            {
+                _offsets.RemoveRange(start, count);
+            }
+            
+
+            _typeList.RemoveRange(start, count);
+        }
+
         public int GetByteSize(int start, int end)
         {
             int size = 0;
-            for (int i = start; i < end; i++)
+            for (int i = start; i <= end; i++)
             {
                 var valueColumnIndex = _typeList[i];
                 var valueColumn = _valueColumns[valueColumnIndex];

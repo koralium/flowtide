@@ -133,5 +133,153 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("hello", column.GetValueAt(2, default).AsString.ToString());
             Assert.Equal(123, column.GetValueAt(3, default).AsDecimal);
         }
+
+        /// <summary>
+        /// Checks bug that occured that after conversion to the union column, the value was not inserted in the correct position.
+        /// </summary>
+        [Fact]
+        public void ConvertToUnionInsertInMiddle()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new StringValue("1"));
+            column.Add(new StringValue("2"));
+            column.Add(new StringValue("3"));
+
+            column.InsertAt(1, new Int64Value(123));
+
+            Assert.Equal("1", column.GetValueAt(0, default).AsString.ToString());
+            Assert.Equal(123, column.GetValueAt(1, default).AsLong);
+            Assert.Equal("2", column.GetValueAt(2, default).AsString.ToString());
+            Assert.Equal("3", column.GetValueAt(3, default).AsString.ToString());
+        }
+
+        [Fact]
+        public void RemoveRangeNonNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<object?> expected = new List<object?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var type = r.Next(3);
+
+                switch (type)
+                {
+                    case 0:
+                        column.Add(new Int64Value(i));
+                        expected.Add((long)i);
+                        break;
+                    case 1:
+                        column.Add(new DecimalValue((i)));
+                        expected.Add((decimal)i);
+                        break;
+                    case 2:
+                        var byteSize = r.Next(1, 20);
+                        string data = new string(Enumerable.Range(0, byteSize).Select(x => (char)r.Next(32, 127)).ToArray());
+                        expected.Add(data);
+                        column.Add(new StringValue(data));
+                        break;
+                }
+            }
+
+            column.RemoveRange(100, 100);
+            expected.RemoveRange(100, 100);
+
+            Assert.Equal(900, column.Count);
+
+            for (int i = 0; i < expected.Count; i++)
+            {
+                if (expected[i] == null)
+                {
+                    Assert.True(column.GetValueAt(i, default).IsNull);
+                }
+                else
+                {
+                    if (expected[i] is long)
+                    {
+                        Assert.Equal((long)expected[i]!, column.GetValueAt(i, default).AsLong);
+                    }
+                    else if (expected[i] is decimal)
+                    {
+                        Assert.Equal((decimal)expected[i]!, column.GetValueAt(i, default).AsDecimal);
+                    }
+                    else
+                    {
+                        Assert.Equal(expected[i], column.GetValueAt(i, default).AsString.ToString());
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        public void RemoveRangeWithNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<object?> expected = new List<object?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var isNull = r.Next(2) == 0;
+
+                if (isNull)
+                {
+                    expected.Add(null);
+                    column.Add(NullValue.Instance);
+                }
+                else
+                {
+                    var type = r.Next(3);
+
+                    switch (type)
+                    {
+                        case 0:
+                            column.Add(new Int64Value(i));
+                            expected.Add((long)i);
+                            break;
+                        case 1:
+                            column.Add(new DecimalValue((i)));
+                            expected.Add((decimal)i);
+                            break;
+                        case 2:
+                            var byteSize = r.Next(1, 20);
+                            string data = new string(Enumerable.Range(0, byteSize).Select(x => (char)r.Next(32, 127)).ToArray());
+                            expected.Add(data);
+                            column.Add(new StringValue(data));
+                            break;
+                    }
+                }
+            }
+
+            column.RemoveRange(100, 100);
+            expected.RemoveRange(100, 100);
+
+            Assert.Equal(900, column.Count);
+
+            for (int i = 0; i < expected.Count; i++)
+            {
+                if (expected[i] == null)
+                {
+                    Assert.True(column.GetValueAt(i, default).IsNull);
+                }
+                else
+                {
+                    if (expected[i] is long)
+                    {
+                        Assert.Equal((long)expected[i]!, column.GetValueAt(i, default).AsLong);
+                    }
+                    else if (expected[i] is decimal)
+                    {
+                        Assert.Equal((decimal)expected[i]!, column.GetValueAt(i, default).AsDecimal);
+                    }
+                    else
+                    {
+                        Assert.Equal(expected[i], column.GetValueAt(i, default).AsString.ToString());
+                    }
+                }
+            }
+        }
     }
 }

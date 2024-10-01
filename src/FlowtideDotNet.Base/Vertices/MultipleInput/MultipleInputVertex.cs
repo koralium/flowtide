@@ -40,6 +40,9 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private IReadOnlySet<string>[]? _targetWatermarkNames;
         private Watermark[]? _targetWatermarks;
         private Watermark? _currentWatermark;
+        private bool[]? _targetSentDataSinceLastWatermark;
+        private bool[]? _targetSentWatermark;
+        private bool _isInIteration = false;
 
         private ParallelSource<IStreamEvent>? _parallelSource;
         private long _currentTime;
@@ -117,6 +120,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 }
                 if (r.Value is StreamMessage<T> streamMessage)
                 {
+                    Debug.Assert(_targetSentDataSinceLastWatermark != null);
+                    _targetSentDataSinceLastWatermark[r.Key] = true;
                     var enumerator = OnRecieve(r.Key, streamMessage.Data, streamMessage.Time);
 
                     if (streamMessage.Data is IRentable rentable)
@@ -164,6 +169,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
             _targetInCheckpoint = new ILockingEvent[targetCount];
             _targetWatermarks = new Watermark[targetCount];
+            _targetSentDataSinceLastWatermark = new bool[targetCount];
+            _targetSentWatermark = new bool[targetCount];
 
             foreach (var t in _targetHolders)
             {
@@ -215,6 +222,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         private async IAsyncEnumerable<IStreamEvent> HandleLockingEventPrepare(int targetId, LockingEventPrepare lockingEventPrepare)
         {
+            // Set that this operator is in an iteration. This helps watermarks output.
+            _isInIteration = true;
             // Check that all other inputs are waiting for checkpoint.
             bool allInCheckpoint = true;
             for (int i = 0; i < _targetInCheckpoint.Length; i++)
@@ -239,6 +248,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         {
             Debug.Assert(_targetWatermarkNames != null, nameof(_targetWatermarkNames));
             Debug.Assert(_targetWatermarks != null, nameof(_targetWatermarks));
+            Debug.Assert(_targetSentWatermark != null);
+            Debug.Assert(_targetSentDataSinceLastWatermark != null);
 
             if (_currentWatermark == null) 
             {
@@ -247,7 +258,25 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     SourceOperatorId = watermark.SourceOperatorId
                 };
             }
+            _targetSentWatermark[targetId] = true;
             _targetWatermarks[targetId] = watermark;
+
+            if (!_isInIteration)
+            {
+                for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
+                {
+                    if (_targetSentDataSinceLastWatermark[i] && !_targetSentWatermark[i])
+                    {
+                        yield break;
+                    }
+                }
+                for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
+                {
+                    _targetSentDataSinceLastWatermark[i] = false;
+                    _targetSentWatermark[i] = false;
+                }
+            }
+            
             var currentDict = _currentWatermark.Watermarks;
             foreach (var kv in watermark.Watermarks)
             {

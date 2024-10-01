@@ -35,6 +35,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
         private readonly Histogram<float> m_persistenceReadMsHistogram;
         private readonly Histogram<float> m_temporaryReadMsHistogram;
+        private readonly Histogram<float> m_temporaryWriteMsHistogram;
         private readonly TagList tagList;
 
         // Method containers for addOrUpdate methods to skip casting to Func all the time
@@ -70,6 +71,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
             m_persistenceReadMsHistogram = meter.CreateHistogram<float>("flowtide_persistence_read_ms");
             m_temporaryReadMsHistogram = meter.CreateHistogram<float>("flowtide_temporary_read_ms");
+            m_temporaryWriteMsHistogram = meter.CreateHistogram<float>("flowtide_temporary_write_ms");
             tagList = options.TagList;
             tagList.Add("state_client", name);
             addorUpdate_newValue_container = AddOrUpdate_NewValue;
@@ -350,8 +352,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     continue;
                 }
                 value.Item1.ValueRef.value.EnterWriteLock();
+                var sw = ValueStopwatch.StartNew();
                 var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value, stateManager.SerializeOptions);
                 m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);
+                m_temporaryWriteMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
                 value.Item1.ValueRef.value.ExitWriteLock();
                 m_fileCacheVersion[value.Item1.ValueRef.key] = val;
             }

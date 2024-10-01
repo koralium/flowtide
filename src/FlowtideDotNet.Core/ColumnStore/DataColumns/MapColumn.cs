@@ -25,10 +25,12 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System.Buffers;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
+using System.Collections;
+using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public class MapColumn : IDataColumn
+    public class MapColumn : IDataColumn, IEnumerable<List<KeyValuePair<IDataValue, IDataValue>>>
     {
         /// <summary>
         /// Contains all the property keys, must always be strings
@@ -248,15 +250,18 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return startOffset;
             }
             var map = value.AsMap;
-            // Sort keys so its possible to binary search after a key.
-            // In future, can check if it is a reference map value or not to skip sorting
-            var ordered = map.OrderBy(x => x.Key, new DataValueComparer()).ToList();
-            
-            foreach (var pair in ordered)
+
+            var mapLength = map.GetLength();
+
+            DataValueContainer dataValueContainer = new DataValueContainer();
+            for (int i = 0; i < mapLength; i++)
             {
-                _keyColumn.Add(pair.Key);
-                _valueColumn.Add(pair.Value);
+                map.GetKeyAt(i, dataValueContainer);
+                _keyColumn.Add(dataValueContainer);
+                map.GetValueAt(i, dataValueContainer);
+                _valueColumn.Add(dataValueContainer);
             }
+
             _offsets.Add(_valueColumn.Count);
 
             return startOffset;
@@ -292,11 +297,8 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Null will be added as an empty map
             if (value.Type == ArrowTypeId.Null)
             {
-                for (int i = endOffset - 1; i >= startOffset; i--)
-                {
-                    _keyColumn.RemoveAt(i);
-                    _valueColumn.RemoveAt(i);
-                }
+                _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+                _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
                 _offsets.Update(index + 1, startOffset, startOffset - endOffset);
                 return index;
             }
@@ -305,11 +307,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             var ordered = map.OrderBy(x => x.Key, new DataValueComparer()).ToList();
 
             // Remove the old values
-            for (int i = endOffset - 1; i >= startOffset; i--)
-            {
-                _keyColumn.RemoveAt(i);
-                _valueColumn.RemoveAt(i);
-            }
+            _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+            _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
+
 
             // Insert the new values
             for (int i = 0; i < ordered.Count; i++)
@@ -338,11 +338,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var (startOffset, endOffset) = GetOffsets(index);
 
-            for (int i = endOffset - 1; i >= startOffset; i--)
-            {
-                _keyColumn.RemoveAt(i);
-                _valueColumn.RemoveAt(i);
-            }
+            _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+            _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
             // Remove the offset and shift all the offsets after it
             _offsets.RemoveAt(index, startOffset - endOffset);
         }
@@ -355,17 +352,18 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return;
             }
             var map = value.AsMap;
-            // Sort keys so its possible to binary search after a key.
-            // In future, can check if it is a reference map value or not to skip sorting
-            var ordered = map.OrderBy(x => x.Key, new DataValueComparer()).ToList();
 
+            var mapLength = map.GetLength();
+            var dataValueContainer = new DataValueContainer();
             var currentOffset = _offsets.Get(index);
-            for (int i = 0; i < ordered.Count; i++)
+            for (int i = 0; i < mapLength; i++)
             {
-                _keyColumn.InsertAt(currentOffset + i, ordered[i].Key);
-                _valueColumn.InsertAt(currentOffset + i, ordered[i].Value);
+                map.GetKeyAt(i, dataValueContainer);
+                _keyColumn.InsertAt(currentOffset + i, dataValueContainer);
+                map.GetValueAt(i, dataValueContainer);
+                _valueColumn.InsertAt(currentOffset + i, dataValueContainer);
             }
-            _offsets.InsertAt(index, currentOffset, ordered.Count);
+            _offsets.InsertAt(index, currentOffset, mapLength);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(Apache.Arrow.ArrowBuffer nullBuffer, int nullCount)
@@ -434,6 +432,46 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int EndNewList()
         {
             throw new NotImplementedException();
+        }
+
+        private IEnumerable<List<KeyValuePair<IDataValue, IDataValue>>> GetEnumerable()
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                var (startOffset, endOffset) = GetOffsets(in i);
+
+                List<KeyValuePair<IDataValue, IDataValue>> output = new List<KeyValuePair<IDataValue, IDataValue>>();
+                for (int j = startOffset; j < endOffset; j++)
+                {
+                    var key = _keyColumn.GetValueAt(j, default);
+                    var value = _valueColumn.GetValueAt(j, default);
+                    output.Add(new KeyValuePair<IDataValue, IDataValue>(key, value));
+                }
+                yield return output;
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        IEnumerator<List<KeyValuePair<IDataValue, IDataValue>>> IEnumerable<List<KeyValuePair<IDataValue, IDataValue>>>.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            var startOffset = _offsets.Get(start);
+            var endOffset = _offsets.Get(start + count);
+
+            // Remove offsets
+            _offsets.RemoveRange(start, count, startOffset - endOffset);
+
+            // Remove the keys and values
+            _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+            _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
         }
 
         public int GetByteSize(int start, int end)
