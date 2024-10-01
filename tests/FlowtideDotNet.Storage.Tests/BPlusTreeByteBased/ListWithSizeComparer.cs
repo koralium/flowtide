@@ -19,30 +19,45 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
 {
-    internal class ListWithSizeComparer<K> : IBplusTreeComparer<K, ListKeyContainerWithSize<K>>
+    internal class ListWithSizeComparer : IBplusTreeComparer<KeyValuePair<long, long>, ListKeyContainerWithSize>
     {
-        private readonly IComparer<K> comparer;
+        private readonly IComparer<KeyValuePair<long, long>> comparer;
 
-        public ListWithSizeComparer(IComparer<K> comparer)
+        public ListWithSizeComparer(IComparer<long> comparer)
         {
-            this.comparer = comparer;
+            this.comparer = new KeyValuePairComparer();
         }
 
         public bool SeekNextPageForValue => false;
 
-        public int CompareTo(in K x, in K y)
+        public int CompareTo(in KeyValuePair<long, long> x, in KeyValuePair<long, long> y)
         {
             return comparer.Compare(x, y);
         }
 
-        public int CompareTo(in K key, in ListKeyContainerWithSize<K> keyContainer, in int index)
+        public int CompareTo(in KeyValuePair<long, long> key, in ListKeyContainerWithSize keyContainer, in int index)
         {
             return comparer.Compare(key, keyContainer.Get(index));
         }
 
-        public int FindIndex(in K key, in ListKeyContainerWithSize<K> keyContainer)
+        public int FindIndex(in KeyValuePair<long, long> key, in ListKeyContainerWithSize keyContainer)
         {
             return keyContainer._list.BinarySearch(key, comparer);
         }
+
+        //public int CompareTo(in K x, in K y)
+        //{
+        //    return comparer.Compare(x, y);
+        //}
+
+        //public int CompareTo(in K key, in ListKeyContainerWithSize<K> keyContainer, in int index)
+        //{
+        //    return comparer.Compare(key, keyContainer.Get(index));
+        //}
+
+        //public int FindIndex(in K key, in ListKeyContainerWithSize<K> keyContainer)
+        //{
+        //    return keyContainer._list.BinarySearch(key, comparer);
+        //}
     }
 }

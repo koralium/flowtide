@@ -472,7 +472,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         }
                         if (pageUpdated)
                         {
-                            await page.SavePage();
+                            await page.SavePage(false);
                         }
                         if (_searchLeftComparer.end < (page.Keys.Count - 1))
                         {
@@ -679,14 +679,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 {
                     Comparer = _leftInsertComparer,
                     KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Left.OutputLength, MemoryAllocator),
-                    ValueSerializer = new JoinWeightsSerializer(MemoryAllocator)
+                    ValueSerializer = new JoinWeightsSerializer(MemoryAllocator),
+                    UseByteBasedPageSizes = true
                 });
             _rightTree = await stateManagerClient.GetOrCreateTree("right",
                 new BPlusTreeOptions<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>()
                 {
                     Comparer = _rightInsertComparer,
                     KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Right.OutputLength, MemoryAllocator),
-                    ValueSerializer = new JoinWeightsSerializer(MemoryAllocator)
+                    ValueSerializer = new JoinWeightsSerializer(MemoryAllocator),
+                    UseByteBasedPageSizes = true
                 });
 
             _leftIterator = _leftTree.CreateIterator();

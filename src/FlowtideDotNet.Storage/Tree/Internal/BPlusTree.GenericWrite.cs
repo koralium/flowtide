@@ -18,16 +18,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         where TKeyContainer : IKeyContainer<K>
         where TValueContainer : IValueContainer<V>
     {
-        
-
-        public ValueTask<GenericWriteOperation> GenericWrite(in K key, in V? value, in GenericWriteFunction<V> function)
-        {
-            if (m_isByteBased)
-            {
-                return GenericWriteByteBased(in key, in value, in function);
-            }
-            return GenericWriteRoot(key, value, function);
-        }
 
         /// <summary>
         /// Does a read modify write which takes a function that is called.
@@ -656,10 +646,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             in V? value,
             in GenericWriteFunction<V> function)
         {
-            if (leafNode.Id == 80)
-            {
-
-            }
             var index = m_keyComparer.FindIndex(key, leafNode.keys);
             if (index < 0)
             {

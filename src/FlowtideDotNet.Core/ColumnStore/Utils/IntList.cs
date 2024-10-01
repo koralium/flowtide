@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public void Add(int item)
         {
             EnsureCapacity(_length + 1);
-            _data[_length++] = item;
+            AccessSpan[_length++] = item;
         }
 
         public void RemoveAt(int index)
@@ -176,7 +176,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public void Update(int index, int item)
         {
-            _data[index] = item;
+            AccessSpan[index] = item;
         }
 
         /// <summary>
@@ -188,13 +188,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="additionOnAbove"></param>
         public void Update(int index, int item, int additionOnAbove)
         {
-            _data[index] = item;
+            AccessSpan[index] = item;
             AvxUtils.AddValueToElements(AccessSpan.Slice(index + 1, _length - index - 1), additionOnAbove);
         }
 
         public int Get(in int index)
         {
-            return _data[index];
+            return AccessSpan[index];
         }
 
         protected virtual void Dispose(bool disposing)

@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Storage.Tree
         /// Saves the current page, allows the user to modify values on the page and then trigger a save.
         /// </summary>
         /// <returns></returns>
-        ValueTask SavePage();
+        ValueTask SavePage(bool checkForResize);
 
         TKeyContainer Keys { get; }
 

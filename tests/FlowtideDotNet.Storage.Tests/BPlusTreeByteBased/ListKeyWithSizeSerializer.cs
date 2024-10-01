@@ -19,31 +19,46 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
 {
-    internal class ListKeyWithSizeSerializer<K> : IBPlusTreeKeySerializer<K, ListKeyContainerWithSize<K>>
+    internal class ListKeyWithSizeSerializer : IBPlusTreeKeySerializer<KeyValuePair<long, long>, ListKeyContainerWithSize>
     {
-        private readonly IBplusTreeSerializer<K> serializer;
+       // private readonly IBplusTreeSerializer<KeyValuePair<long, long>> serializer;
         private readonly int sizePerElement;
 
-        public ListKeyWithSizeSerializer(IBplusTreeSerializer<K> serializer, int sizePerElement)
+        public ListKeyWithSizeSerializer( int sizePerElement)
         {
-            this.serializer = serializer;
+            //this.serializer = serializer;
             this.sizePerElement = sizePerElement;
         }
-        public ListKeyContainerWithSize<K> CreateEmpty()
+
+        public ListKeyContainerWithSize CreateEmpty()
         {
-            return new ListKeyContainerWithSize<K>(sizePerElement);
+            return new ListKeyContainerWithSize(1);
         }
 
-        public ListKeyContainerWithSize<K> Deserialize(in BinaryReader reader)
+        public ListKeyContainerWithSize Deserialize(in BinaryReader reader)
         {
-            var container = new ListKeyContainerWithSize<K>(sizePerElement);
-            serializer.Deserialize(reader, container._list);
-            return container;
+            throw new NotImplementedException();
         }
 
-        public void Serialize(in BinaryWriter writer, in ListKeyContainerWithSize<K> values)
+        public void Serialize(in BinaryWriter writer, in ListKeyContainerWithSize values)
         {
-            serializer.Serialize(writer, values._list);
+            throw new NotImplementedException();
         }
+        //public ListKeyContainerWithSize<K> CreateEmpty()
+        //{
+        //    return new ListKeyContainerWithSize<K>(sizePerElement);
+        //}
+
+        //public ListKeyContainerWithSize<K> Deserialize(in BinaryReader reader)
+        //{
+        //    var container = new ListKeyContainerWithSize<K>(sizePerElement);
+        //    serializer.Deserialize(reader, container._list);
+        //    return container;
+        //}
+
+        //public void Serialize(in BinaryWriter writer, in ListKeyContainerWithSize<K> values)
+        //{
+        //    serializer.Serialize(writer, values._list);
+        //}
     }
 }

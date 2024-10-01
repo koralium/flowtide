@@ -10,15 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using BenchmarkDotNet.Running;
-using DifferntialCompute.Benchmarks;
-using FlowtideDotNet.Benchmarks;
-using FlowtideDotNet.Benchmarks.ColumnStore.Utils;
-using FlowtideDotNet.Benchmarks.Stream;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-StreamBenchmark stream = new StreamBenchmark();
-stream.IterationSetup();
-await stream.ListAggWithMapAggregation();
-
-Console.WriteLine("Benchmarking...");
-//var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
+{
+    internal class KeyValuePairComparer : IComparer<KeyValuePair<long, long>>
+    {
+        public int Compare(KeyValuePair<long, long> x, KeyValuePair<long, long> y)
+        {
+            return x.Key.CompareTo(y.Key);
+        }
+    }
+}

@@ -477,7 +477,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int GetByteSize(int start, int end)
         {
             var startOffset = _offsets.Get(start);
-            var endOffset = _offsets.Get(end + 1);
+            var endOffset = _offsets.Get(end);
             return _keyColumn.GetByteSize(startOffset, endOffset) + _valueColumn.GetByteSize(startOffset, endOffset) + ((end - start + 1) * sizeof(int));
         }
 

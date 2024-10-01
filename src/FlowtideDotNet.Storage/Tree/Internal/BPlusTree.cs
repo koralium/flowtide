@@ -25,6 +25,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private readonly BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> m_options;
         internal IBplusTreeComparer<K, TKeyContainer> m_keyComparer;
         private int minSize;
+        private bool m_isByteBased;
+        private int byteMinSize;
 
         public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options) 
         {
@@ -33,6 +35,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             this.m_options = options;
             minSize = options.BucketSize.Value / 3;
             this.m_keyComparer = options.Comparer;
+            m_isByteBased = false;//options.UseByteBasedPageSizes;
+            byteMinSize = (32 * 1024) / 3;
         }
 
         public Task InitializeAsync()
@@ -49,7 +53,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
                     Root = rootId,
                     BucketLength = m_options.BucketSize.Value,
-                    Left = rootId
+                    Left = rootId,
+                    PageSizeBytes = 32 * 1024
                 };
                 m_stateClient.AddOrUpdate(rootId, root);
             }
@@ -198,7 +203,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 Root = rootId,
                 BucketLength = m_options.BucketSize.Value,
-                Left = rootId
+                Left = rootId,
+                PageSizeBytes = 32 * 1024
             };
             m_stateClient.AddOrUpdate(rootId, root);
         }

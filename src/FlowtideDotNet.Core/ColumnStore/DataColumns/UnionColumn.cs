@@ -457,11 +457,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public int GetByteSize(int start, int end)
         {
             int size = 0;
-            for (int i = start; i <= end; i++)
+            for (int i = start; i < end; i++)
             {
                 var valueColumnIndex = _typeList[i];
-                var valueColumn = _valueColumns[valueColumnIndex];
-                size += valueColumn.GetByteSize(_offsets.Get(i), _offsets.Get(i));
+                try
+                {
+                    var valueColumn = _valueColumns[valueColumnIndex];
+                    size += valueColumn.GetByteSize(_offsets.Get(i), _offsets.Get(i));
+                }
+                catch(Exception e)
+                {
+
+                }
+                
             }
             return size + ((end - start + 1) * sizeof(int));
         }

@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
 {
-    internal class ListKeyContainerWithSize<T> : ListKeyContainer<T>
+    internal class ListKeyContainerWithSize : ListKeyContainer<KeyValuePair<long, long>>
     {
         private readonly int sizePerElement;
 
@@ -30,12 +30,17 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
 
         public override int GetByteSize(int start, int end)
         {
-            return (end - start + 1) * sizePerElement;
+            int result = 0;
+            for (int i = start; i <= end; i++)
+            {
+                result += (int)_list[i].Value;
+            }
+            return result;
         }
 
         public override int GetByteSize()
         {
-            return Count * sizePerElement;
+            return GetByteSize(0, _list.Count - 1);
         }
     }
 }

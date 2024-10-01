@@ -35,6 +35,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private const int minPageSizeBeforeSplit = 8;
         private const int minPageSize = 4;
 
+        public ValueTask<GenericWriteOperation> GenericWrite(in K key, in V? value, in GenericWriteFunction<V> function)
+        {
+            if (m_isByteBased)
+            {
+                return GenericWriteByteBased(key, value, function);
+            }
+            return GenericWriteRoot(key, value, function);
+        }
+
         public ValueTask<GenericWriteOperation> GenericWriteByteBased(in K key, in V? value, in GenericWriteFunction<V> function)
         {
             return GenericWriteRootByteBased(key, value, function);
@@ -146,13 +155,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             in GenericWriteFunction<V> function
             )
         {
-            for (int i = 0; i < parentNode.children.Count; i++)
-            {
-                if (parentNode.children[i] == 50)
-                {
-
-                }
-            }
             var index = m_keyComparer.FindIndex(key, parentNode.keys);
 
             if (index < 0)
@@ -361,7 +363,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
             }
             // Check if the node is too small
-            if (byteSize <= byteMinSize)
+            if (byteSize <= byteMinSize || internalNode.keys.Count < minPageSize)
             {
                 if (index == parentNode.keys.Count)
                 {
@@ -413,7 +415,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(m_stateClient.Metadata != null);
             var leftNodeSize = leftNode.GetByteSize();
-            if (leftNodeSize >= m_stateClient.Metadata.PageSizeBytes / 2)
+            if (leftNodeSize >= m_stateClient.Metadata.PageSizeBytes / 2 && leftNode.keys.Count > minPageSize && internalNode.keys.Count > minPageSize)
             {
                 // Borrow
                 var parentKey = parentNode.keys.Get(index - 1);
@@ -489,7 +491,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(m_stateClient.Metadata != null);
             var byteSize = rightNode.GetByteSize();
-            if (byteSize >= (m_stateClient.Metadata.PageSizeBytes / 2))
+            if (byteSize >= (m_stateClient.Metadata.PageSizeBytes / 2) && rightNode.keys.Count >= minPageSize && internalNode.keys.Count >= minPageSize)
             {
                 var parentKey = parentNode.keys.Get(index);
 
@@ -694,7 +696,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int BinarySearchFindLeftSize(BaseNode<K, TKeyContainer> node, int bytesToFind)
         {
             int start = 0;
-            int end = node.keys.Count;
+            int end = node.keys.Count - 1;
 
             while (end > start)
             {
@@ -714,7 +716,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 else
                 {
-                    end = mid;
+                    end = mid - 1;
                 }
             }
             return start;
@@ -729,21 +731,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         /// <returns></returns>
         internal (K, IDisposable) DistributeBetweenNodesInternalBasedOnBytes(InternalNode<K, V, TKeyContainer> leftNode, InternalNode<K, V, TKeyContainer> rightNode, K parentKey)
         {
-
-            for (int i = 0; i < rightNode.children.Count; i++)
-            {
-                if (rightNode.children[i] == 50)
-                {
-
-                }
-            }
-            for (int i = 0; i < leftNode.children.Count; i++)
-            {
-                if (leftNode.children[i] == 50)
-                {
-
-                }
-            }
             leftNode.EnterWriteLock();
             rightNode.EnterWriteLock();
             var leftSize = leftNode.GetByteSize();
@@ -754,12 +741,21 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             K? splitKey = default;
             IDisposable? splitKeyDisposable = default;
-            if (leftSize < halfByteSize)
+            if (leftSize < halfByteSize || rightNode.keys.Count <= minPageSize)
             {
                 var bytesToMove = halfByteSize - leftSize;
 
                 // Binary search to try get the index that fulfills the bytes to move
                 int splitIndex = BinarySearchFindLeftSize(rightNode, bytesToMove);
+
+                if (splitIndex < (minPageSize / 2))
+                {
+                    splitIndex = 1;
+                }
+                if (splitIndex >= rightNode.keys.Count)
+                {
+                    splitIndex = rightNode.keys.Count - 1;
+                }
 
                 var remainder = splitIndex;
                 // Add a new key with the most right value on left side
@@ -789,7 +785,17 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var bytesToMove = halfByteSize - rightSize;
                 var negated = leftSize - bytesToMove;
 
-                var splitIndex = BinarySearchFindLeftSize(leftNode, negated);
+                int splitIndex = BinarySearchFindLeftSize(leftNode, negated);
+
+                if (splitIndex < 1)
+                {
+                    splitIndex = minPageSize; //Math.Min(minPageSize, leftNode.keys.Count - minPageSize);
+                }
+                if (splitIndex >= leftNode.keys.Count)
+                {
+                    splitIndex = leftNode.keys.Count - 1;
+                }
+                
 
                 var dataToMove = leftNode.keys.Count - splitIndex;
 
@@ -832,63 +838,49 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
+            // Check that both parent and child write locks are collected
+            var newNodeId = m_stateClient.GetNewPageId();
 
-            try
+            int halfSize = leafSize / 2;
+            int start = BinarySearchFindLeftSize(child, halfSize);
+
+            // Make sure that no page is smaller than the min page size
+            if (start < minPageSize)
             {
-                // Check that both parent and child write locks are collected
-                var newNodeId = m_stateClient.GetNewPageId();
-
-                int halfSize = leafSize / 2;
-                int start = BinarySearchFindLeftSize(child, halfSize);
-
-                // Make sure that no page is smaller than the min page size
-                if (start < minPageSize)
-                {
-                    start = minPageSize;
-                }
-
-                var emptyKeys = m_options.KeySerializer.CreateEmpty();
-                var emptyValues = m_options.ValueSerializer.CreateEmpty();
-                var newNode = new LeafNode<K, V, TKeyContainer, TValueContainer>(newNodeId, emptyKeys, emptyValues);
-                newNode.EnterWriteLock();
-
-                // Set the next id on the new node to the now left childs next id.
-                newNode.next = child.next;
-
-                // Copy half of the values on the right to the new node
-                newNode.keys.AddRangeFrom(child.keys, start, child.keys.Count - start);
-                newNode.values.AddRangeFrom(child.values, start, child.values.Count - start);
-                newNode.ExitWriteLock();
-
-                child.EnterWriteLock();
-                // Clear the values from the child, this is so the values and keys can be garbage collected
-                child.keys.RemoveRange(start, child.keys.Count - start);
-                child.values.RemoveRange(start, child.values.Count - start);
-
-                // Set the next pointer on the child for iteration
-                child.next = newNodeId;
-                child.ExitWriteLock();
-
-                var splitKey = child.keys.Get(child.keys.Count - 1);
-                // Add the children to the parent node
-                parent.EnterWriteLock();
-                try
-                {
-                    parent.keys.Insert_Internal(index, splitKey);
-                }
-                catch (Exception e)
-                {
-                    throw;
-                }
-
-                parent.children.Insert(index + 1, newNodeId);
-                parent.ExitWriteLock();
-                return (newNode, splitKey);
+                start = minPageSize;
             }
-            catch (Exception e)
-            {
-                throw;
-            }
+
+            var emptyKeys = m_options.KeySerializer.CreateEmpty();
+            var emptyValues = m_options.ValueSerializer.CreateEmpty();
+            var newNode = new LeafNode<K, V, TKeyContainer, TValueContainer>(newNodeId, emptyKeys, emptyValues);
+            newNode.EnterWriteLock();
+
+            // Set the next id on the new node to the now left childs next id.
+            newNode.next = child.next;
+
+            // Copy half of the values on the right to the new node
+            newNode.keys.AddRangeFrom(child.keys, start, child.keys.Count - start);
+            newNode.values.AddRangeFrom(child.values, start, child.values.Count - start);
+            newNode.ExitWriteLock();
+
+            child.EnterWriteLock();
+            // Clear the values from the child, this is so the values and keys can be garbage collected
+            child.keys.RemoveRange(start, child.keys.Count - start);
+            child.values.RemoveRange(start, child.values.Count - start);
+
+            // Set the next pointer on the child for iteration
+            child.next = newNodeId;
+            child.ExitWriteLock();
+
+            var splitKey = child.keys.Get(child.keys.Count - 1);
+            // Add the children to the parent node
+            parent.EnterWriteLock();
+
+            parent.keys.Insert_Internal(index, splitKey);
+
+            parent.children.Insert(index + 1, newNodeId);
+            parent.ExitWriteLock();
+            return (newNode, splitKey);
         }
 
         private (InternalNode<K, V, TKeyContainer>, K splitKey) SplitInternalNodeBasedOnBytes(
@@ -918,15 +910,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             var splitKey = child.keys.Get(start - 1);
 
-            child.EnterWriteLock();
-            child.keys.RemoveRange(start - 1, (childKeyCount- start) + 1);
-            child.children.RemoveRange(start, (childKeyCount - start) + 1);
-            child.ExitWriteLock();
-
             parent.EnterWriteLock();
             parent.keys.Insert_Internal(index, splitKey);
             parent.children.Insert(index + 1, newNodeId);
             parent.ExitWriteLock();
+
+            child.EnterWriteLock();
+            child.keys.RemoveRange(start - 1, (childKeyCount- start) + 1);
+            child.children.RemoveRange(start, (childKeyCount - start) + 1);
+            child.ExitWriteLock();
 
             return (newNode, splitKey);
         }
@@ -1058,14 +1050,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     var rightValues = m_options.ValueSerializer.CreateEmpty();
 
                     // Copy values from left to right at the beginning
-                    try
-                    {
-                        rightKeys.AddRangeFrom(leftNode.keys, leftNode.keys.Count - remainder, remainder);
-                    }
-                    catch (Exception e)
-                    {
-                        throw;
-                    }
+                    rightKeys.AddRangeFrom(leftNode.keys, leftNode.keys.Count - remainder, remainder);
 
                     rightKeys.AddRangeFrom(rightNode.keys, 0, rightNode.keys.Count);
                     rightValues.AddRangeFrom(leftNode.values, leftNode.keys.Count - remainder, remainder);
@@ -1089,16 +1074,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             rightNode.ExitWriteLock();
             leftNode.ExitWriteLock();
-            try
-            {
-                var splitKey = leftNode.keys.Get(leftNode.keys.Count - 1);
-                return splitKey;
-            }
-            catch(Exception e)
-            {
-                throw;
-            }
-            
+
+            var splitKey = leftNode.keys.Get(leftNode.keys.Count - 1);
+            return splitKey;
         }
     }
 }
