@@ -18,11 +18,13 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
     internal class CounterInstrument : IMetricInstrument
     {
         private readonly string name;
+        private readonly bool isObservable;
         private ConcurrentDictionary<string, MetricValue> _values = new ConcurrentDictionary<string, MetricValue>();
 
-        public CounterInstrument(string name)
+        public CounterInstrument(string name, bool isObservable)
         {
             this.name = $"{name}_total";
+            this.isObservable = isObservable;
         }
 
         public void Record(ReadOnlySpan<KeyValuePair<string, object?>> tags, double value)
@@ -42,13 +44,28 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
                 metricValue.Value = value;
                 _values.AddOrUpdate(key, metricValue, (k ,v) =>
                 {
-                    v.Value += value;
+                    if (isObservable)
+                    {
+                        v.Value = value;
+                    }
+                    else
+                    {
+                        v.Value += value;
+                    }
+                    
                     return v;
                 });
             }
             else
             {
-                metricValue.Value += value;
+                if (isObservable)
+                {
+                    metricValue.Value = value;
+                }
+                else
+                {
+                    metricValue.Value += value;
+                }
             }
         }
 

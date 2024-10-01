@@ -35,6 +35,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             this.m_keyComparer = options.Comparer;
         }
 
+        public long CacheMisses => m_stateClient.CacheMisses;
+
         public Task InitializeAsync()
         {
             Debug.Assert(m_options.BucketSize.HasValue);

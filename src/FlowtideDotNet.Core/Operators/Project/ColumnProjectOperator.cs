@@ -71,6 +71,11 @@ namespace FlowtideDotNet.Core.Operators.Project
             Debug.Assert(_eventsCounter != null);
             var data = msg.Data;
 
+            if (data.Count > 102)
+            {
+
+            }
+
             _eventsProcessed.Add(data.Count);
             _eventsCounter.Add(data.Count);
 

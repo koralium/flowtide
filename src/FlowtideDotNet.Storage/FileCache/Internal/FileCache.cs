@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.FileCache.Internal;
 using FlowtideDotNet.Storage.FileCache.Internal.Unix;
+using FlowtideDotNet.Storage.Utils;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
@@ -347,8 +348,14 @@ namespace FlowtideDotNet.Storage.FileCache
         {
             long position = 0;
             IFileCacheWriter? segmentWriter = null;
+            var sw = ValueStopwatch.StartNew();
             lock (m_lock)
             {
+                var finalTime = sw.GetElapsedTime().TotalMilliseconds;
+                if (finalTime > 5)
+                {
+
+                }
                 if (allocatedPages.TryGetValue(pageKey, out var node))
                 {
                     // Check if the current node has enough size

@@ -81,9 +81,16 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                 }
                 else
                 {
+                    if (time.Value > metricSeries.LastIngestedTime)
+                    {
+                        time = metricSeries.LastIngestedTime;
+                    }
                     // Set end time to half the capture rate to only get one value
-                    endTime = time.Value + (long)(metricSeries.Rate.TotalMilliseconds / 2);
                 }
+
+                time = time.Value - (long)(metricSeries.Rate.TotalMilliseconds / 2);
+                endTime = time.Value + (long)(metricSeries.Rate.TotalMilliseconds / 2);
+
 
                 var ast = PromQL.Parser.Parser.ParseExpression(query);
                 var visitor = new PromQLVisitor(metricSeries);
