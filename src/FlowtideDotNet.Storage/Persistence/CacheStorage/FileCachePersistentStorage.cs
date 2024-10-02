@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             m_fileCache.Dispose();
         }
 
-        public Task InitializeAsync()
+        public Task InitializeAsync(StorageInitializationMetadata metadata)
         {
             return Task.CompletedTask;
         }
