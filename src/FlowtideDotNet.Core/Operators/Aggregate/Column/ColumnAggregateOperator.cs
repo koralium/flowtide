@@ -260,11 +260,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     }
 
                     // Save all the changes to the page
-                    await page.SavePage(false);
-                    await _tree.RMW(page.Keys.Get(comparer.start), val, (_, current, found) =>
-                    {
-                        return (default, GenericWriteOperation.None);
-                    });
+                    await page.SavePage(true);
                 }
                 else
                 {
@@ -426,11 +422,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             treePage.ExitWriteLock();
                         }
 
-                        await treePage.SavePage(false);
-                        await _tree.RMW(page.Keys.Get(comparer.start), val, (_, current, found) =>
-                        {
-                            return (default, GenericWriteOperation.None);
-                        });
+                        await treePage.SavePage(true);
 
                         if (outputWeights.Count >= 100)
                         {
@@ -571,12 +563,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                         var currentWeight = page.Values._weights.Get(index);
                         page.Values._weights.Update(index, currentWeight + msg.Data.Weights.Get(i));
                         page.ExitWriteLock();
-                        //await page.SavePage(false);
-                        //await _tree.Upsert(page.Keys.Get(index), state);
-                        await _tree.RMW(new ColumnRowReference(), new ColumnAggregateStateReference(), (asd, current, found) =>
-                        {
-                            return (default, GenericWriteOperation.None);
-                        });
+                        await page.SavePage(true);
                     }
                 }
                 else

@@ -84,31 +84,32 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public TValueContainer Values => leaf != null ? leaf.values : throw new InvalidOperationException("Tried getting keys on an inactive iterator");
 
-        public async ValueTask SavePage(bool checkForResize)
+        public ValueTask SavePage(bool checkForResize)
         {
             Debug.Assert(leaf != null);
-            //if (leaf.keys.Count > 0 && checkForResize)
-            //{
-            //    // Force a traversion of the tree to ensure that size is looked at for splits.
-            //    await tree.RMWNoResult(leaf.keys.Get(0), default, (input, current, found) =>
-            //    {
-            //        return (default, GenericWriteOperation.None);
-            //    });
-            //    //if (!traverseTask.IsCompletedSuccessfully)
-            //    //{
-            //    //    return WaitForTraverseTask(traverseTask);
-            //    //}
-            //}
-            //else
-            //{
+            var byteSize = leaf.GetByteSize();
+            if (leaf.keys.Count > 0 && checkForResize && tree.m_stateClient.Metadata!.PageSizeBytes < byteSize)
+            {
+                // Force a traversion of the tree to ensure that size is looked at for splits.
+                var traverseTask = tree.RMWNoResult(leaf.keys.Get(0), default, (input, current, found) =>
+                {
+                    return (default, GenericWriteOperation.None);
+                });
+                if (!traverseTask.IsCompletedSuccessfully)
+                {
+                    return WaitForTraverseTask(traverseTask);
+                }
+            }
+            else
+            {
                 var isFull = tree.m_stateClient.AddOrUpdate(leaf.Id, leaf);
                 if (isFull)
                 {
-                    await WaitForNotFull();
+                    return WaitForNotFull();
                 }
-            //}
+            }
            
-            //return ValueTask.CompletedTask;
+            return ValueTask.CompletedTask;
         }
 
         private async ValueTask WaitForTraverseTask(ValueTask<GenericWriteOperation> traverseTask)

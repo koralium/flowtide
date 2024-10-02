@@ -193,7 +193,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // Update existing elements
                 for (int i = 0; i < currentLength; i++)
                 {
-                    _internalColumn.UpdateAt(currentStart + i, list.GetAt(i));
+                        _internalColumn.UpdateAt(currentStart + i, list.GetAt(i));
                 }
 
                 // Insert new elements
@@ -346,7 +346,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var startOffset = _offsets.Get(start);
             var endOffset = _offsets.Get(end + 1);
-            return _internalColumn.GetByteSize(startOffset, endOffset) + ((end - start + 1) * sizeof(int));
+
+            if (startOffset == endOffset)
+            {
+                return sizeof(int);
+            }
+            return _internalColumn.GetByteSize(startOffset, endOffset - 1) + ((end - start + 1) * sizeof(int));
         }
 
         public int GetByteSize()

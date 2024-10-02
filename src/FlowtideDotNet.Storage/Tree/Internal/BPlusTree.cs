@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             this.m_options = options;
             minSize = options.BucketSize.Value / 3;
             this.m_keyComparer = options.Comparer;
-            m_isByteBased = false;//options.UseByteBasedPageSizes;
+            m_isByteBased = options.UseByteBasedPageSizes;
             byteMinSize = (32 * 1024) / 3;
         }
 
