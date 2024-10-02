@@ -35,15 +35,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private const int minPageSizeBeforeSplit = 8;
         private const int minPageSize = 4;
 
-        public ValueTask<GenericWriteOperation> GenericWrite(in K key, in V? value, in GenericWriteFunction<V> function)
-        {
-            if (m_isByteBased)
-            {
-                return GenericWriteByteBased(key, value, function);
-            }
-            return GenericWriteRoot(key, value, function);
-        }
-
         public ValueTask<GenericWriteOperation> GenericWriteByteBased(in K key, in V? value, in GenericWriteFunction<V> function)
         {
             return GenericWriteRootByteBased(key, value, function);

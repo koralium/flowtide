@@ -34,5 +34,7 @@ namespace FlowtideDotNet.Storage.Tree
         public required IBplusTreeValueSerializer<V, TValueContainer> ValueSerializer { get; set; }
 
         public bool UseByteBasedPageSizes { get; set; }
+
+        public int? PageSizeBytes { get; set; }
     }
 }

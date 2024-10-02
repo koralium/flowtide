@@ -19,6 +19,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         where TValueContainer : IValueContainer<V>
     {
 
+
+        public ValueTask<GenericWriteOperation> GenericWrite(in K key, in V? value, in GenericWriteFunction<V> function)
+        {
+            if (m_isByteBased)
+            {
+                return GenericWriteByteBased(key, value, function);
+            }
+            return GenericWriteRoot(key, value, function);
+        }
+
         /// <summary>
         /// Does a read modify write which takes a function that is called.
         /// </summary>

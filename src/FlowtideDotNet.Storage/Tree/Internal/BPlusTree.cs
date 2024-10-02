@@ -31,17 +31,19 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options) 
         {
             Debug.Assert(options.BucketSize.HasValue);
+            Debug.Assert(options.PageSizeBytes.HasValue);
             this.m_stateClient = stateClient;
             this.m_options = options;
             minSize = options.BucketSize.Value / 3;
             this.m_keyComparer = options.Comparer;
             m_isByteBased = options.UseByteBasedPageSizes;
-            byteMinSize = (32 * 1024) / 3;
+            byteMinSize = (options.PageSizeBytes.Value) / 3;
         }
 
         public Task InitializeAsync()
         {
             Debug.Assert(m_options.BucketSize.HasValue);
+            Debug.Assert(m_options.PageSizeBytes.HasValue);
             if (m_stateClient.Metadata == null)
             {
                 var rootId = m_stateClient.GetNewPageId();
@@ -54,7 +56,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     Root = rootId,
                     BucketLength = m_options.BucketSize.Value,
                     Left = rootId,
-                    PageSizeBytes = 32 * 1024
+                    PageSizeBytes = m_options.PageSizeBytes.Value
                 };
                 m_stateClient.AddOrUpdate(rootId, root);
             }
@@ -191,6 +193,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public async ValueTask Clear()
         {
             Debug.Assert(m_options.BucketSize.HasValue);
+            Debug.Assert(m_options.PageSizeBytes.HasValue);
             // Clear the current state from the state storage
             await m_stateClient.Reset(true);
 
@@ -204,7 +207,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 Root = rootId,
                 BucketLength = m_options.BucketSize.Value,
                 Left = rootId,
-                PageSizeBytes = 32 * 1024
+                PageSizeBytes = m_options.PageSizeBytes.Value
             };
             m_stateClient.AddOrUpdate(rootId, root);
         }

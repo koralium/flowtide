@@ -193,7 +193,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // Update existing elements
                 for (int i = 0; i < currentLength; i++)
                 {
-                        _internalColumn.UpdateAt(currentStart + i, list.GetAt(i));
+                    _internalColumn.UpdateAt(currentStart + i, list.GetAt(i));
                 }
 
                 // Insert new elements

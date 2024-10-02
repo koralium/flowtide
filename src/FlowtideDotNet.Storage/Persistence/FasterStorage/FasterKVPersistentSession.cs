@@ -55,16 +55,8 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             var handle = mem.Pin();
             var spanByte = SpanByte.FromPinnedMemory(value);
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            try
-            {
-                var result = await session.UpsertAsync(key, spanByte, token: tokenSource.Token);
-                var status = result.Complete();
-            }
-            catch(Exception e)
-            {
-                throw;
-            }
-            
+            var result = await session.UpsertAsync(key, spanByte, token: tokenSource.Token);
+            var status = result.Complete();
             handle.Dispose();
         }
     }
