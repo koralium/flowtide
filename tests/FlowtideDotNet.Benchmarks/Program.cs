@@ -16,9 +16,4 @@ using FlowtideDotNet.Benchmarks;
 using FlowtideDotNet.Benchmarks.ColumnStore.Utils;
 using FlowtideDotNet.Benchmarks.Stream;
 
-StreamBenchmark stream = new StreamBenchmark();
-stream.IterationSetup();
-await stream.ListAggWithMapAggregation();
-
-Console.WriteLine("Benchmarking...");
-//var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

@@ -40,8 +40,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         public void IterationSetup()
         {
             _stream = new BenchmarkTestStream(iterationId.ToString());
-            _stream.Generate(1_00_00);
-            _stream.GenerateProjectMembers(1_000_000);
+            _stream.Generate(1_00_000);
             _stream.CachePageCount = 100_000;
             iterationId++;
         }
@@ -136,7 +135,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         public async Task ListAggWithMapAggregation()
         {
             await _stream!.StartStream(@"
-            CREATE VIEW members AS
+            INSERT INTO output
             SELECT 
             p.ProjectKey,
             list_agg(map(
@@ -148,19 +147,12 @@ namespace FlowtideDotNet.Benchmarks.Stream
               u.lastName,
               'active',
               u.active
-            )) as members FROM projects p
+            )) FROM projects p
             LEFT JOIN projectmembers pm
             ON p.ProjectNumber = pm.ProjectNumber AND p.companyid = pm.companyid
             LEFT JOIN users u
             ON pm.userkey = u.userkey
-            GROUP BY p.ProjectKey;
-
-            INSERT INTO output
-            SELECT m.ProjectKey, m.members FROM members m
-            LEFT JOIN projects p
-            ON m.ProjectKey = p.ProjectKey
-            LEFT JOIN companies c
-            ON p.companyid = c.companyid
+            GROUP BY p.ProjectKey
             ", 1);
             await _stream.WaitForUpdate();
         }
