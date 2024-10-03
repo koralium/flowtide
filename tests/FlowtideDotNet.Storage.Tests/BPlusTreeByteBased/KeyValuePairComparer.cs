@@ -10,18 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Storage.Tree.Internal
-{
-    internal class BPlusTreeMetadata
-    {
-        public int BucketLength { get; set; }
-        public long Root { get; set; }
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-        /// <summary>
-        /// Contains the id of the most left page.
-        /// This is used to start an iterator.
-        /// </summary>
-        public long Left { get; set; }
-        public int PageSizeBytes { get; set; }
+namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
+{
+    internal class KeyValuePairComparer : IComparer<KeyValuePair<long, long>>
+    {
+        public int Compare(KeyValuePair<long, long> x, KeyValuePair<long, long> y)
+        {
+            return x.Key.CompareTo(y.Key);
+        }
     }
 }

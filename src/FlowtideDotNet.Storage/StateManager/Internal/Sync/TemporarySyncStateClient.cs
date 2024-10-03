@@ -43,7 +43,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        public int BPlusTreePageSize => 1024;
+        public int BPlusTreePageSize => baseClient.BPlusTreePageSize;
+
+        public int BPlusTreePageSizeBytes => baseClient.BPlusTreePageSizeBytes;
 
         public long CacheMisses => baseClient.CacheMisses;
 

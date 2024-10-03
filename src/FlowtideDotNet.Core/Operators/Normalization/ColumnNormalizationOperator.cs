@@ -329,7 +329,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 {
                     Comparer = new NormalizeTreeComparer(_normalizationRelation.KeyIndex),
                     KeySerializer = new NormalizeKeyStorageSerializer(_normalizationRelation.KeyIndex, MemoryAllocator),
-                    ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator)
+                    ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator),
+                    UseByteBasedPageSizes = true,
                 });
         }
     }

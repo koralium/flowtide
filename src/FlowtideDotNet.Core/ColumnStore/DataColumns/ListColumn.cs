@@ -346,7 +346,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var startOffset = _offsets.Get(start);
             var endOffset = _offsets.Get(end + 1);
-            if (startOffset <= endOffset)
+
+            if (startOffset == endOffset)
             {
                 return sizeof(int);
             }

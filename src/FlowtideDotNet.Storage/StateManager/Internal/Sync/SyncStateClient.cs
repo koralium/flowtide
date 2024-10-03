@@ -29,6 +29,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly StateClientOptions<V> options;
         private readonly bool useReadCache;
         private readonly int m_bplusTreePageSize;
+        private readonly int m_bplusTreePageSizeBytes;
         private readonly ConcurrentDictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
@@ -60,7 +61,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             FileCacheOptions fileCacheOptions,
             Meter meter,
             bool useReadCache,
-            int bplusTreePageSize)
+            int bplusTreePageSize,
+            int bplusTreePageSizeBytes)
         {
             this.stateManager = stateManager;
             this.metadataId = metadataId;
@@ -69,6 +71,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.options = options;
             this.useReadCache = useReadCache;
             this.m_bplusTreePageSize = bplusTreePageSize;
+            this.m_bplusTreePageSizeBytes = bplusTreePageSizeBytes;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name);
             m_modified = new ConcurrentDictionary<long, int>();
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
@@ -97,6 +100,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         public int BPlusTreePageSize => m_bplusTreePageSize;
+
+        public int BPlusTreePageSizeBytes => m_bplusTreePageSizeBytes;
 
         private class AddOrUpdateState
         {

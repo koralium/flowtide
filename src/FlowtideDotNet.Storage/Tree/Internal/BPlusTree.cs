@@ -25,14 +25,19 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private readonly BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> m_options;
         internal IBplusTreeComparer<K, TKeyContainer> m_keyComparer;
         private int minSize;
+        private bool m_isByteBased;
+        private int byteMinSize;
 
         public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options) 
         {
             Debug.Assert(options.BucketSize.HasValue);
+            Debug.Assert(options.PageSizeBytes.HasValue);
             this.m_stateClient = stateClient;
             this.m_options = options;
             minSize = options.BucketSize.Value / 3;
             this.m_keyComparer = options.Comparer;
+            m_isByteBased = options.UseByteBasedPageSizes;
+            byteMinSize = (options.PageSizeBytes.Value) / 3;
         }
 
         public long CacheMisses => m_stateClient.CacheMisses;
@@ -40,6 +45,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public Task InitializeAsync()
         {
             Debug.Assert(m_options.BucketSize.HasValue);
+            Debug.Assert(m_options.PageSizeBytes.HasValue);
             if (m_stateClient.Metadata == null)
             {
                 var rootId = m_stateClient.GetNewPageId();
@@ -51,7 +57,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
                     Root = rootId,
                     BucketLength = m_options.BucketSize.Value,
-                    Left = rootId
+                    Left = rootId,
+                    PageSizeBytes = m_options.PageSizeBytes.Value
                 };
                 m_stateClient.AddOrUpdate(rootId, root);
             }
@@ -74,7 +81,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public ValueTask Upsert(in K key, in V value)
         {
-            var writeTask = GenericWrite(key, value, (input, current, found) =>
+            var writeTask = GenericWrite(in key, in value, (input, current, found) =>
             {
                 return (input, GenericWriteOperation.Upsert);
             });
@@ -98,7 +105,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public ValueTask Delete(in K key)
         {
-            var deleteTask = GenericWrite(key, default, (input, current, found) =>
+            var deleteTask = GenericWrite(in key, default, (input, current, found) =>
             {
                 if (found)
                 {
@@ -158,7 +165,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public ValueTask<GenericWriteOperation> RMWNoResult(in K key, in V? value, in GenericWriteFunction<V> function)
         {
-            return GenericWrite(key, value, function);
+            return GenericWrite(in key, in value, in function);
         }
 
         public ValueTask<(GenericWriteOperation operation, V? result)> RMW(in K key, in V? value, in GenericWriteFunction<V> function)
@@ -175,7 +182,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             var func = function;
             var container = new RMWContainer();
-            var operation = await GenericWrite(key, value, (input, current, found) =>
+            var operation = await GenericWrite(in key, value, (input, current, found) =>
             {
                 var (result, op) = func(input, current, found);
                 container.Value = result;
@@ -188,6 +195,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public async ValueTask Clear()
         {
             Debug.Assert(m_options.BucketSize.HasValue);
+            Debug.Assert(m_options.PageSizeBytes.HasValue);
             // Clear the current state from the state storage
             await m_stateClient.Reset(true);
 
@@ -200,7 +208,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 Root = rootId,
                 BucketLength = m_options.BucketSize.Value,
-                Left = rootId
+                Left = rootId,
+                PageSizeBytes = m_options.PageSizeBytes.Value
             };
             m_stateClient.AddOrUpdate(rootId, root);
         }

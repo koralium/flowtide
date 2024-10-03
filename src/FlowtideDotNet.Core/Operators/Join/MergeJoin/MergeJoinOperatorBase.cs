@@ -302,7 +302,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                     if (pageUpdated)
                     {
-                        await page.SavePage();
+                        await page.SavePage(false);
                     }
                     if (shouldBreak)
                     {

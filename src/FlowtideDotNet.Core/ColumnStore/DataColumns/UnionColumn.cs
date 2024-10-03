@@ -462,6 +462,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 var valueColumnIndex = _typeList[i];
                 var valueColumn = _valueColumns[valueColumnIndex];
                 size += valueColumn.GetByteSize(_offsets.Get(i), _offsets.Get(i));
+                
             }
             return size + ((end - start + 1) * sizeof(int));
         }

@@ -27,6 +27,7 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
+using SqlParser;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -259,7 +260,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     }
 
                     // Save all the changes to the page
-                    await page.SavePage();
+                    await page.SavePage(true);
                 }
                 else
                 {
@@ -421,7 +422,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             treePage.ExitWriteLock();
                         }
 
-                        await treePage.SavePage();
+                        await treePage.SavePage(true);
 
                         int batchSize = 0;
                         for (int i = 0; i < outputColumns.Length; i++)
@@ -567,7 +568,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                         var currentWeight = page.Values._weights.Get(index);
                         page.Values._weights.Update(index, currentWeight + msg.Data.Weights.Get(i));
                         page.ExitWriteLock();
-                        await page.SavePage();
+                        await page.SavePage(true);
                     }
                 }
                 else
@@ -699,7 +700,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 {
                     KeySerializer = new AggregateKeySerializer(m_groupValues.Length, MemoryAllocator),
                     ValueSerializer = new ColumnAggregateValueSerializer(m_measures.Count, MemoryAllocator),
-                    Comparer = new AggregateInsertComparer(m_groupValues.Length)
+                    Comparer = new AggregateInsertComparer(m_groupValues.Length),
+                    UseByteBasedPageSizes = true
                 });
             _treeIterator = _tree.CreateIterator();
             _temporaryTree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1_temp",
@@ -707,7 +709,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 {
                     KeySerializer = new AggregateKeySerializer(m_groupValues.Length, MemoryAllocator),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                    Comparer = new AggregateInsertComparer(m_groupValues.Length)
+                    Comparer = new AggregateInsertComparer(m_groupValues.Length),
+                    UseByteBasedPageSizes = true
                 });
             await _temporaryTree.Clear();
         }
