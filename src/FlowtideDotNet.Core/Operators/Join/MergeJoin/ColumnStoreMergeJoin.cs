@@ -68,7 +68,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         private const int MaxRowSize = 100;
         private const int MaxCacheMisses = 1;
-        private int currentMaxRowSize = 100;
 
 #if DEBUG_WRITE
         // Debug data
@@ -190,7 +189,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
-            int batchSize = 0;
             var startCacheMisses = GetCacheMisses();
             var batchStartTime = ValueStopwatch.StartNew();
             for (int i = 0; i < _rightOutputColumns.Count; i++)
@@ -247,31 +245,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             iterations.Add(msg.Data.Iterations[i]);
                             weights.Add(outputWeight);
 
-                            for (int l = 0; l < _leftOutputColumns.Count; l++)
-                            {
-                                batchSize += msg.Data.EventBatchData.Columns[_leftOutputColumns[l]].GetByteSize(i, i);
-                            }
-                            for (int l = 0; l < rightColumns.Count; l++)
-                            {
-                                var lastIndex = rightColumns[l].Count - 1;
-                                batchSize += rightColumns[l].GetByteSize(lastIndex, lastIndex);
-                            }
-
                             var newCacheMisses = GetCacheMisses();
                             var deltaCacheMisses = newCacheMisses - startCacheMisses;
                             var elapsedMilli = batchStartTime.GetElapsedTime().TotalMilliseconds;
                             // Check if we have more than 100 elements, if so we must yield the batch
-                            if (foundOffsets.Count >= currentMaxRowSize || batchSize > 16000 || deltaCacheMisses > MaxCacheMisses || elapsedMilli > 10)
+                            if (foundOffsets.Count >= MaxRowSize || deltaCacheMisses > MaxCacheMisses || elapsedMilli > 10)
                             {
-                                //if (Backpressure > 0.5f)
-                                //{
-                                //    currentMaxRowSize = 1;
-                                //}
-                                //else
-                                //{
-                                //    currentMaxRowSize = Math.Min(MaxRowSize, currentMaxRowSize * 2);
-                                //}
-                                batchSize = 0;
                                 startCacheMisses = newCacheMisses;
                                 IColumn[] outputColumns = new IColumn[_leftOutputColumns.Count + rightColumns.Count];
                                 if (_leftOutputColumns.Count > 0)
@@ -417,7 +396,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
             long startCacheMisses = GetCacheMisses();
-            int batchSize = 0;
             var batchStartTime = ValueStopwatch.StartNew();
 
             for (int i = 0; i < _leftOutputColumns.Count; i++)
@@ -479,32 +457,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 in leftColumns, 
                                 ref joinWeight);
 
-                            for (int l = 0; l < _rightOutputColumns.Count; l++)
-                            {
-                                batchSize += msg.Data.EventBatchData.Columns[_rightOutputColumns[l]].GetByteSize(i, i);
-                            }
-                            for (int l = 0; l < leftColumns.Count; l++)
-                            {
-                                var lastIndex = leftColumns[l].Count - 1;
-                                batchSize += leftColumns[l].GetByteSize(lastIndex, lastIndex);
-                            }
-
                             var newCacheMisses = GetCacheMisses();
                             var deltaCacheMisses = newCacheMisses - startCacheMisses;
 
                             var elapsedMilli = batchStartTime.GetElapsedTime().TotalMilliseconds;
                             // Check if we have more than 100 elements, if so we must yield the batch
-                            if (foundOffsets.Count >= currentMaxRowSize || batchSize > 16000 || deltaCacheMisses > MaxCacheMisses || elapsedMilli > 10)
+                            if (foundOffsets.Count >= MaxRowSize || deltaCacheMisses > MaxCacheMisses || elapsedMilli > 10)
                             {
-                                //if (Backpressure > 0.5f)
-                                //{
-                                //    currentMaxRowSize = 1;
-                                //}
-                                //else
-                                //{
-                                //    currentMaxRowSize = Math.Min(MaxRowSize, currentMaxRowSize * 2);
-                                //}
-                                batchSize = 0;
                                 startCacheMisses = newCacheMisses;
                                 IColumn[] outputColumns = new IColumn[leftColumns.Count + _rightOutputColumns.Count];
                                 for (int l = 0; l < leftColumns.Count; l++)

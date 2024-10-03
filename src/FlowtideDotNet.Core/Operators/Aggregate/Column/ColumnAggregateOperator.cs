@@ -424,12 +424,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                         await treePage.SavePage(true);
 
-                        int batchSize = 0;
-                        for (int i = 0; i < outputColumns.Length; i++)
-                        {
-                            batchSize = outputColumns[i].GetByteSize();
-                        }
-                        if (outputWeights.Count >= 100 || batchSize > 16 * 1000)
+                        if (outputWeights.Count >= 100)
                         {
                             _eventsCounter.Add(outputWeights.Count);
                             var batch = new StreamEventBatch(new EventBatchWeighted(outputWeights, outputIterations, new EventBatchData(outputColumns)));
