@@ -161,12 +161,12 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
                     }
                     if (rightModified)
                     {
-                        await rightTmpPage.SavePage();
+                        await rightTmpPage.SavePage(false);
                     }
                 }
                 if (leftPageModified)
                 {
-                    await leftPage.SavePage();
+                    await leftPage.SavePage(false);
                 }
             }
 
@@ -228,12 +228,12 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
                     }
                     if (leftPageModified)
                     {
-                        await leftTempPage.SavePage();
+                        await leftTempPage.SavePage(false);
                     }
                 }
                 if (rightModified)
                 {
-                    await rightPage.SavePage();
+                    await rightPage.SavePage(false);
                 }
             }
 

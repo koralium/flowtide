@@ -197,7 +197,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
                 {
                     Comparer = comparer,
                     KeySerializer = new ListAggKeyStorageSerializer(groupingLength, memoryAllocator),
-                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    UseByteBasedPageSizes = true,
                 });
 
             return new MinMaxColumnAggregationSingleton(tree, searchComparer, tree.CreateIterator(), groupingLength);

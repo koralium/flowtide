@@ -44,6 +44,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 options.BucketSize = stateClient.BPlusTreePageSize;
             }
+            if (options.PageSizeBytes == null)
+            {
+                options.PageSizeBytes = stateClient.BPlusTreePageSizeBytes;
+            }
 
             var tree = new BPlusTree<K, V, TKeyContainer, TValueContainer>(stateClient, options);
             await tree.InitializeAsync();

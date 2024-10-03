@@ -88,7 +88,9 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                     Comparer = new TimestampComparer(),
                     KeySerializer = _keySerializer!,
                     ValueSerializer = _valueSerializer!,
-                    BucketSize = 4096
+                    BucketSize = 1024,
+                    UseByteBasedPageSizes = false,
+                    PageSizeBytes = 32 * 1024,
                 });
                 await tree.InitializeAsync();
                 serie = new MetricSerie(name, tags, tree);
