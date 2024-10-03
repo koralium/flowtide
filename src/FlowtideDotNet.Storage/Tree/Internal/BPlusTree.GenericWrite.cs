@@ -20,11 +20,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
     {
 
 
-        public ValueTask<GenericWriteOperation> GenericWrite(in K key, in V? value, in GenericWriteFunction<V> function)
+        public ValueTask<GenericWriteOperation> GenericWrite(ref readonly K key, in V? value, in GenericWriteFunction<V> function)
         {
             if (m_isByteBased)
             {
-                return GenericWriteByteBased(key, value, function);
+                return GenericWriteByteBased(in key, in value, in function);
             }
             return GenericWriteRoot(key, value, function);
         }
@@ -656,7 +656,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             in V? value,
             in GenericWriteFunction<V> function)
         {
-            var index = m_keyComparer.FindIndex(key, leafNode.keys);
+            var index = m_keyComparer.FindIndex(in key, in leafNode.keys);
             if (index < 0)
             {
                 var result = function(value, default, false);
@@ -807,7 +807,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return splitKey;
         }
 
-        private void MergeLeafNodesIntoLeft(LeafNode<K, V, TKeyContainer, TValueContainer> leftNode, LeafNode<K, V, TKeyContainer, TValueContainer> rightNode)
+        private void MergeLeafNodesIntoLeft(in LeafNode<K, V, TKeyContainer, TValueContainer> leftNode, in LeafNode<K, V, TKeyContainer, TValueContainer> rightNode)
         {
             leftNode.keys.AddRangeFrom(rightNode.keys, 0, rightNode.keys.Count);
             leftNode.values.AddRangeFrom(rightNode.values, 0, rightNode.values.Count);

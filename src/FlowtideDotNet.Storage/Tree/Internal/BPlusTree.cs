@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public ValueTask Upsert(in K key, in V value)
         {
-            var writeTask = GenericWrite(key, value, (input, current, found) =>
+            var writeTask = GenericWrite(in key, in value, (input, current, found) =>
             {
                 return (input, GenericWriteOperation.Upsert);
             });
@@ -103,7 +103,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public ValueTask Delete(in K key)
         {
-            var deleteTask = GenericWrite(key, default, (input, current, found) =>
+            var deleteTask = GenericWrite(in key, default, (input, current, found) =>
             {
                 if (found)
                 {
@@ -163,7 +163,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public ValueTask<GenericWriteOperation> RMWNoResult(in K key, in V? value, in GenericWriteFunction<V> function)
         {
-            return GenericWrite(key, value, function);
+            return GenericWrite(in key, in value, in function);
         }
 
         public ValueTask<(GenericWriteOperation operation, V? result)> RMW(in K key, in V? value, in GenericWriteFunction<V> function)
@@ -180,7 +180,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             var func = function;
             var container = new RMWContainer();
-            var operation = await GenericWrite(key, value, (input, current, found) =>
+            var operation = await GenericWrite(in key, value, (input, current, found) =>
             {
                 var (result, op) = func(input, current, found);
                 container.Value = result;

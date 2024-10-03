@@ -299,7 +299,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         rightColumns[z].Add(NullValue.Instance);
                     }
                 }
-                await _leftTree!.RMWNoResult(in columnReference, new JoinWeights() { weight = weight, joinWeight = joinWeight }, (input, current, found) =>
+                var insertWeights = new JoinWeights() { weight = weight, joinWeight = joinWeight };
+                await _leftTree!.RMWNoResult(in columnReference, in insertWeights, (input, current, found) =>
                 {
                     if (found)
                     {
@@ -480,7 +481,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         }
                     }
                 }
-                await _rightTree!.RMWNoResult(in columnReference, new JoinWeights() { weight = weight, joinWeight = joinWeight }, (input, current, found) =>
+                var insertWeights = new JoinWeights() { weight = weight, joinWeight = joinWeight };
+                await _rightTree!.RMWNoResult(in columnReference, in insertWeights, (input, current, found) =>
                 {
                     if (found)
                     {
