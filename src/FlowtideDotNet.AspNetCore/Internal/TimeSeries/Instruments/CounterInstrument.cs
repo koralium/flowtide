@@ -91,13 +91,15 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
         public async ValueTask StoreMeasurements(long timestamp, MetricSeries series)
         {
             _rwLock.EnterReadLock();
+            var count = _metrics.Count;
+            _rwLock.ExitReadLock();
 
             for (int i = 0; i < _metrics.Count; i++)
             {
                 var metric = _metrics[i];
                 await series.SetValueToSerie(name, metric.Tags, timestamp, metric.Value);
             }
-            _rwLock.ExitReadLock();
+            
         }
     }
 }

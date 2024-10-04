@@ -464,6 +464,16 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
                     yield return outputBatch;
                 }
+                else
+                {
+                    outputWeights.Dispose();
+                    outputIterations.Dispose();
+                    for (int i = 0; i < outputColumns.Length; i++)
+                    {
+                        outputColumns[i].Dispose();
+                        outputColumns[i] = null!;
+                    }
+                }
 
 
                 await _temporaryTree.Clear();
