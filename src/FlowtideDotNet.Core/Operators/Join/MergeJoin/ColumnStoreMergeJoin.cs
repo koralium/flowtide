@@ -271,10 +271,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
 
-                                if (outputBatch.Data.Count > 102)
-                                {
-
-                                }
 #if DEBUG_WRITE
                                 foreach (var o in outputBatch.Events)
                                 {
@@ -353,10 +349,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
 
-                if (outputBatch.Data.Count > 102)
-                {
-
-                }
 #if DEBUG_WRITE
                 foreach (var o in outputBatch.Events)
                 {
@@ -483,10 +475,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 }
                                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
 
-                                if (outputBatch.Data.Count > 102)
-                                {
-
-                                }
 #if DEBUG_WRITE
                                 foreach (var o in outputBatch.Events)
                                 {
@@ -556,11 +544,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
                 
                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
-
-                if (outputBatch.Data.Count > 102)
-                {
-
-                }
 
                 _eventsCounter.Add(outputBatch.Data.Weights.Count);
 #if DEBUG_WRITE

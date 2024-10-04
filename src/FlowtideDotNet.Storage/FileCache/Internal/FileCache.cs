@@ -352,10 +352,6 @@ namespace FlowtideDotNet.Storage.FileCache
             lock (m_lock)
             {
                 var finalTime = sw.GetElapsedTime().TotalMilliseconds;
-                if (finalTime > 5)
-                {
-
-                }
                 if (allocatedPages.TryGetValue(pageKey, out var node))
                 {
                     // Check if the current node has enough size
