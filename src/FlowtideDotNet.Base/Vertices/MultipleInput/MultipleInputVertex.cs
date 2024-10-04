@@ -69,6 +69,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
+        protected float Backpressure => ((float)(_transformBlock?.OutputCount ?? throw new InvalidOperationException("OutputCount can only be fetched after initialization."))) / executionDataflowBlockOptions.BoundedCapacity;
+
         protected MultipleInputVertex(int targetCount, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
             _targetCheckpointLock = new object();

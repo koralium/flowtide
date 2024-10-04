@@ -47,6 +47,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public int BPlusTreePageSizeBytes => baseClient.BPlusTreePageSizeBytes;
 
+        public long CacheMisses => baseClient.CacheMisses;
+
         public bool AddOrUpdate(in long key, V value)
         {
             return baseClient.AddOrUpdate(key, value);

@@ -19,22 +19,17 @@ namespace FlowtideDotNet.Base.Metrics.Internal
         where T : struct
     {
         private readonly Counter<T> m_counter;
-        private readonly TagList m_globalTags;
+        private readonly KeyValuePair<string, object?>[] m_globalTags;
 
         public FlowtideCounter(Counter<T> counter, TagList globalTags)
         {
             this.m_counter = counter;
-            this.m_globalTags = globalTags;
+            this.m_globalTags = globalTags.ToArray();
         }
 
         public void Add(T delta)
         {
-            TagList tagList = new TagList();
-            foreach(var tag in m_globalTags)
-            {
-                tagList.Add(tag);
-            }
-            m_counter.Add(delta, tagList);
+            m_counter.Add(delta, m_globalTags);
         }
 
         public void Add(T delta, KeyValuePair<string, object?> tag)

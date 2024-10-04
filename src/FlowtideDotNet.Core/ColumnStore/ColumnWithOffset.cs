@@ -77,7 +77,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             for (int i = start; i <= end; i++)
             {
                 var offset = offsets[i];
-                size += innerColumn.GetByteSize(offset, offset);
+                if (includeNullValueAtEnd && offset == innerColumn.Count)
+                {
+                    size += 0;
+                }
+                else
+                {
+                    size += innerColumn.GetByteSize(offset, offset);
+                }
             }
             return size;
         }

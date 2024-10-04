@@ -389,6 +389,17 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     }
                 }
 
+                if (weights.Count == 0)
+                {
+                    weights.Dispose();
+                    iterations.Dispose();
+                    for (int i = 0; i < outputColumns.Length; i++)
+                    {
+                        outputColumns[i].Dispose();
+                        outputColumns[i] = null!;
+                    }
+                }
+
                 // Send watermark information after all initial data has been loaded
                 await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.ChangeTrackingVersion));
 

@@ -35,6 +35,7 @@ using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -65,6 +66,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected readonly Func<EventBatchData, int, EventBatchData, int, bool>? _postCondition;
 
         private readonly DataValueContainer _dataValueContainer;
+
+        private const int MaxRowSize = 100;
+        private const int MaxCacheMisses = 1;
 
 #if DEBUG_WRITE
         // Debug data
@@ -186,7 +190,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
-            
+            var startCacheMisses = GetCacheMisses();
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
                 rightColumns.Add(Column.Create(memoryManager)); 
@@ -241,9 +245,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             iterations.Add(msg.Data.Iterations[i]);
                             weights.Add(outputWeight);
 
+                            var newCacheMisses = GetCacheMisses();
+                            var deltaCacheMisses = newCacheMisses - startCacheMisses;
                             // Check if we have more than 100 elements, if so we must yield the batch
-                            if (foundOffsets.Count >= 100)
+                            if (foundOffsets.Count >= MaxRowSize || deltaCacheMisses > MaxCacheMisses)
                             {
+                                startCacheMisses = newCacheMisses;
                                 IColumn[] outputColumns = new IColumn[_leftOutputColumns.Count + rightColumns.Count];
                                 if (_leftOutputColumns.Count > 0)
                                 {
@@ -262,6 +269,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 }
 
                                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+
 #if DEBUG_WRITE
                                 foreach (var o in outputBatch.Events)
                                 {
@@ -271,7 +279,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #endif
                                 _eventsCounter.Add(outputBatch.Data.Weights.Count);
                                 yield return outputBatch;
-
+                                
                                 // Reset all lists
                                 foundOffsets = new PrimitiveList<int>(MemoryAllocator);
                                 weights = new PrimitiveList<int>(MemoryAllocator);
@@ -338,6 +346,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
 
                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+
 #if DEBUG_WRITE
                 foreach (var o in outputBatch.Events)
                 {
@@ -361,6 +370,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             _rightIterator.Reset();
         }
 
+        private long GetCacheMisses()
+        {
+            return _leftTree!.CacheMisses + _rightTree!.CacheMisses;
+        }
+
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveRight(StreamEventBatch msg, long time)
         {
             Debug.Assert(_eventsCounter != null);
@@ -371,7 +385,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
-            
+            long startCacheMisses = GetCacheMisses();
+
             for (int i = 0; i < _leftOutputColumns.Count; i++)
             {
                 leftColumns.Add(Column.Create(memoryManager));
@@ -431,9 +446,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 in leftColumns, 
                                 ref joinWeight);
 
+                            var newCacheMisses = GetCacheMisses();
+                            var deltaCacheMisses = newCacheMisses - startCacheMisses;
+
                             // Check if we have more than 100 elements, if so we must yield the batch
-                            if (foundOffsets.Count >= 100)
+                            if (foundOffsets.Count >= MaxRowSize || deltaCacheMisses > MaxCacheMisses)
                             {
+                                startCacheMisses = newCacheMisses;
                                 IColumn[] outputColumns = new IColumn[leftColumns.Count + _rightOutputColumns.Count];
                                 for (int l = 0; l < leftColumns.Count; l++)
                                 {
@@ -451,6 +470,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     foundOffsets.Dispose();
                                 }
                                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+
 #if DEBUG_WRITE
                                 foreach (var o in outputBatch.Events)
                                 {

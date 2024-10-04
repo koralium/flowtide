@@ -60,5 +60,7 @@ namespace FlowtideDotNet.Storage.Tree
         /// </summary>
         /// <returns></returns>
         ValueTask Clear();
+
+        long CacheMisses { get; }
     }
 }
