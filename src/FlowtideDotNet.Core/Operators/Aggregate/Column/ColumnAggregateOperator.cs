@@ -66,15 +66,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         private readonly List<int> m_groupOutputIndices;
         private readonly List<int> m_measureOutputIndices;
 
-        /// <summary>
-        /// Helper column that only contains a null value.
-        /// This is used to help avoid creating a new column for each null value.
-        /// </summary>
-        //private ColumnStore.Column nullStateColumn;
-
         private IBPlusTree<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>? _tree;
         private IBPlusTreeIterator<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>? _treeIterator;
-        private IBPlusTree<ColumnRowReference, int, AggregateKeyStorageContainer, ListValueContainer<int>>? _temporaryTree;
+        private IBPlusTree<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
 
 #if DEBUG_WRITE
         private StreamWriter allInput;
@@ -712,10 +706,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 });
             _treeIterator = _tree.CreateIterator();
             _temporaryTree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1_temp",
-                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, ListValueContainer<int>>()
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>()
                 {
                     KeySerializer = new AggregateKeySerializer(m_groupValues.Length, MemoryAllocator),
-                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
                     Comparer = new AggregateInsertComparer(m_groupValues.Length),
                     UseByteBasedPageSizes = true,
                     MemoryAllocator = MemoryAllocator

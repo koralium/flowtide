@@ -28,13 +28,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
         internal class MinMaxColumnAggregationSingleton
         {
             internal readonly IMinMaxSearchComparer searchComparer;
-            internal readonly IBPlusTreeIterator<ListAggColumnRowReference, int, ListAggKeyStorageContainer, ListValueContainer<int>> iterator;
+            internal readonly IBPlusTreeIterator<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> iterator;
             private readonly int keyLength;
 
             public MinMaxColumnAggregationSingleton(
-                IBPlusTree<ListAggColumnRowReference, int, ListAggKeyStorageContainer, ListValueContainer<int>> tree,
+                IBPlusTree<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> tree,
                 IMinMaxSearchComparer searchComparer,
-                IBPlusTreeIterator<ListAggColumnRowReference, int, ListAggKeyStorageContainer, ListValueContainer<int>> iterator,
+                IBPlusTreeIterator<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> iterator,
                 int keyLength)
             {
                 Tree = tree;
@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
             }
 
             public int KeyLength => keyLength;
-            public IBPlusTree<ListAggColumnRowReference, int, ListAggKeyStorageContainer, ListValueContainer<int>> Tree { get; }
+            public IBPlusTree<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> Tree { get; }
         }
 
         public static void RegisterMin(IFunctionsRegister functionsRegister)
@@ -193,11 +193,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
             IMemoryAllocator memoryAllocator)
         {
             var tree = await stateManagerClient.GetOrCreateTree(treeName,
-                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ListAggColumnRowReference, int, ListAggKeyStorageContainer, ListValueContainer<int>>()
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>>()
                 {
                     Comparer = comparer,
                     KeySerializer = new ListAggKeyStorageSerializer(groupingLength, memoryAllocator),
-                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    ValueSerializer = new PrimitiveListValueContainerSerializer<int>(memoryAllocator),
                     UseByteBasedPageSizes = true,
                     MemoryAllocator = memoryAllocator
                 });
