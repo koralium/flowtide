@@ -12,6 +12,7 @@
 
 using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
@@ -51,7 +52,8 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
                     Comparer = new ListWithSizeComparer(new LongComparer()),
                     KeySerializer = new ListKeyWithSizeSerializer(17000),
                     ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
-                    UseByteBasedPageSizes = true
+                    UseByteBasedPageSizes = true,
+                    MemoryAllocator = GlobalMemoryManager.Instance
                 });
             return tree;
         }

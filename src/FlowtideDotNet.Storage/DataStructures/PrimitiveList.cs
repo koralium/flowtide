@@ -21,7 +21,7 @@ using System.Threading.Tasks;
 using System.Collections;
 using FlowtideDotNet.Storage.Memory;
 
-namespace FlowtideDotNet.Core.ColumnStore.Utils
+namespace FlowtideDotNet.Storage.DataStructures
 {
     public unsafe class PrimitiveList<T> : IDisposable, IReadOnlyList<T>
         where T: unmanaged
@@ -94,6 +94,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             EnsureCapacity(_length + 1);
             AccessSpan[_length++] = value;
+        }
+
+        public void AddRangeFrom(PrimitiveList<T> list, int index, int count)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            var sourceSpan = list.AccessSpan;
+            sourceSpan.Slice(index, count).CopyTo(span.Slice(_length, count));
+            _length += count;
         }
 
         public void InsertAt(int index, T value)

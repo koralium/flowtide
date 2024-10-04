@@ -73,6 +73,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
                     KeySerializer = new ListAggKeyStorageSerializer(groupingLength, memoryAllocator),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
                     UseByteBasedPageSizes = true,
+                    MemoryAllocator = memoryAllocator
                 });
 
             return new ColumnListAggAggregationSingleton(tree, groupingLength);

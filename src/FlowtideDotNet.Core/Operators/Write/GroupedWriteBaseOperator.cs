@@ -127,7 +127,8 @@ namespace FlowtideDotNet.Core.Operators.Write
             { 
                 Comparer = new BPlusTreeListComparer<GroupedStreamEvent>(new GroupedStreamEventComparer(_comparer)),
                 ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                KeySerializer = new KeyListSerializer<GroupedStreamEvent>(new GroupedStreamEventBPlusTreeSerializer())
+                KeySerializer = new KeyListSerializer<GroupedStreamEvent>(new GroupedStreamEventBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
 
             await Initialize(restoreTime, state, stateManagerClient);

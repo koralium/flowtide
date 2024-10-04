@@ -23,6 +23,7 @@ using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Core.Storage;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -706,7 +707,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     KeySerializer = new AggregateKeySerializer(m_groupValues.Length, MemoryAllocator),
                     ValueSerializer = new ColumnAggregateValueSerializer(m_measures.Count, MemoryAllocator),
                     Comparer = new AggregateInsertComparer(m_groupValues.Length),
-                    UseByteBasedPageSizes = true
+                    UseByteBasedPageSizes = true,
+                    MemoryAllocator = MemoryAllocator
                 });
             _treeIterator = _tree.CreateIterator();
             _temporaryTree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1_temp",
@@ -715,7 +717,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     KeySerializer = new AggregateKeySerializer(m_groupValues.Length, MemoryAllocator),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
                     Comparer = new AggregateInsertComparer(m_groupValues.Length),
-                    UseByteBasedPageSizes = true
+                    UseByteBasedPageSizes = true,
+                    MemoryAllocator = MemoryAllocator
                 });
             await _temporaryTree.Clear();
         }

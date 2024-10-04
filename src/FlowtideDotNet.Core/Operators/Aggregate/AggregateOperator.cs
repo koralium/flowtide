@@ -435,14 +435,16 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             {
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
                 ValueSerializer = new ValueListSerializer<AggregateRowState>(new AggregateRowStateSerializer()),
-                Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer())
+                Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer()),
+                MemoryAllocator = MemoryAllocator
             });
             _temporaryTree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1_temp", 
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
                 ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer())
+                Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer()),
+                MemoryAllocator = MemoryAllocator
             });
             await _temporaryTree.Clear();
         }

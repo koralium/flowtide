@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             where TKeyContainer : IKeyContainer<K>
             where TValueContainer : IValueContainer<V>
         {
-            var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, new BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer>(options.KeySerializer, options.ValueSerializer));
+            var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, new BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer>(options.KeySerializer, options.ValueSerializer, options.MemoryAllocator));
 
             if (options.BucketSize == null)
             {

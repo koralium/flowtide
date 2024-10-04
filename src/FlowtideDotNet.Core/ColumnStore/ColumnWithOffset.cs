@@ -12,14 +12,8 @@
 
 using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {

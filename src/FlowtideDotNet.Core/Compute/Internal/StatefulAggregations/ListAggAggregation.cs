@@ -92,8 +92,9 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             {
                 Comparer = new BPlusTreeListComparer<RowEvent>(new ListAggAggregationInsertComparer(groupingLength + 1)),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
-            });
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                MemoryAllocator = memoryAllocator
+                });
 
             return new ListAggAggregationSingleton(tree, groupingLength);
         }
