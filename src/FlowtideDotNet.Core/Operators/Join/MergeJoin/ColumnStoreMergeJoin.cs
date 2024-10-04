@@ -190,7 +190,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
             var startCacheMisses = GetCacheMisses();
-            var batchStartTime = ValueStopwatch.StartNew();
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
                 rightColumns.Add(Column.Create(memoryManager)); 
@@ -247,9 +246,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                             var newCacheMisses = GetCacheMisses();
                             var deltaCacheMisses = newCacheMisses - startCacheMisses;
-                            var elapsedMilli = batchStartTime.GetElapsedTime().TotalMilliseconds;
                             // Check if we have more than 100 elements, if so we must yield the batch
-                            if (foundOffsets.Count >= MaxRowSize || deltaCacheMisses > MaxCacheMisses || elapsedMilli > 10)
+                            if (foundOffsets.Count >= MaxRowSize || deltaCacheMisses > MaxCacheMisses)
                             {
                                 startCacheMisses = newCacheMisses;
                                 IColumn[] outputColumns = new IColumn[_leftOutputColumns.Count + rightColumns.Count];
@@ -289,7 +287,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 {
                                     rightColumns[l] = Column.Create(MemoryAllocator);
                                 }
-                                batchStartTime = ValueStopwatch.StartNew();
                             }
                         }
                         if (_searchRightComparer.end < (page.Keys.Count - 1))
@@ -388,7 +385,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
             long startCacheMisses = GetCacheMisses();
-            var batchStartTime = ValueStopwatch.StartNew();
 
             for (int i = 0; i < _leftOutputColumns.Count; i++)
             {
@@ -452,9 +448,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             var newCacheMisses = GetCacheMisses();
                             var deltaCacheMisses = newCacheMisses - startCacheMisses;
 
-                            var elapsedMilli = batchStartTime.GetElapsedTime().TotalMilliseconds;
                             // Check if we have more than 100 elements, if so we must yield the batch
-                            if (foundOffsets.Count >= MaxRowSize || deltaCacheMisses > MaxCacheMisses || elapsedMilli > 10)
+                            if (foundOffsets.Count >= MaxRowSize || deltaCacheMisses > MaxCacheMisses)
                             {
                                 startCacheMisses = newCacheMisses;
                                 IColumn[] outputColumns = new IColumn[leftColumns.Count + _rightOutputColumns.Count];

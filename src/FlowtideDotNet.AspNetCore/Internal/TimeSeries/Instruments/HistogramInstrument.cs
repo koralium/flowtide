@@ -21,7 +21,6 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
         private readonly string name;
         private List<KeyValuePair<string, string>[]> _tagsList = new List<KeyValuePair<string, string>[]>();
         private List<HistogramValue> _metrics = new List<HistogramValue>();
-        private ConcurrentDictionary<string, HistogramValue> _values = new ConcurrentDictionary<string, HistogramValue>();
         private ReaderWriterLockSlim _rwLock = new ReaderWriterLockSlim();
 
         public HistogramInstrument(string name)
@@ -78,14 +77,15 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
         async ValueTask IMetricInstrument.StoreMeasurements(long timestamp, MetricSeries series)
         {
             _rwLock.EnterReadLock();
-
-            for (int i = 0; i < _metrics.Count; i++)
+            var count = _metrics.Count;
+            _rwLock.ExitReadLock();
+            for (int i = 0; i < count; i++)
             {
                 var metric = _metrics[i];
                 await series.SetValueToSerie($"{name}_sum", metric.Tags, timestamp, metric.Value);
                 await series.SetValueToSerie($"{name}_count", metric.Tags, timestamp, metric.Count);
             }
-            _rwLock.ExitReadLock();
+            
         }
     }
 }
