@@ -14,6 +14,7 @@ using Apache.Arrow.Ipc;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Normalization;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
@@ -56,8 +57,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             var recordBatch = arrowReader.ReadNextRecordBatch();
 
             var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, memoryAllocator);
-            var previousValueList = new ColumnStore.Utils.PrimitiveList<bool>(previousValueNativeMemory, recordBatch.Length, memoryAllocator);
-            var weightsList = new ColumnStore.Utils.PrimitiveList<int>(weightNativeMemory, recordBatch.Length, memoryAllocator);
+            var previousValueList = new PrimitiveList<bool>(previousValueNativeMemory, recordBatch.Length, memoryAllocator);
+            var weightsList = new PrimitiveList<int>(weightNativeMemory, recordBatch.Length, memoryAllocator);
 
             return new ColumnAggregateValueContainer(measureCount, eventBatch, weightsList, previousValueList);
         }

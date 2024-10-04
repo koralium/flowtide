@@ -277,7 +277,8 @@ namespace FlowtideDotNet.Core.Operators.Write
             {
                 Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer),
                 ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer())
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
             await m_modified.Clear();
 
@@ -290,7 +291,8 @@ namespace FlowtideDotNet.Core.Operators.Write
                 {
                     Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer())
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
                 });
 
                 Logger.FetchingExistingDataInDataSource(StreamName, Name);

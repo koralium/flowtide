@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Memory;
 using System.Text;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
@@ -17,11 +19,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
     internal class InternalNode<K, V, TKeyContainer> : BaseNode<K, TKeyContainer>
         where TKeyContainer : IKeyContainer<K>
     {
-        public List<long> children;
+        public PrimitiveList<long> children;
 
-        public InternalNode(long id, TKeyContainer keyContainer) : base(id, keyContainer)
+        public InternalNode(long id, TKeyContainer keyContainer, IMemoryAllocator memoryAllocator) : base(id, keyContainer)
         {
-            children = new List<long>();
+            children = new PrimitiveList<long>(memoryAllocator);
+        }
+
+        public InternalNode(long id, TKeyContainer keyContainer, PrimitiveList<long> children) : base(id, keyContainer)
+        {
+            this.children = children;
         }
 
         public override async Task Print(StringBuilder stringBuilder, Func<long, ValueTask<BaseNode<K, TKeyContainer>>> lookupFunc)
@@ -63,6 +70,25 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public override Task PrintNextPointers(StringBuilder stringBuilder)
         {
             return Task.CompletedTask;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                children.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        public override int GetByteSize()
+        {
+            return keys.GetByteSize() + children.Count * sizeof(long);
+        }
+
+        public override int GetByteSize(int start, int end)
+        {
+            return keys.GetByteSize(start, end) + (end - start + 1) * sizeof(long);
         }
     }
 }

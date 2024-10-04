@@ -83,7 +83,8 @@ namespace FlowtideDotNet.Benchmarks
                 BucketSize = 1024,
                 Comparer = new ColumnComparer(1),
                 KeySerializer = new ColumnStoreSerializer(1, GlobalMemoryManager.Instance),
-                ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             }).GetAwaiter().GetResult();
             tree.Clear();
             flxTree = nodeClient.GetOrCreateTree("flxtree", new BPlusTreeOptions<RowEvent, string, ListKeyContainer<RowEvent>, ListValueContainer<string>>()
@@ -91,7 +92,8 @@ namespace FlowtideDotNet.Benchmarks
                 BucketSize = 1024,
                 Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer()),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             }).GetAwaiter().GetResult();
         }
 

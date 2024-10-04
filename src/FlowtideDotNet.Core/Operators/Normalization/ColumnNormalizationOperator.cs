@@ -20,6 +20,7 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -331,6 +332,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                     KeySerializer = new NormalizeKeyStorageSerializer(_normalizationRelation.KeyIndex, MemoryAllocator),
                     ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator),
                     UseByteBasedPageSizes = true,
+                    MemoryAllocator = MemoryAllocator
                 });
         }
     }

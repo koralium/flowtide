@@ -34,6 +34,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Storage.DataStructures;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -682,7 +683,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     Comparer = _leftInsertComparer,
                     KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Left.OutputLength, MemoryAllocator),
                     ValueSerializer = new JoinWeightsSerializer(MemoryAllocator),
-                    UseByteBasedPageSizes = true
+                    UseByteBasedPageSizes = true,
+                    MemoryAllocator = MemoryAllocator
                 });
             _rightTree = await stateManagerClient.GetOrCreateTree("right",
                 new BPlusTreeOptions<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>()
@@ -690,7 +692,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     Comparer = _rightInsertComparer,
                     KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Right.OutputLength, MemoryAllocator),
                     ValueSerializer = new JoinWeightsSerializer(MemoryAllocator),
-                    UseByteBasedPageSizes = true
+                    UseByteBasedPageSizes = true,
+                    MemoryAllocator = MemoryAllocator
                 });
 
             _leftIterator = _leftTree.CreateIterator();

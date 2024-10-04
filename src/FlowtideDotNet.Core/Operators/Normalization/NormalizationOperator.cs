@@ -264,7 +264,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             {
                 Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
                 KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
-                ValueSerializer = new ValueListSerializer<IngressData>(new IngressDataStateSerializer())
+                ValueSerializer = new ValueListSerializer<IngressData>(new IngressDataStateSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
         }
 
