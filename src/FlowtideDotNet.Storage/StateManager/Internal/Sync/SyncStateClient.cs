@@ -370,14 +370,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 var sw = ValueStopwatch.StartNew();
                 try
                 {
-                    var serializeTime = ValueStopwatch.StartNew();
                     var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value, stateManager.SerializeOptions);
-                    var finalTime = serializeTime.GetElapsedTime();
                     m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);
-                }
-                catch(Exception e)
-                {
-                    throw;
                 }
                 finally
                 {
