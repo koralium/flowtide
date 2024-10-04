@@ -19,13 +19,16 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
     internal class CounterInstrument : IMetricInstrument
     {
         private readonly string name;
+        private readonly bool isObservable;
         private List<KeyValuePair<string, string>[]> _tagsList = new List<KeyValuePair<string, string>[]>();
         private List<MetricValue> _metrics = new List<MetricValue>();
         private ReaderWriterLockSlim _rwLock = new ReaderWriterLockSlim();
+        
 
-        public CounterInstrument(string name)
+        public CounterInstrument(string name, bool isObservable)
         {
             this.name = $"{name}_total";
+            this.isObservable = isObservable;
         }
 
         public void Record(ReadOnlySpan<KeyValuePair<string, object?>> tags, double value)
@@ -35,7 +38,14 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
 
             if (index >= 0)
             {
-                _metrics[index].Value += value;
+                if (isObservable)
+                {
+                    _metrics[index].Value = value;
+                }
+                else
+                {
+                    _metrics[index].Value += value;
+                }
                 _rwLock.ExitReadLock();
             }
             else
@@ -46,7 +56,14 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
 
                 if (index >= 0)
                 {
-                    _metrics[index].Value += value;
+                    if (isObservable)
+                    {
+                        _metrics[index].Value = value;
+                    }
+                    else
+                    {
+                        _metrics[index].Value += value;
+                    }
                     _rwLock.ExitWriteLock();
                     return;
                 }

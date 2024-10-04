@@ -40,6 +40,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             byteMinSize = (options.PageSizeBytes.Value) / 3;
         }
 
+        public long CacheMisses => m_stateClient.CacheMisses;
+
         public Task InitializeAsync()
         {
             Debug.Assert(m_options.BucketSize.HasValue);

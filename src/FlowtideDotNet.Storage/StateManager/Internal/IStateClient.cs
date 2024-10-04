@@ -24,5 +24,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         ValueTask Reset(bool clearMetadata);
         int BPlusTreePageSize { get; }
         int BPlusTreePageSizeBytes { get; }
+
+        long CacheMisses { get; }
     }
 }
