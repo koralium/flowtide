@@ -82,6 +82,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
+        internal long* Pointer => _longData;
+
         public NativeLongList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = memory;
