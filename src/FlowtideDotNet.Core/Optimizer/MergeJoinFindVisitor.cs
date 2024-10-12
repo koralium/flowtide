@@ -13,12 +13,13 @@
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Core.Optimizer
 {
     internal class MergeJoinFindVisitor : OptimizerBaseVisitor
     {
-        private bool Check(JoinRelation joinRelation, Expression expression, out DirectFieldReference? leftKey, out DirectFieldReference? rightKey)
+        private bool Check(JoinRelation joinRelation, Expression? expression, [NotNullWhen(true)] out DirectFieldReference? leftKey, [NotNullWhen(true)] out DirectFieldReference? rightKey)
         {
             if (expression is ScalarFunction booleanComparison &&
                 booleanComparison.ExtensionUri == FunctionsComparison.Uri &&
@@ -95,7 +96,7 @@ namespace FlowtideDotNet.Core.Optimizer
                 }
                 if (andFunction.Arguments.Count == 0)
                 {
-                    andFunction = null;
+                    andFunction = null!;
                 }
                 if (leftKeys.Count > 0)
                 {
