@@ -43,6 +43,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         internal NormalizeKeyStorage(List<int> columnsToStore, EventBatchData eventBatchData)
         {
+            _dataValueContaienr = new DataValueContainer();
             _columnsToStore = columnsToStore;
             _data = eventBatchData;
         }
