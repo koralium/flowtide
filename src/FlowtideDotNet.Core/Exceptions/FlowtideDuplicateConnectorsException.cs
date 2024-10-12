@@ -32,9 +32,5 @@ namespace FlowtideDotNet.Core.Exceptions
         public FlowtideDuplicateConnectorsException(string? message, Exception? innerException) : base(message, innerException)
         {
         }
-
-        protected FlowtideDuplicateConnectorsException(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
-        }
     }
 }

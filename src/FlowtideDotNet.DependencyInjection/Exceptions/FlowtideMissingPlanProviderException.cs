@@ -33,9 +33,5 @@ namespace FlowtideDotNet.DependencyInjection.Exceptions
         public FlowtideMissingPlanProviderException(string? message, Exception? innerException) : base(message, innerException)
         {
         }
-
-        protected FlowtideMissingPlanProviderException(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
-        }
     }
 }
