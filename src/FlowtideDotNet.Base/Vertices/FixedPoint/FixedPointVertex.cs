@@ -157,8 +157,9 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 if (!_sentLockingEvent)
                 {
                     _sentLockingEvent = true;
+                    var msgOut = _waitingLockingEvent;
                     _waitingLockingEvent = null;
-                    return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, _waitingLockingEvent!));
+                    return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, msgOut));
                 }
                 return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
             }
