@@ -46,8 +46,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 
 #if DEBUG_WRITE
         // TODO: Tmp remove
-        private StreamWriter allInput;
-        private StreamWriter outputWriter;
+        private StreamWriter? allInput;
+        private StreamWriter? outputWriter;
 #endif
 
         public AggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
@@ -92,8 +92,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             Debug.Assert(_tree != null, "Tree should not be null");
 
 #if DEBUG_WRITE
-            allInput.WriteLine("Checkpoint");
-            allInput.Flush();
+            allInput!.WriteLine("Checkpoint");
+            allInput!.Flush();
 #endif
 
             await _tree.Commit();
@@ -139,8 +139,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                             var oldEvent = new RowEvent(-1, 0, new CompactRowData(val.PreviousValue));
 
 #if DEBUG_WRITE
-                            outputWriter.WriteLine($"{oldEvent.Weight} {oldEvent.ToJson()}");
-                            outputWriter.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
+                            outputWriter!.WriteLine($"{oldEvent.Weight} {oldEvent.ToJson()}");
+                            outputWriter!.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
 #endif
 
                             outputs.Add(outputEvent);
@@ -150,7 +150,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                     else
                     {
 #if DEBUG_WRITE
-                        outputWriter.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
+                        outputWriter!.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
 #endif
                         outputs.Add(outputEvent);
                     }
@@ -314,7 +314,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             foreach (var e in msg.Events)
             {
 #if DEBUG_WRITE
-                allInput.WriteLine($"Input: {e.Weight} {e.ToJson()}");
+                allInput!.WriteLine($"Input: {e.Weight} {e.ToJson()}");
 #endif
 
                 // Create the key

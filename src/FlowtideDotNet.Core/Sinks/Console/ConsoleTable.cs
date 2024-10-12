@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Core.Sinks
 
             foreach (
                 var propertyValues
-                in values.Select(value => columns.Select(column => GetColumnValue<T>(value, column)))
+                in values.Select(value => columns.Select(column => GetColumnValue<T>(value!, column)))
             ) table.AddRow(propertyValues.ToArray());
 
             return table;

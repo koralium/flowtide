@@ -839,6 +839,7 @@ namespace FlexBuffers
         private void Write(byte value)
         {
             var newOffset = NewOffset(1);
+            Debug.Assert(_bytes != null);
             _bytes[_offset] = value;
             _offset = newOffset;
         }
