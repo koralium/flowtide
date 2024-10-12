@@ -143,9 +143,8 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             if (_targetPrepareCount < _loopSource.LinksCount)
             {
                 return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
-                //yield break;
             }
-            //List<KeyValuePair<int, IStreamEvent>> output = new List<KeyValuePair<int, IStreamEvent>>();
+
             _targetPrepareCount = 0;
             // Check that no other messages have been recieved, and that there is no vertex that does not have a depedent input that is not yet in checkpoint.
             if (_messageCountSinceLockingEventPrepare == 0 && (!lockingEventPrepare.OtherInputsNotInCheckpoint || singleReadSource))
