@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
         [DllImport("libc")]
         private static extern IntPtr strerror(int errnum);
 
-        private static string GetErrorMessage(int errorCode)
+        private static string? GetErrorMessage(int errorCode)
         {
             return Marshal.PtrToStringAnsi(strerror(errorCode));
         }

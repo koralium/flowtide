@@ -160,7 +160,7 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
                     }
                     await tree.Upsert(new KeyValuePair<long, long>(i, 100), $"{i}");
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     throw;
                 }
@@ -221,7 +221,7 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
                             break;
                     }
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     throw;
                 }

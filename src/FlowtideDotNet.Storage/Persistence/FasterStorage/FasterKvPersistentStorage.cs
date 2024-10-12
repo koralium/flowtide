@@ -92,9 +92,10 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             }
         }
 
-        public async ValueTask CompactAsync()
+        public ValueTask CompactAsync()
         {
             m_adminSession.Compact(m_persistentStorage.Log.SafeReadOnlyAddress, CompactionType.Lookup);
+            return ValueTask.CompletedTask;
         }
 
         public ValueTask ResetAsync()
