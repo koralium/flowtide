@@ -62,7 +62,7 @@ namespace FlowtideDotNet.Base.dataflow
         {
             if (_targets.Contains(target))
             {
-                return default;
+                return default!;
             }
             _targets.Add(target);
             int index = _linkBlocks.Count;
@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Base.dataflow
             {
                 PropagateCompletion = true
             }, kvp => kvp.Key == index);
-            return default;
+            return default!;
         }
 
         public DataflowMessageStatus OfferMessage(DataflowMessageHeader messageHeader, T messageValue, ISourceBlock<T>? source, bool consumeToAccept)

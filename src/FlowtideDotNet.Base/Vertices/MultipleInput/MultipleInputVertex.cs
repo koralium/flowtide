@@ -222,8 +222,9 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }, this, CancellationToken.None, Common.GetContinuationOptions(), TaskScheduler.Default);
         }
 
-        private async IAsyncEnumerable<IStreamEvent> HandleLockingEventPrepare(int targetId, LockingEventPrepare lockingEventPrepare)
+        private IAsyncEnumerable<IStreamEvent> HandleLockingEventPrepare(int targetId, LockingEventPrepare lockingEventPrepare)
         {
+            Debug.Assert(_targetInCheckpoint != null);
             // Set that this operator is in an iteration. This helps watermarks output.
             _isInIteration = true;
             // Check that all other inputs are waiting for checkpoint.
@@ -243,7 +244,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             {
                 lockingEventPrepare.OtherInputsNotInCheckpoint = true;
             }
-            yield return lockingEventPrepare;
+            return new SingleAsyncEnumerable<IStreamEvent>(lockingEventPrepare);
         }
 
         private async IAsyncEnumerable<IStreamEvent> HandleWatermark(int targetId, Watermark watermark)
@@ -325,9 +326,9 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }
         }
 
-        protected virtual async IAsyncEnumerable<T> OnWatermark(Watermark watermark)
+        protected virtual IAsyncEnumerable<T> OnWatermark(Watermark watermark)
         {
-            yield break;
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         private async IAsyncEnumerable<IStreamEvent> HandleCheckpointEnumerable(ILockingEvent checkpointEvent)
@@ -396,9 +397,9 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             return EmptyAsyncEnumerable<IStreamEvent>.Instance;
         }
 
-        public virtual async IAsyncEnumerable<T> OnTrigger(string name, object? state)
+        public virtual IAsyncEnumerable<T> OnTrigger(string name, object? state)
         {
-            yield break;
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         private bool TargetInCheckpoint(int targetId, ILockingEvent checkpointEvent, out ILockingEvent[]? checkpoints)
@@ -449,6 +450,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         public void Complete()
         {
+            Debug.Assert(_transformBlock != null, nameof(_transformBlock));
+
             foreach (var target in _targetHolders)
             {
                 target.Complete();
@@ -481,7 +484,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         public IDisposable LinkTo(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
         {
             _links.Add((target, linkOptions));
-            return null;
+            return default!;
         }
 
         private IDisposable LinkTo_Internal(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)

@@ -16,6 +16,7 @@ using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.AspNetCore.WebTest;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,17 +32,17 @@ planModifier.AddRootPlan(plan);
 planModifier.WriteToTable("dummy");
 plan = planModifier.Modify();
 
-builder.Services.AddFlowtideStream(b =>
-{
-    b.AddPlan(plan);
-    b.AddConnectorManager(connectorManager);
-    b.WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
+builder.Services.AddFlowtideStream("stream")
+    .AddPlan(plan)
+    .AddConnectors(c =>
     {
-        PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
-        {
-        })
+        c.AddSource(new DummyReadFactory("*"));
+        c.AddSink(new DummyWriteFactory("*"));
+    })
+    .AddStorage(s =>
+    {
+        s.AddTemporaryDevelopmentStorage();
     });
-});
 
 // Add services to the container.
 builder.Services.AddRazorPages();

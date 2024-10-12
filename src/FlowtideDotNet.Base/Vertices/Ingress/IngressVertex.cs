@@ -139,6 +139,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public void Complete()
         {
             Debug.Assert(_ingressState?._block != null, nameof(_ingressState._block));
+            Debug.Assert(_ingressState?._tokenSource != null, nameof(_ingressState._tokenSource));
 
             lock (_stateLock)
             {
@@ -158,6 +159,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public void Fault(Exception exception)
         {
             Debug.Assert(_ingressState?._block != null, nameof(_ingressState._block));
+            Debug.Assert(_ingressState?._tokenSource != null, nameof(_ingressState._tokenSource));
             lock (_stateLock)
             {
                 _ingressState._taskEnabled = false;
@@ -169,7 +171,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public IDisposable LinkTo(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
         {
             _links.Add((target, linkOptions));
-            return null;
+            return default!;
         }
 
         private void LinkTo_Internal(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
@@ -197,6 +199,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         private async Task RunLockingEvent(IngressOutput<TData> output, object? state)
         {
             Debug.Assert(_ingressState?._checkpointLock != null, nameof(_ingressState._checkpointLock));
+            Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
 
             var lockingEvent = (ILockingEvent)state!;
             await _ingressState._checkpointLock.WaitAsync(_ingressState._output.CancellationToken);

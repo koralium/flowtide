@@ -11,6 +11,7 @@
 // limitations under the License.
 
 
+using FlowtideDotNet.Base.Utils;
 using System.Collections.Immutable;
 using System.Globalization;
 
@@ -31,9 +32,9 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         public string Name => value.ToString(CultureInfo.InvariantCulture);
 
-        public async IAsyncEnumerable<MetricResult> GetValues(long startTimestamp, long endTimestamp, int stepWidth)
+        public IAsyncEnumerable<MetricResult> GetValues(long startTimestamp, long endTimestamp, int stepWidth)
         {
-            yield return new MetricResult(value, startTimestamp);
+            return new SingleAsyncEnumerable<MetricResult>(new MetricResult(value, startTimestamp));
         }
     }
 }

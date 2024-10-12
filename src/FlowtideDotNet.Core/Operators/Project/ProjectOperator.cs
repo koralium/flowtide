@@ -21,6 +21,7 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core.Utils;
+using FlowtideDotNet.Base.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Project
 {
@@ -67,7 +68,7 @@ namespace FlowtideDotNet.Core.Operators.Project
             return Task.FromResult<object?>(null);
         }
 
-        public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
             Debug.Assert(_eventsProcessed != null);
             _eventsProcessed.Add(msg.Events.Count);
@@ -124,8 +125,9 @@ namespace FlowtideDotNet.Core.Operators.Project
             {
                 Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
                 _eventsCounter.Add(output.Count);
-                yield return new StreamEventBatch(output, projectRelation.OutputLength);
+                return new SingleAsyncEnumerable<StreamEventBatch>(new StreamEventBatch(output, projectRelation.OutputLength));
             }
+            return EmptyAsyncEnumerable<StreamEventBatch>.Instance;
         }
 
         protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
