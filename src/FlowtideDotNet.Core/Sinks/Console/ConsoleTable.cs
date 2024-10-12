@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -21,9 +22,9 @@ namespace FlowtideDotNet.Core.Sinks
         public IList<object[]> Rows { get; }
 
         public ConsoleTableOptions Options { get; }
-        public Type[] ColumnTypes { get; private set; }
+        public Type[]? ColumnTypes { get; private set; }
 
-        public IList<string> Formats { get; private set; }
+        public IList<string>? Formats { get; private set; }
 
         public static readonly HashSet<Type> NumericTypes = new HashSet<Type>
         {
@@ -133,7 +134,7 @@ namespace FlowtideDotNet.Core.Sinks
                 .Aggregate((s, a) => s + a) + " |";
 
             SetFormats(ColumnLengths(), columnAlignment);
-
+            Debug.Assert(Formats != null);
             // find the longest formatted line
             var maxRowLength = Math.Max(0, Rows.Any() ? Rows.Max(row => string.Format(format, row).Length) : 0);
             var columnHeaders = string.Format(Formats[0], Columns.ToArray());
@@ -236,6 +237,7 @@ namespace FlowtideDotNet.Core.Sinks
         {
             var builder = new StringBuilder();
 
+            Debug.Assert(Formats != null);
             // find the longest formatted line
             var columnHeaders = string.Format(Formats[0].TrimStart(), Columns.ToArray());
 
@@ -323,7 +325,7 @@ namespace FlowtideDotNet.Core.Sinks
 
         private static object GetColumnValue<T>(object target, string column)
         {
-            return typeof(T).GetProperty(column)?.GetValue(target, null);
+            return typeof(T).GetProperty(column)?.GetValue(target, null)!;
         }
 
         private static IEnumerable<Type> GetColumnsType<T>()

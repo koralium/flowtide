@@ -18,7 +18,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using InlineIL;
 using static InlineIL.IL.Emit;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
