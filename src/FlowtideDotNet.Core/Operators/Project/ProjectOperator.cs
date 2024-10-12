@@ -119,7 +119,7 @@ namespace FlowtideDotNet.Core.Operators.Project
             }
 
 #if DEBUG_WRITE
-            await allInput.FlushAsync();
+            allInput.Flush();
 #endif
             if (output.Count > 0)
             {
