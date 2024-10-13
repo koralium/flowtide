@@ -823,6 +823,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             var stream = new OpenFgaTestStream("testparsedmodeldirect", conf, true, false);
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
+            Debug.Assert(parsedModel != null);
             var modelPlan = OpenFgaToFlowtide.Convert(parsedModel, "group", "member", "openfga");
 
             stream.SqlPlanBuilder.AddPlanAsView("authdata", modelPlan);
@@ -842,7 +843,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             await stream.WaitForUpdate();
             var rows = stream.GetActualRowsAsVectors();
 
-            Assert.Equal(1, rows.Count);
+            Assert.Single(rows);
         }
 
         [Fact]
@@ -1223,6 +1224,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             var stream = new OpenFgaTestStream("TestReadParsedModelWithStopType", conf, true, false);
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
+            Debug.Assert(parsedModel != null);
             var modelPlan = OpenFgaToFlowtide.Convert(parsedModel, "doc", "can_read", "openfga", "group");
 
             stream.SqlPlanBuilder.AddPlanAsView("authdata", modelPlan);

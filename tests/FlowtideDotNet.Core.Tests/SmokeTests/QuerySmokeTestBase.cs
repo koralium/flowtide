@@ -76,13 +76,10 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             ConnectorManager connectorManager = new ConnectorManager();
             AddReadResolvers(connectorManager);
 
-            bool gotData = false;
-
             _streamScheduler = new DefaultStreamScheduler();
             connectorManager.AddSink(new TestWriteOperatorFactory<TResult>("*", primaryKeysOutput, (rows) =>
             {
                 changesCounter++;
-                gotData = true;
                 datachange(rows);
                 return Task.CompletedTask;
             }));
