@@ -280,19 +280,19 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             }
         }
 
-        public abstract Task ClearAllTables();
+        protected abstract Task ClearAllTables();
 
-        public abstract Task AddLineItems(IEnumerable<LineItem> lineItems);
+        protected abstract Task AddLineItems(IEnumerable<LineItem> lineItems);
 
-        public abstract Task AddOrders(IEnumerable<Order> orders);
+        protected abstract Task AddOrders(IEnumerable<Order> orders);
 
-        public abstract Task AddShipmodes(IEnumerable<Shipmode> shipmodes);
+        protected abstract Task AddShipmodes(IEnumerable<Shipmode> shipmodes);
 
-        public abstract Task UpdateShipmodes(IEnumerable<Shipmode> shipmode);
+        protected abstract Task UpdateShipmodes(IEnumerable<Shipmode> shipmode);
 
-        public abstract Task Crash();
+        protected abstract Task Crash();
 
-        public abstract Task Restart();
+        protected abstract Task Restart();
 
         [Fact]
         public async Task LineItemInnerJoinOrders()

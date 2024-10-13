@@ -43,12 +43,12 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             this.sqlServerFixture = sqlServerFixture;
         }
 
-        public override async Task AddLineItems(IEnumerable<LineItem> lineItems)
+        protected override async Task AddLineItems(IEnumerable<LineItem> lineItems)
         {
             await sqlServerFixture.DbContext.BulkInsertAsync(lineItems);
         }
 
-        public override async Task AddOrders(IEnumerable<Order> orders)
+        protected override async Task AddOrders(IEnumerable<Order> orders)
         {
             await sqlServerFixture.DbContext.BulkInsertAsync(orders);
         }
@@ -62,12 +62,12 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             });
         }
 
-        public override async Task AddShipmodes(IEnumerable<Shipmode> shipmodes)
+        protected override async Task AddShipmodes(IEnumerable<Shipmode> shipmodes)
         {
             await sqlServerFixture.DbContext.BulkInsertAsync(shipmodes);
         }
 
-        public override async Task ClearAllTables()
+        protected override async Task ClearAllTables()
         {
             var context = sqlServerFixture.DbContext;
             await context.LineItems.ExecuteDeleteAsync();
@@ -75,7 +75,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             await context.Shipmodes.ExecuteDeleteAsync();
         }
 
-        public override async Task UpdateShipmodes(IEnumerable<Shipmode> shipmode)
+        protected override async Task UpdateShipmodes(IEnumerable<Shipmode> shipmode)
         {
             await sqlServerFixture.DbContext.BulkUpdateAsync(shipmode);
         }
@@ -167,12 +167,12 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 
         }
 
-        public override Task Crash()
+        protected override Task Crash()
         {
             return sqlServerFixture.StopAsync();
         }
 
-        public override Task Restart()
+        protected override Task Restart()
         {
             return sqlServerFixture.StartAsync();
         }
