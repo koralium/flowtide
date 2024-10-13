@@ -32,9 +32,5 @@ namespace FlowtideDotNet.Core.Exceptions
         public FlowtideNoConnectorFoundException(string? message, Exception? innerException) : base(message, innerException)
         {
         }
-
-        protected FlowtideNoConnectorFoundException(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
-        }
     }
 }

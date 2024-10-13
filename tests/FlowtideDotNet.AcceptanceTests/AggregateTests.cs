@@ -195,7 +195,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).Select(x => new KeyValuePair<string, object>[]{
                 new KeyValuePair<string, object>("userkey", x.UserKey),
-                new KeyValuePair<string, object>("company", x.CompanyId)
+                new KeyValuePair<string, object>("company", x.CompanyId!)
             }).ToList() } });
 
             GenerateData(1000);
@@ -204,7 +204,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new KeyValuePair<string, object>[]{
                 new KeyValuePair<string, object>("userkey", x.UserKey),
-                new KeyValuePair<string, object>("company", x.CompanyId)
+                new KeyValuePair<string, object>("company", x.CompanyId!)
             }).ToList() } });
 
             Users[0].CompanyId = "newCompany";
@@ -214,7 +214,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new KeyValuePair<string, object>[]{
                 new KeyValuePair<string, object>("userkey", x.UserKey),
-                new KeyValuePair<string, object>("company", x.CompanyId)
+                new KeyValuePair<string, object>("company", x.CompanyId!)
             }).ToList() } });
 
             DeleteUser(Users[10]);
@@ -223,7 +223,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new KeyValuePair<string, object>[]{
                 new KeyValuePair<string, object>("userkey", x.UserKey),
-                new KeyValuePair<string, object>("company", x.CompanyId)
+                new KeyValuePair<string, object>("company", x.CompanyId!)
             }).ToList() } });
         }
     }

@@ -86,7 +86,9 @@ export const useJoinInstantQueries = (
         setFinalResult(output)
     }
 
-    }, [queries])
+    }, 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [queries])
 
     return {
         result: finalResult,

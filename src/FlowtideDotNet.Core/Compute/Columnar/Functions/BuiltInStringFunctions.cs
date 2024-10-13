@@ -17,6 +17,7 @@ using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -39,6 +40,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
                     var appendMethod = typeof(StringBuilder).GetMethod("Append", new System.Type[] { typeof(string) });
                     var toStringMethod = typeof(FlxString).GetMethod("ToString", new System.Type[] { });
+                    Debug.Assert(appendMethod != null);
+                    Debug.Assert(toStringMethod != null);
+
                     var stringBuilderConstant = System.Linq.Expressions.Expression.Constant(stringBuilder);
 
                     DataValueContainer nullContainer = new DataValueContainer();

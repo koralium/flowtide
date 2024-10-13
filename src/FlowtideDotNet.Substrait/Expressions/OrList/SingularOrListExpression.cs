@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Substrait.Expressions
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
-            return visitor.VisitSingularOrList(this, state);
+            return visitor.VisitSingularOrList(this, state)!;
         }
 
         public override bool Equals(object? obj)

@@ -20,6 +20,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
     {
         public ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> LeftLeaf()
         {
+            Debug.Assert(m_stateClient.Metadata != null);
+
             var getFirstTask = m_stateClient.GetValue(m_stateClient.Metadata.Left, "Leftleaf");
 
             if (!getFirstTask.IsCompleted)

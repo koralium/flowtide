@@ -18,6 +18,7 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
 using FluentAssertions;
+using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Substrait.Tests
 {
@@ -999,7 +1000,7 @@ namespace FlowtideDotNet.Substrait.Tests
 
         private sealed class TestTableProvider : ITableProvider
         {
-            public bool TryGetTableInformation(string tableName, out TableMetadata? tableMetadata)
+            public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
             {
                 if (tableName.Equals("testtable", StringComparison.OrdinalIgnoreCase))
                 {

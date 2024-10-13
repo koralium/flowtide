@@ -591,7 +591,7 @@ namespace FlowtideDotNet.Core.Engine
             return Visit(rootRelation.Input, state);
         }
 
-        public override IStreamVertex VisitIterationRelation(IterationRelation iterationRelation, ITargetBlock<IStreamEvent> state)
+        public override IStreamVertex VisitIterationRelation(IterationRelation iterationRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
             var op = new ColumnIterationOperator(iterationRelation, functionsRegister, DefaultBlockOptions);
@@ -618,16 +618,20 @@ namespace FlowtideDotNet.Core.Engine
             return (op.EgressSource as IStreamVertex)!;
         }
 
-        public override IStreamVertex VisitIterationReferenceReadRelation(IterationReferenceReadRelation iterationReferenceReadRelation, ITargetBlock<IStreamEvent> state)
+        public override IStreamVertex VisitIterationReferenceReadRelation(IterationReferenceReadRelation iterationReferenceReadRelation, ITargetBlock<IStreamEvent>? state)
         {
             if (_iterationOperators.TryGetValue(iterationReferenceReadRelation.IterationName, out var op))
             {
-                op.LoopSource.LinkTo(state);
+                if (state != null)
+                {
+                    op.LoopSource.LinkTo(state);
+                }
+                return op;
             }
-            return op;
+            throw new InvalidOperationException($"Iteration operator {iterationReferenceReadRelation.IterationName} not found");
         }
 
-        public override IStreamVertex VisitBufferRelation(BufferRelation bufferRelation, ITargetBlock<IStreamEvent> state)
+        public override IStreamVertex VisitBufferRelation(BufferRelation bufferRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
             var op = new BufferOperator(bufferRelation, DefaultBlockOptions);

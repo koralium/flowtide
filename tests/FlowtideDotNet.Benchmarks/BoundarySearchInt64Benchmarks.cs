@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Benchmarks
 {
@@ -24,10 +25,10 @@ namespace FlowtideDotNet.Benchmarks
     {
         private const int SearchSpace = 1024 * 1;
 
-        private long[] _arr;
-        private Column _column;
-        private NativeLongList _nativeLongList;
-        private Int64Column _int64Column;
+        private long[]? _arr;
+        private Column? _column;
+        private NativeLongList? _nativeLongList;
+        private Int64Column? _int64Column;
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -47,6 +48,8 @@ namespace FlowtideDotNet.Benchmarks
         [Benchmark]
         public void ArrayBinarySearchBenchmark()
         {
+            Debug.Assert(_arr != null);
+
             for (int i = 0; i < SearchSpace; i++)
             {
                 Array.BinarySearch(_arr, i);
@@ -57,6 +60,8 @@ namespace FlowtideDotNet.Benchmarks
         [Benchmark]
         public void ColumnBoundarySearchBenchmark()
         {
+            Debug.Assert(_column != null);
+
             for (int i = 0; i < SearchSpace; i++)
             {
                 _column.SearchBoundries(new Int64Value(i), 0, SearchSpace - 1, default);
@@ -66,6 +71,8 @@ namespace FlowtideDotNet.Benchmarks
         [Benchmark]
         public void NativeLongListBoundarySearchBenchmark()
         {
+            Debug.Assert(_nativeLongList != null);
+
             for (int i = 0; i < SearchSpace; i++)
             {
                 BoundarySearch.SearchBoundriesInt64Asc(_nativeLongList, 0, SearchSpace - 1, i);
@@ -75,6 +82,8 @@ namespace FlowtideDotNet.Benchmarks
         [Benchmark]
         public void Int64ColumnBoundarySearchBenchmark()
         {
+            Debug.Assert(_int64Column != null);
+
             for (int i = 0; i < SearchSpace; i++)
             {
                 _int64Column.SearchBoundries(new Int64Value(i), 0, SearchSpace - 1, default, false);

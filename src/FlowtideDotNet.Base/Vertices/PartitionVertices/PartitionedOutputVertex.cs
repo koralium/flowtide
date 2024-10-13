@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Storage.StateManager;
 using System.Threading.Tasks.Dataflow;
@@ -39,9 +40,9 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             return Task.FromResult(default(TState));
         }
 
-        public override async IAsyncEnumerable<T> OnRecieve(int targetId, T msg, long time)
+        public override IAsyncEnumerable<T> OnRecieve(int targetId, T msg, long time)
         {
-            yield return msg;
+            return new SingleAsyncEnumerable<T>(msg);
         }
 
         protected override Task InitializeOrRestore(TState? state, IStateManagerClient stateManagerClient)

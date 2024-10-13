@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Core.Compute.Internal
@@ -23,6 +24,10 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
             var param = System.Linq.Expressions.Expression.Parameter(typeof(RowEvent));
             var expr = visitor.Visit(expression, new ParametersInfo(new List<System.Linq.Expressions.ParameterExpression> { param }, new List<int>() { 0 }));
+            if (expr == null)
+            {
+                throw new FlowtideException("Expression visitor did not return a result expression");
+            }
             var lambda = System.Linq.Expressions.Expression.Lambda<Func<RowEvent, FlxValue>>(expr, param);
             return lambda.Compile();
         }

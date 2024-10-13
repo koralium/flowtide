@@ -65,7 +65,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                     for (int k = lastField; k < emitField; k++)
                     {
                         readRelation.BaseSchema.Names.RemoveAt(lastField);
-                        readRelation.BaseSchema.Struct.Types.RemoveAt(lastField);
+                        if (readRelation.BaseSchema.Struct != null)
+                        {
+                            readRelation.BaseSchema.Struct.Types.RemoveAt(lastField);
+                        }
                         relativeOffset++;
                     }
                     lastField = usageList[i] - relativeOffset + 1;
@@ -73,7 +76,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 if (lastField < readRelation.BaseSchema.Names.Count)
                 {
                     readRelation.BaseSchema.Names.RemoveRange(lastField, readRelation.BaseSchema.Names.Count - lastField);
-                    readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                    if (readRelation.BaseSchema.Struct != null)
+                    {
+                        readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                    }
                 }
 
                 if (readRelation.Filter != null)
@@ -99,7 +105,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 if (lastField < readRelation.BaseSchema.Names.Count)
                 {
                     readRelation.BaseSchema.Names.RemoveRange(lastField, readRelation.BaseSchema.Names.Count - lastField);
-                    readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                    if (readRelation.BaseSchema.Struct != null)
+                    {
+                        readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                    }
                 }
             }
             return readRelation;
@@ -115,20 +124,24 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             {
                 var input = aggregateRelation.Input;
                 var usageVisitor = new ExpressionFieldUsageVisitor(aggregateRelation.Input.OutputLength);
-                foreach(var measure in aggregateRelation.Measures)
+                if (aggregateRelation.Measures != null)
                 {
-                    if (measure.Measure.Arguments != null)
+                    foreach (var measure in aggregateRelation.Measures)
                     {
-                        foreach (var arg in measure.Measure.Arguments)
+                        if (measure.Measure.Arguments != null)
                         {
-                            usageVisitor.Visit(arg, default);
+                            foreach (var arg in measure.Measure.Arguments)
+                            {
+                                usageVisitor.Visit(arg, default);
+                            }
+                        }
+                        if (measure.Filter != null)
+                        {
+                            usageVisitor.Visit(measure.Filter, default);
                         }
                     }
-                    if (measure.Filter != null)
-                    {
-                        usageVisitor.Visit(measure.Filter, default);
-                    }
                 }
+                
                 if (aggregateRelation.Groupings != null)
                 {
                     foreach (var grouping in aggregateRelation.Groupings)
@@ -145,21 +158,24 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 var inputEmitResult = CreateInputEmitList(input, usedFields);
 
                 var replaceVisitor = new ExpressionFieldReplaceVisitor(inputEmitResult.OldToNew);
-                foreach (var measure in aggregateRelation.Measures)
+                if (aggregateRelation.Measures != null)
                 {
-                    if (measure.Measure.Arguments != null)
+                    foreach (var measure in aggregateRelation.Measures)
                     {
-                        foreach (var arg in measure.Measure.Arguments)
+                        if (measure.Measure.Arguments != null)
                         {
-                            replaceVisitor.Visit(arg, default);
+                            foreach (var arg in measure.Measure.Arguments)
+                            {
+                                replaceVisitor.Visit(arg, default);
+                            }
+                        }
+                        if (measure.Filter != null)
+                        {
+                            replaceVisitor.Visit(measure.Filter, default);
                         }
                     }
-                    if (measure.Filter != null)
-                    {
-                        replaceVisitor.Visit(measure.Filter, default);
-                    }
                 }
-
+                
                 if (aggregateRelation.Groupings != null)
                 {
                     foreach (var grouping in aggregateRelation.Groupings)

@@ -396,20 +396,12 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
             if (lo < end)
             {
-                try
+                // Check that the next value is the same, if not we are at the of the bounds.
+                int c = comparer.Compare(list.Get(lo + 1), in value);
+                if (c != 0)
                 {
-                    // Check that the next value is the same, if not we are at the of the bounds.
-                    int c = comparer.Compare(list.Get(lo + 1), in value);
-                    if (c != 0)
-                    {
-                        return (lowerbound, lowerbound);
-                    }
+                    return (lowerbound, lowerbound);
                 }
-                catch(Exception e)
-                {
-                    throw;
-                }
-                
             }
             else
             {

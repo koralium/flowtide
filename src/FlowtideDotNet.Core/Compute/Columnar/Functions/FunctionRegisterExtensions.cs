@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -78,6 +79,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         public static void RegisterScalarMethod(this IFunctionsRegister functionsRegister, string extensionUri, string extensionName, System.Type classType, string methodName)
         {
             var method = classType.GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static);
+            Debug.Assert(method != null, "Method not found");
             RegisterMethod(extensionUri, extensionName, functionsRegister, method);
         }
     }

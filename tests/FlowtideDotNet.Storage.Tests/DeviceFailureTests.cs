@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Storage.Tests
             return 0;
         }
 
-        public void Initialize(long segmentSize, LightEpoch epoch = null, bool omitSegmentIdFromFilename = false)
+        public void Initialize(long segmentSize, LightEpoch epoch = null!, bool omitSegmentIdFromFilename = false)
         {
         }
 
@@ -150,7 +150,7 @@ namespace FlowtideDotNet.Storage.Tests
             return device.GetFileSize(segment);
         }
 
-        public void Initialize(long segmentSize, LightEpoch epoch = null, bool omitSegmentIdFromFilename = false)
+        public void Initialize(long segmentSize, LightEpoch epoch = null!, bool omitSegmentIdFromFilename = false)
         {
             device.Initialize(segmentSize, epoch, omitSegmentIdFromFilename);
         }

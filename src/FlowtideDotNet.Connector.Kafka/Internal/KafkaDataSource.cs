@@ -86,6 +86,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 };
             }
             _state = state;
+            Debug.Assert(_state.PartitionOffsets != null);
 
             if (_eventsProcessed == null)
             {

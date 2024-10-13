@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Storage.Tests
     public class BPlusTreeTests : IDisposable
     {
         private IBPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>> _tree;
-        StateManager.StateManagerSync stateManager;
+        StateManager.StateManagerSync? stateManager;
         public BPlusTreeTests()
         {
             _tree = Init().GetAwaiter().GetResult();

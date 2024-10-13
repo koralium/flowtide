@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Substrait.Type
 {
     public sealed class VirtualTable : IEquatable<VirtualTable>
     {
-        public List<string> JsonValues { get; set; }
+        public required List<string> JsonValues { get; set; }
 
         public override bool Equals(object? obj)
         {

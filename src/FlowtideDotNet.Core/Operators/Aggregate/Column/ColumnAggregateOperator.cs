@@ -56,11 +56,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         private List<IColumnAggregateContainer> m_measures;
 
         private List<Action<EventBatchData, int, ColumnStore.Column>>? groupExpressions;
-        private ColumnStore.Column[] m_groupValues;
+        private ColumnStore.Column[]? m_groupValues;
         private EventBatchData? m_groupValuesBatch;
 
-        private ColumnStore.Column[] m_temporaryStateValues;
-        private EventBatchData m_temporaryStateBatch;
+        private ColumnStore.Column[]? m_temporaryStateValues;
+        private EventBatchData? m_temporaryStateBatch;
 
         private readonly int m_outputCount;
         private readonly List<int> m_groupOutputIndices;
@@ -71,8 +71,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         private IBPlusTree<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
 
 #if DEBUG_WRITE
-        private StreamWriter allInput;
-        private StreamWriter outputWriter;
+        private StreamWriter? allInput;
+        private StreamWriter? outputWriter;
 #endif
 
         public ColumnAggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
@@ -142,11 +142,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         public override async Task<AggregateOperatorState> OnCheckpoint()
         {
             Debug.Assert(_tree != null);
+            Debug.Assert(m_groupValues != null);
+            Debug.Assert(m_temporaryStateValues != null);
             await _tree.Commit();
 
 #if DEBUG_WRITE
-            allInput.WriteLine("Checkpoint");
-            allInput.Flush();
+            allInput!.WriteLine("Checkpoint");
+            allInput!.Flush();
 #endif
 
             // Commit each measure
@@ -179,11 +181,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(_temporaryTree != null, "Temporary tree should not be null");
             Debug.Assert(m_groupValuesBatch != null);
             Debug.Assert(_eventsCounter != null);
+            Debug.Assert(m_temporaryStateValues != null);
+            Debug.Assert(m_temporaryStateBatch != null);
+            Debug.Assert(m_groupValues != null);
 
 #if DEBUG_WRITE
-            allInput.WriteLine("Watermark");
-            allInput.Flush();
-            outputWriter.WriteLine("Watermark");
+            allInput!.WriteLine("Watermark");
+            allInput!.Flush();
+            outputWriter!.WriteLine("Watermark");
 #endif
 
             PrimitiveList<int> outputWeights = new PrimitiveList<int>(MemoryAllocator);
@@ -295,9 +300,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 #if DEBUG_WRITE
                 foreach(var ev in outputBatch.Events)
                 {
-                    outputWriter.WriteLine($"{ev.Weight} {ev.ToJson()}");
+                    outputWriter!.WriteLine($"{ev.Weight} {ev.ToJson()}");
                 }
-                outputWriter.Flush();
+                outputWriter!.Flush();
 #endif
 
                 yield return outputBatch;
@@ -426,9 +431,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 #if DEBUG_WRITE
                             foreach (var ev in batch.Events)
                             {
-                                outputWriter.WriteLine($"{ev.Weight} {ev.ToJson()}");
+                                outputWriter!.WriteLine($"{ev.Weight} {ev.ToJson()}");
                             }
-                            outputWriter.Flush();
+                            outputWriter!.Flush();
 #endif
                             yield return batch;
 
@@ -452,9 +457,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 #if DEBUG_WRITE
                 foreach (var ev in outputBatch.Events)
                 {
-                    outputWriter.WriteLine($"{ev.Weight} {ev.ToJson()}");
+                    outputWriter!.WriteLine($"{ev.Weight} {ev.ToJson()}");
                 }
-                outputWriter.Flush();
+                outputWriter!.Flush();
 #endif
 
                     yield return outputBatch;
@@ -482,6 +487,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(_temporaryTree != null, "Temporary tree should not be null");
             Debug.Assert(_treeIterator != null);
             Debug.Assert(_eventsProcessed != null);
+            Debug.Assert(m_groupValues != null);
+            Debug.Assert(m_temporaryStateValues != null);
+            Debug.Assert(m_groupValuesBatch != null);
+            Debug.Assert(m_temporaryStateBatch != null);
 
             for(int i = 0; i < m_groupValues.Length; i++)
             {
@@ -495,9 +504,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 #if DEBUG_WRITE
             foreach (var ev in msg.Events)
             {
-                allInput.WriteLine($"{ev.Weight} {ev.ToJson()}");
+                allInput!.WriteLine($"{ev.Weight} {ev.ToJson()}");
             }
-            allInput.Flush();
+            allInput!.Flush();
 #endif
 
 

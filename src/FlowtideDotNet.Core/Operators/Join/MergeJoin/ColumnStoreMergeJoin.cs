@@ -72,10 +72,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
 #if DEBUG_WRITE
         // Debug data
-        private StreamWriter allInput;
-        private StreamWriter leftInput;
-        private StreamWriter rightInput;
-        private StreamWriter outputWriter;
+        private StreamWriter? allInput;
+        private StreamWriter? leftInput;
+        private StreamWriter? rightInput;
+        private StreamWriter? outputWriter;
 #endif
 
         public ColumnStoreMergeJoin(MergeJoinRelation mergeJoinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
@@ -167,8 +167,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         public override async Task<JoinState?> OnCheckpoint()
         {
 #if DEBUG_WRITE
-            allInput.WriteLine("Checkpoint");
-            await allInput.FlushAsync();
+            allInput!.WriteLine("Checkpoint");
+            await allInput!.FlushAsync();
 #endif
             _leftIterator!.Reset();
 
@@ -273,9 +273,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #if DEBUG_WRITE
                                 foreach (var o in outputBatch.Events)
                                 {
-                                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
+                                    outputWriter!.WriteLine($"{o.Weight} {o.ToJson()}");
                                 }
-                                await outputWriter.FlushAsync();
+                                await outputWriter!.FlushAsync();
 #endif
                                 _eventsCounter.Add(outputBatch.Data.Weights.Count);
                                 yield return outputBatch;
@@ -350,9 +350,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #if DEBUG_WRITE
                 foreach (var o in outputBatch.Events)
                 {
-                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
+                    outputWriter!.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
-                await outputWriter.FlushAsync();
+                await outputWriter!.FlushAsync();
 #endif
                 _eventsCounter.Add(outputBatch.Data.Weights.Count);
                 yield return outputBatch;
@@ -474,9 +474,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #if DEBUG_WRITE
                                 foreach (var o in outputBatch.Events)
                                 {
-                                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
+                                    outputWriter!.WriteLine($"{o.Weight} {o.ToJson()}");
                                 }
-                                await outputWriter.FlushAsync();
+                                await outputWriter!.FlushAsync();
 #endif
                                 _eventsCounter.Add(outputBatch.Data.Weights.Count);
                                 yield return outputBatch;
@@ -545,9 +545,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #if DEBUG_WRITE
                 foreach (var o in outputBatch.Events)
                 {
-                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
+                    outputWriter!.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
-                await outputWriter.FlushAsync();
+                await outputWriter!.FlushAsync();
 #endif
 
                 yield return outputBatch;
@@ -632,29 +632,29 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
         {
 #if DEBUG_WRITE
-            allInput.WriteLine("New batch");
+            allInput!.WriteLine("New batch");
             foreach (var e in msg.Events)
             {
-                allInput.WriteLine($"{targetId}, {e.Weight} {e.ToJson()}");
+                allInput!.WriteLine($"{targetId}, {e.Weight} {e.ToJson()}");
             }
             if (targetId == 0)
             {
                 foreach (var e in msg.Events)
                 {
-                    leftInput.WriteLine($"{e.Weight} {e.ToJson()}");
+                    leftInput!.WriteLine($"{e.Weight} {e.ToJson()}");
                 }
-                leftInput.Flush();
+                leftInput!.Flush();
             }
             else
             {
                 foreach (var e in msg.Events)
                 {
-                    rightInput.WriteLine($"{e.Weight} {e.ToJson()}");
+                    rightInput!.WriteLine($"{e.Weight} {e.ToJson()}");
                 }
-                rightInput.Flush();
+                rightInput!.Flush();
             }
             
-            allInput.Flush();
+            allInput!.Flush();
 #endif
             Debug.Assert(_eventsProcessed != null, nameof(_eventsProcessed));
             _eventsProcessed.Add(msg.Data.Weights.Count);

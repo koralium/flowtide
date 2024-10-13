@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
     {
         public int ShipmodeKey { get; set; }
 
-        public string Mode { get; set; }
+        public string? Mode { get; set; }
 
         public double Cost { get; set; }
     }

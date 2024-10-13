@@ -140,12 +140,14 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             
         }
 
-        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> Broadcast(IStreamEvent streamEvent)
+        private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> Broadcast(IStreamEvent streamEvent)
         {
+            KeyValuePair<int, IStreamEvent>[] output = new KeyValuePair<int, IStreamEvent>[targetNumber];
             for (int i = 0; i < targetNumber; i++)
             {
-                yield return new KeyValuePair<int, IStreamEvent>(i, streamEvent);
+                output[i] = new KeyValuePair<int, IStreamEvent>(i, streamEvent);
             }
+            return output.ToAsyncEnumerable();
         }
 
         public Task DeleteAsync()

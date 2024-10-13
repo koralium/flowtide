@@ -48,7 +48,9 @@ export const useChartJsData = (queries: Array<PromRangeQueryResult>, labelFunc: 
         setResult(dataSets)
     }
     
-   }, [queries])
+   }, 
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   [queries])
     
     return {
         result: result,

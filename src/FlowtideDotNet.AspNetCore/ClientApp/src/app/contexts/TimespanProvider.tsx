@@ -36,7 +36,7 @@ const TimeSpanUpdater = (props: TimeSpanUpdaterProps) => {
             context.start = currentTime - props.relativeTimeMs;
             context.end = currentTime;
         }, props.relativeRefreshRateMs)
-    }, [])
+    })
 
     return (
         <>{props.children}</>
@@ -58,7 +58,9 @@ const TimespanProviderInternal = (props: TimespanProviderProps & TimeSpanUpdater
             const newend = currentTime;
             setTimeData({start: newstart, end: newend})
         }, props.relativeRefreshRateMs)
-    }, [])
+    }, 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [])
 
     return (
         <TimespanContext.Provider value={timeData}>
