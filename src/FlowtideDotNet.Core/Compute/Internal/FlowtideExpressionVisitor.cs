@@ -112,7 +112,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             System.Linq.Expressions.Expression? elseStatement = default;
             if (ifThenExpression.Else != null)
             {
-                elseStatement = Visit(ifThenExpression.Else, state);
+                elseStatement = Visit(ifThenExpression.Else, state)!;
             }
             else
             {
@@ -229,6 +229,10 @@ namespace FlowtideDotNet.Core.Compute.Internal
             Debug.Assert(newObjectMethod != null);
             Debug.Assert(startVectorMethod != null);
             Debug.Assert(addKeyMethod != null);
+            Debug.Assert(sortAndEndMapMethod != null);
+            Debug.Assert(addValueMethod != null);
+            Debug.Assert(finishMethod != null);
+            Debug.Assert(flxValueFromBytesMethod != null);
 
             var vectorStartVariable = System.Linq.Expressions.Expression.Variable(typeof(int), "vectorStart");
             var bytesVariable = System.Linq.Expressions.Expression.Variable(typeof(byte[]), "bytes");
@@ -245,9 +249,9 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 var key = keyValue.Key;
                 var value = keyValue.Value;
 
-                var keyExpr = Visit(key, state);
+                var keyExpr = Visit(key, state)!;
 
-                var valueExpr = Visit(value, state);
+                var valueExpr = Visit(value, state)!;
 
                 var addKeyCall = System.Linq.Expressions.Expression.Call(builderConstant, addKeyMethod, System.Linq.Expressions.Expression.Call(flxValueToStringMethod, keyExpr));
                 blockExpressions.Add(addKeyCall);
@@ -284,6 +288,10 @@ namespace FlowtideDotNet.Core.Compute.Internal
             Debug.Assert(newObjectMethod != null);
             Debug.Assert(startVectorMethod != null);
             Debug.Assert(addKeyMethod != null);
+            Debug.Assert(addValueMethod != null);
+            Debug.Assert(endVectorMethod != null);
+            Debug.Assert(finishMethod != null);
+            Debug.Assert(flxValueFromBytesMethod != null);
 
             var vectorStartVariable = System.Linq.Expressions.Expression.Variable(typeof(int), "vectorStart");
             var bytesVariable = System.Linq.Expressions.Expression.Variable(typeof(byte[]), "bytes");

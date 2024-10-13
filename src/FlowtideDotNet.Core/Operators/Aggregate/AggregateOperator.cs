@@ -184,7 +184,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                     var outputEvent = new RowEvent(1, 0, new CompactRowData(outputData));
 
 #if DEBUG_WRITE
-                    outputWriter.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
+                    outputWriter!.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
 #endif
 
                     outputs.Add(outputEvent);
@@ -224,7 +224,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                                 var outputEvent = new RowEvent(-1, 0, new CompactRowData(val.PreviousValue));
 
 #if DEBUG_WRITE
-                                outputWriter.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
+                                outputWriter!.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
 #endif
 
                                 outputs.Add(outputEvent);
@@ -259,8 +259,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                                 var outputEvent = new RowEvent(1, 0, new CompactRowData(newObjectValue));
 
 #if DEBUG_WRITE
-                                outputWriter.WriteLine($"{oldEvent.Weight} {oldEvent.ToJson()}");
-                                outputWriter.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
+                                outputWriter!.WriteLine($"{oldEvent.Weight} {oldEvent.ToJson()}");
+                                outputWriter!.WriteLine($"{outputEvent.Weight} {outputEvent.ToJson()}");
 #endif
 
                                 outputs.Add(oldEvent);

@@ -71,8 +71,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         private IBPlusTree<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
 
 #if DEBUG_WRITE
-        private StreamWriter allInput;
-        private StreamWriter outputWriter;
+        private StreamWriter? allInput;
+        private StreamWriter? outputWriter;
 #endif
 
         public ColumnAggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
@@ -147,8 +147,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             await _tree.Commit();
 
 #if DEBUG_WRITE
-            allInput.WriteLine("Checkpoint");
-            allInput.Flush();
+            allInput!.WriteLine("Checkpoint");
+            allInput!.Flush();
 #endif
 
             // Commit each measure
@@ -186,9 +186,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(m_groupValues != null);
 
 #if DEBUG_WRITE
-            allInput.WriteLine("Watermark");
-            allInput.Flush();
-            outputWriter.WriteLine("Watermark");
+            allInput!.WriteLine("Watermark");
+            allInput!.Flush();
+            outputWriter!.WriteLine("Watermark");
 #endif
 
             PrimitiveList<int> outputWeights = new PrimitiveList<int>(MemoryAllocator);
@@ -300,9 +300,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 #if DEBUG_WRITE
                 foreach(var ev in outputBatch.Events)
                 {
-                    outputWriter.WriteLine($"{ev.Weight} {ev.ToJson()}");
+                    outputWriter!.WriteLine($"{ev.Weight} {ev.ToJson()}");
                 }
-                outputWriter.Flush();
+                outputWriter!.Flush();
 #endif
 
                 yield return outputBatch;
@@ -431,9 +431,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 #if DEBUG_WRITE
                             foreach (var ev in batch.Events)
                             {
-                                outputWriter.WriteLine($"{ev.Weight} {ev.ToJson()}");
+                                outputWriter!.WriteLine($"{ev.Weight} {ev.ToJson()}");
                             }
-                            outputWriter.Flush();
+                            outputWriter!.Flush();
 #endif
                             yield return batch;
 
@@ -457,9 +457,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 #if DEBUG_WRITE
                 foreach (var ev in outputBatch.Events)
                 {
-                    outputWriter.WriteLine($"{ev.Weight} {ev.ToJson()}");
+                    outputWriter!.WriteLine($"{ev.Weight} {ev.ToJson()}");
                 }
-                outputWriter.Flush();
+                outputWriter!.Flush();
 #endif
 
                     yield return outputBatch;
@@ -504,9 +504,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 #if DEBUG_WRITE
             foreach (var ev in msg.Events)
             {
-                allInput.WriteLine($"{ev.Weight} {ev.ToJson()}");
+                allInput!.WriteLine($"{ev.Weight} {ev.ToJson()}");
             }
-            allInput.Flush();
+            allInput!.Flush();
 #endif
 
 

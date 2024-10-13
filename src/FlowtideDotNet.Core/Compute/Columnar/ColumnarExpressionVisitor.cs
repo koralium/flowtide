@@ -260,6 +260,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
 
             var newArrayExpr = System.Linq.Expressions.Expression.NewArrayInit(typeof(KeyValuePair<IDataValue, IDataValue>), arrInitExpressions);
             var ctor = typeof(MapValue).GetConstructor([typeof(KeyValuePair<IDataValue, IDataValue>[])]);
+            Debug.Assert(ctor != null);
             return System.Linq.Expressions.Expression.New(ctor, newArrayExpr);
         }
 

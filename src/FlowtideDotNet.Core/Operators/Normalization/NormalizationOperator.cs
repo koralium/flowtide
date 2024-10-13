@@ -212,6 +212,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         protected async Task Delete(string ke, List<RowEvent> output)
         {
+            Debug.Assert(_tree != null);
             bool isFound = false;
             IngressData? data;
             
