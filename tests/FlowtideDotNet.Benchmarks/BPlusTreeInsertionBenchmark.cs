@@ -60,6 +60,7 @@ namespace DifferntialCompute.Benchmarks
         [Benchmark]
         public async Task InsertInOrder()
         {
+            Debug.Assert(tree != null);
             for (int i = 0; i < 1_000_000; i++)
             {
                 await tree.Upsert(i, $"hello{i}");

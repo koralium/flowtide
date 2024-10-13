@@ -32,9 +32,9 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
     {
         FlowtideBuilder differentialComputeBuilder;
         SubstraitDeserializer deserializer;
-        FlowtideDotNet.Base.Engine.DataflowStream dataflowStream;
+        FlowtideDotNet.Base.Engine.DataflowStream? dataflowStream;
         private int changesCounter = 0;
-        private DefaultStreamScheduler _streamScheduler;
+        private DefaultStreamScheduler? _streamScheduler;
         //List<LineItem>? actualData;
         public QuerySmokeTestBase()
         {
@@ -150,6 +150,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0 });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter == 0)
             {
@@ -189,7 +190,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             var lineItemsExpected = TpchData.GetLineItems()
                 .OrderBy(x => x.Orderkey)
                 .ThenBy(x => x.Linenumber)
-                .Where(x => x.Shipmode.Equals("truck", StringComparison.OrdinalIgnoreCase))
+                .Where(x => x.Shipmode!.Equals("truck", StringComparison.OrdinalIgnoreCase))
                 .ToList();
             Assert.Equal(lineItemsExpected.Count, actualData!.Count);
             for (int i = 0; i < lineItemsExpected.Count; i++)
@@ -223,7 +224,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                         Linenumber = l.Linenumber,
                         Quantity = l.Quantity,
                         Custkey = r.Custkey,
-                        Orderstatus = r.Orderstatus,
+                        Orderstatus = r.Orderstatus!,
                     };
                 })
                 .OrderBy(x => x.Orderkey)
@@ -249,6 +250,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter == 0)
             {
@@ -265,7 +267,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                         Linenumber = l.Linenumber,
                         Quantity = l.Quantity,
                         Custkey = r.Custkey,
-                        Orderstatus = r.Orderstatus,
+                        Orderstatus = r.Orderstatus!,
                     };
                 })
                 .OrderBy(x => x.Orderkey)
@@ -320,7 +322,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                         Linenumber = l.Linenumber,
                         Quantity = l.Quantity,
                         Custkey = r.Custkey,
-                        Orderstatus = r.Orderstatus,
+                        Orderstatus = r.Orderstatus!,
                     };
                 })
                 .OrderBy(x => x.Orderkey)
@@ -361,7 +363,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                         Linenumber = l.Linenumber,
                         Quantity = l.Quantity,
                         Custkey = r.Custkey,
-                        Orderstatus = r.Orderstatus,
+                        Orderstatus = r.Orderstatus!,
                     };
                 })
                 .OrderBy(x => x.Orderkey)
@@ -427,6 +429,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter < 1)
             {
@@ -511,6 +514,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter < 1)
             {
@@ -595,6 +599,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter < 1)
             {
@@ -665,6 +670,8 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 });
+            Debug.Assert(_streamScheduler != null);
+            Debug.Assert(dataflowStream != null);
 
             while (changesCounter < 1)
             {
