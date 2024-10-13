@@ -123,12 +123,13 @@ namespace FlowtideDotNet.Core.Compute.Internal
             for (int i = ifThenExpression.Ifs.Count - 1; i >= 0; i--)
             {
                 var ifClause = ifThenExpression.Ifs[i];
-                var ifStatement = Visit(ifClause.If, state);
-                var thenStatement = Visit(ifClause.Then, state);
+                var ifStatement = Visit(ifClause.If, state)!;
+                var thenStatement = Visit(ifClause.Then, state)!;
 
                 if (ifStatement.Type.Equals(typeof(FlxValue)))
                 {
-                    MethodInfo toBoolMethod = typeof(FlxValueBoolFunctions).GetMethod("ToBool", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                    MethodInfo? toBoolMethod = typeof(FlxValueBoolFunctions).GetMethod("ToBool", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                    Debug.Assert(toBoolMethod != null);
                     ifStatement = System.Linq.Expressions.Expression.Call(toBoolMethod, ifStatement);
                 }
 
@@ -140,7 +141,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         private static System.Linq.Expressions.MethodCallExpression ToArrayExpr(System.Linq.Expressions.Expression array)
         {
-            MethodInfo toArrayMethod = typeof(FlxValueArrayFunctions).GetMethod("CreateArray", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            MethodInfo? toArrayMethod = typeof(FlxValueArrayFunctions).GetMethod("CreateArray", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            Debug.Assert(toArrayMethod != null);
             return System.Linq.Expressions.Expression.Call(toArrayMethod, array);
         }
 

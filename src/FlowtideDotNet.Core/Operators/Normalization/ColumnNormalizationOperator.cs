@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
     internal class ColumnNormalizationOperator : UnaryVertex<StreamEventBatch, NormalizationState>
     {
 #if DEBUG_WRITE
-        private StreamWriter allOutput;
+        private StreamWriter? allOutput;
 #endif
 
         private readonly NormalizationRelation _normalizationRelation;
@@ -107,8 +107,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         public override async Task<NormalizationState> OnCheckpoint()
         {
 #if DEBUG_WRITE
-            allOutput.WriteLine("Checkpoint");
-            await allOutput.FlushAsync();
+            allOutput!.WriteLine("Checkpoint");
+            await allOutput!.FlushAsync();
 #endif
 
             await _tree!.Commit();
@@ -217,9 +217,9 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 #if DEBUG_WRITE
                 foreach (var o in outputBatch.Events)
                 {
-                    allOutput.WriteLine($"{o.Weight} {o.ToJson()}");
+                    allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
-                await allOutput.FlushAsync();
+                await allOutput!.FlushAsync();
 #endif
                 yield return outputBatch;
             }

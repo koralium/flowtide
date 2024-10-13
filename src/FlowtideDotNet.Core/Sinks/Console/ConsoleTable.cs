@@ -212,6 +212,7 @@ namespace FlowtideDotNet.Core.Sinks
             // create the string format with padding
             _ = Format(columnLengths, delimiter);
 
+            Debug.Assert(Formats != null);
             // find the longest formatted line
             var columnHeaders = string.Format(Formats[0].TrimStart(), Columns.ToArray());
 
@@ -292,7 +293,7 @@ namespace FlowtideDotNet.Core.Sinks
                 .Select((t, i) => Rows.Select(x => x[i])
                     .Union(new[] { Columns[i] })
                     .Where(x => x != null)
-                    .Select(x => x.ToString().ToCharArray().Sum(c => c > 127 ? 2 : 1)).Max())
+                    .Select(x => x.ToString()!.ToCharArray().Sum(c => c > 127 ? 2 : 1)).Max())
                 .ToList();
             return columnLengths;
         }

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Utils;
@@ -55,7 +56,7 @@ namespace FlowtideDotNet.Core.Operators.Filter
             return Task.FromResult<object?>(default);
         }
 
-        public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
 
             PrimitiveList<int>[] offsets = new PrimitiveList<int>[_filterRelation.OutputLength];
@@ -91,7 +92,7 @@ namespace FlowtideDotNet.Core.Operators.Filter
                 }
 
                 var outputData = new EventBatchData(outputColumns);
-                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, outputData));
+                return new SingleAsyncEnumerable<StreamEventBatch>(new StreamEventBatch(new EventBatchWeighted(weights, iterations, outputData)));
             }
             else
             {
@@ -101,7 +102,7 @@ namespace FlowtideDotNet.Core.Operators.Filter
                     outputColumns[i] = new ColumnWithOffset(data.EventBatchData.Columns[i], offsets[i], false);
                 }
                 var outputData = new EventBatchData(outputColumns);
-                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, outputData));
+                return new SingleAsyncEnumerable<StreamEventBatch>(new StreamEventBatch(new EventBatchWeighted(weights, iterations, outputData)));
             }
         }
 
