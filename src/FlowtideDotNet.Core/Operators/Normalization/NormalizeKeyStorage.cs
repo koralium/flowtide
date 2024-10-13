@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
@@ -26,9 +27,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
     {
         private readonly List<int> _columnsToStore;
         internal readonly EventBatchData _data;
-
+        private DataValueContainer _dataValueContaienr;
         public NormalizeKeyStorage(List<int> columnsToStore, IMemoryAllocator memoryAllocator)
         {
+            _dataValueContaienr = new DataValueContainer();
             _columnsToStore = columnsToStore;
             IColumn[] columns = new IColumn[columnsToStore.Count];
             var memoryManager = memoryAllocator;
@@ -41,6 +43,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         internal NormalizeKeyStorage(List<int> columnsToStore, EventBatchData eventBatchData)
         {
+            _dataValueContaienr = new DataValueContainer();
             _columnsToStore = columnsToStore;
             _data = eventBatchData;
         }
@@ -52,7 +55,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             // Add is only run internally to copy values in the tree
             for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                _data.Columns[i].Add(key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
+                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, _dataValueContaienr, default);
+                _data.Columns[i].Add(_dataValueContaienr);
             }
         }
 
@@ -89,7 +93,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                _data.Columns[i].InsertAt(index, key.referenceBatch.Columns[_columnsToStore[i]].GetValueAt(key.RowIndex, default));
+                key.referenceBatch.Columns[_columnsToStore[i]].GetValueAt(key.RowIndex, _dataValueContaienr, default);
+                _data.Columns[i].InsertAt(index, _dataValueContaienr);
             }
         }
 
@@ -103,10 +108,9 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
+            for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                RemoveAt(i);
+                _data.Columns[i].RemoveRange(start, count);
             }
         }
 
@@ -115,7 +119,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             // Update is only run internally to copy values in the tree
             for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                _data.Columns[i].UpdateAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
+                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, _dataValueContaienr, default);
+                _data.Columns[i].UpdateAt(index, _dataValueContaienr);
             }
         }
 
@@ -123,13 +128,24 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                _data.Columns[i].InsertAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
+                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, _dataValueContaienr, default);
+                _data.Columns[i].InsertAt(index, _dataValueContaienr);
             }
         }
 
         public void Dispose()
         {
             _data.Dispose();
+        }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
         }
     }
 }

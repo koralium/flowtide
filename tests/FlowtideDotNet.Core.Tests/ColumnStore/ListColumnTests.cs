@@ -424,5 +424,98 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(1, start);
             Assert.Equal(1, end);
         }
+
+        [Fact]
+        public void RemoveRangeNonNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<byte[]?> expected = new List<byte[]?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var byteSize = r.Next(20);
+                byte[] data = new byte[byteSize];
+                r.NextBytes(data);
+                expected.Add(data);
+                column.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+            }
+
+            column.RemoveRange(100, 100);
+            expected.RemoveRange(100, 100);
+
+            Assert.Equal(expected.Count(x => x == null), column.GetNullCount());
+            Assert.Equal(900, column.Count);
+
+            for (int i = 0; i < 900; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                if (expected[i] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(expected[i], actualByteList.ToArray());
+                }
+            }
+        }
+
+        [Fact]
+        public void RemoveRangeWithNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<byte[]?> expected = new List<byte[]?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var isNull = r.Next(2) == 0;
+
+                if (isNull)
+                {
+                    expected.Add(null);
+                    column.Add(NullValue.Instance);
+                }
+                else
+                {
+                    var byteSize = r.Next(20);
+                    byte[] data = new byte[byteSize];
+                    r.NextBytes(data);
+                    expected.Add(data);
+                    column.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+                }
+
+            }
+
+            column.RemoveRange(100, 100);
+            expected.RemoveRange(100, 100);
+
+            Assert.Equal(expected.Count(x => x == null), column.GetNullCount());
+            Assert.Equal(900, column.Count);
+
+            for (int i = 0; i < 900; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                if (expected[i] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(expected[i], actualByteList.ToArray());
+                }
+            }
+        }
     }
 }

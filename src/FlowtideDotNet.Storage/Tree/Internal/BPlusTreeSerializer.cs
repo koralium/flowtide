@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 
@@ -21,14 +23,17 @@ namespace FlowtideDotNet.Storage.Tree.Internal
     {
         private readonly IBPlusTreeKeySerializer<K, TKeyContainer> _keySerializer;
         private readonly IBplusTreeValueSerializer<V, TValueContainer> _valueSerializer;
+        private readonly IMemoryAllocator _memoryAllocator;
 
         public BPlusTreeSerializer(
             IBPlusTreeKeySerializer<K, TKeyContainer> keySerializer,
-            IBplusTreeValueSerializer<V, TValueContainer> valueSerializer
+            IBplusTreeValueSerializer<V, TValueContainer> valueSerializer,
+            IMemoryAllocator memoryAllocator
             )
         {
             this._keySerializer = keySerializer;
             this._valueSerializer = valueSerializer;
+            this._memoryAllocator = memoryAllocator;
         }
 
         public IBPlusTreeNode Deserialize(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
@@ -64,14 +69,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 var keyContainer = _keySerializer.Deserialize(reader);
 
-                var parent = new InternalNode<K, V, TKeyContainer>(id, keyContainer);
+                var childrenByteLength = reader.ReadInt32();
+                var childrenBytes = reader.ReadBytes(childrenByteLength);
+                var childrenMemory = _memoryAllocator.Allocate(childrenByteLength, 64);
+                childrenBytes.CopyTo(childrenMemory.Memory.Span);
+                var childrenList = new PrimitiveList<long>(childrenMemory, childrenByteLength / sizeof(long), _memoryAllocator);
 
-                var childrenLength = reader.ReadInt32();
-                for (int i = 0; i < childrenLength; i++)
-                {
-                    var childId = reader.ReadInt64();
-                    parent.children.Add(childId);
-                }
+                var parent = new InternalNode<K, V, TKeyContainer>(id, keyContainer, childrenList);
 
                 return parent;
             }
@@ -114,11 +118,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 _keySerializer.Serialize(writer, parent.keys);
 
-                writer.Write(parent.children.Count);
-                for (int i = 0; i < parent.children.Count; i++)
-                {
-                    writer.Write(parent.children[i]);
-                }
+                var childrenSpan = parent.children.SlicedMemory.Span;
+                writer.Write(childrenSpan.Length);
+                writer.Write(childrenSpan);
                 writer.Flush();
                 writeMemStream.Close();
                 return memoryStream.ToArray();

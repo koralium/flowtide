@@ -15,6 +15,7 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
@@ -186,6 +187,21 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int EndNewList()
         {
             throw new NotImplementedException();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            _data.RemoveRange(start, count);
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return (end - start + 1) * sizeof(double);
+        }
+
+        public int GetByteSize()
+        {
+            return Count * sizeof(double);
         }
     }
 }

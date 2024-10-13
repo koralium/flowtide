@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Storage.Memory
             {
                 return new Measurement<long>(_allocationCount, new KeyValuePair<string, object?>("stream", m_streamName), new KeyValuePair<string, object?>("operator", m_operatorName));
             });
-            meter.CreateObservableCounter("flowtide.memory.freed_bytes", () =>
+            meter.CreateObservableGauge("flowtide.memory.freed_bytes", () =>
             {
                 return new Measurement<long>(_freedMemory, new KeyValuePair<string, object?>("stream", m_streamName), new KeyValuePair<string, object?>("operator", m_operatorName));
             }, "bytes");
@@ -60,6 +60,40 @@ namespace FlowtideDotNet.Storage.Memory
             var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
             RegisterAllocationToMetrics(size);
             return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
+        }
+
+        public IMemoryOwner<byte> Realloc(IMemoryOwner<byte> memory, int size, int alignment)
+        {
+            if (memory is NativeCreatedMemoryOwner native)
+            {
+                var previousLength = native.length;
+                var newPtr = NativeMemory.AlignedRealloc(native.ptr, (nuint)size, (nuint)alignment);
+                if (newPtr == native.ptr)
+                {
+                    var diff = size - previousLength;
+                    RegisterAllocationToMetrics(diff);
+                }
+                else
+                {
+                    RegisterAllocationToMetrics(size);
+                    RegisterFreeToMetrics(previousLength);
+                }
+                
+                native.ptr = newPtr;
+                native.length = size;
+                return native;
+            }
+            else
+            {
+                var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
+                RegisterAllocationToMetrics(size);
+                RegisterFreeToMetrics(memory.Memory.Length);
+                // Copy the memory
+                var existingMemory = memory.Memory;
+                NativeMemory.Copy(existingMemory.Pin().Pointer, ptr, (nuint)existingMemory.Length);
+                memory.Dispose();
+                return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
+            }
         }
 
         public void RegisterAllocationToMetrics(int size)

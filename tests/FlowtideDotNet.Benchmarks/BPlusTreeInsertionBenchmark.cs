@@ -17,6 +17,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FASTER.core;
 using Microsoft.Extensions.Logging.Abstractions;
+using FlowtideDotNet.Storage.Memory;
 
 namespace DifferntialCompute.Benchmarks
 {
@@ -54,7 +55,8 @@ namespace DifferntialCompute.Benchmarks
                 BucketSize = 1024,
                 Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
                 KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
-                ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator =  GlobalMemoryManager.Instance
             }).GetAwaiter().GetResult();
             tree.Clear();
         }

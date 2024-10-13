@@ -60,5 +60,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         void AddToNewList<T>(in T value) where T : IDataValue;
 
         int EndNewList();
+
+        void RemoveRange(int start, int count);
+
+        int GetByteSize(int start, int end);
+
+        int GetByteSize();
     }
 }

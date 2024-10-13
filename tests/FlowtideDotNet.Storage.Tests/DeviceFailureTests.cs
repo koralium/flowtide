@@ -12,6 +12,7 @@
 
 using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
@@ -254,7 +255,8 @@ namespace FlowtideDotNet.Storage.Tests
                 BucketSize = 8,
                 Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
                 KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
-                ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             });
 
             await tree.Upsert(3, "hello");
@@ -304,7 +306,8 @@ namespace FlowtideDotNet.Storage.Tests
                 BucketSize = 8,
                 Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
                 KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
-                ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             });
 
             for (int i = 0; i < 4096; i++)

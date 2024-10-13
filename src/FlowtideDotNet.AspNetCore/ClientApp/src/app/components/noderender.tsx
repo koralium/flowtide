@@ -4,7 +4,7 @@ import { Handle, Position } from 'reactflow';
 export interface GraphNodeRenderProps {
     data: {
         label: string
-        rateLastMinute?: number
+        eventsPerSecond?: number
         busy?: number
         backpressure?: number
     }
@@ -15,10 +15,10 @@ export const GraphNodeRender: React.FunctionComponent<GraphNodeRenderProps> = (p
     let color = 'white dark:bg-gray-900';
 
     if (props.data.backpressure ?? 0 > 0.8) {
-        color = 'bg-gray-400'
+        color = 'bg-gray-400 dark:bg-gray-700'
     }
     if (props.data.busy ?? 0 > 0.8) {
-        color = 'bg-red-400'
+        color = 'bg-red-400 dark:bg-red-700'
     }
 
     return (
@@ -27,7 +27,7 @@ export const GraphNodeRender: React.FunctionComponent<GraphNodeRenderProps> = (p
         <div>
             {props.data.label}
             <br />
-            {props.data.rateLastMinute !== undefined ? `${props.data.rateLastMinute} / min` : <></>}
+            {props.data.eventsPerSecond !== undefined ? `${props.data.eventsPerSecond} / s` : <></>}
             <br />
             {props.data.busy !== undefined ? `Busy: ${JSON.stringify(props.data.busy)}` : <></>}
             <br />

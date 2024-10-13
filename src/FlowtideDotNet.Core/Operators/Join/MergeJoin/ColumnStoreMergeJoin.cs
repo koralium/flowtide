@@ -34,6 +34,8 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -64,6 +66,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected readonly Func<EventBatchData, int, EventBatchData, int, bool>? _postCondition;
 
         private readonly DataValueContainer _dataValueContainer;
+
+        private const int MaxRowSize = 100;
+        private const int MaxCacheMisses = 1;
 
 #if DEBUG_WRITE
         // Debug data
@@ -185,7 +190,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
-            
+            var startCacheMisses = GetCacheMisses();
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
                 rightColumns.Add(Column.Create(memoryManager)); 
@@ -239,6 +244,51 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             foundOffsets.Add(i);
                             iterations.Add(msg.Data.Iterations[i]);
                             weights.Add(outputWeight);
+
+                            var newCacheMisses = GetCacheMisses();
+                            var deltaCacheMisses = newCacheMisses - startCacheMisses;
+                            // Check if we have more than 100 elements, if so we must yield the batch
+                            if (foundOffsets.Count >= MaxRowSize || deltaCacheMisses > MaxCacheMisses)
+                            {
+                                startCacheMisses = newCacheMisses;
+                                IColumn[] outputColumns = new IColumn[_leftOutputColumns.Count + rightColumns.Count];
+                                if (_leftOutputColumns.Count > 0)
+                                {
+                                    for (int l = 0; l < _leftOutputColumns.Count; l++)
+                                    {
+                                        outputColumns[_leftOutputIndices[l]] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_leftOutputColumns[l]], foundOffsets, true);
+                                    }
+                                }
+                                else
+                                {
+                                    foundOffsets.Dispose();
+                                }
+                                for (int l = 0; l < rightColumns.Count; l++)
+                                {
+                                    outputColumns[_rightOutputIndices[l]] = rightColumns[l];
+                                }
+
+                                var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+
+#if DEBUG_WRITE
+                                foreach (var o in outputBatch.Events)
+                                {
+                                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
+                                }
+                                await outputWriter.FlushAsync();
+#endif
+                                _eventsCounter.Add(outputBatch.Data.Weights.Count);
+                                yield return outputBatch;
+                                
+                                // Reset all lists
+                                foundOffsets = new PrimitiveList<int>(MemoryAllocator);
+                                weights = new PrimitiveList<int>(MemoryAllocator);
+                                iterations = new PrimitiveList<uint>(MemoryAllocator);
+                                for (int l = 0; l < rightColumns.Count; l++)
+                                {
+                                    rightColumns[l] = Column.Create(MemoryAllocator);
+                                }
+                            }
                         }
                         if (_searchRightComparer.end < (page.Keys.Count - 1))
                         {
@@ -258,7 +308,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         rightColumns[z].Add(NullValue.Instance);
                     }
                 }
-                await _leftTree!.RMWNoResult(in columnReference, new JoinWeights() { weight = weight, joinWeight = joinWeight }, (input, current, found) =>
+                var insertWeights = new JoinWeights() { weight = weight, joinWeight = joinWeight };
+                await _leftTree!.RMWNoResult(in columnReference, in insertWeights, (input, current, found) =>
                 {
                     if (found)
                     {
@@ -295,6 +346,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
 
                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+
 #if DEBUG_WRITE
                 foreach (var o in outputBatch.Events)
                 {
@@ -318,6 +370,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             _rightIterator.Reset();
         }
 
+        private long GetCacheMisses()
+        {
+            return _leftTree!.CacheMisses + _rightTree!.CacheMisses;
+        }
+
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveRight(StreamEventBatch msg, long time)
         {
             Debug.Assert(_eventsCounter != null);
@@ -328,7 +385,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
-            
+            long startCacheMisses = GetCacheMisses();
+
             for (int i = 0; i < _leftOutputColumns.Count; i++)
             {
                 leftColumns.Add(Column.Create(memoryManager));
@@ -387,10 +445,56 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 in pageKeyStorage!, 
                                 in leftColumns, 
                                 ref joinWeight);
+
+                            var newCacheMisses = GetCacheMisses();
+                            var deltaCacheMisses = newCacheMisses - startCacheMisses;
+
+                            // Check if we have more than 100 elements, if so we must yield the batch
+                            if (foundOffsets.Count >= MaxRowSize || deltaCacheMisses > MaxCacheMisses)
+                            {
+                                startCacheMisses = newCacheMisses;
+                                IColumn[] outputColumns = new IColumn[leftColumns.Count + _rightOutputColumns.Count];
+                                for (int l = 0; l < leftColumns.Count; l++)
+                                {
+                                    outputColumns[_leftOutputIndices[l]] = leftColumns[l];
+                                }
+                                if (_rightOutputColumns.Count > 0)
+                                {
+                                    for (int l = 0; l < _rightOutputColumns.Count; l++)
+                                    {
+                                        outputColumns[_rightOutputIndices[l]] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_rightOutputColumns[l]], foundOffsets, true);
+                                    }
+                                }
+                                else
+                                {
+                                    foundOffsets.Dispose();
+                                }
+                                var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+
+#if DEBUG_WRITE
+                                foreach (var o in outputBatch.Events)
+                                {
+                                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
+                                }
+                                await outputWriter.FlushAsync();
+#endif
+                                _eventsCounter.Add(outputBatch.Data.Weights.Count);
+                                yield return outputBatch;
+
+                                // Reset all lists
+                                foundOffsets = new PrimitiveList<int>(MemoryAllocator);
+                                weights = new PrimitiveList<int>(MemoryAllocator);
+                                iterations = new PrimitiveList<uint>(MemoryAllocator);
+                                for (int l = 0; l < leftColumns.Count; l++)
+                                {
+                                    leftColumns[l] = Column.Create(MemoryAllocator);
+                                }
+                            }
+                            
                         }
                         if (pageUpdated)
                         {
-                            await page.SavePage();
+                            await page.SavePage(false);
                         }
                         if (_searchLeftComparer.end < (page.Keys.Count - 1))
                         {
@@ -398,7 +502,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         }
                     }
                 }
-                await _rightTree!.RMWNoResult(in columnReference, new JoinWeights() { weight = weight, joinWeight = joinWeight }, (input, current, found) =>
+                var insertWeights = new JoinWeights() { weight = weight, joinWeight = joinWeight };
+                await _rightTree!.RMWNoResult(in columnReference, in insertWeights, (input, current, found) =>
                 {
                     if (found)
                     {
@@ -597,14 +702,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 {
                     Comparer = _leftInsertComparer,
                     KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Left.OutputLength, MemoryAllocator),
-                    ValueSerializer = new JoinWeightsSerializer(MemoryAllocator)
+                    ValueSerializer = new JoinWeightsSerializer(MemoryAllocator),
+                    UseByteBasedPageSizes = true,
+                    MemoryAllocator = MemoryAllocator
                 });
             _rightTree = await stateManagerClient.GetOrCreateTree("right",
                 new BPlusTreeOptions<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>()
                 {
                     Comparer = _rightInsertComparer,
                     KeySerializer = new ColumnStoreSerializer(_mergeJoinRelation.Right.OutputLength, MemoryAllocator),
-                    ValueSerializer = new JoinWeightsSerializer(MemoryAllocator)
+                    ValueSerializer = new JoinWeightsSerializer(MemoryAllocator),
+                    UseByteBasedPageSizes = true,
+                    MemoryAllocator = MemoryAllocator
                 });
 
             _leftIterator = _leftTree.CreateIterator();

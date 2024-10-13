@@ -19,6 +19,9 @@ using System.Data;
 using System.Data.Common;
 using System.Text;
 using Microsoft.Extensions.Primitives;
+using FlowtideDotNet.Core.ColumnStore;
+using System.Collections.Generic;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
@@ -92,6 +95,203 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     }
                 });
             };
+        }
+
+        public static List<Action<SqlDataReader, IColumn>> GetColumnEventCreator(ReadOnlyCollection<DbColumn> dbColumns)
+        {
+            List<Action<SqlDataReader, IColumn>> output = new List<Action<SqlDataReader, IColumn>>();
+            for (int i = 0; i < dbColumns.Count; i++)
+            {
+                var column = dbColumns[i];
+                int index = i;
+                switch (column.DataTypeName)
+                {
+                    case "nchar":
+                    case "char":
+                    case "varchar":
+                    case "nvarchar":
+                    case "ntext":
+                    case "text":
+                    case "xml":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            column.Add(new StringValue(reader.GetString(index)));
+                        });
+                        break;
+                    case "tinyint":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            column.Add(new Int64Value(reader.GetByte(index)));
+                        });
+                        break;
+                    case "smallint":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new Int64Value(reader.GetInt16(index)));
+                        });
+                        break;
+                    case "int":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new Int64Value(reader.GetInt32(index)));
+                        });
+                        break;
+                    case "money":
+                    case "decimal":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new DecimalValue(reader.GetDecimal(index)));
+                        });
+                        break;
+                    case "date":
+                    case "datetime":
+                    case "smalldatetime":
+                    case "datetime2":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            var dateTime = reader.GetDateTime(index);
+                            var ms = dateTime.Subtract(DateTime.UnixEpoch).Ticks;
+                            column.Add(new Int64Value(ms));
+                        });
+                        break;
+                    case "time":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            var time = reader.GetTimeSpan(index);
+                            column.Add(new Int64Value(time.Ticks));
+                        });
+                        break;
+                    case "bit":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            var boolean = reader.GetBoolean(index);
+                            column.Add(new BoolValue(boolean));
+                        });
+                        break;
+                    case "bigint":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new Int64Value(reader.GetInt64(index)));
+                        });
+                        break;
+                    case "real":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new DoubleValue(reader.GetFloat(index)));
+                        });
+                        break;
+                    case "float":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new DoubleValue(reader.GetDouble(index)));
+                        });
+                        break;
+                    case "uniqueidentifier":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            var guid = reader.GetGuid(index);
+                            column.Add(new StringValue(guid.ToString()));
+                        });
+                        break;
+                    case "binary":
+                    case "varbinary":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            var binary = reader.GetSqlBinary(index);
+                            column.Add(new BinaryValue(binary.Value));
+                        });
+                        break;
+                    case "image":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            var binary = reader.GetSqlBinary(index);
+                            column.Add(new BinaryValue(binary.Value));
+                        });
+                        break;
+                    default:
+                        throw new NotImplementedException(column.DataTypeName);
+                }
+            }
+            return output;
         }
 
         public static SubstraitBaseType GetSubstraitType(string dataTypeName)

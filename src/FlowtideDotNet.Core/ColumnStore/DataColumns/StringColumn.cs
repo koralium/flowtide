@@ -98,7 +98,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             dataValueContainer._type = ArrowTypeId.String;
-            dataValueContainer._stringValue = new StringValue(_binaryList.Get(in index).ToArray());
+            dataValueContainer._stringValue = new StringValue(_binaryList.GetMemory(in index));
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
@@ -197,6 +197,21 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int EndNewList()
         {
             throw new NotImplementedException();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            _binaryList.RemoveRange(start, count);
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _binaryList.GetByteSize(start, end);
+        }
+
+        public int GetByteSize()
+        {
+            return _binaryList.GetByteSize(0, Count - 1);
         }
     }
 }

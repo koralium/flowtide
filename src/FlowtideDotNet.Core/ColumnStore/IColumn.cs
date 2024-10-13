@@ -59,5 +59,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         void Rent(int count);
 
         void Return();
+
+        void RemoveRange(in int index, in int count);
+
+        int GetByteSize();
+
+        int GetByteSize(int start, int end);
     }
 }

@@ -21,7 +21,7 @@ using System.Threading.Tasks;
 using System.Collections;
 using FlowtideDotNet.Storage.Memory;
 
-namespace FlowtideDotNet.Core.ColumnStore.Utils
+namespace FlowtideDotNet.Storage.DataStructures
 {
     public unsafe class PrimitiveList<T> : IDisposable, IReadOnlyList<T>
         where T: unmanaged
@@ -48,6 +48,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length = length;
             _memoryAllocator = memoryAllocator;
         }
+
+        public Span<T> Span => new Span<T>(_data, _length);
 
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
@@ -79,12 +81,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 }
                 else
                 {
-                    var newMemory = _memoryAllocator.Allocate(allocSize, 64);
-                    var newPtr = newMemory.Memory.Pin().Pointer;
-                    NativeMemory.Copy(_data, newPtr, (nuint)(_dataLength * sizeof(T)));
-                    _data = newPtr;
-                    _memoryOwner.Dispose();
-                    _memoryOwner = newMemory;
+                    _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, allocSize, 64);
+                    _data = _memoryOwner.Memory.Pin().Pointer;
                 }
                 _dataLength = newLength;
             }
@@ -96,6 +94,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             EnsureCapacity(_length + 1);
             AccessSpan[_length++] = value;
+        }
+
+        public void AddRangeFrom(PrimitiveList<T> list, int index, int count)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            var sourceSpan = list.AccessSpan;
+            sourceSpan.Slice(index, count).CopyTo(span.Slice(_length, count));
+            _length += count;
         }
 
         public void InsertAt(int index, T value)

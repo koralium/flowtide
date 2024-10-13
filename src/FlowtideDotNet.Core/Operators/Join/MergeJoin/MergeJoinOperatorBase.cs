@@ -302,7 +302,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                     if (pageUpdated)
                     {
-                        await page.SavePage();
+                        await page.SavePage(false);
                     }
                     if (shouldBreak)
                     {
@@ -401,14 +401,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 Comparer = new BPlusTreeListComparer<JoinStreamEvent>(leftComparer),
                 KeySerializer = new KeyListSerializer<JoinStreamEvent>(new JoinStreamEvenBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
+                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
             _rightTree = await stateManagerClient.GetOrCreateTree("right", 
                 new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>()
             {
                 Comparer = new BPlusTreeListComparer<JoinStreamEvent>(rightComparer),
                 KeySerializer = new KeyListSerializer<JoinStreamEvent>(new JoinStreamEvenBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
+                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
         }
     }

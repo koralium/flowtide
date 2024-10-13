@@ -20,6 +20,7 @@ using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Storage.DataStructures;
 
 namespace MonitoringPrometheus
 {

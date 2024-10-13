@@ -126,7 +126,8 @@ namespace FlowtideDotNet.Core.Operators.Read
             {
                 Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
                 KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
-                ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer())
+                ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
             await _fullLoadTempTree.Clear();
 
@@ -135,7 +136,8 @@ namespace FlowtideDotNet.Core.Operators.Read
             {
                 Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
                 KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
-                ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer())
+                ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
 
             _deletionsTree = await stateManagerClient.GetOrCreateTree("deletions", 
@@ -143,7 +145,8 @@ namespace FlowtideDotNet.Core.Operators.Read
             {
                 Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
                 KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
             await _deletionsTree.Clear();
         }

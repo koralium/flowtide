@@ -110,6 +110,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
+        public Memory<byte> MemorySlice => GetMemorySlice();
+
+        private Memory<byte> GetMemorySlice()
+        {
+            if (_memoryOwner == null)
+            {
+                return new Memory<byte>();
+            }
+            return _memoryOwner.Memory.Slice(0, ((_length + 31) / 32) * 4);
+        }
+
         public int Count => _length;
 
         public BitmapList()
@@ -171,12 +182,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 else
                 {
                     int oldSize = _dataLength * sizeof(int);
-                    var newMemory = memoryAllocator.Allocate(allocationSize, 64);
-                    var newPtr = newMemory.Memory.Pin().Pointer;
-                    NativeMemory.Copy(_data, newPtr, (nuint)oldSize);
-                    _memoryOwner.Dispose();
-                    _memoryOwner = newMemory;
-                    _data = newPtr;
+                    _memoryOwner = memoryAllocator.Realloc(_memoryOwner, allocationSize, 64);
+                    _data = _memoryOwner.Memory.Pin().Pointer;
                     NativeMemory.Fill((byte*)(_data) + oldSize, (nuint)(allocationSize - oldSize), 0);
                 }
                 _dataLength = length;
@@ -332,6 +339,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        public void RemoveRange(in int index, in int count)
+        {
+            int end = index + count;
+
+            for (int i = end - 1; i >= index; i--)
+            {
+                RemoveAt(i);
+            }
+        }
+
         private void ShiftRight(int fromIndex)
         {
             var span = AccessSpan;
@@ -404,6 +421,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public void Clear()
         {
             _length = 0;
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return (((end - start) + 31) / 32) * 4;
         }
     }
 }

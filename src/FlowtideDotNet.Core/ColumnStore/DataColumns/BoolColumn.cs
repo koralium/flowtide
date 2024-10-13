@@ -169,7 +169,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            var valueBuffer = new ArrowBuffer(_data.Memory);
+            var valueBuffer = new ArrowBuffer(_data.MemorySlice);
             var arr = new BooleanArray(valueBuffer, nullBuffer, Count, nullCount, 0);
             return (arr, new BooleanType());
         }
@@ -212,6 +212,25 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int EndNewList()
         {
             throw new NotImplementedException();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            var end = start + count;
+            for (int i = end - 1; i >= start; i--)
+            {
+                _data.RemoveAt(i);
+            }
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
+        }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize(0, Count - 1);
         }
     }
 }

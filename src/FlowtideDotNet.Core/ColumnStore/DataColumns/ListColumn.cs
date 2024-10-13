@@ -212,10 +212,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var startOffset = _offsets.Get(index);
             var endOffset = _offsets.Get(index + 1);
-            for (int i = endOffset - 1; i >= startOffset; i--)
-            {
-                _internalColumn.RemoveAt(i);
-            }
+            _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
             _offsets.RemoveAt(index + 1, startOffset - endOffset);
         }
 
@@ -331,6 +328,35 @@ namespace FlowtideDotNet.Core.ColumnStore
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerable().GetEnumerator();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            var startOffset = _offsets.Get(start);
+            var endOffset = _offsets.Get(start + count);
+
+            // Remove the offsets
+            _offsets.RemoveRange(start, count, startOffset - endOffset);
+
+            // Remove the values in the internal column
+            _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            var startOffset = _offsets.Get(start);
+            var endOffset = _offsets.Get(end + 1);
+
+            if (startOffset == endOffset)
+            {
+                return sizeof(int);
+            }
+            return _internalColumn.GetByteSize(startOffset, endOffset - 1) + ((end - start + 1) * sizeof(int));
+        }
+
+        public int GetByteSize()
+        {
+            return _internalColumn.GetByteSize() + (_offsets.Count * sizeof(int));
         }
     }
 }

@@ -237,7 +237,6 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             using var conn = new SqlConnection(connectionStringFunc());
             conn.Open();
             return SqlServerUtils.IsChangeTrackingEnabled(conn, _tableName).GetAwaiter().GetResult();
-
         }
 
         public override ValueTask DisposeAsync()

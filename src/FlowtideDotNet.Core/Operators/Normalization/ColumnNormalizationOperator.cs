@@ -20,6 +20,7 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -205,9 +206,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 }
                 for (int i = 0; i < _otherColumns.Count; i++)
                 {
-                    if (_emitList.Contains(_otherColumns[i]))
+                    var emitIndex = _emitList.IndexOf(_otherColumns[i]);
+                    if (emitIndex >= 0)
                     {
-                        deleteColumns[_otherColumns[i]] = deleteBatchColumns[i];
+                        deleteColumns[emitIndex] = deleteBatchColumns[i];
                     }
                 }
 
@@ -279,7 +281,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                                     deleteBatchKeyOffsets.Add(input.RowIndex);
                                     for (int k = 0; k < _otherColumns.Count; k++)
                                     {
-                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[_otherColumns[k]].GetValueAt(current.RowIndex, default));
+                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
                                     }
                                     return (input, GenericWriteOperation.Upsert);
                                 }
@@ -328,7 +330,9 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 {
                     Comparer = new NormalizeTreeComparer(_normalizationRelation.KeyIndex),
                     KeySerializer = new NormalizeKeyStorageSerializer(_normalizationRelation.KeyIndex, MemoryAllocator),
-                    ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator)
+                    ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator),
+                    UseByteBasedPageSizes = true,
+                    MemoryAllocator = MemoryAllocator
                 });
         }
     }

@@ -22,8 +22,8 @@ namespace FlowtideDotNet.Storage.Memory
 {
     internal unsafe class NativeCreatedMemoryOwner : MemoryManager<byte>
     {
-        private void* ptr;
-        private int length;
+        internal void* ptr;
+        internal int length;
         private IMemoryAllocator? memoryManager;
 
         public NativeCreatedMemoryOwner()

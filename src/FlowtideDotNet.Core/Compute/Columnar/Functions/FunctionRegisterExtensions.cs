@@ -41,7 +41,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     var expr = visitor.Visit(arg, paramInfo);
                     parameters[i] = expr!;
                     var paramType = methodParameters[i].ParameterType;
-                    if (paramType.ContainsGenericParameters)
+
+                    var argIndex = genericArguments.IndexOf(paramType);
+                    if (argIndex >= 0)
+                    {
+                        genericTypes[argIndex] = expr!.Type;
+                    }
+                    else if (paramType.ContainsGenericParameters)
                     {
                         var eleType = paramType.GetElementType();
 
@@ -52,7 +58,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                         if (eleType.IsGenericParameter)
                         {
                             var genericArgumentIndex = genericArguments.IndexOf(eleType);
-                            genericTypes[genericArgumentIndex] = expr.Type;
+                            genericTypes[genericArgumentIndex] = expr!.Type;
                         }
                     }
                 }

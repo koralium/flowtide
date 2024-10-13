@@ -132,9 +132,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             var val = dataValue.AsLong;
             if (desc)
             {
-                return BoundarySearch.SearchBoundries(_data, val, start, end, Int64ComparerDesc.Instance);
+                return BoundarySearch.SearchBoundriesInt64Desc(_data, start, end, val);
             }
-            return BoundarySearch.SearchBoundries(_data, val, start, end, Int64Comparer.Instance);
+            return BoundarySearch.SearchBoundriesInt64Asc(_data, start, end, val);
         }
 
         public int Update(in int index, in IDataValue value)
@@ -245,6 +245,22 @@ namespace FlowtideDotNet.Core.ColumnStore
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerable().GetEnumerator();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            Debug.Assert(_data != null);
+            _data.RemoveRange(start, count);
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return (end - start + 1) * sizeof(long);
+        }
+
+        public int GetByteSize()
+        {
+            return Count * sizeof(long);
         }
     }
 }

@@ -12,14 +12,8 @@
 
 using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -72,6 +66,29 @@ namespace FlowtideDotNet.Core.ColumnStore
             innerColumn.Dispose();
         }
 
+        public int GetByteSize()
+        {
+            return innerColumn.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            int size = 0;
+            for (int i = start; i <= end; i++)
+            {
+                var offset = offsets[i];
+                if (includeNullValueAtEnd && offset == innerColumn.Count)
+                {
+                    size += 0;
+                }
+                else
+                {
+                    size += innerColumn.GetByteSize(offset, offset);
+                }
+            }
+            return size;
+        }
+
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             var offset = offsets[index];
@@ -111,6 +128,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void RemoveAt(in int index)
         {
             throw new NotSupportedException("Column with offset does not support RemoveAt.");
+        }
+
+        public void RemoveRange(in int index, in int count)
+        {
+            throw new NotSupportedException("Column with offset does not support RemoveRange.");
         }
 
         public void Rent(int count)
