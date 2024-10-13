@@ -12,6 +12,8 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
@@ -168,6 +170,94 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                     Assert.True(column.GetValueAt(i, default).IsNull);
                 }
             }
+        }
+
+        [Fact]
+        public void TestBoundarySearchInt64Asc()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new Int64Value(1));
+            column.Add(new Int64Value(2));
+            column.Add(new Int64Value(3));
+            column.Add(new Int64Value(4));
+
+            var result = column.SearchBoundries(new Int64Value(0), 0, 3, default);
+            Assert.Equal(~0, result.Item1);
+            Assert.Equal(~0, result.Item2);
+
+            result = column.SearchBoundries(new Int64Value(5), 0, 3, default);
+            Assert.Equal(~4, result.Item1);
+            Assert.Equal(~4, result.Item2);
+
+            result = column.SearchBoundries(new Int64Value(3), 1, 3, default);
+            Assert.Equal(2, result.Item1);
+            Assert.Equal(2, result.Item2);
+        }
+
+        [Fact]
+        public void TestBoundarySearchInt64EmptyListAsc()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            var result = column.SearchBoundries(new Int64Value(0), 0, -1, default);
+            Assert.Equal(~0, result.Item1);
+            Assert.Equal(~0, result.Item2);
+        }
+
+        [Fact]
+        public void TestBoundarySearchInt64RangeInMiddleAsc()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new Int64Value(1));
+            column.Add(new Int64Value(2));
+            column.Add(new Int64Value(2));
+            column.Add(new Int64Value(2));
+            column.Add(new Int64Value(3));
+            column.Add(new Int64Value(4));
+
+            var result = column.SearchBoundries(new Int64Value(2), 0, 5, default);
+            Assert.Equal(1, result.Item1);
+            Assert.Equal(3, result.Item2);
+        }
+
+        [Fact]
+        public void TestBoundarySearchInt64RangeInEndAsc()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new Int64Value(1));
+            column.Add(new Int64Value(2));
+            column.Add(new Int64Value(2));
+            column.Add(new Int64Value(2));
+            column.Add(new Int64Value(3));
+            column.Add(new Int64Value(4));
+            column.Add(new Int64Value(4));
+            column.Add(new Int64Value(4));
+
+            var result = column.SearchBoundries(new Int64Value(4), 0, 7, default);
+            Assert.Equal(5, result.Item1);
+            Assert.Equal(7, result.Item2);
+        }
+
+        [Fact]
+        public void TestBoundarySearchInt64RangeInStartAsc()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new Int64Value(1));
+            column.Add(new Int64Value(1));
+            column.Add(new Int64Value(1));
+            column.Add(new Int64Value(2));
+            column.Add(new Int64Value(3));
+            column.Add(new Int64Value(4));
+            column.Add(new Int64Value(4));
+            column.Add(new Int64Value(4));
+
+            var result = column.SearchBoundries(new Int64Value(1), 0, 7, default);
+            Assert.Equal(0, result.Item1);
+            Assert.Equal(2, result.Item2);
         }
     }
 }

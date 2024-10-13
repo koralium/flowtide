@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    internal class Fp64Type : SubstraitBaseType
+    public class Fp64Type : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.Fp64;
     }
