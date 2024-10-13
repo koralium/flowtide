@@ -10,11 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    public class Int64Type : SubstraitBaseType
+    public class BinaryType : SubstraitBaseType
     {
-        public override SubstraitType Type => SubstraitType.Int64;
+        public override SubstraitType Type => SubstraitType.Binary;
     }
 }
