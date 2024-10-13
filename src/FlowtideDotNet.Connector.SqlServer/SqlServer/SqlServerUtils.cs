@@ -949,6 +949,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         {
             var t = dbColumn.DataType;
 
+            if (t == null)
+            {
+                throw new FlowtideException("Could not get data type from SQL Server");
+            }
+
             if (t.Equals(typeof(string)))
             {
                 return (e) =>
