@@ -53,7 +53,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             await sqlServerFixture.DbContext.BulkInsertAsync(orders);
         }
 
-        public override void AddReadResolvers(IConnectorManager connectorManager)
+        protected override void AddReadResolvers(IConnectorManager connectorManager)
         {
             connectorManager.AddSqlServerSource(() => sqlServerFixture.ConnectionString, (rel) =>
             {

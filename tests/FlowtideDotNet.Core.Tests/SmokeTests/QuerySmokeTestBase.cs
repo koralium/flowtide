@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             deserializer = new SubstraitDeserializer();
         }
 
-        public abstract void AddReadResolvers(IConnectorManager connectorManager);
+        protected abstract void AddReadResolvers(IConnectorManager connectorManager);
 
         public async Task DisposeAsync()
         {
