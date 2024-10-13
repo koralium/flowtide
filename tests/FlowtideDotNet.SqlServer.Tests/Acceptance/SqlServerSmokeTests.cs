@@ -122,15 +122,15 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                                     {
                                         Types = new List<Substrait.Type.SubstraitBaseType>()
                                         {
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType()
+                                            new Int64Type(),
+                                            new Int64Type(),
+                                            new StringType(),
+                                            new Fp64Type(),
+                                            new Int64Type(),
+                                            new StringType(),
+                                            new StringType(),
+                                            new Int64Type(),
+                                            new StringType()
                                         }
                                     }
                                 }
