@@ -3,6 +3,7 @@ using FlowtideDotNet.Substrait.Relations;
 using OpenFga.Sdk.Client;
 using OpenFga.Sdk.Client.Model;
 using OpenFga.Sdk.Model;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Tests
@@ -145,6 +146,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 Name = "testalreadyexist"
             });
             var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+            Debug.Assert(authModelRequest != null);
 
             var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
 
@@ -237,6 +239,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 Name = "testdeletenotexist"
             });
             var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+            Debug.Assert(authModelRequest != null);
 
             var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
 
@@ -329,6 +332,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 Name = "teststore2"
             });
             var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+            Debug.Assert(authModelRequest != null);
 
             var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
 
@@ -438,6 +442,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 Name = "teststore3"
             });
             var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+            Debug.Assert(authModelRequest != null);
 
             var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
 
@@ -612,6 +617,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 Name = "teststore4"
             });
             var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+            Debug.Assert(authModelRequest != null);
 
             var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
 
@@ -676,6 +682,8 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             var stream = new OpenFgaTestStream("testreadparsedstream", conf, true, false);
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
+            Debug.Assert(parsedModel != null);
+
             var modelPlan = OpenFgaToFlowtide.Convert(parsedModel, "doc", "can_read", "openfga");
 
             stream.SqlPlanBuilder.AddPlanAsView("authdata", modelPlan);
@@ -788,6 +796,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 Name = "teststore5"
             });
             var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+            Debug.Assert(authModelRequest != null);
 
             var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
 
@@ -948,6 +957,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 Name = "teststore6"
             });
             var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+            Debug.Assert(authModelRequest != null);
 
             var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
 
@@ -998,6 +1008,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             var stream = new OpenFgaTestStream("TestParsedModelWithAndWildcard", conf, true, false);
 
             var parsedModel = JsonSerializer.Deserialize<AuthorizationModel>(model);
+            Debug.Assert(parsedModel != null);
             var modelPlan = OpenFgaToFlowtide.Convert(parsedModel, "role_binding", "can_read", "openfga");
 
             stream.SqlPlanBuilder.AddPlanAsView("authdata", modelPlan);
@@ -1036,7 +1047,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             });
             await stream.WaitForUpdate();
             var rowsAfterDelete = stream.GetActualRowsAsVectors();
-            Assert.Equal(0, rowsAfterDelete.Count);
+            Assert.Empty(rowsAfterDelete);
         }
 
         [Fact]
@@ -1147,6 +1158,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 Name = "TestReadParsedModelWithStopType"
             });
             var authModelRequest = JsonSerializer.Deserialize<ClientWriteAuthorizationModelRequest>(model);
+            Debug.Assert(authModelRequest != null);
 
             var createModelResponse = await client.WriteAuthorizationModel(authModelRequest, new ClientWriteOptions() { StoreId = createStoreResponse.Id });
 

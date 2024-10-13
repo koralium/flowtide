@@ -29,7 +29,10 @@ connectorManager.AddSink(new DummyWriteFactory("*"));
 
 PlanModifier planModifier = new PlanModifier();
 planModifier.AddRootPlan(plan);
+// Test is running a query plan that uses deprecated method.
+#pragma warning disable CS0618 // Type or member is obsolete
 planModifier.WriteToTable("dummy");
+#pragma warning restore CS0618 // Type or member is obsolete
 plan = planModifier.Modify();
 
 builder.Services.AddFlowtideStream("stream")
