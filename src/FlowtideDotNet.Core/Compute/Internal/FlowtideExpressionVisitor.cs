@@ -233,6 +233,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             Debug.Assert(addValueMethod != null);
             Debug.Assert(finishMethod != null);
             Debug.Assert(flxValueFromBytesMethod != null);
+            Debug.Assert(flxValueToStringMethod != null);
 
             var vectorStartVariable = System.Linq.Expressions.Expression.Variable(typeof(int), "vectorStart");
             var bytesVariable = System.Linq.Expressions.Expression.Variable(typeof(byte[]), "bytes");
@@ -305,7 +306,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             for (int i = 0; i < listNestedExpression.Values.Count; i++)
             {
                 var value = listNestedExpression.Values[i];
-                var valueExpr = Visit(value, state);
+                var valueExpr = Visit(value, state)!;
                 var addValueCall = System.Linq.Expressions.Expression.Call(builderConstant, addValueMethod, valueExpr);
                 blockExpressions.Add(addValueCall);
             }

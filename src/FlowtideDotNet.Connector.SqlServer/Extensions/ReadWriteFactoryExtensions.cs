@@ -52,7 +52,10 @@ namespace FlowtideDotNet.Core.Engine
                     if (pkIndex == -1)
                     {
                         relation.BaseSchema.Names.Add(pk);
-                        relation.BaseSchema.Struct.Types.Add(new AnyType() { Nullable = false });
+                        if (relation.BaseSchema.Struct != null)
+                        {
+                            relation.BaseSchema.Struct.Types.Add(new AnyType() { Nullable = false });
+                        }
                         pkIndices.Add(relation.BaseSchema.Names.Count - 1);
                     }
                     else

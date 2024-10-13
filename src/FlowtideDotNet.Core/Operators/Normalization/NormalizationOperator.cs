@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
     internal class NormalizationOperator : UnaryVertex<StreamEventBatch, NormalizationState>
     {
 #if DEBUG_WRITE
-        private StreamWriter allOutput;
+        private StreamWriter? allOutput;
 #endif
         private readonly NormalizationRelation normalizationRelation;
         private IBPlusTree<string, IngressData, ListKeyContainer<string>, ListValueContainer<IngressData>>? _tree;
@@ -64,8 +64,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         public override async Task<NormalizationState> OnCheckpoint()
         {
 #if DEBUG_WRITE
-            allOutput.WriteLine("Checkpoint");
-            await allOutput.FlushAsync();
+            allOutput!.WriteLine("Checkpoint");
+            await allOutput!.FlushAsync();
 #endif
             Debug.Assert(_tree != null, nameof(_tree));
             // Commit changes in the tree
@@ -109,9 +109,9 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 #if DEBUG_WRITE
             foreach(var e in output)
             {
-                allOutput.WriteLine($"{e.Weight} {e.ToJson()}");
+                allOutput!.WriteLine($"{e.Weight} {e.ToJson()}");
             }
-            await allOutput.FlushAsync();
+            await allOutput!.FlushAsync();
 #endif
             if (output.Count > 0)
             {
