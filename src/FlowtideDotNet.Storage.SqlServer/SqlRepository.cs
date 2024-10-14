@@ -23,6 +23,8 @@ namespace FlowtideDotNet.Storage.SqlServer
         private readonly SqlServerPersistentStorageSettings _settings;
         private ConcurrentBag<StreamPage> Pages { get; set; }
 
+        private int _pageCount = 0;
+
         private readonly DataTable _table = new()
         {
             Columns =
@@ -38,8 +40,6 @@ namespace FlowtideDotNet.Storage.SqlServer
         public int CurrentVersion { get; private set; }
 
         public int LastSuccessfulVersion { get; private set; }
-
-        public int CurrentPageCount => Pages.Count;
 
         public int? StreamKey { get; private set; }
 
@@ -60,12 +60,14 @@ namespace FlowtideDotNet.Storage.SqlServer
             }
 
             Pages.Add(new StreamPage(ToPageKey(key, CurrentVersion), StreamKey.Value, key, value, CurrentVersion));
+            Interlocked.Increment(ref _pageCount);
 
-            if (Pages.Count >= _settings.WritePagesBulkLimit)
+            if (_pageCount >= _settings.WritePagesBulkLimit)
             {
                 StreamPage[] pages = [.. Pages];
                 Task.Run(async () => await SaveStreamPages(pages));
                 Pages = [];
+                Interlocked.Exchange(ref _pageCount, 0);
             }
 
             //_table.Rows.Add(ToPageKey(key, CurrentVersion), StreamKey, key, value, CurrentVersion);
