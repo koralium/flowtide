@@ -26,5 +26,13 @@ namespace FlowtideDotNet.Storage.SqlServer
 
             return storageBuilder;
         }
+
+        public static IFlowtideStorageBuilder AddSqlServerStorage
+            (this IFlowtideStorageBuilder storageBuilder, SqlServerPersistentStorageSettings settings)
+        {
+            storageBuilder.SetPersistentStorage(new SqlServerPersistentStorage(settings));
+
+            return storageBuilder;
+        }
     }
 }
