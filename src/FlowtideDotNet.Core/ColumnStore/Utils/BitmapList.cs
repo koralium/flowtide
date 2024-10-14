@@ -11,17 +11,13 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Memory;
-using System;
 using System.Buffers;
 using System.Collections;
-using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
-using System.Linq;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.Intrinsics.X86;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
@@ -329,42 +325,202 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 var beforeMask = BitPatternArray[mod - 1];
                 var clearMask = topBitsSetMask[mod - 1];
                 var val = span[fromIndex] & beforeMask;
-                ShiftRight(fromIndex);
+                ShiftRight(fromIndex, 1);
                 var newVal = span[fromIndex] & clearMask;
                 span[fromIndex] = (val | newVal);
             }
             else
             {
-                ShiftRight(fromIndex);
+                ShiftRight(fromIndex, 1);
             }
         }
 
         public void RemoveRange(in int index, in int count)
         {
-            int end = index + count;
-
-            for (int i = end - 1; i >= index; i--)
+            var span = AccessSpan;
+            var fromIndex = index >> 5;
+            var mod = index % 32;
+            _length -= count;
+            if (mod > 0)
             {
-                RemoveAt(i);
+                var beforeMask = BitPatternArray[mod - 1];
+                var clearMask = topBitsSetMask[mod - 1];
+                var val = span[fromIndex] & beforeMask;
+                ShiftRight(fromIndex, count);
+                var newVal = span[fromIndex] & clearMask;
+                span[fromIndex] = (val | newVal);
+            }
+            else
+            {
+                ShiftRight(fromIndex, count);
             }
         }
 
-        private void ShiftRight(int fromIndex)
+        private void ShiftRight(int fromIndex, int count)
         {
             var span = AccessSpan;
             // Loop from BitArray.
             int toIndex = fromIndex;
             int lastIndex = _dataLength - 1;
+            var numberOfInts = count / 32;
+            var remainder = (byte)(count & 31);
+            fromIndex = fromIndex + numberOfInts;
             unchecked
             {
+                // If there are more than 16 integers to copy, use AVX2
+                if (fromIndex + 16 <= lastIndex && Avx2.IsSupported)
+                {
+                    ShiftRightAvxSelector(ref span, ref fromIndex, ref toIndex, ref lastIndex, remainder);
+                }
                 while (fromIndex < lastIndex)
                 {
-                    uint right = (uint)span[fromIndex] >> 1;
-                    int left = span[++fromIndex] << (32 - 1);
+                    uint right = (uint)span[fromIndex] >> remainder;
+                    int left = span[++fromIndex] << (32 - remainder);
                     span[toIndex++] = left | (int)right;
                 }
 
-                span[toIndex++] = (int)(span[fromIndex] >> 1);
+                span[toIndex++] = (int)(span[fromIndex] >> remainder);
+            }
+        }
+
+        private void ShiftRightAvx(ref Span<int> span, ref int fromIndex, ref int toIndex, ref int lastIndex, [ConstantExpected] byte remainder, [ConstantExpected] byte bitsMinusRemainder)
+        {
+            fixed (int* spanPtr = span)
+            {
+                while (fromIndex + 8 <= lastIndex)
+                {
+                    // Load 8 ints from span into an AVX register
+                    Vector256<int> current = Avx2.LoadVector256(spanPtr + fromIndex);
+
+                    // Shift all elements right by `remainder` bits
+                    Vector256<int> rightShifted = Avx2.ShiftRightLogical(current, remainder);
+
+                    // Load the next 8 ints and shift them left to handle cross-boundary bits
+                    Vector256<int> next = Avx2.LoadVector256(spanPtr + fromIndex + 1);
+                    Vector256<int> leftShifted = Avx2.ShiftLeftLogical(next, bitsMinusRemainder);
+
+                    // Combine the results using bitwise OR
+                    Vector256<int> result = Avx2.Or(rightShifted, leftShifted);
+
+                    // Store the result back into the span
+                    Avx2.Store(spanPtr + toIndex, result);
+
+                    // Move to the next set of integers
+                    fromIndex += 8;
+                    toIndex += 8;
+                }
+            }
+        }
+
+        /// <summary>
+        /// ShiftRightLogical and ShiftLeftLogical wants a constant value for the shift amount.
+        /// </summary>
+        /// <param name="span"></param>
+        /// <param name="fromIndex"></param>
+        /// <param name="toIndex"></param>
+        /// <param name="lastIndex"></param>
+        /// <param name="remainder"></param>
+        private void ShiftRightAvxSelector(ref Span<int> span, ref int fromIndex, ref int toIndex, ref int lastIndex, byte remainder)
+        {
+            // Perform binary search on remainder to set actual shift values
+            if (remainder < 16)  // remainder < 16
+            {
+                if (remainder < 8)  // remainder < 8
+                {
+                    if (remainder < 4)  // remainder < 4
+                    {
+                        // remainder is 0, 1, 2, or 3
+                        switch (remainder)
+                        {
+                            case 0: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 0, 32); break;
+                            case 1: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 1, 31); break;
+                            case 2: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 2, 30); break;
+                            case 3: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 3, 29); break;
+                        }
+                    }
+                    else  // 4 <= remainder < 8
+                    {
+                        switch (remainder)
+                        {
+                            case 4: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 4, 28); break;
+                            case 5: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 5, 27); break;
+                            case 6: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 6, 26); break;
+                            case 7: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 7, 25); break;
+                        }
+                    }
+                }
+                else  // 8 <= remainder < 16
+                {
+                    if (remainder < 12)  // 8 <= remainder < 12
+                    {
+                        switch (remainder)
+                        {
+                            case 8: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 8, 24); break;
+                            case 9: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 9, 23); break;
+                            case 10: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 10, 22); break;
+                            case 11: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 11, 21); break;
+                        }
+                    }
+                    else  // 12 <= remainder < 16
+                    {
+                        switch (remainder)
+                        {
+                            case 12: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 12, 20); break;
+                            case 13: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 13, 19); break;
+                            case 14: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 14, 18); break;
+                            case 15: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 15, 17); break;
+                        }
+                    }
+                }
+            }
+            else  // remainder >= 16
+            {
+                if (remainder < 24)  // 16 <= remainder < 24
+                {
+                    if (remainder < 20)  // 16 <= remainder < 20
+                    {
+                        switch (remainder)
+                        {
+                            case 16: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 16, 16); break;
+                            case 17: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 17, 15); break;
+                            case 18: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 18, 14); break;
+                            case 19: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 19, 13); break;
+                        }
+                    }
+                    else  // 20 <= remainder < 24
+                    {
+                        switch (remainder)
+                        {
+                            case 20: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 20, 12); break;
+                            case 21: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 21, 11); break;
+                            case 22: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 22, 10); break;
+                            case 23: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 23, 9); break;
+                        }
+                    }
+                }
+                else  // 24 <= remainder < 32
+                {
+                    if (remainder < 28)  // 24 <= remainder < 28
+                    {
+                        switch (remainder)
+                        {
+                            case 24: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 24, 8); break;
+                            case 25: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 25, 7); break;
+                            case 26: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 26, 6); break;
+                            case 27: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 27, 5); break;
+                        }
+                    }
+                    else  // 28 <= remainder < 32
+                    {
+                        switch (remainder)
+                        {
+                            case 28: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 28, 4); break;
+                            case 29: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 29, 3); break;
+                            case 30: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 30, 2); break;
+                            case 31: ShiftRightAvx(ref span, ref fromIndex, ref toIndex, ref lastIndex, 31, 1); break;
+                        }
+                    }
+                }
             }
         }
 
