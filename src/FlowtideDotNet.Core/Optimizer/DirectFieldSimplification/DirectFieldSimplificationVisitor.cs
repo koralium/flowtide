@@ -31,44 +31,46 @@ namespace FlowtideDotNet.Core.Optimizer.DirectFieldSimplification
 
             if (projectRelation.EmitSet)
             {
-                for (int i = 0; i < projectRelation.Emit.Count; i++)
-                {
-                    if (projectRelation.Emit[i] < projectRelation.Input.OutputLength)
-                    {
-                        newEmitList.Add(projectRelation.Emit[i]);
-                    }
-                }
+                newEmitList.AddRange(projectRelation.Emit);
             }
             else
             {
-               // Add only output from the input relation
-               newEmitList.AddRange(Enumerable.Range(0, projectRelation.Input.OutputLength));
-            }
-
-            for (int i = 0; i < projectRelation.Expressions.Count; i++)
-            {
-                if (projectRelation.Expressions[i] is DirectFieldReference directFieldReference &&
-                    directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment
-                    && structReferenceSegment.Child == null)
-                {
-                    newEmitList.Add(structReferenceSegment.Field);
-                    // Remove the expression since it is not needed
-                    projectRelation.Expressions.RemoveAt(i);
-                    i--;
-                }
-                else
+                // Add only output from the input relation
+                newEmitList.AddRange(Enumerable.Range(0, projectRelation.Input.OutputLength));
+                for (int i = 0; i < projectRelation.Expressions.Count; i++)
                 {
                     newEmitList.Add(projectRelation.Input.OutputLength + i);
                 }
             }
-            projectRelation.Emit = newEmitList;
 
-            if (projectRelation.Expressions.Count == 0)
+            for (int i = 0; i < newEmitList.Count; i++)
             {
-                var result = CreateInputEmitList(projectRelation.Input, newEmitList);
-                projectRelation.Input.Emit = result;
-                return projectRelation.Input;   
+                var emitIndex = newEmitList[i];
+
+                if (emitIndex >= projectRelation.Input.OutputLength)
+                {
+                    var expressionIndex = emitIndex - projectRelation.Input.OutputLength;
+                    var expression = projectRelation.Expressions[expressionIndex];
+                    if (expression is DirectFieldReference directFieldReference &&
+                        directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment
+                        && structReferenceSegment.Child == null)
+                    {
+                        newEmitList[i] = structReferenceSegment.Field;
+                        projectRelation.Expressions.RemoveAt(expressionIndex);
+
+                        // Update the emit list to reflect the change
+                        for (int j = 0; j < newEmitList.Count; j++)
+                        {
+                            if (newEmitList[j] > emitIndex)
+                            {
+                                newEmitList[j]--;
+                            }
+                        }
+                    }
+                }
+
             }
+            projectRelation.Emit = newEmitList;
             return projectRelation;
         }
 
