@@ -35,7 +35,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
 
             if (index >= 0)
             {
-                _metrics[index].Value = value;
+                _metrics[index].Value += value;
                 _metrics[index].Count += 1;
                 _rwLock.ExitReadLock();
             }
@@ -47,7 +47,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
 
                 if (index >= 0)
                 {
-                    _metrics[index].Value = value;
+                    _metrics[index].Value += value;
                     _metrics[index].Count += 1;
                     _rwLock.ExitWriteLock();
                     return;
