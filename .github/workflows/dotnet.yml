@@ -39,3 +39,15 @@ jobs:
       with:
         name: debugwrites
         path: ./tests/FlowtideDotNet.AcceptanceTests/bin/Debug/net8.0/debugwrite
+    - name: Run benchmark
+      run: dotnet run --project ./tests/FlowtideDotNet.Benchmarks/FlowtideDotNet.Benchmarks.csproj -c Release --filter *StreamBenchmark* --exporters json
+    - name: Store benchmark result
+      uses: benchmark-action/github-action-benchmark@v1
+      with:
+        tool: 'benchmarkdotnet'
+        output-file-path: BenchmarkDotNet.Artifacts/results/FlowtideDotNet.Benchmarks.Stream.StreamBenchmark-report-full-compressed.json
+        fail-on-alert: false
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        comment-on-alert: true
+        summary-always: true
+
