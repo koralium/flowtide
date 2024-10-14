@@ -291,7 +291,7 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
             m_lruTable.Clear();
-            await m_persistentStorage.InitializeAsync().ConfigureAwait(false);
+            await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName)).ConfigureAwait(false);
 
             if (m_persistentStorage.TryGetValue(1, out var metadataBytes))
             {
