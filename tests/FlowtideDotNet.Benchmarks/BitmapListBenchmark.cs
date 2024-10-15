@@ -24,11 +24,13 @@ namespace FlowtideDotNet.Benchmarks
     public class BitmapListBenchmark
     {
         private BitmapList? _bitmapList;
+        private List<bool> _list;
 
-        [IterationSetup(Targets = [nameof(RemoveRange), nameof(RemoveRangeIterative)])]
+        [IterationSetup(Targets = [nameof(RemoveRange), nameof(RemoveRangeIterative), nameof(RemoveRangeSystemCollectionList)])]
         public void RemoveRangeIterationSetup()
         {
             _bitmapList = new BitmapList(GlobalMemoryManager.Instance);
+            _list = new List<bool>();
             Random r = new Random(123);
 
             for (int i = 0; i < 1_000_000; i++)
@@ -40,6 +42,7 @@ namespace FlowtideDotNet.Benchmarks
                     val = false;
                 }
                 _bitmapList.Add(val);
+                _list.Add(val);
             }
         }
 
@@ -66,6 +69,12 @@ namespace FlowtideDotNet.Benchmarks
             {
                 _bitmapList!.RemoveAt(i);
             }
+        }
+
+        [Benchmark]
+        public void RemoveRangeSystemCollectionList()
+        {
+            _list.RemoveRange(100, 10000);
         }
     }
 }
