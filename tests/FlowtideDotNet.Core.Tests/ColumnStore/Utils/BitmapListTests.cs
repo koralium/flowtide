@@ -373,41 +373,45 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         [Fact]
         public void TestRemoveRange()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-
-            Random r = new Random(123);
-
-            List<bool> expected = new List<bool>();
-
-            for (int i = 0; i < 100_000; i++)
+            for (int seed = 0; seed < 20; seed++)
             {
-                var v = r.Next(0, 2);
-                bool val = true;
-                if (v == 0)
+                var list = new BitmapList(GlobalMemoryManager.Instance);
+
+                Random r = new Random(seed);
+
+                List<bool> expected = new List<bool>();
+
+                for (int i = 0; i < 100_000; i++)
                 {
-                    val = false;
+                    var v = r.Next(0, 2);
+                    bool val = true;
+                    if (v == 0)
+                    {
+                        val = false;
+                    }
+                    var index = r.Next(0, expected.Count);
+                    list.InsertAt(index, val);
+                    expected.Insert(index, val);
                 }
-                var index = r.Next(0, expected.Count);
-                list.InsertAt(index, val);
-                expected.Insert(index, val);
-            }
 
-            for (int i = 0; i < expected.Count; i++)
-            {
-                Assert.Equal(expected[i], list.Get(i));
-            }
-
-            for (int i = 0; i < 10_000; i++)
-            {
-                var index = r.Next(0, expected.Count);
-                var toRemove = r.Next(0, expected.Count - index);
-                list.RemoveRange(index, toRemove);
-                expected.RemoveRange(index, toRemove);
-
-                for (int k = 0; k < expected.Count; k++)
+                for (int i = 0; i < expected.Count; i++)
                 {
-                    Assert.Equal(expected[k], list.Get(k));
+                    Assert.Equal(expected[i], list.Get(i));
                 }
+
+                for (int i = 0; i < 10_000; i++)
+                {
+                    var index = r.Next(0, expected.Count);
+                    var toRemove = r.Next(0, expected.Count - index);
+                    list.RemoveRange(index, toRemove);
+                    expected.RemoveRange(index, toRemove);
+
+                    for (int k = 0; k < expected.Count; k++)
+                    {
+                        Assert.Equal(expected[k], list.Get(k));
+                    }
+                }
+                list.Dispose();
             }
         }
     }

@@ -18,6 +18,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using static SqlParser.Ast.DataType;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
@@ -349,6 +350,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 ShiftRight(fromIndex, count);
                 var newVal = span[fromIndex] & clearMask;
                 span[fromIndex] = (val | newVal);
+                var vv = span[fromIndex];
             }
             else
             {
@@ -367,19 +369,25 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             fromIndex = fromIndex + numberOfInts;
             unchecked
             {
-                // If there are more than 16 integers to copy, use AVX2
-                if (fromIndex + 16 <= lastIndex && Avx2.IsSupported)
+                if (remainder == 0)
                 {
-                    ShiftRightAvxSelector(ref span, ref fromIndex, ref toIndex, ref lastIndex, remainder);
+                    span.Slice(fromIndex, lastIndex - fromIndex + 1).CopyTo(span.Slice(toIndex));
                 }
-                while (fromIndex < lastIndex)
+                else
                 {
-                    uint right = (uint)span[fromIndex] >> remainder;
-                    int left = span[++fromIndex] << (32 - remainder);
-                    span[toIndex++] = left | (int)right;
+                    // If there are more than 16 integers to copy, use AVX2
+                    if (fromIndex + 16 <= lastIndex && Avx2.IsSupported)
+                    {
+                        ShiftRightAvxSelector(ref span, ref fromIndex, ref toIndex, ref lastIndex, remainder);
+                    }
+                    while (fromIndex < lastIndex)
+                    {
+                        uint right = (uint)span[fromIndex] >> remainder;
+                        int left = span[++fromIndex] << (32 - remainder);
+                        span[toIndex++] = left | (int)right;
+                    }
+                    span[toIndex++] = (int)(span[fromIndex] >> remainder);
                 }
-
-                span[toIndex++] = (int)(span[fromIndex] >> remainder);
             }
         }
 
