@@ -263,13 +263,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 var topBitsMask = topBitsSetMask[mod];
                 var bottomBitsMask = BitPatternArray[mod];
                 var val = span[toIndex] & bottomBitsMask;
-                ShiftLeft(toIndex);
+                ShiftLeft(toIndex, _dataLength - 1, 1);
                 var newVal = span[toIndex] & topBitsMask;
                 span[toIndex] = (val | newVal);
             }
             else
             {
-                ShiftLeft(toIndex);
+                ShiftLeft(toIndex, _dataLength - 1, 1);
             }
             if (value)
             {
@@ -289,21 +289,111 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
-        private void ShiftLeft(int toIndex)
+        public void InsertRangeFrom(int index, BitmapList other, int start, int count)
+        {
+            var toIndex = index >> 5;
+
+            var numberOfNewInts = ((count + 32) / 32);
+            var countDivided32 = count >> 5;
+            var countRemainder = count & 31;
+            var startMod32 = start & 31;
+            EnsureSize(toIndex + numberOfNewInts);
+
+            var mod = index % 32;
+            int bitIndex = 1 << index;
+            var span = AccessSpan;
+            if ((_length / 32) >= _dataLength)
+            {
+                EnsureSize(_dataLength + 1);
+            }
+            span = AccessSpan;
+            
+            if (mod > 0)
+            {
+                var bottomBitsMask = BitPatternArray[mod - 1];
+                var topBitsMask = topBitsSetMask[mod - 1];
+
+                // Debug code
+                ref var valRef = ref MemoryMarshal.Cast<int, uint>(span)[toIndex];
+
+                // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
+                var val = span[toIndex] & bottomBitsMask;
+                // Shift the all bits to the left
+                ShiftLeft(toIndex, _dataLength - 1, count);
+
+                
+                // Fetch the value of the most right integer and mask it to get the bits that should remain unchanged
+                var endIntPreviousValue = span[toIndex + countDivided32] & topBitsSetMask[countRemainder]; // was -1 before
+                // Copy in the data, this could change the value of the most right integer and most left integer
+                other.AccessSpan.Slice(start >> 5, numberOfNewInts).CopyTo(span.Slice(toIndex));
+
+                var modDifference = mod - startMod32;
+                if (modDifference > 0)
+                {
+                    // The difference is positive, so the copied values must be shifted left to make them get to the correct indices.
+                    ShiftLeft(toIndex, toIndex + countDivided32, modDifference);
+                }
+                else if (modDifference < 0)
+                {
+                    // The difference is negative, so the copied values must be shifted right to make them get to the correct indices.
+                    ShiftRight(toIndex, toIndex + countDivided32, -modDifference);
+                }
+
+                // Merge together values in the most left integer
+                var newVal = span[toIndex] & topBitsMask;
+                span[toIndex] = (val | newVal);
+
+                // Merge together values in the most right integer
+                newVal = span[toIndex + countDivided32] & BitPatternArray[countRemainder];
+                span[toIndex + countDivided32] = (endIntPreviousValue | newVal);
+            }
+            else
+            {
+                // Shift left to open up space for new values
+                ShiftLeft(toIndex, _dataLength - 1, count);
+                //Fetch the value of the most right integer and mask it to get the bits that should remain unchanged
+                var endIntPreviousValue = span[toIndex + countDivided32] & topBitsSetMask[countRemainder - 1];
+                // Copy in the data, this could change the value of the most right integer
+                other.AccessSpan.Slice(start >> 5, numberOfNewInts).CopyTo(span.Slice(toIndex));
+                // Merge together values in the most right integer
+                var newVal = span[toIndex + countDivided32] & BitPatternArray[countRemainder];
+                span[toIndex + countDivided32] = (endIntPreviousValue | newVal);
+            }
+            if (index >= _length)
+            {
+                _length = index + count;
+            }
+            else
+            {
+                _length += count;
+            }
+        }
+
+        private void ShiftLeft(int toIndex, int fromIndex, int count)
         {
             var span = AccessSpan;
-            var fromindex = _dataLength - 1;
+            var fromindex = fromIndex;
+            int intsToCopy = count / 32;
+            var remainder = (byte)(count & 31);
             unchecked
             {
                 int lastIndex = fromindex;
-                while (fromindex > toIndex)
+                fromindex = fromindex - intsToCopy;
+                if (remainder == 0)
                 {
-                    int left = span[fromindex] << 1;
-                    uint right = (uint)span[--fromindex] >> (32 - 1);
-                    span[lastIndex] = left | (int)right;
-                    lastIndex--;
+                    span.Slice(fromindex, intsToCopy).CopyTo(span.Slice(lastIndex + 1 - intsToCopy));
                 }
-                span[lastIndex] = span[fromindex] << 1;
+                else
+                {
+                    while (fromindex > toIndex)
+                    {
+                        int left = span[fromindex] << remainder;
+                        uint right = (uint)span[--fromindex] >> (32 - remainder);
+                        span[lastIndex] = left | (int)right;
+                        lastIndex--;
+                    }
+                    span[lastIndex] = span[fromindex] << remainder;
+                }
             }
         }
 
@@ -326,13 +416,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 var beforeMask = BitPatternArray[mod - 1];
                 var clearMask = topBitsSetMask[mod - 1];
                 var val = span[fromIndex] & beforeMask;
-                ShiftRight(fromIndex, 1);
+                ShiftRight(fromIndex, _dataLength - 1, 1);
                 var newVal = span[fromIndex] & clearMask;
                 span[fromIndex] = (val | newVal);
             }
             else
             {
-                ShiftRight(fromIndex, 1);
+                ShiftRight(fromIndex, _dataLength - 1, 1);
             }
         }
 
@@ -347,23 +437,23 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 var beforeMask = BitPatternArray[mod - 1];
                 var clearMask = topBitsSetMask[mod - 1];
                 var val = span[fromIndex] & beforeMask;
-                ShiftRight(fromIndex, count);
+                ShiftRight(fromIndex, _dataLength - 1, count);
                 var newVal = span[fromIndex] & clearMask;
                 span[fromIndex] = (val | newVal);
                 var vv = span[fromIndex];
             }
             else
             {
-                ShiftRight(fromIndex, count);
+                ShiftRight(fromIndex, _dataLength - 1, count);
             }
         }
 
-        private void ShiftRight(int fromIndex, int count)
+        private void ShiftRight(int fromIndex, int lastIndex, int count)
         {
             var span = AccessSpan;
             // Loop from BitArray.
             int toIndex = fromIndex;
-            int lastIndex = _dataLength - 1;
+            //int lastIndex = ;
             var numberOfInts = count / 32;
             var remainder = (byte)(count & 31);
             fromIndex = fromIndex + numberOfInts;
