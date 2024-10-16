@@ -27,6 +27,11 @@ jobs:
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
         restore-keys: |
           ${{ runner.os }}-nuget
+    - name: Download previous benchmark data
+      uses: actions/cache@v4
+      with:
+        path: ./cache
+        key: ${{ runner.os }}-benchmark
     - name: Run benchmark
       run: dotnet run --project ./tests/FlowtideDotNet.Benchmarks/FlowtideDotNet.Benchmarks.csproj -c Release --filter *StreamBenchmark* --exporters json
     - name: Git reset
@@ -36,6 +41,7 @@ jobs:
       with:
         tool: 'benchmarkdotnet'
         output-file-path: BenchmarkDotNet.Artifacts/results/FlowtideDotNet.Benchmarks.Stream.StreamBenchmark-report-full-compressed.json
+        external-data-json-path: ./cache/benchmark-data.json
         fail-on-alert: false
         github-token: ${{ secrets.GITHUB_TOKEN }}
         comment-on-alert: true
