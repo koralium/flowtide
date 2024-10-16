@@ -293,16 +293,25 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             var toIndex = index >> 5;
 
-            var numberOfNewInts = ((count + 32) / 32);
+            var startMod32 = start & 31;
+            var numberOfNewInts = ((count + startMod32 + 31) / 32);
             var countDivided32 = count >> 5;
             var countRemainder = count & 31;
             var countSum = index + count;
-            var endIndex = (index + count - 1) >> 5;
-            var otherCountRemainder = (index + count) & 31;
-            var startMod32 = start & 31;
+            
+            
+            
             EnsureSize(_dataLength + numberOfNewInts);
 
             var mod = index % 32;
+            var modDifference = mod - startMod32;
+            var endIndex = (index + count) >> 5;
+            var endShiftIndex = (index + count - modDifference) >> 5;
+            var otherCountRemainder = (index + count) & 31;
+            //if (otherCountRemainder > 0)
+            //{
+            //    otherCountRemainder--;
+            //}
             int bitIndex = 1 << index;
             var span = AccessSpan;
             if ((_length / 32) >= _dataLength)
@@ -317,26 +326,29 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 var topBitsMask = topBitsSetMask[mod - 1];
 
                 // Debug code
-                ref var valRef = ref MemoryMarshal.Cast<int, uint>(span)[toIndex];
-                ref var otherRef = ref MemoryMarshal.Cast<int, uint>(other.AccessSpan)[start >> 5];
+                //ref var valRef = ref MemoryMarshal.Cast<int, uint>(span)[toIndex];
+                //ref var otherRef = ref MemoryMarshal.Cast<int, uint>(other.AccessSpan)[start >> 5];
 
-                ref var endValRef = ref MemoryMarshal.Cast<int, uint>(span)[endIndex];
-                ref var otherEndRef = ref MemoryMarshal.Cast<int, uint>(other.AccessSpan)[(start >> 5) + countDivided32];
+                //ref var endValRef = ref MemoryMarshal.Cast<int, uint>(span)[endIndex];
+                //ref var endValRefPlus1 = ref MemoryMarshal.Cast<int, uint>(span)[endIndex + 1];
+                //ref var otherEndRef = ref MemoryMarshal.Cast<int, uint>(other.AccessSpan)[(start >> 5) + countDivided32];
+                //ref var otherEndRefPlus1 = ref MemoryMarshal.Cast<int, uint>(other.AccessSpan)[(start >> 5) + countDivided32 + 1];
 
                 // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
                 var val = span[toIndex] & bottomBitsMask;
                 // Shift the all bits to the left
                 ShiftLeft(toIndex, _dataLength - 1, count);
 
-                
+
                 if (otherCountRemainder > 0)
                 {
+                    var previousEndShift = span[endShiftIndex];
                     // Fetch the value of the most right integer and mask it to get the bits that should remain unchanged
                     var endIntPreviousValue = span[endIndex] & topBitsSetMask[otherCountRemainder - 1]; // was -1 before
                                                                                                     // Copy in the data, this could change the value of the most right integer and most left integer
                     other.AccessSpan.Slice(start >> 5, numberOfNewInts).CopyTo(span.Slice(toIndex));
 
-                    var modDifference = mod - startMod32;
+                    
                     if (modDifference > 0)
                     {
                         // The difference is positive, so the copied values must be shifted left to make them get to the correct indices.
@@ -344,8 +356,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     }
                     else if (modDifference < 0)
                     {
-                        // The difference is negative, so the copied values must be shifted right to make them get to the correct indices.
-                        ShiftRight(toIndex, endIndex, -modDifference);
+                        if (endShiftIndex > endIndex)
+                        {
+                            
+                            // The difference is negative, so the copied values must be shifted right to make them get to the correct indices.
+                            ShiftRight(toIndex, endShiftIndex, -modDifference);
+                            span[endShiftIndex] = previousEndShift;
+                        }
+                        else
+                        {
+                            ShiftRight(toIndex, endShiftIndex, -modDifference);
+                        }
+                        
                     }
 
                     // Merge together values in the most left integer
@@ -358,9 +380,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 }
                 else
                 {
+                    var endIntPreviousValue = span[endIndex];
                     other.AccessSpan.Slice(start >> 5, numberOfNewInts).CopyTo(span.Slice(toIndex));
 
-                    var modDifference = mod - startMod32;
+                    //var modDifference = mod - startMod32;
                     if (modDifference > 0)
                     {
                         // The difference is positive, so the copied values must be shifted left to make them get to the correct indices.
@@ -375,20 +398,70 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     // Merge together values in the most left integer
                     var newVal = span[toIndex] & topBitsMask;
                     span[toIndex] = (val | newVal);
+                    span[endIndex] = endIntPreviousValue;
                 }
-                
+
             }
             else
             {
+                // DEBUG
+                ref var valRef = ref MemoryMarshal.Cast<int, uint>(span)[toIndex];
+                ref var endValRef = ref MemoryMarshal.Cast<int, uint>(span)[endIndex];
+
                 // Shift left to open up space for new values
                 ShiftLeft(toIndex, _dataLength - 1, count);
-                //Fetch the value of the most right integer and mask it to get the bits that should remain unchanged
-                var endIntPreviousValue = span[toIndex + countDivided32] & topBitsSetMask[countRemainder - 1];
-                // Copy in the data, this could change the value of the most right integer
-                other.AccessSpan.Slice(start >> 5, numberOfNewInts).CopyTo(span.Slice(toIndex));
-                // Merge together values in the most right integer
-                var newVal = span[toIndex + countDivided32] & BitPatternArray[countRemainder];
-                span[toIndex + countDivided32] = (endIntPreviousValue | newVal);
+                var previousEndShift = span[endShiftIndex];
+
+                if (countRemainder > 0)
+                {
+                    //Fetch the value of the most right integer and mask it to get the bits that should remain unchanged
+                    var endIntPreviousValue = span[toIndex + countDivided32] & topBitsSetMask[countRemainder - 1];
+                    // Copy in the data, this could change the value of the most right integer
+                    other.AccessSpan.Slice(start >> 5, numberOfNewInts).CopyTo(span.Slice(toIndex));
+
+                    if (modDifference > 0)
+                    {
+                        // The difference is positive, so the copied values must be shifted left to make them get to the correct indices.
+                        ShiftLeft(toIndex, endIndex, modDifference);
+                    }
+                    else if (modDifference < 0)
+                    {
+                        if (endShiftIndex > endIndex)
+                        {
+                            // The difference is negative, so the copied values must be shifted right to make them get to the correct indices.
+                            ShiftRight(toIndex, endShiftIndex, -modDifference);
+                            span[endShiftIndex] = previousEndShift;
+                        }
+                        else
+                        {
+                            ShiftRight(toIndex, endShiftIndex, -modDifference);
+                        }
+                    }
+
+                    // Merge together values in the most right integer
+                    var newVal = span[toIndex + countDivided32] & BitPatternArray[countRemainder - 1];
+                    span[toIndex + countDivided32] = (endIntPreviousValue | newVal);
+                }
+                else
+                {
+                    var endIntPreviousValue = span[endIndex];
+                    other.AccessSpan.Slice(start >> 5, numberOfNewInts).CopyTo(span.Slice(toIndex));
+
+                    //var modDifference = mod - startMod32;
+                    if (modDifference > 0)
+                    {
+                        // The difference is positive, so the copied values must be shifted left to make them get to the correct indices.
+                        ShiftLeft(toIndex, endIndex, modDifference);
+                    }
+                    else if (modDifference < 0)
+                    {
+                        // The difference is negative, so the copied values must be shifted right to make them get to the correct indices.
+                        ShiftRight(toIndex, endIndex, -modDifference);
+                    }
+
+                    span[endIndex] = endIntPreviousValue;
+                }
+                
             }
             if (index >= _length)
             {
@@ -412,7 +485,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 fromindex = fromindex - intsToCopy;
                 if (remainder == 0)
                 {
-                    span.Slice(fromindex, intsToCopy).CopyTo(span.Slice(lastIndex + 1 - intsToCopy));
+                    var endIndex = ((_length + 31) / 32);
+                    var toCopySlice = span.Slice(toIndex, endIndex - toIndex);
+                    var destinationSlice = span.Slice(toIndex + intsToCopy);
+                    toCopySlice.CopyTo(destinationSlice);
                 }
                 else
                 {

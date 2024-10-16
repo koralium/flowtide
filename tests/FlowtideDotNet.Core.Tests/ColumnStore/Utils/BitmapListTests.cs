@@ -623,7 +623,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
                     var insertLocation = r.Next(0, expected.Count);
                     var index = r.Next(0, otherList.Count);
                     var toAdd = r.Next(0, otherList.Count - index);
-                    if (i == 2)
+                    if (i == 367)
                     {
 
                     }
@@ -631,10 +631,28 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
 
                     expected.InsertRange(insertLocation, otherList.GetRange(index, toAdd));
 
-                    for (int k = 0; k < expected.Count; k++)
+                    
+
+                   
+                }
+                uint expectedBits = 0;
+                for (int k = 0; k < expected.Count; k++)
+                {
+                    if (k % 32 == 0)
                     {
-                        Assert.Equal(expected[k], list.Get(k));
+                        expectedBits = 0;
+                        for (int z = 0; z < 32; z++)
+                        {
+                            if (k + z < expected.Count)
+                            {
+                                if (expected[k + z])
+                                {
+                                    expectedBits |= (uint)(1 << z);
+                                }
+                            }
+                        }
                     }
+                    Assert.Equal(expected[k], list.Get(k));
                 }
                 list.Dispose();
             }
