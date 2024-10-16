@@ -537,6 +537,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             {
                 ShiftRight(fromIndex, _dataLength - 1, count);
             }
+            else
+            {
+                ShiftRight(fromIndex, count);
+            }
         }
 
         private void ShiftRight(int fromIndex, int lastIndex, int count)
@@ -544,10 +548,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var span = AccessSpan;
             // Loop from BitArray.
             int toIndex = fromIndex;
-            //int lastIndex = ;
-            var numberOfInts = count / 32;
-            var remainder = (byte)(count & 31);
-            fromIndex = fromIndex + numberOfInts;
+            int lastIndex = _dataLength - 1;
             unchecked
             {
                 if (remainder == 0)
