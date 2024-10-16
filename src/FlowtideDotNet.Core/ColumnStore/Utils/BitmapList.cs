@@ -327,7 +327,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     var previousEndShift = span[endShiftIndex];
                     // Fetch the value of the most right integer and mask it to get the bits that should remain unchanged
                     var endIntPreviousValue = span[endIndex] & topBitsSetMask[countRemainder - 1]; // was -1 before
-                                                                                                    // Copy in the data, this could change the value of the most right integer and most left integer
+                    
+                    // Copy in the data, this could change the value of the most right integer and most left integer
                     other.AccessSpan.Slice(start >> 5, numberOfNewInts).CopyTo(span.Slice(toIndex));
                     
                     if (modDifference > 0)
@@ -339,7 +340,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     {
                         if (endShiftIndex > endIndex)
                         {
-                            
                             // The difference is negative, so the copied values must be shifted right to make them get to the correct indices.
                             ShiftRight(toIndex, endShiftIndex, -modDifference);
                             span[endShiftIndex] = previousEndShift;
@@ -432,10 +432,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                         // The difference is negative, so the copied values must be shifted right to make them get to the correct indices.
                         ShiftRight(toIndex, endIndex, -modDifference);
                     }
-
                     span[endIndex] = endIntPreviousValue;
                 }
-                
             }
             if (index >= _length)
             {

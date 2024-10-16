@@ -547,34 +547,11 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
 
             list.InsertRangeFrom(1, other, 2, 32);
             expected.InsertRange(1, otherList.GetRange(2, 32));
-            //expected.InsertRange(1, otherList);
 
             for (int i = 0; i < expected.Count; i++)
             {
                 Assert.Equal(expected[i], list.Get(i));
             }
-
-            //for (int seed = 0; seed < 20; seed++)
-            //{
-
-
-
-            //    for (int i = 0; i < 10_000; i++)
-            //    {
-            //        var insertLocation = r.Next(0, expected.Count);
-            //        var index = r.Next(0, otherList.Count);
-            //        var toAdd = r.Next(0, otherList.Count - index);
-            //        list.InsertRangeFrom(insertLocation, other, index, toAdd);
-
-            //        expected.InsertRange(insertLocation, otherList.GetRange(index, toAdd));
-
-            //        for (int k = 0; k < expected.Count; k++)
-            //        {
-            //            Assert.Equal(expected[k], list.Get(k));
-            //        }
-            //    }
-            //    list.Dispose();
-            //}
         }
 
         [Fact]
