@@ -64,9 +64,10 @@ namespace FlowtideDotNet.Storage.SqlServer
 
             if (_pageCount >= _settings.WritePagesBulkLimit)
             {
-                StreamPage[] pages = [.. Pages];
+                var pages = new StreamPage[_pageCount];
+                Pages.CopyTo(pages, 0);
+                Pages.Clear();
                 Task.Run(async () => await SaveStreamPages(pages));
-                Pages = [];
                 Interlocked.Exchange(ref _pageCount, 0);
             }
 
