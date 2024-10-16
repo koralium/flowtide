@@ -40,3 +40,5 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         comment-on-alert: true
         summary-always: true
+        comment-always: true
+        skip-fetch-gh-pages: true
