@@ -321,7 +321,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 // Shift the all bits to the left
                 ShiftLeft(toIndex, _dataLength - 1, count);
 
-
                 if (countRemainder > 0)
                 {
                     var previousEndShift = span[endShiftIndex];
