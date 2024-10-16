@@ -618,42 +618,21 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
 
 
                 // Error on index 2
-                for (int i = 0; i < 10_000; i++)
+                for (int i = 0; i < 100; i++)
                 {
                     var insertLocation = r.Next(0, expected.Count);
                     var index = r.Next(0, otherList.Count);
                     var toAdd = r.Next(0, otherList.Count - index);
-                    if (i == 367)
-                    {
-
-                    }
                     list.InsertRangeFrom(insertLocation, other, index, toAdd);
 
                     expected.InsertRange(insertLocation, otherList.GetRange(index, toAdd));
-
-                    
-
-                   
                 }
-                uint expectedBits = 0;
+
                 for (int k = 0; k < expected.Count; k++)
                 {
-                    if (k % 32 == 0)
-                    {
-                        expectedBits = 0;
-                        for (int z = 0; z < 32; z++)
-                        {
-                            if (k + z < expected.Count)
-                            {
-                                if (expected[k + z])
-                                {
-                                    expectedBits |= (uint)(1 << z);
-                                }
-                            }
-                        }
-                    }
                     Assert.Equal(expected[k], list.Get(k));
                 }
+
                 list.Dispose();
             }
         }

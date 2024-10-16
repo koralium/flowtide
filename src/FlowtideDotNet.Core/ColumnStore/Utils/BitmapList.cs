@@ -308,10 +308,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var endIndex = (index + count) >> 5;
             var endShiftIndex = (index + count - modDifference) >> 5;
             var otherCountRemainder = (index + count) & 31;
-            //if (otherCountRemainder > 0)
-            //{
-            //    otherCountRemainder--;
-            //}
+
             int bitIndex = 1 << index;
             var span = AccessSpan;
             if ((_length / 32) >= _dataLength)
@@ -324,15 +321,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             {
                 var bottomBitsMask = BitPatternArray[mod - 1];
                 var topBitsMask = topBitsSetMask[mod - 1];
-
-                // Debug code
-                //ref var valRef = ref MemoryMarshal.Cast<int, uint>(span)[toIndex];
-                //ref var otherRef = ref MemoryMarshal.Cast<int, uint>(other.AccessSpan)[start >> 5];
-
-                //ref var endValRef = ref MemoryMarshal.Cast<int, uint>(span)[endIndex];
-                //ref var endValRefPlus1 = ref MemoryMarshal.Cast<int, uint>(span)[endIndex + 1];
-                //ref var otherEndRef = ref MemoryMarshal.Cast<int, uint>(other.AccessSpan)[(start >> 5) + countDivided32];
-                //ref var otherEndRefPlus1 = ref MemoryMarshal.Cast<int, uint>(other.AccessSpan)[(start >> 5) + countDivided32 + 1];
 
                 // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
                 var val = span[toIndex] & bottomBitsMask;
@@ -404,10 +392,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
             else
             {
-                // DEBUG
-                ref var valRef = ref MemoryMarshal.Cast<int, uint>(span)[toIndex];
-                ref var endValRef = ref MemoryMarshal.Cast<int, uint>(span)[endIndex];
-
                 // Shift left to open up space for new values
                 ShiftLeft(toIndex, _dataLength - 1, count);
                 var previousEndShift = span[endShiftIndex];
