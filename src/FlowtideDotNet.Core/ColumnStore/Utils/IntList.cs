@@ -156,6 +156,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length++;
         }
 
+        public void InsertRangeFrom(int index, IntList other, int start, int count, int additionOnMovedExisting, int additionOnCopied)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            var source = other.AccessSpan.Slice(start, count);
+            var dest = span.Slice(index);
+            AvxUtils.InPlaceMemCopyWithAddition(span, index, index + count, _length - index, additionOnMovedExisting);
+            AvxUtils.MemCpyWithAdd(source, dest, additionOnCopied);
+            _length += count;
+        }
+
         /// <summary>
         /// Special function that allows sending in a sbyte array which contains values and only the elements that matches the sent in
         /// conditional value should be added with the additionOnMoved value.
