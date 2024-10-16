@@ -29,6 +29,8 @@ jobs:
           ${{ runner.os }}-nuget
     - name: Run benchmark
       run: dotnet run --project ./tests/FlowtideDotNet.Benchmarks/FlowtideDotNet.Benchmarks.csproj -c Release --filter *StreamBenchmark* --exporters json
+    - name: Git reset
+      run: git reset --hard
     - name: Store benchmark result
       uses: benchmark-action/github-action-benchmark@v1
       with:
