@@ -759,5 +759,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             return _dataColumn!.GetByteSize() + _validityList!.GetByteSize(0, Count - 1);
         }
+
+        public void InsertRangeFrom(int index, IColumn otherColumn, int start, int count)
+        {
+
+        }
     }
 }

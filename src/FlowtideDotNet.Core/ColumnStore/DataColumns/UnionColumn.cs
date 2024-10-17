@@ -477,5 +477,48 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
             return size + (Count * sizeof(int));
         }
+
+        private void InsertRangeFromBasicColumn(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (validityList == null)
+            {
+                CheckArrayExist(other.Type, _typeIds, _valueColumns);
+                var valueColumnIndex = _typeIds[(int)other.Type];
+                var valueColumn = _valueColumns[valueColumnIndex];
+
+                var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, valueColumnIndex);
+                var nextOccurenceOffset = 0;
+                if (nextOccurence < 0)
+                {
+                    nextOccurenceOffset = valueColumn.Count;
+                }
+                else
+                {
+                    // Get the offset of the next occurence so this can be directly infront of it.
+                    nextOccurenceOffset = _offsets.Get(nextOccurence);
+                }
+                valueColumn.InsertRangeFrom(nextOccurenceOffset, other, start, count, default);
+                // Insert range to offsets, requires special method to only increase offset of the same type.
+                _offsets.InsertRangeFromConditionalAdditionOnExisting(index, other., start, count, _typeList.Span, valueColumnIndex, count, start - nextOccurenceOffset);
+            }
+        }
+
+        private void InsertRangeFromUnionColumn(int index, UnionColumn other, int start, int count, BitmapList? validityList)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            // Check all column types since union column must be able to support all of them.
+            if (other is UnionColumn unionColumn)
+            {
+                InsertRangeFromUnionColumn(index, unionColumn, start, count, validityList);
+            }
+            else
+            {
+                InsertRangeFromBasicColumn(index, other, start, count, validityList);
+            }
+        }
     }
 }

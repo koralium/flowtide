@@ -232,5 +232,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return _data.GetByteSize(0, Count - 1);
         }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is BoolColumn boolColumn)
+            {
+                _data.InsertRangeFrom(index, boolColumn._data, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
     }
 }

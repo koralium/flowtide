@@ -491,5 +491,27 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return _keyColumn.GetByteSize() + _valueColumn.GetByteSize() + (_offsets.Count * sizeof(int));
         }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is MapColumn mapColumn)
+            {
+                var startOffset = _offsets.Get(index);
+
+                var otherStartOffset = mapColumn._offsets.Get(start);
+                var otherEndOffset = mapColumn._offsets.Get(start + count);
+
+                // Insert the keys and values
+                _keyColumn.InsertRangeFrom(startOffset, mapColumn._keyColumn, otherStartOffset, otherEndOffset - otherStartOffset);
+                _valueColumn.InsertRangeFrom(startOffset, mapColumn._valueColumn, otherStartOffset, otherEndOffset - otherStartOffset);
+
+                // Insert the offsets
+                _offsets.InsertRangeFrom(index, mapColumn._offsets, start, count, count, startOffset - otherStartOffset);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
     }
 }

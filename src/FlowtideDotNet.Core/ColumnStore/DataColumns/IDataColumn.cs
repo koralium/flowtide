@@ -66,5 +66,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         int GetByteSize(int start, int end);
 
         int GetByteSize();
+
+        void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList);
     }
 }

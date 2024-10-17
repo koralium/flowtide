@@ -19,6 +19,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading.Tasks;
 using static SqlParser.Ast.TableConstraint;
@@ -164,6 +166,43 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var dest = span.Slice(index);
             AvxUtils.InPlaceMemCopyWithAddition(span, index, index + count, _length - index, additionOnMovedExisting);
             AvxUtils.MemCpyWithAdd(source, dest, additionOnCopied);
+            _length += count;
+        }
+
+        public void InsertIncrementalRangeConditionalAdditionOnExisting(
+            int index,  
+            int startValue, 
+            int count, 
+            Span<sbyte> conditionalValues, 
+            sbyte conditionalValue, 
+            int additionOnMovedExisting)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            AvxUtils.InPlaceMemCopyConditionalAddition(span, conditionalValues, index, index + count, _length - index, additionOnMovedExisting, conditionalValue);
+
+            int i = 0;
+            if (count > 8 && Avx2.IsSupported)
+            {
+                var baseValue = Vector256.Create(startValue);
+                var vecIndex = Vector256.Create(0, 1, 2, 3, 4, 5, 6, 7);
+                var vecStride = Vector256.Create(8);
+
+                fixed(int* spanPtr = span)
+                {
+                    var end = count - 8;
+                    for (; i < end; i += 8)
+                    {
+                        var vecValues = Avx2.Add(baseValue, vecIndex);
+                        Avx2.Store(spanPtr + i, vecValues);
+                        baseValue = Avx2.Add(baseValue, vecStride);
+                    }
+                }
+            }
+            for (; i < count; i++)
+            {
+                span[index + i] = startValue + i;
+            }
             _length += count;
         }
 

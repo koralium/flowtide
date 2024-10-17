@@ -213,5 +213,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return _binaryList.GetByteSize(0, Count - 1);
         }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is StringColumn stringColumn)
+            {
+                _binaryList.InsertRangeFrom(index, stringColumn._binaryList, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
     }
 }
