@@ -15,6 +15,7 @@ using System.Buffers;
 using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -230,6 +231,43 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             return (AccessSpan[wordIndex] & bitIndex) != 0;
         }
 
+        public int CountTrueInRange(int index, int count)
+        {
+            var span = AccessSpan;
+            var fromIndex = index >> 5;
+            var toIndex = (index + count) >> 5;
+            var fromMod = index % 32;
+            var toMod = (index + count) % 32;
+
+            var result = 0;
+            if (fromIndex == toIndex)
+            {
+                var mask = (1 << toMod) - 1;
+                mask &= ~((1 << fromMod) - 1);
+                result = BitOperations.PopCount((uint)(span[fromIndex] & mask));
+            }
+            else
+            {
+                var mask = ~((1 << fromMod) - 1);
+                result = BitOperations.PopCount((uint)(span[fromIndex] & mask));
+                for (int i = fromIndex + 1; i < toIndex; i++)
+                {
+                    result += BitOperations.PopCount((uint)span[i]);
+                }
+                if (toMod > 0)
+                {
+                    mask = (1 << toMod) - 1;
+                    result += BitOperations.PopCount((uint)(span[toIndex] & mask));
+                }
+            }
+            return result;
+        }
+
+        public int CountFalseInRange(int index, int count)
+        {
+            return count - CountTrueInRange(index, count);
+        }
+
         public void Unset(int index)
         {
             var wordIndex = index >> 5;
@@ -296,7 +334,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var startMod32 = start & 31;
             var numberOfNewInts = ((count + startMod32 + 31) / 32);
             
-            EnsureSize(_dataLength + numberOfNewInts);
+            EnsureSize(_dataLength + numberOfNewInts + 1);
 
             var mod = index % 32;
             var modDifference = mod - startMod32;

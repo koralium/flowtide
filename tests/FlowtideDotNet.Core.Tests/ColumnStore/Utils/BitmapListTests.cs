@@ -15,6 +15,7 @@ using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -555,6 +556,52 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         }
 
         [Fact]
+        public void TestInsertRangeFactor32InsertAtEnd()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+
+            Random r = new Random(1);
+
+            List<bool> expected = new List<bool>();
+            List<bool> otherList = new List<bool>();
+
+            for (int i = 0; i < 64; i++)
+            {
+                var v = r.Next(0, 2);
+                bool val = true;
+                if (v == 0)
+                {
+                    val = false;
+                }
+                var index = r.Next(0, expected.Count);
+                list.InsertAt(index, val);
+                expected.Insert(index, val);
+            }
+
+            for (int i = 0; i < 64; i++)
+            {
+                var v = r.Next(0, 2);
+                bool val = true;
+                if (v == 0)
+                {
+                    val = false;
+                }
+                var index = r.Next(0, otherList.Count);
+                other.InsertAt(index, val);
+                otherList.Insert(index, val);
+            }
+
+            list.InsertRangeFrom(64, other, 0, 64);
+            expected.InsertRange(64, otherList.GetRange(0, 64));
+
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
         public void TestInsertRange()
         {
             for (int seed = 0; seed < 20; seed++)
@@ -611,6 +658,95 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
                 }
 
                 list.Dispose();
+            }
+        }
+
+        [Fact]
+        public void CountTrueInRangeFullRange()
+        {
+            var bitmapList = new BitmapList(GlobalMemoryManager.Instance);
+            var list = new List<bool>();
+            Random r = new Random(123);
+
+            for (int i = 0; i < 64; i++)
+            {
+                var v = r.Next(0, 2);
+                bool val = true;
+                if (v == 0)
+                {
+                    val = false;
+                }
+                bitmapList.Add(val);
+                list.Add(val);
+            }
+
+            var count = bitmapList.CountTrueInRange(0, list.Count);
+            var expectedCount = list.Count(x => x);
+            Assert.Equal(expectedCount, count);
+        }
+
+        [Fact]
+        public void TestCountTrueInRange()
+        {
+            for (int seed = 0; seed < 100; seed++)
+            {
+                using var list = new BitmapList(GlobalMemoryManager.Instance);
+
+                Random r = new Random(seed);
+
+                List<bool> expected = new List<bool>();
+                for (int i = 0; i < 1000; i++)
+                {
+                    var v = r.Next(0, 2);
+                    bool val = true;
+                    if (v == 0)
+                    {
+                        val = false;
+                    }
+                    var index = r.Next(0, expected.Count);
+                    list.InsertAt(index, val);
+                    expected.Insert(index, val);
+                }
+
+                for (int i = 0; i < 1_000_000; i++)
+                {
+                    var start = r.Next(0, expected.Count);
+                    var end = r.Next(start, expected.Count);
+                    var count = list.CountTrueInRange(start, end - start + 1);
+                    var expectedCount = expected.GetRange(start, end - start + 1).Count(x => x);
+                    Assert.Equal(expectedCount, count);
+                }
+            }
+        }
+
+        [Fact]
+        public void TestCountFalseInRange()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+
+            Random r = new Random(123);
+
+            List<bool> expected = new List<bool>();
+            for (int i = 0; i < 1000; i++)
+            {
+                var v = r.Next(0, 2);
+                bool val = true;
+                if (v == 0)
+                {
+                    val = false;
+                }
+                var index = r.Next(0, expected.Count);
+                list.InsertAt(index, val);
+                expected.Insert(index, val);
+            }
+
+            for (int i = 0; i < 1000; i++)
+            {
+                var start = r.Next(0, expected.Count);
+                var end = r.Next(start, expected.Count);
+                var count = list.CountFalseInRange(start, end - start + 1);
+                var expectedCount = expected.GetRange(start, end - start + 1).Count(x => !x);
+                Assert.Equal(expectedCount, count);
             }
         }
     }
