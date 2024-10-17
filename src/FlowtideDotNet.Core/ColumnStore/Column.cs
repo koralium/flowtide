@@ -400,13 +400,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_validityList != null);
             if (_nullCounter > 0)
             {
-                for (var i = 0; i < count; i++)
-                {
-                    if (!_validityList.Get(index + i))
-                    {
-                        _nullCounter--;
-                    }
-                }
+                _nullCounter -= _validityList.CountFalseInRange(index, count);
                 _validityList.RemoveRange(index, count);
             }
             if (_dataColumn != null)

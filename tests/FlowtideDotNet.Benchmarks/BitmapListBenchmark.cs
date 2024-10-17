@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -78,6 +79,26 @@ namespace FlowtideDotNet.Benchmarks
             }
         }
 
+        [IterationSetup(Targets = [nameof(CountTrueInRange), nameof(CountTrueInRangeSystemCollectionList)])]
+        public void CountTrueInRangeIterationSetup()
+        {
+            _bitmapList = new BitmapList(GlobalMemoryManager.Instance);
+            _list = new List<bool>();
+            Random r = new Random(123);
+
+            for (int i = 0; i < 1_000_000; i++)
+            {
+                var v = r.Next(0, 2);
+                bool val = true;
+                if (v == 0)
+                {
+                    val = false;
+                }
+                _bitmapList.Add(val);
+                _list.Add(val);
+            }
+        }
+
         [IterationCleanup(Targets = [nameof(RemoveRange), nameof(RemoveRangeIterative)])]
         public void RemoveRangeCleanup()
         {
@@ -97,6 +118,15 @@ namespace FlowtideDotNet.Benchmarks
             if (_otherBitmapList != null)
             {
                 _otherBitmapList.Dispose();
+            }
+        }
+
+        [IterationCleanup(Targets = [nameof(CountTrueInRange)])]
+        public void CountTrueInRangeCleanup()
+        {
+            if (_bitmapList != null)
+            {
+                _bitmapList.Dispose();
             }
         }
 
@@ -142,6 +172,27 @@ namespace FlowtideDotNet.Benchmarks
         public void InsertRangeSystemCollectionList()
         {
             _list!.InsertRange(100, _otherList!.Skip(100).Take(10000));
+        }
+
+        [Benchmark]
+        public int CountTrueInRange()
+        {
+            return _bitmapList!.CountTrueInRange(0, 1_000_000);
+        }
+
+        [Benchmark]
+        public int CountTrueInRangeSystemCollectionList()
+        {
+            int count = 0;
+            var span = CollectionsMarshal.AsSpan(_list);
+            for (int i = 0; i < span!.Length; i++)
+            {
+                if (span[i])
+                {
+                    count++;
+                }
+            }
+            return count;
         }
     }
 }
