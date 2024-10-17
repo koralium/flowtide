@@ -177,6 +177,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length++;
         }
 
+        public void InsertRangeFrom(int index, NativeLongList other, int start, int count)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            var otherSpan = other.AccessSpan;
+            span.Slice(index, _length - index).CopyTo(span.Slice(index + count, _length - index));
+            otherSpan.Slice(start, count).CopyTo(span.Slice(index));
+            _length += count;
+        }
+
         public void RemoveAt(int index)
         {
             var span = AccessSpan;
