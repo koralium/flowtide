@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Storage.Persistence
         /// Initializes the persistent store
         /// </summary>
         /// <returns></returns>
-        Task InitializeAsync();
+        Task InitializeAsync(StorageInitializationMetadata metadata);
 
         /// <summary>
         /// Create a session for the persitent storage
