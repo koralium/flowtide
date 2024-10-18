@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
@@ -280,6 +281,236 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                     }
                 }
             }
+        }
+
+        [Fact]
+        public void TestInsertRangeFromInsertBasicColumnNoNulls()
+        {
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            {
+                new StringValue("hello"),
+                new StringValue("world")
+            };
+
+            unionColumn.InsertRangeFrom(1, stringColumn, 0, 2, default);
+
+            Assert.Equal(4, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal("hello", unionColumn.GetValueAt(1, default).AsString.ToString());
+            Assert.Equal("world", unionColumn.GetValueAt(2, default).AsString.ToString());
+            Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+        }
+
+        // No nulls but with validity list
+        [Fact]
+        public void TestInsertRangeFromInsertBasicColumnNoNullsWithValidityList()
+        {
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            {
+                new StringValue("hello"),
+                new StringValue("world")
+            };
+
+            BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
+            validityList.Set(0);
+            validityList.Set(1);
+
+            unionColumn.InsertRangeFrom(1, stringColumn, 0, 2, validityList);
+
+            Assert.Equal(4, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal("hello", unionColumn.GetValueAt(1, default).AsString.ToString());
+            Assert.Equal("world", unionColumn.GetValueAt(2, default).AsString.ToString());
+            Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+        }
+
+        [Fact]
+        public void TestInsertRangeFromInsertBasicColumnNullInMiddle()
+        {
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            {
+                new StringValue("hello"),
+                NullValue.Instance,
+                new StringValue("world")
+            };
+
+            BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
+            validityList.Set(0);
+            validityList.Set(2);
+
+            unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList);
+
+            Assert.Equal(5, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal("hello", unionColumn.GetValueAt(1, default).AsString.ToString());
+            Assert.True(unionColumn.GetValueAt(2, default).IsNull);
+            Assert.Equal("world", unionColumn.GetValueAt(3, default).AsString.ToString());
+            Assert.Equal(3, unionColumn.GetValueAt(4, default).AsDecimal);
+        }
+
+        [Fact]
+        public void TestInsertRangeFromInsertBasicColumnNullInStart()
+        {
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            {
+                NullValue.Instance,
+                new StringValue("hello"),
+                new StringValue("world")
+            };
+
+            BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
+            validityList.Set(1);
+            validityList.Set(2);
+
+            unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList);
+
+            Assert.Equal(5, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.True(unionColumn.GetValueAt(1, default).IsNull);
+            Assert.Equal("hello", unionColumn.GetValueAt(2, default).AsString.ToString());
+            Assert.Equal("world", unionColumn.GetValueAt(3, default).AsString.ToString());
+            Assert.Equal(3, unionColumn.GetValueAt(4, default).AsDecimal);
+        }
+
+        [Fact]
+        public void TestInsertRangeFromInsertBasicColumnNullInEnd()
+        {
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            {
+                new StringValue("hello"),
+                new StringValue("world"),
+                NullValue.Instance
+            };
+
+            BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
+            validityList.Set(0);
+            validityList.Set(1);
+            validityList.Unset(2);
+
+            unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList);
+
+            Assert.Equal(5, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal("hello", unionColumn.GetValueAt(1, default).AsString.ToString());
+            Assert.Equal("world", unionColumn.GetValueAt(2, default).AsString.ToString());
+            Assert.True(unionColumn.GetValueAt(3, default).IsNull);
+            Assert.Equal(3, unionColumn.GetValueAt(4, default).AsDecimal);
+        }
+
+        // Test with all values set to null in the range
+        [Fact]
+        public void TestInsertRangeFromInsertBasicColumnAllNulls()
+        {
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            {
+                NullValue.Instance,
+                NullValue.Instance,
+                NullValue.Instance
+            };
+
+            BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
+            validityList.Unset(0);
+            validityList.Unset(1);
+            validityList.Unset(2);
+
+            unionColumn.InsertRangeFrom(1, stringColumn, 0, 3, validityList);
+
+            Assert.Equal(5, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.True(unionColumn.GetValueAt(1, default).IsNull);
+            Assert.True(unionColumn.GetValueAt(2, default).IsNull);
+            Assert.True(unionColumn.GetValueAt(3, default).IsNull);
+            Assert.Equal(3, unionColumn.GetValueAt(4, default).AsDecimal);
+        }
+
+        [Fact]
+        public void TestInsertRangeFromInsertBasicColumnNulSubrange()
+        {
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance)
+            {
+                new StringValue("hello"),
+                new StringValue("world"),
+                NullValue.Instance
+            };
+
+            BitmapList validityList = new BitmapList(GlobalMemoryManager.Instance);
+            validityList.Set(0);
+            validityList.Set(1);
+            validityList.Unset(2);
+
+            unionColumn.InsertRangeFrom(1, stringColumn, 1, 2, validityList);
+
+            Assert.Equal(4, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal("world", unionColumn.GetValueAt(1, default).AsString.ToString());
+            Assert.True(unionColumn.GetValueAt(2, default).IsNull);
+            Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+        }
+
+        [Fact]
+        public void InsertRangeFromOtherUnionColumn()
+        {
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                new StringValue("hello"),
+                new StringValue("world")
+            };
+
+            unionColumn.InsertRangeFrom(1, otherUnionColumn, 0, 2, default);
+
+            Assert.Equal(4, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal("hello", unionColumn.GetValueAt(1, default).AsString.ToString());
+            Assert.Equal("world", unionColumn.GetValueAt(2, default).AsString.ToString());
+            Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
         }
     }
 }

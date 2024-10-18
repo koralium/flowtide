@@ -131,14 +131,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
         {
-            if (other is NullColumn)
-            {
-                _count += count;
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
+            _count += count;
         }
     }
 }

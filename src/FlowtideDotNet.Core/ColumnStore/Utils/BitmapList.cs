@@ -19,6 +19,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using System.Threading.Tasks;
 using static SqlParser.Ast.DataType;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
@@ -480,6 +481,112 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             {
                 _length += count;
             }
+        }
+
+        public int FindNextFalseIndex(int start)
+        {
+            var span = AccessSpan;
+            var fromIndex = start >> 5; // Divide by 32 to get the index of the integer
+            var mod = start & 31; // Get the bit offset within the current integer
+
+            if (mod > 0)
+            {
+                int mask = (1 << (mod)) - 1;
+                var val = span[fromIndex];
+                val |= mask;
+
+                var lowBit = ~val & (val + 1); // Get the lowest 0 bit in the current integer
+                if (lowBit != 0) // If a 0 bit was found
+                {
+                    var result = start - mod + BitOperations.TrailingZeroCount(lowBit); // Return the position of the 0 bit
+                    if (result < _length)
+                    {
+                        return result;
+                    }
+                    return -1;
+                }
+                fromIndex++;
+                //// Move to the next 32-bit integer if no 0 bit was found in the current word
+                start = (fromIndex) << 5;
+            }
+            else
+            {
+                // Directly check the bit at position `mod == 0` (start position)
+                if ((span[fromIndex] & 1) == 0) // If the first bit is 0
+                {
+                    return start; // Return the starting position since the bit is 0
+                }
+            }
+
+            // Search through the remaining integers
+            while (start < _length)
+            {
+                if (span[fromIndex] != -1) // -1 means all bits are set to 1
+                {
+                    var val = span[fromIndex];
+                    var lowestZeroBit = ~val & (val + 1);
+
+                    // Find the position of the first 0 bit using the trailing zero count
+                    var result = start + BitOperations.TrailingZeroCount(lowestZeroBit);
+                    if (result < _length)
+                    {
+                        return result;
+                    }
+                    return -1;
+                }
+                start += 32; // Move to the next integer
+                fromIndex++;
+            }
+
+            return -1;
+        }
+
+        public int FindNextTrueIndex(int start)
+        {
+            var span = AccessSpan;
+            var fromIndex = start >> 5; // Divide by 32 to get the index of the integer
+            var mod = start & 31; // Get the bit offset within the current integer
+
+            if (mod > 0)
+            {
+                int mask = ~((1 << mod) - 1);
+                var val = span[fromIndex];
+                val &= mask;
+
+                var lowBit = val & (~val + 1); // Get the lowest 1 bit in the current integer
+                if (lowBit != 0) // If a 1 bit was found
+                {
+                    return start - mod + BitOperations.TrailingZeroCount(lowBit); // Return the position of the 1 bit
+                }
+                fromIndex++;
+                //// Move to the next 32-bit integer if no 0 bit was found in the current word
+                start = (fromIndex) << 5;
+            }
+            else
+            {
+                // Directly check the bit at position `mod == 0` (start position)
+                if ((span[fromIndex] & 1) == 1) // If the first bit is 1
+                {
+                    return start; // Return the starting position since the bit is 1
+                }
+            }
+
+            // Search through the remaining integers
+            while (start < _length)
+            {
+                if (span[fromIndex] != 0) // 0 means all bits are set to 0
+                {
+                    var val = span[fromIndex];
+                    var lowestZeroBit = val & (~val + 1);
+
+                    // Find the position of the first 0 bit using the trailing zero count
+                    return start + BitOperations.TrailingZeroCount(lowestZeroBit);
+                }
+                start += 32; // Move to the next integer
+                fromIndex++;
+            }
+
+            return -1;
         }
 
         private void ShiftLeft(int toIndex, int fromIndex, int count)

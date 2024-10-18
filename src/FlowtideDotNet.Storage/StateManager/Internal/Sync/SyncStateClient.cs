@@ -162,7 +162,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     await session.Write(kv.Key, bytes);
 
                     if (!useReadCache)
-                    {
+                    {   
                         m_fileCache.Free(kv.Key);
                     }
                     else

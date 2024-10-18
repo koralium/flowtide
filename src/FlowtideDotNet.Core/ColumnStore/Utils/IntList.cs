@@ -169,6 +169,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length += count;
         }
 
+        public void InsertRangeFromTypeBasedAddition(int index, IntList other, int start, int count, Span<sbyte> typeIds, Span<int> toAdd, int typeCount)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            var source = other.AccessSpan.Slice(start, count);
+            var dest = span.Slice(index);
+            AvxUtils.InPlaceMemCopyAdditionByType(span, typeIds, index, index + count, _length - index, toAdd, typeCount);
+            AvxUtils.By(source, dest);
+            _length += count;
+        }
+
         public void InsertIncrementalRangeConditionalAdditionOnExisting(
             int index,  
             int startValue, 

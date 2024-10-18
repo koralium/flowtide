@@ -21,6 +21,7 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -37,7 +38,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
     /// Only the offsets will be in a sorted order.
     /// Therefore it must be compacted before serializing.
     /// </summary>
-    internal class UnionColumn : IDataColumn
+    internal class UnionColumn : IDataColumn, IReadOnlyList<IDataValue>
     {
         private readonly PrimitiveList<sbyte> _typeList;
         private IntList _offsets;
@@ -49,6 +50,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public int Count => _typeList.Count;
 
         public ArrowTypeId Type => ArrowTypeId.Union;
+
+        public IDataValue this[int index] => GetValueAt(index, default);
 
         public UnionColumn(IMemoryAllocator memoryAllocator)
         {
@@ -499,16 +502,159 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 }
                 valueColumn.InsertRangeFrom(nextOccurenceOffset, other, start, count, default);
                 // Insert range to offsets, requires special method to only increase offset of the same type.
-                _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(index, other., start, count, _typeList.Span, valueColumnIndex, count, start - nextOccurenceOffset);
+                _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(index, nextOccurenceOffset, count, _typeList.Span, valueColumnIndex, count);
+                // Need to insert the type in type list as well.
+                _typeList.InsertStaticRange(index, valueColumnIndex, count);
             }
             else
             {
+                // Find ranges where elements are not null and also ranges where all elements are null.
+                // A range that is not null will be inserted into the value column
+                // The range of null will be added to the null column
+                var currentStart = start;
+                var end = start + count;
+                var currentIndex = index;
 
+                IDataColumn? valueColumn = default;
+                sbyte valueColumnIndex = 0;
+                int nextOccurenceOffset = 0;
+
+                while (currentStart < end)
+                {
+                    var nextNullLocation = validityList.FindNextFalseIndex(currentStart);
+
+                    if (nextNullLocation < 0)
+                    {
+                        nextNullLocation = end;
+                    }
+
+                    if (currentStart < nextNullLocation)
+                    {
+                        // We only create value column if there is any non null values, since the range could be for only null values
+                        // A new value column should not then be created.
+                        if (valueColumn == null)
+                        {
+                            // Create the value column of it does not exist
+                            CheckArrayExist(other.Type, _typeIds, _valueColumns);
+                            valueColumnIndex = _typeIds[(int)other.Type];
+                            valueColumn = _valueColumns[valueColumnIndex];
+
+                            var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, valueColumnIndex);
+                            if (nextOccurence < 0)
+                            {
+                                nextOccurenceOffset = valueColumn.Count;
+                            }
+                            else
+                            {
+                                // Get the offset of the next occurence so this can be directly infront of it.
+                                nextOccurenceOffset = _offsets.Get(nextOccurence);
+                            }
+                        }
+                        
+                        valueColumn.InsertRangeFrom(nextOccurenceOffset, other, currentStart, nextNullLocation - currentStart, default);
+                        _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextOccurenceOffset, nextNullLocation - currentStart, _typeList.Span, valueColumnIndex, nextNullLocation - currentStart);
+                        nextOccurenceOffset += nextNullLocation - currentStart;
+                        // Type list must be added after so the offset is not incremented
+                        _typeList.InsertStaticRange(currentIndex, valueColumnIndex, nextNullLocation - currentStart);
+                        currentIndex += nextNullLocation - currentStart;
+                    }
+                    
+                    var nextNotNullLocation = validityList.FindNextTrueIndex(nextNullLocation);
+                    if (nextNotNullLocation < 0)
+                    {
+                        nextNotNullLocation = end;
+                    }
+                    if (nextNullLocation < nextNotNullLocation)
+                    {
+                        // Add the null range to the null column
+                        _valueColumns[0].InsertRangeFrom(currentStart, other, nextNullLocation, nextNotNullLocation - nextNullLocation, default);
+                        _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextNullLocation, nextNotNullLocation - nextNullLocation, _typeList.Span, 0, nextNotNullLocation - nextNullLocation);
+                        _typeList.InsertStaticRange(currentIndex, 0, nextNotNullLocation - nextNullLocation);
+                        currentIndex += nextNotNullLocation - nextNullLocation;
+                    }
+                    currentStart = nextNotNullLocation;
+                }
             }
         }
 
-        private void InsertRangeFromUnionColumn(int index, UnionColumn other, int start, int count, BitmapList? validityList)
+        private unsafe void InsertRangeFromUnionColumn(int index, UnionColumn other, int start, int count, BitmapList? validityList)
         {
+            // Must find which types are missing, and also what index they exist on in other and also in this column.
+            // After that they should be able to be copied over to this column by a value column basis.
+
+            // Used types contains true or false on value column indices if the column is used in the range
+            var usedTypes = stackalloc bool[127];
+            // Mapping table contains the index of the value column in this column for the value column in other column
+            //var mappingTable = stackalloc sbyte[127];
+
+            // Start and end offsets contains the offset for each type in the range, this is used when copying data over.
+            var startOffsets = stackalloc int[127];
+            var endOffsets = stackalloc int[127];
+
+            // Reset all required columns
+            for (int i = 0; i < other._valueColumns.Count; i++)
+            {
+                usedTypes[i] = false;
+                startOffsets[i] = -1;
+                endOffsets[i] = -1;
+            }
+
+            // Find all types that are used in the range
+            // and also find the offsets that are in use.
+            var end = start + count;
+            for (int i = start; i < end; i++)
+            {
+                var type = other._typeList[i];
+                usedTypes[type] = true;
+                var offset = other._offsets.Get(i);
+
+                if (startOffsets[type] < 0)
+                {
+                    startOffsets[type] = offset;
+                }
+                endOffsets[type] = offset;
+            }
+
+            for (int i = 0; i < other._valueColumns.Count; i++)
+            {
+                if (usedTypes[i])
+                {
+                    sbyte destinationValueIndex;
+                    if (_typeIds[(int)other._valueColumns[i].Type] == 0)
+                    {
+                        // Create the array for the missing type
+                        CheckArrayExist(other._valueColumns[i].Type, _typeIds, _valueColumns);
+                        destinationValueIndex = _typeIds[(int)other._valueColumns[i].Type];
+                    }
+                    else
+                    {
+                        destinationValueIndex = _typeIds[(int)other._valueColumns[i].Type];
+                    }
+
+                    // Must find next occurence first
+                    var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, destinationValueIndex);
+                    var nextOccurenceOffset = 0;
+                    if (nextOccurence < 0)
+                    {
+                        nextOccurenceOffset = _valueColumns[destinationValueIndex].Count;
+                    }
+                    else
+                    {
+                        // Get the offset of the next occurence so this can be directly infront of it.
+                        nextOccurenceOffset = _offsets.Get(nextOccurence);
+                    }
+
+                    _valueColumns[destinationValueIndex].InsertRangeFrom(nextOccurenceOffset, other._valueColumns[i], startOffsets[i], endOffsets[i] - startOffsets[i] + 1, default);
+                }
+            }
+
+            // Add offsets and types, these can have changed values
+            // Require offset insert type based addition
+            //_offsets.RemoveRangeTypeBasedAddition()
+
+            // Type list must be changed from primitive list to a TypeList or similar, since it requires special methods which copies based on a mapping table.
+            _typeList.InsertRangeFrom(index, other._typeList, start, count);
+
             throw new NotImplementedException();
         }
 
@@ -523,6 +669,24 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 InsertRangeFromBasicColumn(index, other, start, count, validityList);
             }
+        }
+
+        private IEnumerable<IDataValue> Enumerate()
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                yield return GetValueAt(i, default);
+            }
+        }
+
+        public IEnumerator<IDataValue> GetEnumerator()
+        {
+            return Enumerate().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return Enumerate().GetEnumerator();
         }
     }
 }

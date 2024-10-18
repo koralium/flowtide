@@ -749,5 +749,80 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
                 Assert.Equal(expectedCount, count);
             }
         }
+
+        [Fact]
+        public void TestFindNextFalseIndex()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 128; i++)
+            {
+                list.Add(i % 2 != 0);
+            }
+
+            // For loop that does the same thing
+            for (int i = 0; i < 127; i++)
+            {
+                var actual = list.FindNextFalseIndex(i);
+                Assert.Equal(i + i % 2, actual);
+            }
+            var last = list.FindNextFalseIndex(127);
+            Assert.Equal(-1, last);
+        }
+
+        [Fact]
+        public void TestFindNextFalseIndexStartWithTrue()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 128; i++)
+            {
+                list.Add(i % 2 == 0);
+            }
+
+            // For loop that does the same thing
+            for (int i = 0; i < 128; i++)
+            {
+                var actual = list.FindNextFalseIndex(i);
+                Assert.Equal(i + (i +1) % 2, actual);
+            }
+        }
+
+        [Fact]
+        public void TestFindNextTrueIndexStartWithFalse()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 128; i++)
+            {
+                list.Add(i % 2 != 0);
+            }
+
+            // For loop that does the same thing
+            for (int i = 1; i < 128; i++)
+            {
+                var actual = list.FindNextTrueIndex(i);
+                Assert.Equal(i + (i + 1) % 2, actual);
+            }
+        }
+
+        [Fact]
+        public void TestFindNextTrueIndexStartWithTrue()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 128; i++)
+            {
+                list.Add(i % 2 == 0);
+            }
+
+            // For loop that does the same thing
+            for (int i = 1; i < 127; i++)
+            {
+                var actual = list.FindNextTrueIndex(i);
+                Assert.Equal(i + (i % 2), actual);
+            }
+            Assert.Equal(-1, list.FindNextTrueIndex(127));
+        }
     }
 }
