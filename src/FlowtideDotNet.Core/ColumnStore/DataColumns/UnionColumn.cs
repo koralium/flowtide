@@ -499,7 +499,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 }
                 valueColumn.InsertRangeFrom(nextOccurenceOffset, other, start, count, default);
                 // Insert range to offsets, requires special method to only increase offset of the same type.
-                _offsets.InsertRangeFromConditionalAdditionOnExisting(index, other., start, count, _typeList.Span, valueColumnIndex, count, start - nextOccurenceOffset);
+                _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(index, other., start, count, _typeList.Span, valueColumnIndex, count, start - nextOccurenceOffset);
+            }
+            else
+            {
+
             }
         }
 
