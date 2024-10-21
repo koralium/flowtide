@@ -512,5 +512,60 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("world", unionColumn.GetValueAt(2, default).AsString.ToString());
             Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
         }
+
+        [Fact]
+        public void InsertRangeFromOtherUnionColumnWithAvx()
+        {
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            UnionColumn otherUnionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                new StringValue("1"),
+                new StringValue("2"),
+                new StringValue("3"),
+                new StringValue("4"),
+                new StringValue("5"),
+                new StringValue("6"),
+                new StringValue("7"),
+                new StringValue("8"),
+                new StringValue("9"),
+                new StringValue("10"),
+                new StringValue("11"),
+                new StringValue("12"),
+                new StringValue("13"),
+                new StringValue("14"),
+                new StringValue("15"),
+                new StringValue("16"),
+                new StringValue("17"),
+                new StringValue("18"),
+                new StringValue("19"),
+                new StringValue("20"),
+                new StringValue("21"),
+                new StringValue("22"),
+                new StringValue("23"),
+                new StringValue("24"),
+                new StringValue("25"),
+                new StringValue("26"),
+                new StringValue("27"),
+                new StringValue("28"),
+                new StringValue("29"),
+                new StringValue("30"),
+                new StringValue("31"),
+                new StringValue("32"),
+                new StringValue("33"),
+            };
+
+            unionColumn.InsertRangeFrom(1, otherUnionColumn, 0, 33, default);
+
+            Assert.Equal(4, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal("hello", unionColumn.GetValueAt(1, default).AsString.ToString());
+            Assert.Equal("world", unionColumn.GetValueAt(2, default).AsString.ToString());
+            Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+        }
     }
 }

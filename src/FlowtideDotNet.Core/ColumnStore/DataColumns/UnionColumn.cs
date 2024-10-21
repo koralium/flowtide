@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
     /// </summary>
     internal class UnionColumn : IDataColumn, IReadOnlyList<IDataValue>
     {
-        private readonly PrimitiveList<sbyte> _typeList;
+        private readonly TypeList _typeList;
         private IntList _offsets;
         private List<IDataColumn> _valueColumns;
         private readonly sbyte[] _typeIds;
@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             _memoryAllocator = memoryAllocator;
             _typeIds = new sbyte[35]; //35 types exist
-            _typeList = new PrimitiveList<sbyte>(memoryAllocator);
+            _typeList = new TypeList(memoryAllocator);
             _offsets = new IntList(memoryAllocator);
             _valueColumns = new List<IDataColumn>()
             {
@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _memoryAllocator = memoryAllocator;
             _valueColumns = columns;
             _typeIds = new sbyte[35]; //35 types exist
-            _typeList = new PrimitiveList<sbyte>(typeListMemory, count, memoryAllocator);
+            _typeList = new TypeList(typeListMemory, count, memoryAllocator);
             _offsets = new IntList(offsetMemory, count, memoryAllocator);
             for (int i = 0; i < _valueColumns.Count; i++)
             {
@@ -584,12 +584,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             // Used types contains true or false on value column indices if the column is used in the range
             var usedTypes = stackalloc bool[127];
-            // Mapping table contains the index of the value column in this column for the value column in other column
-            //var mappingTable = stackalloc sbyte[127];
 
             // Start and end offsets contains the offset for each type in the range, this is used when copying data over.
             var startOffsets = stackalloc int[127];
             var endOffsets = stackalloc int[127];
+            var difference = stackalloc int[127];
+
+            // Mapping table contains the index of the value column in this column for the value column in other column
+            var mappingTable = stackalloc sbyte[127];
 
             // Reset all required columns
             for (int i = 0; i < other._valueColumns.Count; i++)
@@ -630,6 +632,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     {
                         destinationValueIndex = _typeIds[(int)other._valueColumns[i].Type];
                     }
+                    mappingTable[i] = destinationValueIndex;
 
                     // Must find next occurence first
                     var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, destinationValueIndex);
@@ -644,18 +647,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         nextOccurenceOffset = _offsets.Get(nextOccurence);
                     }
 
+                    difference[i] = nextOccurenceOffset - startOffsets[i];
                     _valueColumns[destinationValueIndex].InsertRangeFrom(nextOccurenceOffset, other._valueColumns[i], startOffsets[i], endOffsets[i] - startOffsets[i] + 1, default);
                 }
             }
 
+            _typeList.InsertRangeFrom(index, other._typeList, start, count, new Span<sbyte>(mappingTable, 127), _valueColumns.Count);
+
             // Add offsets and types, these can have changed values
             // Require offset insert type based addition
-            //_offsets.RemoveRangeTypeBasedAddition()
+            _offsets.InsertRangeFromTypeBasedAddition(index, other._offsets, start, count, _typeList.Span, new Span<int>(difference, 127), _valueColumns.Count);
 
             // Type list must be changed from primitive list to a TypeList or similar, since it requires special methods which copies based on a mapping table.
-            _typeList.InsertRangeFrom(index, other._typeList, start, count);
-
-            throw new NotImplementedException();
+            
         }
 
         public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
