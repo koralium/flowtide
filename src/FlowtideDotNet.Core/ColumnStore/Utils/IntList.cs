@@ -168,15 +168,25 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length += count;
         }
 
-        public void InsertRangeFromTypeBasedAddition(int index, IntList other, int start, int count, Span<sbyte> typeIds, Span<int> toAdd, int typeCount)
+
+        public void InsertRangeFromTypeBasedAddition(
+            int index, 
+            IntList other, 
+            int start, 
+            int count, 
+            Span<sbyte> thisTypeIds, 
+            Span<int> thisToAdd,
+            Span<sbyte> otherTypeIds,
+            Span<int> otherToAdd,
+            int typeCount)
         {
             EnsureCapacity(_length + count);
             var span = AccessSpan;
             var sourceSpan = other.AccessSpan;
             var source = other.AccessSpan.Slice(start, count);
             var dest = span.Slice(index);
-            AvxUtils.InPlaceMemCopyAdditionByType(span, typeIds, index, index + count, _length - index, toAdd, typeCount);
-            AvxUtils.MemCopyAdditionByType(sourceSpan, span, typeIds, start, index, count, toAdd, typeCount);
+            AvxUtils.InPlaceMemCopyAdditionByType(span, thisTypeIds, index, index + count, _length - index, thisToAdd, typeCount);
+            AvxUtils.MemCopyAdditionByType(sourceSpan, span, otherTypeIds, start, index, count, otherToAdd, typeCount);
             _length += count;
         }
 

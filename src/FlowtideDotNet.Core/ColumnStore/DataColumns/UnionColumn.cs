@@ -24,6 +24,7 @@ using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading.Tasks;
 using static SqlParser.Ast.Expression;
@@ -588,7 +589,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             // Start and end offsets contains the offset for each type in the range, this is used when copying data over.
             var startOffsets = stackalloc int[127];
             var endOffsets = stackalloc int[127];
-            var difference = stackalloc int[127];
+            var otherDifference = stackalloc int[127];
+            var thisDifference = stackalloc int[127];
 
             // Mapping table contains the index of the value column in this column for the value column in other column
             var mappingTable = stackalloc sbyte[127];
@@ -647,19 +649,17 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         nextOccurenceOffset = _offsets.Get(nextOccurence);
                     }
 
-                    difference[i] = nextOccurenceOffset - startOffsets[i];
-                    _valueColumns[destinationValueIndex].InsertRangeFrom(nextOccurenceOffset, other._valueColumns[i], startOffsets[i], endOffsets[i] - startOffsets[i] + 1, default);
+                    var countToMove = endOffsets[i] - startOffsets[i] + 1;
+                    otherDifference[i] = nextOccurenceOffset - startOffsets[i];
+                    thisDifference[destinationValueIndex] = countToMove;
+                    _valueColumns[destinationValueIndex].InsertRangeFrom(nextOccurenceOffset, other._valueColumns[i], startOffsets[i], countToMove, default);
                 }
             }
-
-            _typeList.InsertRangeFrom(index, other._typeList, start, count, new Span<sbyte>(mappingTable, 127), _valueColumns.Count);
-
             // Add offsets and types, these can have changed values
             // Require offset insert type based addition
-            _offsets.InsertRangeFromTypeBasedAddition(index, other._offsets, start, count, _typeList.Span, new Span<int>(difference, 127), _valueColumns.Count);
+            _offsets.InsertRangeFromTypeBasedAddition(index, other._offsets, start, count, _typeList.Span, new Span<int>(thisDifference, 127), other._typeList.Span, new Span<int>(otherDifference, 127), _valueColumns.Count);
 
-            // Type list must be changed from primitive list to a TypeList or similar, since it requires special methods which copies based on a mapping table.
-            
+            _typeList.InsertRangeFrom(index, other._typeList, start, count, new Span<sbyte>(mappingTable, 127), _valueColumns.Count);
         }
 
         public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
