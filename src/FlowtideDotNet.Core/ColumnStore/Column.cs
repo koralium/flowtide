@@ -756,7 +756,74 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertRangeFrom(int index, IColumn otherColumn, int start, int count)
         {
+            if (otherColumn is Column column)
+            {
+                Debug.Assert(column._dataColumn != null);
+                Debug.Assert(_dataColumn != null);
 
+                if (_type == otherColumn.Type)
+                {
+                    if (_nullCounter > 0 || column._nullCounter > 0)
+                    {
+                        if (_nullCounter > 0 && column._nullCounter > 0)
+                        {
+                            Debug.Assert(_validityList != null);
+                            Debug.Assert(column._validityList != null);
+
+                            _validityList!.InsertRangeFrom(index, column._validityList!, start, count);
+                            _nullCounter += column._validityList.CountFalseInRange(start, count);
+                        }
+                        else if (_nullCounter > 0)
+                        {
+                            Debug.Assert(_validityList != null);
+                            
+                            // TODO: Set entire range as not null
+
+                            //_validityList!.InsertRangeFrom(index, BitmapListFactory.Get(_memoryAllocator!), start, count);
+                            //_nullCounter += count;
+                        }
+                        else
+                        {
+                            Debug.Assert(column._validityList != null);
+                            Debug.Assert(_validityList != null);
+
+                            // check so all existing values are set as not null
+                            CheckNullInitialization();
+
+                            // Insert the range from the other columns validity list
+                            _validityList.InsertRangeFrom(index, column._validityList!, start, count);
+                            // Count how many are null in the range
+                            _nullCounter = column._validityList.CountFalseInRange(start, count);
+                        }
+                    }
+
+                    // Insert the actual data
+                    _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._validityList);
+                }
+                else
+                {
+                    if (_type != ArrowTypeId.Union)
+                    {
+                        Debug.Assert(_validityList != null);
+
+                        // Convert the column into a union column since the types differ and this is not a union column
+                        var unionColumn = ConvertToUnion();
+                        _type = ArrowTypeId.Union;
+                        var previousColumn = _dataColumn;
+                        _dataColumn = unionColumn;
+                        previousColumn.Dispose();
+                        _validityList.Clear();
+                        _nullCounter = 0;
+                    }
+                    
+                    // Insert the data into the union column
+                    _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._validityList);
+                }
+            }
+            else
+            {
+                throw new NotImplementedException("Insert range from does not yet work from a column with offset.");
+            }
         }
     }
 }
