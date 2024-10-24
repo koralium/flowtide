@@ -158,10 +158,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             if (value.Type == ArrowTypeId.Null)
             {
-                for (int i = currentEnd - 1; i >= currentStart; i--)
-                {
-                    _internalColumn.RemoveAt(currentStart);
-                }
+                _internalColumn.RemoveRange(currentStart, currentEnd - currentStart);
                 _offsets.Update(index + 1, currentStart, currentStart - currentEnd);
                 return index;
             }
@@ -197,10 +194,18 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
 
                 // Insert new elements
-                for (int i = 0; i < (listLength - currentLength); i++)
+                if (list is ReferenceListValue referenceListVal)
                 {
-                    _internalColumn.InsertAt(currentStart + currentLength + i, list.GetAt(currentLength + i));
+                    _internalColumn.InsertRangeFrom(currentStart + currentLength, referenceListVal.column, currentLength, listLength - currentLength);
                 }
+                else
+                {
+                    for (int i = 0; i < (listLength - currentLength); i++)
+                    {
+                        _internalColumn.InsertAt(currentStart + currentLength + i, list.GetAt(currentLength + i));
+                    }
+                }
+
 
                 // Update offset
                 _offsets.Update(index + 1, currentStart + listLength, listLength - currentLength);
@@ -228,12 +233,20 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             var startOffset = _offsets.Get(index);
 
-            for (int i = 0; i < list.Count; i++)
+            if (list is ReferenceListValue referenceListVal)
             {
-                _internalColumn.InsertAt(startOffset + i, list.GetAt(i));
+                _internalColumn.InsertRangeFrom(startOffset, referenceListVal.column, referenceListVal.start, referenceListVal.Count);
+                _offsets.InsertAt(index + 1, startOffset + referenceListVal.Count, referenceListVal.Count);   
             }
+            else
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    _internalColumn.InsertAt(startOffset + i, list.GetAt(i));
+                }
 
-            _offsets.InsertAt(index + 1, startOffset + list.Count, list.Count);
+                _offsets.InsertAt(index + 1, startOffset + list.Count, list.Count);
+            }   
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(Apache.Arrow.ArrowBuffer nullBuffer, int nullCount)
@@ -372,7 +385,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 _internalColumn.InsertRangeFrom(startOffset, listColumn._internalColumn, otherStartOffset, otherEndOffset - otherStartOffset);
 
                 // Insert the offsets
-                _offsets.InsertRangeFrom(index + 1, listColumn._offsets, start + 1, count, count, otherStartOffset - startOffset);
+                _offsets.InsertRangeFrom(index + 1, listColumn._offsets, start + 1, count, otherEndOffset - otherStartOffset, startOffset - otherStartOffset);
             }
             else
             {

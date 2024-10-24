@@ -517,5 +517,538 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 }
             }
         }
+
+        [Fact]
+        public void InsertRangeNoNullIntoEmptyColumn()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            Column other = new Column(GlobalMemoryManager.Instance);
+
+            List<byte[]> expected = new List<byte[]>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var byteSize = r.Next(20);
+                byte[] data = new byte[byteSize];
+                r.NextBytes(data);
+                expected.Add(data);
+                other.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+            }
+
+            column.InsertRangeFrom(0, other, 5, 50);
+
+            Assert.Equal(50, column.Count);
+
+            for (int i = 0; i < 50; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                List<byte> actualByteList = new List<byte>();
+                for (int k = 0; k < actual.AsList.Count; k++)
+                {
+                    actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                }
+                Assert.Equal(expected[i + 5], actualByteList.ToArray());
+            }
+        }
+
+        [Fact]
+        public void InsertRangeNoNullIntoNonEmptyColumn()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            Column other = new Column(GlobalMemoryManager.Instance);
+
+            List<byte[]> existing = new List<byte[]>();
+            List<byte[]> expected = new List<byte[]>();
+            Random r = new Random(123);
+
+            // Was 50
+            for (int i = 0; i < 50; i++)
+            {
+                var byteSize = r.Next(20);
+                byte[] data = new byte[byteSize];
+                r.NextBytes(data);
+                existing.Add(data);
+                column.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+            }
+
+            for (int i = 0; i < 1000; i++)
+            {
+                var byteSize = r.Next(20);
+                byte[] data = new byte[byteSize];
+                r.NextBytes(data);
+                expected.Add(data);
+                other.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+            }
+
+            // Was 13 and 50
+            column.InsertRangeFrom(13, other, 5, 50);
+
+            Assert.Equal(100, column.Count);
+
+            for (int i = 0; i < 13; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                List<byte> actualByteList = new List<byte>();
+                for (int k = 0; k < actual.AsList.Count; k++)
+                {
+                    actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                }
+                Assert.Equal(existing[i], actualByteList.ToArray());
+            }
+
+            for (int i = 0; i < 50; i++)
+            {
+                var actual = column.GetValueAt(i + 13, default);
+                List<byte> actualByteList = new List<byte>();
+                for (int k = 0; k < actual.AsList.Count; k++)
+                {
+                    actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                }
+                Assert.Equal(expected[i + 5], actualByteList.ToArray());
+            }
+
+            for (int i = 0; i < 37; i++)
+            {
+                var actual = column.GetValueAt(i + 63, default);
+                List<byte> actualByteList = new List<byte>();
+                for (int k = 0; k < actual.AsList.Count; k++)
+                {
+                    actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                }
+                Assert.Equal(existing[i + 13], actualByteList.ToArray());
+            }
+        }
+
+        [Fact]
+        public void InsertRangeWithNullIntoEmptyColumn()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            Column other = new Column(GlobalMemoryManager.Instance);
+
+            List<byte[]?> expected = new List<byte[]?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var isNull = r.Next(2) == 0;
+
+                if (isNull)
+                {
+                    expected.Add(null);
+                    other.Add(NullValue.Instance);
+                }
+                else
+                {
+                    var byteSize = r.Next(20);
+                    byte[] data = new byte[byteSize];
+                    r.NextBytes(data);
+                    expected.Add(data);
+                    other.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+                }
+            }
+
+            column.InsertRangeFrom(0, other, 5, 50);
+
+            Assert.Equal(50, column.Count);
+
+            for (int i = 0; i < 50; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                if (expected[i + 5] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(expected[i + 5], actualByteList.ToArray());
+                }
+            }
+        }
+
+        [Fact]
+        public void InsertRangeWithNullIntoNullColumnWithNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            Column other = new Column(GlobalMemoryManager.Instance);
+
+            List<byte[]?> expected = new List<byte[]?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var isNull = r.Next(2) == 0;
+
+                if (isNull)
+                {
+                    expected.Add(null);
+                    other.Add(NullValue.Instance);
+                }
+                else
+                {
+                    var byteSize = r.Next(20);
+                    byte[] data = new byte[byteSize];
+                    r.NextBytes(data);
+                    expected.Add(data);
+                    other.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+                }
+            }
+
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+
+            column.InsertRangeFrom(5, other, 5, 50);
+
+            Assert.Equal(58, column.Count);
+
+            for (int i = 0; i < 5; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                Assert.True(actual.IsNull);
+            } 
+
+            for (int i = 5; i < 55; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                if (expected[i] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(expected[i], actualByteList.ToArray());
+                }
+            }
+
+            for (int i = 55; i < 58; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                Assert.True(actual.IsNull);
+            }
+        }
+
+        [Fact]
+        public void InsertRangeWithNullIntoNonEmptyColumn()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            Column other = new Column(GlobalMemoryManager.Instance);
+
+            List<byte[]?> existing = new List<byte[]?>();
+            List<byte[]?> expected = new List<byte[]?>();
+            Random r = new Random(123);
+
+            // Was 50
+            for (int i = 0; i < 50; i++)
+            {
+                var isNull = r.Next(2) == 0;
+
+                if (isNull)
+                {
+                    existing.Add(null);
+                    column.Add(NullValue.Instance);
+                }
+                else
+                {
+                    var byteSize = r.Next(20);
+                    byte[] data = new byte[byteSize];
+                    r.NextBytes(data);
+                    existing.Add(data);
+                    column.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+                }
+            }
+
+            for (int i = 0; i < 1000; i++)
+            {
+                var isNull = r.Next(2) == 0;
+
+                if (isNull)
+                {
+                    expected.Add(null);
+                    other.Add(NullValue.Instance);
+                }
+                else
+                {
+                    var byteSize = r.Next(20);
+                    byte[] data = new byte[byteSize];
+                    r.NextBytes(data);
+                    expected.Add(data);
+                    other.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+                }
+            }
+
+            column.InsertRangeFrom(13, other, 5, 50);
+
+            Assert.Equal(100, column.Count);
+
+            for (int i = 0; i < 13; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                if (existing[i] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(existing[i], actualByteList.ToArray());
+                }
+                
+            }
+
+            for (int i = 0; i < 50; i++)
+            {
+                var actual = column.GetValueAt(i + 13, default);
+                if (expected[i + 5] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(expected[i + 5], actualByteList.ToArray());
+                }
+            }
+
+            for (int i = 0; i < 37; i++)
+            {
+                var actual = column.GetValueAt(i + 63, default);
+                if (existing[i + 13] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(existing[i + 13], actualByteList.ToArray());
+                }
+            }
+        }
+
+        [Fact]
+        public void InsertRangeWitNonNullIntoNonEmptyColumnWithNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            Column other = new Column(GlobalMemoryManager.Instance);
+
+            List<byte[]?> existing = new List<byte[]?>();
+            List<byte[]?> expected = new List<byte[]?>();
+            Random r = new Random(123);
+
+            // Was 50
+            for (int i = 0; i < 50; i++)
+            {
+                var isNull = r.Next(2) == 0;
+
+                if (isNull)
+                {
+                    existing.Add(null);
+                    column.Add(NullValue.Instance);
+                }
+                else
+                {
+                    var byteSize = r.Next(20);
+                    byte[] data = new byte[byteSize];
+                    r.NextBytes(data);
+                    existing.Add(data);
+                    column.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+                }
+            }
+
+            for (int i = 0; i < 1000; i++)
+            {
+                var isNull = r.Next(2) == 0;
+
+                var byteSize = r.Next(20);
+                byte[] data = new byte[byteSize];
+                r.NextBytes(data);
+                expected.Add(data);
+                other.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+            }
+
+            column.InsertRangeFrom(13, other, 5, 50);
+
+            Assert.Equal(100, column.Count);
+
+            for (int i = 0; i < 13; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                if (existing[i] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(existing[i], actualByteList.ToArray());
+                }
+
+            }
+
+            for (int i = 0; i < 50; i++)
+            {
+                var actual = column.GetValueAt(i + 13, default);
+                if (expected[i + 5] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(expected[i + 5], actualByteList.ToArray());
+                }
+            }
+
+            for (int i = 0; i < 37; i++)
+            {
+                var actual = column.GetValueAt(i + 63, default);
+                if (existing[i + 13] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(existing[i + 13], actualByteList.ToArray());
+                }
+            }
+        }
+
+        [Fact]
+        public void InsertRangeWithNullIntoNonEmptyColumnWithNoNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            Column other = new Column(GlobalMemoryManager.Instance);
+
+            List<byte[]?> existing = new List<byte[]?>();
+            List<byte[]?> expected = new List<byte[]?>();
+            Random r = new Random(123);
+
+            // Was 50
+            for (int i = 0; i < 50; i++)
+            {
+                var isNull = r.Next(2) == 0;
+
+                var byteSize = r.Next(20);
+                byte[] data = new byte[byteSize];
+                r.NextBytes(data);
+                existing.Add(data);
+                column.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+            }
+
+            for (int i = 0; i < 1000; i++)
+            {
+                var isNull = r.Next(2) == 0;
+
+                if (isNull)
+                {
+                    expected.Add(null);
+                    other.Add(NullValue.Instance);
+                }
+                else
+                {
+                    var byteSize = r.Next(20);
+                    byte[] data = new byte[byteSize];
+                    r.NextBytes(data);
+                    expected.Add(data);
+                    other.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+                }
+            }
+
+            column.InsertRangeFrom(13, other, 5, 50);
+
+            Assert.Equal(100, column.Count);
+
+            for (int i = 0; i < 13; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                if (existing[i] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(existing[i], actualByteList.ToArray());
+                }
+
+            }
+
+            for (int i = 0; i < 50; i++)
+            {
+                var actual = column.GetValueAt(i + 13, default);
+                if (expected[i + 5] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(expected[i + 5], actualByteList.ToArray());
+                }
+            }
+
+            for (int i = 0; i < 37; i++)
+            {
+                var actual = column.GetValueAt(i + 63, default);
+                if (existing[i + 13] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(existing[i + 13], actualByteList.ToArray());
+                }
+            }
+        }
     }
 }

@@ -226,5 +226,77 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 }
             }
         }
+
+        [Fact]
+        public void InsertRangeNonNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            Column other = new Column(GlobalMemoryManager.Instance);
+
+            List<SortedDictionary<string, string>?> otherList = new List<SortedDictionary<string, string>?>();
+            List<SortedDictionary<string, string>?> expected = new List<SortedDictionary<string, string>?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var dictSize = r.Next(20);
+
+                SortedDictionary<string, string> rowexpected = new SortedDictionary<string, string>();
+                Dictionary<IDataValue, IDataValue> actual = new Dictionary<IDataValue, IDataValue>();
+                for (int k = 0; k < dictSize; k++)
+                {
+                    rowexpected.Add(k.ToString(), k.ToString());
+                    actual.Add(new StringValue(k.ToString()), new StringValue(k.ToString()));
+                }
+                expected.Add(rowexpected);
+                column.Add(new MapValue(actual));
+            }
+            for (int i = 0; i < 1000; i++)
+            {
+                var dictSize = r.Next(20);
+
+                SortedDictionary<string, string> rowexpected = new SortedDictionary<string, string>();
+                Dictionary<IDataValue, IDataValue> actual = new Dictionary<IDataValue, IDataValue>();
+                for (int k = 0; k < dictSize; k++)
+                {
+                    rowexpected.Add(k.ToString(), k.ToString());
+                    actual.Add(new StringValue(k.ToString()), new StringValue(k.ToString()));
+                }
+                otherList.Add(rowexpected);
+                other.Add(new MapValue(actual));
+            }
+
+            column.InsertRangeFrom(100, other, 100, 100);
+            expected.InsertRange(100, otherList.Skip(100).Take(100));
+
+            Assert.Equal(expected.Count(x => x == null), column.GetNullCount());
+            Assert.Equal(expected.Count, column.Count);
+
+            for (int i = 0; i < expected.Count; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                if (expected[i] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    var dict = actual.AsMap;
+                    var dictLength = dict.GetLength();
+                    var expectedVal = expected[i]!;
+                    Assert.Equal(expectedVal.Count, dictLength);
+
+                    var expectedKeys = expectedVal.Keys.ToList();
+                    DataValueContainer dataValueContainer = new DataValueContainer();
+                    for (int k = 0; k < dictLength; k++)
+                    {
+                        dict.GetKeyAt(k, dataValueContainer);
+                        Assert.Equal(expectedKeys[k], dataValueContainer.AsString.ToString());
+
+                        dict.GetValueAt(k, dataValueContainer);
+                        Assert.Equal(expectedVal[expectedKeys[k]], dataValueContainer.AsString.ToString());
+                    }
+                }
+            }
+        }
     }
 }

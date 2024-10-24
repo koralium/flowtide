@@ -352,17 +352,29 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return;
             }
             var map = value.AsMap;
-
             var mapLength = map.GetLength();
-            var dataValueContainer = new DataValueContainer();
+
             var currentOffset = _offsets.Get(index);
-            for (int i = 0; i < mapLength; i++)
+
+            if (map is ReferenceMapValue referenceMapValue)
             {
-                map.GetKeyAt(i, dataValueContainer);
-                _keyColumn.InsertAt(currentOffset + i, dataValueContainer);
-                map.GetValueAt(i, dataValueContainer);
-                _valueColumn.InsertAt(currentOffset + i, dataValueContainer);
+                var (copyStart, _) = referenceMapValue.mapColumn.GetOffsets(referenceMapValue.index);
+                _keyColumn.InsertRangeFrom(currentOffset, referenceMapValue.mapColumn._keyColumn, copyStart, mapLength);
+                _valueColumn.InsertRangeFrom(currentOffset, referenceMapValue.mapColumn._valueColumn, copyStart, mapLength);
             }
+            else
+            {
+                var dataValueContainer = new DataValueContainer();
+                
+                for (int i = 0; i < mapLength; i++)
+                {
+                    map.GetKeyAt(i, dataValueContainer);
+                    _keyColumn.InsertAt(currentOffset + i, dataValueContainer);
+                    map.GetValueAt(i, dataValueContainer);
+                    _valueColumn.InsertAt(currentOffset + i, dataValueContainer);
+                }
+            }
+
             _offsets.InsertAt(index, currentOffset, mapLength);
         }
 
@@ -506,7 +518,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 _valueColumn.InsertRangeFrom(startOffset, mapColumn._valueColumn, otherStartOffset, otherEndOffset - otherStartOffset);
 
                 // Insert the offsets
-                _offsets.InsertRangeFrom(index, mapColumn._offsets, start, count, count, startOffset - otherStartOffset);
+                _offsets.InsertRangeFrom(index, mapColumn._offsets, start, count, otherEndOffset - otherStartOffset, startOffset - otherStartOffset);
             }
             else
             {

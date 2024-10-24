@@ -19,6 +19,7 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -37,7 +38,7 @@ namespace FlowtideDotNet.Core.ColumnStore
     /// Add value -> Value column (single type)
     /// Add different type -> Union column
     /// </summary>
-    public class Column : IColumn
+    public class Column : IColumn, IReadOnlyList<IDataValue>
     {
         private IMemoryAllocator? _memoryAllocator;
         private int _nullCounter;
@@ -131,6 +132,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId Type => _type;
         IDataColumn IColumn.DataColumn =>  _dataColumn!;
+
+        public IDataValue this[int index] => GetValueAt(index, default);
 
         private IDataColumn CreateArray(in ArrowTypeId type)
         {
@@ -241,10 +244,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_validityList != null);
             if (_nullCounter == 0)
             {
-                for (int i = 0; i < Count; i++)
-                {
-                    _validityList.Set(i);
-                }
+                _validityList.InsertTrueInRange(0, Count);
+                //for (int i = 0; i < Count; i++)
+                //{
+                //    _validityList.Set(i);
+                //}
             }
         }
 
@@ -758,11 +762,15 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (otherColumn is Column column)
             {
-                Debug.Assert(column._dataColumn != null);
-                Debug.Assert(_dataColumn != null);
-
                 if (_type == otherColumn.Type)
                 {
+                    if (_type == ArrowTypeId.Null)
+                    {
+                        // Both columns are null, just add null count
+                        _nullCounter += count;
+                        return;
+                    }
+                    //Debug.Assert(_dataColumn != null);
                     if (_nullCounter > 0 || column._nullCounter > 0)
                     {
                         if (_nullCounter > 0 && column._nullCounter > 0)
@@ -777,12 +785,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                         {
                             Debug.Assert(_validityList != null);
                             
-                            // TODO: Set entire range as not null
-
-                            //_validityList!.InsertRangeFrom(index, BitmapListFactory.Get(_memoryAllocator!), start, count);
-                            //_nullCounter += count;
+                            // Set entire range as not null, no need to update null counter since nothing is null in the copy
+                            _validityList.InsertTrueInRange(index, count);
                         }
-                        else
+                        else // Incoming contain null but this column does not
                         {
                             Debug.Assert(column._validityList != null);
                             Debug.Assert(_validityList != null);
@@ -797,14 +803,40 @@ namespace FlowtideDotNet.Core.ColumnStore
                         }
                     }
 
+                    Debug.Assert(_dataColumn != null);
+                    Debug.Assert(column._dataColumn != null);
                     // Insert the actual data
                     _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._validityList);
                 }
                 else
                 {
-                    if (_type != ArrowTypeId.Union)
+                    if (_type == ArrowTypeId.Null)
                     {
                         Debug.Assert(_validityList != null);
+                        _dataColumn = CreateArray(otherColumn.Type);
+                        _type = otherColumn.Type;
+
+                        // Add null values as undefined values to the array.
+                        if (_nullCounter > 0)
+                        {
+                            for (var i = 0; i < _nullCounter; i++)
+                            {
+                                _dataColumn.Add(in NullValue.Instance);
+                            }
+                            _validityList.Set(Count);
+                        }
+                        // Check if we need to copy over null values
+                        if (column._nullCounter > 0)
+                        {
+                            Debug.Assert(column._validityList != null);
+                            _validityList.InsertRangeFrom(index, column._validityList!, start, count);
+                            _nullCounter = column._validityList.CountFalseInRange(start, count);
+                        }
+                    }
+                    else if (_type != ArrowTypeId.Union)
+                    {
+                        Debug.Assert(_validityList != null);
+                        Debug.Assert(_dataColumn != null);
 
                         // Convert the column into a union column since the types differ and this is not a union column
                         var unionColumn = ConvertToUnion();
@@ -815,7 +847,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                         _validityList.Clear();
                         _nullCounter = 0;
                     }
-                    
+
+                    Debug.Assert(_dataColumn != null);
+
                     // Insert the data into the union column
                     _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._validityList);
                 }
@@ -824,6 +858,24 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 throw new NotImplementedException("Insert range from does not yet work from a column with offset.");
             }
+        }
+
+        private IEnumerable<IDataValue> GetEnumerable()
+        {
+            for (var i = 0; i < Count; i++)
+            {
+                yield return GetValueAt(i, default);
+            }
+        }
+
+        public IEnumerator<IDataValue> GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
         }
     }
 }

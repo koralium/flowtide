@@ -750,11 +750,19 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(41, unionColumn.Count);
             Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal(3, unionColumn.GetValueAt(1, default).AsDecimal);
+            Assert.Equal("1a", unionColumn.GetValueAt(2, default).AsString.ToString());
+            Assert.Equal("2a", unionColumn.GetValueAt(3, default).AsString.ToString());
+            Assert.Equal("3a", unionColumn.GetValueAt(4, default).AsString.ToString());
             for (int i = 2; i <= 32; i++)
             {
-                Assert.Equal(i.ToString(), unionColumn.GetValueAt(i - 1, default).AsString.ToString());
+                Assert.Equal(i.ToString(), unionColumn.GetValueAt(i + 3, default).AsString.ToString());
             }
-            Assert.Equal(3, unionColumn.GetValueAt(32, default).AsDecimal);
+            Assert.Equal("4a", Assert.IsType<StringValue>(unionColumn.GetValueAt(36, default)).ToString());
+            Assert.Equal("5a", Assert.IsType<StringValue>(unionColumn.GetValueAt(37, default)).ToString());
+            Assert.Equal("6a", Assert.IsType<StringValue>(unionColumn.GetValueAt(38, default)).ToString());
+            Assert.Equal("7a", Assert.IsType<StringValue>(unionColumn.GetValueAt(39, default)).ToString());
+            Assert.Equal("8a", Assert.IsType<StringValue>(unionColumn.GetValueAt(40, default)).ToString());
         }
     }
 }

@@ -66,10 +66,11 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             if (container is NormalizeValueStorage columnKeyStorageContainer)
             {
-                for (int i = start; i < start + count; i++)
+                for (int i = 0; i < _columnsToStore.Count; i++)
                 {
-                    Add(columnKeyStorageContainer.Get(i));
+                    _data.Columns[i].InsertRangeFrom(_data.Columns[i].Count, columnKeyStorageContainer._data.Columns[i], start, count);
                 }
+                _length += count;
             }
             else
             {
