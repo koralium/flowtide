@@ -392,5 +392,11 @@ namespace FlowtideDotNet.Core.ColumnStore
                 throw new NotImplementedException();
             }
         }
+
+        public void InsertNullRange(int index, int count)
+        {
+            var startOffset = _offsets.Get(index);
+            _offsets.InsertRangeStaticValue(index, count, startOffset);
+        }
     }
 }

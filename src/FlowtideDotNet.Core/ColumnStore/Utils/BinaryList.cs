@@ -334,5 +334,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var offsetDifference = offsetToInsertAt - offsetToCopyStart;
             _offsets.InsertRangeFrom(index, binaryList._offsets, start, count, toCopyLength, offsetDifference);
         }
+
+        public void InsertNullRange(int index, int count)
+        {
+            var offsetToInsertAt = _offsets.Get(index);
+            _offsets.InsertRangeStaticValue(index, count, offsetToInsertAt);
+        }
     }
 }

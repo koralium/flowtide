@@ -213,5 +213,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                 throw new NotImplementedException();
             }
         }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _values.InsertStaticRange(index, 0, count);
+        }
     }
 }

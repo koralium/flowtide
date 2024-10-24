@@ -168,6 +168,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length += count;
         }
 
+        public void InsertRangeStaticValue(int index, int count, int staticValue)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+
+            // Move data
+            span.Slice(index, _length - index).CopyTo(span.Slice(index + count));
+
+            for (int i = 0; i < count; i++)
+            {
+                span[index + i] = staticValue;
+            }
+            _length += count;
+
+        }
+
 
         public void InsertRangeFromTypeBasedAddition(
             int index, 

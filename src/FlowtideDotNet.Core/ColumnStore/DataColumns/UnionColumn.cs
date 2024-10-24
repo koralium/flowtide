@@ -24,6 +24,7 @@ using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading.Tasks;
@@ -578,6 +579,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
+        //[SkipLocalsInit]
         private unsafe void InsertRangeFromUnionColumn(int index, UnionColumn other, int start, int count, BitmapList? validityList)
         {
             // Must find which types are missing, and also what index they exist on in other and also in this column.
@@ -601,6 +603,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 usedTypes[i] = false;
                 startOffsets[i] = -1;
                 endOffsets[i] = -1;
+                otherDifference[i] = 0;
+                mappingTable[i] = 0;
+            }
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                thisDifference[i] = 0;
             }
 
             // Find all types that are used in the range
@@ -691,6 +699,16 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         IEnumerator IEnumerable.GetEnumerator()
         {
             return Enumerate().GetEnumerator();
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            // Insert null type
+            _typeList.InsertStaticRange(index, 0, count);
+            // Insert offsets
+            _offsets.InsertRangeStaticValue(index, count, 0);
+            // Add to null column to increase its counter
+            _valueColumns[0].InsertNullRange(index, count);
         }
     }
 }

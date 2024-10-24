@@ -133,5 +133,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             _count += count;
         }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _count += count;
+        }
     }
 }

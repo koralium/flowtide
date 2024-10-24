@@ -404,8 +404,15 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_validityList != null);
             if (_nullCounter > 0)
             {
-                _nullCounter -= _validityList.CountFalseInRange(index, count);
-                _validityList.RemoveRange(index, count);
+                if (_type == ArrowTypeId.Null)
+                {
+                    _nullCounter -= count;
+                }
+                else
+                {
+                    _nullCounter -= _validityList.CountFalseInRange(index, count);
+                    _validityList.RemoveRange(index, count);
+                }
             }
             if (_dataColumn != null)
             {
@@ -770,6 +777,13 @@ namespace FlowtideDotNet.Core.ColumnStore
                         _nullCounter += count;
                         return;
                     }
+                    if (_type == ArrowTypeId.Union)
+                    {
+                        Debug.Assert(_dataColumn != null);
+                        Debug.Assert(column._dataColumn != null);
+                        _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._validityList);
+                        return;
+                    }
                     //Debug.Assert(_dataColumn != null);
                     if (_nullCounter > 0 || column._nullCounter > 0)
                     {
@@ -816,13 +830,25 @@ namespace FlowtideDotNet.Core.ColumnStore
                         _dataColumn = CreateArray(otherColumn.Type);
                         _type = otherColumn.Type;
 
+                        if (_type == ArrowTypeId.Union)
+                        {
+                            _dataColumn.InsertNullRange(0, _nullCounter);
+                            //for (var i = 0; i < _nullCounter; i++)
+                            //{
+                            //    _dataColumn.Add(in NullValue.Instance);
+                            //}
+                            _validityList.Clear();
+                            _nullCounter = 0;
+                        }
+
                         // Add null values as undefined values to the array.
                         if (_nullCounter > 0)
                         {
-                            for (var i = 0; i < _nullCounter; i++)
-                            {
-                                _dataColumn.Add(in NullValue.Instance);
-                            }
+                            _dataColumn.InsertNullRange(0, _nullCounter);
+                            //for (var i = 0; i < _nullCounter; i++)
+                            //{
+                            //    _dataColumn.Add(in NullValue.Instance);
+                            //}
                             _validityList.Set(Count);
                         }
                         // Check if we need to copy over null values
@@ -830,7 +856,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         {
                             Debug.Assert(column._validityList != null);
                             _validityList.InsertRangeFrom(index, column._validityList!, start, count);
-                            _nullCounter = column._validityList.CountFalseInRange(start, count);
+                            _nullCounter = column._validityList.CountFalseInRange(start, count);   
                         }
                     }
                     else if (_type != ArrowTypeId.Union)
@@ -847,8 +873,15 @@ namespace FlowtideDotNet.Core.ColumnStore
                         _validityList.Clear();
                         _nullCounter = 0;
                     }
+                    else if (column.Type == ArrowTypeId.Null)
+                    {
+                        Debug.Assert(_dataColumn != null);
+                        _dataColumn.InsertNullRange(index, count);
+                        return;
+                    }
 
                     Debug.Assert(_dataColumn != null);
+                    Debug.Assert(column._dataColumn != null);
 
                     // Insert the data into the union column
                     _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._validityList);
