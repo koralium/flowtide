@@ -594,7 +594,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        //[SkipLocalsInit]
+        [SkipLocalsInit]
         private unsafe void InsertRangeFromUnionColumn(int index, UnionColumn other, int start, int count, BitmapList? validityList)
         {
             // Must find which types are missing, and also what index they exist on in other and also in this column.
