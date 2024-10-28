@@ -420,16 +420,8 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
                 else
                 {
-                    try
-                    {
-                        _nullCounter -= _validityList.CountFalseInRange(index, count);
-                        _validityList.RemoveRange(index, count);
-                    }
-                    catch (Exception e)
-                    {
-                        throw;
-                    }
-                    
+                    _nullCounter -= _validityList.CountFalseInRange(index, count);
+                    _validityList.RemoveRange(index, count);   
                 }
             }
             if (_dataColumn != null)

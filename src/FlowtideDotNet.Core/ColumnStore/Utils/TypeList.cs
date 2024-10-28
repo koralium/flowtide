@@ -151,7 +151,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     Vector128<sbyte> mappingVector = Vector128.Load(pMapping);
 
                     int vectorSize = Vector128<sbyte>.Count;
-
                     
                     for (; i <= count - vectorSize; i += vectorSize)
                     {
@@ -160,33 +159,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                         Avx.Store(pDest + index + i, resultVector);
                     }
                 }
-                    
-
-
-                //int vecLength = Vector256<sbyte>.Count;
-                //fixed (sbyte* pDest = span)
-                //fixed (sbyte* pSource = sourceSpan)
-                //fixed (sbyte* pMapping = mapping)
-                //{
-                //    Vector256<int> mappingVec = Avx2.ConvertToVector256Int32(pMapping);
-
-                //    int i;
-                //    for (i = 0; i <= count - vecLength; i += vecLength)
-                //    {
-
-                //        Vector128<sbyte> srcVec = Avx2.LoadVector128(pSource + start + i);
-                //        //Vector128<sbyte> typeIdVec = Avx2.LoadVector128(pDest + index + i);
-
-                //        var srcVecInt = Avx2.ConvertToVector256Int32(srcVec);
-                //        //var typeIdVecInt = Avx2.ConvertToVector256Int32(typeIdVec);
-
-                //        var newTypes = Avx2.PermuteVar8x32(mappingVec, srcVecInt);
-
-                //        Avx2.Store(pDest + index + i, newTypes);
-                //    }
-
-                //}
-
             }
 
             // Insert the new data

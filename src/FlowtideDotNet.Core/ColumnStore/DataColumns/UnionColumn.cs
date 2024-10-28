@@ -80,6 +80,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
+        internal IDataColumn GetDataColumn(int i)
+        {
+            return _valueColumns[i];
+        }
+
 
         private void CheckArrayExist(in ArrowTypeId type, sbyte[] typeIds, List<IDataColumn> valueColumns)
         {
