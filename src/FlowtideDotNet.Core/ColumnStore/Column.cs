@@ -227,10 +227,8 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // Check if the current buffer is a null buffer
                 if (_type == ArrowTypeId.Null)
                 {
-                    //CheckNullInitialization();
                     var index = _nullCounter;
                     _nullCounter++;
-                    //_validityList.Unset(index);
                 }
                 else
                 {
@@ -249,10 +247,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (_nullCounter == 0)
             {
                 _validityList.InsertTrueInRange(0, Count);
-                //for (int i = 0; i < Count; i++)
-                //{
-                //    _validityList.Set(i);
-                //}
             }
         }
 
@@ -272,8 +266,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void InsertAt<T>(in int index, in T value)
             where T: IDataValue
         {
-           // operations.Add(new Operation("InsertAt", Count, _validityList!.Count, _nullCounter));
-            
             Debug.Assert(_validityList != null);
             if (value.Type != _type)
             {
@@ -333,7 +325,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                 if (_type == ArrowTypeId.Null)
                 {
                     _nullCounter++;
-                    //_validityList.InsertAt(index, false);
                 }
                 else
                 {
@@ -349,7 +340,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void UpdateAt<T>(in int index, in T value)
             where T : IDataValue
         {
-            //operations.Add(new Operation("UpdateAt", Count, _validityList!.Count, _nullCounter));
             Debug.Assert(_validityList != null);
             if (_type == ArrowTypeId.Union)
             {
@@ -397,7 +387,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveAt(in int index)
         {
-            //operations.Add(new Operation("RemoveAt", Count, _validityList!.Count, _nullCounter));
             Debug.Assert(_validityList != null);
             if (_nullCounter > 0)
             {
@@ -422,7 +411,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveRange(in int index, in int count)
         {
-            //operations.Add(new Operation("RemoveRAnge", Count, _validityList!.Count, _nullCounter));
             Debug.Assert(_validityList != null);
             if (_nullCounter > 0)
             {
@@ -707,7 +695,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void AddToNewList<T>(in T value) where T : IDataValue
         {
-            //operations.Add(new Operation("AddTonewList", Count, _validityList!.Count, _nullCounter));
             if (_type == ArrowTypeId.List)
             {
                 _dataColumn!.AddToNewList(value);
@@ -751,7 +738,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int EndNewList()
         {
-            //operations.Add(new Operation("EndNewList", Count, _validityList!.Count, _nullCounter));
             if (_type == ArrowTypeId.List)
             {
                 return _dataColumn!.EndNewList();
@@ -818,7 +804,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertRangeFrom(int index, IColumn otherColumn, int start, int count)
         {
-            //operations.Add(new Operation("InsertRange", Count, _validityList!.Count, _nullCounter));
             if (otherColumn is Column column)
             {
                 if (_type == otherColumn.Type)
@@ -885,10 +870,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                         if (_type == ArrowTypeId.Union)
                         {
                             _dataColumn.InsertNullRange(0, _nullCounter);
-                            //for (var i = 0; i < _nullCounter; i++)
-                            //{
-                            //    _dataColumn.Add(in NullValue.Instance);
-                            //}
                             _validityList.Clear();
                             _nullCounter = 0;
                         }
@@ -897,10 +878,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                         if (_nullCounter > 0)
                         {
                             _dataColumn.InsertNullRange(0, _nullCounter);
-                            //for (var i = 0; i < _nullCounter; i++)
-                            //{
-                            //    _dataColumn.Add(in NullValue.Instance);
-                            //}
                             _validityList.Unset(Count - 1);
                         }
                         // Check if we need to copy over null values
