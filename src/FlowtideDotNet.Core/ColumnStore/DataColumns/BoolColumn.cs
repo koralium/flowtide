@@ -216,11 +216,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
-            {
-                _data.RemoveAt(i);
-            }
+            _data.RemoveRange(start, count);
         }
 
         public int GetByteSize(int start, int end)

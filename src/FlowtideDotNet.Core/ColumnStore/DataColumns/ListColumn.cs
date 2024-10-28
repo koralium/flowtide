@@ -78,9 +78,18 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             var list = value.AsList;
             var listLength = list.Count;
-            for (int i = 0; i < listLength; i++)
+
+            if (list is ReferenceListValue referenceListVal)
             {
-                _internalColumn.Add(list.GetAt(i));
+                var lastOffset = _offsets.Get(Count);
+                _internalColumn.InsertRangeFrom(lastOffset, referenceListVal.column, referenceListVal.start, referenceListVal.Count);
+            }
+            else
+            {
+                for (int i = 0; i < listLength; i++)
+                {
+                    _internalColumn.Add(list.GetAt(i));
+                }
             }
             _offsets.Add(_internalColumn.Count);
 
@@ -194,16 +203,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
 
                 // Insert new elements
-                if (list is ReferenceListValue referenceListVal)
+                for (int i = 0; i < (listLength - currentLength); i++)
                 {
-                    _internalColumn.InsertRangeFrom(currentStart + currentLength, referenceListVal.column, currentLength, listLength - currentLength);
-                }
-                else
-                {
-                    for (int i = 0; i < (listLength - currentLength); i++)
-                    {
-                        _internalColumn.InsertAt(currentStart + currentLength + i, list.GetAt(currentLength + i));
-                    }
+                    _internalColumn.InsertAt(currentStart + currentLength + i, list.GetAt(currentLength + i));
                 }
 
 
@@ -217,7 +219,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var startOffset = _offsets.Get(index);
             var endOffset = _offsets.Get(index + 1);
-            _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
+
+            if (endOffset > startOffset)
+            {
+                _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
+            }   
+            
             _offsets.RemoveAt(index + 1, startOffset - endOffset);
         }
 
@@ -351,8 +358,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Remove the offsets
             _offsets.RemoveRange(start, count, startOffset - endOffset);
 
-            // Remove the values in the internal column
-            _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
+            if (endOffset > startOffset)
+            {
+                // Remove the values in the internal column
+                _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
+            }
         }
 
         public int GetByteSize(int start, int end)
@@ -381,8 +391,11 @@ namespace FlowtideDotNet.Core.ColumnStore
                 var otherStartOffset = listColumn._offsets.Get(start);
                 var otherEndOffset = listColumn._offsets.Get(start + count);
 
-                // Insert the values
-                _internalColumn.InsertRangeFrom(startOffset, listColumn._internalColumn, otherStartOffset, otherEndOffset - otherStartOffset);
+                if (otherEndOffset > otherStartOffset)
+                {
+                    // Insert the values
+                    _internalColumn.InsertRangeFrom(startOffset, listColumn._internalColumn, otherStartOffset, otherEndOffset - otherStartOffset);
+                }
 
                 // Insert the offsets
                 _offsets.InsertRangeFrom(index + 1, listColumn._offsets, start + 1, count, otherEndOffset - otherStartOffset, startOffset - otherStartOffset);

@@ -234,6 +234,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public int CountTrueInRange(int index, int count)
         {
+            if (count == 0)
+            {
+                return 0;
+            }
             var span = AccessSpan;
             var fromIndex = index >> 5;
             var toIndex = (index + count) >> 5;
@@ -334,8 +338,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
             var startMod32 = start & 31;
             var numberOfNewInts = ((count + startMod32 + 31) / 32);
-            
-            EnsureSize(_dataLength + numberOfNewInts + 1);
+
+            var expectedNumberOfInts = ((_length + count + startMod32 + 31) / 32);
+
+            EnsureSize(expectedNumberOfInts + 1);
 
             var mod = index % 32;
             var modDifference = mod - startMod32;
@@ -876,11 +882,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 }
                 else
                 {
-                    // If there are more than 16 integers to copy, use AVX2
-                    if (fromIndex + 16 <= lastIndex && Avx2.IsSupported)
-                    {
-                        ShiftRightAvxSelector(ref span, ref fromIndex, ref toIndex, ref lastIndex, remainder);
-                    }
                     while (fromIndex < lastIndex)
                     {
                         uint right = (uint)span[fromIndex] >> remainder;

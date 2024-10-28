@@ -154,7 +154,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             valueColumn.InsertAt(in nextOccurenceOffset, in value);
             // Insert the offset and add 1 to the offset to all other offsets that are greater than the next occurence offset.
             _offsets.InsertAtConditionalAddition(index, nextOccurenceOffset, _typeList.Span, arrayIndex, 1);
-
             // Type list must be added to last so the element count when adding to offsets are the same.
             _typeList.InsertAt(index, arrayIndex);
         }
@@ -418,11 +417,17 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             var end = start + count;
 
+            int nullCount = 0;
+
             for (int i = start; i < end; i++)
             {
                 var type = _typeList.Get(i);
                 var offset = _offsets.Get(i);
 
+                if (type == 0)
+                {
+                    nullCount++;
+                }
                 if (startOffets[type] == 0)
                 {
                     startOffets[type] = offset;
@@ -430,8 +435,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 endOffsets[type] = offset;
             }
 
+            if (nullCount > 0)
+            {
+                _valueColumns[0].RemoveRange(start, nullCount);
+            }
+
             bool anyColumnHaveDataRemoved = false;
-            for (int i = 0; i < _valueColumns.Count; i++)
+            for (int i = 1; i < _valueColumns.Count; i++)
             {
                 var startOffset = startOffets[i];
                 var endOffset = endOffsets[i];
@@ -611,6 +621,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 thisDifference[i] = 0;
             }
 
+            int nullCount = 0;
+
             // Find all types that are used in the range
             // and also find the offsets that are in use.
             var end = start + count;
@@ -620,6 +632,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 usedTypes[type] = true;
                 var offset = other._offsets.Get(i);
 
+                if (type == 0)
+                {
+                    // Special case to handle nulls, since they do not have incrementing offsets.
+                    nullCount++;
+                }
+
                 if (startOffsets[type] < 0)
                 {
                     startOffsets[type] = offset;
@@ -627,7 +645,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 endOffsets[type] = offset;
             }
 
-            for (int i = 0; i < other._valueColumns.Count; i++)
+            if (usedTypes[0])
+            {
+                _valueColumns[0].InsertNullRange(0, nullCount);
+            }
+
+            for (int i = 1; i < other._valueColumns.Count; i++)
             {
                 if (usedTypes[i])
                 {
@@ -658,15 +681,16 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     }
 
                     var countToMove = endOffsets[i] - startOffsets[i] + 1;
+
                     otherDifference[i] = nextOccurenceOffset - startOffsets[i];
                     thisDifference[destinationValueIndex] = countToMove;
+
                     _valueColumns[destinationValueIndex].InsertRangeFrom(nextOccurenceOffset, other._valueColumns[i], startOffsets[i], countToMove, default);
                 }
             }
             // Add offsets and types, these can have changed values
             // Require offset insert type based addition
             _offsets.InsertRangeFromTypeBasedAddition(index, other._offsets, start, count, _typeList.Span, new Span<int>(thisDifference, 127), other._typeList.Span, new Span<int>(otherDifference, 127), _valueColumns.Count);
-
             _typeList.InsertRangeFrom(index, other._typeList, start, count, new Span<sbyte>(mappingTable, 127), _valueColumns.Count);
         }
 

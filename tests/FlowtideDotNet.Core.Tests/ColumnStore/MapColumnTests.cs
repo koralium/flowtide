@@ -298,5 +298,73 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 }
             }
         }
+
+
+        /// <summary>
+        /// This test validates a bug where an out of bounds exception was thrown since it tried to read the bitmap list and the index was on the boundary.
+        /// </summary>
+        [Fact]
+        public void InsertRangeWithNullValues()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("key"), new StringValue("hello1") },
+                { new StringValue("value"), new StringValue("hello1") }
+            }));
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("key"), new StringValue("hello2") },
+                { new StringValue("value"), new StringValue("hello2") }
+            }));
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("key"), NullValue.Instance },
+                { new StringValue("value"), new StringValue("hello3") }
+            }));
+
+            Column other = new Column(GlobalMemoryManager.Instance);
+
+            // Add so the null happens on the 32 element so it will be a new segment in the bitmap list
+            for (int i = 0; i < 32; i++)
+            {
+                other.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+                {
+                    { new StringValue("key"), NullValue.Instance },
+                    { new StringValue("value"), new StringValue("hello1") }
+                }));
+            }
+
+
+            other.Add(NullValue.Instance);
+
+            column.InsertRangeFrom(3, other, 32, 1);
+
+            Assert.Equal(4, column.Count);
+
+            Assert.True(column.GetValueAt(3, default).IsNull);
+        }
+
+        [Fact]
+        public void RemoveRangeWithNullInLastBitmapSegment()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            // Add so the null happens on the 32 element so it will be a new segment in the bitmap list
+            for (int i = 0; i < 32; i++)
+            {
+                column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+                {
+                    { new StringValue("key"), NullValue.Instance },
+                    { new StringValue("value"), new StringValue("hello1") }
+                }));
+            }
+
+            column.Add(NullValue.Instance);
+
+            column.RemoveRange(32, 1);
+
+            Assert.Equal(32, column.Count);
+        }
     }
 }

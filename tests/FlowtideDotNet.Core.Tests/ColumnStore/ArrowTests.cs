@@ -486,7 +486,47 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.True(arr.GetValue(0));
             Assert.True(arr.IsNull(1));
             Assert.False(arr.GetValue(2));
+        }
 
+        [Fact]
+        public void NullColumnToArrow()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+
+            var result = column.ToArrowArray();
+            var arrowArray = (Apache.Arrow.NullArray)result.Item1;
+            Assert.Equal(3, arrowArray.NullCount);
+            Assert.Equal(3, arrowArray.Length);
+        }
+
+        [Fact]
+        public void NullSerializeDeserialize()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+
+            var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
+            [
+                column
+            ]));
+
+            MemoryStream memoryStream = new MemoryStream();
+            var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            writer.WriteRecordBatch(recordBatch);
+            writer.Dispose();
+            memoryStream.Position = 0;
+            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var deserializedRecordBatch = reader.ReadNextRecordBatch();
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
+
+            Assert.True(deserializedBatch.Columns[0].GetValueAt(0, default).Type == ArrowTypeId.Null);
+            Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);
+            Assert.True(deserializedBatch.Columns[0].GetValueAt(2, default).Type == ArrowTypeId.Null);
         }
 
         [Fact]

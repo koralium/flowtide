@@ -1050,5 +1050,22 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 }
             }
         }
+
+        [Fact]
+        public void TestRemoveRangeNullLastBitmapSegment()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 63; i++)
+            {
+                column.Add(new ListValue(new Int64Value(i)));
+            }
+            column.Add(new ListValue(NullValue.Instance));
+            column.Add(NullValue.Instance);
+
+            column.RemoveRange(64, 1);
+
+            Assert.Equal(64, column.Count);
+        }
     }
 }

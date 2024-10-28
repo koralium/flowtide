@@ -764,5 +764,40 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("7a", Assert.IsType<StringValue>(unionColumn.GetValueAt(39, default)).ToString());
             Assert.Equal("8a", Assert.IsType<StringValue>(unionColumn.GetValueAt(40, default)).ToString());
         }
+
+        [Fact]
+        public void TestInsertNullUnionColumn()
+        {
+            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            UnionColumn other = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                NullValue.Instance,
+                NullValue.Instance
+            };
+
+            unionColumn.InsertRangeFrom(2, other, 0, 2, default);
+
+            Assert.Equal(4, unionColumn.Count);
+            Assert.Equal(2, unionColumn.GetDataColumn(0).Count);
+        }
+
+        [Fact]
+        public void TestRemoveRangeWitNull()
+        {
+            UnionColumn column = new UnionColumn(GlobalMemoryManager.Instance)
+            {
+                NullValue.Instance,
+                NullValue.Instance
+            };
+
+            column.RemoveRange(0, 2);
+            Assert.Empty(column);
+            Assert.Equal(0, column.GetDataColumn(0).Count);
+        }
     }
 }

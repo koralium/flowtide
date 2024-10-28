@@ -481,9 +481,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Remove offsets
             _offsets.RemoveRange(start, count, startOffset - endOffset);
 
-            // Remove the keys and values
-            _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
-            _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
+            if (endOffset > startOffset)
+            {
+                // Remove the keys and values
+                _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+                _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
+            }
         }
 
         public int GetByteSize(int start, int end)
@@ -513,9 +516,12 @@ namespace FlowtideDotNet.Core.ColumnStore
                 var otherStartOffset = mapColumn._offsets.Get(start);
                 var otherEndOffset = mapColumn._offsets.Get(start + count);
 
-                // Insert the keys and values
-                _keyColumn.InsertRangeFrom(startOffset, mapColumn._keyColumn, otherStartOffset, otherEndOffset - otherStartOffset);
-                _valueColumn.InsertRangeFrom(startOffset, mapColumn._valueColumn, otherStartOffset, otherEndOffset - otherStartOffset);
+                if (otherStartOffset < otherEndOffset)
+                {
+                    // Insert the keys and values if there are any values
+                    _keyColumn.InsertRangeFrom(startOffset, mapColumn._keyColumn, otherStartOffset, otherEndOffset - otherStartOffset);
+                    _valueColumn.InsertRangeFrom(startOffset, mapColumn._valueColumn, otherStartOffset, otherEndOffset - otherStartOffset);
+                }
 
                 // Insert the offsets
                 _offsets.InsertRangeFrom(index, mapColumn._offsets, start, count, otherEndOffset - otherStartOffset, startOffset - otherStartOffset);

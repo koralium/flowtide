@@ -62,10 +62,6 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             get
             {
-                if (_dataColumn == null)
-                {
-                    return null;
-                }
                 BitmapList? bitmapList = _bitmapList;
                 if (bitmapList == null)
                 {
@@ -188,6 +184,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 array.Fields[i].Accept(this);
 
+                if (_typeId == ArrowTypeId.Null)
+                {
+                    _dataColumn = new NullColumn(_nullCount);
+                }
                 if (_nullCount > 0 && _typeId != ArrowTypeId.Null)
                 {
                     throw new InvalidOperationException("Inner columns in a union should not have null values, they should be on the union level");
@@ -212,7 +212,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Visit(NullArray array)
         {
-            _dataColumn = new NullColumn(array.NullCount);
+            _dataColumn = null;
             _typeId = ArrowTypeId.Null;
             _bitmapList = null;
             _nullCount = array.NullCount;
