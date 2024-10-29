@@ -19,6 +19,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading.Tasks;
 using static SqlParser.Ast.TableConstraint;
@@ -160,10 +162,84 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             EnsureCapacity(_length + count);
             var span = AccessSpan;
+            var sourceSpan = other.AccessSpan;
+            AvxUtils.InPlaceMemCopyWithAddition(span, index, index + count, _length - index, additionOnMovedExisting);
+            AvxUtils.MemCpyWithAdd(sourceSpan.Slice(start, count), span.Slice(index), additionOnCopied);
+            _length += count;
+        }
+
+        public void InsertRangeStaticValue(int index, int count, int staticValue)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+
+            // Move data
+            span.Slice(index, _length - index).CopyTo(span.Slice(index + count));
+
+            for (int i = 0; i < count; i++)
+            {
+                span[index + i] = staticValue;
+            }
+            _length += count;
+
+        }
+
+
+        public void InsertRangeFromTypeBasedAddition(
+            int index, 
+            IntList other, 
+            int start, 
+            int count, 
+            Span<sbyte> thisTypeIds, 
+            Span<int> thisToAdd,
+            Span<sbyte> otherTypeIds,
+            Span<int> otherToAdd,
+            int typeCount)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            var sourceSpan = other.AccessSpan;
             var source = other.AccessSpan.Slice(start, count);
             var dest = span.Slice(index);
-            AvxUtils.InPlaceMemCopyWithAddition(span, index, index + count, _length - index, additionOnMovedExisting);
-            AvxUtils.MemCpyWithAdd(source, dest, additionOnCopied);
+            AvxUtils.InPlaceMemCopyAdditionByType(span, thisTypeIds, index, index + count, _length - index, thisToAdd, typeCount);
+            AvxUtils.MemCopyAdditionByType(sourceSpan, span, otherTypeIds, start, index, count, otherToAdd, typeCount);
+            _length += count;
+        }
+
+        public void InsertIncrementalRangeConditionalAdditionOnExisting(
+            int index,  
+            int startValue, 
+            int count, 
+            Span<sbyte> conditionalValues, 
+            sbyte conditionalValue, 
+            int additionOnMovedExisting)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            AvxUtils.InPlaceMemCopyConditionalAddition(span, conditionalValues, index, index + count, _length - index, additionOnMovedExisting, conditionalValue);
+
+            int i = 0;
+            if (count > 8 && Avx2.IsSupported)
+            {
+                var baseValue = Vector256.Create(startValue);
+                var vecIndex = Vector256.Create(0, 1, 2, 3, 4, 5, 6, 7);
+                var vecStride = Vector256.Create(8);
+
+                fixed(int* spanPtr = span)
+                {
+                    var end = count - 8;
+                    for (; i < end; i += 8)
+                    {
+                        var vecValues = Avx2.Add(baseValue, vecIndex);
+                        Avx2.Store(spanPtr + i, vecValues);
+                        baseValue = Avx2.Add(baseValue, vecStride);
+                    }
+                }
+            }
+            for (; i < count; i++)
+            {
+                span[index + i] = startValue + i;
+            }
             _length += count;
         }
 

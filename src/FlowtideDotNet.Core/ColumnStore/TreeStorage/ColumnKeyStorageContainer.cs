@@ -61,9 +61,9 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             if (container is ColumnKeyStorageContainer columnKeyStorageContainer)
             {
-                for (int i = start; i < start + count; i++)
+                for (int i = 0; i < columnCount; i++)
                 {
-                    Add(columnKeyStorageContainer.Get(i));
+                    _data.Columns[i].InsertRangeFrom(_data.Columns[i].Count, columnKeyStorageContainer._data.Columns[i], start, count);
                 }
             }
             else

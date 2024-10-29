@@ -187,6 +187,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _length += count;
         }
 
+        public void InsertStaticRange(int index, long value, int count)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            span.Slice(index, _length - index).CopyTo(span.Slice(index + count, _length - index));
+            for (int i = 0; i < count; i++)
+            {
+                span[index + i] = value;
+            }
+            _length += count;
+        }
+
         public void RemoveAt(int index)
         {
             var span = AccessSpan;

@@ -23,9 +23,9 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public struct ReferenceListValue : IListValue, IEnumerable<IDataValue>
     {
-        private readonly Column column;
-        private readonly int start;
-        private readonly int end;
+        internal readonly Column column;
+        internal readonly int start;
+        internal readonly int end;
 
         public ReferenceListValue(Column column, int start, int end)
         {

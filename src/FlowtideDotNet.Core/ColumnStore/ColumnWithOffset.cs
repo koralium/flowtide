@@ -125,6 +125,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotSupportedException("Column with offset does not support InsertAt.");
         }
 
+        public void InsertRangeFrom(int index, IColumn otherColumn, int start, int count)
+        {
+            throw new NotSupportedException("Column with offset does not support InsertRangeFrom.");
+        }
+
         public void RemoveAt(in int index)
         {
             throw new NotSupportedException("Column with offset does not support RemoveAt.");

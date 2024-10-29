@@ -352,17 +352,29 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return;
             }
             var map = value.AsMap;
-
             var mapLength = map.GetLength();
-            var dataValueContainer = new DataValueContainer();
+
             var currentOffset = _offsets.Get(index);
-            for (int i = 0; i < mapLength; i++)
+
+            if (map is ReferenceMapValue referenceMapValue)
             {
-                map.GetKeyAt(i, dataValueContainer);
-                _keyColumn.InsertAt(currentOffset + i, dataValueContainer);
-                map.GetValueAt(i, dataValueContainer);
-                _valueColumn.InsertAt(currentOffset + i, dataValueContainer);
+                var (copyStart, _) = referenceMapValue.mapColumn.GetOffsets(referenceMapValue.index);
+                _keyColumn.InsertRangeFrom(currentOffset, referenceMapValue.mapColumn._keyColumn, copyStart, mapLength);
+                _valueColumn.InsertRangeFrom(currentOffset, referenceMapValue.mapColumn._valueColumn, copyStart, mapLength);
             }
+            else
+            {
+                var dataValueContainer = new DataValueContainer();
+                
+                for (int i = 0; i < mapLength; i++)
+                {
+                    map.GetKeyAt(i, dataValueContainer);
+                    _keyColumn.InsertAt(currentOffset + i, dataValueContainer);
+                    map.GetValueAt(i, dataValueContainer);
+                    _valueColumn.InsertAt(currentOffset + i, dataValueContainer);
+                }
+            }
+
             _offsets.InsertAt(index, currentOffset, mapLength);
         }
 
@@ -469,9 +481,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Remove offsets
             _offsets.RemoveRange(start, count, startOffset - endOffset);
 
-            // Remove the keys and values
-            _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
-            _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
+            if (endOffset > startOffset)
+            {
+                // Remove the keys and values
+                _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+                _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
+            }
         }
 
         public int GetByteSize(int start, int end)
@@ -490,6 +505,37 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int GetByteSize()
         {
             return _keyColumn.GetByteSize() + _valueColumn.GetByteSize() + (_offsets.Count * sizeof(int));
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is MapColumn mapColumn)
+            {
+                var startOffset = _offsets.Get(index);
+
+                var otherStartOffset = mapColumn._offsets.Get(start);
+                var otherEndOffset = mapColumn._offsets.Get(start + count);
+
+                if (otherStartOffset < otherEndOffset)
+                {
+                    // Insert the keys and values if there are any values
+                    _keyColumn.InsertRangeFrom(startOffset, mapColumn._keyColumn, otherStartOffset, otherEndOffset - otherStartOffset);
+                    _valueColumn.InsertRangeFrom(startOffset, mapColumn._valueColumn, otherStartOffset, otherEndOffset - otherStartOffset);
+                }
+
+                // Insert the offsets
+                _offsets.InsertRangeFrom(index, mapColumn._offsets, start, count, otherEndOffset - otherStartOffset, startOffset - otherStartOffset);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            var offset = _offsets.Get(index);
+            _offsets.InsertRangeStaticValue(index, count, offset);
         }
     }
 }

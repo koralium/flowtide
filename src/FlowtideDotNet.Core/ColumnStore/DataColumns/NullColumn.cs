@@ -128,5 +128,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             return 0;
         }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            _count += count;
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _count += count;
+        }
     }
 }

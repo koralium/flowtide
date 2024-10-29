@@ -203,5 +203,22 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return Count * sizeof(double);
         }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is DoubleColumn doubleColumn)
+            {
+                _data.InsertRangeFrom(index, doubleColumn._data, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _data.InsertStaticRange(index, 0, count);
+        }
     }
 }

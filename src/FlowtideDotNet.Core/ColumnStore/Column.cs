@@ -19,6 +19,7 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -37,7 +38,7 @@ namespace FlowtideDotNet.Core.ColumnStore
     /// Add value -> Value column (single type)
     /// Add different type -> Union column
     /// </summary>
-    public class Column : IColumn
+    public class Column : IColumn, IReadOnlyList<IDataValue>
     {
         private IMemoryAllocator? _memoryAllocator;
         private int _nullCounter;
@@ -93,12 +94,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public static Column Create(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)
         {
-            if (type == ArrowTypeId.Null && nullCounter > 0)
-            {
-                // Make sure that the validity list contains data
-                // This can be changed later on to only be initialized if the column changes type
-                validityList.Unset(nullCounter - 1);
-            }
             return ColumnFactory.Get(nullCounter, dataColumn, validityList, type, memoryAllocator);
         }
 
@@ -131,6 +126,18 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId Type => _type;
         IDataColumn IColumn.DataColumn =>  _dataColumn!;
+
+        public IDataValue this[int index] => GetValueAt(index, default);
+
+        /// <summary>
+        /// Used only for debugging
+        /// </summary>
+        /// <returns></returns>
+        internal int GetValidityListCount()
+        {
+            Debug.Assert(_validityList != null);
+            return _validityList.Count;
+        }
 
         private IDataColumn CreateArray(in ArrowTypeId type)
         {
@@ -220,10 +227,8 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // Check if the current buffer is a null buffer
                 if (_type == ArrowTypeId.Null)
                 {
-                    CheckNullInitialization();
                     var index = _nullCounter;
                     _nullCounter++;
-                    _validityList.Unset(index);
                 }
                 else
                 {
@@ -241,10 +246,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_validityList != null);
             if (_nullCounter == 0)
             {
-                for (int i = 0; i < Count; i++)
-                {
-                    _validityList.Set(i);
-                }
+                _validityList.InsertTrueInRange(0, Count);
             }
         }
 
@@ -273,13 +275,11 @@ namespace FlowtideDotNet.Core.ColumnStore
                     _type = value.Type;
 
                     // Add null values as undefined values to the array.
-                    for (var i = 0; i < _nullCounter; i++)
-                    {
-                        _dataColumn.Add(in NullValue.Instance);
-                    }
+                    _dataColumn.InsertNullRange(0, _nullCounter);
 
                     if (_nullCounter > 0)
                     {
+                        _validityList.Unset(Count - 1);
                         _validityList.InsertAt(index, true);
                     }
 
@@ -325,7 +325,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                 if (_type == ArrowTypeId.Null)
                 {
                     _nullCounter++;
-                    _validityList.InsertAt(index, false);
                 }
                 else
                 {
@@ -348,11 +347,18 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             else if (value.Type == ArrowTypeId.Null)
             {
-                CheckNullInitialization();
-                if (_validityList.Get(index))
+                if (_type == ArrowTypeId.Null)
                 {
-                    _validityList.Unset(index);
                     _nullCounter++;
+                }
+                else
+                {
+                    CheckNullInitialization();
+                    if (_validityList.Get(index))
+                    {
+                        _validityList.Unset(index);
+                        _nullCounter++;
+                    }
                 }
             }
             else
@@ -365,6 +371,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     {
                         _dataColumn.Add(in NullValue.Instance);
                     }
+                    _validityList.Unset(Count - 1);
                 }
                 _dataColumn!.Update<T>(index, value);
 
@@ -383,11 +390,18 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_validityList != null);
             if (_nullCounter > 0)
             {
-                if (!_validityList.Get(index))
+                if (_type == ArrowTypeId.Null)
                 {
                     _nullCounter--;
                 }
-                _validityList.RemoveAt(index);
+                else
+                {
+                    if (!_validityList.Get(index))
+                    {
+                        _nullCounter--;
+                    }
+                    _validityList.RemoveAt(index);
+                }
             }
             if (_dataColumn != null)
             {
@@ -400,8 +414,15 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_validityList != null);
             if (_nullCounter > 0)
             {
-                _nullCounter -= _validityList.CountFalseInRange(index, count);
-                _validityList.RemoveRange(index, count);
+                if (_type == ArrowTypeId.Null)
+                {
+                    _nullCounter -= count;
+                }
+                else
+                {
+                    _nullCounter -= _validityList.CountFalseInRange(index, count);
+                    _validityList.RemoveRange(index, count);   
+                }
             }
             if (_dataColumn != null)
             {
@@ -412,10 +433,16 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             Debug.Assert(_validityList != null);
-            if (_nullCounter > 0 &&
-            !_validityList.Get(index))
+            if (_nullCounter > 0)
             {
-                return NullValue.Instance;
+                if (_type == ArrowTypeId.Null)
+                {
+                    return NullValue.Instance;
+                }
+                else if (!_validityList.Get(index))
+                {
+                    return NullValue.Instance;
+                }
             }
             return _dataColumn!.GetValueAt(index, child);
         }
@@ -427,10 +454,16 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 return _dataColumn!.GetTypeAt(index, child);
             }
-            if (_nullCounter > 0 &&
-            !_validityList.Get(index))
+            if (_nullCounter > 0)
             {
-                return ArrowTypeId.Null;
+                if (_type == ArrowTypeId.Null)
+                {
+                    return ArrowTypeId.Null;
+                }
+                else if (!_validityList.Get(index))
+                {
+                    return ArrowTypeId.Null;
+                }
             }
             return _type;
         }
@@ -438,11 +471,18 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             Debug.Assert(_validityList != null);
-            if (_nullCounter > 0 &&
-                !_validityList.Get(index))
+            if (_nullCounter > 0)
             {
-                dataValueContainer._type = ArrowTypeId.Null;
-                return;
+                if (_type == ArrowTypeId.Null)
+                {
+                    dataValueContainer._type = ArrowTypeId.Null;
+                    return;
+                }
+                else if (!_validityList.Get(index))
+                {
+                    dataValueContainer._type = ArrowTypeId.Null;
+                    return;
+                }
             }
             _dataColumn!.GetValueAt(in index, in dataValueContainer, child);
         }
@@ -752,6 +792,158 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return 0;
             }
             return _dataColumn!.GetByteSize() + _validityList!.GetByteSize(0, Count - 1);
+        }
+
+        public void InsertRangeFrom(int index, IColumn otherColumn, int start, int count)
+        {
+            if (otherColumn is Column column)
+            {
+                if (_type == otherColumn.Type)
+                {
+                    if (_type == ArrowTypeId.Null)
+                    {
+                        // Both columns are null, just add null count
+                        _nullCounter += count;
+                        return;
+                    }
+                    if (_type == ArrowTypeId.Union)
+                    {
+                        Debug.Assert(_dataColumn != null);
+                        Debug.Assert(column._dataColumn != null);
+                        _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._validityList);
+                        return;
+                    }
+                    //Debug.Assert(_dataColumn != null);
+                    if (_nullCounter > 0 || column._nullCounter > 0)
+                    {
+                        if (_nullCounter > 0 && column._nullCounter > 0)
+                        {
+                            Debug.Assert(_validityList != null);
+                            Debug.Assert(column._validityList != null);
+
+                            _validityList!.InsertRangeFrom(index, column._validityList!, start, count);
+                            _nullCounter += column._validityList.CountFalseInRange(start, count);
+                        }
+                        else if (_nullCounter > 0)
+                        {
+                            Debug.Assert(_validityList != null);
+                            
+                            // Set entire range as not null, no need to update null counter since nothing is null in the copy
+                            _validityList.InsertTrueInRange(index, count);
+                        }
+                        else // Incoming contain null but this column does not
+                        {
+                            Debug.Assert(column._validityList != null);
+                            Debug.Assert(_validityList != null);
+
+                            // check so all existing values are set as not null
+                            CheckNullInitialization();
+
+                            // Insert the range from the other columns validity list
+                            _validityList.InsertRangeFrom(index, column._validityList!, start, count);
+                            // Count how many are null in the range
+                            _nullCounter = column._validityList.CountFalseInRange(start, count);
+                        }
+                    }
+
+                    Debug.Assert(_dataColumn != null);
+                    Debug.Assert(column._dataColumn != null);
+                    // Insert the actual data
+                    _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._validityList);
+                }
+                else
+                {
+                    if (_type == ArrowTypeId.Null)
+                    {
+                        Debug.Assert(_validityList != null);
+                        _dataColumn = CreateArray(otherColumn.Type);
+                        _type = otherColumn.Type;
+
+                        if (_type == ArrowTypeId.Union)
+                        {
+                            _dataColumn.InsertNullRange(0, _nullCounter);
+                            _validityList.Clear();
+                            _nullCounter = 0;
+                        }
+
+                        // Add null values as undefined values to the array.
+                        if (_nullCounter > 0)
+                        {
+                            _dataColumn.InsertNullRange(0, _nullCounter);
+                            _validityList.Unset(Count - 1);
+                        }
+                        // Check if we need to copy over null values
+                        if (column._nullCounter > 0 || _nullCounter  > 0)
+                        {
+                            if (column._nullCounter > 0)
+                            {
+                                Debug.Assert(column._validityList != null);
+                                _validityList.InsertRangeFrom(index, column._validityList!, start, count);
+                                _nullCounter += column._validityList.CountFalseInRange(start, count);
+                            }
+                            else
+                            {
+                                _validityList.InsertTrueInRange(index, count);
+                            }
+                        }
+                    }
+                    else if (column.Type == ArrowTypeId.Null)
+                    {
+                        Debug.Assert(_dataColumn != null);
+                        if (_type != ArrowTypeId.Union)
+                        {
+                            CheckNullInitialization();
+                            Debug.Assert(_validityList != null);
+                            _validityList.InsertFalseInRange(index, count);
+                            _nullCounter += count;
+                        }
+                        _dataColumn.InsertNullRange(index, count);
+                        return;
+                    }
+                    else if (_type != ArrowTypeId.Union)
+                    {
+                        Debug.Assert(_validityList != null);
+                        Debug.Assert(_dataColumn != null);
+
+                        // Convert the column into a union column since the types differ and this is not a union column
+                        var unionColumn = ConvertToUnion();
+                        _type = ArrowTypeId.Union;
+                        var previousColumn = _dataColumn;
+                        _dataColumn = unionColumn;
+                        previousColumn.Dispose();
+                        _validityList.Clear();
+                        _nullCounter = 0;
+                    }
+
+                    Debug.Assert(_dataColumn != null);
+                    Debug.Assert(column._dataColumn != null);
+
+                    // Insert the data into the union column
+                    _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._validityList);
+                }
+            }
+            else
+            {
+                throw new NotImplementedException("Insert range from does not yet work from a column with offset.");
+            }
+        }
+
+        private IEnumerable<IDataValue> GetEnumerable()
+        {
+            for (var i = 0; i < Count; i++)
+            {
+                yield return GetValueAt(i, default);
+            }
+        }
+
+        public IEnumerator<IDataValue> GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
         }
     }
 }
