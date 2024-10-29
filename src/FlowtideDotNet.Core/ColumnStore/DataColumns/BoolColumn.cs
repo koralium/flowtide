@@ -13,9 +13,9 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Buffers;
@@ -108,10 +108,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._boolValue = new BoolValue(_data.Get(index));
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child)
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue
         {
             var val = dataValue.AsBool;
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundries<bool>(_data, val, start, end, BoolComparerDesc.Instance);
+            }
             return BoundarySearch.SearchBoundries<bool>(_data, val, start, end, BoolComparer.Instance);
         }
 
@@ -165,7 +169,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            var valueBuffer = new ArrowBuffer(_data.Memory);
+            var valueBuffer = new ArrowBuffer(_data.MemorySlice);
             var arr = new BooleanArray(valueBuffer, nullBuffer, Count, nullCount, 0);
             return (arr, new BooleanType());
         }
@@ -193,6 +197,40 @@ namespace FlowtideDotNet.Core.ColumnStore
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             return ArrowTypeId.Boolean;
+        }
+
+        public void Clear()
+        {
+            _data.Clear();
+        }
+
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public int EndNewList()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            var end = start + count;
+            for (int i = end - 1; i >= start; i--)
+            {
+                _data.RemoveAt(i);
+            }
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
+        }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize(0, Count - 1);
         }
     }
 }

@@ -35,5 +35,9 @@ namespace FlowtideDotNet.Storage.Tree
         void AddRangeFrom(IValueContainer<V> container, int start, int count);
 
         void RemoveRange(int start, int count);
+
+        int GetByteSize();
+
+        int GetByteSize(int start, int end);
     }
 }

@@ -27,6 +27,6 @@ namespace FlowtideDotNet.Core.Optimizer
         /// Tries to remove direct field references in projection.
         /// Disabled by default, since its not well tested yet.
         /// </summary>
-        public bool SimplifyProjection { get; set; } = false;
+        public bool SimplifyProjection { get; set; } = true;
     }
 }

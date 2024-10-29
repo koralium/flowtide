@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql.Internal;
+using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 
 namespace FlowtideDotNet.Substrait.Sql
@@ -31,9 +32,9 @@ namespace FlowtideDotNet.Substrait.Sql
 
         public ISqlFunctionRegister FunctionRegister => _sqlFunctionRegister;
 
-        public void AddTableDefinition(string name, IEnumerable<string> columnNames)
+        public void AddTableDefinition(string name, NamedStruct schema)
         {
-            _tablesMetadata.AddTable(name, columnNames);
+            _tablesMetadata.AddTable(name, schema);
         }
 
         public void AddTableProvider(ITableProvider tableProvider)
@@ -55,8 +56,20 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 throw new InvalidOperationException("No root relation exists");
             }
+            List<SubstraitBaseType> types = new List<SubstraitBaseType>();
+            for (int i = 0; i < names.Count; i++)
+            {
+                types.Add(new AnyType());
+            }
             _planModifier.AddPlanAsView(viewName, plan);
-            _tablesMetadata.AddTable(viewName, names);
+            _tablesMetadata.AddTable(viewName, new NamedStruct()
+            {
+                Names = names,
+                Struct = new Struct()
+                {
+                    Types = types
+                }
+            });
         }
 
         public void Sql(string sqlText)

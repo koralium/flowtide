@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
         {
             // Check root expression
             var visitor = new JoinExpressionVisitor(joinRelation.Left.OutputLength);
-            visitor.Visit(joinRelation.Expression, state);
+            visitor.Visit(joinRelation.Expression!, state);
             if (!visitor.unknownCase)
             {
                 // Only fields from left is used
@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                 {
                     joinRelation.Left = new FilterRelation()
                     {
-                        Condition = joinRelation.Expression,
+                        Condition = joinRelation.Expression!,
                         Input = joinRelation.Left
                     };
                     joinRelation.Expression = new BoolLiteral() { Value = true };
@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                 {
                     joinRelation.Right = new FilterRelation()
                     {
-                        Condition = joinRelation.Expression,
+                        Condition = joinRelation.Expression!,
                         Input = joinRelation.Right
                     };
                     joinRelation.Expression = new BoolLiteral() { Value = true };

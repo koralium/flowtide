@@ -22,6 +22,10 @@ namespace FlowtideDotNet.Substrait.Type
         Int64 = 5,
         Bool = 6,
         Fp32 = 7,
-        Decimal = 8
+        Decimal = 8,
+        Struct = 9,
+        Map = 10,
+        List = 11,
+        Binary = 12
     }
 }

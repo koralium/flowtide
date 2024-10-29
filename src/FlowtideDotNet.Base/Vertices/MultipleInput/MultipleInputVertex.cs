@@ -23,6 +23,7 @@ using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Base.Metrics;
 using System.Text;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Base.Vertices.MultipleInput
 {
@@ -39,6 +40,9 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private IReadOnlySet<string>[]? _targetWatermarkNames;
         private Watermark[]? _targetWatermarks;
         private Watermark? _currentWatermark;
+        private bool[]? _targetSentDataSinceLastWatermark;
+        private bool[]? _targetSentWatermark;
+        private bool _isInIteration = false;
 
         private ParallelSource<IStreamEvent>? _parallelSource;
         private long _currentTime;
@@ -47,6 +51,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private readonly List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)> _links = new List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)>();
         private bool _isHealthy = true;
         private CancellationTokenSource? tokenSource;
+        private IMemoryAllocator? _memoryAllocator;
 
         private string? _name;
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
@@ -61,6 +66,10 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         private ILogger? _logger;
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
+
+        protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
+
+        protected float Backpressure => ((float)(_transformBlock?.OutputCount ?? throw new InvalidOperationException("OutputCount can only be fetched after initialization."))) / executionDataflowBlockOptions.BoundedCapacity;
 
         protected MultipleInputVertex(int targetCount, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
@@ -113,6 +122,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 }
                 if (r.Value is StreamMessage<T> streamMessage)
                 {
+                    Debug.Assert(_targetSentDataSinceLastWatermark != null);
+                    _targetSentDataSinceLastWatermark[r.Key] = true;
                     var enumerator = OnRecieve(r.Key, streamMessage.Data, streamMessage.Time);
 
                     if (streamMessage.Data is IRentable rentable)
@@ -160,6 +171,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
             _targetInCheckpoint = new ILockingEvent[targetCount];
             _targetWatermarks = new Watermark[targetCount];
+            _targetSentDataSinceLastWatermark = new bool[targetCount];
+            _targetSentWatermark = new bool[targetCount];
 
             foreach (var t in _targetHolders)
             {
@@ -209,8 +222,11 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }, this, CancellationToken.None, Common.GetContinuationOptions(), TaskScheduler.Default);
         }
 
-        private async IAsyncEnumerable<IStreamEvent> HandleLockingEventPrepare(int targetId, LockingEventPrepare lockingEventPrepare)
+        private IAsyncEnumerable<IStreamEvent> HandleLockingEventPrepare(int targetId, LockingEventPrepare lockingEventPrepare)
         {
+            Debug.Assert(_targetInCheckpoint != null);
+            // Set that this operator is in an iteration. This helps watermarks output.
+            _isInIteration = true;
             // Check that all other inputs are waiting for checkpoint.
             bool allInCheckpoint = true;
             for (int i = 0; i < _targetInCheckpoint.Length; i++)
@@ -228,13 +244,15 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             {
                 lockingEventPrepare.OtherInputsNotInCheckpoint = true;
             }
-            yield return lockingEventPrepare;
+            return new SingleAsyncEnumerable<IStreamEvent>(lockingEventPrepare);
         }
 
         private async IAsyncEnumerable<IStreamEvent> HandleWatermark(int targetId, Watermark watermark)
         {
             Debug.Assert(_targetWatermarkNames != null, nameof(_targetWatermarkNames));
             Debug.Assert(_targetWatermarks != null, nameof(_targetWatermarks));
+            Debug.Assert(_targetSentWatermark != null);
+            Debug.Assert(_targetSentDataSinceLastWatermark != null);
 
             if (_currentWatermark == null) 
             {
@@ -243,7 +261,25 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     SourceOperatorId = watermark.SourceOperatorId
                 };
             }
+            _targetSentWatermark[targetId] = true;
             _targetWatermarks[targetId] = watermark;
+
+            if (!_isInIteration)
+            {
+                for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
+                {
+                    if (_targetSentDataSinceLastWatermark[i] && !_targetSentWatermark[i])
+                    {
+                        yield break;
+                    }
+                }
+                for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
+                {
+                    _targetSentDataSinceLastWatermark[i] = false;
+                    _targetSentWatermark[i] = false;
+                }
+            }
+            
             var currentDict = _currentWatermark.Watermarks;
             foreach (var kv in watermark.Watermarks)
             {
@@ -290,9 +326,9 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }
         }
 
-        protected virtual async IAsyncEnumerable<T> OnWatermark(Watermark watermark)
+        protected virtual IAsyncEnumerable<T> OnWatermark(Watermark watermark)
         {
-            yield break;
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         private async IAsyncEnumerable<IStreamEvent> HandleCheckpointEnumerable(ILockingEvent checkpointEvent)
@@ -361,9 +397,9 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             return EmptyAsyncEnumerable<IStreamEvent>.Instance;
         }
 
-        public virtual async IAsyncEnumerable<T> OnTrigger(string name, object? state)
+        public virtual IAsyncEnumerable<T> OnTrigger(string name, object? state)
         {
-            yield break;
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         private bool TargetInCheckpoint(int targetId, ILockingEvent checkpointEvent, out ILockingEvent[]? checkpoints)
@@ -414,6 +450,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         public void Complete()
         {
+            Debug.Assert(_transformBlock != null, nameof(_transformBlock));
+
             foreach (var target in _targetHolders)
             {
                 target.Complete();
@@ -446,7 +484,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         public IDisposable LinkTo(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
         {
             _links.Add((target, linkOptions));
-            return null;
+            return default!;
         }
 
         private IDisposable LinkTo_Internal(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
@@ -476,6 +514,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
         {
+            _memoryAllocator = vertexHandler.MemoryManager;
             _name = name;
             _streamName = vertexHandler.StreamName;
             _metrics = vertexHandler.Metrics;

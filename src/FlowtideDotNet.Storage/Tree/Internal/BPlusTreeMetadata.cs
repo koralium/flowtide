@@ -22,5 +22,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         /// This is used to start an iterator.
         /// </summary>
         public long Left { get; set; }
+        public int PageSizeBytes { get; set; }
     }
 }

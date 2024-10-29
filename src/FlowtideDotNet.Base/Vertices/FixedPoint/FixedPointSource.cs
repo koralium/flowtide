@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             this.executionDataflowBlockOptions = executionDataflowBlockOptions;
         }
 
-        internal ITargetBlock<KeyValuePair<int, IStreamEvent>> Target => _block;
+        internal ITargetBlock<KeyValuePair<int, IStreamEvent>> Target => _block!;
 
         internal IEnumerable<ITargetBlock<IStreamEvent>> Links => _links.Select(x => x.Item1);
 
@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         public IDisposable LinkTo(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
         {
             _links.Add((target, linkOptions));
-            return null;
+            return default!;
         }
 
         public void ReleaseReservation(DataflowMessageHeader messageHeader, ITargetBlock<IStreamEvent> target)

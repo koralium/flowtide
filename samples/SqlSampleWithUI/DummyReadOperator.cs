@@ -13,11 +13,11 @@
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Operators.Read;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
@@ -72,10 +72,10 @@ namespace SqlSampleWithUI
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
             
-            for (int i = 0; i < 1_000_000; i++)
+            for (int i = 0; i < 1_0_000; i++)
             {
                 await output.EnterCheckpointLock();
-                var memoryManager = GlobalMemoryManager.Instance; // new BatchMemoryManager(1);
+                var memoryManager = MemoryAllocator;
                 IColumn[] columns = new IColumn[16];
                 PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
                 PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);

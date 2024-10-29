@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -22,14 +23,16 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
     internal class ColumnValueSerializer : IBplusTreeValueSerializer<ColumnRowReference, ColumnValueStorageContainer>
     {
         private readonly int _columnCount;
+        private readonly IMemoryAllocator _memoryAllocator;
 
-        public ColumnValueSerializer(int columnCount)
+        public ColumnValueSerializer(int columnCount, IMemoryAllocator memoryAllocator)
         {
             _columnCount = columnCount;
+            _memoryAllocator = memoryAllocator;
         }
         public ColumnValueStorageContainer CreateEmpty()
         {
-            return new ColumnValueStorageContainer(_columnCount);
+            return new ColumnValueStorageContainer(_columnCount, _memoryAllocator);
         }
 
         public ColumnValueStorageContainer Deserialize(in BinaryReader reader)

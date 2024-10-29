@@ -64,9 +64,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 if (disposing)
                 {
-                    foreach(var column in columns)
+                    for (int i = 0; i < columns.Length; i++)
                     {
-                        column.Dispose();
+                        columns[i].Dispose();
+                        columns[i] = null!;
                     }
                 }
 
@@ -83,6 +84,26 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public int GetByteSize()
+        {
+            int size = 0;
+            for (int i = 0; i < columns.Length; i++)
+            {
+                size += columns[i].GetByteSize();
+            }
+            return size;
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            int size = 0;
+            for (int i = 0; i < columns.Length; i++)
+            {
+                size += columns[i].GetByteSize(start, end);
+            }
+            return size;
         }
     }
 }

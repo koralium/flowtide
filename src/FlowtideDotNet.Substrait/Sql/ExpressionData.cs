@@ -11,18 +11,21 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Sql
 {
     public class ExpressionData
     {
-        public ExpressionData(Expression expr, string name)
+        public ExpressionData(Expression expr, string name, SubstraitBaseType type)
         {
             Expr = expr;
             Name = name;
+            Type = type;
         }
 
         public Expression Expr { get; }
         public string Name { get; }
+        public SubstraitBaseType Type { get; }
     }
 }

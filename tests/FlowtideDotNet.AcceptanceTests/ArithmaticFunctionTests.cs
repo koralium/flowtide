@@ -1465,7 +1465,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT min(visits) FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Min = (double)Users.Min(x => x.Visits) } });
+            AssertCurrentDataEqual(new[] { new { Min = (double)Users.Min(x => x.Visits)! } });
         }
 
         [Fact]

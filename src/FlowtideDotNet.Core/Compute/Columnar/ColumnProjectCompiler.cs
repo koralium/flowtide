@@ -12,9 +12,11 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
@@ -42,12 +44,18 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             var paramInfo = new ColumnParameterInfo(new List<ParameterExpression>() { batchParam }, new List<ParameterExpression>() { indexParam }, new List<int>() { 0 }, resultInfo);
 
             var resultExpr = visitor.Visit(expression, paramInfo);
+
+            if (resultExpr == null)
+            {
+                throw new FlowtideException("Expression visitor did not return a result expression");
+            }
+
             var columnParameter = System.Linq.Expressions.Expression.Parameter(typeof(Column));
 
             var addMethod = typeof(Column).GetMethod("Add");
+            Debug.Assert(addMethod != null);
             var genericMethod = addMethod.MakeGenericMethod(resultExpr.Type);
             var addToColumnExpr = System.Linq.Expressions.Expression.Call(columnParameter, genericMethod, resultExpr);
-            
 
             var lambda = System.Linq.Expressions.Expression.Lambda<Action<EventBatchData, int, Column>>(addToColumnExpr, batchParam, indexParam, columnParameter);
             return lambda.Compile();

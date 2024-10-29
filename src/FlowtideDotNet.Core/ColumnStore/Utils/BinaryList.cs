@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -109,12 +109,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 }
                 else
                 {
-                    var newMemory = _memoryAllocator.Allocate(allocLength, 64);
-                    var newPtr = newMemory.Memory.Pin().Pointer;
-                    NativeMemory.Copy(_data, newPtr, (nuint)(_dataLength));
-                    _data = newPtr;
-                    _memoryOwner.Dispose();
-                    _memoryOwner = newMemory;
+                    _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, allocLength, 64);
+                    _data = _memoryOwner.Memory.Pin().Pointer;
                 }
                 _dataLength = allocLength;
             }
@@ -142,11 +138,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public void UpdateAt(int index, Span<byte> data)
         {
             var offset = _offsets.Get(index);
-            var length = _length;
-            if (index != _offsets.Count - 1)
-            {
-                length = _offsets.Get(index + 1);
-            }
+            var endOffset = _offsets.Get(index + 1);
+            var length = endOffset - offset;
             if (length == data.Length)
             {
                 data.CopyTo(AccessSpan.Slice(offset));
@@ -159,8 +152,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset + data.Length));
                 data.CopyTo(span.Slice(offset));
                 _length += difference;
-                _offsets.Update(index + 1, data.Length, difference);
-            }
+                _offsets.Update(index + 1, offset + data.Length, difference);
+            }   
         }
 
         /// <summary>
@@ -235,10 +228,25 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        public void RemoveRange(int index, int count)
+        {
+            var offset = _offsets.Get(index);
+            var length = _offsets.Get(index + count) - offset;
+
+            _offsets.RemoveRange(index, count, -length);
+
+            var span = AccessSpan;
+
+            // Move all elements after the index
+            span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset));
+            _length -= length;
+        }
+
         public Span<byte> Get(in int index)
         {
             var offset = _offsets.Get(index);
             return AccessSpan.Slice(offset, _offsets.Get(index + 1) - offset);
+            
         }
 
         public Memory<byte> GetMemory(in int index)
@@ -294,6 +302,37 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public void Clear()
+        {
+            _offsets.Clear();
+            _offsets.Add(0);
+            _length = 0;
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            var startOffset = _offsets.Get(start);
+            var endOffset = _offsets.Get(end + 1);
+            return endOffset - startOffset + ((end - start + 1) * sizeof(int));
+        }
+
+        public void InsertRangeFrom(int index, BinaryList binaryList, int start, int count)
+        {
+            var offsetToInsertAt = _offsets.Get(index);
+            var offsetToCopyStart = binaryList._offsets.Get(start);
+            var offsetToCopyEnd = binaryList._offsets.Get(start + count);
+            var toCopyLength = offsetToCopyEnd - offsetToCopyStart;
+            EnsureCapacity(_length + toCopyLength);
+            var span = AccessSpan;
+            // Move all data up to free space for the insert
+            span.Slice(offsetToInsertAt, _length - offsetToInsertAt).CopyTo(span.Slice(offsetToInsertAt + toCopyLength));
+            // Copy the data
+            binaryList.AccessSpan.Slice(offsetToCopyStart, toCopyLength).CopyTo(span.Slice(offsetToInsertAt));
+            _length += toCopyLength;
+            var offsetDifference = offsetToInsertAt - offsetToCopyStart;
+            _offsets.InsertRangeFrom(index, binaryList._offsets, start, count, toCopyLength, offsetDifference);
         }
     }
 }

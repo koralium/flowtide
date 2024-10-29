@@ -12,7 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -287,6 +287,44 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         }
 
         [Fact]
+        public void InsertNullInMiddleOfList()
+        {
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            listColumn.Add(new ListValue(new List<IDataValue>()
+            {
+                new Int64Value(1),
+                new Int64Value(2),
+                new Int64Value(3)
+            }));
+            listColumn.Add(new ListValue(new List<IDataValue>()
+            {
+                new Int64Value(4),
+                new Int64Value(5)
+            }));
+
+            listColumn.InsertAt(1, NullValue.Instance);
+
+            Assert.Equal(3, listColumn.Count);
+
+            var currentValue = listColumn.GetValueAt(0, default);
+            var list = currentValue.AsList;
+            Assert.Equal(3, list.Count);
+            Assert.Equal(1, list.GetAt(0).AsLong);
+            Assert.Equal(2, list.GetAt(1).AsLong);
+            Assert.Equal(3, list.GetAt(2).AsLong);
+
+            currentValue = listColumn.GetValueAt(1, default);
+            list = currentValue.AsList;
+            Assert.Equal(0, list.Count);
+
+            currentValue = listColumn.GetValueAt(2, default);
+            list = currentValue.AsList;
+            Assert.Equal(2, list.Count);
+            Assert.Equal(4, list.GetAt(0).AsLong);
+            Assert.Equal(5, list.GetAt(1).AsLong);
+        }
+
+        [Fact]
         public void InsertAtEndOfList()
         {
             ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
@@ -381,10 +419,103 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 new Int64Value(4),
                 new Int64Value(5),
                 new Int64Value(6)
-            }), 0, 2, default);
+            }), 0, 2, default, false);
 
             Assert.Equal(1, start);
             Assert.Equal(1, end);
+        }
+
+        [Fact]
+        public void RemoveRangeNonNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<byte[]?> expected = new List<byte[]?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var byteSize = r.Next(20);
+                byte[] data = new byte[byteSize];
+                r.NextBytes(data);
+                expected.Add(data);
+                column.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+            }
+
+            column.RemoveRange(100, 100);
+            expected.RemoveRange(100, 100);
+
+            Assert.Equal(expected.Count(x => x == null), column.GetNullCount());
+            Assert.Equal(900, column.Count);
+
+            for (int i = 0; i < 900; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                if (expected[i] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(expected[i], actualByteList.ToArray());
+                }
+            }
+        }
+
+        [Fact]
+        public void RemoveRangeWithNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<byte[]?> expected = new List<byte[]?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var isNull = r.Next(2) == 0;
+
+                if (isNull)
+                {
+                    expected.Add(null);
+                    column.Add(NullValue.Instance);
+                }
+                else
+                {
+                    var byteSize = r.Next(20);
+                    byte[] data = new byte[byteSize];
+                    r.NextBytes(data);
+                    expected.Add(data);
+                    column.Add(new ListValue(data.Select(x => (IDataValue)new Int64Value(x)).ToList()));
+                }
+
+            }
+
+            column.RemoveRange(100, 100);
+            expected.RemoveRange(100, 100);
+
+            Assert.Equal(expected.Count(x => x == null), column.GetNullCount());
+            Assert.Equal(900, column.Count);
+
+            for (int i = 0; i < 900; i++)
+            {
+                var actual = column.GetValueAt(i, default);
+                if (expected[i] == null)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    List<byte> actualByteList = new List<byte>();
+                    for (int k = 0; k < actual.AsList.Count; k++)
+                    {
+                        actualByteList.Add((byte)actual.AsList.GetAt(k).AsLong);
+                    }
+                    Assert.Equal(expected[i], actualByteList.ToArray());
+                }
+            }
         }
     }
 }

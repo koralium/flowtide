@@ -274,22 +274,6 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task InnerJoinMergeJoinParallelExecution()
-        {
-            GenerateData(1000);
-            await StartStream(@"
-                INSERT INTO output 
-                SELECT 
-                    o.orderkey, u.firstName, u.LastName
-                FROM orders o
-                INNER JOIN users u
-                ON o.userkey = u.userkey", 4);
-            await WaitForUpdate();
-
-            AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
-        }
-
-        [Fact]
         public async Task LeftJoinMergeJoinWithPushdown()
         {
             GenerateData(100);
@@ -539,6 +523,50 @@ namespace FlowtideDotNet.AcceptanceTests
             var expectedList = expected.ToList();
 
             AssertCurrentDataEqual(expectedList);
+        }
+
+        [Fact]
+        public async Task TestJoinUpdateValueOnPageBorder()
+        {
+            GenerateCompanies(10);
+            GenerateUsers(1000);
+
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey, u.firstName, o.orderkey
+                FROM users u
+                LEFT JOIN orders o
+                ON u.userkey = o.userkey
+                ", pageSize: 512);
+
+            await WaitForUpdate();
+
+            var firstUser = Users[0];
+            // Get the user that will be placed at the right side border of a page.
+            var keyToFind = firstUser.UserKey + 511;
+            var userObj = Users.First(x => x.UserKey == keyToFind);
+
+            // Force so the update of a new object is added after the current object.
+            userObj.FirstName = "Zzzzz";
+            AddOrUpdateUser(userObj);
+
+            await WaitForUpdate();
+
+            GenerateOrders(1000);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from user in Users
+                join order in Orders on user.UserKey equals order.UserKey into gj
+                from suborder in gj.DefaultIfEmpty()
+                select new
+                {
+                    user.UserKey,
+                    user.FirstName,
+                    suborder?.OrderKey
+                });
         }
     }
 }

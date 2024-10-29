@@ -28,6 +28,11 @@ namespace FlowtideDotNet.Core
 
         private EventBatchWeighted? _data;
         private List<RowEvent>? _events;
+        // Remove later when row events have been removed
+        private int _columnCount;
+
+        // Temporary fix for rent count when row events are sent.
+        private int _rentCount;
 
         public EventBatchWeighted Data => GetData();
 
@@ -55,13 +60,13 @@ namespace FlowtideDotNet.Core
             }
             if (_events != null)
             {
-                var columnCount = 0;
+                var columnCount = _columnCount;
                 if (_events.Count > 0)
                 {
                     columnCount = _events[0].RowData.Length;
                 }
                 _data = RowEventToEventBatchData.ConvertToEventBatchData(_events, columnCount);
-                _data.Rent(1);
+                _data.Rent(_rentCount);
                 return _data;
             }
             throw new Exception("No events or data available");
@@ -70,11 +75,13 @@ namespace FlowtideDotNet.Core
         public StreamEventBatch(EventBatchWeighted data)
         {
             _data = data;
+            _columnCount = _data.EventBatchData.Columns.Count;
         }
 
-        public StreamEventBatch(List<RowEvent> events)
+        public StreamEventBatch(List<RowEvent> events, int columnCount)
         {
             _events = events;
+            _columnCount = columnCount;
         }
 
         public void Rent(int count)
@@ -83,6 +90,10 @@ namespace FlowtideDotNet.Core
             {
                 _data.Rent(count);
             }
+            else
+            {
+                _rentCount += count;
+            }
         }
 
         public void Return()
@@ -90,6 +101,10 @@ namespace FlowtideDotNet.Core
             if (_data != null)
             {
                 _data.Return();
+            }
+            else
+            {
+                _rentCount -= 1;
             }
             
         }

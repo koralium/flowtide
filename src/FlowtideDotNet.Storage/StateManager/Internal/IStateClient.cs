@@ -23,5 +23,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         void Delete(in long key);
         ValueTask Reset(bool clearMetadata);
         int BPlusTreePageSize { get; }
+        int BPlusTreePageSizeBytes { get; }
+
+        long CacheMisses { get; }
     }
 }

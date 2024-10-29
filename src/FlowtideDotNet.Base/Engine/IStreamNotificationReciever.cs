@@ -17,5 +17,7 @@ namespace FlowtideDotNet.Base.Engine
     public interface IStreamNotificationReciever
     {
         void OnStreamStateChange(StreamStateValue newState);
+
+        void OnCheckpointComplete();
     }
 }

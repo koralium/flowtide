@@ -85,7 +85,8 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             {
                 Comparer = new BPlusTreeListComparer<string>(StringComparer.OrdinalIgnoreCase),
                 KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
-                ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
             listId = await sharepointGraphListClient.GetListId(writeRelation.NamedObject.DotSeperated);
             encoders = await sharepointGraphListClient.GetColumnEncoders(writeRelation.NamedObject.DotSeperated, writeRelation.TableSchema.Names, stateManagerClient);

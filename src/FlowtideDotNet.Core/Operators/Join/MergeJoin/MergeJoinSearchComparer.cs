@@ -32,6 +32,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         public int end;
         public bool noMatch = false;
 
+        public bool SeekNextPageForValue => true;
+
         public MergeJoinSearchComparer(List<KeyValuePair<int, ReferenceSegment?>> selfColumns, List<KeyValuePair<int, ReferenceSegment?>> referenceColumns)
         {
             dataValueContainer = new DataValueContainer();

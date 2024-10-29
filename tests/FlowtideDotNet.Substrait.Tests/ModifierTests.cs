@@ -242,7 +242,10 @@ namespace FlowtideDotNet.Substrait.Tests
             PlanModifier planModifier = new PlanModifier();
             planModifier.AddPlanAsView("viewtable", sub);
             planModifier.AddRootPlan(root);
+            // Ignore obsolete warning since the test is checking for the obsolete method
+#pragma warning disable CS0618 // Type or member is obsolete
             planModifier.WriteToTable("output");
+#pragma warning restore CS0618 // Type or member is obsolete
             var modifiedPlan = planModifier.Modify();
 
         }

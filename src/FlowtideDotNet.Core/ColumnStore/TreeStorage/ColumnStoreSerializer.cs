@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Ipc;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Buffers;
@@ -28,14 +29,16 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
     internal class ColumnStoreSerializer : IBPlusTreeKeySerializer<ColumnRowReference, ColumnKeyStorageContainer>
     {
         private readonly int columnCount;
+        private readonly IMemoryAllocator memoryAllocator;
 
-        public ColumnStoreSerializer(int columnCount)
+        public ColumnStoreSerializer(int columnCount, IMemoryAllocator memoryAllocator)
         {
             this.columnCount = columnCount;
+            this.memoryAllocator = memoryAllocator;
         }
         public ColumnKeyStorageContainer CreateEmpty()
         {
-            return new ColumnKeyStorageContainer(columnCount);
+            return new ColumnKeyStorageContainer(columnCount, memoryAllocator);
         }
 
         private static readonly FieldInfo _memoryOwnerField = GetMethodArrowBufferMemoryOwner();
@@ -50,7 +53,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var recordBatch = arrowReader.ReadNextRecordBatch();
 
-            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch);
+            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, memoryAllocator);
 
             return new ColumnKeyStorageContainer(recordBatch.ColumnCount, eventBatch);
         }

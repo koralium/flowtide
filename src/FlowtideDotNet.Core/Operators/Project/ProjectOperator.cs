@@ -21,6 +21,7 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core.Utils;
+using FlowtideDotNet.Base.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Project
 {
@@ -30,7 +31,7 @@ namespace FlowtideDotNet.Core.Operators.Project
     internal class ProjectOperator : UnaryVertex<StreamEventBatch, object?>
     {
 #if DEBUG_WRITE
-        private StreamWriter allInput;
+        private StreamWriter? allInput;
 #endif
         private readonly ProjectRelation projectRelation;
         private readonly Func<RowEvent, FlxValue>[] _expressions;
@@ -67,7 +68,7 @@ namespace FlowtideDotNet.Core.Operators.Project
             return Task.FromResult<object?>(null);
         }
 
-        public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
             Debug.Assert(_eventsProcessed != null);
             _eventsProcessed.Add(msg.Events.Count);
@@ -76,7 +77,7 @@ namespace FlowtideDotNet.Core.Operators.Project
             foreach (var e in msg.Events)
             {
 #if DEBUG_WRITE
-                allInput.WriteLine($"Input: {e.Weight} {e.ToJson()}");
+                allInput!.WriteLine($"Input: {e.Weight} {e.ToJson()}");
 #endif
                 FlxValue[] extraFelds = new FlxValue[_expressions.Length];
 
@@ -118,14 +119,15 @@ namespace FlowtideDotNet.Core.Operators.Project
             }
 
 #if DEBUG_WRITE
-            await allInput.FlushAsync();
+            allInput!.Flush();
 #endif
             if (output.Count > 0)
             {
                 Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
                 _eventsCounter.Add(output.Count);
-                yield return new StreamEventBatch(output);
+                return new SingleAsyncEnumerable<StreamEventBatch>(new StreamEventBatch(output, projectRelation.OutputLength));
             }
+            return EmptyAsyncEnumerable<StreamEventBatch>.Instance;
         }
 
         protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)

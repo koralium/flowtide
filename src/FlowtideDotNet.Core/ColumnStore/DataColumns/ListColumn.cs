@@ -18,15 +18,18 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using FlowtideDotNet.Core.ColumnStore.Utils;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using static Substrait.Protobuf.Expression.Types.Literal.Types;
+using System.Collections;
+using static SqlParser.Ast.TableConstraint;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public class ListColumn : IDataColumn
+    public class ListColumn : IDataColumn, IEnumerable<IEnumerable<IDataValue>>
     {
         private readonly Column _internalColumn;
         private readonly IntList _offsets;
@@ -38,7 +41,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ListColumn(IMemoryAllocator memoryAllocator)
         {
-            _internalColumn = new Column(memoryAllocator);
+            _internalColumn = Column.Create(memoryAllocator);
             _offsets = new IntList(memoryAllocator);
             _offsets.Add(0);
         }
@@ -100,6 +103,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
                 return -1;
             }
+            else if (value.Type == ArrowTypeId.Null)
+            {
+                return 1;
+            }
             var otherList = value.AsList;
             
             var startOffset = _offsets.Get(index);
@@ -134,9 +141,13 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._type = ArrowTypeId.List;
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
             where T : IDataValue
         {
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundriesForDataColumnDesc(this, in dataValue, start, end, child, default);
+            }
             return BoundarySearch.SearchBoundriesForDataColumn(this, in dataValue, start, end, child, default);
         }
 
@@ -201,10 +212,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var startOffset = _offsets.Get(index);
             var endOffset = _offsets.Get(index + 1);
-            for (int i = endOffset - 1; i >= startOffset; i--)
-            {
-                _internalColumn.RemoveAt(i);
-            }
+            _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
             _offsets.RemoveAt(index + 1, startOffset - endOffset);
         }
 
@@ -212,7 +220,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (value.Type == ArrowTypeId.Null)
             {
-                _offsets.Add(_internalColumn.Count);
+                var endOffset = _offsets.Get(index);
+                _offsets.InsertAt(index, endOffset);
                 return;
             }
             var list = value.AsList;
@@ -261,6 +270,93 @@ namespace FlowtideDotNet.Core.ColumnStore
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             return ArrowTypeId.List;
+        }
+
+        public void Clear()
+        {
+            _offsets.Clear();
+            _offsets.Add(0);
+            _internalColumn.Clear();
+        }
+
+        /// <summary>
+        /// Allows adding values to a new list directly without creating a list value type.
+        /// This allows for more efficient list creation.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="value"></param>
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            _internalColumn.Add(value);
+        }
+
+        /// <summary>
+        /// Signals an end to a list created with AddToNewList.
+        /// </summary>
+        /// <returns></returns>
+        public int EndNewList()
+        {
+            var currentOffset = _offsets.Count - 1;
+            _offsets.Add(_internalColumn.Count);
+            return currentOffset;
+        }
+
+        private IEnumerable<IDataValue> GetListValues(int index)
+        {
+            var startOffset = _offsets.Get(index);
+            var endOffset = _offsets.Get(index + 1);
+
+            for (int i = startOffset; i < endOffset; i++)
+            {
+                yield return _internalColumn.GetValueAt(i, default);
+            }
+        }
+
+        private IEnumerable<IEnumerable<IDataValue>> GetEnumerable()
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                yield return GetListValues(i);
+            }
+        }
+
+        public IEnumerator<IEnumerable<IDataValue>> GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            var startOffset = _offsets.Get(start);
+            var endOffset = _offsets.Get(start + count);
+
+            // Remove the offsets
+            _offsets.RemoveRange(start, count, startOffset - endOffset);
+
+            // Remove the values in the internal column
+            _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            var startOffset = _offsets.Get(start);
+            var endOffset = _offsets.Get(end + 1);
+
+            if (startOffset == endOffset)
+            {
+                return sizeof(int);
+            }
+            return _internalColumn.GetByteSize(startOffset, endOffset - 1) + ((end - start + 1) * sizeof(int));
+        }
+
+        public int GetByteSize()
+        {
+            return _internalColumn.GetByteSize() + (_offsets.Count * sizeof(int));
         }
     }
 }

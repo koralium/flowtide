@@ -30,7 +30,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar
 {
-    internal class ColumnarExpressionVisitor : ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>
+    public class ColumnarExpressionVisitor : ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>
     {
         private readonly IFunctionsRegister functionsRegister;
 
@@ -68,6 +68,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                 for (int i = 0; i < state.BatchParameters.Count; i++)
                 {
                     var convertToRowEventMethod = typeof(ColumnarExpressionVisitor).GetMethod(nameof(ConvertToRowEvent), BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+                    Debug.Assert(convertToRowEventMethod != null);
                     var convertExpr = System.Linq.Expressions.Expression.Call(convertToRowEventMethod, state.BatchParameters[i], state.IndexParameters[i]);
                     parameterList.Add(convertExpr);
                 }
@@ -75,6 +76,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                 var visitor = new FlowtideExpressionVisitor(functionsRegister, typeof(RowEvent));
                 var func = function.MapFunc(scalarFunction, new ParametersInfo(parameterList, state.RelativeIndices), visitor);
                 var convertToDataValueMethod = typeof(ColumnarExpressionVisitor).GetMethod(nameof(ConvertFlxValueToDataValue), BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
+                Debug.Assert(convertToDataValueMethod != null);
                 return System.Linq.Expressions.Expression.Call(convertToDataValueMethod, func);
             }
             return base.VisitScalarFunction(scalarFunction, state);
@@ -120,6 +122,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                 }
 
                 var getValueMethod = typeof(ColumnarExpressionVisitor).GetMethod("GetColumnValue", BindingFlags.NonPublic | BindingFlags.Static);
+                Debug.Assert(getValueMethod != null);
 
                 var getValueExpr = System.Linq.Expressions.Expression.Call(
                     getValueMethod,
@@ -199,6 +202,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             if (ifThenExpression.Else != null)
             {
                 elseStatement = Visit(ifThenExpression.Else, state);
+                Debug.Assert(elseStatement != null);
             }
             else
             {
@@ -211,10 +215,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                 var ifClause = ifThenExpression.Ifs[i];
                 var ifStatement = Visit(ifClause.If, state);
                 var thenStatement = Visit(ifClause.Then, state);
+                Debug.Assert(ifStatement != null);
+                Debug.Assert(thenStatement != null);
 
                 if (!ifStatement.Type.Equals(typeof(bool)))
                 {
-                    MethodInfo genericToBoolMethod = typeof(DataValueBoolFunctions).GetMethod("ToBool", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                    MethodInfo? genericToBoolMethod = typeof(DataValueBoolFunctions).GetMethod("ToBool", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                    Debug.Assert(genericToBoolMethod != null);
                     var toBoolMethod = genericToBoolMethod.MakeGenericMethod(ifStatement.Type);
                     ifStatement = System.Linq.Expressions.Expression.Call(toBoolMethod, ifStatement);
                 }
@@ -253,6 +260,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
 
             var newArrayExpr = System.Linq.Expressions.Expression.NewArrayInit(typeof(KeyValuePair<IDataValue, IDataValue>), arrInitExpressions);
             var ctor = typeof(MapValue).GetConstructor([typeof(KeyValuePair<IDataValue, IDataValue>[])]);
+            Debug.Assert(ctor != null);
             return System.Linq.Expressions.Expression.New(ctor, newArrayExpr);
         }
 

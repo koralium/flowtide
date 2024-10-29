@@ -26,4 +26,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Comparers
             return x.CompareTo(y);
         }
     }
+
+    internal class DecimalComparerDesc : IColumnComparer<decimal>
+    {
+        internal static readonly DecimalComparerDesc Instance = new DecimalComparerDesc();
+        public int Compare(in decimal x, in decimal y)
+        {
+            return y.CompareTo(x);
+        }
+    }
 }

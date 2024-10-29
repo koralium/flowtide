@@ -161,12 +161,12 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
                     }
                     if (rightModified)
                     {
-                        await rightTmpPage.SavePage();
+                        await rightTmpPage.SavePage(false);
                     }
                 }
                 if (leftPageModified)
                 {
-                    await leftPage.SavePage();
+                    await leftPage.SavePage(false);
                 }
             }
 
@@ -228,12 +228,12 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
                     }
                     if (leftPageModified)
                     {
-                        await leftTempPage.SavePage();
+                        await leftTempPage.SavePage(false);
                     }
                 }
                 if (rightModified)
                 {
-                    await rightPage.SavePage();
+                    await rightPage.SavePage(false);
                 }
             }
 
@@ -271,7 +271,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 
             await _leftTemporary.Clear();
 
-            yield return new StreamEventBatch(output);
+            yield return new StreamEventBatch(output, joinRelation.OutputLength);
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
@@ -335,30 +335,34 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             {
                 Comparer = new BPlusTreeListComparer<RowEvent>(new NestedJoinStreamEventComparer()),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
+                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
             _rightTree = await stateManagerClient.GetOrCreateTree("right", 
                 new BPlusTreeOptions<RowEvent, JoinStorageValue, ListKeyContainer<RowEvent>, ListValueContainer<JoinStorageValue>>()
             {
                 Comparer = new BPlusTreeListComparer<RowEvent>(new NestedJoinStreamEventComparer()),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
+                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
 
             _leftTemporary = await stateManagerClient.GetOrCreateTree("left_tmp", 
                 new BPlusTreeOptions<RowEvent, JoinStorageValue, ListKeyContainer<RowEvent>, ListValueContainer<JoinStorageValue>>()
             {
                 Comparer = new BPlusTreeListComparer<RowEvent>(new NestedJoinStreamEventComparer()),
-                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                    ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
-                });
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
+            });
 
             _rightTemporary = await stateManagerClient.GetOrCreateTree("right_tmp", 
                 new BPlusTreeOptions<RowEvent, JoinStorageValue, ListKeyContainer<RowEvent>, ListValueContainer<JoinStorageValue>>()
             {
                 Comparer = new BPlusTreeListComparer<RowEvent>(new NestedJoinStreamEventComparer()),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer())
+                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
 
             if (_eventsProcessed == null)

@@ -37,11 +37,6 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Exceptions
             Response = response;
         }
 
-        protected FlowtideElasticsearchResponseException(IResponse response, SerializationInfo info, StreamingContext context) : base(info, context)
-        {
-            Response = response;
-        }
-
         public IResponse Response { get; }
     }
 }

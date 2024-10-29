@@ -60,6 +60,16 @@ namespace FlowtideDotNet.Storage.Tree
             return _list[index];
         }
 
+        public virtual int GetByteSize()
+        {
+            return -1;
+        }
+
+        public virtual int GetByteSize(int start, int end)
+        {
+            return -1;
+        }
+
         public void Insert(int index, K key)
         {
             _list.Insert(index, key);

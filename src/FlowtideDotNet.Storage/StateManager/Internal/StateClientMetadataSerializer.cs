@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using System.Buffers;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal
@@ -23,6 +24,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             var reader = new Utf8JsonReader(slice);
             var deserializedValue = JsonSerializer.Deserialize<StateClientMetadata<T>>(ref reader);
             bytes.Dispose();
+            Debug.Assert(deserializedValue != null);
             return deserializedValue;
         }
 

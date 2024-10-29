@@ -14,13 +14,13 @@ using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
     internal class ColumnNormalizationOperator : UnaryVertex<StreamEventBatch, NormalizationState>
     {
 #if DEBUG_WRITE
-        private StreamWriter allOutput;
+        private StreamWriter? allOutput;
 #endif
 
         private readonly NormalizationRelation _normalizationRelation;
@@ -107,8 +107,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         public override async Task<NormalizationState> OnCheckpoint()
         {
 #if DEBUG_WRITE
-            allOutput.WriteLine("Checkpoint");
-            await allOutput.FlushAsync();
+            allOutput!.WriteLine("Checkpoint");
+            await allOutput!.FlushAsync();
 #endif
 
             await _tree!.Commit();
@@ -120,7 +120,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             Debug.Assert(_eventsProcessed != null);
             Debug.Assert(_eventsCounter != null);
 
-            var otherColumnsMemoryManager = new BatchMemoryManager(_otherColumns.Count);
+            var otherColumnsMemoryManager = MemoryAllocator;
 
             PrimitiveList<int> toEmitOffsets = new PrimitiveList<int>(otherColumnsMemoryManager);
             PrimitiveList<int> weights = new PrimitiveList<int>(otherColumnsMemoryManager);
@@ -131,7 +131,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             
             for (int i = 0; i < _otherColumns.Count; i++)
             {
-                deleteBatchColumns.Add(new Column(otherColumnsMemoryManager));
+                deleteBatchColumns.Add(Column.Create(otherColumnsMemoryManager));
             }
 
             _eventsProcessed.Add(msg.Data.Weights.Count);
@@ -171,12 +171,18 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 iterations.Add(0);
             }
 
-            IColumn[] columns = new IColumn[_emitList.Count];
-            for (int i = 0; i < _emitList.Count; i++)
+            if (weights.Count > 0)
             {
-                columns[i] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_emitList[i]], toEmitOffsets, false);
+                IColumn[] columns = new IColumn[_emitList.Count];
+
+                for (int i = 0; i < _emitList.Count; i++)
+                {
+                    columns[i] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_emitList[i]], toEmitOffsets, false);
+                }
+
+                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
             }
-            yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+            
 
             if (deleteBatchKeyOffsets.Count > 0)
             {
@@ -200,9 +206,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 }
                 for (int i = 0; i < _otherColumns.Count; i++)
                 {
-                    if (_emitList.Contains(_otherColumns[i]))
+                    var emitIndex = _emitList.IndexOf(_otherColumns[i]);
+                    if (emitIndex >= 0)
                     {
-                        deleteColumns[_otherColumns[i]] = deleteBatchColumns[i];
+                        deleteColumns[emitIndex] = deleteBatchColumns[i];
                     }
                 }
 
@@ -210,9 +217,9 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 #if DEBUG_WRITE
                 foreach (var o in outputBatch.Events)
                 {
-                    allOutput.WriteLine($"{o.Weight} {o.ToJson()}");
+                    allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
-                await allOutput.FlushAsync();
+                await allOutput!.FlushAsync();
 #endif
                 yield return outputBatch;
             }
@@ -274,7 +281,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                                     deleteBatchKeyOffsets.Add(input.RowIndex);
                                     for (int k = 0; k < _otherColumns.Count; k++)
                                     {
-                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[_otherColumns[k]].GetValueAt(current.RowIndex, default));
+                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
                                     }
                                     return (input, GenericWriteOperation.Upsert);
                                 }
@@ -322,8 +329,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 new BPlusTreeOptions<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>()
                 {
                     Comparer = new NormalizeTreeComparer(_normalizationRelation.KeyIndex),
-                    KeySerializer = new NormalizeKeyStorageSerializer(_normalizationRelation.KeyIndex),
-                    ValueSerializer = new NormalizeValueSerializer(_otherColumns)
+                    KeySerializer = new NormalizeKeyStorageSerializer(_normalizationRelation.KeyIndex, MemoryAllocator),
+                    ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator),
+                    UseByteBasedPageSizes = true,
+                    MemoryAllocator = MemoryAllocator
                 });
         }
     }

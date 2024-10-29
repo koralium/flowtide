@@ -10,8 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         {
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
-            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
             binaryList.Add(e1);
             binaryList.Add(e2);
 
@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
             binaryList.Add(e1);
             binaryList.Add(e2);
             binaryList.Insert(1, e3);
@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
             binaryList.Add(e1);
             binaryList.Add(e2);
             binaryList.Insert(0, e3);
@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
             binaryList.Add(e1);
             binaryList.Add(e2);
             binaryList.Insert(2, e3);
@@ -89,7 +89,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
             binaryList.Add(e1);
             binaryList.Add(e2);
             binaryList.Add(e3);
@@ -106,7 +106,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
             binaryList.Add(e1);
             binaryList.Add(e2);
             binaryList.Add(e3);
@@ -123,7 +123,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
             binaryList.Add(e1);
             binaryList.Add(e2);
             binaryList.Add(e3);
@@ -139,7 +139,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         {
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
-            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
             binaryList.Add(e1);
             binaryList.Add(e2);
 
@@ -154,7 +154,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         {
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
-            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
             binaryList.Insert(0, e1);
             binaryList.UpdateAt(0, e2);
 
@@ -166,7 +166,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         {
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
-            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
             binaryList.Insert(0, e1);
             binaryList.UpdateAt(0, e2);
             binaryList.UpdateAt(0, e1);
@@ -180,7 +180,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             var e1 = new byte[] { 1, 2, 3 };
             var e2 = new byte[] { 1, 2, 3, 4 };
             var e3 = new byte[] { 1, 2, 3, 4, 5 };
-            BinaryList binaryList = new BinaryList(new BatchMemoryManager(1));
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
             binaryList.Insert(0, e1);
             binaryList.Insert(1, e3);
             binaryList.UpdateAt(0, e2);
@@ -188,7 +188,43 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
 
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
             Assert.True(binaryList.Get(1).SequenceEqual(e3));
+        }
 
+        [Fact]
+        public void TestUpdateLastElement()
+        {
+            var e1 = new byte[] { 1, 2, 3 };
+            var e2 = new byte[] { 1, 2, 3, 4 };
+            var e3 = new byte[] { 1, 2, 3, 4, 5 };
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Insert(0, e1);
+            binaryList.Insert(1, e2);
+            binaryList.UpdateAt(1, e3);
+
+            Assert.True(binaryList.Get(0).SequenceEqual(e1));
+            Assert.True(binaryList.Get(1).SequenceEqual(e3));
+        }
+
+        [Fact]
+        public void TestInsertRangeFrom()
+        {
+            var e1 = new byte[] { 1, 2, 3 };
+            var e2 = new byte[] { 1, 2, 3, 4 };
+            var e3 = new byte[] { 1, 2, 3, 4, 5 };
+            var e4 = new byte[] { 1, 2, 3, 4, 5, 6 };
+            BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Insert(0, e1);
+            binaryList.Insert(1, e2);
+
+            BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(e3);
+            other.Add(e4);
+            binaryList.InsertRangeFrom(1, other, 0, 2);
+
+            Assert.True(binaryList.Get(0).SequenceEqual(e1));
+            Assert.True(binaryList.Get(1).SequenceEqual(e3));
+            Assert.True(binaryList.Get(2).SequenceEqual(e4));
+            Assert.True(binaryList.Get(3).SequenceEqual(e2));
         }
     }
 }

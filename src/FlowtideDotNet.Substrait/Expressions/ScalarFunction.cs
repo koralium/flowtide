@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Substrait.Expressions
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
-            return visitor.VisitScalarFunction(this, state);
+            return visitor.VisitScalarFunction(this, state)!;
         }
 
         public override bool Equals(object? obj)

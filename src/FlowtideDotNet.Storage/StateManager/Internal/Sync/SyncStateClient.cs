@@ -29,12 +29,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly StateClientOptions<V> options;
         private readonly bool useReadCache;
         private readonly int m_bplusTreePageSize;
+        private readonly int m_bplusTreePageSizeBytes;
         private readonly ConcurrentDictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
         private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
-        private readonly Histogram<float> m_persistenceReadMsHistogram;
-        private readonly Histogram<float> m_temporaryReadMsHistogram;
+        private readonly Histogram<float>? m_persistenceReadMsHistogram;
+        private readonly Histogram<float>? m_temporaryReadMsHistogram;
+        private readonly Histogram<float>? m_temporaryWriteMsHistogram;
         private readonly TagList tagList;
 
         // Method containers for addOrUpdate methods to skip casting to Func all the time
@@ -45,6 +47,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// Value of how many pages have changed since last commit.
         /// </summary>
         private long newPages;
+        private long cacheMisses;
+
+        public long CacheMisses => cacheMisses;
 
         public SyncStateClient(
             StateManagerSync stateManager,
@@ -56,7 +61,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             FileCacheOptions fileCacheOptions,
             Meter meter,
             bool useReadCache,
-            int bplusTreePageSize)
+            int bplusTreePageSize,
+            int bplusTreePageSizeBytes)
         {
             this.stateManager = stateManager;
             this.metadataId = metadataId;
@@ -65,11 +71,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.options = options;
             this.useReadCache = useReadCache;
             this.m_bplusTreePageSize = bplusTreePageSize;
+            this.m_bplusTreePageSizeBytes = bplusTreePageSizeBytes;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name);
             m_modified = new ConcurrentDictionary<long, int>();
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
-            m_persistenceReadMsHistogram = meter.CreateHistogram<float>("flowtide_persistence_read_ms");
-            m_temporaryReadMsHistogram = meter.CreateHistogram<float>("flowtide_temporary_read_ms");
+            if (!string.IsNullOrEmpty(name))
+            {
+                m_persistenceReadMsHistogram = meter.CreateHistogram<float>("flowtide_persistence_read_ms");
+                m_temporaryReadMsHistogram = meter.CreateHistogram<float>("flowtide_temporary_read_ms");
+                m_temporaryWriteMsHistogram = meter.CreateHistogram<float>("flowtide_temporary_write_ms");
+            }
             tagList = options.TagList;
             tagList.Add("state_client", name);
             addorUpdate_newValue_container = AddOrUpdate_NewValue;
@@ -89,6 +100,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         public int BPlusTreePageSize => m_bplusTreePageSize;
+
+        public int BPlusTreePageSizeBytes => m_bplusTreePageSizeBytes;
 
         private class AddOrUpdateState
         {
@@ -233,6 +246,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     return ValueTask.FromResult<V?>(val);
                 }
+                Interlocked.Increment(ref cacheMisses);
                 // Read from temporary file storage
                 if (m_fileCacheVersion.ContainsKey(key))
                 {
@@ -244,7 +258,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         throw new InvalidOperationException("Could not rent value when fetched from storage.");
                     }
-                    m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
+                    if (m_temporaryReadMsHistogram != null)
+                    {
+                        m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
+                    }
+                    
                     return ValueTask.FromResult<V?>(value);
                 }
                 // Read from persistent store
@@ -263,7 +281,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 throw new InvalidOperationException("Could not rent value when fetched from storage.");
             }
-            m_persistenceReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
+            if (m_persistenceReadMsHistogram != null)
+            {
+                m_persistenceReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
+            }
             return value;
         }
 
@@ -346,9 +367,21 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     continue;
                 }
                 value.Item1.ValueRef.value.EnterWriteLock();
-                var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value, stateManager.SerializeOptions);
-                m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);
-                value.Item1.ValueRef.value.ExitWriteLock();
+                var sw = ValueStopwatch.StartNew();
+                try
+                {
+                    var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value, stateManager.SerializeOptions);
+                    m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);
+                }
+                finally
+                {
+                    value.Item1.ValueRef.value.ExitWriteLock();
+                }
+                if (m_temporaryWriteMsHistogram != null)
+                {
+                    m_temporaryWriteMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
+                }
+                
                 m_fileCacheVersion[value.Item1.ValueRef.key] = val;
             }
             m_fileCache.Flush();
