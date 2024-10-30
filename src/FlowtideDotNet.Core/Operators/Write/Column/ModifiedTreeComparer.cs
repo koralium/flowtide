@@ -27,6 +27,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         private DataValueContainer dataValueContainer;
         private readonly List<int> _keyColumns;
 
+        public bool SeekNextPageForValue => false;
+
         public ModifiedTreeComparer(List<int> keyColumns)
         {
             dataValueContainer = new DataValueContainer();

@@ -14,6 +14,7 @@ using Apache.Arrow.Ipc;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Normalization;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -26,15 +27,17 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
     internal class ModifiedKeyStorageSerializer : IBPlusTreeKeySerializer<ColumnRowReference, ModifiedKeyStorage>
     {
         private readonly List<int> _columnsToStore;
+        private readonly IMemoryAllocator _memoryAllocator;
 
-        public ModifiedKeyStorageSerializer(List<int> columnsToStore)
+        public ModifiedKeyStorageSerializer(List<int> columnsToStore, IMemoryAllocator memoryAllocator)
         {
             _columnsToStore = columnsToStore;
+            this._memoryAllocator = memoryAllocator;
         }
 
         public ModifiedKeyStorage CreateEmpty()
         {
-            return new ModifiedKeyStorage(_columnsToStore);
+            return new ModifiedKeyStorage(_columnsToStore, _memoryAllocator);
         }
 
         public ModifiedKeyStorage Deserialize(in BinaryReader reader)
@@ -42,7 +45,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var recordBatch = arrowReader.ReadNextRecordBatch();
 
-            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch);
+            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, _memoryAllocator);
 
             return new ModifiedKeyStorage(_columnsToStore, eventBatch);
         }

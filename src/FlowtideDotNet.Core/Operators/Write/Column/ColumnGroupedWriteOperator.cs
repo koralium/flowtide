@@ -81,7 +81,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 {
                     Comparer = new WriteTreeInsertComparer(primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList(), m_writeRelation.OutputLength),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                    KeySerializer = new ColumnStoreSerializer(m_writeRelation.OutputLength)
+                    KeySerializer = new ColumnStoreSerializer(m_writeRelation.OutputLength, MemoryAllocator),
+                    MemoryAllocator = MemoryAllocator
                 });
 
             m_modified = await stateManagerClient.GetOrCreateTree("temporary",
@@ -89,7 +90,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 {
                     Comparer = new ModifiedTreeComparer(primaryKeyColumns.ToList()),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                    KeySerializer = new ModifiedKeyStorageSerializer(primaryKeyColumns.ToList())
+                    KeySerializer = new ModifiedKeyStorageSerializer(primaryKeyColumns.ToList(), MemoryAllocator),
+                    MemoryAllocator = MemoryAllocator
                 });
             await m_modified.Clear();
 
@@ -104,7 +106,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 {
                     Comparer = new ModifiedTreeComparer(primaryKeyColumns.ToList()),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                    KeySerializer = new ModifiedKeyStorageSerializer(primaryKeyColumns.ToList())
+                    KeySerializer = new ModifiedKeyStorageSerializer(primaryKeyColumns.ToList(), MemoryAllocator),
+                    MemoryAllocator = MemoryAllocator
                 });
                 await UpsertExistingData();
             }
@@ -136,7 +139,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
         protected override async Task<TState> OnCheckpoint(long checkpointTime)
         {
-            if (m_executionMode == ExecutionMode.OnCheckpoint)
+            if (m_executionMode == ExecutionMode.OnCheckpoint || (m_executionMode == ExecutionMode.Hybrid && !m_hasSentInitialData))
             {
                 await SendData();
             }

@@ -11,8 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -27,11 +27,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         private readonly List<int> _columnsToStore;
         internal readonly EventBatchData _data;
 
-        public ModifiedKeyStorage(List<int> columnsToStore)
+        public ModifiedKeyStorage(List<int> columnsToStore, IMemoryAllocator memoryAllocator)
         {
             _columnsToStore = columnsToStore;
             IColumn[] columns = new IColumn[columnsToStore.Count];
-            var memoryManager = GlobalMemoryManager.Instance;
+            var memoryManager = memoryAllocator;
             for (int i = 0; i < columnsToStore.Count; i++)
             {
                 columns[i] = new Core.ColumnStore.Column(memoryManager);
@@ -130,6 +130,16 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         public void Dispose()
         {
             _data.Dispose();
+        }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
         }
     }
 }
