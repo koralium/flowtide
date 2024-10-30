@@ -74,7 +74,7 @@ Returns the value for a key.
 
 Example:
 
-```
+```csharp
 var (found, value) = await tree.GetValue(1);
 ```
 
@@ -112,7 +112,7 @@ But if the tree is used to store temporary data, `Commit` should not be called.
 
 Example:
 
-```
+```csharp
 public override async Task<OperatorState> OnCheckpoint()
 {
     await _tree.Commit();
