@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
@@ -258,6 +259,24 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var result = column.SearchBoundries(new Int64Value(1), 0, 7, default);
             Assert.Equal(0, result.Item1);
             Assert.Equal(2, result.Item2);
+        }
+
+        [Fact]
+        public void TestJsonEncoding()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new Int64Value(3));
+
+            using MemoryStream stream = new MemoryStream();
+            Utf8JsonWriter writer = new Utf8JsonWriter(stream);
+
+            column.WriteToJson(in writer, 0);
+            writer.Flush();
+
+            string json = Encoding.UTF8.GetString(stream.ToArray());
+
+            Assert.Equal("3", json);
         }
     }
 }
