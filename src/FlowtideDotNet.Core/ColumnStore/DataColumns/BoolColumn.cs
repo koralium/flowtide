@@ -216,11 +216,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
-            {
-                _data.RemoveAt(i);
-            }
+            _data.RemoveRange(start, count);
         }
 
         public int GetByteSize(int start, int end)
@@ -231,6 +227,23 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int GetByteSize()
         {
             return _data.GetByteSize(0, Count - 1);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is BoolColumn boolColumn)
+            {
+                _data.InsertRangeFrom(index, boolColumn._data, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _data.InsertFalseInRange(index, count);
         }
     }
 }

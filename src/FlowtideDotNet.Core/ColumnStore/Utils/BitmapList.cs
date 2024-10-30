@@ -19,6 +19,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using System.Threading.Tasks;
 using static SqlParser.Ast.DataType;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
@@ -233,6 +234,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public int CountTrueInRange(int index, int count)
         {
+            if (count == 0)
+            {
+                return 0;
+            }
             var span = AccessSpan;
             var fromIndex = index >> 5;
             var toIndex = (index + count) >> 5;
@@ -333,8 +338,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
             var startMod32 = start & 31;
             var numberOfNewInts = ((count + startMod32 + 31) / 32);
-            
-            EnsureSize(_dataLength + numberOfNewInts + 1);
+
+            var expectedNumberOfInts = ((_length + count + startMod32 + 31) / 32);
+
+            EnsureSize(expectedNumberOfInts + 1);
 
             var mod = index % 32;
             var modDifference = mod - startMod32;
@@ -482,6 +489,300 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        public void InsertTrueInRange(int index, int count)
+        {
+            var toIndex = index >> 5;
+            var mod = index & 31;
+            var endRemainder = (index + count) & 31;
+            var endIndex = (index + count - 1) >> 5;
+            var expectedNumberOfInts = ((_length + count + 31) / 32);
+
+            EnsureSize(expectedNumberOfInts + 1);
+
+            var span = AccessSpan;
+
+            // Check if the index is in the middle of an integer
+            if (mod > 0)
+            {
+                var bottomBitsMask = BitPatternArray[mod - 1];
+                var topBitsMask = topBitsSetMask[mod - 1];
+
+                // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
+                var val = span[toIndex] & bottomBitsMask;
+                // Shift the all bits to the left
+                ShiftLeft(toIndex, _dataLength - 1, count);
+
+                // Check if the end is in the middle of an integer
+                if (endRemainder > 0)
+                {
+                    var endIntPreviousValue = span[endIndex] & topBitsSetMask[endRemainder - 1];
+
+                    // Set the bits in the range to 1
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = -1;
+                    }
+
+                    // Merge together values in the most left integer
+                    var newVal = span[toIndex] & topBitsMask;
+                    span[toIndex] = (val | newVal);
+
+                    // Merge together values in the most right integer
+                    newVal = span[endIndex] & BitPatternArray[endRemainder - 1];
+                    span[endIndex] = (endIntPreviousValue | newVal);
+                }
+                else
+                {
+                    // Does not end in the middle of an integer, so no need to take out the previous value
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = -1;
+                    }
+
+                    // Merge together values in the most left integer
+                    var newVal = span[toIndex] & topBitsMask;
+                    span[toIndex] = (val | newVal);
+                }
+            }
+            else
+            {
+                // Starts at the beginning of an integer
+                ShiftLeft(toIndex, _dataLength - 1, count);
+
+                // Check if the end is in the middle of an integer
+                if (endRemainder > 0)
+                {
+                    var endIntPreviousValue = span[endIndex] & topBitsSetMask[endRemainder - 1];
+
+                    // Set the bits in the range to 1
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = -1;
+                    }
+
+                    // Merge together values in the most right integer
+                    var newVal = span[endIndex] & BitPatternArray[endRemainder - 1];
+                    span[endIndex] = (endIntPreviousValue | newVal);
+                }
+                else
+                {
+                    // Does not end in the middle of an integer, so no need to take out the previous value
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = -1;
+                    }
+                }
+            }
+            if (index >= _length)
+            {
+                _length = index + count;
+            }
+            else
+            {
+                _length += count;
+            }
+        }
+
+        public void InsertFalseInRange(int index, int count)
+        {
+            var toIndex = index >> 5;
+            var mod = index & 31;
+            var endRemainder = (index + count) & 31;
+            var endIndex = (index + count - 1) >> 5;
+            var expectedNumberOfInts = ((_length + count + 31) / 32);
+
+            EnsureSize(expectedNumberOfInts + 1);
+
+            var span = AccessSpan;
+
+            // Check if the index is in the middle of an integer
+            if (mod > 0)
+            {
+                var bottomBitsMask = BitPatternArray[mod - 1];
+                var topBitsMask = topBitsSetMask[mod - 1];
+
+                // Fetch the value of the most left integer and and mask it to get the bits that should remain unchanged
+                var val = span[toIndex] & bottomBitsMask;
+                // Shift the all bits to the left
+                ShiftLeft(toIndex, _dataLength - 1, count);
+
+                // Check if the end is in the middle of an integer
+                if (endRemainder > 0)
+                {
+                    var endIntPreviousValue = span[endIndex] & topBitsSetMask[endRemainder - 1];
+
+                    // Set the bits in the range to 1
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = 0;
+                    }
+
+                    // Merge together values in the most left integer
+                    var newVal = span[toIndex] & topBitsMask;
+                    span[toIndex] = (val | newVal);
+
+                    // Merge together values in the most right integer
+                    newVal = span[endIndex] & BitPatternArray[endRemainder - 1];
+                    span[endIndex] = (endIntPreviousValue | newVal);
+                }
+                else
+                {
+                    // Does not end in the middle of an integer, so no need to take out the previous value
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = 0;
+                    }
+
+                    // Merge together values in the most left integer
+                    var newVal = span[toIndex] & topBitsMask;
+                    span[toIndex] = (val | newVal);
+                }
+            }
+            else
+            {
+                // Starts at the beginning of an integer
+                ShiftLeft(toIndex, _dataLength - 1, count);
+
+                // Check if the end is in the middle of an integer
+                if (endRemainder > 0)
+                {
+                    var endIntPreviousValue = span[endIndex] & topBitsSetMask[endRemainder - 1];
+
+                    // Set the bits in the range to 1
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = 0;
+                    }
+
+                    // Merge together values in the most right integer
+                    var newVal = span[endIndex] & BitPatternArray[endRemainder - 1];
+                    span[endIndex] = (endIntPreviousValue | newVal);
+                }
+                else
+                {
+                    // Does not end in the middle of an integer, so no need to take out the previous value
+                    for (int i = toIndex; i <= endIndex; i++)
+                    {
+                        span[i] = 0;
+                    }
+                }
+            }
+            if (index >= _length)
+            {
+                _length = index + count;
+            }
+            else
+            {
+                _length += count;
+            }
+        }
+
+        public int FindNextFalseIndex(int start)
+        {
+            var span = AccessSpan;
+            var fromIndex = start >> 5; // Divide by 32 to get the index of the integer
+            var mod = start & 31; // Get the bit offset within the current integer
+
+            if (mod > 0)
+            {
+                int mask = (1 << (mod)) - 1;
+                var val = span[fromIndex];
+                val |= mask;
+
+                var lowBit = ~val & (val + 1); // Get the lowest 0 bit in the current integer
+                if (lowBit != 0) // If a 0 bit was found
+                {
+                    var result = start - mod + BitOperations.TrailingZeroCount(lowBit); // Return the position of the 0 bit
+                    if (result < _length)
+                    {
+                        return result;
+                    }
+                    return -1;
+                }
+                fromIndex++;
+                //// Move to the next 32-bit integer if no 0 bit was found in the current word
+                start = (fromIndex) << 5;
+            }
+            else
+            {
+                // Directly check the bit at position `mod == 0` (start position)
+                if ((span[fromIndex] & 1) == 0) // If the first bit is 0
+                {
+                    return start; // Return the starting position since the bit is 0
+                }
+            }
+
+            // Search through the remaining integers
+            while (start < _length)
+            {
+                if (span[fromIndex] != -1) // -1 means all bits are set to 1
+                {
+                    var val = span[fromIndex];
+                    var lowestZeroBit = ~val & (val + 1);
+
+                    // Find the position of the first 0 bit using the trailing zero count
+                    var result = start + BitOperations.TrailingZeroCount(lowestZeroBit);
+                    if (result < _length)
+                    {
+                        return result;
+                    }
+                    return -1;
+                }
+                start += 32; // Move to the next integer
+                fromIndex++;
+            }
+
+            return -1;
+        }
+
+        public int FindNextTrueIndex(int start)
+        {
+            var span = AccessSpan;
+            var fromIndex = start >> 5; // Divide by 32 to get the index of the integer
+            var mod = start & 31; // Get the bit offset within the current integer
+
+            if (mod > 0)
+            {
+                int mask = ~((1 << mod) - 1);
+                var val = span[fromIndex];
+                val &= mask;
+
+                var lowBit = val & (~val + 1); // Get the lowest 1 bit in the current integer
+                if (lowBit != 0) // If a 1 bit was found
+                {
+                    return start - mod + BitOperations.TrailingZeroCount(lowBit); // Return the position of the 1 bit
+                }
+                fromIndex++;
+                //// Move to the next 32-bit integer if no 0 bit was found in the current word
+                start = (fromIndex) << 5;
+            }
+            else
+            {
+                // Directly check the bit at position `mod == 0` (start position)
+                if ((span[fromIndex] & 1) == 1) // If the first bit is 1
+                {
+                    return start; // Return the starting position since the bit is 1
+                }
+            }
+
+            // Search through the remaining integers
+            while (start < _length)
+            {
+                if (span[fromIndex] != 0) // 0 means all bits are set to 0
+                {
+                    var val = span[fromIndex];
+                    var lowestZeroBit = val & (~val + 1);
+
+                    // Find the position of the first 0 bit using the trailing zero count
+                    return start + BitOperations.TrailingZeroCount(lowestZeroBit);
+                }
+                start += 32; // Move to the next integer
+                fromIndex++;
+            }
+
+            return -1;
+        }
+
         private void ShiftLeft(int toIndex, int fromIndex, int count)
         {
             var span = AccessSpan;
@@ -581,11 +882,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 }
                 else
                 {
-                    // If there are more than 16 integers to copy, use AVX2
-                    if (fromIndex + 16 <= lastIndex && Avx2.IsSupported)
-                    {
-                        ShiftRightAvxSelector(ref span, ref fromIndex, ref toIndex, ref lastIndex, remainder);
-                    }
                     while (fromIndex < lastIndex)
                     {
                         uint right = (uint)span[fromIndex] >> remainder;

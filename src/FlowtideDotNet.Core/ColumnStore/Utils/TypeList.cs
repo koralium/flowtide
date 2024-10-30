@@ -10,21 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Memory;
 using System;
-using System.Buffers.Binary;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading.Tasks;
-using System.Collections;
-using FlowtideDotNet.Storage.Memory;
 
-namespace FlowtideDotNet.Storage.DataStructures
+namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
-    public unsafe class PrimitiveList<T> : IDisposable, IReadOnlyList<T>
-        where T: unmanaged
+    internal unsafe class TypeList : IDisposable, IReadOnlyList<sbyte>
     {
         private void* _data;
         private int _dataLength;
@@ -34,28 +34,28 @@ namespace FlowtideDotNet.Storage.DataStructures
         private IMemoryOwner<byte>? _memoryOwner;
         private int _rentCounter;
 
-        public PrimitiveList(IMemoryAllocator memoryAllocator)
+        public TypeList(IMemoryAllocator memoryAllocator)
         {
             _data = null;
             _memoryAllocator = memoryAllocator;
         }
 
-        public PrimitiveList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        public TypeList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = memory;
             _data = _memoryOwner.Memory.Pin().Pointer;
-            _dataLength = memory.Memory.Length / sizeof(T);
+            _dataLength = memory.Memory.Length / sizeof(sbyte);
             _length = length;
             _memoryAllocator = memoryAllocator;
         }
 
-        public Span<T> Span => new Span<T>(_data, _length);
+        public Span<sbyte> Span => new Span<sbyte>(_data, _length);
 
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
-        public Memory<byte> SlicedMemory => _memoryOwner?.Memory.Slice(0, _length * sizeof(T)) ?? new Memory<byte>();
+        public Memory<byte> SlicedMemory => _memoryOwner?.Memory.Slice(0, _length * sizeof(sbyte)) ?? new Memory<byte>();
 
-        public PrimitiveList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)
+        public TypeList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)
         {
             _data = data;
             _dataLength = dataLength;
@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Storage.DataStructures
                 {
                     newLength = 64;
                 }
-                var allocSize = newLength * sizeof(T);
+                var allocSize = newLength * sizeof(sbyte);
 
                 if (_memoryOwner == null)
                 {
@@ -88,15 +88,15 @@ namespace FlowtideDotNet.Storage.DataStructures
             }
         }
 
-        private Span<T> AccessSpan => new Span<T>(_data, _dataLength);
+        private Span<sbyte> AccessSpan => new Span<sbyte>(_data, _dataLength);
 
-        public void Add(T value)
+        public void Add(sbyte value)
         {
             EnsureCapacity(_length + 1);
             AccessSpan[_length++] = value;
         }
 
-        public void AddRangeFrom(PrimitiveList<T> list, int index, int count)
+        public void AddRangeFrom(TypeList list, int index, int count)
         {
             EnsureCapacity(_length + count);
             var span = AccessSpan;
@@ -105,7 +105,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             _length += count;
         }
 
-        public void InsertAt(int index, T value)
+        public void InsertAt(int index, sbyte value)
         {
             if (index == _length)
             {
@@ -120,7 +120,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             _length++;
         }
 
-        public void InsertRangeFrom(int index, PrimitiveList<T> other, int start, int count)
+        public void InsertRangeFrom(int index, TypeList other, int start, int count)
         {
             EnsureCapacity(_length + count);
             var span = AccessSpan;
@@ -130,7 +130,46 @@ namespace FlowtideDotNet.Storage.DataStructures
             _length += count;
         }
 
-        public void InsertStaticRange(int index, T value, int count)
+        public void InsertRangeFrom(int index, TypeList other, int start, int count, Span<sbyte> mapping, int typeCount)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            var sourceSpan = other.AccessSpan;
+
+            // Copy existing data
+            span.Slice(index, _length - index).CopyTo(span.Slice(index + count, _length - index));
+
+            int i = 0;
+            if (Avx2.IsSupported && typeCount <= 8)
+            {
+                // Code that runs it using avx
+
+                fixed (sbyte* pDest = span)
+                fixed (sbyte* pSource = sourceSpan)
+                fixed (sbyte* pMapping = mapping)
+                {
+                    Vector128<sbyte> mappingVector = Vector128.Load(pMapping);
+
+                    int vectorSize = Vector128<sbyte>.Count;
+                    
+                    for (; i <= count - vectorSize; i += vectorSize)
+                    {
+                        Vector128<sbyte> sourceVector = Vector128.Load(pSource + start + i);
+                        Vector128<sbyte> resultVector = Avx.Shuffle(mappingVector, sourceVector);
+                        Avx.Store(pDest + index + i, resultVector);
+                    }
+                }
+            }
+
+            // Insert the new data
+            for (; i < count; i++)
+            {
+                span[index + i] = mapping[sourceSpan[start + i]];
+            }
+            _length += count;
+        }
+
+        public void InsertStaticRange(int index, sbyte value, int count)
         {
             EnsureCapacity(_length + count);
             var span = AccessSpan;
@@ -157,24 +196,24 @@ namespace FlowtideDotNet.Storage.DataStructures
             _length -= count;
         }
 
-        public T Get(in int index)
+        public sbyte Get(in int index)
         {
             var span = AccessSpan;
             return span[index];
         }
 
-        public ref T GetRef(scoped in int index)
+        public ref sbyte GetRef(scoped in int index)
         {
             var span = AccessSpan;
             return ref span[index];
         }
 
-        public void Update(in int index, in T value)
+        public void Update(in int index, in sbyte value)
         {
             AccessSpan[index] = value;
         }
 
-        public T this[int index]
+        public sbyte this[int index]
         {
             get
             {
@@ -203,7 +242,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             }
         }
 
-        ~PrimitiveList()
+        ~TypeList()
         {
             Dispose(disposing: false);
         }
@@ -214,7 +253,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             GC.SuppressFinalize(this);
         }
 
-        private IEnumerable<T> GetEnumerable()
+        private IEnumerable<sbyte> GetEnumerable()
         {
             for (var i = 0; i < _length; i++)
             {
@@ -222,7 +261,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             }
         }
 
-        public IEnumerator<T> GetEnumerator()
+        public IEnumerator<sbyte> GetEnumerator()
         {
             return GetEnumerable().GetEnumerator();
         }

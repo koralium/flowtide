@@ -137,5 +137,66 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("1", arrowArray.GetString(1));
             Assert.Equal("2", arrowArray.GetString(2));
         }
+
+        
+
+        [Fact]
+        public void ValidateInsertRangeSetsNullCorrectly()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            Column other = new Column(GlobalMemoryManager.Instance);
+            for (int i = 0; i < 50; i++)
+            {
+                column.Add(NullValue.Instance);
+            }
+
+            other.Add(new StringValue("b"));
+            other.Add(new StringValue("c"));
+
+            column.InsertRangeFrom(50, other, 0, 2);
+
+            var type = column.GetTypeAt(51, default);
+            Assert.Equal(ArrowTypeId.String, type);
+        }
+
+        [Fact]
+        public void TestInsertValueInMiddleOfNullColumn()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            for (int i = 0; i < 50; i++)
+            {
+                column.Add(NullValue.Instance);
+            }
+
+            column.InsertAt(25, new Int64Value(1));
+
+            Assert.Equal(51, column.GetValidityListCount());
+            Assert.Equal(51, column.Count);
+        }
+
+        [Fact]
+        public void InsertNullColumnIntoExistingColumn()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("1"),
+                new StringValue("2")
+            };
+            Column other = new Column(GlobalMemoryManager.Instance);
+            for (int i = 0; i < 50; i++)
+            {
+                other.Add(NullValue.Instance);
+            }
+
+            column.InsertRangeFrom(2, other, 0, 2);
+
+            Assert.Equal(4, column.GetValidityListCount());
+            Assert.Equal(4, column.Count);
+
+            Assert.Equal("1", column.GetValueAt(0, default).AsString.ToString());
+            Assert.Equal("2", column.GetValueAt(1, default).AsString.ToString());
+            Assert.True(column.GetValueAt(2, default).Type == ArrowTypeId.Null);
+            Assert.True(column.GetValueAt(3, default).Type == ArrowTypeId.Null);
+        }
     }
 }

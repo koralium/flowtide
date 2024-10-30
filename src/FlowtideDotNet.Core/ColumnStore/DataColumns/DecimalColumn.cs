@@ -201,5 +201,22 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return Count * sizeof(decimal);
         }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is DecimalColumn decimalColumn)
+            {
+                _values.InsertRangeFrom(index, decimalColumn._values, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _values.InsertStaticRange(index, 0, count);
+        }
     }
 }

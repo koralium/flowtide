@@ -13,12 +13,14 @@
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
+    [DebuggerDisplay(@"\{null\}")]
     public struct NullValue : IDataValue
     {
         public static readonly NullValue Instance = new NullValue();
@@ -45,6 +47,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public void CopyToContainer(DataValueContainer container)
         {
             container._type = ArrowTypeId.Null;
+        }
+
+        public override string ToString()
+        {
+            return "null";
         }
     }
 }

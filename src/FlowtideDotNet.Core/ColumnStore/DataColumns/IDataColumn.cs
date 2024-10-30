@@ -66,5 +66,15 @@ namespace FlowtideDotNet.Core.ColumnStore
         int GetByteSize(int start, int end);
 
         int GetByteSize();
+
+        void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList);
+
+        /// <summary>
+        /// Inserts null on all elements in the range.
+        /// Used as an optimization to not have to insert nulls one by one.
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="count"></param>
+        void InsertNullRange(int index, int count);
     }
 }
