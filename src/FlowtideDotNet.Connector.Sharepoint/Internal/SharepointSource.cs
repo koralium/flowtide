@@ -106,6 +106,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 {
                     throw new InvalidOperationException("Error fetching delta, task was cancelled.", e);
                 }
+                throw;
             }
             finally
             {
