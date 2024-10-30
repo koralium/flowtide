@@ -27,6 +27,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using static SqlParser.Ast.Expression;
 using static SqlParser.Ast.TableConstraint;
@@ -738,6 +739,18 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _offsets.InsertRangeStaticValue(index, count, 0);
             // Add to null column to increase its counter
             _valueColumns[0].InsertNullRange(index, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            var valueColumnIndex = _typeList[index];
+            if (valueColumnIndex == 0)
+            {
+                writer.WriteNullValue();
+                return;
+            }
+            var valueColumn = _valueColumns[valueColumnIndex];
+            valueColumn.WriteToJson(in writer, _offsets.Get(index));
         }
     }
 }

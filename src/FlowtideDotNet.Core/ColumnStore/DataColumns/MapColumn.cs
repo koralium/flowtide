@@ -27,6 +27,7 @@ using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
 using System.Collections;
 using static SqlParser.Ast.TableConstraint;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -536,6 +537,22 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var offset = _offsets.Get(index);
             _offsets.InsertRangeStaticValue(index, count, offset);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteStartObject();
+
+            var (startOffset, endOffset) = GetOffsets(in index);
+
+            for (int i = startOffset; i < endOffset; i++)
+            {
+                var key = _keyColumn.GetValueAt(i, default);
+                writer.WritePropertyName(key.ToString()!);
+                _valueColumn.WriteToJson(in writer, i);
+            }
+
+            writer.WriteEndObject();
         }
     }
 }

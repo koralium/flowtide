@@ -23,6 +23,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -229,6 +230,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void InsertNullRange(int index, int count)
         {
             _binaryList.InsertNullRange(index, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteStringValue(_binaryList.Get(index));
         }
     }
 }
