@@ -107,7 +107,7 @@ await foreach(var page in iterator) {
 ## Commit
 
 When data has been written, it is not yet persisted. To persist the data one must call `Commit`.
-This is usually done in the `OnCheckpoint` method in an operator.
+This is done in the `OnCheckpoint` method in an operator.
 But if the tree is used to store temporary data, `Commit` should not be called.
 
 Example:
