@@ -253,7 +253,6 @@ namespace FlowtideDotNet.Storage.StateManager
                 m_metadata.ClientMetadataLocations.Add(client, clientMetadataPageId);
                 Monitor.Exit(m_lock);
 
-                //await m_persistentStorage.Write(clientMetadataPageId, StateClientMetadataSerializer.Serialize(clientMetadata));
                 lock (m_lock)
                 {
                     var session = m_persistentStorage.CreateSession();
