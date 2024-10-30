@@ -83,7 +83,7 @@ var (found, value) = await tree.GetValue(1);
 Since this is a B+ tree, one of the main uses is to iterate over the values in the tree.
 This is done with the `CreateIterator` method.
 
-```
+```csharp
 var iterator = tree.CreateIterator();
 ```
 
