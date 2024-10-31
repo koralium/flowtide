@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using static SqlParser.Ast.TableConstraint;
 
@@ -944,6 +945,27 @@ namespace FlowtideDotNet.Core.ColumnStore
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerable().GetEnumerator();
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            Debug.Assert(_validityList != null);
+
+            if (_nullCounter > 0)
+            {
+                if (_type == ArrowTypeId.Null)
+                {
+                    writer.WriteNullValue();
+                    return;
+                }
+                if (!_validityList.Get(index))
+                {
+                    writer.WriteNullValue();
+                    return;
+                }
+            }
+
+            _dataColumn!.WriteToJson(in writer, index);
         }
     }
 }

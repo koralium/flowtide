@@ -26,6 +26,7 @@ using static Substrait.Protobuf.Expression.Types.Literal.Types;
 using System.Collections;
 using static SqlParser.Ast.TableConstraint;
 using FlowtideDotNet.Storage.Memory;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -410,6 +411,21 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var startOffset = _offsets.Get(index);
             _offsets.InsertRangeStaticValue(index, count, startOffset);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteStartArray();
+
+            var startOffset = _offsets.Get(index);
+            var endOffset = _offsets.Get(index + 1);
+
+            for (int i = startOffset; i < endOffset; i++)
+            {
+                _internalColumn.WriteToJson(in writer, i);
+            }
+
+            writer.WriteEndArray();
         }
     }
 }

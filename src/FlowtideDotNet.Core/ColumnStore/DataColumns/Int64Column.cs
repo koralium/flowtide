@@ -26,6 +26,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -281,6 +282,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             Debug.Assert(_data != null);
             _data.InsertStaticRange(index, 0, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            Debug.Assert(_data != null);
+            writer.WriteNumberValue(_data.Get(index));
         }
     }
 }
