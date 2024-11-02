@@ -214,8 +214,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             
             {
-                var bytes = StateClientMetadataSerializer.Serialize(metadata);
-                await session.Write(metadataId, bytes);
+                var previousCommitedOnce = metadata.CommitedOnce;
+                try
+                {
+                    metadata.CommitedOnce = true;
+                    var bytes = StateClientMetadataSerializer.Serialize(metadata);
+                    await session.Write(metadataId, bytes);
+                }
+                catch (Exception)
+                {
+                    metadata.CommitedOnce = previousCommitedOnce;
+                    throw;
+                }
             }
         }
 
@@ -321,7 +331,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_fileCache.FreeAll();
                 m_fileCacheVersion.Clear();
             }
-            if (clearMetadata)
+            if (clearMetadata || !metadata.CommitedOnce)
             {
                 Metadata = default;
             }
