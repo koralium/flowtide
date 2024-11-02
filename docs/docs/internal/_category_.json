@@ -1,0 +1,9 @@
+{
+    "label": "Internal",
+    "position": 99,
+    "link": {
+      "type": "generated-index",
+      "description": "This section describes different internal components."
+    }
+  }
+  

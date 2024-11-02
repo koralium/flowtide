@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -76,5 +77,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <param name="index"></param>
         /// <param name="count"></param>
         void InsertNullRange(int index, int count);
+
+        void WriteToJson(ref readonly Utf8JsonWriter writer, in int index);
     }
 }

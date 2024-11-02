@@ -17,6 +17,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
@@ -1066,6 +1067,25 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.RemoveRange(64, 1);
 
             Assert.Equal(64, column.Count);
+        }
+
+        [Fact]
+        public void TestJsonEncoding()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new ListValue(new Int64Value(1), new Int64Value(3))
+            };
+
+            using MemoryStream stream = new MemoryStream();
+            Utf8JsonWriter writer = new Utf8JsonWriter(stream);
+
+            column.WriteToJson(in writer, 0);
+            writer.Flush();
+
+            string json = Encoding.UTF8.GetString(stream.ToArray());
+
+            Assert.Equal("[1,3]", json);
         }
     }
 }
