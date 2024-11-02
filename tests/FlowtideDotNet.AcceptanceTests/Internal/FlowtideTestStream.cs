@@ -50,6 +50,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private IPersistentStorage? _persistentStorage;
         private ConnectorManager? _connectorManager;
         private bool _dataUpdated;
+        private NotificationReciever? _notificationReciever;
 
         public IReadOnlyList<User> Users  => generator.Users;
 
@@ -183,6 +184,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 #endif
 
             _persistentStorage = CreatePersistentStorage(testName);
+            _notificationReciever = new NotificationReciever(CheckpointComplete);
 
             flowtideBuilder
                 .AddPlan(plan)
@@ -191,7 +193,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .WithLoggerFactory(loggerFactory)
 #endif
                 .AddConnectorManager(_connectorManager)
-                .WithNotificationReciever(new NotificationReciever(CheckpointComplete))
+                .WithNotificationReciever(_notificationReciever)
                 .SetGetTimestampUpdateInterval(timestampInterval.Value)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
@@ -254,6 +256,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 graph = _stream.GetDiagnosticsGraph();
                 await scheduler!.Tick();
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
+                CheckForErrors();
             }
         }
 
@@ -274,6 +277,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 graph = _stream.GetDiagnosticsGraph();
                 await scheduler!.Tick();
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
+                CheckForErrors();
             }
             if (graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running || graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running)
             {
@@ -296,6 +300,22 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await scheduler!.Tick();
         }
 
+        private void CheckForErrors()
+        {
+            if (_notificationReciever != null && _notificationReciever._error)
+            {
+                if (_notificationReciever._exception != null)
+                {
+                    throw _notificationReciever._exception;
+                }
+                else
+                {
+                    throw new Exception("Unknown error occured in stream without exception");
+                }
+            }
+
+        }
+
         public virtual async Task WaitForUpdate()
         {
             Debug.Assert(_stream != null);
@@ -306,6 +326,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 await scheduler!.Tick();
                 await Task.Delay(10);
+                CheckForErrors();
             }
             waitCounter = updateCounter;
         }

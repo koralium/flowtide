@@ -23,6 +23,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     internal class NotificationReciever : IStreamNotificationReciever
     {
         private readonly Action onCheckpointComplete;
+        internal Exception? _exception;
+        internal bool _error;
 
         public NotificationReciever(Action onCheckpointComplete)
         {
@@ -33,8 +35,37 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             onCheckpointComplete();
         }
 
+        private bool IsCrashException(Exception? exception)
+        {
+            if (exception == null)
+            {
+                return false;
+            }
+            if (exception is CrashException)
+            {
+                return true;
+            }
+            if (exception is AggregateException aggregate)
+            {
+                return aggregate.InnerExceptions.Any(IsCrashException);
+            }
+            return false;
+        }
+
+        public void OnFailure(Exception? exception)
+        {
+            if (IsCrashException(exception))
+            {
+                return;
+            }
+            _error = true;
+            _exception = exception;
+        }
+
         public void OnStreamStateChange(StreamStateValue newState)
         {
         }
+
+        
     }
 }

@@ -24,10 +24,32 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
         }
 
+        public override ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
+        {
+            lock (_writtenKeys)
+            {
+                _writtenKeys.Clear();
+            }
+            return base.CheckpointAsync(metadata, includeIndex);
+        }
+
+        public override Task InitializeAsync()
+        {
+            lock (_writtenKeys)
+            {
+                _writtenKeys.Clear();
+            }
+            return base.InitializeAsync();
+        }
+
         public void AddWrittenKey(long key)
         {
             lock (_writtenKeys)
             {
+                if (key == 2)
+                {
+
+                }
                 if (_writtenKeys.Contains(key))
                 {
                     throw new InvalidOperationException($"Key {key} already written");

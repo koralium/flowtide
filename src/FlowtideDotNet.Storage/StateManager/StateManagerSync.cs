@@ -305,6 +305,11 @@ namespace FlowtideDotNet.Storage.StateManager
                 lock (m_lock)
                 {
                     m_metadata = NewMetadata();
+                    // Increase the page counter to avoid using the same page id as the metadata page.
+                    if (_stateClients.Count > 0)
+                    {
+                        m_metadata.PageCounter = _stateClients.Max(x => x.Value.MetadataId) + 1;
+                    }
                     newMetadata = true;
                 }
                 await m_persistentStorage.ResetAsync();

@@ -51,6 +51,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public long CacheMisses => cacheMisses;
 
+        public override long MetadataId => metadataId;
+
         public SyncStateClient(
             StateManagerSync stateManager,
             string name,
