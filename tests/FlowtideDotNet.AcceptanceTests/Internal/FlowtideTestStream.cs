@@ -211,7 +211,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual IPersistentStorage CreatePersistentStorage(string testName)
         {
-            return new FileCachePersistentStorage(new Storage.FileCacheOptions()
+            return new TestStorage(new Storage.FileCacheOptions()
             {
                 DirectoryPath = $"./data/tempFiles/{testName}/persist",
                 SegmentSize = 1024L * 1024 * 1024 * 64
