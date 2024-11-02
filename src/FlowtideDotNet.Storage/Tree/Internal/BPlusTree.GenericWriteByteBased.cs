@@ -832,7 +832,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
 
             // TODO: Remove when comfortable
-            Debug.Assert(leftNode.keys.Count >= minPageSizeAfterSplit && rightNode.keys.Count >= minPageSizeAfterSplit, "Split did not work as expected");
+            Debug.Assert(leftNode.keys.Count >= minPageSize && rightNode.keys.Count >= minPageSize, "Split did not work as expected");
 
             rightNode.ExitWriteLock();
             leftNode.ExitWriteLock();
@@ -1100,7 +1100,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             leftNode.ExitWriteLock();
 
             // TODO: Remove when comfortable
-            Debug.Assert(leftNode.keys.Count >= minPageSizeAfterSplit && rightNode.keys.Count >= minPageSizeAfterSplit, "Split did not work as expected");
+            Debug.Assert(leftNode.keys.Count >= minPageSize && rightNode.keys.Count >= minPageSize, "Split did not work as expected");
 
             var splitKey = leftNode.keys.Get(leftNode.keys.Count - 1);
             return splitKey;
