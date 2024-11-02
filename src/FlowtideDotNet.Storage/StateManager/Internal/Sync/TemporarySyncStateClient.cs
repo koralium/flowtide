@@ -20,6 +20,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
     internal class TemporarySyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler
         where V : ICacheObject
+        where TMetadata : IStorageMetadata
     {
         private StateClientMetadata<TMetadata> metadata;
         private readonly SyncStateClient<V, TMetadata> baseClient;

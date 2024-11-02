@@ -53,13 +53,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var emptyKeyContainer = m_options.KeySerializer.CreateEmpty();
                 var emptyValueContainer = m_options.ValueSerializer.CreateEmpty();
                 var root = new LeafNode<K, V, TKeyContainer, TValueContainer>(rootId, emptyKeyContainer, emptyValueContainer);
-                m_stateClient.Metadata = new BPlusTreeMetadata()
-                {
-                    Root = rootId,
-                    BucketLength = m_options.BucketSize.Value,
-                    Left = rootId,
-                    PageSizeBytes = m_options.PageSizeBytes.Value
-                };
+                m_stateClient.Metadata = BPlusTreeMetadata.Create(m_options.BucketSize.Value, rootId, rootId, m_options.PageSizeBytes.Value);
                 m_stateClient.AddOrUpdate(rootId, root);
             }
             return Task.CompletedTask;
@@ -204,13 +198,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var emptyKeys = m_options.KeySerializer.CreateEmpty();
             var emptyValues = m_options.ValueSerializer.CreateEmpty();
             var root = new LeafNode<K, V, TKeyContainer, TValueContainer>(rootId, emptyKeys, emptyValues);
-            m_stateClient.Metadata = new BPlusTreeMetadata()
-            {
-                Root = rootId,
-                BucketLength = m_options.BucketSize.Value,
-                Left = rootId,
-                PageSizeBytes = m_options.PageSizeBytes.Value
-            };
+            m_stateClient.Metadata = BPlusTreeMetadata.Create(m_options.BucketSize.Value, rootId, rootId, m_options.PageSizeBytes.Value);
             m_stateClient.AddOrUpdate(rootId, root);
         }
     }
