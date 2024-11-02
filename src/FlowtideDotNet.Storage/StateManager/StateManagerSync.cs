@@ -213,7 +213,7 @@ namespace FlowtideDotNet.Storage.StateManager
             m_metadata.PageCommitsAtLastCompaction = m_metadata.PageCommits;
         }
 
-        internal async ValueTask<IStateClient<TValue, TMetadata>> CreateClientAsync<TValue, TMetadata>(string client, StateClientOptions<TValue> options)
+        internal ValueTask<IStateClient<TValue, TMetadata>> CreateClientAsync<TValue, TMetadata>(string client, StateClientOptions<TValue> options)
             where TValue : ICacheObject
         {
             Debug.Assert(m_metadata != null);
@@ -224,7 +224,7 @@ namespace FlowtideDotNet.Storage.StateManager
             if (_stateClients.TryGetValue(client, out var cachedClient))
             {
                 Monitor.Exit(m_lock);
-                return (cachedClient as SyncStateClient<TValue, TMetadata>)!;
+                return ValueTask.FromResult<IStateClient<TValue, TMetadata>>((cachedClient as SyncStateClient<TValue, TMetadata>)!);
             }
             if (m_metadata.ClientMetadataLocations.TryGetValue(client, out var location))
             {
@@ -238,7 +238,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     {
                         _stateClients.Add(client, stateClient);
                     }
-                    return stateClient;
+                    return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(stateClient);
                 }
                 else
                 {
@@ -258,7 +258,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     var session = m_persistentStorage.CreateSession();
                     var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheOptions, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes);
                     _stateClients.Add(client, stateClient);
-                    return stateClient;
+                    return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(stateClient);
                 }
             }
         }
