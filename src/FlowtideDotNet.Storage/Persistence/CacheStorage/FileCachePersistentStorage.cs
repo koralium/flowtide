@@ -18,7 +18,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
     {
         private readonly bool _ignoreDispose;
         private long _version;
-        private FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
+        internal FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
 
         public FileCachePersistentStorage(FileCacheOptions fileCacheOptions, bool ignoreDispose = false)
         {
@@ -28,18 +28,18 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public long CurrentVersion => _version;
 
-        public async ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
+        public virtual async ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
         {
             await Write(1, metadata);
             _version++;
         }
 
-        public ValueTask CompactAsync()
+        public virtual ValueTask CompactAsync()
         {
             return ValueTask.CompletedTask;
         }
 
-        public IPersistentStorageSession CreateSession()
+        public virtual IPersistentStorageSession CreateSession()
         {
             return new FileCachePersistentSession(m_fileCache);
         }
@@ -60,17 +60,17 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             m_fileCache.Dispose();
         }
 
-        public Task InitializeAsync()
+        public virtual Task InitializeAsync()
         {
             return Task.CompletedTask;
         }
 
-        public ValueTask RecoverAsync(long checkpointVersion)
+        public virtual ValueTask RecoverAsync(long checkpointVersion)
         {
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask ResetAsync()
+        public virtual ValueTask ResetAsync()
         {
             return ValueTask.CompletedTask;
         }
@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             return false;
         }
 
-        public ValueTask Write(long key, byte[] value)
+        public virtual ValueTask Write(long key, byte[] value)
         {
             m_fileCache.WriteAsync(key, value);
             m_fileCache.Flush();

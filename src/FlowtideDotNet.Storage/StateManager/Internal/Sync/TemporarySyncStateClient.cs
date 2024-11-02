@@ -49,6 +49,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public long CacheMisses => baseClient.CacheMisses;
 
+        public override long MetadataId => baseClient.MetadataId;
+
         public bool AddOrUpdate(in long key, V value)
         {
             return baseClient.AddOrUpdate(key, value);

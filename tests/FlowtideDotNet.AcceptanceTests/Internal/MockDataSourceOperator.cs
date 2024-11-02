@@ -90,7 +90,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             else if (triggerName == "crash")
             {
-                RunTask((output, state) => throw new Exception("crash"));
+                RunTask((output, state) => throw new CrashException("crash"));
             }
             return Task.CompletedTask;
         }

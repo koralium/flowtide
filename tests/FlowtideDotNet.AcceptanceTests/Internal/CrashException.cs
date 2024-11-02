@@ -10,16 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Engine.Internal.StateMachine;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Base.Engine
+namespace FlowtideDotNet.AcceptanceTests.Internal
 {
-    public interface IStreamNotificationReciever
+    internal class CrashException : Exception
     {
-        void OnStreamStateChange(StreamStateValue newState);
+        public CrashException()
+        {
+        }
 
-        void OnCheckpointComplete();
+        public CrashException(string? message) : base(message)
+        {
+        }
 
-        void OnFailure(Exception? exception);
+        public CrashException(string? message, Exception? innerException) : base(message, innerException)
+        {
+        }
     }
 }
