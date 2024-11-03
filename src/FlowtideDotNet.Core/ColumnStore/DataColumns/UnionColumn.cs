@@ -21,9 +21,13 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using static SqlParser.Ast.Expression;
 using static SqlParser.Ast.TableConstraint;
@@ -37,9 +41,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
     /// Only the offsets will be in a sorted order.
     /// Therefore it must be compacted before serializing.
     /// </summary>
-    internal class UnionColumn : IDataColumn
+    internal class UnionColumn : IDataColumn, IReadOnlyList<IDataValue>
     {
-        private readonly PrimitiveList<sbyte> _typeList;
+        private readonly TypeList _typeList;
         private IntList _offsets;
         private List<IDataColumn> _valueColumns;
         private readonly sbyte[] _typeIds;
@@ -50,11 +54,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public ArrowTypeId Type => ArrowTypeId.Union;
 
+        public IDataValue this[int index] => GetValueAt(index, default);
+
         public UnionColumn(IMemoryAllocator memoryAllocator)
         {
             _memoryAllocator = memoryAllocator;
             _typeIds = new sbyte[35]; //35 types exist
-            _typeList = new PrimitiveList<sbyte>(memoryAllocator);
+            _typeList = new TypeList(memoryAllocator);
             _offsets = new IntList(memoryAllocator);
             _valueColumns = new List<IDataColumn>()
             {
@@ -67,12 +73,17 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _memoryAllocator = memoryAllocator;
             _valueColumns = columns;
             _typeIds = new sbyte[35]; //35 types exist
-            _typeList = new PrimitiveList<sbyte>(typeListMemory, count, memoryAllocator);
+            _typeList = new TypeList(typeListMemory, count, memoryAllocator);
             _offsets = new IntList(offsetMemory, count, memoryAllocator);
             for (int i = 0; i < _valueColumns.Count; i++)
             {
                 _typeIds[(int)_valueColumns[i].Type] = (sbyte)i;
             }
+        }
+
+        internal IDataColumn GetDataColumn(int i)
+        {
+            return _valueColumns[i];
         }
 
 
@@ -149,7 +160,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             valueColumn.InsertAt(in nextOccurenceOffset, in value);
             // Insert the offset and add 1 to the offset to all other offsets that are greater than the next occurence offset.
             _offsets.InsertAtConditionalAddition(index, nextOccurenceOffset, _typeList.Span, arrayIndex, 1);
-
             // Type list must be added to last so the element count when adding to offsets are the same.
             _typeList.InsertAt(index, arrayIndex);
         }
@@ -413,11 +423,17 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             var end = start + count;
 
+            int nullCount = 0;
+
             for (int i = start; i < end; i++)
             {
                 var type = _typeList.Get(i);
                 var offset = _offsets.Get(i);
 
+                if (type == 0)
+                {
+                    nullCount++;
+                }
                 if (startOffets[type] == 0)
                 {
                     startOffets[type] = offset;
@@ -425,8 +441,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 endOffsets[type] = offset;
             }
 
+            if (nullCount > 0)
+            {
+                _valueColumns[0].RemoveRange(start, nullCount);
+            }
+
             bool anyColumnHaveDataRemoved = false;
-            for (int i = 0; i < _valueColumns.Count; i++)
+            for (int i = 1; i < _valueColumns.Count; i++)
             {
                 var startOffset = startOffets[i];
                 var endOffset = endOffsets[i];
@@ -476,6 +497,260 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 size += _valueColumns[i].GetByteSize();
             }
             return size + (Count * sizeof(int));
+        }
+
+        private void InsertRangeFromBasicColumn(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (validityList == null)
+            {
+                CheckArrayExist(other.Type, _typeIds, _valueColumns);
+                var valueColumnIndex = _typeIds[(int)other.Type];
+                var valueColumn = _valueColumns[valueColumnIndex];
+
+                var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, valueColumnIndex);
+                var nextOccurenceOffset = 0;
+                if (nextOccurence < 0)
+                {
+                    nextOccurenceOffset = valueColumn.Count;
+                }
+                else
+                {
+                    // Get the offset of the next occurence so this can be directly infront of it.
+                    nextOccurenceOffset = _offsets.Get(nextOccurence);
+                }
+                valueColumn.InsertRangeFrom(nextOccurenceOffset, other, start, count, default);
+                // Insert range to offsets, requires special method to only increase offset of the same type.
+                _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(index, nextOccurenceOffset, count, _typeList.Span, valueColumnIndex, count);
+                // Need to insert the type in type list as well.
+                _typeList.InsertStaticRange(index, valueColumnIndex, count);
+            }
+            else
+            {
+                // Find ranges where elements are not null and also ranges where all elements are null.
+                // A range that is not null will be inserted into the value column
+                // The range of null will be added to the null column
+                var currentStart = start;
+                var end = start + count;
+                var currentIndex = index;
+
+                IDataColumn? valueColumn = default;
+                sbyte valueColumnIndex = 0;
+                int nextOccurenceOffset = 0;
+
+                while (currentStart < end)
+                {
+                    var nextNullLocation = validityList.FindNextFalseIndex(currentStart);
+
+                    if (nextNullLocation < 0)
+                    {
+                        nextNullLocation = end;
+                    }
+
+                    if (currentStart < nextNullLocation)
+                    {
+                        // We only create value column if there is any non null values, since the range could be for only null values
+                        // A new value column should not then be created.
+                        if (valueColumn == null)
+                        {
+                            // Create the value column of it does not exist
+                            CheckArrayExist(other.Type, _typeIds, _valueColumns);
+                            valueColumnIndex = _typeIds[(int)other.Type];
+                            valueColumn = _valueColumns[valueColumnIndex];
+
+                            var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, valueColumnIndex);
+                            if (nextOccurence < 0)
+                            {
+                                nextOccurenceOffset = valueColumn.Count;
+                            }
+                            else
+                            {
+                                // Get the offset of the next occurence so this can be directly infront of it.
+                                nextOccurenceOffset = _offsets.Get(nextOccurence);
+                            }
+                        }
+                        
+                        valueColumn.InsertRangeFrom(nextOccurenceOffset, other, currentStart, nextNullLocation - currentStart, default);
+                        _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextOccurenceOffset, nextNullLocation - currentStart, _typeList.Span, valueColumnIndex, nextNullLocation - currentStart);
+                        nextOccurenceOffset += nextNullLocation - currentStart;
+                        // Type list must be added after so the offset is not incremented
+                        _typeList.InsertStaticRange(currentIndex, valueColumnIndex, nextNullLocation - currentStart);
+                        currentIndex += nextNullLocation - currentStart;
+                    }
+                    
+                    var nextNotNullLocation = validityList.FindNextTrueIndex(nextNullLocation);
+                    if (nextNotNullLocation < 0)
+                    {
+                        nextNotNullLocation = end;
+                    }
+                    if (nextNullLocation < nextNotNullLocation)
+                    {
+                        // Add the null range to the null column
+                        _valueColumns[0].InsertRangeFrom(currentStart, other, nextNullLocation, nextNotNullLocation - nextNullLocation, default);
+                        _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextNullLocation, nextNotNullLocation - nextNullLocation, _typeList.Span, 0, nextNotNullLocation - nextNullLocation);
+                        _typeList.InsertStaticRange(currentIndex, 0, nextNotNullLocation - nextNullLocation);
+                        currentIndex += nextNotNullLocation - nextNullLocation;
+                    }
+                    currentStart = nextNotNullLocation;
+                }
+            }
+        }
+
+        [SkipLocalsInit]
+        private unsafe void InsertRangeFromUnionColumn(int index, UnionColumn other, int start, int count, BitmapList? validityList)
+        {
+            // Must find which types are missing, and also what index they exist on in other and also in this column.
+            // After that they should be able to be copied over to this column by a value column basis.
+
+            // Used types contains true or false on value column indices if the column is used in the range
+            var usedTypes = stackalloc bool[127];
+
+            // Start and end offsets contains the offset for each type in the range, this is used when copying data over.
+            var startOffsets = stackalloc int[127];
+            var endOffsets = stackalloc int[127];
+            var otherDifference = stackalloc int[127];
+            var thisDifference = stackalloc int[127];
+
+            // Mapping table contains the index of the value column in this column for the value column in other column
+            var mappingTable = stackalloc sbyte[127];
+
+            // Reset all required columns
+            for (int i = 0; i < other._valueColumns.Count; i++)
+            {
+                usedTypes[i] = false;
+                startOffsets[i] = -1;
+                endOffsets[i] = -1;
+                otherDifference[i] = 0;
+                mappingTable[i] = 0;
+            }
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                thisDifference[i] = 0;
+            }
+
+            int nullCount = 0;
+
+            // Find all types that are used in the range
+            // and also find the offsets that are in use.
+            var end = start + count;
+            for (int i = start; i < end; i++)
+            {
+                var type = other._typeList[i];
+                usedTypes[type] = true;
+                var offset = other._offsets.Get(i);
+
+                if (type == 0)
+                {
+                    // Special case to handle nulls, since they do not have incrementing offsets.
+                    nullCount++;
+                }
+
+                if (startOffsets[type] < 0)
+                {
+                    startOffsets[type] = offset;
+                }
+                endOffsets[type] = offset;
+            }
+
+            if (usedTypes[0])
+            {
+                _valueColumns[0].InsertNullRange(0, nullCount);
+            }
+
+            for (int i = 1; i < other._valueColumns.Count; i++)
+            {
+                if (usedTypes[i])
+                {
+                    sbyte destinationValueIndex;
+                    if (_typeIds[(int)other._valueColumns[i].Type] == 0)
+                    {
+                        // Create the array for the missing type
+                        CheckArrayExist(other._valueColumns[i].Type, _typeIds, _valueColumns);
+                        destinationValueIndex = _typeIds[(int)other._valueColumns[i].Type];
+                    }
+                    else
+                    {
+                        destinationValueIndex = _typeIds[(int)other._valueColumns[i].Type];
+                    }
+                    mappingTable[i] = destinationValueIndex;
+
+                    // Must find next occurence first
+                    var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, destinationValueIndex);
+                    var nextOccurenceOffset = 0;
+                    if (nextOccurence < 0)
+                    {
+                        nextOccurenceOffset = _valueColumns[destinationValueIndex].Count;
+                    }
+                    else
+                    {
+                        // Get the offset of the next occurence so this can be directly infront of it.
+                        nextOccurenceOffset = _offsets.Get(nextOccurence);
+                    }
+
+                    var countToMove = endOffsets[i] - startOffsets[i] + 1;
+
+                    otherDifference[i] = nextOccurenceOffset - startOffsets[i];
+                    thisDifference[destinationValueIndex] = countToMove;
+
+                    _valueColumns[destinationValueIndex].InsertRangeFrom(nextOccurenceOffset, other._valueColumns[i], startOffsets[i], countToMove, default);
+                }
+            }
+            // Add offsets and types, these can have changed values
+            // Require offset insert type based addition
+            _offsets.InsertRangeFromTypeBasedAddition(index, other._offsets, start, count, _typeList.Span, new Span<int>(thisDifference, 127), other._typeList.Span, new Span<int>(otherDifference, 127), _valueColumns.Count);
+            _typeList.InsertRangeFrom(index, other._typeList, start, count, new Span<sbyte>(mappingTable, 127), _valueColumns.Count);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            // Check all column types since union column must be able to support all of them.
+            if (other is UnionColumn unionColumn)
+            {
+                InsertRangeFromUnionColumn(index, unionColumn, start, count, validityList);
+            }
+            else
+            {
+                InsertRangeFromBasicColumn(index, other, start, count, validityList);
+            }
+        }
+
+        private IEnumerable<IDataValue> Enumerate()
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                yield return GetValueAt(i, default);
+            }
+        }
+
+        public IEnumerator<IDataValue> GetEnumerator()
+        {
+            return Enumerate().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return Enumerate().GetEnumerator();
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            // Insert null type
+            _typeList.InsertStaticRange(index, 0, count);
+            // Insert offsets
+            _offsets.InsertRangeStaticValue(index, count, 0);
+            // Add to null column to increase its counter
+            _valueColumns[0].InsertNullRange(index, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            var valueColumnIndex = _typeList[index];
+            if (valueColumnIndex == 0)
+            {
+                writer.WriteNullValue();
+                return;
+            }
+            var valueColumn = _valueColumns[valueColumnIndex];
+            valueColumn.WriteToJson(in writer, _offsets.Get(index));
         }
     }
 }

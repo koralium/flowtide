@@ -72,7 +72,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (crashOnCheckpointCount > 0)
             {
                 crashOnCheckpointCount--;
-                throw new Exception("Crash on checkpoint");
+                throw new CrashException("Crash on checkpoint");
             }
             if (currentData.Any(x => x.Value < 0))
             {

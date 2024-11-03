@@ -213,8 +213,9 @@ namespace FlowtideDotNet.Storage.StateManager
             m_metadata.PageCommitsAtLastCompaction = m_metadata.PageCommits;
         }
 
-        internal async ValueTask<IStateClient<TValue, TMetadata>> CreateClientAsync<TValue, TMetadata>(string client, StateClientOptions<TValue> options)
+        internal ValueTask<IStateClient<TValue, TMetadata>> CreateClientAsync<TValue, TMetadata>(string client, StateClientOptions<TValue> options)
             where TValue : ICacheObject
+            where TMetadata : IStorageMetadata
         {
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
@@ -224,7 +225,7 @@ namespace FlowtideDotNet.Storage.StateManager
             if (_stateClients.TryGetValue(client, out var cachedClient))
             {
                 Monitor.Exit(m_lock);
-                return (cachedClient as SyncStateClient<TValue, TMetadata>)!;
+                return ValueTask.FromResult<IStateClient<TValue, TMetadata>>((cachedClient as SyncStateClient<TValue, TMetadata>)!);
             }
             if (m_metadata.ClientMetadataLocations.TryGetValue(client, out var location))
             {
@@ -238,7 +239,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     {
                         _stateClients.Add(client, stateClient);
                     }
-                    return stateClient;
+                    return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(stateClient);
                 }
                 else
                 {
@@ -253,13 +254,12 @@ namespace FlowtideDotNet.Storage.StateManager
                 m_metadata.ClientMetadataLocations.Add(client, clientMetadataPageId);
                 Monitor.Exit(m_lock);
 
-                await m_persistentStorage.Write(clientMetadataPageId, StateClientMetadataSerializer.Serialize(clientMetadata));
                 lock (m_lock)
                 {
                     var session = m_persistentStorage.CreateSession();
                     var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheOptions, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes);
                     _stateClients.Add(client, stateClient);
-                    return stateClient;
+                    return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(stateClient);
                 }
             }
         }
@@ -306,6 +306,11 @@ namespace FlowtideDotNet.Storage.StateManager
                 lock (m_lock)
                 {
                     m_metadata = NewMetadata();
+                    // Increase the page counter to avoid using the same page id as the metadata page.
+                    if (_stateClients.Count > 0)
+                    {
+                        m_metadata.PageCounter = _stateClients.Max(x => x.Value.MetadataId) + 1;
+                    }
                     newMetadata = true;
                 }
                 await m_persistentStorage.ResetAsync();

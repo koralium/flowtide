@@ -33,8 +33,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
     {
         // These constants exist only to have a minimum size so there will be a sufficent fanout.
         // This must be atleast 2x larger than minpagesize
-        private const int minPageSizeBeforeSplit = 8;
+        private const int minPageSizeBeforeSplit = 16;
         private const int minPageSize = 4;
+        private const int minPageSizeAfterSplit = 8;
 
         public ValueTask<GenericWriteOperation> GenericWriteByteBased(ref readonly K key, ref readonly V? value, ref readonly GenericWriteFunction<V> function)
         {
@@ -98,7 +99,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                     // No lock required
                     newParentNode.children.InsertAt(0, leafNode.Id);
-                    m_stateClient.Metadata.Root = nextId;
+                    m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(nextId);
                     LeafNode<K, V, TKeyContainer, TValueContainer> newNode;
 
                     (newNode, _) = SplitLeafNodeBasedOnBytes(in newParentNode, 0, in leafNode, in byteSize);
@@ -116,12 +117,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 else
                 {
-                    var isFull = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
-
-                    if (isFull)
+                    // Only update node if there is a change
+                    if (result != GenericWriteOperation.None)
                     {
-                        rootNode.Return();
-                        return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
+                        var isFull = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
+
+                        if (isFull)
+                        {
+                            rootNode.Return();
+                            return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
+                        }
                     }
                 }
                 rootNode.Return();
@@ -291,7 +296,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var newParentNode = new InternalNode<K, V, TKeyContainer>(nextId, emptyKeys, m_options.MemoryAllocator);
                 // No lock requireds
                 newParentNode.children.InsertAt(0, internalNode.Id);
-                m_stateClient.Metadata.Root = nextId;
+                m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(nextId);
 
                 var (newNode, _) = SplitInternalNodeBasedOnBytes(in newParentNode, 0, in internalNode, in byteSize);
 
@@ -308,7 +313,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             if (internalNode.children.Count == 1)
             {
-                m_stateClient.Metadata.Root = internalNode.children[0];
+                m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(internalNode.children[0]);
                 m_stateClient.Delete(internalNode.Id);
             }
             else
@@ -411,7 +416,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             if (
                 ((leftNodeSize >= m_stateClient.Metadata.PageSizeBytes / 2) || (leftNodeSize + rightNodeSize) > m_stateClient.Metadata.PageSizeBytes) 
                 && (leftNode.keys.Count + internalNode.keys.Count > minPageSizeBeforeSplit) &&
-                leftNode.keys.Count > minPageSize)
+                leftNode.keys.Count >= minPageSizeAfterSplit)
             {
                 // Borrow
                 var previousIndex = index - 1;
@@ -738,20 +743,20 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             //K? splitKey = default;
             //IDisposable? splitKeyDisposable = default;
-            if ((leftSize < halfByteSize && rightNode.keys.Count > minPageSize) || leftNode.keys.Count < minPageSize)
+            if ((leftSize < halfByteSize && rightNode.keys.Count > minPageSizeAfterSplit) || leftNode.keys.Count < minPageSizeAfterSplit)
             {
                 var bytesToMove = halfByteSize - leftSize;
 
                 // Binary search to try get the index that fulfills the bytes to move
                 int splitIndex = BinarySearchFindLeftSize(in rightNode, in bytesToMove);
 
-                if (splitIndex <= (minPageSize / 2))
+                if (splitIndex <= (minPageSizeAfterSplit / 2))
                 {
                     splitIndex = 1;
                 }
-                if (splitIndex > rightNode.keys.Count - minPageSize)
+                if (splitIndex > rightNode.keys.Count - minPageSizeAfterSplit)
                 {
-                    splitIndex = rightNode.keys.Count - minPageSize;
+                    splitIndex = rightNode.keys.Count - minPageSizeAfterSplit;
                 }
 
                 var remainder = splitIndex;
@@ -787,9 +792,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 int splitIndex = BinarySearchFindLeftSize(in leftNode, in negated);
 
-                if (splitIndex < minPageSize)
+                if (splitIndex < minPageSizeAfterSplit)
                 {
-                    splitIndex = minPageSize; //Math.Min(minPageSize, leftNode.keys.Count - minPageSize);
+                    splitIndex = minPageSizeAfterSplit; //Math.Min(minPageSize, leftNode.keys.Count - minPageSize);
                 }
                 if (splitIndex >= leftNode.keys.Count)
                 {
@@ -852,13 +857,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             int start = BinarySearchFindLeftSize(in child, in halfSize);
 
             // Make sure that no page is smaller than the min page size
-            if (start < minPageSize)
+            if (start < minPageSizeAfterSplit)
             {
-                start = minPageSize;
+                start = minPageSizeAfterSplit;
             }
-            if (start > child.keys.Count - minPageSize)
+            if (start > child.keys.Count - minPageSizeAfterSplit)
             {
-                start = child.keys.Count - minPageSize;
+                start = child.keys.Count - minPageSizeAfterSplit;
             }
 
             var emptyKeys = m_options.KeySerializer.CreateEmpty();
@@ -893,7 +898,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             parent.ExitWriteLock();
 
             // TODO: Remove when comfortable
-            Debug.Assert(newNode.keys.Count >= minPageSize && child.keys.Count >= minPageSize, "Split did not work as expected");
+            Debug.Assert(newNode.keys.Count >= minPageSizeAfterSplit && child.keys.Count >= minPageSizeAfterSplit, "Split did not work as expected");
             
 
             return (newNode, splitKey);
@@ -911,13 +916,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             int start = BinarySearchFindLeftSize(in child, in halfSize);
 
             // Before this method it has already been checked that node count >= minPageSize*2
-            if (start <= minPageSize)
+            if (start <= minPageSizeAfterSplit)
             {
-                start = minPageSize + 1;
+                start = minPageSizeAfterSplit + 1;
             }
-            if (start > child.keys.Count - minPageSize)
+            if (start > child.keys.Count - minPageSizeAfterSplit)
             {
-                start = child.keys.Count - minPageSize;
+                start = child.keys.Count - minPageSizeAfterSplit;
             }
 
             var newNodeId = m_stateClient.GetNewPageId();
@@ -941,7 +946,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             child.ExitWriteLock();
 
             // TODO: Remove when comfortable
-            Debug.Assert(newNode.keys.Count >= minPageSize && child.keys.Count >= minPageSize, "Split did not work as expected");
+            Debug.Assert(newNode.keys.Count >= minPageSizeAfterSplit && child.keys.Count >= minPageSizeAfterSplit, "Split did not work as expected");
 
             return (newNode, splitKey);
         }
@@ -972,15 +977,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var bytesToFind = rightSize - halfSize;
                 var rightSideIndex = BinarySearchFindLeftSize(in rightNode, in bytesToFind);
 
-                if ((rightNode.keys.Count - rightSideIndex) < minPageSize)
+                if ((rightNode.keys.Count - rightSideIndex) < minPageSizeAfterSplit)
                 {
                     // The page would be smaller than the allowed min size, set it to the min size.
-                    rightSideIndex = rightNode.keys.Count - minPageSize;
+                    rightSideIndex = rightNode.keys.Count - minPageSizeAfterSplit;
                 }
-                if ((leftNode.keys.Count + rightSideIndex) < minPageSize)
+                if ((leftNode.keys.Count + rightSideIndex) < minPageSizeAfterSplit)
                 {
                     // Move more elements from right so left side has at least minPageSize
-                    rightSideIndex = minPageSize - leftNode.keys.Count;
+                    rightSideIndex = minPageSizeAfterSplit - leftNode.keys.Count;
                 }
 
                 var remainder = rightSideIndex;
@@ -1008,15 +1013,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var leftSideIndex = BinarySearchFindLeftSize(in leftNode, in bytesToFind);
 
                 var numberOfElementsToCopy = leftNode.keys.Count - leftSideIndex;
-                if (rightNode.keys.Count + numberOfElementsToCopy < minPageSize)
+                if (rightNode.keys.Count + numberOfElementsToCopy < minPageSizeAfterSplit)
                 {
                     // The page would be smaller than the allowed min size, set it to the min size.
-                    numberOfElementsToCopy = minPageSize - rightNode.keys.Count;
+                    numberOfElementsToCopy = minPageSizeAfterSplit - rightNode.keys.Count;
                 }
-                if ((leftNode.keys.Count - numberOfElementsToCopy) < minPageSize)
+                if ((leftNode.keys.Count - numberOfElementsToCopy) < minPageSizeAfterSplit)
                 {
                     // left side is already checked to be larger than minPageSizeBeforeSplit
-                    numberOfElementsToCopy = leftNode.keys.Count - minPageSize;
+                    numberOfElementsToCopy = leftNode.keys.Count - minPageSizeAfterSplit;
                 }
 
                 var rightKeys = m_options.KeySerializer.CreateEmpty();

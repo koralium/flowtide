@@ -26,6 +26,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -261,6 +262,32 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int GetByteSize()
         {
             return Count * sizeof(long);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            Debug.Assert(_data != null);
+            if (other is Int64Column int64Column)
+            {
+                Debug.Assert(int64Column._data != null);
+                _data.InsertRangeFrom(index, int64Column._data, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            Debug.Assert(_data != null);
+            _data.InsertStaticRange(index, 0, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            Debug.Assert(_data != null);
+            writer.WriteNumberValue(_data.Get(index));
         }
     }
 }

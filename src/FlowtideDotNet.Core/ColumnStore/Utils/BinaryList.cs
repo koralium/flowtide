@@ -317,5 +317,28 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var endOffset = _offsets.Get(end + 1);
             return endOffset - startOffset + ((end - start + 1) * sizeof(int));
         }
+
+        public void InsertRangeFrom(int index, BinaryList binaryList, int start, int count)
+        {
+            var offsetToInsertAt = _offsets.Get(index);
+            var offsetToCopyStart = binaryList._offsets.Get(start);
+            var offsetToCopyEnd = binaryList._offsets.Get(start + count);
+            var toCopyLength = offsetToCopyEnd - offsetToCopyStart;
+            EnsureCapacity(_length + toCopyLength);
+            var span = AccessSpan;
+            // Move all data up to free space for the insert
+            span.Slice(offsetToInsertAt, _length - offsetToInsertAt).CopyTo(span.Slice(offsetToInsertAt + toCopyLength));
+            // Copy the data
+            binaryList.AccessSpan.Slice(offsetToCopyStart, toCopyLength).CopyTo(span.Slice(offsetToInsertAt));
+            _length += toCopyLength;
+            var offsetDifference = offsetToInsertAt - offsetToCopyStart;
+            _offsets.InsertRangeFrom(index, binaryList._offsets, start, count, toCopyLength, offsetDifference);
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            var offsetToInsertAt = _offsets.Get(index);
+            _offsets.InsertRangeStaticValue(index, count, offsetToInsertAt);
+        }
     }
 }

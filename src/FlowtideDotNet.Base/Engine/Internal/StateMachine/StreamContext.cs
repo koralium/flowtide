@@ -489,6 +489,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _logger.StreamError(e, streamName);
             lock(_contextLock)
             {
+                if (_notificationReciever != null)
+                {
+                    _notificationReciever.OnFailure(e);
+                }
                 return _state!.OnFailure();
             }
         }

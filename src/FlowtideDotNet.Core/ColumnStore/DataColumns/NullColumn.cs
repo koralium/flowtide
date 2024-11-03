@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
@@ -127,6 +128,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public int GetByteSize()
         {
             return 0;
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            _count += count;
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _count += count;
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteNullValue();
         }
     }
 }

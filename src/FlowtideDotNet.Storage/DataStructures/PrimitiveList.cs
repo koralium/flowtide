@@ -120,6 +120,28 @@ namespace FlowtideDotNet.Storage.DataStructures
             _length++;
         }
 
+        public void InsertRangeFrom(int index, PrimitiveList<T> other, int start, int count)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            var sourceSpan = other.AccessSpan;
+            span.Slice(index, _length - index).CopyTo(span.Slice(index + count, _length - index));
+            sourceSpan.Slice(start, count).CopyTo(span.Slice(index, count));
+            _length += count;
+        }
+
+        public void InsertStaticRange(int index, T value, int count)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            span.Slice(index, _length - index).CopyTo(span.Slice(index + count, _length - index));
+            for (var i = 0; i < count; i++)
+            {
+                span[index + i] = value;
+            }
+            _length += count;
+        }
+
         public void RemoveAt(int index)
         {
             var span = AccessSpan;

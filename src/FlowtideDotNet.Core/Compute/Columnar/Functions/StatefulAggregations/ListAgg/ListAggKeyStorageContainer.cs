@@ -65,9 +65,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
         {
             if (container is ListAggKeyStorageContainer columnKeyStorageContainer)
             {
-                for (int i = start; i < start + count; i++)
+                for (int i = 0; i < (_groupingKeyLength + 1); i++)
                 {
-                    Add(columnKeyStorageContainer.Get(i));
+                    _data.Columns[i].InsertRangeFrom(_data.Columns[i].Count, columnKeyStorageContainer._data.Columns[i], start, count);
                 }
             }
             else
