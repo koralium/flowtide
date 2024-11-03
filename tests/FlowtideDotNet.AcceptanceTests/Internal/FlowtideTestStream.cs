@@ -153,7 +153,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             int parallelism = 1, 
             StateSerializeOptions? stateSerializeOptions = default, 
             TimeSpan? timestampInterval = default,
-            int pageSize = 1024)
+            int pageSize = 1024,
+            bool ignoreSameDataCheck = false)
         {
             if (stateSerializeOptions == null)
             {
@@ -183,7 +184,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             });
 #endif
 
-            _persistentStorage = CreatePersistentStorage(testName);
+            _persistentStorage = CreatePersistentStorage(testName, ignoreSameDataCheck);
             _notificationReciever = new NotificationReciever(CheckpointComplete);
 
             flowtideBuilder
@@ -211,13 +212,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await _stream.StartAsync();
         }
 
-        protected virtual IPersistentStorage CreatePersistentStorage(string testName)
+        protected virtual IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
         {
             return new TestStorage(new Storage.FileCacheOptions()
             {
                 DirectoryPath = $"./data/tempFiles/{testName}/persist",
                 SegmentSize = 1024L * 1024 * 1024 * 64
-            }, true);
+            }, ignoreSameDataCheck, true);
         }
 
         private void OnDataUpdate(List<byte[]> actualData)

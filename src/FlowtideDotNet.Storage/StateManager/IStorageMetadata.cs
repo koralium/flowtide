@@ -10,29 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.FileCache;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.AcceptanceTests.Internal
+namespace FlowtideDotNet.Storage.StateManager
 {
-    internal class TestStorageSession : FileCachePersistentSession
+    public interface IStorageMetadata
     {
-        private readonly TestStorage testStorage;
-
-        public TestStorageSession(FileCache fileCache, TestStorage testStorage) : base(fileCache)
-        {
-            this.testStorage = testStorage;
-        }
-
-        public override Task Write(long key, byte[] value)
-        {
-            testStorage.AddWrittenKey(key, value);
-            return base.Write(key, value);
-        }
+        bool Updated { get; set; }
     }
 }

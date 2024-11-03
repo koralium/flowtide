@@ -87,7 +87,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                     // No lock required
                     newParentNode.children.InsertAt(0, leafNode.Id);
-                    m_stateClient.Metadata.Root = nextId;
+                    m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(nextId);
 
                     var (newNode, _) = SplitLeafNode(newParentNode, 0, leafNode);
 
@@ -150,7 +150,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var newParentNode = new InternalNode<K, V, TKeyContainer>(nextId, emptyKeys, m_options.MemoryAllocator);
                 // No lock requireds
                 newParentNode.children.InsertAt(0, internalNode.Id);
-                m_stateClient.Metadata.Root = nextId;
+                m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(nextId);
 
                 var (newNode, _) = SplitInternalNode(newParentNode, 0, internalNode);
 
@@ -167,7 +167,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             if (internalNode.children.Count == 1)
             {
-                m_stateClient.Metadata.Root = internalNode.children[0];
+                m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(internalNode.children[0]);
                 m_stateClient.Delete(internalNode.Id);
             }
             else

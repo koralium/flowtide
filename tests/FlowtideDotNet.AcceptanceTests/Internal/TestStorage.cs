@@ -19,9 +19,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     class TestStorage : FileCachePersistentStorage
     {
         private HashSet<long> _writtenKeys = new HashSet<long>();
-
-        public TestStorage(FileCacheOptions fileCacheOptions, bool ignoreDispose = false) : base(fileCacheOptions, ignoreDispose)
+        private Dictionary<long, byte[]> _writtenValues = new Dictionary<long, byte[]>();
+        private Dictionary<long, byte[]> _lastCheckpointValues = new Dictionary<long, byte[]>();
+        private readonly bool _ignoreSameDataCheck;
+        public TestStorage(FileCacheOptions fileCacheOptions, bool ignoreSameDataCheck, bool ignoreDispose = false) : base(fileCacheOptions, ignoreDispose)
         {
+            _ignoreSameDataCheck = ignoreSameDataCheck;
         }
 
         public override ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
@@ -29,6 +32,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             lock (_writtenKeys)
             {
                 _writtenKeys.Clear();
+                // Insert data into the last checkpoint values
+                foreach (var kvp in _writtenValues)
+                {
+                    _lastCheckpointValues[kvp.Key] = kvp.Value;
+                }
             }
             return base.CheckpointAsync(metadata, includeIndex);
         }
@@ -38,29 +46,35 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             lock (_writtenKeys)
             {
                 _writtenKeys.Clear();
+                _writtenValues.Clear();
+                foreach (var kvp in _lastCheckpointValues)
+                {
+                    _writtenValues[kvp.Key] = kvp.Value;
+                }
             }
             return base.InitializeAsync();
         }
 
-        public void AddWrittenKey(long key)
+        public void AddWrittenKey(long key, byte[] data)
         {
             lock (_writtenKeys)
             {
-                if (key == 2)
-                {
-
-                }
                 if (_writtenKeys.Contains(key))
                 {
                     throw new InvalidOperationException($"Key {key} already written");
                 }
                 _writtenKeys.Add(key);
+                if (_writtenValues.TryGetValue(key, out var existingData) && data.SequenceEqual(existingData) && !_ignoreSameDataCheck)
+                {
+                    throw new InvalidOperationException($"Key {key} already written with the same data");
+                }
+                _writtenValues[key] = data;
             }
         }
 
         public override ValueTask Write(long key, byte[] value)
         {
-            AddWrittenKey(key);
+            AddWrittenKey(key, value);
             return base.Write(key, value);
         }
 

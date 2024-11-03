@@ -215,6 +215,7 @@ namespace FlowtideDotNet.Storage.StateManager
 
         internal ValueTask<IStateClient<TValue, TMetadata>> CreateClientAsync<TValue, TMetadata>(string client, StateClientOptions<TValue> options)
             where TValue : ICacheObject
+            where TMetadata : IStorageMetadata
         {
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);

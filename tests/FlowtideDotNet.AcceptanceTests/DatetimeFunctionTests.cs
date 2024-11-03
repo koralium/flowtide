@@ -109,7 +109,9 @@ namespace FlowtideDotNet.AcceptanceTests
             SELECT
                 active
             FROM buffered
-            ");
+            ",
+            // Block-nested loop join can sometimes write the same data multiple times between checkpoints
+            ignoreSameDataCheck: true);
             await WaitForUpdate();
 
             var rows = GetActualRows();

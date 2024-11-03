@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                     // No lock required
                     newParentNode.children.InsertAt(0, leafNode.Id);
-                    m_stateClient.Metadata.Root = nextId;
+                    m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(nextId);
                     LeafNode<K, V, TKeyContainer, TValueContainer> newNode;
 
                     (newNode, _) = SplitLeafNodeBasedOnBytes(in newParentNode, 0, in leafNode, in byteSize);
@@ -117,12 +117,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 else
                 {
-                    var isFull = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
-
-                    if (isFull)
+                    // Only update node if there is a change
+                    if (result != GenericWriteOperation.None)
                     {
-                        rootNode.Return();
-                        return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
+                        var isFull = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
+
+                        if (isFull)
+                        {
+                            rootNode.Return();
+                            return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
+                        }
                     }
                 }
                 rootNode.Return();
@@ -292,7 +296,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var newParentNode = new InternalNode<K, V, TKeyContainer>(nextId, emptyKeys, m_options.MemoryAllocator);
                 // No lock requireds
                 newParentNode.children.InsertAt(0, internalNode.Id);
-                m_stateClient.Metadata.Root = nextId;
+                m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(nextId);
 
                 var (newNode, _) = SplitInternalNodeBasedOnBytes(in newParentNode, 0, in internalNode, in byteSize);
 
@@ -309,7 +313,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             if (internalNode.children.Count == 1)
             {
-                m_stateClient.Metadata.Root = internalNode.children[0];
+                m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(internalNode.children[0]);
                 m_stateClient.Delete(internalNode.Id);
             }
             else
