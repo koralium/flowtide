@@ -112,5 +112,10 @@ namespace FlowtideDotNet.Base.Engine
         {
             return streamContext.GetGraph();
         }
+
+        public Task StopAsync()
+        {
+            return streamContext.StopAsync();
+        }
     }
 }

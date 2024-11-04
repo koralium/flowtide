@@ -471,14 +471,40 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
+        private void DisposeNodes()
+        {
+            LinkedListNode<LinkedListValue>? iteratorNode;
+            lock (m_nodes)
+            {
+                iteratorNode = m_nodes.First;
+            }
+
+            while (iteratorNode != null)
+            {
+                lock (iteratorNode)
+                {
+                    if (!iteratorNode.ValueRef.removed)
+                    {
+                        iteratorNode.ValueRef.value.Return();
+                    }
+                }
+                lock (m_nodes)
+                {
+                    var toRemove = iteratorNode;
+                    iteratorNode = iteratorNode.Next;
+                    m_nodes.Remove(toRemove);
+                }
+            }
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!m_disposedValue)
             {
                 if (disposing)
                 {
+                    DisposeNodes();
                     m_cleanupTokenSource.Cancel();
-
                     if (m_cleanupTask != null)
                     {
                         m_cleanupTask.Wait();

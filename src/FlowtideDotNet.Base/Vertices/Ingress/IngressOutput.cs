@@ -20,6 +20,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         private readonly IngressState<T> _ingressState;
         private readonly ITargetBlock<IStreamEvent> _targetBlock;
         private bool _inLock;
+        private bool _stopEvents;
 
         internal IngressOutput(IngressState<T> ingressState, ITargetBlock<IStreamEvent> targetBlock) 
         {
@@ -32,6 +33,10 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         public Task SendAsync(T data)
         {
+            if (_stopEvents)
+            {
+                return Task.CompletedTask;
+            }
             if (data is IRentable rentable)
             {
                 rentable.Rent(_ingressState._linkCount);
@@ -65,6 +70,11 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             _ingressState._checkpointLock.Release();
         }
 
+        internal void Stop()
+        {
+            _stopEvents = true;
+        }
+
         internal void Fault(Exception exception)
         {
             _targetBlock.Fault(exception);
@@ -82,6 +92,10 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         public Task SendWatermark(Watermark watermark)
         {
+            if (_stopEvents)
+            {
+                return Task.CompletedTask;
+            }
             Debug.Assert(_ingressState._vertexHandler != null, nameof(_ingressState._vertexHandler));
             watermark.SourceOperatorId = _ingressState._vertexHandler.OperatorId;
             if (_inLock)

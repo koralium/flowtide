@@ -206,6 +206,10 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
             if (lockingEvent is ICheckpointEvent checkpoint)
             {
+                if (checkpoint is StopStreamCheckpoint)
+                {
+                    output.Stop();
+                }
                 var savedState = await OnCheckpoint(checkpoint.CheckpointTime);
                 checkpoint.AddState(Name, savedState);
                 await output.SendLockingEvent(lockingEvent);

@@ -34,7 +34,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         Running,
         Failure,
         Deleting,
-        Deleted
+        Deleted,
+        Stopping
     }
 
     internal class StreamContext : IStreamTriggerCaller, IAsyncDisposable
@@ -66,6 +67,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal TaskCompletionSource? checkpointTask;
         internal DateTimeOffset? inQueueCheckpoint;
 
+        internal TaskCompletionSource? _stopTask;
+
         private StreamStateMachineState? _state = null;
 
         internal Task? _scheduleCheckpointTask;
@@ -73,6 +76,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal CancellationTokenSource? _scheduleCheckpointCancelSource;
 
         internal StreamStateValue currentState;
+        internal StreamStateValue _wantedState;
 
         /// <summary>
         /// Flag that tells if the stream has failed once
@@ -225,6 +229,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return TransitionTo(current, new DeletingStreamState(), oldState);
                 case StreamStateValue.Deleted:
                     return TransitionTo(current, new DeletedStreamState(), oldState);
+                case StreamStateValue.Stopping:
+                    return TransitionTo(current, new StoppingStreamState(), oldState);
             }
             return Task.CompletedTask;
         }
@@ -510,6 +516,22 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
+        internal Task StopAsync()
+        {
+            lock (_checkpointLock)
+            {
+                if (_stopTask == null)
+                {
+                    _stopTask = new TaskCompletionSource();
+                    lock (_contextLock)
+                    {
+                        _ = _state!.StopAsync();
+                    }
+                }
+                return _stopTask.Task;
+            }
+        }
+
         /// <summary>
         /// Disposes the stream, completes all blocks and then disposes them.
         /// </summary>
@@ -600,6 +622,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return StreamStatus.Running;
                 case StreamStateValue.Failure:
                     return StreamStatus.Failing;
+                case StreamStateValue.Stopping:
+                    return StreamStatus.Running;
                 default:
                     return StreamStatus.Degraded;
             }

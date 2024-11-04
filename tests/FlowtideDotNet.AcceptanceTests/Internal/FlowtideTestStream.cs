@@ -445,5 +445,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             return _stream!.GetDiagnosticsGraph();
         }
+
+        public Task StopStream()
+        {
+            return _stream!.StopAsync();
+        }
     }
 }

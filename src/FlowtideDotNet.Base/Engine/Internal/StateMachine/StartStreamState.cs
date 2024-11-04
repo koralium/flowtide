@@ -301,5 +301,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 ingress.Value.DoLockingEvent(new InitWatermarksEvent());
             }
         }
+
+        public override Task StopAsync()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            _context._wantedState = StreamStateValue.Stopping;
+            return Task.CompletedTask;
+        }
     }
 }

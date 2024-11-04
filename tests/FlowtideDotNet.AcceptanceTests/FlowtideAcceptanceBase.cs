@@ -41,6 +41,8 @@ namespace FlowtideDotNet.AcceptanceTests
             int pageSize = 1024,
             bool ignoreSameDataCheck = false) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck);
 
+
+        protected Task StopStream() => flowtideTestStream.StopStream();
         public List<FlxVector> GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 
         protected void AssertCurrentDataEqual<T>(IEnumerable<T> data)

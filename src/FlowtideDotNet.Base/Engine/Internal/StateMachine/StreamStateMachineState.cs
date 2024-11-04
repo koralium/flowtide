@@ -41,6 +41,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public abstract Task DeleteAsync();
 
+        public abstract Task StopAsync();
+
         protected Task TransitionTo(StreamStateValue newState)
         {
             Debug.Assert(_context != null, nameof(_context));

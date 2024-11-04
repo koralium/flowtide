@@ -12,17 +12,39 @@
 
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Ingress;
-using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
-    internal class RunningStreamState : StreamStateMachineState
+    internal class StoppingStreamState : StreamStateMachineState
     {
-        private Task? _initialBatchTask;
-        private readonly object _lock = new object();
         private HashSet<string>? nonCheckpointedEgresses;
         private Checkpoint? _currentCheckpoint;
+
+        public override Task AddTrigger(string operatorName, string triggerName, TimeSpan? schedule = null)
+        {
+            return Task.CompletedTask;
+        }
+
+        public override Task CallTrigger(string operatorName, string triggerName, object? state)
+        {
+            return Task.CompletedTask;
+        }
+
+        public override Task CallTrigger(string triggerName, object? state)
+        {
+            return Task.CompletedTask;
+        }
+
+        public override Task DeleteAsync()
+        {
+            throw new NotSupportedException("Stream is stopping.");
+        }
 
         public override void EgressCheckpointDone(string name)
         {
@@ -48,15 +70,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _context._logger.StartCheckpointDoneTask(_context.streamName);
             Task.Factory.StartNew(async (state) =>
             {
-                var run = (RunningStreamState)state!;
+                var run = (StoppingStreamState)state!;
                 Debug.Assert(run._context != null, nameof(_context));
                 Debug.Assert(run._currentCheckpoint != null, nameof(_context));
 
                 // Write the latest state
                 run._context._lastState = new StreamState(
-                    run._currentCheckpoint.CheckpointTime, 
-                    run._currentCheckpoint.GetOperatorStates(), 
-                    _context._streamVersionInformation?.Version ?? 0, 
+                    run._currentCheckpoint.CheckpointTime,
+                    run._currentCheckpoint.GetOperatorStates(),
+                    _context._streamVersionInformation?.Version ?? 0,
                     _context._streamVersionInformation?.Hash ?? string.Empty);
 
                 run._context._stateManager.Metadata = run._context._lastState;
@@ -90,39 +112,19 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     }
                     return Task.CompletedTask;
                 });
-
-
-                // After writing do compaction
-                _context._logger.StartingCompactionOnVertices(_context.streamName);
-                List<Task> tasks = new List<Task>();
-                foreach (var ingressNode in run._context.ingressBlocks)
-                {
-                    tasks.Add(ingressNode.Value.Compact());
-                }
-                foreach (var block in run._context.propagatorBlocks)
-                {
-                    tasks.Add(block.Value.Compact());
-                }
-                foreach (var block in run._context.egressBlocks)
-                {
-                    tasks.Add(block.Value.Compact());
-                }
-
-                await Task.WhenAll(tasks);
-                _context._logger.CompactionDoneOnVertices(_context.streamName);
             }, this)
                 .Unwrap()
-                 .ContinueWith((t, state) =>
+                 .ContinueWith(async (t, state) =>
                  {
-                     RunningStreamState @this = (RunningStreamState)state!;
+                     StoppingStreamState @this = (StoppingStreamState)state!;
                      if (t.IsFaulted)
                      {
-                         return _context.OnFailure(t.Exception);
+                         await _context.OnFailure(t.Exception);
                      }
                      // Finish the checkpoint
                      @this.CheckpointCompleted();
                      _context._logger.CheckpointDone(_context.streamName);
-                     return Task.CompletedTask;
+                     await @this.StopAll();
                  }, this)
                  .Unwrap();
         }
@@ -139,88 +141,60 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context.checkpointTask.SetResult();
                     _context.checkpointTask = null;
                     _currentCheckpoint = null;
-
-                    if (_context.inQueueCheckpoint.HasValue)
-                    {
-                        var span = _context.inQueueCheckpoint.Value.Subtract(DateTimeOffset.UtcNow);
-                        if (span.TotalMilliseconds < 0)
-                        {
-                            span = TimeSpan.FromMilliseconds(1);
-                        }
-                        if (_context.TryScheduleCheckpointIn_NoLock(span))
-                        {
-                            _context.inQueueCheckpoint = null;
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException("Checkpoint could not be scheduled.");
-                        }
-                    }
                 }
             }
+        }
+
+        private async Task StopAll()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+
+            _context.ForEachBlock((key, block) =>
+            {
+                block.Complete();
+            });
+            await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
+
+            await _context.ForEachBlockAsync(async (key, block) =>
+            {
+                await block.DisposeAsync();
+            });
+
+            _context._stateManager.Dispose();
+
+            if (_context._stopTask != null)
+            {
+                lock (_context._checkpointLock)
+                {
+                    _context._stopTask.SetResult();
+                    _context._stopTask = null;
+                }
+            }
+            await TransitionTo(StreamStateValue.NotStarted);
         }
 
         public override void Initialize(StreamStateValue previousState)
         {
-            Debug.Assert(_context != null, nameof(_context));
-
-            _context._logger.StreamIsInRunningState(_context.streamName);
-            lock (_lock)
-            {
-                if (_initialBatchTask != null)
-                {
-                    return;
-                }
-
-                if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
-                {
-                    // Set the checkpoint task to stop any other checkpoint from happening
-                    _context.checkpointTask = new TaskCompletionSource();
-                }
-
-                _initialBatchTask = Task.Factory.StartNew(async () =>
-                {
-                    List<Task> tasks = new List<Task>();
-                    foreach (var block in _context.ingressBlocks)
-                    {
-                        // Signal to ingress blocks that all has been initialized and it can now start accepting data
-                        tasks.Add(block.Value.InitializationCompleted());
-                    }
-                    await Task.WhenAll(tasks);
-                })
-                    .Unwrap()
-                    .ContinueWith((t) =>
-                    {
-                        lock (_lock)
-                        {
-                            _initialBatchTask = null;
-                        }
-                        if (t.IsFaulted)
-                        {
-                            return _context.OnFailure(t.Exception);
-                        }
-                        if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
-                        {
-                            CheckpointCompleted();
-                        }
-                        
-                        return Task.CompletedTask;
-                    })
-                    .Unwrap();
-            }
+            Debug.Assert(_context != null);
+            _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(1));
         }
 
-        public override Task OnFailure()
+        public override async Task OnFailure()
         {
-            Console.WriteLine("Exception");
-            return TransitionTo(StreamStateValue.Failure);
+            // On failure stop all
+            await StopAll();
+        }
+
+        public override Task StartAsync()
+        {
+            throw new NotSupportedException("Stream is stopping.");
         }
 
         public override Task TriggerCheckpoint(bool isScheduled = false)
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            Checkpoint? checkpoint = null;
+            StopStreamCheckpoint? checkpoint = null;
             lock (_context._checkpointLock)
             {
                 // Only support a single concurrent checkpoint for now for simplicity
@@ -236,7 +210,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 _context.checkpointTask = new TaskCompletionSource();
                 var newTime = _context.producingTime + 1;
-                checkpoint = new Checkpoint(_context.producingTime, newTime);
+                checkpoint = new StopStreamCheckpoint(_context.producingTime, newTime);
                 _context.producingTime = newTime;
                 _currentCheckpoint = checkpoint;
 
@@ -254,39 +228,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             return _context.checkpointTask.Task;
         }
 
-        public override Task CallTrigger(string operatorName, string triggerName, object? state)
-        {
-            Debug.Assert(_context != null, nameof(_context));
-            return _context.CallTrigger_Internal(operatorName, triggerName, state);
-        }
-
-        public override Task CallTrigger(string triggerName, object? state)
-        {
-            Debug.Assert(_context != null, nameof(_context));
-            return _context.CallTrigger_Internal(triggerName, state);
-        }
-
-        public override Task AddTrigger(string operatorName, string triggerName, TimeSpan? schedule = null)
-        {
-            Debug.Assert(_context != null, nameof(_context));
-            return _context.AddTrigger_Internal(operatorName, triggerName, schedule);
-        }
-
-        public override Task StartAsync()
-        {
-            return Task.CompletedTask;
-        }
-
-        public override Task DeleteAsync()
-        {
-            return TransitionTo(StreamStateValue.Deleting);
-        }
-
         public override Task StopAsync()
         {
-            Debug.Assert(_context != null, nameof(_context));
-            _context._wantedState = StreamStateValue.NotStarted;
-            TransitionTo(StreamStateValue.Stopping);
             return Task.CompletedTask;
         }
     }
