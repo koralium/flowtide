@@ -10,16 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Storage.StateManager.Internal
-{
-    internal class StateClientMetadata<T>
-    {
-        public T? Metadata { get; set; }
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-        /// <summary>
-        /// Used to track if the state has been commited at least once, if it is true, it is known that data can be fetched from persitent storage.
-        /// A temporary tree will always have this set to false.
-        /// </summary>
-        public bool CommitedOnce { get; set; }
+namespace FlowtideDotNet.AcceptanceTests.Internal
+{
+    internal class CrashException : Exception
+    {
+        public CrashException()
+        {
+        }
+
+        public CrashException(string? message) : base(message)
+        {
+        }
+
+        public CrashException(string? message, Exception? innerException) : base(message, innerException)
+        {
+        }
     }
 }
