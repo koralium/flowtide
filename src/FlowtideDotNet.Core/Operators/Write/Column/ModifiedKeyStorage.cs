@@ -60,9 +60,9 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         {
             if (container is ModifiedKeyStorage columnKeyStorageContainer)
             {
-                for (int i = start; i < start + count; i++)
+                for (int i = 0; i < _columnsToStore.Count; i++)
                 {
-                    Add(columnKeyStorageContainer.Get(i));
+                    _data.Columns[i].InsertRangeFrom(_data.Columns[i].Count, columnKeyStorageContainer._data.Columns[i], start, count);
                 }
             }
             else
@@ -103,10 +103,9 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
+            for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                RemoveAt(i);
+                _data.Columns[i].RemoveRange(start, count);
             }
         }
 
