@@ -90,6 +90,15 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             return ValueTask.FromResult(m_primaryKeys);
         }
 
+        protected override Task OnInitialDataSent()
+        {
+            if (m_elasticsearchOptions.OnInitialDataSent != null)
+            {
+                return m_elasticsearchOptions.OnInitialDataSent(m_client!, m_writeRelation, m_indexName);
+            }
+            return base.OnInitialDataSent();
+        }
+
         internal void CreateIndexAndMappings()
         {
             var client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
@@ -213,6 +222,11 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                 {
                     throw new InvalidOperationException("Error in elasticsearch sink");
                 }
+            }
+
+            if (m_elasticsearchOptions.OnDataSent != null)
+            {
+                await m_elasticsearchOptions.OnDataSent(m_client, m_writeRelation, m_indexName, watermark);
             }
         }
     }

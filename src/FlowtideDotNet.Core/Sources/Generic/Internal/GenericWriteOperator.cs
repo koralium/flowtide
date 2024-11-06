@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Operators.Write;
-using FlowtideDotNet.Core.Operators.Write.Column;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System;
@@ -25,70 +24,23 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Sources.Generic.Internal
 {
-    internal class GenericWriteOperator<T> : ColumnGroupedWriteOperator<ColumnWriteState>
+    internal class GenericWriteOperator<T> : SimpleGroupedWriteOperator
     {
         private readonly GenericDataSink<T> genericDataSink;
         private readonly WriteRelation writeRelation;
         private readonly StreamEventToJson streamEventToJson;
 
-        public GenericWriteOperator(GenericDataSink<T> genericDataSink, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
-            : base(executionMode, writeRelation, executionDataflowBlockOptions)
+        public GenericWriteOperator(GenericDataSink<T> genericDataSink, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
+            : base(executionMode, executionDataflowBlockOptions)
         {
             this.genericDataSink = genericDataSink;
             this.writeRelation = writeRelation;
             streamEventToJson = new StreamEventToJson(writeRelation.TableSchema.Names);
         }
 
-        protected override ColumnWriteState Checkpoint(long checkpointTime)
-        {
-            throw new NotImplementedException();
-        }
-
         public override string DisplayName => $"GenericDataSink(Name={writeRelation.NamedObject.DotSeperated})";
 
-        //protected override async Task<MetadataResult> SetupAndLoadMetadataAsync()
-        //{
-        //    var primaryKeyColumnNames = await genericDataSink.GetPrimaryKeyNames();
-            
-        //    List<int> primaryKeyIndices = new List<int>();
-        //    foreach (var primaryKeyColumnName in primaryKeyColumnNames)
-        //    {
-        //        var index = writeRelation.TableSchema.Names.FindIndex(x => x.Equals(primaryKeyColumnName, StringComparison.OrdinalIgnoreCase));
-        //        if (index == -1)
-        //        {
-        //            throw new InvalidOperationException($"Primary key column {primaryKeyColumnName} not found in table schema");
-        //        }
-        //        primaryKeyIndices.Add(index);
-        //    }
-        //    return new MetadataResult(primaryKeyIndices);
-        //}
-
-        protected override async Task InitializeOrRestore(long restoreTime, ColumnWriteState? state, IStateManagerClient stateManagerClient)
-        {
-            await genericDataSink.Initialize(writeRelation);
-            await base.InitializeOrRestore(restoreTime, state, stateManagerClient);
-        }
-
-        //private async IAsyncEnumerable<FlowtideGenericWriteObject<T>> ChangesToGeneric(IAsyncEnumerable<SimpleChangeEvent> rows)
-        //{
-        //    await foreach(var row in rows)
-        //    {
-        //        using var memoryStream = new MemoryStream();
-        //        streamEventToJson.Write(memoryStream, row.Row);
-        //        memoryStream.Position = 0;
-        //        var obj = JsonSerializer.Deserialize<T>(memoryStream, new JsonSerializerOptions()
-        //        {
-        //            PropertyNameCaseInsensitive = true
-        //        });
-        //        if (obj == null)
-        //        {
-        //            throw new InvalidOperationException("Could not convert row to generic object");
-        //        }
-        //        yield return new FlowtideGenericWriteObject<T>(obj, row.IsDeleted);
-        //    }
-        //}
-
-        protected override async ValueTask<IReadOnlyList<int>> GetPrimaryKeyColumns()
+        protected override async Task<MetadataResult> SetupAndLoadMetadataAsync()
         {
             var primaryKeyColumnNames = await genericDataSink.GetPrimaryKeyNames();
 
@@ -102,16 +54,21 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                 }
                 primaryKeyIndices.Add(index);
             }
-            return primaryKeyIndices;
+            return new MetadataResult(primaryKeyIndices);
         }
 
-        private async IAsyncEnumerable<FlowtideGenericWriteObject<T>> ChangesToGeneric(IAsyncEnumerable<ColumnWriteOperation> rows)
+        protected override async Task InitializeOrRestore(long restoreTime, SimpleWriteState? state, IStateManagerClient stateManagerClient)
+        {
+            await genericDataSink.Initialize(writeRelation);
+            await base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+        }
+
+        private async IAsyncEnumerable<FlowtideGenericWriteObject<T>> ChangesToGeneric(IAsyncEnumerable<SimpleChangeEvent> rows)
         {
             await foreach (var row in rows)
             {
                 using var memoryStream = new MemoryStream();
-                
-                //streamEventToJson.Write(memoryStream, row.Row);
+                streamEventToJson.Write(memoryStream, row.Row);
                 memoryStream.Position = 0;
                 var obj = JsonSerializer.Deserialize<T>(memoryStream, new JsonSerializerOptions()
                 {
@@ -125,14 +82,9 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             }
         }
 
-        protected override Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken)
+        protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            await genericDataSink.OnChanges(ChangesToGeneric(rows));
         }
-
-        //protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
-        //{
-        //    await genericDataSink.OnChanges(ChangesToGeneric(rows));
-        //}
     }
 }

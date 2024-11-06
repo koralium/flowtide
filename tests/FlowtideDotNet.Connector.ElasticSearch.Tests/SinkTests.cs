@@ -12,6 +12,9 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
         public SinkTests(ElasticSearchFixture elasticSearchFixture)
         {
             this.elasticSearchFixture = elasticSearchFixture;
+
+            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
+            elasticClient.Indices.Delete("testindex");
         }
 
         [Fact]
@@ -31,10 +34,12 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
 
             ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
 
+            var lastUser = stream.Users.Last();
             bool success = false;
             do
             {
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "15");
+                await stream.SchedulerTick();
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
                 success = resp.ApiCall.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
@@ -44,7 +49,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
         [Fact]
         public async Task TestInsertWithUpdate()
         {
-            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsert");
+            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsertWithUpdate");
             stream.Generate();
             await stream.StartStream(@"
             INSERT INTO testindex
@@ -94,6 +99,96 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
         }
 
         [Fact]
+        public async Task TestInitialDataSent()
+        {
+            bool calledOnInitialDataSent = false;
+            ElasticsearchTestStream stream = new ElasticsearchTestStream(
+                elasticSearchFixture,
+                "TestInitialDataSent",
+                onInitialDataSent: (client, writeRelation, indexName) =>
+                {
+                    calledOnInitialDataSent = true;
+                    return Task.CompletedTask;
+                });
+            stream.Generate();
+            await stream.StartStream(@"
+            INSERT INTO testindex
+            SELECT 
+                UserKey as _id,
+                FirstName,
+                LastName,
+                UserKey as pk
+            FROM users
+            ");
+
+            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
+
+            var lastUser = stream.Users.Last();
+            bool success = false;
+            do
+            {
+                await stream.SchedulerTick();
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
+                success = resp.ApiCall.HttpStatusCode == 200;
+                await Task.Delay(10);
+            } while (!success);
+
+            int testCount = 0;
+            while (calledOnInitialDataSent == false)
+            {
+                Assert.True(testCount < 100);
+                testCount++;
+                await stream.SchedulerTick();
+                await Task.Delay(10);
+            }
+        }
+
+        [Fact]
+        public async Task TestOnDataSent()
+        {
+            bool calledOnDataSent = false;
+            ElasticsearchTestStream stream = new ElasticsearchTestStream(
+                elasticSearchFixture,
+                "TestOnDataSent",
+                onDataSent: (client, writeRelation, indexName, watermark) =>
+                {
+                    calledOnDataSent = true;
+                    return Task.CompletedTask;
+                });
+            stream.Generate();
+            await stream.StartStream(@"
+            INSERT INTO testindex
+            SELECT 
+                UserKey as _id,
+                FirstName,
+                LastName,
+                UserKey as pk
+            FROM users
+            ");
+
+            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
+
+            var lastUser = stream.Users.Last();
+            bool success = false;
+            do
+            {
+                await stream.SchedulerTick();
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
+                success = resp.ApiCall.HttpStatusCode == 200;
+                await Task.Delay(10);
+            } while (!success);
+
+            int testCount = 0;
+            while (calledOnDataSent == false)
+            {
+                Assert.True(testCount < 100);
+                testCount++;
+                await stream.SchedulerTick();
+                await Task.Delay(10);
+            }
+        }
+
+        [Fact]
         public async Task TestInsertWithCustomMappingIndexDoesNotExist()
         {
             ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsertWithCustomMappingIndexDoesNotExist", (properties) =>
@@ -113,10 +208,11 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
 
             ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
 
+            var lastUser = stream.Users.Last();
             bool success = false;
             do
             {
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "15");
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
                 success = resp.ApiCall.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
@@ -143,10 +239,11 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             FROM users
             ");
 
+            var lastUser = stream.Users.Last();
             bool success = false;
             do
             {
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "15");
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
                 success = resp.ApiCall.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
@@ -172,10 +269,11 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             FROM users
             ");
 
+            var lastUser = stream.Users.Last();
             bool success = false;
             do
             {
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", "15");
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
                 success = resp.ApiCall.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
