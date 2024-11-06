@@ -140,10 +140,16 @@ namespace FlowtideDotNet.Substrait
             RootRelation? oldRootRel = null;
             foreach (var rootPlan in _rootPlans)
             {
-                
+                Dictionary<int, int> oldRelationToNewMap = new Dictionary<int, int>();
+                for (int i = 0; i < rootPlan.Relations.Count; i++)
+                {
+                    oldRelationToNewMap.Add(i, i + newPlan.Relations.Count);
+                }
+                var referenceRemapVisitor = new ReferenceRemapVisitor(oldRelationToNewMap);
                 for (int i = 0; i < rootPlan.Relations.Count; i++)
                 {
                     var relation = rootPlan.Relations[i];
+                    referenceRemapVisitor.Visit(relation, default);
                     if (relation is RootRelation rootRelation)
                     {
                         oldRootRel = rootRelation;
