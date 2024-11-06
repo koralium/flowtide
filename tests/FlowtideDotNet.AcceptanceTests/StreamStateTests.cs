@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,6 +37,33 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             await StopStream();
+
+            Assert.Equal(StreamStateValue.NotStarted, State);
+        }
+
+        [Fact]
+        public async Task TestStopStreamThenStart()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT userkey FROM users");
+
+            await WaitForUpdate();
+
+            await StopStream();
+
+            Assert.Equal(StreamStateValue.NotStarted, State);
+
+            GenerateData();
+
+            await StartStream();
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
+
+            Assert.Equal(StreamStateValue.Running, State);
         }
     }
 }

@@ -123,7 +123,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                      }
                      // Finish the checkpoint
                      @this.CheckpointCompleted();
-                     _context._logger.CheckpointDone(_context.streamName);
+                     _context._logger.ShutdownCheckpointDone(_context.streamName);
                      await @this.StopAll();
                  }, this)
                  .Unwrap();
@@ -162,6 +162,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             _context._stateManager.Dispose();
 
+            
+            await TransitionTo(StreamStateValue.NotStarted);
+            _context._logger.StoppedStream(_context.streamName);
+
             if (_context._stopTask != null)
             {
                 lock (_context._checkpointLock)
@@ -170,12 +174,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context._stopTask = null;
                 }
             }
-            await TransitionTo(StreamStateValue.NotStarted);
         }
 
         public override void Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null);
+            _context._logger.StoppingStream(_context.streamName);
             _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(1));
         }
 
@@ -202,7 +206,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     return _context.checkpointTask.Task;
                 }
-                _context._logger.StartingCheckpoint(_context.streamName);
+                _context._logger.StartingShutdownCheckpoint(_context.streamName);
                 nonCheckpointedEgresses = new HashSet<string>();
                 foreach (var key in _context.egressBlocks.Keys)
                 {

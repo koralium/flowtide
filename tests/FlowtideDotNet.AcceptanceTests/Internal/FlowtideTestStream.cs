@@ -14,6 +14,7 @@ using FastMember;
 using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Base.Engine;
+using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Compute;
@@ -69,6 +70,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public SqlPlanBuilder SqlPlanBuilder => sqlPlanBuilder;
 
         public int CachePageCount { get; set; } = 1000;
+
+        public StreamStateValue State => _stream!.State;
 
         public FlowtideTestStream(string testName)
         {
@@ -449,6 +452,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public Task StopStream()
         {
             return _stream!.StopAsync();
+        }
+
+        public Task StartStream()
+        {
+            return _stream!.StartAsync();
         }
     }
 }

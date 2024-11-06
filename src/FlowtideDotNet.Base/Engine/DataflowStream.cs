@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Base.Engine
                 await StartAsync();
                 PeriodicTimer periodicTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));
                 int count = 0;
-                while (await periodicTimer.WaitForNextTickAsync())
+                while (await periodicTimer.WaitForNextTickAsync() && State != StreamStateValue.NotStarted)
                 {
                     await streamScheduler.Tick();
                     count++;

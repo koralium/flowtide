@@ -231,6 +231,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return TransitionTo(current, new DeletedStreamState(), oldState);
                 case StreamStateValue.Stopping:
                     return TransitionTo(current, new StoppingStreamState(), oldState);
+                case StreamStateValue.NotStarted:
+                    return TransitionTo(current, new NotStartedStreamState(), oldState);
             }
             return Task.CompletedTask;
         }

@@ -23,6 +23,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private readonly object _lock = new object();
         private HashSet<string>? nonCheckpointedEgresses;
         private Checkpoint? _currentCheckpoint;
+        private bool _doingCheckpoint = false;
 
         public override void EgressCheckpointDone(string name)
         {
@@ -140,6 +141,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context.checkpointTask = null;
                     _currentCheckpoint = null;
 
+                    if (_context._wantedState == StreamStateValue.NotStarted && _doingCheckpoint)
+                    {
+                        _doingCheckpoint = false;
+                        TransitionTo(StreamStateValue.Stopping);
+                        return;
+                    }
+
+                    _doingCheckpoint = false;
                     if (_context.inQueueCheckpoint.HasValue)
                     {
                         var span = _context.inQueueCheckpoint.Value.Subtract(DateTimeOffset.UtcNow);
@@ -223,6 +232,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             Checkpoint? checkpoint = null;
             lock (_context._checkpointLock)
             {
+                // If we are stopping, we should not do a checkpoint
+                if (_context._wantedState == StreamStateValue.Stopping)
+                {
+                    return Task.CompletedTask;
+                }
+                _doingCheckpoint = true;
                 // Only support a single concurrent checkpoint for now for simplicity
                 if (_context.checkpointTask != null)
                 {
@@ -286,7 +301,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
             _context._wantedState = StreamStateValue.NotStarted;
-            TransitionTo(StreamStateValue.Stopping);
+            lock (_context._checkpointLock)
+            {
+                if (_doingCheckpoint)
+                {
+                    return Task.CompletedTask;
+                }
+                else
+                {
+                    TransitionTo(StreamStateValue.Stopping);
+                }
+            }
+            
             return Task.CompletedTask;
         }
     }

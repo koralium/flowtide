@@ -13,6 +13,7 @@
 using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Substrait.Sql;
@@ -34,6 +35,8 @@ namespace FlowtideDotNet.AcceptanceTests
         public IFunctionsRegister FunctionsRegister => flowtideTestStream.FunctionsRegister;
         public ISqlFunctionRegister SqlFunctionRegister => flowtideTestStream.SqlFunctionRegister;
 
+        public StreamStateValue State => flowtideTestStream.State;
+
         protected Task StartStream(
             string sql, 
             int parallelism = 1, 
@@ -43,6 +46,9 @@ namespace FlowtideDotNet.AcceptanceTests
 
 
         protected Task StopStream() => flowtideTestStream.StopStream();
+
+        protected Task StartStream() => flowtideTestStream.StartStream();
+
         public List<FlxVector> GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 
         protected void AssertCurrentDataEqual<T>(IEnumerable<T> data)
