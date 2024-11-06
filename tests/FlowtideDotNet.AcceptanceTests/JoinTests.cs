@@ -515,10 +515,26 @@ namespace FlowtideDotNet.AcceptanceTests
                 ", pageSize: 8);
             await WaitForUpdate();
 
+            Assert.NotNull(LastWatermark);
+            Assert.Equal(1000, LastWatermark.Watermarks["projects"]);
+            Assert.Equal(-1, LastWatermark.Watermarks["users"]);
+            Assert.Equal(-1, LastWatermark.Watermarks["projectmembers"]);
+
             GenerateUsers(1000);
             await WaitForUpdate();
+
+            Assert.NotNull(LastWatermark);
+            Assert.Equal(1000, LastWatermark.Watermarks["projects"]);
+            Assert.Equal(1000, LastWatermark.Watermarks["users"]);
+            Assert.Equal(-1, LastWatermark.Watermarks["projectmembers"]);
+
             GenerateProjectMembers(1000);
             await WaitForUpdate();
+
+            Assert.NotNull(LastWatermark);
+            Assert.Equal(1000, LastWatermark.Watermarks["projects"]);
+            Assert.Equal(1000, LastWatermark.Watermarks["users"]);
+            Assert.Equal(1000, LastWatermark.Watermarks["projectmembers"]);
 
             var expected = from user in Users
                            join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey into gj
