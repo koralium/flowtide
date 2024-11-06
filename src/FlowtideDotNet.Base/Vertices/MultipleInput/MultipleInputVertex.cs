@@ -40,6 +40,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private IReadOnlySet<string>[]? _targetWatermarkNames;
         private Watermark[]? _targetWatermarks;
         private Watermark? _currentWatermark;
+        private Watermark? _previousWatermark;
         private bool[]? _targetSentDataSinceLastWatermark;
         private bool[]? _targetSentWatermark;
         private bool _isInIteration = false;
@@ -260,26 +261,11 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 {
                     SourceOperatorId = watermark.SourceOperatorId
                 };
+                _previousWatermark = _currentWatermark;
             }
             _targetSentWatermark[targetId] = true;
             _targetWatermarks[targetId] = watermark;
 
-            if (!_isInIteration)
-            {
-                for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
-                {
-                    if (_targetSentDataSinceLastWatermark[i] && !_targetSentWatermark[i])
-                    {
-                        yield break;
-                    }
-                }
-                for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
-                {
-                    _targetSentDataSinceLastWatermark[i] = false;
-                    _targetSentWatermark[i] = false;
-                }
-            }
-            
             var currentDict = _currentWatermark.Watermarks;
             foreach (var kv in watermark.Watermarks)
             {
@@ -313,7 +299,29 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             // only output watermark if there is a difference in the numbers
             if (!newWatermark.Equals(_currentWatermark))
             {
-                await foreach(var e in OnWatermark(newWatermark))
+                _currentWatermark = newWatermark;
+            }
+
+            if (!_isInIteration)
+            {
+                for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
+                {
+                    if (_targetSentDataSinceLastWatermark[i] && !_targetSentWatermark[i])
+                    {
+                        yield break;
+                    }
+                }
+                for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
+                {
+                    _targetSentDataSinceLastWatermark[i] = false;
+                    _targetSentWatermark[i] = false;
+                }
+            }
+
+            // only output watermark if there is a difference in the numbers
+            if (!_currentWatermark.Equals(_previousWatermark))
+            {
+                await foreach (var e in OnWatermark(newWatermark))
                 {
                     if (e is IRentable rentable)
                     {
@@ -321,7 +329,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     }
                     yield return new StreamMessage<T>(e, _currentTime);
                 }
-                _currentWatermark = newWatermark;
+                _previousWatermark = _currentWatermark;
                 yield return _currentWatermark;
             }
         }
