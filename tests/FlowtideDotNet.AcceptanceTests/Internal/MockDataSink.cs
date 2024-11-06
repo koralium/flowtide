@@ -33,14 +33,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private int crashOnCheckpointCount;
         private SortedDictionary<RowEvent, int> currentData;
         private bool watermarkRecieved = false;
+        private Action<Watermark> onWatermark;
         public MockDataSink(
             ExecutionDataflowBlockOptions executionDataflowBlockOptions, 
             Action<List<byte[]>> onDataChange,
-            int crashOnCheckpointCount) : base(executionDataflowBlockOptions)
+            int crashOnCheckpointCount,
+            Action<Watermark> onWatermark) : base(executionDataflowBlockOptions)
         {
             currentData = new SortedDictionary<RowEvent, int>(new BPlusTreeStreamEventComparer());
             this.onDataChange = onDataChange;
             this.crashOnCheckpointCount = crashOnCheckpointCount;
+            this.onWatermark = onWatermark;
         }
 
         public override string DisplayName => "Mock Data Sink";
@@ -64,6 +67,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         protected override Task OnWatermark(Watermark watermark)
         {
             watermarkRecieved = true;
+            if (onWatermark != null)
+            {
+                onWatermark(watermark);
+            }
             return base.OnWatermark(watermark);
         }
 

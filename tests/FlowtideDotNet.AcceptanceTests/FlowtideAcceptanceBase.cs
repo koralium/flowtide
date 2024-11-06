@@ -13,6 +13,7 @@
 using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Substrait.Sql;
@@ -33,6 +34,8 @@ namespace FlowtideDotNet.AcceptanceTests
         public IReadOnlyList<ProjectMember> ProjectMembers => flowtideTestStream.ProjectMembers;
         public IFunctionsRegister FunctionsRegister => flowtideTestStream.FunctionsRegister;
         public ISqlFunctionRegister SqlFunctionRegister => flowtideTestStream.SqlFunctionRegister;
+
+        public Watermark? LastWatermark => flowtideTestStream.LastWatermark;
 
         protected Task StartStream(
             string sql, 

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
@@ -26,17 +27,19 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     internal class MockSinkFactory : RegexConnectorSinkFactory
     {
         private readonly Action<List<byte[]>> onDataUpdate;
+        private readonly Action<Watermark> onWatemrark;
         private readonly int egressCrashOnCheckpointCount;
 
-        public MockSinkFactory(string regexPattern, Action<List<byte[]>> onDataUpdate, int egressCrashOnCheckpointCount) : base(regexPattern)
+        public MockSinkFactory(string regexPattern, Action<List<byte[]>> onDataUpdate, int egressCrashOnCheckpointCount, Action<Watermark> onwatermark) : base(regexPattern)
         {
             this.onDataUpdate = onDataUpdate;
             this.egressCrashOnCheckpointCount = egressCrashOnCheckpointCount;
+            this.onWatemrark = onwatermark;
         }
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new MockDataSink(dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount);
+            return new MockDataSink(dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount, onWatemrark);
         }
     }
 }

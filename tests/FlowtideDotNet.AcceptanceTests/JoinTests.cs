@@ -264,11 +264,18 @@ namespace FlowtideDotNet.AcceptanceTests
                 ON o.userkey = u.userkey");
             await WaitForUpdate();
 
+            Assert.NotNull(LastWatermark);
+            Assert.Equal(1000, LastWatermark.Watermarks["users"]);
+            Assert.Equal(1000, LastWatermark.Watermarks["orders"]);
             await Crash();
 
             GenerateData();
 
             await WaitForUpdate();
+
+            Assert.NotNull(LastWatermark);
+            Assert.Equal(2000, LastWatermark.Watermarks["users"]);
+            Assert.Equal(2000, LastWatermark.Watermarks["orders"]);
 
             AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
         }
