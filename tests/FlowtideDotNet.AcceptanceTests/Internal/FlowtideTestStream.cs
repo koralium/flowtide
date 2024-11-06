@@ -13,6 +13,7 @@
 using FastMember;
 using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Metrics;
@@ -52,6 +53,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private ConnectorManager? _connectorManager;
         private bool _dataUpdated;
         private NotificationReciever? _notificationReciever;
+        private Watermark? _lastWatermark;
 
         public IReadOnlyList<User> Users  => generator.Users;
 
@@ -70,6 +72,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public SqlPlanBuilder SqlPlanBuilder => sqlPlanBuilder;
 
         public int CachePageCount { get; set; } = 1000;
+
+        public Watermark? LastWatermark => _lastWatermark;
 
         public StreamStateValue State => _stream!.State;
 
@@ -342,7 +346,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual void AddWriteResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount));
+            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark));
+        }
+
+        protected virtual void OnWatermark(Watermark watermark)
+        {
+            _lastWatermark = watermark;
         }
 
         public void AssertCurrentDataEqual<T>(IEnumerable<T> data)
