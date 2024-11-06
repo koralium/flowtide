@@ -214,7 +214,6 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                     throw new InvalidOperationException("Error in elasticsearch sink");
                 }
             }
-            throw new NotImplementedException();
         }
     }
 }

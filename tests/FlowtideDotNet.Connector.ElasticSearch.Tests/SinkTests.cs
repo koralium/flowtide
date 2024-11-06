@@ -42,6 +42,58 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
         }
 
         [Fact]
+        public async Task TestInsertWithUpdate()
+        {
+            ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsert");
+            stream.Generate();
+            await stream.StartStream(@"
+            INSERT INTO testindex
+            SELECT 
+                UserKey as _id,
+                FirstName,
+                LastName,
+                UserKey as pk
+            FROM users
+            ");
+
+            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
+
+            var lastUser = stream.Users.Last();
+            bool success = false;
+            do
+            {
+                await stream.SchedulerTick();
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
+                success = resp.ApiCall.HttpStatusCode == 200;
+                await Task.Delay(10);
+            } while (!success);
+
+            stream.Generate();
+
+            lastUser = stream.Users.Last();
+
+            success = false;
+            do
+            {
+                await stream.SchedulerTick();
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
+                success = resp.ApiCall.HttpStatusCode == 200;
+                await Task.Delay(10);
+            } while (!success);
+
+            stream.DeleteUser(lastUser);
+
+            success = false;
+            do
+            {
+                await stream.SchedulerTick();
+                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
+                success = resp.ApiCall.HttpStatusCode == 404;
+                await Task.Delay(10);
+            } while (!success);
+        }
+
+        [Fact]
         public async Task TestInsertWithCustomMappingIndexDoesNotExist()
         {
             ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsertWithCustomMappingIndexDoesNotExist", (properties) =>
