@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlexBuffers;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Tests.Failure
 {
@@ -26,8 +27,8 @@ namespace FlowtideDotNet.Core.Tests.Failure
     }
     internal class TestWriteOperator : GroupedWriteBaseOperator<TestWriteState>
     {
-        private TestWriteState currentState;
-        private SortedSet<RowEvent> modified;
+        private TestWriteState? currentState;
+        private SortedSet<RowEvent>? modified;
         List<int> primaryKeyIds;
         private readonly Func<IReadOnlyList<DataChange>, Task> onValueChange;
         private readonly WriteRelation writeRelation;
@@ -55,6 +56,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
 
         protected override async Task<TestWriteState> Checkpoint(long checkpointTime)
         {
+            Debug.Assert(currentState != null, nameof(currentState));
             if (!currentState.InitialCheckpointDone)
             {
                 // Send data
@@ -67,6 +69,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
 
         private async Task SendData()
         {
+            Debug.Assert(modified != null, nameof(modified));
             List<DataChange> output = new List<DataChange>();
             foreach (var m in modified)
             {
@@ -106,6 +109,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
 
         protected override async Task OnWatermark(Watermark watermark)
         {
+            Debug.Assert(currentState != null, nameof(currentState));
             if (currentState.InitialCheckpointDone)
             {
                 // Send data
@@ -115,6 +119,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
+            Debug.Assert(modified != null, nameof(modified));
             foreach (var e in msg.Events)
             {
                 var primaryKeyValue = e.GetColumn(0);

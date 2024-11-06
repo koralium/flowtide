@@ -12,6 +12,7 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -135,18 +136,19 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             {
                 Comparer = new BPlusTreeListComparer<RowEvent>(comparer),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             });
 
             return new MinMaxAggregationSingleton(tree, groupingLength);
         }
 
-        private static Task<MinMaxAggregationSingleton> InitializeMin(int groupingLength, IStateManagerClient stateManagerClient)
+        private static Task<MinMaxAggregationSingleton> InitializeMin(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
             return InitializeMinMax(groupingLength, stateManagerClient, new MinAggregationInsertComparer(groupingLength + 1), "mintree");
         }
 
-        private static Task<MinMaxAggregationSingleton> InitializeMax(int groupingLength, IStateManagerClient stateManagerClient)
+        private static Task<MinMaxAggregationSingleton> InitializeMax(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
             return InitializeMinMax(groupingLength, stateManagerClient, new MaxAggregationInsertComparer(groupingLength + 1), "maxtree");
         }

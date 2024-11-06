@@ -13,9 +13,9 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Buffers;
@@ -23,13 +23,13 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
     public class StringColumn : IDataColumn, IEnumerable<string>
     {
-        private static SpanByteComparer s_spanByteComparer = new SpanByteComparer();
         private BinaryList _binaryList;
         private bool disposedValue;
 
@@ -74,14 +74,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 return 1;
             }
-            return s_spanByteComparer.Compare(_binaryList.Get(index), value.AsString.Span);
+            return SpanByteComparer.Instance.Compare(_binaryList.Get(index), value.AsString.Span);
         }
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             if (otherColumn is StringColumn stringColumn)
             {
-                return s_spanByteComparer.Compare(_binaryList.Get(thisIndex), stringColumn._binaryList.Get(otherIndex));
+                return SpanByteComparer.Instance.Compare(_binaryList.Get(thisIndex), stringColumn._binaryList.Get(otherIndex));
             }
             throw new NotImplementedException();
         }
@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             dataValueContainer._type = ArrowTypeId.String;
-            dataValueContainer._stringValue = new StringValue(_binaryList.Get(in index).ToArray());
+            dataValueContainer._stringValue = new StringValue(_binaryList.GetMemory(in index));
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
@@ -117,9 +117,17 @@ namespace FlowtideDotNet.Core.ColumnStore
             _binaryList.RemoveAt(index);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) where T : IDataValue
         {
-            return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end, s_spanByteComparer);
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end, SpanByteComparerDesc.Instance);
+            }
+            else
+            {
+                return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end, SpanByteComparer.Instance);
+            }
+            
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
@@ -175,6 +183,58 @@ namespace FlowtideDotNet.Core.ColumnStore
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             return ArrowTypeId.String;
+        }
+
+        public void Clear()
+        {
+            _binaryList.Clear();
+        }
+
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public int EndNewList()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            _binaryList.RemoveRange(start, count);
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _binaryList.GetByteSize(start, end);
+        }
+
+        public int GetByteSize()
+        {
+            return _binaryList.GetByteSize(0, Count - 1);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is StringColumn stringColumn)
+            {
+                _binaryList.InsertRangeFrom(index, stringColumn._binaryList, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _binaryList.InsertNullRange(index, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteStringValue(_binaryList.Get(index));
         }
     }
 }

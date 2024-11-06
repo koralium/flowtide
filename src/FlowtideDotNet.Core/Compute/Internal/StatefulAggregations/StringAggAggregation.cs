@@ -12,6 +12,7 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -105,14 +106,15 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             return FlxValue.FromBytes(FlexBuffer.SingleValue(sb.ToString()));
         }
 
-        private static async Task<StringAggAggregationSingleton> Initialize(int groupingLength, IStateManagerClient stateManagerClient)
+        private static async Task<StringAggAggregationSingleton> Initialize(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
             var tree = await stateManagerClient.GetOrCreateTree("stringaggtree", 
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
                 Comparer = new BPlusTreeListComparer<RowEvent>(new ListAggAggregationInsertComparer(groupingLength + 1)),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                MemoryAllocator = memoryAllocator
             });
 
             return new StringAggAggregationSingleton(tree, groupingLength);

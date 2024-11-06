@@ -14,6 +14,7 @@ using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.FixedPoint;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -37,12 +38,15 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         private ILogger? _logger;
         private IMeter? _metrics;
         private bool _isHealthy = true;
+        private IMemoryAllocator? _memoryAllocator;
 
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
 
         protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
 
         public ISourceBlock<IStreamEvent>[] Sources => _sources;
+
+        protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
         public PartitionVertex(int targetNumber, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
@@ -136,12 +140,14 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             
         }
 
-        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> Broadcast(IStreamEvent streamEvent)
+        private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> Broadcast(IStreamEvent streamEvent)
         {
+            KeyValuePair<int, IStreamEvent>[] output = new KeyValuePair<int, IStreamEvent>[targetNumber];
             for (int i = 0; i < targetNumber; i++)
             {
-                yield return new KeyValuePair<int, IStreamEvent>(i, streamEvent);
+                output[i] = new KeyValuePair<int, IStreamEvent>(i, streamEvent);
             }
+            return output.ToAsyncEnumerable();
         }
 
         public Task DeleteAsync()
@@ -174,6 +180,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
 
         public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
         {
+            _memoryAllocator = vertexHandler.MemoryManager;
             _name = name;
             _currentTime = newTime;
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);

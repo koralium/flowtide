@@ -551,39 +551,39 @@ namespace FlowtideDotNet.Substrait
 
                 var exprVisitor = new SerializerExpressionVisitor();
 
-                foreach(var leftKey in mergeJoinRelation.LeftKeys)
+                for (int i = 0; i < mergeJoinRelation.LeftKeys.Count; i++)
                 {
-                    if (leftKey is DirectFieldReference directFieldReference &&
-                        directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
+                    var leftKey = mergeJoinRelation.LeftKeys[i];
+                    var rightKey = mergeJoinRelation.RightKeys[i];
+                    if (leftKey is DirectFieldReference directFieldReferenceLeft &&
+                        directFieldReferenceLeft.ReferenceSegment is StructReferenceSegment structReferenceSegmentLeft &&
+                        rightKey is DirectFieldReference directFieldReferenceRight &&
+                        directFieldReferenceRight.ReferenceSegment is StructReferenceSegment structReferenceSegmentRight)
                     {
-                        rel.LeftKeys.Add(new Protobuf.Expression.Types.FieldReference()
+                        rel.Keys.Add(new ComparisonJoinKey()
                         {
-                            DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
+                            Comparison = new ComparisonJoinKey.Types.ComparisonType()
                             {
-                                StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
+                                Simple = ComparisonJoinKey.Types.SimpleComparisonType.Eq
+                            },
+                            Left = new Protobuf.Expression.Types.FieldReference()
+                            {
+                                DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
                                 {
-                                    Field = structReferenceSegment.Field
+                                    StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
+                                    {
+                                        Field = structReferenceSegmentLeft.Field
+                                    }
                                 }
-                            }
-                        });
-                    }
-                    else
-                    {
-                        throw new NotImplementedException("Only direct field reference is implemented");
-                    }
-                }
-                foreach (var rightKey in mergeJoinRelation.RightKeys)
-                {
-                    if (rightKey is DirectFieldReference directFieldReference &&
-                        directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
-                    {
-                        rel.RightKeys.Add(new Protobuf.Expression.Types.FieldReference()
-                        {
-                            DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
+                            },
+                            Right = new Protobuf.Expression.Types.FieldReference()
                             {
-                                StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
+                                DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
                                 {
-                                    Field = structReferenceSegment.Field
+                                    StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
+                                    {
+                                        Field = structReferenceSegmentRight.Field
+                                    }
                                 }
                             }
                         });

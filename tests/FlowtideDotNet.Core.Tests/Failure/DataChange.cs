@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
 {
     internal class DataChange
     {
-        public Dictionary<string, FlxValue> Key { get; set; }
+        public Dictionary<string, FlxValue>? Key { get; set; }
 
         public bool IsDeleted { get; set; }
 

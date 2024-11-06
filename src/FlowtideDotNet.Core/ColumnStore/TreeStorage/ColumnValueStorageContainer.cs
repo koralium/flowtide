@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -25,10 +25,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         private readonly int columnCount;
         internal EventBatchData _data;
 
-        public ColumnValueStorageContainer(int columnCount)
+        public ColumnValueStorageContainer(int columnCount, IMemoryAllocator memoryAllocator)
         {
             IColumn[] columns = new IColumn[columnCount];
-            var memoryManager = new BatchMemoryManager(columnCount);
+            var memoryManager = memoryAllocator;
             for (int i = 0; i < columnCount; i++)
             {
                 columns[i] = Column.Create(memoryManager);
@@ -80,6 +80,16 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 referenceBatch = _data,
                 RowIndex = index
             };
+        }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
         }
 
         public ref ColumnRowReference GetRef(int index)

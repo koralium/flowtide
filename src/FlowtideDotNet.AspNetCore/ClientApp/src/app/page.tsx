@@ -1,79 +1,56 @@
 "use client"
-import Image from "next/image";
-import useSWR from 'swr';
-import { StreamGraph, StreamGraphEdge, StreamGraphNode } from "./components/streamgraph/streamgraph";
-import Header from "./components/header";
+import { CacheHitsChart } from "./components/cachehitschart";
 import { Card } from "./components/card";
-import { NodeTable } from "./components/nodetable";
-
-const fetcher = (url: string) => fetch(url).then(r => r.json())
+import { DiskCacheWriteChart } from "./components/diskcachewritechart";
+import { EventsProcessedChart } from "./components/eventsprocessedchart";
+import Header from "./components/header";
+import { MemoryUsageChart } from "./components/memoryusagechart";
+import { OperatorTable } from "./components/operatortable";
+import { PageCountChart } from "./components/pagecountchart";
+import { StreamDisplay } from "./components/streamgraph";
 
 export default function Home() {
-
-  const { data } = useSWR('@(rootpath)api/diagnostics', fetcher, { refreshInterval: 1000 })
-
-  let graph = <div></div>
- 
-  const arr: Array<StreamGraphNode> = [];
-
-  if (data) {  
-    for (const property in data.nodes) {
-      const d = (data.nodes as any)[property] as any
-      let gauges: Array<any> = []
-      if (d.gauges) {
-        gauges = (d.gauges as Array<any>).map(x => {
-          return {
-            name: x.name,
-            value: x.dimensions[""].value
-          }
-        })
-      }
-      let counters: Array<any> = []
-      if (d.counters) {
-        counters = d.counters.map((x: any) => {
-          console.log(x.name)
-          console.log(x.total.rateLastMinute)
-          return {
-            name: x.name,
-            total: {
-              rateLastMinute: x.total.rateLastMinute,
-              sum: x.total.sum
-            }
-          }
-        })
-      }
-      
-      arr.push({
-        id: property,
-        displayName: d.displayName,
-        gauges: gauges,
-        counters: counters
-      })
-    }
-
-    const edges = (data.edges as Array<any>).map<StreamGraphEdge>(x => {
-      return {
-        source: x.source,
-        target: x.target
-      };
-    }) as Array<StreamGraphEdge>;
-
-    graph = <StreamGraph nodes={arr} edges={edges} />
-  }
 
   return (
     <div className="App">
        <Header />
-        <div className="mx-auto max-w-7xl pt-6 sm:px-6 lg:px-8">
+       <div className="grid grid-cols-12 gap-1">
+        <div className="col-start-2 col-span-10">
           <Card>
-            {graph}
+            <EventsProcessedChart />
           </Card>
         </div>
-        <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
+        <div className="col-start-2 col-span-10">
           <Card>
-            <NodeTable nodes={arr} />
+            <StreamDisplay />
           </Card>
         </div>
+        <div className="col-start-2 col-span-5">
+          <Card>
+            <MemoryUsageChart />
+          </Card>
+        </div>
+        <div className="col-start-7 col-span-5">
+          <Card>
+            <PageCountChart />
+          </Card>
+        </div>
+        <div className="col-start-2 col-span-5">
+          <Card>
+            <DiskCacheWriteChart />
+          </Card>
+        </div>
+        <div className="col-start-7 col-span-5">
+          <Card>
+            <CacheHitsChart />
+          </Card>
+        </div>
+        <div className="col-start-2 col-span-10">
+          <Card>
+            <OperatorTable />
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

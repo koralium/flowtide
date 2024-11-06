@@ -67,7 +67,10 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
 
         public override Expression? VisitIfThen(IfThenExpression ifThenExpression, object state)
         {
-            ifThenExpression.Else = Visit(ifThenExpression.Else, state)!;
+            if (ifThenExpression.Else != null)
+            {
+                ifThenExpression.Else = Visit(ifThenExpression.Else, state);
+            }
 
             for (int i = 0; i < ifThenExpression.Ifs.Count; i++)
             {

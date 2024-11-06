@@ -32,6 +32,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
     internal class FlowtideOpenFgaSource : ReadBaseOperator<FlowtideOpenFgaSourceState>
     {
         private readonly OpenFgaSourceOptions m_options;
+        private readonly ReadRelation m_readRelation;
         private OpenFgaClient? m_client;
         private FlowtideOpenFgaSourceState? m_state;
 
@@ -60,6 +61,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             }
 
             this.m_options = openFgaOptions;
+            this.m_readRelation = readRelation;
         }
 
         public override string DisplayName => m_displayName;
@@ -157,7 +159,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                         m_state.LastTimestamp = timestamp;
                     }
                 }
-                await output.SendAsync(new StreamEventBatch(outputData));
+                await output.SendAsync(new StreamEventBatch(outputData, m_readRelation.OutputLength));
                 m_state.ContinuationToken = changes.ContinuationToken;
 
                 changes = await m_client.ReadChanges(request, options: new OpenFga.Sdk.Client.Model.ClientReadChangesOptions()

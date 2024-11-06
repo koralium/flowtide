@@ -20,6 +20,7 @@ using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
 using System.Text;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Base.Vertices.Ingress
 {
@@ -58,6 +59,8 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         protected IMeter Metrics => _ingressState?._metrics ?? throw new NotSupportedException("Initialize must be called before accessing metrics");
 
         public ILogger Logger => _logger ?? throw new NotSupportedException("Logging must be done after Initialize");
+
+        protected IMemoryAllocator MemoryAllocator => _ingressState?._vertexHandler?.MemoryManager ?? throw new NotSupportedException("Initialize must be called before accessing memory allocator");
 
         protected IngressVertex(DataflowBlockOptions options)
         {
@@ -136,6 +139,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public void Complete()
         {
             Debug.Assert(_ingressState?._block != null, nameof(_ingressState._block));
+            Debug.Assert(_ingressState?._tokenSource != null, nameof(_ingressState._tokenSource));
 
             lock (_stateLock)
             {
@@ -155,6 +159,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public void Fault(Exception exception)
         {
             Debug.Assert(_ingressState?._block != null, nameof(_ingressState._block));
+            Debug.Assert(_ingressState?._tokenSource != null, nameof(_ingressState._tokenSource));
             lock (_stateLock)
             {
                 _ingressState._taskEnabled = false;
@@ -166,7 +171,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public IDisposable LinkTo(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
         {
             _links.Add((target, linkOptions));
-            return null;
+            return default!;
         }
 
         private void LinkTo_Internal(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
@@ -194,6 +199,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         private async Task RunLockingEvent(IngressOutput<TData> output, object? state)
         {
             Debug.Assert(_ingressState?._checkpointLock != null, nameof(_ingressState._checkpointLock));
+            Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
 
             var lockingEvent = (ILockingEvent)state!;
             await _ingressState._checkpointLock.WaitAsync(_ingressState._output.CancellationToken);

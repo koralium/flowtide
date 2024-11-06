@@ -24,6 +24,8 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         private DataValueContainer dataValueContainer;
         private readonly int columnCount;
 
+        public bool SeekNextPageForValue => false;
+
         public ColumnComparer(int columnCount)
         {
             dataValueContainer = new DataValueContainer();

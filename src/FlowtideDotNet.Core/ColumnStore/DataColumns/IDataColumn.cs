@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -43,7 +44,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         int Update<T>(in int index, in T value)
             where T: IDataValue;
 
-        (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child)
+        (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue;
 
         void RemoveAt(in int index);
@@ -54,5 +55,29 @@ namespace FlowtideDotNet.Core.ColumnStore
         (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount);
 
         ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child);
+
+        void Clear();
+
+        void AddToNewList<T>(in T value) where T : IDataValue;
+
+        int EndNewList();
+
+        void RemoveRange(int start, int count);
+
+        int GetByteSize(int start, int end);
+
+        int GetByteSize();
+
+        void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList);
+
+        /// <summary>
+        /// Inserts null on all elements in the range.
+        /// Used as an optimization to not have to insert nulls one by one.
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="count"></param>
+        void InsertNullRange(int index, int count);
+
+        void WriteToJson(ref readonly Utf8JsonWriter writer, in int index);
     }
 }

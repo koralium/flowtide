@@ -13,6 +13,7 @@
 using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Substrait.Sql;
@@ -34,7 +35,14 @@ namespace FlowtideDotNet.AcceptanceTests
         public IFunctionsRegister FunctionsRegister => flowtideTestStream.FunctionsRegister;
         public ISqlFunctionRegister SqlFunctionRegister => flowtideTestStream.SqlFunctionRegister;
 
-        protected Task StartStream(string sql, int parallelism = 1, StateSerializeOptions? stateSerializeOptions = default, int pageSize = 1024) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize);
+        public Watermark? LastWatermark => flowtideTestStream.LastWatermark;
+
+        protected Task StartStream(
+            string sql, 
+            int parallelism = 1, 
+            StateSerializeOptions? stateSerializeOptions = default, 
+            int pageSize = 1024,
+            bool ignoreSameDataCheck = false) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck);
 
         public List<FlxVector> GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 

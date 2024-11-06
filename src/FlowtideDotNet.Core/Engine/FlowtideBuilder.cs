@@ -30,7 +30,6 @@ namespace FlowtideDotNet.Core.Engine
         private IConnectorManager? _connectorManager;
         private IReadWriteFactory? _readWriteFactory;
         private IStateHandler? _stateHandler;
-        private StateManagerOptions? _stateManagerOptions;
         private int _queueSize = 100;
         private FunctionsRegister _functionsRegister;
         private int _parallelism = 1;

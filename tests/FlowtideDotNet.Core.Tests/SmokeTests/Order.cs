@@ -20,21 +20,21 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
 
         public long Custkey { get; set; }
 
-        public string Orderstatus { get; set; }
+        public string? Orderstatus { get; set; }
 
         public double Totalprice { get; set; }
 
         public DateTime Orderdate { get; set; }
 
-        public string Orderpriority { get; set; }
+        public string? Orderpriority { get; set; }
 
-        public string Clerk { get; set; }
+        public string? Clerk { get; set; }
 
         public int Shippriority { get; set; }
 
-        public string Comment { get; set; }
+        public string? Comment { get; set; }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is Order o)
             {

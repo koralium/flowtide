@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
     internal class SqlServerDataSource : ReadBaseOperator<SqlServerState>
     {
 #if DEBUG_WRITE
-        private StreamWriter allInput;
+        private StreamWriter? allInput;
 #endif
         private readonly Func<string> connectionStringFunc;
         private readonly string _tableName;
@@ -136,13 +136,13 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             break;
                     }
 #if DEBUG_WRITE
-                    allInput.WriteLine($"{streamEvent.Weight} {streamEvent.ToJson()}");
+                    allInput!.WriteLine($"{streamEvent.Weight} {streamEvent.ToJson()}");
 #endif
                     result.Add(streamEvent);
                 }
                 reader.Close();
 #if DEBUG_WRITE
-                await allInput.FlushAsync();
+                await allInput!.FlushAsync();
 #endif
                 _state.ChangeTrackingVersion = changeVersion;
                 SetHealth(true);
@@ -166,7 +166,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 _eventsCounter.Add(result.Count);
                 _eventsProcessed.Add(result.Count);
                 Logger.ChangesFoundInTable(result.Count, _tableName, StreamName, Name);
-                await output.SendAsync(new StreamEventBatch(result));
+                await output.SendAsync(new StreamEventBatch(result, readRelation.OutputLength));
                 await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.ChangeTrackingVersion));
                 this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }
@@ -237,7 +237,6 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             using var conn = new SqlConnection(connectionStringFunc());
             conn.Open();
             return SqlServerUtils.IsChangeTrackingEnabled(conn, _tableName).GetAwaiter().GetResult();
-
         }
 
         public override ValueTask DisposeAsync()
@@ -252,8 +251,8 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         protected override Task<SqlServerState> OnCheckpoint(long checkpointTime)
         {
 #if DEBUG_WRITE
-            allInput.WriteLine("Checkpoint");
-            allInput.Flush();
+            allInput!.WriteLine("Checkpoint");
+            allInput!.Flush();
 #endif
             Debug.Assert(_state != null);
             return Task.FromResult(_state);
@@ -262,7 +261,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
 #if DEBUG_WRITE
-            allInput.WriteLine($"Initial");
+            allInput!.WriteLine($"Initial");
 #endif
             Debug.Assert(_state != null);
             Debug.Assert(sqlConnection != null);
@@ -301,7 +300,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             {
                                 _eventsCounter.Add(outdata.Count);
                                 _eventsProcessed.Add(outdata.Count);
-                                await output.SendAsync(new StreamEventBatch(outdata));
+                                await output.SendAsync(new StreamEventBatch(outdata, readRelation.OutputLength));
                                 outdata = new List<RowEvent>();
                             }
                         }
@@ -309,7 +308,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         {
                             _eventsCounter.Add(outdata.Count);
                             _eventsProcessed.Add(outdata.Count);
-                            await output.SendAsync(new StreamEventBatch(outdata));
+                            await output.SendAsync(new StreamEventBatch(outdata, readRelation.OutputLength));
                         }
                         retryCount = 0;
                         SetHealth(true);
@@ -344,8 +343,8 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     }
                 }
 #if DEBUG_WRITE
-                allInput.WriteLine($"Initial Done");
-                await allInput.FlushAsync();
+                allInput!.WriteLine($"Initial Done");
+                await allInput!.FlushAsync();
 #endif
                 // Send watermark information after all initial data has been loaded
                 await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.ChangeTrackingVersion));

@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -26,10 +26,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         internal EventBatchData _data;
         private DataValueContainer _dataValueContainer;
 
-        public ColumnKeyStorageContainer(int columnCount)
+        public ColumnKeyStorageContainer(int columnCount, IMemoryAllocator memoryAllocator)
         {
             IColumn[] columns = new IColumn[columnCount];
-            var memoryManager = GlobalMemoryManager.Instance; //new BatchMemoryManager(columnCount);
+            var memoryManager = memoryAllocator;
             for (int i = 0; i < columnCount; i++)
             {
                 columns[i] = Column.Create(memoryManager);
@@ -61,9 +61,9 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             if (container is ColumnKeyStorageContainer columnKeyStorageContainer)
             {
-                for (int i = start; i < start + count; i++)
+                for (int i = 0; i < columnCount; i++)
                 {
-                    Add(columnKeyStorageContainer.Get(i));
+                    _data.Columns[i].InsertRangeFrom(_data.Columns[i].Count, columnKeyStorageContainer._data.Columns[i], start, count);
                 }
             }
             else
@@ -77,9 +77,15 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             throw new NotImplementedException();
         }
 
+        ~ColumnKeyStorageContainer()
+        {
+            Dispose();
+        }
+
         public void Dispose()
         {
             _data.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         public ColumnRowReference Get(in int index)
@@ -120,10 +126,9 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
+            for (int i = 0; i < columnCount; i++)
             {
-                RemoveAt(i);
+                _data.Columns[i].RemoveRange(start, count);
             }
         }
 
@@ -134,6 +139,16 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, _dataValueContainer, default);
                 _data.Columns[i].UpdateAt(index, _dataValueContainer);
             }
+        }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
         }
     }
 }

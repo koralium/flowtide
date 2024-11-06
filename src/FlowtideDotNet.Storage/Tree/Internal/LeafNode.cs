@@ -102,5 +102,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             base.Dispose(disposing);
         }
+
+        public override int GetByteSize()
+        {
+            return keys.GetByteSize() + values.GetByteSize();
+        }
+
+        public override int GetByteSize(int start, int end)
+        {
+            return keys.GetByteSize(start, end) + values.GetByteSize(start, end);
+        }
     }
 }

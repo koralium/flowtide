@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
             {
                 Debug.Assert(_eventsOutCounter != null, nameof(_eventsOutCounter));
                 _eventsOutCounter.Add(output.Count);
-                yield return new StreamEventBatch(output);
+                yield return new StreamEventBatch(output, relation.OutputLength);
             }
         }
 
@@ -257,7 +257,8 @@ namespace FlowtideDotNet.Core.Operators.TopN
             {
                 Comparer = new BPlusTreeListComparer<RowEvent>(_comparer),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
         }
     }

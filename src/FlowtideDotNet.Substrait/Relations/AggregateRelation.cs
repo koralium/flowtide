@@ -100,6 +100,10 @@ namespace FlowtideDotNet.Substrait.Relations
         private int CalculateOutputLength()
         {
             int length = 0;
+            if (EmitSet)
+            {
+                return Emit.Count;
+            }
             if (Groupings != null)
             {
                 foreach(var group in Groupings)

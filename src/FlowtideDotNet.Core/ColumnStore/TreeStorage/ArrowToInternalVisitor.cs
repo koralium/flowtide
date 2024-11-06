@@ -14,9 +14,9 @@ using Apache.Arrow;
 using Apache.Arrow.Arrays;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using SqlParser.Ast;
 using System;
 using System.Buffers;
@@ -49,7 +49,6 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         IArrowArrayVisitor<FixedSizeBinaryArray>
     {
         private readonly IMemoryOwner<byte> recordBatchMemoryOwner;
-        //private readonly BatchMemoryManager batchMemoryManager;
         private readonly PreAllocatedMemoryManager preAllocatedMemoryManager;
         private readonly void* _rootPtr;
         private int _rootUsageCount;
@@ -63,10 +62,6 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             get
             {
-                if (_dataColumn == null)
-                {
-                    return null;
-                }
                 BitmapList? bitmapList = _bitmapList;
                 if (bitmapList == null)
                 {
@@ -78,11 +73,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public Field? CurrentField { get; set; }
 
-        public ArrowToInternalVisitor(IMemoryOwner<byte> recordBatchMemoryOwner, BatchMemoryManager batchMemoryManager)
+        public ArrowToInternalVisitor(IMemoryOwner<byte> recordBatchMemoryOwner, IMemoryAllocator memoryManager)
         {
             this.recordBatchMemoryOwner = recordBatchMemoryOwner;
-            //this.batchMemoryManager = batchMemoryManager;
-            preAllocatedMemoryManager = new PreAllocatedMemoryManager();
+            preAllocatedMemoryManager = new PreAllocatedMemoryManager(memoryManager);
             _rootPtr = recordBatchMemoryOwner.Memory.Pin().Pointer;
         }
 
@@ -190,6 +184,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 array.Fields[i].Accept(this);
 
+                if (_typeId == ArrowTypeId.Null)
+                {
+                    _dataColumn = new NullColumn(_nullCount);
+                }
                 if (_nullCount > 0 && _typeId != ArrowTypeId.Null)
                 {
                     throw new InvalidOperationException("Inner columns in a union should not have null values, they should be on the union level");
@@ -214,7 +212,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Visit(NullArray array)
         {
-            _dataColumn = new NullColumn(array.NullCount);
+            _dataColumn = null;
             _typeId = ArrowTypeId.Null;
             _bitmapList = null;
             _nullCount = array.NullCount;

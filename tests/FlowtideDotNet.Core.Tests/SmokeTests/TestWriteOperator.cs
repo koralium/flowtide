@@ -19,6 +19,7 @@ using System.Text;
 using System.Threading.Tasks.Dataflow;
 using System.Text.Json;
 using System.Globalization;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Tests.SmokeTests
 {
@@ -29,8 +30,8 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
     }
     internal class TestWriteOperator<T> : GroupedWriteBaseOperator<TestWriteState>
     {
-        private TestWriteState currentState;
-        private SortedSet<RowEvent> modified;
+        private TestWriteState? currentState;
+        private SortedSet<RowEvent>? modified;
         List<int> primaryKeyIds;
         private readonly Func<List<T>, Task> onValueChange;
         private readonly WriteRelation writeRelation;
@@ -49,6 +50,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
 
         protected override async Task<TestWriteState> Checkpoint(long checkpointTime)
         {
+            Debug.Assert(currentState != null, nameof(currentState));
             if (!currentState.InitialCheckpointDone)
             {
                 // Send data
@@ -86,13 +88,14 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             };
             options.Converters.Add(new DateTimeConverter());
             var val = JsonSerializer.Deserialize<T>(str, options);
-
+            Debug.Assert(val != null, nameof(val));
             return val;
         }
 
         private async Task SendData()
         {
-            //List<DataChange> output = new List<DataChange>();
+            Debug.Assert(modified != null, nameof(modified));
+
             foreach (var m in modified)
             {
                 StringBuilder keyBuilder = new StringBuilder();
@@ -147,6 +150,8 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
 
         protected override async Task OnWatermark(Watermark watermark)
         {
+            Debug.Assert(currentState != null, nameof(currentState));
+
             if (currentState.InitialCheckpointDone)
             {
                 // Send data
@@ -156,6 +161,8 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
+            Debug.Assert(modified != null, nameof(modified));
+
             foreach (var e in msg.Events)
             {
                 var primaryKeyValue = e.GetColumn(0);

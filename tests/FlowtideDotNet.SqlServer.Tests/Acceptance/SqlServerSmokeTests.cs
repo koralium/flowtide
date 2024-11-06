@@ -31,6 +31,7 @@ using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core;
 using System.Diagnostics.Metrics;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 {
@@ -42,17 +43,17 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             this.sqlServerFixture = sqlServerFixture;
         }
 
-        public override async Task AddLineItems(IEnumerable<LineItem> lineItems)
+        protected override async Task AddLineItems(IEnumerable<LineItem> lineItems)
         {
             await sqlServerFixture.DbContext.BulkInsertAsync(lineItems);
         }
 
-        public override async Task AddOrders(IEnumerable<Order> orders)
+        protected override async Task AddOrders(IEnumerable<Order> orders)
         {
             await sqlServerFixture.DbContext.BulkInsertAsync(orders);
         }
 
-        public override void AddReadResolvers(IConnectorManager connectorManager)
+        protected override void AddReadResolvers(IConnectorManager connectorManager)
         {
             connectorManager.AddSqlServerSource(() => sqlServerFixture.ConnectionString, (rel) =>
             {
@@ -61,12 +62,12 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             });
         }
 
-        public override async Task AddShipmodes(IEnumerable<Shipmode> shipmodes)
+        protected override async Task AddShipmodes(IEnumerable<Shipmode> shipmodes)
         {
             await sqlServerFixture.DbContext.BulkInsertAsync(shipmodes);
         }
 
-        public override async Task ClearAllTables()
+        protected override async Task ClearAllTables()
         {
             var context = sqlServerFixture.DbContext;
             await context.LineItems.ExecuteDeleteAsync();
@@ -74,7 +75,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             await context.Shipmodes.ExecuteDeleteAsync();
         }
 
-        public override async Task UpdateShipmodes(IEnumerable<Shipmode> shipmode)
+        protected override async Task UpdateShipmodes(IEnumerable<Shipmode> shipmode)
         {
             await sqlServerFixture.DbContext.BulkUpdateAsync(shipmode);
         }
@@ -121,15 +122,15 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                                     {
                                         Types = new List<Substrait.Type.SubstraitBaseType>()
                                         {
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType()
+                                            new Int64Type(),
+                                            new Int64Type(),
+                                            new StringType(),
+                                            new Fp64Type(),
+                                            new Int64Type(),
+                                            new StringType(),
+                                            new StringType(),
+                                            new Int64Type(),
+                                            new StringType()
                                         }
                                     }
                                 }
@@ -166,12 +167,12 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 
         }
 
-        public override Task Crash()
+        protected override Task Crash()
         {
             return sqlServerFixture.StopAsync();
         }
 
-        public override Task Restart()
+        protected override Task Restart()
         {
             return sqlServerFixture.StartAsync();
         }
@@ -215,13 +216,16 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             StreamMetrics streamMetrics = new StreamMetrics("stream");
             var nodeMetrics = streamMetrics.GetOrCreateVertexMeter("node1", () => "node1");
 
+            var streamMemoryManager = new StreamMemoryManager("stream");
+            var memoryManager = streamMemoryManager.CreateOperatorMemoryManager("op");
+
             var vertexHandler = new VertexHandler("mergejoinstream", "op", (time) =>
             {
 
             }, (v1, v2, time) =>
             {
                 return Task.CompletedTask;
-            }, nodeMetrics, stateClient, new NullLoggerFactory());
+            }, nodeMetrics, stateClient, new NullLoggerFactory(), memoryManager);
             var sink = new SqlServerSink(new Connector.SqlServer.SqlServerSinkOptions() { ConnectionStringFunc = () => sqlServerFixture.ConnectionString }, writeRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
 
             sink.Setup("mergejoinstream", "op");
@@ -237,7 +241,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                 {
                     b.Add(1);
                 })
-            }), 0));
+            }, 1), 0));
 
             await sink.SendAsync(new Checkpoint(0, 1));
 

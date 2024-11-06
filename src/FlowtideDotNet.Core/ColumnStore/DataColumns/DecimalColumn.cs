@@ -14,10 +14,11 @@ using Apache.Arrow;
 using Apache.Arrow.Arrays;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Buffers;
@@ -25,6 +26,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -103,9 +105,13 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._decimalValue = new DecimalValue(_values[index]);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
             where T : IDataValue
         {
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundries(_values, dataValue.AsDecimal, start, end, DecimalComparerDesc.Instance);
+            }
             return BoundarySearch.SearchBoundries(_values, dataValue.AsDecimal, start, end, DecimalComparer.Instance);
         }
 
@@ -165,6 +171,58 @@ namespace FlowtideDotNet.Core.ColumnStore
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             return ArrowTypeId.Decimal128;
+        }
+
+        public void Clear()
+        {
+            _values.Clear();
+        }
+
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public int EndNewList()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            _values.RemoveRange(start, count);
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return (end - start + 1) * sizeof(decimal);
+        }
+
+        public int GetByteSize()
+        {
+            return Count * sizeof(decimal);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is DecimalColumn decimalColumn)
+            {
+                _values.InsertRangeFrom(index, decimalColumn._values, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _values.InsertStaticRange(index, 0, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteNumberValue(_values.Get(index));
         }
     }
 }

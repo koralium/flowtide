@@ -10,8 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.Memory;
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -23,9 +22,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
     internal class JoinWeightsSerializer : IBplusTreeValueSerializer<JoinWeights, JoinWeightsValueContainer>
     {
+        private readonly IMemoryAllocator _memoryAllocator;
+
+        public JoinWeightsSerializer(IMemoryAllocator memoryAllocator)
+        {
+            _memoryAllocator = memoryAllocator;
+        }
+
         public JoinWeightsValueContainer CreateEmpty()
         {
-            return new JoinWeightsValueContainer();
+            return new JoinWeightsValueContainer(_memoryAllocator);
         }
 
         public JoinWeightsValueContainer Deserialize(in BinaryReader reader)
@@ -34,7 +40,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             var length = reader.ReadInt32();
             var memory = reader.ReadBytes(length);
 
-            var memoryAllocator = GlobalMemoryManager.Instance; //new BatchMemoryManager(1);
+            var memoryAllocator = _memoryAllocator;
             var nativeMemory = memoryAllocator.Allocate(length, 64);
 
             memory.CopyTo(nativeMemory.Memory.Span);

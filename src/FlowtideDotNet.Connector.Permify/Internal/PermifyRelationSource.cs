@@ -159,7 +159,7 @@ namespace FlowtideDotNet.Connector.Permify.Internal
                         _state.WatchSnapToken = _watchStream.ResponseStream.Current.Changes.SnapToken;
                         if (outData.Count > 0)
                         {
-                            await output.SendAsync(new StreamEventBatch(outData));
+                            await output.SendAsync(new StreamEventBatch(outData, _readRelation.OutputLength));
                             await output.SendWatermark(GetWatermark(_state.WatchSnapToken));
                             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                         }
@@ -229,7 +229,7 @@ namespace FlowtideDotNet.Connector.Permify.Internal
                         var rowEvent = _rowEncoder.Encode(tuple, 1);
                         outData.Add(rowEvent);
                     }
-                    await output.SendAsync(new StreamEventBatch(outData));
+                    await output.SendAsync(new StreamEventBatch(outData, _readRelation.OutputLength));
 
                     if (string.IsNullOrEmpty(readResponse.ContinuousToken))
                     {

@@ -303,14 +303,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
             FlowtideBuilder differentialComputeBuilder = new FlowtideBuilder("teststream")
                 .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                 {
-                    CachePageCount = 100,
-                    CheckpointDir = "./data",
-                    LogDevice = tmpStorage.Get(new FileDescriptor()
-                    {
-                        directoryName = "persistent",
-                        fileName = "log"
-                    }),
-                    TemporaryStorageFactory = tmpStorage
+                    CachePageCount = 100
                 })
                 .AddPlan(optimizedPlan)
                 .AddConnectorManager(connectorManager);

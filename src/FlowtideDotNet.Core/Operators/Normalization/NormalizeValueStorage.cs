@@ -11,14 +11,15 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Memory;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
@@ -27,15 +28,16 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         private readonly List<int> _columnsToStore;
         internal readonly EventBatchData _data;
         private int _length;
+        private DataValueContainer _dataValueContainer = new DataValueContainer();
 
-        public NormalizeValueStorage(List<int> columnsToStore)
+        public NormalizeValueStorage(List<int> columnsToStore, IMemoryAllocator memoryAllocator)
         {
             this._columnsToStore = columnsToStore;
             IColumn[] columns = new IColumn[columnsToStore.Count];
-            var memoryManager = new BatchMemoryManager(columnsToStore.Count);
+            var memoryManager = memoryAllocator;
             for (int i = 0; i < columnsToStore.Count; i++)
             {
-                columns[i] = new Column(memoryManager);
+                columns[i] = Column.Create(memoryManager);
             }
             _data = new EventBatchData(columns);
         }
@@ -54,7 +56,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             // Add is only run internally in the tree, so we dont use the columnsToStore
             for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                _data.Columns[i].Add(key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
+                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, _dataValueContainer, default);
+                _data.Columns[i].Add(_dataValueContainer);
             }
             _length++;
         }
@@ -63,10 +66,11 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             if (container is NormalizeValueStorage columnKeyStorageContainer)
             {
-                for (int i = start; i < start + count; i++)
+                for (int i = 0; i < _columnsToStore.Count; i++)
                 {
-                    Add(columnKeyStorageContainer.Get(i));
+                    _data.Columns[i].InsertRangeFrom(_data.Columns[i].Count, columnKeyStorageContainer._data.Columns[i], start, count);
                 }
+                _length += count;
             }
             else
             {
@@ -87,7 +91,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                _data.Columns[i].InsertAt(index, value.referenceBatch.Columns[_columnsToStore[i]].GetValueAt(value.RowIndex, default));
+                value.referenceBatch.Columns[_columnsToStore[i]].GetValueAt(value.RowIndex, _dataValueContainer, default);
+                _data.Columns[i].InsertAt(index, _dataValueContainer);
             }
             _length++;
         }
@@ -103,18 +108,19 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
+            for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                RemoveAt(i);
+                _data.Columns[i].RemoveRange(start, count);
             }
+            _length -= count;
         }
 
         public void Update(int index, ColumnRowReference value)
         {
             for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                _data.Columns[i].UpdateAt(index, value.referenceBatch.Columns[_columnsToStore[i]].GetValueAt(value.RowIndex, default));
+                value.referenceBatch.Columns[_columnsToStore[i]].GetValueAt(value.RowIndex, _dataValueContainer, default);
+                _data.Columns[i].UpdateAt(index, _dataValueContainer);
             }
         }
 
@@ -126,6 +132,16 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         public ref ColumnRowReference GetRef(int index)
         {
             throw new NotImplementedException("Get by ref is not supported");
+        }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
         }
     }
 }

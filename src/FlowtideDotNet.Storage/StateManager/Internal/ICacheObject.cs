@@ -14,12 +14,8 @@ using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
-    public interface ICacheObject
+    public interface ICacheObject : ILockableObject
     {
-        void EnterWriteLock();
-
-        void ExitWriteLock();
-
         /// <summary>
         /// Try and rent the object, returns true if successful.
         /// If false, the object is no longer in the cache.

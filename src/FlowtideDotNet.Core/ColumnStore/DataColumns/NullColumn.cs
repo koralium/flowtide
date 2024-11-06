@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
@@ -46,7 +47,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
         {
-            throw new NotImplementedException();
+            return 0;
         }
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
@@ -74,7 +75,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _count--;
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child) where T : IDataValue
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) where T : IDataValue
         {
             throw new NotImplementedException();
         }
@@ -97,6 +98,51 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             return ArrowTypeId.Null;
+        }
+
+        public void Clear()
+        {
+            _count = 0;
+        }
+
+        public void AddToNewList<T>(in T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
+
+        public int EndNewList()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            _count -= count;
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return 0;
+        }
+
+        public int GetByteSize()
+        {
+            return 0;
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            _count += count;
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _count += count;
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteNullValue();
         }
     }
 }

@@ -14,12 +14,14 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
+    [DebuggerDisplay(@"\{Dec: {value}\}")]
     public struct DecimalValue : IDataValue
     {
         private readonly decimal value;
@@ -53,6 +55,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             container._type = ArrowTypeId.Decimal128;
             container._decimalValue = this;
+        }
+
+        public override string ToString()
+        {
+            return value.ToString();
         }
     }
 }

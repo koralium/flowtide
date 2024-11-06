@@ -86,6 +86,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 };
             }
             _state = state;
+            Debug.Assert(_state.PartitionOffsets != null);
 
             if (_eventsProcessed == null)
             {
@@ -159,7 +160,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                     waitTimeMs = 1;
                     if (rows.Count > 100)
                     {
-                        await output.SendAsync(new StreamEventBatch(rows));
+                        await output.SendAsync(new StreamEventBatch(rows, readRelation.OutputLength));
                         rows = new List<RowEvent>();
                         await SendWatermark(output);
                         _eventsProcessed.Add(rows.Count);
@@ -169,7 +170,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 {
                     if (rows.Count > 0)
                     {
-                        await output.SendAsync(new StreamEventBatch(rows));
+                        await output.SendAsync(new StreamEventBatch(rows, readRelation.OutputLength));
                         rows = new List<RowEvent>();
                         await SendWatermark(output);
                         _eventsProcessed.Add(rows.Count);
@@ -228,7 +229,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 
                 if (result == null || rows.Count >= 100)
                 {
-                    await output.SendAsync(new StreamEventBatch(rows));
+                    await output.SendAsync(new StreamEventBatch(rows, readRelation.OutputLength));
                     rows = new List<RowEvent>();
                     _eventsProcessed.Add(rows.Count);
                     // Check offsets
@@ -257,7 +258,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
             if (rows.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(rows));
+                await output.SendAsync(new StreamEventBatch(rows, readRelation.OutputLength));
                 _eventsProcessed.Add(rows.Count);
             }
 

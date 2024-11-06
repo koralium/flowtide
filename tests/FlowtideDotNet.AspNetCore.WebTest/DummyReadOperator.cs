@@ -85,7 +85,7 @@ namespace FlowtideDotNet.AspNetCore.WebTest
                         }
                     }));
                 }
-                await output.SendAsync(new StreamEventBatch(o));
+                await output.SendAsync(new StreamEventBatch(o, 16));
                 output.ExitCheckpointLock();
                 ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }

@@ -13,6 +13,7 @@
 using FastMember;
 using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core;
@@ -49,6 +50,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private int _egressCrashOnCheckpointCount;
         private IPersistentStorage? _persistentStorage;
         private ConnectorManager? _connectorManager;
+        private bool _dataUpdated;
+        private NotificationReciever? _notificationReciever;
+        private Watermark? _lastWatermark;
 
         public IReadOnlyList<User> Users  => generator.Users;
 
@@ -67,6 +71,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public SqlPlanBuilder SqlPlanBuilder => sqlPlanBuilder;
 
         public int CachePageCount { get; set; } = 1000;
+
+        public Watermark? LastWatermark => _lastWatermark;
 
         public FlowtideTestStream(string testName)
         {
@@ -151,7 +157,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             int parallelism = 1, 
             StateSerializeOptions? stateSerializeOptions = default, 
             TimeSpan? timestampInterval = default,
-            int pageSize = 1024)
+            int pageSize = 1024,
+            bool ignoreSameDataCheck = false)
         {
             if (stateSerializeOptions == null)
             {
@@ -181,7 +188,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             });
 #endif
 
-            _persistentStorage = CreatePersistentStorage(testName);
+            _persistentStorage = CreatePersistentStorage(testName, ignoreSameDataCheck);
+            _notificationReciever = new NotificationReciever(CheckpointComplete);
 
             flowtideBuilder
                 .AddPlan(plan)
@@ -190,6 +198,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .WithLoggerFactory(loggerFactory)
 #endif
                 .AddConnectorManager(_connectorManager)
+                .WithNotificationReciever(_notificationReciever)
                 .SetGetTimestampUpdateInterval(timestampInterval.Value)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
@@ -207,13 +216,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await _stream.StartAsync();
         }
 
-        protected virtual IPersistentStorage CreatePersistentStorage(string testName)
+        protected virtual IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
         {
-            return new FileCachePersistentStorage(new Storage.FileCacheOptions()
+            return new TestStorage(new Storage.FileCacheOptions()
             {
                 DirectoryPath = $"./data/tempFiles/{testName}/persist",
                 SegmentSize = 1024L * 1024 * 1024 * 64
-            }, true);
+            }, ignoreSameDataCheck, true);
         }
 
         private void OnDataUpdate(List<byte[]> actualData)
@@ -221,10 +230,22 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             lock (_lock)
             {
                 _actualData = actualData;
-                updateCounter++;
+                _dataUpdated = true;
             }
         }
 
+        private void CheckpointComplete()
+        {
+            lock (_lock)
+            {
+                if (_dataUpdated)
+                {
+                    updateCounter++;
+                }
+                _dataUpdated = false;
+            }
+        }
+    
         /// <summary>
         /// Simulate a crash on the stream, waits until the stream has failed.
         /// </summary>
@@ -240,6 +261,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 graph = _stream.GetDiagnosticsGraph();
                 await scheduler!.Tick();
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
+                CheckForErrors();
             }
         }
 
@@ -260,6 +282,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 graph = _stream.GetDiagnosticsGraph();
                 await scheduler!.Tick();
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
+                CheckForErrors();
             }
             if (graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running || graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running)
             {
@@ -282,6 +305,22 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await scheduler!.Tick();
         }
 
+        private void CheckForErrors()
+        {
+            if (_notificationReciever != null && _notificationReciever._error)
+            {
+                if (_notificationReciever._exception != null)
+                {
+                    throw _notificationReciever._exception;
+                }
+                else
+                {
+                    throw new Exception("Unknown error occured in stream without exception");
+                }
+            }
+
+        }
+
         public virtual async Task WaitForUpdate()
         {
             Debug.Assert(_stream != null);
@@ -292,6 +331,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 await scheduler!.Tick();
                 await Task.Delay(10);
+                CheckForErrors();
             }
             waitCounter = updateCounter;
         }
@@ -303,7 +343,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual void AddWriteResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount));
+            connectorManger.AddSink(new MockSinkFactory("*", OnDataUpdate, _egressCrashOnCheckpointCount, OnWatermark));
+        }
+
+        protected virtual void OnWatermark(Watermark watermark)
+        {
+            _lastWatermark = watermark;
         }
 
         public void AssertCurrentDataEqual<T>(IEnumerable<T> data)

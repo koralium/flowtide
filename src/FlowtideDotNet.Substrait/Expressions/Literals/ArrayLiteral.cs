@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
-            return visitor.VisitArrayLiteral(this, state);
+            return visitor.VisitArrayLiteral(this, state)!;
         }
 
         public override bool Equals(object? obj)

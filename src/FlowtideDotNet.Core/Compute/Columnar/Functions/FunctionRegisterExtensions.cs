@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -41,7 +42,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     var expr = visitor.Visit(arg, paramInfo);
                     parameters[i] = expr!;
                     var paramType = methodParameters[i].ParameterType;
-                    if (paramType.ContainsGenericParameters)
+
+                    var argIndex = genericArguments.IndexOf(paramType);
+                    if (argIndex >= 0)
+                    {
+                        genericTypes[argIndex] = expr!.Type;
+                    }
+                    else if (paramType.ContainsGenericParameters)
                     {
                         var eleType = paramType.GetElementType();
 
@@ -52,7 +59,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                         if (eleType.IsGenericParameter)
                         {
                             var genericArgumentIndex = genericArguments.IndexOf(eleType);
-                            genericTypes[genericArgumentIndex] = expr.Type;
+                            genericTypes[genericArgumentIndex] = expr!.Type;
                         }
                     }
                 }
@@ -72,6 +79,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         public static void RegisterScalarMethod(this IFunctionsRegister functionsRegister, string extensionUri, string extensionName, System.Type classType, string methodName)
         {
             var method = classType.GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static);
+            Debug.Assert(method != null, "Method not found");
             RegisterMethod(extensionUri, extensionName, functionsRegister, method);
         }
     }

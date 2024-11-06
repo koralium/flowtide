@@ -12,7 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.ColumnStore.Memory;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestColumnAddInt64()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new Int64Value(1));
             column.Add(new Int64Value(2));
 
@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestColumnAddNullThenInt64()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new NullValue());
             column.Add(new Int64Value(1));
             column.Add(new Int64Value(2));
@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertInt64()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.InsertAt(0, new Int64Value(1));
 
             Assert.Equal(1, column.GetValueAt(0, default).AsLong);
@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void UpdateValueToNull()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.InsertAt(0, new Int64Value(1));
             column.UpdateAt(0, new NullValue());
             
@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestColumnAddNullInsertLocation0()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new NullValue());
             column.InsertAt(0, new Int64Value(1));
 
@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void Int64ToArrow()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new Int64Value(1));
             column.Add(NullValue.Instance);
             column.Add(new Int64Value(2));
@@ -96,7 +96,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void Int64NullFirstToArrow()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(NullValue.Instance);
             column.Add(new Int64Value(1));
             column.Add(new Int64Value(2));
@@ -111,7 +111,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void StringToArrow()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new StringValue("1"));
             column.Add(NullValue.Instance);
             column.Add(new StringValue("2"));
@@ -126,7 +126,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void StringToArrowNullFirst()
         {
-            Column column = new Column(new BatchMemoryManager(1));
+            Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(NullValue.Instance);
             column.Add(new StringValue("1"));
             column.Add(new StringValue("2"));
@@ -136,6 +136,67 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Null(arrowArray.GetString(0));
             Assert.Equal("1", arrowArray.GetString(1));
             Assert.Equal("2", arrowArray.GetString(2));
+        }
+
+        
+
+        [Fact]
+        public void ValidateInsertRangeSetsNullCorrectly()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            Column other = new Column(GlobalMemoryManager.Instance);
+            for (int i = 0; i < 50; i++)
+            {
+                column.Add(NullValue.Instance);
+            }
+
+            other.Add(new StringValue("b"));
+            other.Add(new StringValue("c"));
+
+            column.InsertRangeFrom(50, other, 0, 2);
+
+            var type = column.GetTypeAt(51, default);
+            Assert.Equal(ArrowTypeId.String, type);
+        }
+
+        [Fact]
+        public void TestInsertValueInMiddleOfNullColumn()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            for (int i = 0; i < 50; i++)
+            {
+                column.Add(NullValue.Instance);
+            }
+
+            column.InsertAt(25, new Int64Value(1));
+
+            Assert.Equal(51, column.GetValidityListCount());
+            Assert.Equal(51, column.Count);
+        }
+
+        [Fact]
+        public void InsertNullColumnIntoExistingColumn()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("1"),
+                new StringValue("2")
+            };
+            Column other = new Column(GlobalMemoryManager.Instance);
+            for (int i = 0; i < 50; i++)
+            {
+                other.Add(NullValue.Instance);
+            }
+
+            column.InsertRangeFrom(2, other, 0, 2);
+
+            Assert.Equal(4, column.GetValidityListCount());
+            Assert.Equal(4, column.Count);
+
+            Assert.Equal("1", column.GetValueAt(0, default).AsString.ToString());
+            Assert.Equal("2", column.GetValueAt(1, default).AsString.ToString());
+            Assert.True(column.GetValueAt(2, default).Type == ArrowTypeId.Null);
+            Assert.True(column.GetValueAt(3, default).Type == ArrowTypeId.Null);
         }
     }
 }

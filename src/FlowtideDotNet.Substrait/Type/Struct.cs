@@ -15,7 +15,7 @@ namespace FlowtideDotNet.Substrait.Type
 {
     public sealed class Struct : IEquatable<Struct>
     {
-        public List<SubstraitBaseType> Types { get; set; }
+        public required List<SubstraitBaseType> Types { get; set; }
 
         public override bool Equals(object? obj)
         {

@@ -18,6 +18,7 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
 using FluentAssertions;
+using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Substrait.Tests
 {
@@ -43,7 +44,14 @@ namespace FlowtideDotNet.Substrait.Tests
             Assert.True(exists);
 
             table.Should().BeEquivalentTo(
-                new TableMetadata("testtable", new List<string>() { "c1", "c2" })
+                new TableMetadata("testtable", new NamedStruct()
+                {
+                    Names = new List<string>() { "c1", "c2" },
+                    Struct = new Struct()
+                    {
+                        Types = new List<SubstraitBaseType>() { new AnyType(), new AnyType() }
+                    }
+                })
                 , opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
         }
 
@@ -967,7 +975,7 @@ namespace FlowtideDotNet.Substrait.Tests
             var b1 = new SqlPlanBuilder();
             b1.Sql(@"
                 CREATE TABLE test (
-                    c1 amy,
+                    c1 any,
                     c2 any
                 );
 
@@ -992,11 +1000,18 @@ namespace FlowtideDotNet.Substrait.Tests
 
         private sealed class TestTableProvider : ITableProvider
         {
-            public bool TryGetTableInformation(string tableName, out TableMetadata? tableMetadata)
+            public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
             {
                 if (tableName.Equals("testtable", StringComparison.OrdinalIgnoreCase))
                 {
-                    tableMetadata = new TableMetadata("testtable", new List<string>() { "c1", "c2" });
+                    tableMetadata = new TableMetadata("testtable", new NamedStruct()
+                    {
+                        Names = new List<string>() { "c1", "c2" },
+                        Struct = new Struct()
+                        {
+                            Types = new List<SubstraitBaseType>() { new AnyType(), new AnyType() }
+                        }
+                    });
                     return true;
                 }
                 tableMetadata = default;

@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Tracing;

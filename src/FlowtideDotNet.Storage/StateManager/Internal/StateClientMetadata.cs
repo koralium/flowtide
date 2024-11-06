@@ -15,5 +15,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
     internal class StateClientMetadata<T>
     {
         public T? Metadata { get; set; }
+
+        /// <summary>
+        /// Used to track if the state has been commited at least once, if it is true, it is known that data can be fetched from persitent storage.
+        /// A temporary tree will always have this set to false.
+        /// </summary>
+        public bool CommitedOnce { get; set; }
     }
 }

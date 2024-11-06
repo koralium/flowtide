@@ -27,4 +27,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Comparers
             return x.CompareTo(y);
         }
     }
+
+    internal class Int64ComparerDesc : IColumnComparer<long>
+    {
+        internal static readonly Int64ComparerDesc Instance = new Int64ComparerDesc();
+
+        public int Compare(in long x, in long y)
+        {
+            return y.CompareTo(x);
+        }
+    }
 }
