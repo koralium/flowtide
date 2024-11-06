@@ -111,7 +111,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             {
                 using var memoryStream = new MemoryStream();
                 
-                streamEventToJson.Write(memoryStream, row.Row);
+                //streamEventToJson.Write(memoryStream, row.Row);
                 memoryStream.Position = 0;
                 var obj = JsonSerializer.Deserialize<T>(memoryStream, new JsonSerializerOptions()
                 {
