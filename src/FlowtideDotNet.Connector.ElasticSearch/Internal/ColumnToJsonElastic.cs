@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             writer.WritePropertyName(underscoreIndexPropertyName);
             writer.WriteStringValue(m_indexName);
             writer.WritePropertyName(idPropertyName);
-            WriteIdField(writer, data, index);
+            WriteIdField(in writer, data, index);
             writer.WriteEndObject();
             writer.WriteEndObject();
             writer.Flush();
