@@ -274,11 +274,13 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
         private async Task SendData()
         {
+            Debug.Assert(m_modified != null);
             Debug.Assert(m_latestWatermark != null);
             if (m_hasModified)
             {
                 var changedRows = GetChangedRows();
                 await UploadChanges(changedRows, m_latestWatermark, CancellationToken);
+                await m_modified.Clear();
                 m_hasModified = false;
             }
             if (m_hasSentInitialData == false)
@@ -306,7 +308,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             {
                 m_hasModified = true;
                 var rowReference = new ColumnRowReference() { referenceBatch = batch, RowIndex = i };
-                await m_tree.RMW(in rowReference, weights[i], (input, current, found) =>
+                var (op, res) = await m_tree.RMW(in rowReference, weights[i], (input, current, found) =>
                 {
                     if (found)
                     {
@@ -319,6 +321,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                     }
                     return (input, GenericWriteOperation.Upsert);
                 });
+                
                 await m_modified.Upsert(in rowReference, 1);
             }
         }

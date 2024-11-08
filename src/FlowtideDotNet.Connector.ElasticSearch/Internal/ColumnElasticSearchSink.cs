@@ -176,7 +176,20 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                 if (batchCount >= 1000)
                 {
 
-                    var response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
+                    BulkResponse? response;
+                    try
+                    {
+                        response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
+                    }
+                    catch(Exception e)
+                    {
+                        if (e is TaskCanceledException)
+                        {
+                            throw new Exception("Upload to elasticsearch was cancelled", e);
+                        }
+                        throw;
+                    }
+                    
 
                     if (response.Errors)
                     {
@@ -204,7 +217,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
             if (batchCount > 0)
             {
-                var response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
+               var response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
 
                 if (response.Errors)
                 {
