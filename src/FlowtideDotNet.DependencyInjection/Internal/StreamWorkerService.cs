@@ -30,7 +30,6 @@ namespace FlowtideDotNet.DependencyInjection.Internal
     {
         private readonly string name;
         private readonly IServiceProvider serviceProvider;
-        private Task? _streamTask;
         private Base.Engine.DataflowStream? _stream;
 
         public StreamWorkerService(string name, IServiceProvider serviceProvider)
@@ -66,7 +65,6 @@ namespace FlowtideDotNet.DependencyInjection.Internal
         {
             _stream = serviceProvider.GetRequiredKeyedService<Base.Engine.DataflowStream>(name);
             await _stream.RunAsync();
-
         }
     }
 }
