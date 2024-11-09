@@ -305,7 +305,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override Task StopAsync()
         {
             Debug.Assert(_context != null, nameof(_context));
-            _context._wantedState = StreamStateValue.Stopping;
+            _context._wantedState = StreamStateValue.NotStarted;
             return Task.CompletedTask;
         }
     }

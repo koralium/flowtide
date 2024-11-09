@@ -15,12 +15,12 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.Ingress
 {
-    public class IngressOutput<T>
+    public class IngressOutput<T> : IDisposable
     {
         private readonly IngressState<T> _ingressState;
         private readonly ITargetBlock<IStreamEvent> _targetBlock;
         private bool _inLock;
-        private bool _stopEvents;
+        private TaskCompletionSource? _stopEvents;
 
         internal IngressOutput(IngressState<T> ingressState, ITargetBlock<IStreamEvent> targetBlock) 
         {
@@ -33,9 +33,9 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         public Task SendAsync(T data)
         {
-            if (_stopEvents)
+            if (_stopEvents != null)
             {
-                return Task.CompletedTask;
+                return _stopEvents.Task;
             }
             if (data is IRentable rentable)
             {
@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         internal void Stop()
         {
-            _stopEvents = true;
+            _stopEvents = new TaskCompletionSource();
         }
 
         internal void Fault(Exception exception)
@@ -92,9 +92,9 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         public Task SendWatermark(Watermark watermark)
         {
-            if (_stopEvents)
+            if (_stopEvents != null)
             {
-                return Task.CompletedTask;
+                return _stopEvents.Task;
             }
             Debug.Assert(_ingressState._vertexHandler != null, nameof(_ingressState._vertexHandler));
             watermark.SourceOperatorId = _ingressState._vertexHandler.OperatorId;
@@ -110,6 +110,15 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             await EnterCheckpointLock();
             await _targetBlock.SendAsync(watermark, CancellationToken);
             ExitCheckpointLock();
+        }
+
+        public void Dispose()
+        {
+            if (_stopEvents != null)
+            {
+                _stopEvents.SetResult();
+                _stopEvents = null;
+            }
         }
     }
 }

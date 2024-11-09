@@ -32,6 +32,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public long _restoreTime;
         public IVertexHandler? _vertexHandler;
         public SemaphoreSlim? _checkpointLock;
+        public bool _inCheckpointLock;
         public IngressOutput<TData>? _output;
         public CancellationTokenSource? _tokenSource;
         public IMeter? _metrics;
@@ -203,11 +204,13 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
             var lockingEvent = (ILockingEvent)state!;
             await _ingressState._checkpointLock.WaitAsync(_ingressState._output.CancellationToken);
-
+            _ingressState._inCheckpointLock = true;
+            bool isStopStreamEvent = false;
             if (lockingEvent is ICheckpointEvent checkpoint)
             {
                 if (checkpoint is StopStreamCheckpoint)
                 {
+                    isStopStreamEvent = true;
                     output.Stop();
                 }
                 var savedState = await OnCheckpoint(checkpoint.CheckpointTime);
@@ -220,7 +223,11 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 await output.SendLockingEvent(initWatermark.AddWatermarkNames(names));
             }
 
-            _ingressState._checkpointLock.Release();
+            if (!isStopStreamEvent)
+            {
+                _ingressState._inCheckpointLock = false;
+                _ingressState._checkpointLock.Release();
+            }   
         }
 
         protected abstract Task<IReadOnlySet<string>> GetWatermarkNames();
@@ -436,6 +443,19 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         public virtual ValueTask DisposeAsync()
         {
+            if (_ingressState != null)
+            {
+                if (_ingressState._output != null)
+                {
+                    _ingressState._output.Dispose();
+                }
+                if (_ingressState._inCheckpointLock && _ingressState._checkpointLock != null)
+                {
+                    _ingressState._inCheckpointLock = false;
+                    _ingressState._checkpointLock.Release();   
+                }
+            }
+            
             return ValueTask.CompletedTask;
         }
 

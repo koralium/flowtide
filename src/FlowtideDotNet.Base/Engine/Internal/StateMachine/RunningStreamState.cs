@@ -233,7 +233,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             lock (_context._checkpointLock)
             {
                 // If we are stopping, we should not do a checkpoint
-                if (_context._wantedState == StreamStateValue.Stopping)
+                if (_context._wantedState == StreamStateValue.NotStarted)
                 {
                     return Task.CompletedTask;
                 }
