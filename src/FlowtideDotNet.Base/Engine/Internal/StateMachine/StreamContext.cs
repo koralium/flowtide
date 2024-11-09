@@ -29,13 +29,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
     public enum StreamStateValue
     {
-        NotStarted,
-        Starting,
-        Running,
-        Failure,
-        Deleting,
-        Deleted,
-        Stopping
+        NotStarted = 0,
+        Starting = 1,
+        Running = 2,
+        Failure = 3,
+        Deleting = 4,
+        Deleted = 5,
+        Stopping = 6
     }
 
     internal class StreamContext : IStreamTriggerCaller, IAsyncDisposable
@@ -145,6 +145,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         break;
                 }
                 return new Measurement<float>(val, new KeyValuePair<string, object?>("stream", streamName));
+            });
+            _contextMeter.CreateObservableGauge<int>("flowtide_state", () =>
+            {
+                return new Measurement<int>((int)currentState, new KeyValuePair<string, object?>("stream", streamName));
+            });
+            _contextMeter.CreateObservableGauge<int>("flowtide_wanted_state", () =>
+            {
+                return new Measurement<int>((int)_wantedState, new KeyValuePair<string, object?>("stream", streamName));
             });
             if (loggerFactory == null)
             {

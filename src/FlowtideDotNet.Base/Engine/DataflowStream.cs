@@ -27,6 +27,8 @@ namespace FlowtideDotNet.Base.Engine
 
         public StreamStateValue State => streamContext.currentState;
 
+        public StreamStateValue WantedState => streamContext._wantedState;
+
         public StreamStatus Status => streamContext.GetStatus();
 
         public IStreamScheduler Scheduler => streamContext._streamScheduler;
