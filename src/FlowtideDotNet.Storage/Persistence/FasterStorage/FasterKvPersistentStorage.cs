@@ -53,14 +53,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             do
             {
                 using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-                if (includeIndex)
-                {
-                    (success, token) = await m_persistentStorage.TakeFullCheckpointAsync(CheckpointType.FoldOver, cancellationToken: tokenSource.Token).ConfigureAwait(false);
-                }
-                else
-                {
-                    (success, token) = await m_persistentStorage.TakeHybridLogCheckpointAsync(CheckpointType.FoldOver, cancellationToken: tokenSource.Token).ConfigureAwait(false);
-                }
+                (success, token) = await m_persistentStorage.TakeFullCheckpointAsync(CheckpointType.FoldOver, cancellationToken: tokenSource.Token).ConfigureAwait(false);
                 if (!success) 
                 { 
                     retryCount++; 
