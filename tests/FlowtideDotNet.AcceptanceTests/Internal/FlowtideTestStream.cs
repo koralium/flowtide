@@ -15,6 +15,7 @@ using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
+using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Compute;
@@ -73,6 +74,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public int CachePageCount { get; set; } = 1000;
 
         public Watermark? LastWatermark => _lastWatermark;
+
+        public StreamStateValue State => _stream!.State;
 
         public FlowtideTestStream(string testName)
         {
@@ -453,6 +456,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public StreamGraph GetDiagnosticsGraph()
         {
             return _stream!.GetDiagnosticsGraph();
+        }
+
+        public Task StopStream()
+        {
+            return _stream!.StopAsync();
+        }
+
+        public Task StartStream()
+        {
+            return _stream!.StartAsync();
         }
     }
 }

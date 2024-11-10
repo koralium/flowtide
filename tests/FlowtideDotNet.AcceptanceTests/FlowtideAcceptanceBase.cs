@@ -14,6 +14,7 @@ using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Substrait.Sql;
@@ -37,12 +38,19 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public Watermark? LastWatermark => flowtideTestStream.LastWatermark;
 
+        public StreamStateValue State => flowtideTestStream.State;
+
         protected Task StartStream(
             string sql, 
             int parallelism = 1, 
             StateSerializeOptions? stateSerializeOptions = default, 
             int pageSize = 1024,
             bool ignoreSameDataCheck = false) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck);
+
+
+        protected Task StopStream() => flowtideTestStream.StopStream();
+
+        protected Task StartStream() => flowtideTestStream.StartStream();
 
         public List<FlxVector> GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 
