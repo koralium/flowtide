@@ -503,13 +503,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 if (disposing)
                 {
-                    DisposeNodes();
                     m_cleanupTokenSource.Cancel();
                     if (m_cleanupTask != null)
                     {
                         m_cleanupTask.Wait();
                         m_cleanupTask.Dispose();
                     }
+                    DisposeNodes();
                     m_cleanupTokenSource.Dispose();
                     meter.Dispose();
                     _fullLock.Dispose();
