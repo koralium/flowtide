@@ -53,8 +53,6 @@ const config: Config = {
             type: ['rss', 'atom'],
             xslt: true,
           },
-          //blogTitle: 'Releases',
-          //routeBasePath: 'releases',
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
