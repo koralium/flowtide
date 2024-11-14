@@ -33,6 +33,8 @@ The new validation feature raises exceptions for type mismatches, such as when a
 
 ### New UI
 
+![new UI](./flowtidenewui.png)
+
 A new UI has been developed, featuring an integrated time series database that enables developers to monitor stream behavior over time. This database’s API aligns with Prometheus standards, allowing for custom queries to investigate potential issues.
 
 The UI retrieves all data through the Prometheus API endpoint, enabling future deployment as a standalone tool connected to a Prometheus server.
