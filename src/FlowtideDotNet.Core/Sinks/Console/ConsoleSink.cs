@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -86,9 +87,11 @@ namespace FlowtideDotNet.Core.Sinks
             using var iterator = _tree.CreateIterator();
             await iterator.SeekFirst();
 
-            using MemoryStream memoryStream = new MemoryStream();
+            using NativeBufferWriter memoryStream = new NativeBufferWriter(MemoryAllocator);
             Utf8JsonWriter writer = new Utf8JsonWriter(memoryStream);
+
             
+            int count = 0;
             await foreach(var page in iterator)
             {
                 foreach(var kv in page)
@@ -100,15 +103,24 @@ namespace FlowtideDotNet.Core.Sinks
                     {
                         kv.Key.referenceBatch.Columns[i].WriteToJson(in writer, kv.Key.RowIndex);
                         await writer.FlushAsync();
-                        vals[i + 1] = Encoding.UTF8.GetString(memoryStream.ToArray());
-                        memoryStream.Position = 0;
+                        vals[i + 1] = Encoding.UTF8.GetString(memoryStream.WrittenSpan);
+                        memoryStream.Reset();
                         writer.Reset();
                     }
 
                     consoleTable.AddRow(vals);
+                    count++;
+
+                    if (count > 100)
+                    {
+                        consoleTable.Write(Format.Default);
+                        consoleTable.Rows.Clear();
+                        count = 0;
+                    }
                 }
             }
             consoleTable.Write(Format.Default);
+            consoleTable.Rows.Clear();
             await _tree.Clear();
         }
 
