@@ -10,38 +10,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
-using Substrait.Protobuf;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core
+namespace FlowtideDotNet.Core.Connectors
 {
-    public class ConnectorManager : IConnectorManager
+    internal class CatalogConnectorManager : ICatalogConnectorManager, ITableProvider
     {
+        private readonly string catalogName;
+        private List<ITableProvider>? _resolvedTableProviders;
+
         private readonly List<IConnectorSinkFactory> _connectorSinkFactories = new List<IConnectorSinkFactory>();
         private readonly List<IConnectorSourceFactory> _connectorSourceFactories = new List<IConnectorSourceFactory>();
         private readonly List<IConnectorTableProviderFactory> _connectorTableProviderFactories = new List<IConnectorTableProviderFactory>();
         private readonly List<ITableProvider> _tableProviders = new List<ITableProvider>();
-        private SortedList<string, ICatalogConnectorManager> _catalogs = new SortedList<string, ICatalogConnectorManager>();
+
+        public CatalogConnectorManager(string catalogName)
+        {
+            this.catalogName = catalogName;
+        }
 
         public void AddCatalog(string catalogName, Action<ICatalogConnectorManager> options)
         {
-            var catalogManager = new CatalogConnectorManager(catalogName);
-            options(catalogManager);
-            _catalogs.Add(catalogName,catalogManager);
-            _tableProviders.Add(catalogManager);
+            throw new NotSupportedException("Catalogs cannot be added to catalogs");
         }
 
         public void AddSink(IConnectorSinkFactory connectorSinkFactory)
         {
-            _connectorSinkFactories.Add(connectorSinkFactory);
+            _connectorSinkFactories.Add(new CatalogSinkFactory(catalogName, connectorSinkFactory));
         }
 
         public void AddSource(IConnectorSourceFactory connectorSourceFactory)
@@ -50,7 +53,7 @@ namespace FlowtideDotNet.Core
             {
                 _connectorTableProviderFactories.Add(tableProviderFactory);
             }
-            _connectorSourceFactories.Add(connectorSourceFactory);
+            _connectorSourceFactories.Add(new CatalogSourceFactory(catalogName, connectorSourceFactory));
         }
 
         public void AddTableProvider(ITableProvider tableProvider)
@@ -60,10 +63,6 @@ namespace FlowtideDotNet.Core
 
         public IConnectorSinkFactory GetSinkFactory(WriteRelation writeRelation)
         {
-            if (_catalogs.TryGetValue(writeRelation.NamedObject.Names[0], out var catalog))
-            {
-                return catalog.GetSinkFactory(writeRelation);
-            }
             var possibleConnectors = _connectorSinkFactories.Where(x => x.CanHandle(writeRelation));
             var count = possibleConnectors.Count();
             if (count > 1)
@@ -79,10 +78,6 @@ namespace FlowtideDotNet.Core
 
         public IConnectorSourceFactory GetSourceFactory(ReadRelation readRelation)
         {
-            if (_catalogs.TryGetValue(readRelation.NamedTable.Names[0], out var catalog))
-            {
-                return catalog.GetSourceFactory(readRelation);
-            }
             var possibleConnectors = _connectorSourceFactories.Where(x => x.CanHandle(readRelation));
             var count = possibleConnectors.Count();
             if (count > 1)
@@ -100,6 +95,26 @@ namespace FlowtideDotNet.Core
         {
             return _connectorTableProviderFactories.Select(f => f.Create())
                 .Union(_tableProviders);
+        }
+
+        public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        {
+            if (tableName.StartsWith(catalogName))
+            {
+                if (_resolvedTableProviders == null)
+                {
+                    _resolvedTableProviders = GetTableProviders().ToList();
+                }
+                for(int i = 0; i < _resolvedTableProviders.Count; i++)
+                {
+                    if (_resolvedTableProviders[i].TryGetTableInformation(tableName.Substring(catalogName.Length + 1), out tableMetadata))
+                    {
+                        return true;
+                    }
+                }
+            }
+            tableMetadata = default;
+            return false;
         }
     }
 }

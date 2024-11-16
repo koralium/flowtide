@@ -963,7 +963,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     {
                         return null;
                     }
-                    return c.AsString;
+                    if (c.ValueType == FlexBuffers.Type.String)
+                    {
+                        return c.AsString;
+                    }
+                    return c.ToJson;
                 };
             }
             if (t.Equals(typeof(int)))
