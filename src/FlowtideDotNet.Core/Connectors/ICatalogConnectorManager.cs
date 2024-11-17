@@ -10,31 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Substrait.Relations;
-using FlowtideDotNet.Substrait.Sql;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core
+namespace FlowtideDotNet.Core.Connectors
 {
-    public interface IConnectorManager
+    public interface ICatalogConnectorManager : IConnectorManager
     {
-        void AddSource(IConnectorSourceFactory connectorSourceFactory);
-
-        void AddSink(IConnectorSinkFactory connectorSinkFactory);
-
-        void AddCatalog(string catalogName, Action<ICatalogConnectorManager> options);
-
-        IConnectorSourceFactory GetSourceFactory(ReadRelation readRelation);
-
-        IConnectorSinkFactory GetSinkFactory(WriteRelation writeRelation);
-
-        IEnumerable<ITableProvider> GetTableProviders();
-
-        void AddTableProvider(ITableProvider tableProvider);
     }
 }
