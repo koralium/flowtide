@@ -79,6 +79,25 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             });
 
             await Task.Delay(TimeSpan.FromMilliseconds(500));
+
+            // Check if the stream should be in not started
+            if (_context._wantedState == StreamStateValue.NotStarted)
+            {
+                // Dispose state
+                _context._stateManager.Dispose();
+                lock (_context._checkpointLock)
+                {
+                    // Check if any stop task source exist
+                    if (_context._stopTask != null)
+                    {
+                        _context._stopTask.SetResult();
+                        _context._stopTask = null;
+                    }
+                }
+                // Transition to not started
+                await TransitionTo(StreamStateValue.NotStarted);
+            }
+
             await TransitionTo(StreamStateValue.Starting);
         }
 
@@ -138,6 +157,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override Task DeleteAsync()
         {
             return TransitionTo(StreamStateValue.Deleting);
+        }
+
+        public override Task StopAsync()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            _context._wantedState = StreamStateValue.NotStarted;
+            return TransitionTo(StreamStateValue.Stopping);
         }
     }
 }

@@ -27,6 +27,8 @@ namespace FlowtideDotNet.Core
 
         void AddSink(IConnectorSinkFactory connectorSinkFactory);
 
+        void AddCatalog(string catalogName, Action<ICatalogConnectorManager> options);
+
         IConnectorSourceFactory GetSourceFactory(ReadRelation readRelation);
 
         IConnectorSinkFactory GetSinkFactory(WriteRelation writeRelation);

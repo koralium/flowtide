@@ -59,7 +59,12 @@ namespace FlowtideDotNet.AspNetCore
             }
             else
             {
-                secondLastDotIndex = path.LastIndexOf('.', path.LastIndexOf('.') - 1);
+                var dotLastIndex = path.LastIndexOf('.');
+                if (dotLastIndex == -1)
+                {
+                    return "Not found";
+                }
+                secondLastDotIndex = path.LastIndexOf('.', dotLastIndex - 1);
             }
             
 

@@ -249,10 +249,17 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     }
                     // If we managed to start watching again, set health to true
                     SetHealth(true);
-                    if (await watchStream.ResponseStream.MoveNext(output.CancellationToken))
+                    var cancelTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                    if (await watchStream.ResponseStream.MoveNext(cancelTokenSource.Token))
                     {
                         await output.EnterCheckpointLock();
                         var current = watchStream.ResponseStream.Current;
+
+                        if (current.ChangesThrough.Token == m_state.ContinuationToken)
+                        {
+                            continue;
+                        }
+
                         m_state.ContinuationToken = current.ChangesThrough.Token;
                         var revision = GetRevision(current.ChangesThrough.Token);
 
@@ -282,10 +289,17 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 }
                 catch(Exception e)
                 {
-                    if (e is RpcException rpcException &&
-                        rpcException.Status.StatusCode == StatusCode.Unavailable)
+                    if (e is RpcException rpcException)
                     {
-                        Logger.RecievedGrpcNoErrorRetry(StreamName, Name);
+                        if (rpcException.Status.StatusCode == StatusCode.Unavailable)
+                        {
+                            Logger.RecievedGrpcNoErrorRetry(StreamName, Name);
+                        }
+                        else if (rpcException.Status.StatusCode != StatusCode.Cancelled)
+                        {
+                            SetHealth(false);
+                            Logger.ErrorInSpiceDb(e, StreamName, Name);
+                        }
                     }
                     else
                     {
@@ -294,8 +308,6 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     }
                     initWatch = true;
                 }
-               
-                
             }
         }
 

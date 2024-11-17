@@ -243,7 +243,15 @@ namespace FlowtideDotNet.Storage.StateManager
                 }
                 else
                 {
-                    throw new InvalidOperationException("Persistent data could not be found for client");
+                    // Temporary tree or similar, return an empty metadata with the same id
+                    var clientMetadata = new StateClientMetadata<TMetadata>();
+                    var persistentSession = m_persistentStorage.CreateSession();
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, clientMetadata, persistentSession, options, m_fileCacheOptions, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes);
+                    lock (m_lock)
+                    {
+                        _stateClients.Add(client, stateClient);
+                    }
+                    return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(stateClient);
                 }
             }
             else
@@ -340,6 +348,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     {
                         stateClient.Value.Dispose();
                     }
+                    _stateClients.Clear();
 
                     if (m_lruTable != null)
                     {

@@ -114,13 +114,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             column.Add(new StringValue("hello"));
 
-            using MemoryStream stream = new MemoryStream();
-            Utf8JsonWriter writer = new Utf8JsonWriter(stream);
+            using NativeBufferWriter nativeBufferWriter = new NativeBufferWriter(GlobalMemoryManager.Instance);
+            Utf8JsonWriter writer = new Utf8JsonWriter(nativeBufferWriter);
 
             column.WriteToJson(in writer, 0);
             writer.Flush();
 
-            string json = Encoding.UTF8.GetString(stream.ToArray());
+            string json = Encoding.UTF8.GetString(nativeBufferWriter.WrittenSpan);
 
             Assert.Equal("\"hello\"", json);
         }
