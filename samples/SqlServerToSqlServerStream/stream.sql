@@ -1,5 +1,6 @@
 ﻿INSERT INTO db2.test.dbo.destinationtable
 SELECT 
-	LastName, list_agg(FirstName) as FirstNames
-FROM db1.test.dbo.sourcetable
-GROUP BY LastName;
+	orderkey, orderdate, firstname, lastname
+FROM db1.test.dbo.orders o
+LEFT JOIN db1.test.dbo.users u
+ON o.userkey = u.userkey;
