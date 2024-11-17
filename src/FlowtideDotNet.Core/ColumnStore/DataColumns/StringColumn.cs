@@ -23,6 +23,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -98,7 +99,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             dataValueContainer._type = ArrowTypeId.String;
-            dataValueContainer._stringValue = new StringValue(_binaryList.Get(in index).ToArray());
+            dataValueContainer._stringValue = new StringValue(_binaryList.GetMemory(in index));
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
@@ -197,6 +198,43 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int EndNewList()
         {
             throw new NotImplementedException();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            _binaryList.RemoveRange(start, count);
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _binaryList.GetByteSize(start, end);
+        }
+
+        public int GetByteSize()
+        {
+            return _binaryList.GetByteSize(0, Count - 1);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is StringColumn stringColumn)
+            {
+                _binaryList.InsertRangeFrom(index, stringColumn._binaryList, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _binaryList.InsertNullRange(index, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteStringValue(_binaryList.Get(index));
         }
     }
 }

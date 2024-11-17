@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.DataStructures;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
@@ -18,10 +19,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         where TKeyContainer : IKeyContainer<K>
         where TValueContainer : IValueContainer<V>
     {
-        
 
-        public ValueTask<GenericWriteOperation> GenericWrite(in K key, in V? value, in GenericWriteFunction<V> function)
+
+        public ValueTask<GenericWriteOperation> GenericWrite(ref readonly K key, in V? value, in GenericWriteFunction<V> function)
         {
+            if (m_isByteBased)
+            {
+                return GenericWriteByteBased(in key, in value, in function);
+            }
             return GenericWriteRoot(key, value, function);
         }
 
@@ -78,11 +83,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                     var nextId = m_stateClient.GetNewPageId();
                     var emptyKeys = m_options.KeySerializer.CreateEmpty();
-                    var newParentNode = new InternalNode<K, V, TKeyContainer>(nextId, emptyKeys);
+                    var newParentNode = new InternalNode<K, V, TKeyContainer>(nextId, emptyKeys, m_options.MemoryAllocator);
 
                     // No lock required
-                    newParentNode.children.Insert(0, leafNode.Id);
-                    m_stateClient.Metadata.Root = nextId;
+                    newParentNode.children.InsertAt(0, leafNode.Id);
+                    m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(nextId);
 
                     var (newNode, _) = SplitLeafNode(newParentNode, 0, leafNode);
 
@@ -142,10 +147,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 var nextId = m_stateClient.GetNewPageId();
                 var emptyKeys = m_options.KeySerializer.CreateEmpty();
-                var newParentNode = new InternalNode<K, V, TKeyContainer>(nextId, emptyKeys);
+                var newParentNode = new InternalNode<K, V, TKeyContainer>(nextId, emptyKeys, m_options.MemoryAllocator);
                 // No lock requireds
-                newParentNode.children.Insert(0, internalNode.Id);
-                m_stateClient.Metadata.Root = nextId;
+                newParentNode.children.InsertAt(0, internalNode.Id);
+                m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(nextId);
 
                 var (newNode, _) = SplitInternalNode(newParentNode, 0, internalNode);
 
@@ -162,7 +167,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             if (internalNode.children.Count == 1)
             {
-                m_stateClient.Metadata.Root = internalNode.children[0];
+                m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(internalNode.children[0]);
                 m_stateClient.Delete(internalNode.Id);
             }
             else
@@ -652,7 +657,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             in V? value,
             in GenericWriteFunction<V> function)
         {
-            var index = m_keyComparer.FindIndex(key, leafNode.keys);
+            var index = m_keyComparer.FindIndex(in key, in leafNode.keys);
             if (index < 0)
             {
                 var result = function(value, default, false);
@@ -725,7 +730,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             // Add the children to the parent node
             parent.EnterWriteLock();
             parent.keys.Insert_Internal(index, splitKey);
-            parent.children.Insert(index + 1, newNodeId);
+            parent.children.InsertAt(index + 1, newNodeId);
             parent.ExitWriteLock();
             return (newNode, splitKey);
         }
@@ -803,7 +808,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return splitKey;
         }
 
-        private void MergeLeafNodesIntoLeft(LeafNode<K, V, TKeyContainer, TValueContainer> leftNode, LeafNode<K, V, TKeyContainer, TValueContainer> rightNode)
+        private void MergeLeafNodesIntoLeft(in LeafNode<K, V, TKeyContainer, TValueContainer> leftNode, in LeafNode<K, V, TKeyContainer, TValueContainer> rightNode)
         {
             leftNode.keys.AddRangeFrom(rightNode.keys, 0, rightNode.keys.Count);
             leftNode.values.AddRangeFrom(rightNode.values, 0, rightNode.values.Count);
@@ -830,15 +835,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 // Set the split key to the most right value
                 splitKey = rightNode.keys.Get(remainder - 1);
-                leftNode.children.AddRange(rightNode.children.GetRange(0, remainder));
 
+                leftNode.children.AddRangeFrom(rightNode.children, 0, remainder);
                 var rightNodeSize = rightNode.keys.Count - remainder;
                 var rightKeys = m_options.KeySerializer.CreateEmpty(); //new List<K>(rightNodeSize);
-                var rightChildren = new List<long>(rightNodeSize);
+                var rightChildren = new PrimitiveList<long>(m_options.MemoryAllocator);
 
                 rightKeys.AddRangeFrom(rightNode.keys, remainder, rightNodeSize);
-                rightChildren.AddRange(rightNode.children.GetRange(remainder, rightNode.children.Count - remainder));
 
+                rightChildren.AddRangeFrom(rightNode.children, remainder, rightNode.children.Count - remainder);
                 // Set the right node keys as disposable since it will no longer be used
                 splitKeyDisposable = rightNode.keys;
 
@@ -849,7 +854,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             else
             {
                 var rightKeys = m_options.KeySerializer.CreateEmpty(); // new List<K>(half);
-                var rightChildren = new List<long>(half);
+                var rightChildren = new PrimitiveList<long>(m_options.MemoryAllocator);
 
                 var remainder = half - rightNode.keys.Count;
 
@@ -858,10 +863,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 // Copy values from left to right at the beginning
                 rightKeys.AddRangeFrom(leftNode.keys, leftNode.keys.Count - remainder, remainder);
                 rightKeys.AddRangeFrom(rightNode.keys, 0, rightNode.keys.Count);
-                //rightKeys.AddRange(leftNode.keys.GetRange(leftNode.keys.Count - remainder, remainder));
-                //rightKeys.AddRange(rightNode.keys);
-                rightChildren.AddRange(leftNode.children.GetRange(leftNode.children.Count - remainder, remainder));
-                rightChildren.AddRange(rightNode.children);
+
+                rightChildren.AddRangeFrom(leftNode.children, leftNode.children.Count - remainder, remainder);
+                rightChildren.AddRangeFrom(rightNode.children, 0, rightNode.children.Count);
 
                 leftNode.keys.RemoveRange(leftNode.keys.Count - remainder, remainder);
                 leftNode.children.RemoveRange(leftNode.children.Count - remainder, remainder);
@@ -886,7 +890,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             leftNode.keys.Add(parentKey);
 
             leftNode.keys.AddRangeFrom(rightNode.keys, 0, rightNode.keys.Count);
-            leftNode.children.AddRange(rightNode.children);
+
+            leftNode.children.AddRangeFrom(rightNode.children, 0, rightNode.children.Count);
+
             leftNode.ExitWriteLock();
         }
 
@@ -898,23 +904,25 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             Debug.Assert(m_stateClient.Metadata != null);
             var newNodeId = m_stateClient.GetNewPageId(); // _metadata.GetNextId();
             var emptyKeys = m_options.KeySerializer.CreateEmpty();
-            var newNode = new InternalNode<K, V, TKeyContainer>(newNodeId, emptyKeys);
+            var newNode = new InternalNode<K, V, TKeyContainer>(newNodeId, emptyKeys, m_options.MemoryAllocator);
 
             newNode.keys.AddRangeFrom(child.keys, m_stateClient.Metadata.BucketLength / 2, child.keys.Count - m_stateClient.Metadata.BucketLength / 2);
             //newNode.keys.AddRange(child.keys.GetRange(m_stateClient.Metadata.BucketLength / 2, child.keys.Count - m_stateClient.Metadata.BucketLength / 2));
-            newNode.children.AddRange(child.children.GetRange(m_stateClient.Metadata.BucketLength / 2, (m_stateClient.Metadata.BucketLength / 2) + 1));
+
+            newNode.children.AddRangeFrom(child.children, m_stateClient.Metadata.BucketLength / 2, (m_stateClient.Metadata.BucketLength / 2) + 1);
 
             var splitKey = child.keys.Get(m_stateClient.Metadata.BucketLength / 2 - 1);
+
+            // Insert the split key to parent before removing from child since the removal from child can clear memory.
+            parent.EnterWriteLock();
+            parent.keys.Insert_Internal(index, splitKey);
+            parent.children.InsertAt(index + 1, newNodeId);
+            parent.ExitWriteLock();
 
             child.EnterWriteLock();
             child.keys.RemoveRange(m_stateClient.Metadata.BucketLength / 2 - 1, m_stateClient.Metadata.BucketLength / 2 + 1);
             child.children.RemoveRange(m_stateClient.Metadata.BucketLength / 2, m_stateClient.Metadata.BucketLength / 2 + 1);
             child.ExitWriteLock();
-
-            parent.EnterWriteLock();
-            parent.keys.Insert_Internal(index, splitKey);
-            parent.children.Insert(index + 1, newNodeId);
-            parent.ExitWriteLock();
 
             return (newNode, splitKey);
         }

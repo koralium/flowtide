@@ -10,11 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.StringAgg;
+using FlowtideDotNet.Core.Flexbuffer;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
@@ -24,6 +31,341 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         public static void RegisterFunctions(IFunctionsRegister functionsRegister)
         {
             ColumnStringAggAggregation.Register(functionsRegister);
+
+            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Concat,
+                (func, parameters, visitor) =>
+                {
+                    List<System.Linq.Expressions.Expression> expressions = new List<System.Linq.Expressions.Expression>();
+                    var stringBuilder = new StringBuilder();
+
+                    var appendMethod = typeof(StringBuilder).GetMethod("Append", new System.Type[] { typeof(string) });
+                    var toStringMethod = typeof(FlxString).GetMethod("ToString", new System.Type[] { });
+                    Debug.Assert(appendMethod != null);
+                    Debug.Assert(toStringMethod != null);
+
+                    var stringBuilderConstant = System.Linq.Expressions.Expression.Constant(stringBuilder);
+
+                    DataValueContainer nullContainer = new DataValueContainer();
+                    nullContainer._type = ArrowTypeId.Null;
+                    var nullConstant = System.Linq.Expressions.Expression.Constant(nullContainer);
+
+                    DataValueContainer temporaryContainer = new DataValueContainer();
+                    var temporaryVariable = System.Linq.Expressions.Expression.Constant(temporaryContainer);
+
+                    var returnTarget = System.Linq.Expressions.Expression.Label(typeof(IDataValue));
+
+                    var stringBuilderToStringExpr = System.Linq.Expressions.Expression.Call(stringBuilderConstant, "ToString", new System.Type[] { });
+
+
+                    var newStringValueExpr = System.Linq.Expressions.Expression.New(typeof(StringValue).GetConstructor(new System.Type[] { typeof(string) })!, stringBuilderToStringExpr);
+                    var castToIDataValue = System.Linq.Expressions.Expression.Convert(newStringValueExpr, typeof(IDataValue));
+                    var returnLabel = System.Linq.Expressions.Expression.Label(returnTarget, castToIDataValue);
+
+                    var nullValueReturn = System.Linq.Expressions.Expression.Return(returnTarget, nullConstant);
+
+                    List<System.Linq.Expressions.Expression> blockExpressions = new List<System.Linq.Expressions.Expression>();
+
+                    var stringBuilderClearExpr = System.Linq.Expressions.Expression.Call(stringBuilderConstant, "Clear", new System.Type[] { });
+
+                    // Start with clearing the string builder
+                    blockExpressions.Add(stringBuilderClearExpr);
+
+                    foreach (var expr in func.Arguments)
+                    {
+                        var v = visitor.Visit(expr, parameters)!;
+                        var typeField = System.Linq.Expressions.Expression.PropertyOrField(v, "Type");
+                        var typeIsNullCheck = System.Linq.Expressions.Expression.Equal(typeField, System.Linq.Expressions.Expression.Constant(ArrowTypeId.Null));
+                        var typeIsStringCheck = System.Linq.Expressions.Expression.Equal(typeField, System.Linq.Expressions.Expression.Constant(ArrowTypeId.String));
+
+                        var asStringField = System.Linq.Expressions.Expression.PropertyOrField(v, "AsString");
+                        var toStringCall = System.Linq.Expressions.Expression.Call(asStringField, toStringMethod);
+                        var castToString = ColumnCastImplementations.CallCastToString(v, temporaryVariable);
+                        var asStringFromCastToString = System.Linq.Expressions.Expression.PropertyOrField(castToString, "AsString");
+                        var toStringFromCastToString = System.Linq.Expressions.Expression.Call(asStringFromCastToString, toStringMethod);
+                        var appendLine = System.Linq.Expressions.Expression.Call(stringBuilderConstant, appendMethod, toStringCall);
+                        var appendLineCastedToString = System.Linq.Expressions.Expression.Call(stringBuilderConstant, appendMethod, toStringFromCastToString);
+                        var checkIfString = System.Linq.Expressions.Expression.IfThenElse(typeIsStringCheck, appendLine, appendLineCastedToString);
+                        var nullCheck = System.Linq.Expressions.Expression.IfThenElse(typeIsNullCheck, nullValueReturn, checkIfString);
+                        blockExpressions.Add(nullCheck);
+                    }
+                    blockExpressions.Add(returnLabel);
+                    var blockExpression = System.Linq.Expressions.Expression.Block(blockExpressions);
+
+
+                    return blockExpression;
+                });
+
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.Upper, typeof(BuiltInStringFunctions), nameof(UpperImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.Lower, typeof(BuiltInStringFunctions), nameof(LowerImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.Trim, typeof(BuiltInStringFunctions), nameof(TrimImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.LTrim, typeof(BuiltInStringFunctions), nameof(LTrimImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.RTrim, typeof(BuiltInStringFunctions), nameof(RTrimImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.To_String, typeof(BuiltInStringFunctions), nameof(ToStringImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StartsWith, typeof(BuiltInStringFunctions), nameof(StartsWithImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.Like, typeof(BuiltInStringFunctions), nameof(LikeImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.Replace, typeof(BuiltInStringFunctions), nameof(ReplaceImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Encode, typeof(BuiltInStringFunctions), nameof(StringBase64EncodeImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Decode, typeof(BuiltInStringFunctions), nameof(StringBase64DecodeImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.CharLength, typeof(BuiltInStringFunctions), nameof(CharLengthImplementation));
         }
+
+        private static IDataValue UpperImplementation<T>(T value, DataValueContainer result)
+            where T : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(value.AsString.ToString().ToUpper());
+            return result;
+        }
+
+        private static IDataValue LowerImplementation<T>(T value, DataValueContainer result)
+            where T : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(value.AsString.ToString().ToLower());
+            return result;
+        }
+
+        private static IDataValue TrimImplementation<T>(T value, DataValueContainer result)
+            where T : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(value.AsString.ToString().Trim());
+            return result;
+        }
+
+        private static IDataValue LTrimImplementation<T>(T value, DataValueContainer result)
+            where T : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(value.AsString.ToString().TrimStart());
+            return result;
+        }
+
+        private static IDataValue RTrimImplementation<T>(T value, DataValueContainer result)
+            where T : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(value.AsString.ToString().TrimEnd());
+            return result;
+        }
+
+        private static IDataValue ToStringImplementation<T>(T value, DataValueContainer result)
+            where T : IDataValue
+        {
+            return ColumnCastImplementations.CastToString(value, result);
+        }
+
+        private static IDataValue StartsWithImplementation<T1, T2>(T1 value, T2 prefix, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String || prefix.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Boolean;
+                result._boolValue = new BoolValue(false);
+                return result;
+            }
+
+            result._type = ArrowTypeId.Boolean;
+            result._boolValue = new BoolValue(value.AsString.ToString().StartsWith(prefix.AsString.ToString()));
+            return result;
+        }
+
+        private static IDataValue LikeImplementation<T1, T2, T3>(T1 value, T2 comp, T3 escapeChar, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String || comp.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Boolean;
+                result._boolValue = new BoolValue(false);
+                return result;
+            }
+
+            char? escapeCharacter = default;
+            // Check if escape char is set
+            if (escapeChar.Type == ArrowTypeId.String)
+            {
+                escapeCharacter = escapeChar.AsString.ToString()[0];
+            }
+
+            var likeResult = IsLike(value.AsString.ToString(), comp.AsString.ToString(), escapeCharacter);
+
+            result._type = ArrowTypeId.Boolean;
+            result._boolValue = new BoolValue(likeResult);
+            return result;
+        }
+
+        private static bool IsLike(string input, string pattern, char? escapeCharacter)
+        {
+            // Convert SQL LIKE pattern to regex pattern
+            string regexPattern = ConvertLikeToRegex(pattern, escapeCharacter);
+
+            // Perform regex match
+            return Regex.IsMatch(input, regexPattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
+        }
+
+        private static string ConvertLikeToRegex(string pattern, char? escapeCharacter)
+        {
+            StringBuilder regexPattern = new StringBuilder();
+            regexPattern.Append('^'); // Add start anchor
+            bool escapeNext = false; // Flag to indicate next character is escaped
+            bool inCharSet = false; // Flag to indicate if currently parsing a character set
+
+            for (int i = 0; i < pattern.Length; i++)
+            {
+                char c = pattern[i];
+                if (escapeCharacter.HasValue && c == escapeCharacter && !escapeNext && !inCharSet)
+                {
+                    escapeNext = true; // Next character is escaped
+                    continue;
+                }
+
+                if (c == '[' && !escapeNext)
+                {
+                    inCharSet = true;
+                    regexPattern.Append(c);
+                    continue;
+                }
+                else if (c == ']' && inCharSet)
+                {
+                    inCharSet = false;
+                    regexPattern.Append(c);
+                    continue;
+                }
+
+                if (inCharSet)
+                {
+                    // Directly add character set contents to regex pattern
+                    regexPattern.Append(c);
+                }
+                else
+                {
+                    switch (c)
+                    {
+                        case '%':
+                            regexPattern.Append(escapeNext ? "%" : ".*");
+                            break;
+                        case '_':
+                            regexPattern.Append(escapeNext ? "_" : ".");
+                            break;
+                        default:
+                            if ("+()^$.{}[]|\\".Contains(c))
+                            {
+                                regexPattern.Append("\\" + c); // Escape regex special characters
+                            }
+                            else
+                            {
+                                regexPattern.Append(c);
+                            }
+                            break;
+                    }
+                }
+
+                if (escapeNext) escapeNext = false; // Reset escape flag if it was set
+            }
+
+            // Add start and end anchors to ensure the entire string is matched
+            regexPattern.Append('$'); // Add end anchor
+            return regexPattern.ToString();
+        }
+
+        private static IDataValue ReplaceImplementation<T1, T2, T3>(T1 value, T2 pattern, T3 replacement, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String || pattern.Type != ArrowTypeId.String || replacement.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(value.AsString.ToString().Replace(pattern.AsString.ToString(), replacement.AsString.ToString()));
+            return result;
+        }
+
+        private static IDataValue StringBase64EncodeImplementation<T>(T value, DataValueContainer result)
+            where T : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(Convert.ToBase64String(Encoding.UTF8.GetBytes(value.AsString.ToString())));
+            return result;
+        }
+
+        private static IDataValue StringBase64DecodeImplementation<T>(T value, DataValueContainer result)
+            where T : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            try
+            {
+                result._type = ArrowTypeId.String;
+                result._stringValue = new StringValue(Encoding.UTF8.GetString(Convert.FromBase64String(value.AsString.ToString())));
+            }
+            catch (FormatException)
+            {
+                result._type = ArrowTypeId.Null;
+            }
+
+            return result;
+        }
+
+        private static IDataValue CharLengthImplementation<T>(T value, DataValueContainer result)
+            where T : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.Int64;
+            result._int64Value = new Int64Value(value.AsString.ToString().Length);
+            return result;
+        }
+
     }
 }

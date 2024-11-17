@@ -15,6 +15,7 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
@@ -23,6 +24,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -186,6 +188,43 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int EndNewList()
         {
             throw new NotImplementedException();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            _data.RemoveRange(start, count);
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return (end - start + 1) * sizeof(double);
+        }
+
+        public int GetByteSize()
+        {
+            return Count * sizeof(double);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is DoubleColumn doubleColumn)
+            {
+                _data.InsertRangeFrom(index, doubleColumn._data, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _data.InsertStaticRange(index, 0, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteNumberValue(_data.Get(index));
         }
     }
 }

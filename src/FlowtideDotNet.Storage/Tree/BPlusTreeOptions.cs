@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Memory;
+
 namespace FlowtideDotNet.Storage.Tree
 {
     public class BPlusTreeOptions<K, V, TKeyContainer, TValueContainer>
@@ -32,5 +34,11 @@ namespace FlowtideDotNet.Storage.Tree
         /// Serializer for values
         /// </summary>
         public required IBplusTreeValueSerializer<V, TValueContainer> ValueSerializer { get; set; }
+
+        public bool UseByteBasedPageSizes { get; set; }
+
+        public int? PageSizeBytes { get; set; }
+
+        public required IMemoryAllocator MemoryAllocator { get; set; }
     }
 }

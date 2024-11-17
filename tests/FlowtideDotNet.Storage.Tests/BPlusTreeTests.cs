@@ -18,13 +18,14 @@ using FASTER.core;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.Metrics;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Storage.Tests
 {
     public class BPlusTreeTests : IDisposable
     {
         private IBPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>> _tree;
-        StateManager.StateManagerSync stateManager;
+        StateManager.StateManagerSync? stateManager;
         public BPlusTreeTests()
         {
             _tree = Init().GetAwaiter().GetResult();
@@ -48,7 +49,8 @@ namespace FlowtideDotNet.Storage.Tests
                 BucketSize = 8,
                 Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
                 KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
-                ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             });
             return tree;
         }

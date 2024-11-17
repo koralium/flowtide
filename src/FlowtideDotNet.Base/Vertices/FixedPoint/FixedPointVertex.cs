@@ -100,17 +100,17 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _ingressTarget.Complete();
         }
 
-        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> IngressInCheckpoint(ILockingEvent ev)
+        private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> IngressInCheckpoint(ILockingEvent ev)
         {
             // Set fields for locking events, the counter checks how many other messages have been
             // recieved from the loop until the prepare message is recieved.
             _waitingLockingEvent = ev;
             _messageCountSinceLockingEventPrepare = 0;
             // Return a CheckpointPrepare message to the loop
-            yield return new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(ev));
+            return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(ev)));
         }
 
-        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> FeedbackInCheckpoint(ILockingEvent ev)
+        private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> FeedbackInCheckpoint(ILockingEvent ev)
         {
             // Release both input targets from checkpoint so they can start to recieve data again
             _ingressTarget.ReleaseCheckpoint();
@@ -122,26 +122,29 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 _currentTime = checkpoint.NewTime;
             }
 
+            List<KeyValuePair<int, IStreamEvent>> output = new List<KeyValuePair<int, IStreamEvent>>();
             if (_latestWatermark != null)
             {
                 // Emit latest watermark if it exists
-                yield return new KeyValuePair<int, IStreamEvent>(0, _latestWatermark);
+                output.Add(new KeyValuePair<int, IStreamEvent>(0, _latestWatermark));
                 _latestWatermark = null;
             }
 
             // Send out the checkpoint event out from the fixed point
-            yield return new KeyValuePair<int, IStreamEvent>(0, ev);
+            output.Add(new KeyValuePair<int, IStreamEvent>(0, ev));
+            return output.ToAsyncEnumerable();
         }
 
-        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> OnLockingPrepareEvent(LockingEventPrepare lockingEventPrepare)
+        private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> OnLockingPrepareEvent(LockingEventPrepare lockingEventPrepare)
         {
             _targetPrepareCount++;
 
             // Wait until all messages have been recieved from the loop
             if (_targetPrepareCount < _loopSource.LinksCount)
             {
-                yield break;
+                return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
             }
+
             _targetPrepareCount = 0;
             // Check that no other messages have been recieved, and that there is no vertex that does not have a depedent input that is not yet in checkpoint.
             if (_messageCountSinceLockingEventPrepare == 0 && (!lockingEventPrepare.OtherInputsNotInCheckpoint || singleReadSource))
@@ -154,14 +157,16 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 if (!_sentLockingEvent)
                 {
                     _sentLockingEvent = true;
-                    yield return new KeyValuePair<int, IStreamEvent>(1, _waitingLockingEvent);
+                    var msgOut = _waitingLockingEvent;
                     _waitingLockingEvent = null;
+                    return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, msgOut));
                 }
+                return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
             }
             else
             {
                 _messageCountSinceLockingEventPrepare = 0;
-                yield return new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(lockingEventPrepare.LockingEvent));
+                return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(lockingEventPrepare.LockingEvent)));
             }
         }
 
@@ -324,19 +329,19 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _transformBlock.LinkTo(_loopSource.Target, x => x.Key == 1);
         }
 
-        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> HandleWatermark(int targetId, Watermark watermark)
+        private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> HandleWatermark(int targetId, Watermark watermark)
         {
             _latestWatermark = watermark;
-            yield break;
+            return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
         }
 
         protected abstract IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> OnIngressRecieve(T data, long time);
 
         protected abstract IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> OnFeedbackRecieve(T data, long time);
 
-        public virtual async IAsyncEnumerable<KeyValuePair<int, T>> OnTrigger(string name, object? state)
+        public virtual IAsyncEnumerable<KeyValuePair<int, T>> OnTrigger(string name, object? state)
         {
-            yield break;
+            return EmptyAsyncEnumerable<KeyValuePair<int, T>>.Instance;
         }
 
         public virtual Task DeleteAsync()

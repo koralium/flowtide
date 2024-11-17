@@ -19,6 +19,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using FlowtideDotNet.Storage.Memory;
+using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 {
@@ -67,10 +68,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         {
             if (container is AggregateKeyStorageContainer columnKeyStorageContainer)
             {
-                for (int i = start; i < start + count; i++)
+                for (int i = 0; i < columnCount; i++)
                 {
-                    Add(columnKeyStorageContainer.Get(i));
+                    _data.Columns[i].InsertRangeFrom(_data.Columns[i].Count, columnKeyStorageContainer._data.Columns[i], start, count);
                 }
+                _length += count;
             }
             else
             {
@@ -95,6 +97,16 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 referenceBatch = _data,
                 RowIndex = index
             };
+        }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
         }
 
         public void Insert(int index, ColumnRowReference key)
@@ -129,11 +141,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
+            for (int i = 0; i < columnCount; i++)
             {
-                RemoveAt(i);
+                _data.Columns[i].RemoveRange(start, count);
             }
+            _length -= count;
         }
 
         public void Update(int index, ColumnRowReference key)

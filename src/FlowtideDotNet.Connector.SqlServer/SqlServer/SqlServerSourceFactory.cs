@@ -35,12 +35,15 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
     {
         private readonly Func<string> _connectionStringFunc;
         private readonly Func<ReadRelation, string>? customTableNameFunc;
-        private HashSet<string>? _tableNames;
+        private readonly SqlServerTableProvider _tableProvider;
 
-        public SqlServerSourceFactory(Func<string> connectionStringFunc, Func<ReadRelation, string>? tableNameTransform = null)
+        public SqlServerSourceFactory(
+            Func<string> connectionStringFunc, 
+            Func<ReadRelation, string>? tableNameTransform = null)
         {
             this._connectionStringFunc = connectionStringFunc;
             this.customTableNameFunc = tableNameTransform;
+            _tableProvider = new SqlServerTableProvider(connectionStringFunc);
         }
 
         /// <summary>
@@ -57,17 +60,14 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override bool CanHandle(ReadRelation readRelation)
         {
-            if (_tableNames == null)
-            {
-                _tableNames = LoadAvailableTablesList().GetAwaiter().GetResult();
-            }
             var tableName = customTableNameFunc?.Invoke(readRelation) ?? readRelation.NamedTable.DotSeperated;
-            return _tableNames.Contains(tableName);
+
+            return _tableProvider.TryGetTableInformation(tableName, out _);
         }
 
         public ITableProvider Create()
         {
-            return new SqlServerTableProvider(_connectionStringFunc);
+            return _tableProvider;
         }
 
         public override Relation ModifyPlan(ReadRelation readRelation)
@@ -112,7 +112,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
             var tableName = customTableNameFunc?.Invoke(readRelation) ?? readRelation.NamedTable.DotSeperated;
-            return new SqlServerDataSource(_connectionStringFunc, tableName, readRelation, dataflowBlockOptions);
+            return new ColumnSqlServerDataSource(_connectionStringFunc, tableName, readRelation, dataflowBlockOptions);
         }
     }
 }

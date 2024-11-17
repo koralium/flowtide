@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -169,7 +170,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            var valueBuffer = new ArrowBuffer(_data.Memory);
+            var valueBuffer = new ArrowBuffer(_data.MemorySlice);
             var arr = new BooleanArray(valueBuffer, nullBuffer, Count, nullCount, 0);
             return (arr, new BooleanType());
         }
@@ -212,6 +213,43 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int EndNewList()
         {
             throw new NotImplementedException();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            _data.RemoveRange(start, count);
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
+        }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize(0, Count - 1);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is BoolColumn boolColumn)
+            {
+                _data.InsertRangeFrom(index, boolColumn._data, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _data.InsertFalseInRange(index, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteBooleanValue(_data.Get(index));
         }
     }
 }

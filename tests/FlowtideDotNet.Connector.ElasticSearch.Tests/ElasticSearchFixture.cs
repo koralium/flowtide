@@ -55,6 +55,10 @@ namespace FlowtideDotNet.Connector.CosmosDB.Tests
 
         public ConnectionSettings GetConnectionSettings()
         {
+            if (container == null)
+            {
+                throw new InvalidOperationException("Container is not initialized");
+            }
             return new ConnectionSettings(new Uri($"http://localhost:{container.GetMappedPublicPort(9200)}"));
         }
     }

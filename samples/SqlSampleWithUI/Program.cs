@@ -21,6 +21,7 @@ using SqlSampleWithUI;
 using FlowtideDotNet.DependencyInjection;
 using FlowtideDotNet.Core.Sources.Generic;
 using OpenTelemetry.Metrics;
+using FlowtideDotNet.Core.Sinks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,7 +35,7 @@ CREATE TABLE other (
 );
 
 INSERT INTO output
-SELECT t.val FROM testtable t
+SELECT map('a', t.val) FROM testtable t
 LEFT JOIN other o
 ON t.val = o.val;
 ";
@@ -44,7 +45,8 @@ builder.Services.AddFlowtideStream("test")
 .AddConnectors((connectorManager) =>
 {
     connectorManager.AddSource(new DummyReadFactory("*"));
-    connectorManager.AddSink(new DummyWriteFactory("*"));
+    connectorManager.AddConsoleSink("*");
+    //connectorManager.AddSink(new DummyWriteFactory("*"));
 })
 .AddStorage(b =>
 {

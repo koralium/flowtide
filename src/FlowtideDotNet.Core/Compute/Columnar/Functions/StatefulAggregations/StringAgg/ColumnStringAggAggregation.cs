@@ -37,10 +37,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.St
     {
         private readonly int keyLength;
         public readonly DataValueContainer dataValueContainer;
-        public readonly IBPlusTreeIterator<ListAggColumnRowReference, int, ListAggKeyStorageContainer, ListValueContainer<int>> iterator;
+        public readonly IBPlusTreeIterator<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> iterator;
 
         public ColumnStringAggAggregationSingleton(
-            IBPlusTree<ListAggColumnRowReference, int, ListAggKeyStorageContainer, ListValueContainer<int>> tree, 
+            IBPlusTree<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> tree, 
             int keyLength)
         {
             Tree = tree;
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.St
         public int KeyLength => keyLength;
         public ListAggSearchComparer SearchComparer { get; }
         public string? Seperator { get; set; }
-        public IBPlusTree<ListAggColumnRowReference, int, ListAggKeyStorageContainer, ListValueContainer<int>> Tree { get; }
+        public IBPlusTree<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> Tree { get; }
     }
 
     internal static class ColumnStringAggAggregation
@@ -71,11 +71,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.St
                 searchPrimaryKeys.Add(i);
             }
             var tree = await stateManagerClient.GetOrCreateTree("stringaggtree",
-                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ListAggColumnRowReference, int, ListAggKeyStorageContainer, ListValueContainer<int>>()
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>>()
                 {
                     Comparer = new ListAggInsertComparer(groupingLength),
                     KeySerializer = new ListAggKeyStorageSerializer(groupingLength, memoryAllocator),
-                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
+                    ValueSerializer = new PrimitiveListValueContainerSerializer<int>(memoryAllocator),
+                    UseByteBasedPageSizes = true,
+                    MemoryAllocator = memoryAllocator
                 });
 
             return new ColumnStringAggAggregationSingleton(tree, groupingLength);

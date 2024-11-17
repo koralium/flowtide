@@ -19,6 +19,7 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -174,6 +175,43 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int EndNewList()
         {
             throw new NotImplementedException();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            _data.RemoveRange(start, count);
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
+        }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize(0, Count - 1);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is BinaryColumn binaryColumn)
+            {
+                _data.InsertRangeFrom(index, binaryColumn._data, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _data.InsertNullRange(index, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteBase64StringValue(_data.GetMemory(index).Span);
         }
     }
 }

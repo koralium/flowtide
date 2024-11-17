@@ -20,7 +20,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
     public class SqlServerFixture : IAsyncLifetime
     {
         MsSqlContainer _msSqlContainer;
-        private TpchDbContext dbContext;
+        private TpchDbContext? dbContext;
         public SqlServerFixture()
         {
             _msSqlContainer = new MsSqlBuilder()
@@ -111,8 +111,6 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             await RunCommand("ALTER TABLE tpch.dbo.shipmodes ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
 
             await RunCommand("CREATE TABLE tpch.dbo.notracking (id int PRIMARY KEY)");
-
-            //await TpchData.InsertIntoDbContext(dbContext);
         }
     }
 }

@@ -12,6 +12,7 @@
 
 using Azure.Core;
 using FlowtideDotNet.Substrait.Sql;
+using FlowtideDotNet.Substrait.Type;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using System;
@@ -125,6 +126,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
 
             List<string> columnNames = new List<string>();
+            List<SubstraitBaseType> types = new List<SubstraitBaseType>();
 
             foreach (var column in columns.Value)
             {
@@ -133,15 +135,24 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     continue;
                 }
                 columnNames.Add(column.Name);
+                types.Add(new AnyType());
             }
             columnNames.Add("_fields");
+            types.Add(new AnyType());
 
             if (list.Name == null)
             {
                 throw new InvalidOperationException("List name is null");
             }
 
-            var metadata = new TableMetadata(list.Name, columnNames);
+            var metadata = new TableMetadata(list.Name, new NamedStruct()
+            {
+                Names = columnNames,
+                Struct = new Struct()
+                {
+                    Types = types
+                }
+            });
             _tables.Add(list.Id, metadata);
             return metadata;
         }

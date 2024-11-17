@@ -179,9 +179,9 @@ namespace FlowtideDotNet.Base.Vertices.Unary
             yield return watermark;
         }
 
-        protected virtual async IAsyncEnumerable<T> OnWatermark(Watermark watermark)
+        protected virtual IAsyncEnumerable<T> OnWatermark(Watermark watermark)
         {
-            yield break;
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         public async Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
@@ -362,7 +362,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
         public IDisposable LinkTo(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
         {
             _links.Add((target, linkOptions));
-            return null;
+            return default!;
         }
 
         private IDisposable LinkTo_Internal(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)

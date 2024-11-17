@@ -25,10 +25,13 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System.Buffers;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
+using System.Collections;
+using static SqlParser.Ast.TableConstraint;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public class MapColumn : IDataColumn
+    public class MapColumn : IDataColumn, IEnumerable<List<KeyValuePair<IDataValue, IDataValue>>>
     {
         /// <summary>
         /// Contains all the property keys, must always be strings
@@ -248,15 +251,18 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return startOffset;
             }
             var map = value.AsMap;
-            // Sort keys so its possible to binary search after a key.
-            // In future, can check if it is a reference map value or not to skip sorting
-            var ordered = map.OrderBy(x => x.Key, new DataValueComparer()).ToList();
-            
-            foreach (var pair in ordered)
+
+            var mapLength = map.GetLength();
+
+            DataValueContainer dataValueContainer = new DataValueContainer();
+            for (int i = 0; i < mapLength; i++)
             {
-                _keyColumn.Add(pair.Key);
-                _valueColumn.Add(pair.Value);
+                map.GetKeyAt(i, dataValueContainer);
+                _keyColumn.Add(dataValueContainer);
+                map.GetValueAt(i, dataValueContainer);
+                _valueColumn.Add(dataValueContainer);
             }
+
             _offsets.Add(_valueColumn.Count);
 
             return startOffset;
@@ -292,11 +298,8 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Null will be added as an empty map
             if (value.Type == ArrowTypeId.Null)
             {
-                for (int i = endOffset - 1; i >= startOffset; i--)
-                {
-                    _keyColumn.RemoveAt(i);
-                    _valueColumn.RemoveAt(i);
-                }
+                _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+                _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
                 _offsets.Update(index + 1, startOffset, startOffset - endOffset);
                 return index;
             }
@@ -305,11 +308,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             var ordered = map.OrderBy(x => x.Key, new DataValueComparer()).ToList();
 
             // Remove the old values
-            for (int i = endOffset - 1; i >= startOffset; i--)
-            {
-                _keyColumn.RemoveAt(i);
-                _valueColumn.RemoveAt(i);
-            }
+            _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+            _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
+
 
             // Insert the new values
             for (int i = 0; i < ordered.Count; i++)
@@ -338,11 +339,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var (startOffset, endOffset) = GetOffsets(index);
 
-            for (int i = endOffset - 1; i >= startOffset; i--)
-            {
-                _keyColumn.RemoveAt(i);
-                _valueColumn.RemoveAt(i);
-            }
+            _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+            _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
             // Remove the offset and shift all the offsets after it
             _offsets.RemoveAt(index, startOffset - endOffset);
         }
@@ -355,17 +353,30 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return;
             }
             var map = value.AsMap;
-            // Sort keys so its possible to binary search after a key.
-            // In future, can check if it is a reference map value or not to skip sorting
-            var ordered = map.OrderBy(x => x.Key, new DataValueComparer()).ToList();
+            var mapLength = map.GetLength();
 
             var currentOffset = _offsets.Get(index);
-            for (int i = 0; i < ordered.Count; i++)
+
+            if (map is ReferenceMapValue referenceMapValue)
             {
-                _keyColumn.InsertAt(currentOffset + i, ordered[i].Key);
-                _valueColumn.InsertAt(currentOffset + i, ordered[i].Value);
+                var (copyStart, _) = referenceMapValue.mapColumn.GetOffsets(referenceMapValue.index);
+                _keyColumn.InsertRangeFrom(currentOffset, referenceMapValue.mapColumn._keyColumn, copyStart, mapLength);
+                _valueColumn.InsertRangeFrom(currentOffset, referenceMapValue.mapColumn._valueColumn, copyStart, mapLength);
             }
-            _offsets.InsertAt(index, currentOffset, ordered.Count);
+            else
+            {
+                var dataValueContainer = new DataValueContainer();
+                
+                for (int i = 0; i < mapLength; i++)
+                {
+                    map.GetKeyAt(i, dataValueContainer);
+                    _keyColumn.InsertAt(currentOffset + i, dataValueContainer);
+                    map.GetValueAt(i, dataValueContainer);
+                    _valueColumn.InsertAt(currentOffset + i, dataValueContainer);
+                }
+            }
+
+            _offsets.InsertAt(index, currentOffset, mapLength);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(Apache.Arrow.ArrowBuffer nullBuffer, int nullCount)
@@ -434,6 +445,114 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int EndNewList()
         {
             throw new NotImplementedException();
+        }
+
+        private IEnumerable<List<KeyValuePair<IDataValue, IDataValue>>> GetEnumerable()
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                var (startOffset, endOffset) = GetOffsets(in i);
+
+                List<KeyValuePair<IDataValue, IDataValue>> output = new List<KeyValuePair<IDataValue, IDataValue>>();
+                for (int j = startOffset; j < endOffset; j++)
+                {
+                    var key = _keyColumn.GetValueAt(j, default);
+                    var value = _valueColumn.GetValueAt(j, default);
+                    output.Add(new KeyValuePair<IDataValue, IDataValue>(key, value));
+                }
+                yield return output;
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        IEnumerator<List<KeyValuePair<IDataValue, IDataValue>>> IEnumerable<List<KeyValuePair<IDataValue, IDataValue>>>.GetEnumerator()
+        {
+            return GetEnumerable().GetEnumerator();
+        }
+
+        public void RemoveRange(int start, int count)
+        {
+            var startOffset = _offsets.Get(start);
+            var endOffset = _offsets.Get(start + count);
+
+            // Remove offsets
+            _offsets.RemoveRange(start, count, startOffset - endOffset);
+
+            if (endOffset > startOffset)
+            {
+                // Remove the keys and values
+                _keyColumn.RemoveRange(startOffset, endOffset - startOffset);
+                _valueColumn.RemoveRange(startOffset, endOffset - startOffset);
+            }
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            var startOffset = _offsets.Get(start);
+            var endOffset = _offsets.Get(end + 1);
+
+            if (startOffset == endOffset)
+            {
+                return sizeof(int);
+            }
+
+            return _keyColumn.GetByteSize(startOffset, endOffset - 1) + _valueColumn.GetByteSize(startOffset, endOffset - 1) + ((end - start + 1) * sizeof(int));
+        }
+
+        public int GetByteSize()
+        {
+            return _keyColumn.GetByteSize() + _valueColumn.GetByteSize() + (_offsets.Count * sizeof(int));
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is MapColumn mapColumn)
+            {
+                var startOffset = _offsets.Get(index);
+
+                var otherStartOffset = mapColumn._offsets.Get(start);
+                var otherEndOffset = mapColumn._offsets.Get(start + count);
+
+                if (otherStartOffset < otherEndOffset)
+                {
+                    // Insert the keys and values if there are any values
+                    _keyColumn.InsertRangeFrom(startOffset, mapColumn._keyColumn, otherStartOffset, otherEndOffset - otherStartOffset);
+                    _valueColumn.InsertRangeFrom(startOffset, mapColumn._valueColumn, otherStartOffset, otherEndOffset - otherStartOffset);
+                }
+
+                // Insert the offsets
+                _offsets.InsertRangeFrom(index, mapColumn._offsets, start, count, otherEndOffset - otherStartOffset, startOffset - otherStartOffset);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            var offset = _offsets.Get(index);
+            _offsets.InsertRangeStaticValue(index, count, offset);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteStartObject();
+
+            var (startOffset, endOffset) = GetOffsets(in index);
+
+            for (int i = startOffset; i < endOffset; i++)
+            {
+                var key = _keyColumn.GetValueAt(i, default);
+                writer.WritePropertyName(key.ToString()!);
+                _valueColumn.WriteToJson(in writer, i);
+            }
+
+            writer.WriteEndObject();
         }
     }
 }

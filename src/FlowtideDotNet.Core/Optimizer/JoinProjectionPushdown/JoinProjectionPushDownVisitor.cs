@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Core.Optimizer.JoinProjectionPushdown
                 return expression;
             }
             var visitor = new JoinExpressionVisitor(leftSize);
-            visitor.Visit(expression, default);
+            visitor.Visit(expression, default!);
 
             if (visitor.unknownCase || visitor.fieldInLeft && visitor.fieldInRight)
             {
@@ -94,6 +94,10 @@ namespace FlowtideDotNet.Core.Optimizer.JoinProjectionPushdown
 
         public override Relation VisitJoinRelation(JoinRelation joinRelation, object state)
         {
+            if (joinRelation.Expression == null)
+            {
+                throw new Exceptions.FlowtideException("Join relation must have an expression");
+            }
             joinRelation.Left = Visit(joinRelation.Left, state);
             joinRelation.Right = Visit(joinRelation.Right, state);
 

@@ -105,5 +105,17 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+
+        public virtual int GetByteSize()
+        {
+            return keys.GetByteSize();
+        }
+
+        public virtual int GetByteSize(int start, int end)
+        {
+            return keys.GetByteSize(start, end);
+        }
+
+        public int ByteSize => GetByteSize();
     }
 }

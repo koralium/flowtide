@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
@@ -85,6 +86,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         public void Update(int index, JoinWeights value)
         {
             _values.Update(index, value);
+        }
+
+        public int GetByteSize()
+        {
+            return _values.Count * 8;
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return (end - start + 1) * 8;
         }
     }
 }

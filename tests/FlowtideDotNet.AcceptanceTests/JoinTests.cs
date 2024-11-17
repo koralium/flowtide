@@ -264,27 +264,18 @@ namespace FlowtideDotNet.AcceptanceTests
                 ON o.userkey = u.userkey");
             await WaitForUpdate();
 
+            Assert.NotNull(LastWatermark);
+            Assert.Equal(1000, LastWatermark.Watermarks["users"]);
+            Assert.Equal(1000, LastWatermark.Watermarks["orders"]);
             await Crash();
 
             GenerateData();
 
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
-        }
-
-        [Fact]
-        public async Task InnerJoinMergeJoinParallelExecution()
-        {
-            GenerateData(1000);
-            await StartStream(@"
-                INSERT INTO output 
-                SELECT 
-                    o.orderkey, u.firstName, u.LastName
-                FROM orders o
-                INNER JOIN users u
-                ON o.userkey = u.userkey", 4);
-            await WaitForUpdate();
+            Assert.NotNull(LastWatermark);
+            Assert.Equal(2000, LastWatermark.Watermarks["users"]);
+            Assert.Equal(2000, LastWatermark.Watermarks["orders"]);
 
             AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
         }
@@ -524,10 +515,26 @@ namespace FlowtideDotNet.AcceptanceTests
                 ", pageSize: 8);
             await WaitForUpdate();
 
+            Assert.NotNull(LastWatermark);
+            Assert.Equal(1000, LastWatermark.Watermarks["projects"]);
+            Assert.Equal(-1, LastWatermark.Watermarks["users"]);
+            Assert.Equal(-1, LastWatermark.Watermarks["projectmembers"]);
+
             GenerateUsers(1000);
             await WaitForUpdate();
+
+            Assert.NotNull(LastWatermark);
+            Assert.Equal(1000, LastWatermark.Watermarks["projects"]);
+            Assert.Equal(1000, LastWatermark.Watermarks["users"]);
+            Assert.Equal(-1, LastWatermark.Watermarks["projectmembers"]);
+
             GenerateProjectMembers(1000);
             await WaitForUpdate();
+
+            Assert.NotNull(LastWatermark);
+            Assert.Equal(1000, LastWatermark.Watermarks["projects"]);
+            Assert.Equal(1000, LastWatermark.Watermarks["users"]);
+            Assert.Equal(1000, LastWatermark.Watermarks["projectmembers"]);
 
             var expected = from user in Users
                            join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey into gj

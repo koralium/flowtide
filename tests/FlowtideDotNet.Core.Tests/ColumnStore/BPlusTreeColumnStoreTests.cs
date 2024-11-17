@@ -50,7 +50,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                     BucketSize = 4,
                     Comparer = new ColumnComparer(1),
                     KeySerializer = new ColumnStoreSerializer(1, GlobalMemoryManager.Instance),
-                    ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
+                    ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                    MemoryAllocator = GlobalMemoryManager.Instance
                 });
 
             var valueColumn = new Column(GlobalMemoryManager.Instance);

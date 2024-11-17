@@ -65,9 +65,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
         {
             if (container is ListAggKeyStorageContainer columnKeyStorageContainer)
             {
-                for (int i = start; i < start + count; i++)
+                for (int i = 0; i < (_groupingKeyLength + 1); i++)
                 {
-                    Add(columnKeyStorageContainer.Get(i));
+                    _data.Columns[i].InsertRangeFrom(_data.Columns[i].Count, columnKeyStorageContainer._data.Columns[i], start, count);
                 }
             }
             else
@@ -93,6 +93,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
                 batch = _data,
                 index = index
             };
+        }
+
+        public int GetByteSize()
+        {
+            return _data.GetByteSize();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return _data.GetByteSize(start, end);
         }
 
         public void Insert(int index, ListAggColumnRowReference key)
@@ -126,10 +136,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
+            for (int i = 0; i < (_groupingKeyLength + 1); i++)
             {
-                RemoveAt(i);
+                _data.Columns[i].RemoveRange(start, count);
             }
         }
 

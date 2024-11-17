@@ -23,6 +23,8 @@ namespace FlowtideDotNet.Storage.Memory
     {
         IMemoryOwner<byte> Allocate(int size, int alignment);
 
+        IMemoryOwner<byte> Realloc(IMemoryOwner<byte> memory, int size, int alignment);
+
         void RegisterAllocationToMetrics(int size);
 
         void RegisterFreeToMetrics(int size);

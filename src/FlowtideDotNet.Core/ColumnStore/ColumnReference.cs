@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Storage.StateManager.Internal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,13 +22,41 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public struct ColumnReference
     {
-        public IColumn column;
-        public int index;
+        private IColumn column;
+        private int index;
+        private readonly ILockableObject? cacheObject;
 
-        public ColumnReference(IColumn column, int index)
+        public ColumnReference(IColumn column, int index, ILockableObject? cacheObject)
         {
             this.column = column;
             this.index = index;
+            this.cacheObject = cacheObject;
+        }
+
+        public void GetValue(DataValueContainer result)
+        {
+            column.GetValueAt(index, result, default);
+        }
+
+        public IDataValue GetValue()
+        {
+            return column.GetValueAt(index, default);
+        }
+
+        public void Update<T>(T value)
+            where T: IDataValue
+        {
+            if (cacheObject != null)
+            {
+                cacheObject.EnterWriteLock();
+                column.UpdateAt(index, value);
+                cacheObject.ExitWriteLock();
+            }
+            else
+            {
+                column.UpdateAt(index, value);
+            }
+            
         }
     }
 }

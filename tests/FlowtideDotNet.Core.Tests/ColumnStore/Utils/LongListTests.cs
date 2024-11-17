@@ -154,5 +154,42 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
 
             Assert.Equal(1_000_000, longList.Count);
         }
+
+        [Fact]
+        public void TestInsertRangeFrom()
+        {
+            var allocator = GlobalMemoryManager.Instance;
+            using var longList = new NativeLongList(allocator);
+            using var otherList = new NativeLongList(allocator);
+
+            for (int i = 0; i < 1_000; i++)
+            {
+                longList.Add(i);
+            }
+
+            for (int i = 0; i < 1_000; i++)
+            {
+                otherList.Add(i + 1_000);
+            }
+
+            longList.InsertRangeFrom(500, otherList, 100, 500);
+
+            Assert.Equal(1_500, longList.Count);
+
+            for (int i = 0; i < 500; i++)
+            {
+                Assert.Equal(i, longList[i]);
+            }
+
+            for (int i = 0; i < 500; i++)
+            {
+                Assert.Equal(i + 1100, longList[i + 500]);
+            }
+
+            for (int i = 500; i < 1_000; i++)
+            {
+                Assert.Equal(i, longList[i + 500]);
+            }
+        }
     }
 }

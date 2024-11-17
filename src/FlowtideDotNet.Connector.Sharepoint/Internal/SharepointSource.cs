@@ -17,6 +17,7 @@ using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions.Serialization;
@@ -85,15 +86,32 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
             var iterator = sharepointGraphListClient.GetDeltaFromUrl(listId, _state.ODataNextUrl);
 
+            Logger.BeforeCheckpointInDelta(StreamName, Name);
             await output.EnterCheckpointLock();
-            if (await HandleDataRows(iterator, output))
+            try
             {
-                _state.WatermarkVersion++;
-                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, _state.WatermarkVersion));
-                
-                ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+                Logger.FetchingDelta(StreamName, Name);
+                if (await HandleDataRows(iterator, output))
+                {
+                    _state.WatermarkVersion++;
+                    await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, _state.WatermarkVersion));
+
+                    ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+                }
             }
-            output.ExitCheckpointLock();
+            catch(Exception e)
+            {
+                Logger.LogError(e, "Error fetching delta");
+                if (e is TaskCanceledException || e is OperationCanceledException)
+                {
+                    throw new InvalidOperationException("Error fetching delta, task was cancelled.", e);
+                }
+                throw;
+            }
+            finally
+            {
+                output.ExitCheckpointLock();
+            }
         }
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()

@@ -38,11 +38,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             where TKeyContainer : IKeyContainer<K>
             where TValueContainer : IValueContainer<V>
         {
-            var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, new BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer>(options.KeySerializer, options.ValueSerializer));
+            var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, new BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer>(options.KeySerializer, options.ValueSerializer, options.MemoryAllocator));
 
             if (options.BucketSize == null)
             {
                 options.BucketSize = stateClient.BPlusTreePageSize;
+            }
+            if (options.PageSizeBytes == null)
+            {
+                options.PageSizeBytes = stateClient.BPlusTreePageSizeBytes;
             }
 
             var tree = new BPlusTree<K, V, TKeyContainer, TValueContainer>(stateClient, options);
@@ -52,6 +56,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private ValueTask<IStateClient<V, TMetadata>> CreateStateClient<V, TMetadata>(string name, IStateSerializer<V> serializer)
             where V : ICacheObject
+            where TMetadata : IStorageMetadata
         {
             var combinedName = $"{m_name}_{name}";
             return stateManager.CreateClientAsync<V, TMetadata>(combinedName, new StateClientOptions<V>()

@@ -16,14 +16,21 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
+using static SqlParser.Ast.Expression;
+using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -34,38 +41,26 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
     /// Only the offsets will be in a sorted order.
     /// Therefore it must be compacted before serializing.
     /// </summary>
-    internal class UnionColumn : IDataColumn
+    internal class UnionColumn : IDataColumn, IReadOnlyList<IDataValue>
     {
-        private readonly PrimitiveList<sbyte> _typeList;
-        private readonly IntList _offsets;
-        private readonly List<IDataColumn> _valueColumns;
+        private readonly TypeList _typeList;
+        private IntList _offsets;
+        private List<IDataColumn> _valueColumns;
         private readonly sbyte[] _typeIds;
         private readonly IMemoryAllocator _memoryAllocator;
-        private int _typeCounter;
-        
-
-        /// <summary>
-        /// Counter that checks how many deletes have happpened.
-        /// When this gets too high, the column should be compacted.
-        /// </summary>
-        private int _deletesCounter;
-
-        /// <summary>
-        /// Counter that keeps track of how many out of order inserts have happened.
-        /// Too out of order will degrade performance since there wont be as many cache hits.
-        /// </summary>
-        private int outOfOrderCounter;
         private bool disposedValue;
 
         public int Count => _typeList.Count;
 
         public ArrowTypeId Type => ArrowTypeId.Union;
 
+        public IDataValue this[int index] => GetValueAt(index, default);
+
         public UnionColumn(IMemoryAllocator memoryAllocator)
         {
             _memoryAllocator = memoryAllocator;
             _typeIds = new sbyte[35]; //35 types exist
-            _typeList = new PrimitiveList<sbyte>(memoryAllocator);
+            _typeList = new TypeList(memoryAllocator);
             _offsets = new IntList(memoryAllocator);
             _valueColumns = new List<IDataColumn>()
             {
@@ -78,7 +73,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _memoryAllocator = memoryAllocator;
             _valueColumns = columns;
             _typeIds = new sbyte[35]; //35 types exist
-            _typeList = new PrimitiveList<sbyte>(typeListMemory, count, memoryAllocator);
+            _typeList = new TypeList(typeListMemory, count, memoryAllocator);
             _offsets = new IntList(offsetMemory, count, memoryAllocator);
             for (int i = 0; i < _valueColumns.Count; i++)
             {
@@ -86,38 +81,47 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-
-        private void CheckArrayExist(in ArrowTypeId type)
+        internal IDataColumn GetDataColumn(int i)
         {
-            var typeByte = (byte)type;
-            if (_typeIds[typeByte] == 0)
+            return _valueColumns[i];
+        }
+
+
+        private void CheckArrayExist(in ArrowTypeId type, sbyte[] typeIds, List<IDataColumn> valueColumns)
+        {
+            if (type == ArrowTypeId.Null)
             {
-                _typeIds[typeByte] = (sbyte)_valueColumns.Count;
+                return;
+            }
+            var typeByte = (byte)type;
+            if (typeIds[typeByte] == 0)
+            {
+                typeIds[typeByte] = (sbyte)valueColumns.Count;
                 switch (type)
                 {
                     case ArrowTypeId.Int64:
-                        _valueColumns.Add(Int64ColumnFactory.Get(_memoryAllocator));
+                        valueColumns.Add(Int64ColumnFactory.Get(_memoryAllocator));
                         break;
                     case ArrowTypeId.String:
-                        _valueColumns.Add(new StringColumn(_memoryAllocator));
+                        valueColumns.Add(new StringColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Boolean:
-                        _valueColumns.Add(new BoolColumn(_memoryAllocator));
+                        valueColumns.Add(new BoolColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Double:
-                        _valueColumns.Add(new DoubleColumn(_memoryAllocator));
+                        valueColumns.Add(new DoubleColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.List:
-                        _valueColumns.Add(new ListColumn(_memoryAllocator));
+                        valueColumns.Add(new ListColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Binary:
-                        _valueColumns.Add(new BinaryColumn(_memoryAllocator));
+                        valueColumns.Add(new BinaryColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Map:
                         _valueColumns.Add(new MapColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.Decimal128:
-                        _valueColumns.Add(new DecimalColumn(_memoryAllocator));
+                        valueColumns.Add(new DecimalColumn(_memoryAllocator));
                         break;
                     default:
                         throw new NotImplementedException();
@@ -127,25 +131,37 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void InsertAt<T>(in int index, in T value) where T: IDataValue
         {
-            if (index != _typeList.Count)
-            {
-                outOfOrderCounter++;
-            }
             if (value.Type == ArrowTypeId.Null)
             {
-                _typeList.Add((sbyte)ArrowTypeId.Null);
-                _valueColumns[0].Add(value);
-                _offsets.Add(0);
+                _typeList.InsertAt(index, (sbyte)ArrowTypeId.Null);
+                _valueColumns[0].InsertAt(index, value);
+                _offsets.InsertAt(index, 0);
                 return;
             }
 
             var typeByte = (byte)value.Type;
-            CheckArrayExist(value.Type);
+            CheckArrayExist(value.Type, _typeIds, _valueColumns);
             var arrayIndex = _typeIds[typeByte];
-            _typeList.InsertAt(index, arrayIndex);
+            // Find the first occurence of the same type in the type list
+            var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, arrayIndex);
+                
             var valueColumn = _valueColumns[arrayIndex];
-            var offset = valueColumn.Add(in value);
-            _offsets.InsertAt(index, offset);
+            var nextOccurenceOffset = 0;
+            if (nextOccurence < 0)
+            {
+                nextOccurenceOffset = valueColumn.Count;
+            }
+            else 
+            {
+                // Get the offset of the next occurence so this can be directly infront of it.
+                nextOccurenceOffset = _offsets.Get(nextOccurence);
+            }
+            // Insert the value at the next occurence index to displace the old one
+            valueColumn.InsertAt(in nextOccurenceOffset, in value);
+            // Insert the offset and add 1 to the offset to all other offsets that are greater than the next occurence offset.
+            _offsets.InsertAtConditionalAddition(index, nextOccurenceOffset, _typeList.Span, arrayIndex, 1);
+            // Type list must be added to last so the element count when adding to offsets are the same.
+            _typeList.InsertAt(index, arrayIndex);
         }
 
         public int Add<T>(in T value) where T : IDataValue
@@ -160,7 +176,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             throw new NotImplementedException();
         }
 
-        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo_NoLock<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
         {
             var typeIndex = _typeList[index];
             var type = (sbyte)_valueColumns[typeIndex].Type;
@@ -176,21 +192,25 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        {
+            return CompareTo_NoLock(index, in value, in child, in validityList);
+        }
+
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
-            var thisType = _typeList[thisIndex];
+            var thisValueColumnIndex = _typeList[thisIndex];
+            var thisType = _valueColumns[thisValueColumnIndex].Type;
             if (otherColumn is UnionColumn unionColumn)
             {
-                var otherType = unionColumn._typeList[otherIndex];
-
+                var otherValueColumnIndex = unionColumn._typeList[otherIndex];
+                var otherType = unionColumn._valueColumns[otherValueColumnIndex].Type;
                 if (thisType == otherType)
                 {
                     if (thisType == 0)
                     {
                         return 0;
                     }
-                    var thisValueColumnIndex = _typeIds[(byte)thisType];
-                    var otherValueColumnIndex = unionColumn._typeIds[(byte)otherType];
                     var thisValueColumn = _valueColumns[thisValueColumnIndex];
                     var otherValueColumn = unionColumn._valueColumns[otherValueColumnIndex];
                     return thisValueColumn.CompareTo(in otherValueColumn, _offsets.Get(thisIndex), unionColumn._offsets.Get(otherIndex));
@@ -203,7 +223,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             else
             {
                 var value = otherColumn.GetValueAt(otherIndex, default);
-                return CompareTo(thisIndex, value, default, default);
+                return CompareTo_NoLock(thisIndex, value, default, default);
             }
         }
 
@@ -220,8 +240,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
-            var type = _typeList[index];
-            var valueColumnIndex = _typeIds[(byte)type];
+            var valueColumnIndex = _typeList[index];
             var valueColumn = _valueColumns[valueColumnIndex];
             valueColumn.GetValueAt(_offsets.Get(index), dataValueContainer, child);
         }
@@ -237,49 +256,65 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public int Update<T>(in int index, in T value) where T : IDataValue
         {
-            var currentType = _typeList[index];
+            var currentArrayIndex = _typeList[index];
+            CheckArrayExist(value.Type, _typeIds, _valueColumns);
+            var newValueArrayIndex = _typeIds[(byte)value.Type];
 
-            if (currentType != (sbyte)value.Type)
+            if (currentArrayIndex != newValueArrayIndex)
             {
-                CheckArrayExist(value.Type);
-                var typeByte = (byte)value.Type;
-                _typeList[index] = (sbyte)value.Type;
-                var valueColumnIndex = _typeIds[typeByte];
-                var valueColumn = _valueColumns[valueColumnIndex];
-                _offsets.Update(index, valueColumn.Add(in value));
-                _deletesCounter++;
+                // Remove previous value
+                _valueColumns[currentArrayIndex].RemoveAt(_offsets.Get(index));
+                _offsets.RemoveAtConditionalAddition(index, _typeList.Span, currentArrayIndex, -1);
+
+                if (value.Type == ArrowTypeId.Null)
+                {
+                    _offsets.InsertAt(index, 0);
+                    _typeList.Update(index, 0);
+                    return index;
+                }
+                _typeList.RemoveAt(index);
+
+                var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, newValueArrayIndex);
+                var valueColumn = _valueColumns[newValueArrayIndex];
+                var nextOccurenceOffset = 0;
+                if (nextOccurence < 0)
+                {
+                    nextOccurenceOffset = valueColumn.Count;
+                }
+                else
+                {
+                    // Get the offset of the next occurence so this can be directly infront of it.
+                    nextOccurenceOffset = _offsets.Get(nextOccurence);
+                }
+                // Insert the value at the next occurence index to displace the old one
+                valueColumn.InsertAt(in nextOccurenceOffset, in value);
+                // Insert the offset and add 1 to the offset to all other offsets that are greater than the next occurence offset.
+                _offsets.InsertAtConditionalAddition(index, nextOccurenceOffset, _typeList.Span, newValueArrayIndex, 1);
+
+                // Type list must be added to last so the element count when adding to offsets are the same.
+                _typeList.InsertAt(index, newValueArrayIndex);
             }
             else
             {
                 // Same type
-                var valueColumnIndex = _typeIds[(byte)currentType];
-                var valueColumn = _valueColumns[valueColumnIndex];
+                var valueColumn = _valueColumns[currentArrayIndex];
                 var currentOffset = _offsets.Get(index);
-                var newOffset = valueColumn.Update(_offsets.Get(index), in value);
-
-                // Check if the offset has changed, then treat it as a insert and a delete.
-                if (currentOffset != newOffset)
-                {
-                    _offsets.Update(index, newOffset);
-                    _deletesCounter++;
-                }
+                valueColumn.Update(currentOffset, in value);
             }
             return index;
         }
 
         public void RemoveAt(in int index)
         {
-            _deletesCounter++;
+            var arrayIndex = _typeList.Get(index);
+            var valueOffset = _offsets.Get(index);
+            _valueColumns[arrayIndex].RemoveAt(valueOffset);
+            _offsets.RemoveAtConditionalAddition(index, _typeList.Span, arrayIndex, -1);
             _typeList.RemoveAt(index);
-            _offsets.RemoveAt(index);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            if (_deletesCounter > 0 || outOfOrderCounter > 0)
-            {
-                // Need to rebuild the arrays before converting to arrow.
-            }
             List<Field> fields = new List<Field>();
             List<int> typeIds = new List<int>();
             List<IArrowArray> childArrays = new List<IArrowArray>();
@@ -347,7 +382,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void AddToNewList<T>(in T value) where T : IDataValue
         {
-            CheckArrayExist(ArrowTypeId.List);
+            CheckArrayExist(ArrowTypeId.List, _typeIds, _valueColumns);
 
             var typeByte = (byte)ArrowTypeId.List;
             var arrayIndex = _typeIds[typeByte];
@@ -356,7 +391,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public int EndNewList()
         {
-            CheckArrayExist(ArrowTypeId.List);
+            CheckArrayExist(ArrowTypeId.List, _typeIds, _valueColumns);
             var typeByte = (byte)ArrowTypeId.List;
             var arrayIndex = _typeIds[typeByte];
             var offset = _valueColumns[arrayIndex].EndNewList();
@@ -364,6 +399,358 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _typeList.InsertAt(index, arrayIndex);
             _offsets.InsertAt(index, offset);
             return index;
+        }
+
+        public unsafe void RemoveRange(int start, int count)
+        {
+            // All value columns store the data in order so it is possible to remove the range from all value columns.
+            // The type list can be iterated and start offset and end offset can be calculated for each value column.
+            // The values are stored using stack alloc
+            // A difference stack is also allocated that contains the negative difference between the start and end offset for each value column.
+            // That column is used when removing offsets to subtract the value from all offsets being moved down.
+
+            // Max number of different types is 127
+            var startOffets = stackalloc int[127];
+            var endOffsets = stackalloc int[127];
+            var difference = stackalloc int[127];
+
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                startOffets[i] = 0;
+                endOffsets[i] = 0;
+                difference[i] = 0;
+            }
+
+            var end = start + count;
+
+            int nullCount = 0;
+
+            for (int i = start; i < end; i++)
+            {
+                var type = _typeList.Get(i);
+                var offset = _offsets.Get(i);
+
+                if (type == 0)
+                {
+                    nullCount++;
+                }
+                if (startOffets[type] == 0)
+                {
+                    startOffets[type] = offset;
+                }
+                endOffsets[type] = offset;
+            }
+
+            if (nullCount > 0)
+            {
+                _valueColumns[0].RemoveRange(start, nullCount);
+            }
+
+            bool anyColumnHaveDataRemoved = false;
+            for (int i = 1; i < _valueColumns.Count; i++)
+            {
+                var startOffset = startOffets[i];
+                var endOffset = endOffsets[i];
+
+                difference[i] = startOffset - endOffset;
+
+                if (endOffset == 0)
+                {
+                    continue;
+                }
+                anyColumnHaveDataRemoved = true;
+                // Remove the range from the value column
+                _valueColumns[i].RemoveRange(startOffset, endOffset - startOffset);
+            }
+
+            if (anyColumnHaveDataRemoved)
+            {
+                _offsets.RemoveRangeTypeBasedAddition(start, count, _typeList.Span, new Span<int>(difference, 127), _valueColumns.Count);
+            }
+            else
+            {
+                _offsets.RemoveRange(start, count);
+            }
+            
+
+            _typeList.RemoveRange(start, count);
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            int size = 0;
+            for (int i = start; i <= end; i++)
+            {
+                var valueColumnIndex = _typeList[i];
+                var valueColumn = _valueColumns[valueColumnIndex];
+                size += valueColumn.GetByteSize(_offsets.Get(i), _offsets.Get(i));
+                
+            }
+            return size + ((end - start + 1) * sizeof(int));
+        }
+
+        public int GetByteSize()
+        {
+            int size = 0;
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                size += _valueColumns[i].GetByteSize();
+            }
+            return size + (Count * sizeof(int));
+        }
+
+        private void InsertRangeFromBasicColumn(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (validityList == null)
+            {
+                CheckArrayExist(other.Type, _typeIds, _valueColumns);
+                var valueColumnIndex = _typeIds[(int)other.Type];
+                var valueColumn = _valueColumns[valueColumnIndex];
+
+                var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, valueColumnIndex);
+                var nextOccurenceOffset = 0;
+                if (nextOccurence < 0)
+                {
+                    nextOccurenceOffset = valueColumn.Count;
+                }
+                else
+                {
+                    // Get the offset of the next occurence so this can be directly infront of it.
+                    nextOccurenceOffset = _offsets.Get(nextOccurence);
+                }
+                valueColumn.InsertRangeFrom(nextOccurenceOffset, other, start, count, default);
+                // Insert range to offsets, requires special method to only increase offset of the same type.
+                _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(index, nextOccurenceOffset, count, _typeList.Span, valueColumnIndex, count);
+                // Need to insert the type in type list as well.
+                _typeList.InsertStaticRange(index, valueColumnIndex, count);
+            }
+            else
+            {
+                // Find ranges where elements are not null and also ranges where all elements are null.
+                // A range that is not null will be inserted into the value column
+                // The range of null will be added to the null column
+                var currentStart = start;
+                var end = start + count;
+                var currentIndex = index;
+
+                IDataColumn? valueColumn = default;
+                sbyte valueColumnIndex = 0;
+                int nextOccurenceOffset = 0;
+
+                while (currentStart < end)
+                {
+                    var nextNullLocation = validityList.FindNextFalseIndex(currentStart);
+
+                    if (nextNullLocation < 0)
+                    {
+                        nextNullLocation = end;
+                    }
+
+                    if (currentStart < nextNullLocation)
+                    {
+                        // We only create value column if there is any non null values, since the range could be for only null values
+                        // A new value column should not then be created.
+                        if (valueColumn == null)
+                        {
+                            // Create the value column of it does not exist
+                            CheckArrayExist(other.Type, _typeIds, _valueColumns);
+                            valueColumnIndex = _typeIds[(int)other.Type];
+                            valueColumn = _valueColumns[valueColumnIndex];
+
+                            var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, valueColumnIndex);
+                            if (nextOccurence < 0)
+                            {
+                                nextOccurenceOffset = valueColumn.Count;
+                            }
+                            else
+                            {
+                                // Get the offset of the next occurence so this can be directly infront of it.
+                                nextOccurenceOffset = _offsets.Get(nextOccurence);
+                            }
+                        }
+                        
+                        valueColumn.InsertRangeFrom(nextOccurenceOffset, other, currentStart, nextNullLocation - currentStart, default);
+                        _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextOccurenceOffset, nextNullLocation - currentStart, _typeList.Span, valueColumnIndex, nextNullLocation - currentStart);
+                        nextOccurenceOffset += nextNullLocation - currentStart;
+                        // Type list must be added after so the offset is not incremented
+                        _typeList.InsertStaticRange(currentIndex, valueColumnIndex, nextNullLocation - currentStart);
+                        currentIndex += nextNullLocation - currentStart;
+                    }
+                    
+                    var nextNotNullLocation = validityList.FindNextTrueIndex(nextNullLocation);
+                    if (nextNotNullLocation < 0)
+                    {
+                        nextNotNullLocation = end;
+                    }
+                    if (nextNullLocation < nextNotNullLocation)
+                    {
+                        // Add the null range to the null column
+                        _valueColumns[0].InsertRangeFrom(currentStart, other, nextNullLocation, nextNotNullLocation - nextNullLocation, default);
+                        _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextNullLocation, nextNotNullLocation - nextNullLocation, _typeList.Span, 0, nextNotNullLocation - nextNullLocation);
+                        _typeList.InsertStaticRange(currentIndex, 0, nextNotNullLocation - nextNullLocation);
+                        currentIndex += nextNotNullLocation - nextNullLocation;
+                    }
+                    currentStart = nextNotNullLocation;
+                }
+            }
+        }
+
+        [SkipLocalsInit]
+        private unsafe void InsertRangeFromUnionColumn(int index, UnionColumn other, int start, int count, BitmapList? validityList)
+        {
+            // Must find which types are missing, and also what index they exist on in other and also in this column.
+            // After that they should be able to be copied over to this column by a value column basis.
+
+            // Used types contains true or false on value column indices if the column is used in the range
+            var usedTypes = stackalloc bool[127];
+
+            // Start and end offsets contains the offset for each type in the range, this is used when copying data over.
+            var startOffsets = stackalloc int[127];
+            var endOffsets = stackalloc int[127];
+            var otherDifference = stackalloc int[127];
+            var thisDifference = stackalloc int[127];
+
+            // Mapping table contains the index of the value column in this column for the value column in other column
+            var mappingTable = stackalloc sbyte[127];
+
+            // Reset all required columns
+            for (int i = 0; i < other._valueColumns.Count; i++)
+            {
+                usedTypes[i] = false;
+                startOffsets[i] = -1;
+                endOffsets[i] = -1;
+                otherDifference[i] = 0;
+                mappingTable[i] = 0;
+            }
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                thisDifference[i] = 0;
+            }
+
+            int nullCount = 0;
+
+            // Find all types that are used in the range
+            // and also find the offsets that are in use.
+            var end = start + count;
+            for (int i = start; i < end; i++)
+            {
+                var type = other._typeList[i];
+                usedTypes[type] = true;
+                var offset = other._offsets.Get(i);
+
+                if (type == 0)
+                {
+                    // Special case to handle nulls, since they do not have incrementing offsets.
+                    nullCount++;
+                }
+
+                if (startOffsets[type] < 0)
+                {
+                    startOffsets[type] = offset;
+                }
+                endOffsets[type] = offset;
+            }
+
+            if (usedTypes[0])
+            {
+                _valueColumns[0].InsertNullRange(0, nullCount);
+            }
+
+            for (int i = 1; i < other._valueColumns.Count; i++)
+            {
+                if (usedTypes[i])
+                {
+                    sbyte destinationValueIndex;
+                    if (_typeIds[(int)other._valueColumns[i].Type] == 0)
+                    {
+                        // Create the array for the missing type
+                        CheckArrayExist(other._valueColumns[i].Type, _typeIds, _valueColumns);
+                        destinationValueIndex = _typeIds[(int)other._valueColumns[i].Type];
+                    }
+                    else
+                    {
+                        destinationValueIndex = _typeIds[(int)other._valueColumns[i].Type];
+                    }
+                    mappingTable[i] = destinationValueIndex;
+
+                    // Must find next occurence first
+                    var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, destinationValueIndex);
+                    var nextOccurenceOffset = 0;
+                    if (nextOccurence < 0)
+                    {
+                        nextOccurenceOffset = _valueColumns[destinationValueIndex].Count;
+                    }
+                    else
+                    {
+                        // Get the offset of the next occurence so this can be directly infront of it.
+                        nextOccurenceOffset = _offsets.Get(nextOccurence);
+                    }
+
+                    var countToMove = endOffsets[i] - startOffsets[i] + 1;
+
+                    otherDifference[i] = nextOccurenceOffset - startOffsets[i];
+                    thisDifference[destinationValueIndex] = countToMove;
+
+                    _valueColumns[destinationValueIndex].InsertRangeFrom(nextOccurenceOffset, other._valueColumns[i], startOffsets[i], countToMove, default);
+                }
+            }
+            // Add offsets and types, these can have changed values
+            // Require offset insert type based addition
+            _offsets.InsertRangeFromTypeBasedAddition(index, other._offsets, start, count, _typeList.Span, new Span<int>(thisDifference, 127), other._typeList.Span, new Span<int>(otherDifference, 127), _valueColumns.Count);
+            _typeList.InsertRangeFrom(index, other._typeList, start, count, new Span<sbyte>(mappingTable, 127), _valueColumns.Count);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            // Check all column types since union column must be able to support all of them.
+            if (other is UnionColumn unionColumn)
+            {
+                InsertRangeFromUnionColumn(index, unionColumn, start, count, validityList);
+            }
+            else
+            {
+                InsertRangeFromBasicColumn(index, other, start, count, validityList);
+            }
+        }
+
+        private IEnumerable<IDataValue> Enumerate()
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                yield return GetValueAt(i, default);
+            }
+        }
+
+        public IEnumerator<IDataValue> GetEnumerator()
+        {
+            return Enumerate().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return Enumerate().GetEnumerator();
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            // Insert null type
+            _typeList.InsertStaticRange(index, 0, count);
+            // Insert offsets
+            _offsets.InsertRangeStaticValue(index, count, 0);
+            // Add to null column to increase its counter
+            _valueColumns[0].InsertNullRange(index, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            var valueColumnIndex = _typeList[index];
+            if (valueColumnIndex == 0)
+            {
+                writer.WriteNullValue();
+                return;
+            }
+            var valueColumn = _valueColumns[valueColumnIndex];
+            valueColumn.WriteToJson(in writer, _offsets.Get(index));
         }
     }
 }

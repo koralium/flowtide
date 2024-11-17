@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
-            return visitor.VisitStringLiteral(this, state);
+            return visitor.VisitStringLiteral(this, state)!;
         }
 
         public override bool Equals(object? obj)

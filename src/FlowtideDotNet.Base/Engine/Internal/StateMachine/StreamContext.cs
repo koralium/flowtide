@@ -29,12 +29,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
     public enum StreamStateValue
     {
-        NotStarted,
-        Starting,
-        Running,
-        Failure,
-        Deleting,
-        Deleted
+        NotStarted = 0,
+        Starting = 1,
+        Running = 2,
+        Failure = 3,
+        Deleting = 4,
+        Deleted = 5,
+        Stopping = 6
     }
 
     internal class StreamContext : IStreamTriggerCaller, IAsyncDisposable
@@ -66,6 +67,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal TaskCompletionSource? checkpointTask;
         internal DateTimeOffset? inQueueCheckpoint;
 
+        internal TaskCompletionSource? _stopTask;
+
         private StreamStateMachineState? _state = null;
 
         internal Task? _scheduleCheckpointTask;
@@ -73,6 +76,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal CancellationTokenSource? _scheduleCheckpointCancelSource;
 
         internal StreamStateValue currentState;
+        internal StreamStateValue _wantedState;
 
         /// <summary>
         /// Flag that tells if the stream has failed once
@@ -141,6 +145,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         break;
                 }
                 return new Measurement<float>(val, new KeyValuePair<string, object?>("stream", streamName));
+            });
+            _contextMeter.CreateObservableGauge<int>("flowtide_state", () =>
+            {
+                return new Measurement<int>((int)currentState, new KeyValuePair<string, object?>("stream", streamName));
+            });
+            _contextMeter.CreateObservableGauge<int>("flowtide_wanted_state", () =>
+            {
+                return new Measurement<int>((int)_wantedState, new KeyValuePair<string, object?>("stream", streamName));
             });
             if (loggerFactory == null)
             {
@@ -225,6 +237,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return TransitionTo(current, new DeletingStreamState(), oldState);
                 case StreamStateValue.Deleted:
                     return TransitionTo(current, new DeletedStreamState(), oldState);
+                case StreamStateValue.Stopping:
+                    return TransitionTo(current, new StoppingStreamState(), oldState);
+                case StreamStateValue.NotStarted:
+                    return TransitionTo(current, new NotStartedStreamState(), oldState);
             }
             return Task.CompletedTask;
         }
@@ -489,6 +505,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _logger.StreamError(e, streamName);
             lock(_contextLock)
             {
+                if (_notificationReciever != null)
+                {
+                    _notificationReciever.OnFailure(e);
+                }
                 return _state!.OnFailure();
             }
         }
@@ -503,6 +523,22 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             lock(_contextLock)
             {
                 return _state!.DeleteAsync();
+            }
+        }
+
+        internal Task StopAsync()
+        {
+            lock (_checkpointLock)
+            {
+                if (_stopTask == null)
+                {
+                    _stopTask = new TaskCompletionSource();
+                    lock (_contextLock)
+                    {
+                        _ = _state!.StopAsync();
+                    }
+                }
+                return _stopTask.Task;
             }
         }
 
@@ -596,6 +632,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return StreamStatus.Running;
                 case StreamStateValue.Failure:
                     return StreamStatus.Failing;
+                case StreamStateValue.Stopping:
+                    return StreamStatus.Running;
                 default:
                     return StreamStatus.Degraded;
             }

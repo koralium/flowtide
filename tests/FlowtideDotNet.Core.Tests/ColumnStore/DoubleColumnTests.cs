@@ -11,11 +11,13 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
@@ -87,6 +89,94 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(-1, column.CompareTo(0, new DoubleValue(1), default, default));
             Assert.Equal(0, column.CompareTo(1, new DoubleValue(1), default, default));
             Assert.Equal(1, column.CompareTo(2, new DoubleValue(1), default, default));
+        }
+
+        [Fact]
+        public void RemoveRangeNotNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<double?> expected = new List<double?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                column.Add(new DoubleValue(i));
+                expected.Add(i);
+            }
+
+            column.RemoveRange(100, 100);
+
+            Assert.Equal(900, column.Count);
+
+            for (int i = 0; i < 100; i++)
+            {
+                if (expected[i] != null)
+                {
+                    Assert.Equal(expected[i], column.GetValueAt(i, default).AsDouble);
+                }
+                else
+                {
+                    Assert.True(column.GetValueAt(i, default).IsNull);
+                }
+            }
+        }
+
+        [Fact]
+        public void RemoveRangeWithNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<double?> expected = new List<double?>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                if (r.Next(0, 2) == 0)
+                {
+                    column.Add(new DoubleValue(i));
+                    expected.Add(i);
+                }
+                else
+                {
+                    column.Add(NullValue.Instance);
+                    expected.Add(null);
+                }
+            }
+
+            column.RemoveRange(100, 100);
+            expected.RemoveRange(100, 100);
+
+            Assert.Equal(900, column.Count);
+            Assert.Equal(expected.Count(x => x == null), column.GetNullCount());
+
+            for (int i = 0; i < 900; i++)
+            {
+                if (expected[i] != null)
+                {
+                    Assert.Equal(expected[i], column.GetValueAt(i, default).AsDouble);
+                }
+                else
+                {
+                    Assert.True(column.GetValueAt(i, default).IsNull);
+                }
+            }
+        }
+
+        [Fact]
+        public void TestJsonEncoding()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new DoubleValue(1.23));
+
+            using MemoryStream stream = new MemoryStream();
+            Utf8JsonWriter writer = new Utf8JsonWriter(stream);
+
+            column.WriteToJson(in writer, 0);
+            writer.Flush();
+
+            string json = Encoding.UTF8.GetString(stream.ToArray());
+
+            Assert.Equal("1.23", json);
         }
     }
 }

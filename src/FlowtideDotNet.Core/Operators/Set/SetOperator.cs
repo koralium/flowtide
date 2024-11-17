@@ -35,8 +35,8 @@ namespace FlowtideDotNet.Core.Operators.Set
 
 #if DEBUG_WRITE
         // TODO: Tmp remove
-        private StreamWriter allInput;
-        private StreamWriter outputWriter;
+        private StreamWriter? allInput;
+        private StreamWriter? outputWriter;
 #endif
 
         public override string DisplayName => "Union";
@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Core.Operators.Set
 #if DEBUG_WRITE
                 foreach (var o in output)
                 {
-                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
+                    outputWriter!.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
 #endif
                 Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
@@ -156,7 +156,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                 yield return new StreamEventBatch(output, setRelation.OutputLength);
             }
 #if DEBUG_WRITE
-            await outputWriter.FlushAsync();
+            await outputWriter!.FlushAsync();
 #endif
         }
 
@@ -168,8 +168,8 @@ namespace FlowtideDotNet.Core.Operators.Set
         public override async Task<object?> OnCheckpoint()
         {
 #if DEBUG_WRITE
-            allInput.WriteLine("Checkpoint");
-            allInput.Flush();
+            allInput!.WriteLine("Checkpoint");
+            allInput!.Flush();
 #endif
             foreach (var storage in _storages)
             {
@@ -183,12 +183,12 @@ namespace FlowtideDotNet.Core.Operators.Set
             Debug.Assert(_eventsProcessed != null, nameof(_eventsProcessed));
             _eventsProcessed.Add(msg.Events.Count);
 #if DEBUG_WRITE
-            allInput.WriteLine("New batch");
+            allInput!.WriteLine("New batch");
             foreach (var e in msg.Events)
             {
-                allInput.WriteLine($"{targetId}, {e.Weight} {e.ToJson()}");
+                allInput!.WriteLine($"{targetId}, {e.Weight} {e.ToJson()}");
             }
-            allInput.Flush();
+            allInput!.Flush();
 #endif
             return _operation(targetId, msg, time);
         }
@@ -234,7 +234,8 @@ namespace FlowtideDotNet.Core.Operators.Set
                 {
                     Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer()),
                     KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    MemoryAllocator = MemoryAllocator
                 }));
                 
             }

@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -60,5 +61,23 @@ namespace FlowtideDotNet.Core.ColumnStore
         void AddToNewList<T>(in T value) where T : IDataValue;
 
         int EndNewList();
+
+        void RemoveRange(int start, int count);
+
+        int GetByteSize(int start, int end);
+
+        int GetByteSize();
+
+        void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList);
+
+        /// <summary>
+        /// Inserts null on all elements in the range.
+        /// Used as an optimization to not have to insert nulls one by one.
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="count"></param>
+        void InsertNullRange(int index, int count);
+
+        void WriteToJson(ref readonly Utf8JsonWriter writer, in int index);
     }
 }

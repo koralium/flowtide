@@ -28,6 +28,6 @@ namespace FlowtideDotNet.AcceptanceTests.Entities
 
         public string? ProjectNumber { get; set; }
 
-        public string Name { get; set; }
+        public string? Name { get; set; }
     }
 }

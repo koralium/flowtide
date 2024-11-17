@@ -123,7 +123,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StrftimeImpl
                     specifier: specifier.Groups[0].Value,
                     flags: specifier.Groups[GROUP_FLAGS].Captures.Cast<Capture>().Select(capture => capture.Value).ToList(),
                     width: specifier.Groups[GROUP_WIDTH].Captures.Cast<Capture>().Select(capture => (int?)Convert.ToInt32(capture.Value)).FirstOrDefault(),
-                    directive: specifier.Groups[GROUP_DIRECTIVE].Captures.Cast<Capture>().Select(capture => capture.Value).FirstOrDefault(),
+                    directive: specifier.Groups[GROUP_DIRECTIVE].Captures.Cast<Capture>().Select(capture => capture.Value).First(),
                     source: dateTime,
                     culture: culture
                     ), RegexOptions.None, Regex.InfiniteMatchTimeout);
@@ -144,7 +144,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StrftimeImpl
                     specifier: specifier.Groups[0].Value,
                     flags: specifier.Groups[GROUP_FLAGS].Captures.Cast<Capture>().Select(capture => capture.Value).ToList(),
                     width: specifier.Groups[GROUP_WIDTH].Captures.Cast<Capture>().Select(capture => (int?)Convert.ToInt32(capture.Value)).FirstOrDefault(),
-                    directive: specifier.Groups[GROUP_DIRECTIVE].Captures.Cast<Capture>().Select(capture => capture.Value).FirstOrDefault(),
+                    directive: specifier.Groups[GROUP_DIRECTIVE].Captures.Cast<Capture>().Select(capture => capture.Value).First(),
                     source: dateTimeOffset,
                     culture: culture
                     ), RegexOptions.None, Regex.InfiniteMatchTimeout);
