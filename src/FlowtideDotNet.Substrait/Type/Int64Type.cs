@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Type
 {
-    internal class Int64Type : SubstraitBaseType
+    public class Int64Type : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.Int64;
     }

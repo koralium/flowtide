@@ -1,6 +1,8 @@
 using FASTER.core;
 using FASTER.devices;
 using FlowtideDotNet.AspNetCore.Extensions;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Storage.DeviceFactories;
 using FlowtideDotNet.Storage.StateManager;
@@ -10,6 +12,7 @@ using Microsoft.Extensions.Logging.Console;
 using Nest;
 using OpenTelemetry.Metrics;
 using System.IO.Compression;
+using FlowtideDotNet.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,91 +25,47 @@ builder.Services.AddOpenTelemetry()
 
 // Stream version is used to create a unique stream, and create new elasticsearch indices if required.
 var streamVersion = builder.Configuration.GetValue<string>("StreamVersion") ?? throw new InvalidOperationException("StreamVersion not found");
-
-var query = File.ReadAllText("query.sql");
-
-SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
-sqlPlanBuilder.AddSqlServerProvider(() => builder.Configuration.GetConnectionString("SqlServer") ?? throw new InvalidOperationException("SqlServer connection string not found"));
-sqlPlanBuilder.Sql(query);
-var plan = sqlPlanBuilder.GetPlan();
-
-var readWriteFactory = new ReadWriteFactory();
-readWriteFactory.AddSqlServerSource("*", () => builder.Configuration.GetConnectionString("SqlServer") ?? throw new InvalidOperationException("SqlServer connection string not found"));
-readWriteFactory.AddElasticsearchSink("*", new FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions()
-{
-    ConnectionSettings = new ConnectionSettings(new Uri(builder.Configuration.GetValue<string>("ElasticsearchUrl") ?? throw new InvalidOperationException("ElasticsearchUrl not found"))),
-    GetIndexNameFunc = (writeRel) =>
-    {
-        return $"{writeRel.NamedObject.DotSeperated}_{streamVersion}";
-    },
-    OnInitialDataSent = async (client, writeRel, indexName) =>
-    {
-        var aliasName = writeRel.NamedObject.DotSeperated;
-        var oldIndices = await client.GetIndicesPointingToAliasAsync(aliasName);
-        var putAliasResponse = await client.Indices.PutAliasAsync(indexName, writeRel.NamedObject.DotSeperated);
-
-        if (putAliasResponse.IsValid)
-        {
-            foreach (var oldIndex in oldIndices)
-            {
-                if (oldIndex != indexName)
-                {
-                    await client.Indices.DeleteAsync(oldIndex);
-                }
-            }
-        }
-        else
-        {
-            throw new InvalidOperationException(putAliasResponse.ServerError.Error.StackTrace);
-        }
-    }
-});
-
 var azureStorageString = builder.Configuration.GetConnectionString("azureStorage") ?? throw new InvalidOperationException("AzureStorage connection string not found");
 
-// Create a logger factory to get logs from the storage devices
-var storageLoggerFactory = LoggerFactory.Create(b =>
-{
-    b.AddConsole();
-});
-var log = new AzureStorageDevice(azureStorageString, "sqlservertoelastic", streamVersion, "hlog.log", logger: storageLoggerFactory.CreateLogger("azurestorage"));
-
-// Create azure storage backed checkpoint manager
-var checkpointManager = new DeviceLogCommitCheckpointManager(
-                new AzureStorageNamedDeviceFactory(azureStorageString, logger: storageLoggerFactory.CreateLogger("azurestoragefactory")),
-                new DefaultCheckpointNamingScheme($"sqlservertoelastic/{streamVersion}/checkpoints/"), logger: storageLoggerFactory.CreateLogger("checkpointmanager"));
-
-builder.Services.AddFlowtideStream(x =>
-{
-    x.AddPlan(plan)
-    .AddReadWriteFactory(readWriteFactory)
-    .WithStateOptions(new StateManagerOptions()
+builder.Services.AddFlowtideStream("sqlservertoelastic")
+    .AddSqlFileAsPlan("query.sql")
+    .AddConnectors(connectorManager =>
     {
-        // Read cache for reduced latency, minimizes calls to azure storage, but increases memory and local disk usage
-        UseReadCache = true,
-        // Use a maximum of 8 gb of memory
-        MaxProcessMemory = 1024 * 1024 * 1024 * 8L,
-        PersistentStorage = new FlowtideDotNet.Storage.Persistence.FasterStorage.FasterKvPersistentStorage(new FASTER.core.FasterKVSettings<long, FASTER.core.SpanByte>()
+        connectorManager.AddSqlServerSource(() => builder.Configuration.GetConnectionString("SqlServer") ?? throw new InvalidOperationException("SqlServer connection string not found"));
+        connectorManager.AddElasticsearchSink("*", new FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions()
         {
-            // 32 mb memory
-            MemorySize = 1024 * 1024 * 32,
-            PageSize = 1024 * 1024 * 16,
-            CheckpointManager = checkpointManager,
-            LogDevice = log
-        }),
-        SerializeOptions = new FlowtideDotNet.Storage.StateSerializeOptions()
-        {
-            CompressFunc = (stream) =>
+            ConnectionSettings = new ConnectionSettings(new Uri(builder.Configuration.GetValue<string>("ElasticsearchUrl") ?? throw new InvalidOperationException("ElasticsearchUrl not found"))),
+            GetIndexNameFunc = (writeRel) =>
             {
-                return new System.IO.Compression.ZLibStream(stream, CompressionMode.Compress);
+                return $"{writeRel.NamedObject.DotSeperated}_{streamVersion}";
             },
-            DecompressFunc = (stream) =>
+            OnInitialDataSent = async (client, writeRel, indexName) =>
             {
-                return new System.IO.Compression.ZLibStream(stream, CompressionMode.Decompress);
+                var aliasName = writeRel.NamedObject.DotSeperated;
+                var oldIndices = await client.GetIndicesPointingToAliasAsync(aliasName);
+                var putAliasResponse = await client.Indices.PutAliasAsync(indexName, writeRel.NamedObject.DotSeperated);
+
+                if (putAliasResponse.IsValid)
+                {
+                    foreach (var oldIndex in oldIndices)
+                    {
+                        if (oldIndex != indexName)
+                        {
+                            await client.Indices.DeleteAsync(oldIndex);
+                        }
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException(putAliasResponse.ServerError.Error.StackTrace);
+                }
             }
-        }
+        });
+    })
+    .AddStorage(storage =>
+    {
+        storage.AddFasterKVAzureStorage(azureStorageString, "sqlservertoelastic", streamVersion);
     });
-}, "sqlservertoelastic");
 
 var app = builder.Build();
 

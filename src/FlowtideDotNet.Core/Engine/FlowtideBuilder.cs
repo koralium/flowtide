@@ -19,6 +19,7 @@ using System.Text;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using System.Diagnostics;
+using FlowtideDotNet.Core.Connectors;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -26,13 +27,15 @@ namespace FlowtideDotNet.Core.Engine
     {
         DataflowStreamBuilder dataflowStreamBuilder;
         private Plan? _plan;
+        private IConnectorManager? _connectorManager;
         private IReadWriteFactory? _readWriteFactory;
         private IStateHandler? _stateHandler;
-        private StateManagerOptions? _stateManagerOptions;
         private int _queueSize = 100;
         private FunctionsRegister _functionsRegister;
         private int _parallelism = 1;
         private TimeSpan _getTimestampInterval = TimeSpan.FromHours(1);
+        private TaskScheduler? _taskScheduler;
+        private bool _useColumnStore = true;
 
         public FlowtideBuilder(string streamName)
         {
@@ -55,6 +58,13 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder AddConnectorManager(IConnectorManager connectorManager)
+        {
+            _connectorManager = connectorManager;
+            return this;
+        }
+
+        [Obsolete("Use ConnectorManager instead")]
         public FlowtideBuilder AddReadWriteFactory(IReadWriteFactory readWriteFactory)
         {
             _readWriteFactory = readWriteFactory;
@@ -116,6 +126,18 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder SetTaskScheduler(TaskScheduler taskScheduler)
+        {
+            _taskScheduler = taskScheduler;
+            return this;
+        }
+
+        public FlowtideBuilder ColumnStore(bool use)
+        {
+            _useColumnStore = use;
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
@@ -141,21 +163,31 @@ namespace FlowtideDotNet.Core.Engine
             {
                 throw new InvalidOperationException("No plan has been added.");
             }
-            if (_readWriteFactory == null)
+            if (_connectorManager == null && _readWriteFactory == null)
             {
-                throw new InvalidOperationException("No read write factory has been added.");
+                throw new InvalidOperationException("No connector manager or ReadWriteFactory has been added.");
             }
             var hash = ComputePlanHash();
             dataflowStreamBuilder.SetVersionInformation(1, hash);
 
+            // Modify plan
+            if (_connectorManager != null)
+            {
+                var planModifier = new ConnectorPlanModifyVisitor(_connectorManager);
+                planModifier.VisitPlan(_plan);
+            }
+
             SubstraitVisitor visitor = new SubstraitVisitor(
                 _plan, 
                 dataflowStreamBuilder, 
-                _readWriteFactory, 
+                _connectorManager, 
+                _readWriteFactory,
                 _queueSize, 
                 _functionsRegister, 
                 _parallelism, 
-                _getTimestampInterval);
+                _getTimestampInterval,
+                _useColumnStore,
+                _taskScheduler);
 
             visitor.BuildPlan();
 

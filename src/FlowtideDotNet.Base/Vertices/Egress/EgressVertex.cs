@@ -14,6 +14,7 @@ using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Egress.Internal;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -33,18 +34,26 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private bool _isHealthy = true;
         private CancellationTokenSource? _cancellationTokenSource;
         private IHistogram<float>? _latencyHistogram;
+        private IMemoryAllocator? _memoryAllocator;
 
-        public string Name { get; private set; }
+        private string? _name;
+        private string? _streamName;
+        private IMeter? _metrics;
+        private ILogger? _logger;
 
-        protected string StreamName { get; private set; }
+        public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
 
-        protected IMeter Metrics { get; private set; }
+        protected string StreamName => _streamName ?? throw new InvalidOperationException("StreamName can only be fetched after initialize or setup method calls");
+
+        protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after initialize or setup method calls");
 
         public abstract string DisplayName { get; }
 
-        public ILogger Logger { get; private set; }
+        public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after initialize or setup method calls");
 
         protected CancellationToken CancellationToken => _cancellationTokenSource?.Token ?? throw new InvalidOperationException("Cancellation token can only be fetched after initialization.");
+
+        protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
         protected EgressVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
@@ -56,11 +65,11 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         {
             if (_executionDataflowBlockOptions.GetSupportsParallelExecution())
             {
-                _targetBlock = new ParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
+                _targetBlock = new ParallelEgressVertex<T>(_executionDataflowBlockOptions, HandleRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
             }
             else
             {
-                _targetBlock = new NonParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
+                _targetBlock = new NonParallelEgressVertex<T>(_executionDataflowBlockOptions, HandleRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
             }
         }
 
@@ -121,6 +130,15 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         protected abstract Task<TState> OnCheckpoint(long checkpointTime);
 
+        private async Task HandleRecieve(T msg, long time)
+        {
+            await OnRecieve(msg, time).ConfigureAwait(false);
+            if (msg is IRentable rentable)
+            {
+                rentable.Return();
+            }
+        }
+
         protected abstract Task OnRecieve(T msg, long time);
 
         public Task Completion => _targetBlock?.Completion ?? throw new NotSupportedException("CreateBlocks must be called before getting completion");
@@ -140,16 +158,17 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
         {
-             _cancellationTokenSource = new CancellationTokenSource();
-            Name = name;
-            StreamName = vertexHandler.StreamName;
-            Metrics = vertexHandler.Metrics;
+            _memoryAllocator = vertexHandler.MemoryManager;
+            _cancellationTokenSource = new CancellationTokenSource();
+            _name = name;
+            _streamName = vertexHandler.StreamName;
+            _metrics = vertexHandler.Metrics;
             TState? dState = default;
             if (state.HasValue)
             {
                 dState = JsonSerializer.Deserialize<TState>(state.Value);
             }
-            Logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
+            _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
 
             Metrics.CreateObservableGauge("busy", () =>
             {
@@ -231,8 +250,8 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         public void Setup(string streamName, string operatorName)
         {
-            Name = operatorName;
-            StreamName = streamName;
+            _name = operatorName;
+            _streamName = streamName;
         }
 
         public IEnumerable<ITargetBlock<IStreamEvent>> GetLinks()

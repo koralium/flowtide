@@ -33,10 +33,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
     internal class NormalizationOperator : UnaryVertex<StreamEventBatch, NormalizationState>
     {
 #if DEBUG_WRITE
-        private StreamWriter allOutput;
+        private StreamWriter? allOutput;
 #endif
         private readonly NormalizationRelation normalizationRelation;
-        private IBPlusTree<string, IngressData>? _tree;
+        private IBPlusTree<string, IngressData, ListKeyContainer<string>, ListValueContainer<IngressData>>? _tree;
         private readonly Func<RowEvent, bool>? _filter;
 
         private ICounter<long>? _eventsCounter;
@@ -64,8 +64,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         public override async Task<NormalizationState> OnCheckpoint()
         {
 #if DEBUG_WRITE
-            allOutput.WriteLine("Checkpoint");
-            await allOutput.FlushAsync();
+            allOutput!.WriteLine("Checkpoint");
+            await allOutput!.FlushAsync();
 #endif
             Debug.Assert(_tree != null, nameof(_tree));
             // Commit changes in the tree
@@ -109,15 +109,15 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 #if DEBUG_WRITE
             foreach(var e in output)
             {
-                allOutput.WriteLine($"{e.Weight} {e.ToJson()}");
+                allOutput!.WriteLine($"{e.Weight} {e.ToJson()}");
             }
-            await allOutput.FlushAsync();
+            await allOutput!.FlushAsync();
 #endif
             if (output.Count > 0)
             {
                 Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
                 _eventsCounter.Add(output.Count);
-                yield return new StreamEventBatch(output);
+                yield return new StreamEventBatch(output, normalizationRelation.OutputLength);
             }
             
         }
@@ -150,7 +150,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             Debug.Assert(_tree != null, nameof(_tree));
 
             bool isUpdate = false;
-            Memory<byte>? previousValue = null;
+            byte[]? previousValue = null;
 
             var ingressInput = IngressData.Create(b =>
             {
@@ -197,12 +197,12 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
             if (isUpdate)
             {
-                if (!previousValue.HasValue)
+                if (previousValue == null)
                 {
                     throw new InvalidOperationException("Previous value was null, should not happen");
                 }
                 output.Add(new RowEvent(1, 0, new CompactRowData(ingressInput.Memory)));
-                output.Add(new RowEvent(-1, 0, new CompactRowData(previousValue.Value)));
+                output.Add(new RowEvent(-1, 0, new CompactRowData(previousValue)));
             }
             else if (added)
             {
@@ -212,6 +212,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         protected async Task Delete(string ke, List<RowEvent> output)
         {
+            Debug.Assert(_tree != null);
             bool isFound = false;
             IngressData? data;
             
@@ -236,7 +237,19 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         protected override async Task InitializeOrRestore(NormalizationState? state, IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
-            allOutput = File.CreateText($"{Name}.alloutput.txt");
+            if (!Directory.Exists("debugwrite"))
+            {
+                Directory.CreateDirectory("debugwrite");
+            }
+            if (allOutput == null)
+            {
+                allOutput = File.CreateText($"debugwrite/{StreamName}_{Name}.alloutput.txt");
+            }
+            else
+            {
+                allOutput.WriteLine("Restart");
+                allOutput.Flush();
+            }
 #endif
             Logger.InitializingNormalizationOperator(StreamName, Name);
             if (_eventsCounter == null)
@@ -247,11 +260,13 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            _tree = await stateManagerClient.GetOrCreateTree("input", new BPlusTreeOptions<string, IngressData>()
+            _tree = await stateManagerClient.GetOrCreateTree("input", 
+                new BPlusTreeOptions<string, IngressData, ListKeyContainer<string>, ListValueContainer<IngressData>>()
             {
-                Comparer = StringComparer.Ordinal,
-                KeySerializer = new StringSerializer(),
-                ValueSerializer = new IngressDataStateSerializer()
+                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                ValueSerializer = new ValueListSerializer<IngressData>(new IngressDataStateSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
         }
 

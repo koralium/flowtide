@@ -65,7 +65,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                     for (int k = lastField; k < emitField; k++)
                     {
                         readRelation.BaseSchema.Names.RemoveAt(lastField);
-                        readRelation.BaseSchema.Struct.Types.RemoveAt(lastField);
+                        if (readRelation.BaseSchema.Struct != null)
+                        {
+                            readRelation.BaseSchema.Struct.Types.RemoveAt(lastField);
+                        }
                         relativeOffset++;
                     }
                     lastField = usageList[i] - relativeOffset + 1;
@@ -73,7 +76,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 if (lastField < readRelation.BaseSchema.Names.Count)
                 {
                     readRelation.BaseSchema.Names.RemoveRange(lastField, readRelation.BaseSchema.Names.Count - lastField);
-                    readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                    if (readRelation.BaseSchema.Struct != null)
+                    {
+                        readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                    }
                 }
 
                 if (readRelation.Filter != null)
@@ -99,7 +105,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 if (lastField < readRelation.BaseSchema.Names.Count)
                 {
                     readRelation.BaseSchema.Names.RemoveRange(lastField, readRelation.BaseSchema.Names.Count - lastField);
-                    readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                    if (readRelation.BaseSchema.Struct != null)
+                    {
+                        readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                    }
                 }
             }
             return readRelation;
@@ -115,20 +124,24 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             {
                 var input = aggregateRelation.Input;
                 var usageVisitor = new ExpressionFieldUsageVisitor(aggregateRelation.Input.OutputLength);
-                foreach(var measure in aggregateRelation.Measures)
+                if (aggregateRelation.Measures != null)
                 {
-                    if (measure.Measure.Arguments != null)
+                    foreach (var measure in aggregateRelation.Measures)
                     {
-                        foreach (var arg in measure.Measure.Arguments)
+                        if (measure.Measure.Arguments != null)
                         {
-                            usageVisitor.Visit(arg, default);
+                            foreach (var arg in measure.Measure.Arguments)
+                            {
+                                usageVisitor.Visit(arg, default);
+                            }
+                        }
+                        if (measure.Filter != null)
+                        {
+                            usageVisitor.Visit(measure.Filter, default);
                         }
                     }
-                    if (measure.Filter != null)
-                    {
-                        usageVisitor.Visit(measure.Filter, default);
-                    }
                 }
+                
                 if (aggregateRelation.Groupings != null)
                 {
                     foreach (var grouping in aggregateRelation.Groupings)
@@ -142,32 +155,27 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 
                 var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
 
-                Dictionary<int, int> oldToNew = new Dictionary<int, int>();
-                List<int> emit = new List<int>();
-                int count = 0;
-                foreach (var field in usedFields.OrderBy(x => x))
-                {
-                    emit.Add(field);
-                    oldToNew.Add(field, count);
-                    count++;
-                }
+                var inputEmitResult = CreateInputEmitList(input, usedFields);
 
-                var replaceVisitor = new ExpressionFieldReplaceVisitor(oldToNew);
-                foreach (var measure in aggregateRelation.Measures)
+                var replaceVisitor = new ExpressionFieldReplaceVisitor(inputEmitResult.OldToNew);
+                if (aggregateRelation.Measures != null)
                 {
-                    if (measure.Measure.Arguments != null)
+                    foreach (var measure in aggregateRelation.Measures)
                     {
-                        foreach (var arg in measure.Measure.Arguments)
+                        if (measure.Measure.Arguments != null)
                         {
-                            replaceVisitor.Visit(arg, default);
+                            foreach (var arg in measure.Measure.Arguments)
+                            {
+                                replaceVisitor.Visit(arg, default);
+                            }
+                        }
+                        if (measure.Filter != null)
+                        {
+                            replaceVisitor.Visit(measure.Filter, default);
                         }
                     }
-                    if (measure.Filter != null)
-                    {
-                        replaceVisitor.Visit(measure.Filter, default);
-                    }
                 }
-
+                
                 if (aggregateRelation.Groupings != null)
                 {
                     foreach (var grouping in aggregateRelation.Groupings)
@@ -179,7 +187,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                     }
                 }
 
-                input.Emit = emit;
+                input.Emit = inputEmitResult.Emit;
             }
             return base.VisitAggregateRelation(aggregateRelation, state);
         }
@@ -248,37 +256,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
                 if (usedFields.Count <= input.OutputLength)
                 {
-                    // Create a new emit for the input
-                    // Create a lookup table with old value to new value
                     // Visit all expressions and emits again and remap them to the new value
                     // Remap the expression emits also to reflect the changes
-                    Dictionary<int, int> oldToNew = new Dictionary<int, int>();
-                    List<int> emit = new List<int>();
-
-                    Dictionary<int, int> inputEmitToInternal = new Dictionary<int, int>();
-                    if (input.EmitSet)
-                    {
-                        for (int i = 0; i < input.Emit.Count; i++)
-                        {
-                            inputEmitToInternal.Add(i, input.Emit[i]);
-                        }
-                    }
-                    else
-                    {
-                        for (int i = 0; i < input.OutputLength; i++)
-                        {
-                            inputEmitToInternal.Add(i, i);
-                        }
-                    }
-
-                    int count = 0;
-                    foreach(var field in usedFields.OrderBy(x => x))
-                    {
-                        emit.Add(inputEmitToInternal[field]);
-                        oldToNew.Add(field, count);
-                        count++;
-                    }
-                    var replaceVisitor = new ExpressionFieldReplaceVisitor(oldToNew);
+                    var inputEmitResult = CreateInputEmitList(input, usedFields);
+                    var replaceVisitor = new ExpressionFieldReplaceVisitor(inputEmitResult.OldToNew);
                     if (projectRelation.Expressions != null)
                     {
                         foreach (var expr in projectRelation.Expressions)
@@ -286,10 +267,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                             replaceVisitor.Visit(expr, default);
                         }
                     }
-                    
+
                     if (projectRelation.EmitSet)
                     {
-                        var diff = input.OutputLength - emit.Count;
+                        var diff = input.OutputLength - inputEmitResult.Emit.Count;
                         for (int i = 0; i < projectRelation.Emit.Count; i++)
                         {
                             if (projectRelation.Emit[i] >= input.OutputLength)
@@ -298,7 +279,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                             }
                             else
                             {
-                                if (oldToNew.TryGetValue(projectRelation.Emit[i], out var newMapping))
+                                if (inputEmitResult.OldToNew.TryGetValue(projectRelation.Emit[i], out var newMapping))
                                 {
                                     projectRelation.Emit[i] = newMapping;
                                 }
@@ -307,17 +288,51 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                                     throw new InvalidOperationException("Could not find new mapping during optmization.");
                                 }
                             }
-                            
+
                         }
                     }
 
-                    input.Emit = emit;
+                    input.Emit = inputEmitResult.Emit;
 
-                    
+
                 }
             }
 
             return base.VisitProjectRelation(projectRelation, state);
+        }
+
+        private sealed record InputEmitResult(Dictionary<int, int> OldToNew, List<int> Emit);
+
+        private static InputEmitResult CreateInputEmitList(Relation input, List<int> usedFields)
+        {
+            // Create a new emit for the input
+            // Create a lookup table with old value to new value
+            var oldToNew = new Dictionary<int, int>();
+            var emit = new List<int>();
+            Dictionary<int, int> inputEmitToInternal = new Dictionary<int, int>();
+            if (input.EmitSet)
+            {
+                for (int i = 0; i < input.Emit.Count; i++)
+                {
+                    inputEmitToInternal.Add(i, input.Emit[i]);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < input.OutputLength; i++)
+                {
+                    inputEmitToInternal.Add(i, i);
+                }
+            }
+
+            int count = 0;
+            foreach (var field in usedFields.OrderBy(x => x))
+            {
+                emit.Add(inputEmitToInternal[field]);
+                oldToNew.Add(field, count);
+                count++;
+            }
+            return new InputEmitResult(oldToNew, emit);
         }
 
         public override Relation VisitJoinRelation(JoinRelation joinRelation, object state)
@@ -593,6 +608,93 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 }
             }
             return base.VisitMergeJoinRelation(mergeJoinRelation, state);
+        }
+
+        public override Relation VisitFilterRelation(FilterRelation filterRelation, object state)
+        {
+            if (filterRelation.Input is ReferenceRelation referenceRelation)
+            {
+                return filterRelation;
+            }
+            if (filterRelation.Input is IterationReferenceReadRelation)
+            {
+                return filterRelation;
+            }
+            if (filterRelation.Input is IterationRelation)
+            {
+                return filterRelation;
+            }
+            if (filterRelation.Input.OutputLength >= filterRelation.OutputLength)
+            {
+                var input = filterRelation.Input;
+
+                var usageVisitor = new ExpressionFieldUsageVisitor(filterRelation.Input.OutputLength);
+                if (filterRelation.Condition != null)
+                {
+                    usageVisitor.Visit(filterRelation.Condition, default);
+                }
+
+                if (!usageVisitor.CanOptimize)
+                {
+                    return filterRelation;
+                }
+
+                var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
+
+                if (filterRelation.EmitSet)
+                {
+                    foreach (var field in filterRelation.Emit!)
+                    {
+                        if (field < input.OutputLength)
+                        {
+                            // Add all fields that are in the emit that are from the input
+                            if (!usedFields.Contains(field))
+                            {
+                                usedFields.Add(field);
+                            }
+                        }
+                    }
+                }
+
+                if (usedFields.Count <= input.OutputLength)
+                {
+                    var inputEmitResult = CreateInputEmitList(input, usedFields);
+                    var replaceVisitor = new ExpressionFieldReplaceVisitor(inputEmitResult.OldToNew);
+                    if (filterRelation.Condition != null)
+                    {
+                        replaceVisitor.Visit(filterRelation.Condition, default);
+                    }
+
+                    if (filterRelation.EmitSet)
+                    {
+                        var diff = input.OutputLength - inputEmitResult.Emit.Count;
+                        for (int i = 0; i < filterRelation.Emit.Count; i++)
+                        {
+                            if (filterRelation.Emit[i] >= input.OutputLength)
+                            {
+                                filterRelation.Emit[i] = filterRelation.Emit[i] - diff;
+                            }
+                            else
+                            {
+                                if (inputEmitResult.OldToNew.TryGetValue(filterRelation.Emit[i], out var newMapping))
+                                {
+                                    filterRelation.Emit[i] = newMapping;
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException("Could not find new mapping during optmization.");
+                                }
+                            }
+
+                        }
+                    }
+
+                    input.Emit = inputEmitResult.Emit;
+                }
+
+
+            }
+            return base.VisitFilterRelation(filterRelation, state);
         }
     }
 }

@@ -15,3 +15,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.OpenFGA")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.SpiceDB")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Permify")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Sharepoint")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Benchmarks")]
+[assembly: InternalsVisibleTo("SqlSampleWithUI")]

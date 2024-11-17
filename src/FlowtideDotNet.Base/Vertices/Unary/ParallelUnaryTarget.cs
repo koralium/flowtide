@@ -387,7 +387,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                     if (consumed)
                     {
                         // TODO: Check checkpoint
-                        if (consumed is ILockingEvent)
+                        if (consumedValue is ILockingEvent)
                         {
                             lock (IncomingLock)
                             {

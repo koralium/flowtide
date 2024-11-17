@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Operators.Buffer
     internal class BufferOperator : UnaryVertex<StreamEventBatch, object?>
     {
         private ICounter<long>? _eventsCounter;
-        private IBPlusTree<RowEvent, int>? _tree;
+        private IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>? _tree;
         private readonly BufferRelation bufferRelation;
         private ICounter<long>? _eventsProcessed;
 
@@ -71,14 +71,14 @@ namespace FlowtideDotNet.Core.Operators.Buffer
                 if (output.Count > 100)
                 {
                     _eventsCounter.Add(output.Count);
-                    yield return new StreamEventBatch(output);
+                    yield return new StreamEventBatch(output, bufferRelation.OutputLength);
                     output = new List<RowEvent>();
                 }
             }
             if (output.Count > 0)
             {
                 _eventsCounter.Add(output.Count);
-                yield return new StreamEventBatch(output);
+                yield return new StreamEventBatch(output, bufferRelation.OutputLength);
             }
             await _tree.Clear();
         }
@@ -131,11 +131,13 @@ namespace FlowtideDotNet.Core.Operators.Buffer
             }
             
             // Temporary tree for storing the input events
-            _tree = await stateManagerClient.GetOrCreateTree("input", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
+            _tree = await stateManagerClient.GetOrCreateTree("input", 
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
-                Comparer = new BPlusTreeStreamEventComparer(),
-                KeySerializer = new StreamEventBPlusTreeSerializer(),
-                ValueSerializer = new IntSerializer()
+                Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer()),
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
         }
     }

@@ -11,7 +11,10 @@
 // limitations under the License.
 
 using Azure.Core;
+using FlexBuffers;
+using FlowtideDotNet.Connector.Sharepoint.Internal.Decoders;
 using FlowtideDotNet.Connector.Sharepoint.Internal.Encoders;
+using FlowtideDotNet.Core;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
@@ -19,6 +22,8 @@ using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.Kiota.Http.HttpClientLibrary.Middleware;
 using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
+using System.Buffers;
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text;
 
@@ -35,12 +40,12 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         private readonly HttpClient httpClient;
         private AccessToken? ensureUserToken;
         private readonly Dictionary<string, int> _userIds = new Dictionary<string, int>();
-        private readonly SharepointSinkOptions sharepointSinkOptions;
+        private readonly SharepointOptions sharepointSinkOptions;
         private readonly string streamName;
         private readonly string operatorId;
         private readonly ILogger logger;
 
-        public SharepointGraphListClient(SharepointSinkOptions sharepointSinkOptions, string streamName, string operatorId, ILogger logger)
+        public SharepointGraphListClient(SharepointOptions sharepointSinkOptions, string streamName, string operatorId, ILogger logger)
         {
             this.graphSite = $"{sharepointSinkOptions.SharepointUrl}:/sites/{sharepointSinkOptions.Site}:";
             this.sharepointUrl = sharepointSinkOptions.SharepointUrl;
@@ -148,6 +153,34 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             return ensureUserResult.Id.Value;
         }
 
+        public async Task<IDictionary<string, ColumnDefinition>> GetColumns(string listId)
+        {
+            var listColumns = await graphClient.Sites[graphSite].Lists[listId].Columns.GetAsync();
+
+            if (listColumns == null || listColumns.Value == null)
+            {
+                throw new InvalidOperationException($"Could not find list {listId}");
+            }
+
+            var columnsDict = listColumns.Value.ToDictionary(x => x.Name ?? throw new InvalidOperationException("Recieved column without name"));
+
+            return columnsDict;
+        }
+
+        public async Task<Dictionary<string, IColumnDecoder>> GetColumnDecoders(string list, List<string> columnNames, IStateManagerClient stateManagerClient)
+        {
+            var columnsDict = await GetColumns(list);
+
+            Dictionary<string, IColumnDecoder> output = new Dictionary<string, IColumnDecoder>();
+            foreach(var column in columnNames)
+            {
+                var encoder = GetColumnDecoder(column, columnsDict);
+                await encoder.Initialize(column, list, this, stateManagerClient.GetChildManager(column), columnsDict);
+                output.Add(column, encoder);
+            }
+            return output;
+        }
+
         public async Task<List<IColumnEncoder>> GetColumnEncoders(string list, List<string> columns, IStateManagerClient stateManagerClient)
         {
             var listColumns = await graphClient.Sites[graphSite].Lists[list].Columns.GetAsync();
@@ -190,6 +223,81 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         public Task<BatchResponseContentCollection> ExecuteBatch(BatchRequestContentCollection batch)
         {
             return graphClient.Batch.PostAsync(batch);
+        }
+
+        private static IColumnDecoder GetColumnDecoder(string columnName, IDictionary<string, ColumnDefinition> columns)
+        {
+            if (columns.TryGetValue(columnName, out var columnDefinition))
+            {
+                if (columnDefinition.Text != null)
+                {
+                    return new TextDecoder();
+                }
+                if (columnDefinition.Lookup != null)
+                {
+                    return new LookupDecoder();
+                }
+                if (columnDefinition.Boolean != null)
+                {
+                    return new BooleanDecoder();
+                }
+                if (columnDefinition.DateTime != null)
+                {
+                    return new DateTimeDecoder();
+                }
+                if (columnDefinition.PersonOrGroup != null)
+                {
+                    return new GroupPersonDecoder();
+                }
+                if (columnDefinition.Number != null)
+                {
+                    return new NumberDecoder(columnDefinition.Number);
+                }
+            }
+
+            return GetSpecialColumnDecoder(columnName);
+        }
+
+        private static IColumnDecoder GetSpecialColumnDecoder(string columnName)
+        {
+            // Special columns
+            if (columnName.Equals("ID", StringComparison.OrdinalIgnoreCase))
+            {
+                return new IdDecoder();
+            }
+            if (columnName.Equals("ContentType", StringComparison.OrdinalIgnoreCase))
+            {
+                return new ContentTypeDecoder();
+            }
+            if (columnName.Equals("Attachments", StringComparison.OrdinalIgnoreCase))
+            {
+                return new AttachmentsDecoder();
+            }
+            if (columnName.Equals("Edit", StringComparison.OrdinalIgnoreCase))
+            {
+                return new EditDecoder();
+            }
+            if (columnName.Equals("LinkTitleNoMenu", StringComparison.OrdinalIgnoreCase))
+            {
+                return new LinkTitleNoMenuDecoder();
+            }
+            if (columnName.Equals("LinkTitle", StringComparison.OrdinalIgnoreCase))
+            {
+                return new LinkTitleDecoder();
+            }
+            if (columnName.Equals("DocIcon", StringComparison.OrdinalIgnoreCase))
+            {
+                return new DocIconDecoder();
+            }
+            if (columnName.Equals("_IsRecord", StringComparison.OrdinalIgnoreCase))
+            {
+                return new IsRecordDecoder();
+            }
+            if (columnName.Equals("_fields", StringComparison.OrdinalIgnoreCase))
+            {
+                return new FieldsDecoder();
+            }
+            throw new NotImplementedException();
         }
 
         private static IColumnEncoder GetColumnEncoder(ColumnDefinition columnDefinition)
@@ -326,6 +434,50 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
             var iterator = PageIterator<ListItem, ListItemCollectionResponse>.CreatePageIterator(graphClient, getListReq, onItem);
             await iterator.IterateAsync();
+        }
+
+        public async IAsyncEnumerable<Microsoft.Graph.Sites.Item.Lists.Item.Items.Delta.DeltaGetResponse> GetDeltaFromList(string list)
+        {
+            var resp = await graphClient.Sites[siteId].Lists[list].Items.Delta.GetAsDeltaGetResponseAsync();
+            if (resp == null)
+            {
+                yield break;
+            }
+
+            yield return resp;
+
+            while (resp.OdataNextLink != null)
+            {
+                resp = await graphClient.Sites[siteId].Lists[list].Items.Delta.WithUrl(resp.OdataNextLink).GetAsDeltaGetResponseAsync();
+
+                if (resp == null)
+                {
+                    yield break;
+                }
+                yield return resp;
+            }
+        }
+
+        public async IAsyncEnumerable<Microsoft.Graph.Sites.Item.Lists.Item.Items.Delta.DeltaGetResponse> GetDeltaFromUrl(string list, string url)
+        {
+            var resp = await graphClient.Sites[siteId].Lists[list].Items.Delta.WithUrl(url).GetAsDeltaGetResponseAsync();
+            if (resp == null)
+            {
+                yield break;
+            }
+
+            yield return resp;
+
+            while (resp.OdataNextLink != null)
+            {
+                resp = await graphClient.Sites[siteId].Lists[list].Items.Delta.WithUrl(resp.OdataNextLink).GetAsDeltaGetResponseAsync();
+
+                if (resp == null)
+                {
+                    yield break;
+                }
+                yield return resp;
+            }
         }
     }
 }

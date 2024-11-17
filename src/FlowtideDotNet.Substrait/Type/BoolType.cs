@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Type
 {
-    internal class BoolType : SubstraitBaseType
+    public class BoolType : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.Bool;
     }

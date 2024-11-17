@@ -11,17 +11,21 @@
 // limitations under the License.
 
 using FlowtideDotNet.AspNetCore.Extensions;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Sql;
 using SqlSampleWithUI;
+using FlowtideDotNet.DependencyInjection;
+using FlowtideDotNet.Core.Sources.Generic;
+using OpenTelemetry.Metrics;
+using FlowtideDotNet.Core.Sinks;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var sqlBuilder = new SqlPlanBuilder();
-
-sqlBuilder.Sql(@"
+var sqlText = @"
 CREATE TABLE testtable (
   val any
 );
@@ -31,36 +35,24 @@ CREATE TABLE other (
 );
 
 INSERT INTO output
-SELECT t.val FROM testtable t
+SELECT map('a', t.val) FROM testtable t
 LEFT JOIN other o
-ON t.val = o.val
-WHERE t.val = 123;
-");
+ON t.val = o.val;
+";
 
-var plan = sqlBuilder.GetPlan();
-
-var factory = new ReadWriteFactory();
-// Add connections here to your real data sources, such as SQL Server, Kafka or similar.
-factory.AddReadResolver((readRel, functionsRegister, opt) =>
+builder.Services.AddFlowtideStream("test")
+.AddSqlTextAsPlan(sqlText)
+.AddConnectors((connectorManager) =>
 {
-    return new ReadOperatorInfo(new DummyReadOperator(opt));
-});
-factory.AddWriteResolver((writeRel, opt) =>
+    connectorManager.AddSource(new DummyReadFactory("*"));
+    connectorManager.AddConsoleSink("*");
+    //connectorManager.AddSink(new DummyWriteFactory("*"));
+})
+.AddStorage(b =>
 {
-    return new DummyWriteOperator(opt);
-});
-
-builder.Services.AddFlowtideStream(b =>
-{
-    b.AddPlan(plan)
-    .AddReadWriteFactory(factory)
-    .WithStateOptions(new StateManagerOptions()
-    {
-        // This is non persistent storage, use FasterKV persistence storage instead if you want persistent storage
-        PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
-        {
-        })
-    });
+    b.AddTemporaryDevelopmentStorage();
+    b.MaxProcessMemory = 2L * 1024 * 1024 * 1024;
+    b.MinPageCount = 0;
 });
 
 builder.Services.AddCors();
@@ -75,7 +67,6 @@ app.UseCors(b =>
 });
 
 app.UseHealthChecks("/health");
-
 app.UseFlowtideUI("/");
 
 

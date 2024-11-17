@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions.IfThen
 {
-    public class IfThenExpression : Expression
+    public sealed class IfThenExpression : Expression, IEquatable<IfThenExpression>
     {
         /// <summary>
         /// Contains all the if clauses, evaulated top to bottom.
@@ -26,7 +27,44 @@ namespace FlowtideDotNet.Substrait.Expressions.IfThen
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
-            return visitor.VisitIfThen(this, state);
+            return visitor.VisitIfThen(this, state)!;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is IfThenExpression expression &&
+                   Equals(expression);
+        }
+
+        public bool Equals(IfThenExpression? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+            return Ifs.SequenceEqual(other.Ifs) &&
+                   Equals(Else, other.Else);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            foreach(var ifClause in Ifs)
+            {
+                code.Add(ifClause);
+            }
+            code.Add(Else);
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(IfThenExpression? left, IfThenExpression? right)
+        {
+            return EqualityComparer<IfThenExpression>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(IfThenExpression? left, IfThenExpression? right)
+        {
+            return !(left == right);
         }
     }
 }

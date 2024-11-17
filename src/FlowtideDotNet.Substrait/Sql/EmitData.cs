@@ -10,8 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 using SqlParser.Ast;
+using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Substrait.Sql
 {
@@ -30,15 +32,17 @@ namespace FlowtideDotNet.Substrait.Sql
         private readonly Dictionary<Expression, EmitInformation> emitList;
         private SortedDictionary<string, Expression.CompoundIdentifier> compundIdentifiers;
         private List<string> _names;
+        private List<SubstraitBaseType> _types;
 
         public EmitData()
         {
             emitList = new Dictionary<Expression, EmitInformation>();
             compundIdentifiers = new SortedDictionary<string, Expression.CompoundIdentifier>(StringComparer.OrdinalIgnoreCase);
             _names = new List<string>();
+            _types = new List<SubstraitBaseType>();
         }
 
-        public EmitData ClonewithAlias(string alias)
+        public EmitData Clone()
         {
             var clone = new EmitData();
             foreach (var kv in emitList)
@@ -52,6 +56,32 @@ namespace FlowtideDotNet.Substrait.Sql
             foreach (var name in _names)
             {
                 clone._names.Add(name);
+            }
+            foreach (var type in _types)
+            {
+                clone._types.Add(type);
+            }
+            return clone;
+        }
+
+        public EmitData CloneWithAlias(string alias)
+        {
+            var clone = new EmitData();
+            foreach (var kv in emitList)
+            {
+                clone.emitList.Add(kv.Key, kv.Value);
+            }
+            foreach (var kv in compundIdentifiers)
+            {
+                clone.compundIdentifiers.Add(kv.Key, kv.Value);
+            }
+            foreach (var name in _names)
+            {
+                clone._names.Add(name);
+            }
+            foreach (var type in _types)
+            {
+                clone._types.Add(type);
             }
             foreach (var ci in compundIdentifiers)
             {
@@ -92,9 +122,13 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 _names.Add(name);
             }
+            foreach (var type in left._types)
+            {
+                _types.Add(type);
+            }
         }
 
-        public void Add(Expression expr, int index, string name)
+        public void Add(Expression expr, int index, string name, SubstraitBaseType type)
         {
             if (expr is Expression.CompoundIdentifier compound)
             {
@@ -111,6 +145,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 emitList.Add(expr, existingIndex);
             }
             _names.Insert(index, name);
+            _types.Insert(index, type);
             existingIndex.Index.Add(index);
         }
 
@@ -129,7 +164,11 @@ namespace FlowtideDotNet.Substrait.Sql
             existingIndex.Index.Add(index);
         }
 
-        public bool TryGetEmitIndex(Expression expression, out int index)
+        public bool TryGetEmitIndex(
+            Expression expression, 
+            [NotNullWhen(true)] out Expressions.StructReferenceSegment? segment, 
+            [NotNullWhen(true)] out string? name,
+            [NotNullWhen(true)] out SubstraitBaseType? type)
         {
             if (emitList.TryGetValue(expression, out var emitInfo))
             {
@@ -137,7 +176,12 @@ namespace FlowtideDotNet.Substrait.Sql
                 {
                     throw new InvalidOperationException($"Multiple matches for expression: '{expression.ToSql()}'");
                 }
-                index = emitInfo.Index.First();
+                segment = new Expressions.StructReferenceSegment()
+                {
+                    Field = emitInfo.Index[0]
+                };
+                name = GetName(emitInfo.Index[0]);
+                type = _types[emitInfo.Index[0]];
                 return true;
             }
 
@@ -145,21 +189,62 @@ namespace FlowtideDotNet.Substrait.Sql
             if (expression is Expression.CompoundIdentifier compoundIndentifier)
             {
                 var textString = compoundIndentifier.ToSql();
-                if (compundIdentifiers.TryGetValue(textString, out var compoundIdentifier))
+                if (compundIdentifiers.TryGetValue(textString, out var compoundIdentifierResult) &&
+                    emitList.TryGetValue(compoundIdentifierResult, out var emitInfo2))
                 {
-                    if (emitList.TryGetValue(compoundIdentifier, out var emitInfo2))
+                    if (emitInfo2.Index.Count > 1)
                     {
-                        if (emitInfo2.Index.Count > 1)
+                        throw new InvalidOperationException($"Multiple matches for expression: '{expression.ToSql()}'");
+                    }
+                    segment = new Expressions.StructReferenceSegment()
+                    {
+                        Field = emitInfo2.Index[0]
+                    };
+                    name = GetName(emitInfo2.Index[0]);
+                    type = _types[emitInfo2.Index[0]];
+                    return true;
+                }
+                // Try and iterate each property of the compound identifier, if found add remainder as map key reference
+                for (int i = compoundIndentifier.Idents.Count; i >= 0; i--)
+                {
+                    var txt = string.Join(".", compoundIndentifier.Idents.Take(i).Select(x => x.Value));
+                    if (compundIdentifiers.TryGetValue(txt, out var indentifier) &&
+                        emitList.TryGetValue(indentifier, out var emitInfoPartial))
+                    {
+                        if (emitInfoPartial.Index.Count > 1)
                         {
                             throw new InvalidOperationException($"Multiple matches for expression: '{expression.ToSql()}'");
                         }
-                        index = emitInfo2.Index.First();
+                        segment = new Expressions.StructReferenceSegment()
+                        {
+                            Field = emitInfoPartial.Index[0]
+                        };
+
+                        Expressions.ReferenceSegment seg = segment;
+                        List<string> mapIdentifiers = new List<string>();
+                        for (int k = i; k < compoundIndentifier.Idents.Count; k++)
+                        {
+                            var newSegment = new Expressions.MapKeyReferenceSegment()
+                            {
+                                Key = compoundIndentifier.Idents[k].Value,
+                            };
+                            mapIdentifiers.Add(compoundIndentifier.Idents[k].Value);
+                            seg.Child = newSegment;
+                            seg = newSegment;
+                        }
+
+                        name = $"{GetName(emitInfoPartial.Index[0])}.{string.Join('.', mapIdentifiers)}";
+
+                        // TODO: For now we just return any type, but we should try to find the correct type
+                        type = new AnyType();
                         return true;
                     }
                 }
             }
 
-            index = -1;
+            segment = null;
+            name = null;
+            type = null;
             return false;
         }
 
@@ -172,5 +257,54 @@ namespace FlowtideDotNet.Substrait.Sql
         {
             return _names.ToList();
         }
+
+        public List<SubstraitBaseType> GetTypes()
+        {
+            return _types.ToList();
+        }
+
+        public NamedStruct GetNamedStruct()
+        {
+            var namedStruct = new NamedStruct()
+            {
+                Names = _names.ToList(),
+                Struct = new Struct()
+                {
+                    Types = _types.ToList()
+                }
+            };
+            return namedStruct;
+        }
+
+        public record ExpressionInformation(int Index, string Name, IReadOnlyList<Expression> Expression, SubstraitBaseType Type);
+
+        private static bool ExpressionStartsWith(Expression expression, ObjectName? objectName)
+        {
+            if (objectName == null)
+            {
+                return true;
+            }
+            if (expression is Expression.CompoundIdentifier compoundIdentifier)
+            {
+                return compoundIdentifier.Idents.Count >= objectName.Values.Count &&
+                    compoundIdentifier.Idents.Take(objectName.Values.Count).Select(x => x.Value).SequenceEqual(objectName.Values.Select(x => x.Value));
+            }
+            return false;
+        }
+
+        public IReadOnlyList<ExpressionInformation> GetExpressions(ObjectName? objectName = null)
+        {
+            var indicesToExpression = emitList
+                .Where(x => ExpressionStartsWith(x.Key, objectName))
+                .SelectMany(x => x.Value.Index.Select(y => new { index = y, expression = x.Key }))
+                .GroupBy(x => x.index)
+                .Select(x => new ExpressionInformation(x.Key, GetName(x.Key), x.Select(z => z.expression).ToList(), _types[x.Key]))
+                .OrderBy(x => x.Index)
+                .ToList();
+
+            return indicesToExpression;
+        }
+
+        public int Count => _names.Count;
     }
 }

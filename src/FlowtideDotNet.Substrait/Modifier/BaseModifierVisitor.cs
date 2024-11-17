@@ -146,5 +146,37 @@ namespace FlowtideDotNet.Substrait.Modifier
             topNRelation.Input = Visit(topNRelation.Input, state);
             return topNRelation;
         }
+
+        public override Relation VisitTableFunctionRelation(TableFunctionRelation tableFunctionRelation, object? state)
+        {
+            if (tableFunctionRelation.Input != null)
+            {
+                tableFunctionRelation.Input = Visit(tableFunctionRelation.Input, state);
+            }
+            
+            return tableFunctionRelation;
+        }
+
+        public override Relation VisitSubStreamRootRelation(SubStreamRootRelation subStreamRootRelation, object? state)
+        {
+            subStreamRootRelation.Input = Visit(subStreamRootRelation.Input, state);
+            return subStreamRootRelation;
+        }
+
+        public override Relation VisitExchangeRelation(ExchangeRelation exchangeRelation, object? state)
+        {
+            exchangeRelation.Input = Visit(exchangeRelation.Input, state);
+            return exchangeRelation;
+        }
+
+        public override Relation VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, object? state)
+        {
+            return pullExchangeReferenceRelation;
+        }
+
+        public override Relation VisitStandardOutputExchangeReferenceRelation(StandardOutputExchangeReferenceRelation standardOutputExchangeReferenceRelation, object? state)
+        {
+            return standardOutputExchangeReferenceRelation;
+        }
     }
 }

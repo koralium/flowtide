@@ -108,117 +108,165 @@ namespace Substrait.Protobuf {
             "YW5jZWRFeHRlbnNpb24aPwoIR3JvdXBpbmcSMwoUZ3JvdXBpbmdfZXhwcmVz",
             "c2lvbnMYASADKAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbhpfCgdNZWFzdXJl",
             "Ei0KB21lYXN1cmUYASABKAsyHC5zdWJzdHJhaXQuQWdncmVnYXRlRnVuY3Rp",
-            "b24SJQoGZmlsdGVyGAIgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24iuAEK",
-            "B1NvcnRSZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJlbENvbW1v",
-            "bhIdCgVpbnB1dBgCIAEoCzIOLnN1YnN0cmFpdC5SZWwSIwoFc29ydHMYAyAD",
-            "KAsyFC5zdWJzdHJhaXQuU29ydEZpZWxkEkMKEmFkdmFuY2VkX2V4dGVuc2lv",
-            "bhgKIAEoCzInLnN1YnN0cmFpdC5leHRlbnNpb25zLkFkdmFuY2VkRXh0ZW5z",
-            "aW9uIr8BCglGaWx0ZXJSZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0",
-            "LlJlbENvbW1vbhIdCgVpbnB1dBgCIAEoCzIOLnN1YnN0cmFpdC5SZWwSKAoJ",
-            "Y29uZGl0aW9uGAMgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SQwoSYWR2",
-            "YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vic3RyYWl0LmV4dGVuc2lvbnMu",
-            "QWR2YW5jZWRFeHRlbnNpb24igwMKBlNldFJlbBIkCgZjb21tb24YASABKAsy",
-            "FC5zdWJzdHJhaXQuUmVsQ29tbW9uEh4KBmlucHV0cxgCIAMoCzIOLnN1YnN0",
-            "cmFpdC5SZWwSIwoCb3AYAyABKA4yFy5zdWJzdHJhaXQuU2V0UmVsLlNldE9w",
-            "EkMKEmFkdmFuY2VkX2V4dGVuc2lvbhgKIAEoCzInLnN1YnN0cmFpdC5leHRl",
-            "bnNpb25zLkFkdmFuY2VkRXh0ZW5zaW9uIsgBCgVTZXRPcBIWChJTRVRfT1Bf",
-            "VU5TUEVDSUZJRUQQABIYChRTRVRfT1BfTUlOVVNfUFJJTUFSWRABEhkKFVNF",
-            "VF9PUF9NSU5VU19NVUxUSVNFVBACEh8KG1NFVF9PUF9JTlRFUlNFQ1RJT05f",
-            "UFJJTUFSWRADEiAKHFNFVF9PUF9JTlRFUlNFQ1RJT05fTVVMVElTRVQQBBIZ",
-            "ChVTRVRfT1BfVU5JT05fRElTVElOQ1QQBRIUChBTRVRfT1BfVU5JT05fQUxM",
-            "EAYifwoSRXh0ZW5zaW9uU2luZ2xlUmVsEiQKBmNvbW1vbhgBIAEoCzIULnN1",
-            "YnN0cmFpdC5SZWxDb21tb24SHQoFaW5wdXQYAiABKAsyDi5zdWJzdHJhaXQu",
-            "UmVsEiQKBmRldGFpbBgDIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5BbnkiXgoQ",
-            "RXh0ZW5zaW9uTGVhZlJlbBIkCgZjb21tb24YASABKAsyFC5zdWJzdHJhaXQu",
-            "UmVsQ29tbW9uEiQKBmRldGFpbBgCIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5B",
-            "bnkifwoRRXh0ZW5zaW9uTXVsdGlSZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vi",
-            "c3RyYWl0LlJlbENvbW1vbhIeCgZpbnB1dHMYAiADKAsyDi5zdWJzdHJhaXQu",
-            "UmVsEiQKBmRldGFpbBgDIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5BbnkiwwcK",
-            "C0V4Y2hhbmdlUmVsEiQKBmNvbW1vbhgBIAEoCzIULnN1YnN0cmFpdC5SZWxD",
-            "b21tb24SHQoFaW5wdXQYAiABKAsyDi5zdWJzdHJhaXQuUmVsEhcKD3BhcnRp",
-            "dGlvbl9jb3VudBgDIAEoBRI2Cgd0YXJnZXRzGAQgAygLMiUuc3Vic3RyYWl0",
-            "LkV4Y2hhbmdlUmVsLkV4Y2hhbmdlVGFyZ2V0EkEKEXNjYXR0ZXJfYnlfZmll",
-            "bGRzGAUgASgLMiQuc3Vic3RyYWl0LkV4Y2hhbmdlUmVsLlNjYXR0ZXJGaWVs",
-            "ZHNIABJGCg1zaW5nbGVfdGFyZ2V0GAYgASgLMi0uc3Vic3RyYWl0LkV4Y2hh",
-            "bmdlUmVsLlNpbmdsZUJ1Y2tldEV4cHJlc3Npb25IABJECgxtdWx0aV90YXJn",
-            "ZXQYByABKAsyLC5zdWJzdHJhaXQuRXhjaGFuZ2VSZWwuTXVsdGlCdWNrZXRF",
-            "eHByZXNzaW9uSAASOAoLcm91bmRfcm9iaW4YCCABKAsyIS5zdWJzdHJhaXQu",
-            "RXhjaGFuZ2VSZWwuUm91bmRSb2JpbkgAEjUKCWJyb2FkY2FzdBgJIAEoCzIg",
-            "LnN1YnN0cmFpdC5FeGNoYW5nZVJlbC5Ccm9hZGNhc3RIABJDChJhZHZhbmNl",
+            "b24SJQoGZmlsdGVyGAIgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24iyAYK",
+            "HENvbnNpc3RlbnRQYXJ0aXRpb25XaW5kb3dSZWwSJAoGY29tbW9uGAEgASgL",
+            "MhQuc3Vic3RyYWl0LlJlbENvbW1vbhIdCgVpbnB1dBgCIAEoCzIOLnN1YnN0",
+            "cmFpdC5SZWwSUwoQd2luZG93X2Z1bmN0aW9ucxgDIAMoCzI5LnN1YnN0cmFp",
+            "dC5Db25zaXN0ZW50UGFydGl0aW9uV2luZG93UmVsLldpbmRvd1JlbEZ1bmN0",
+            "aW9uEjQKFXBhcnRpdGlvbl9leHByZXNzaW9ucxgEIAMoCzIVLnN1YnN0cmFp",
+            "dC5FeHByZXNzaW9uEiMKBXNvcnRzGAUgAygLMhQuc3Vic3RyYWl0LlNvcnRG",
+            "aWVsZBJDChJhZHZhbmNlZF9leHRlbnNpb24YCiABKAsyJy5zdWJzdHJhaXQu",
+            "ZXh0ZW5zaW9ucy5BZHZhbmNlZEV4dGVuc2lvbhrtAwoRV2luZG93UmVsRnVu",
+            "Y3Rpb24SGgoSZnVuY3Rpb25fcmVmZXJlbmNlGAEgASgNEi4KCWFyZ3VtZW50",
+            "cxgJIAMoCzIbLnN1YnN0cmFpdC5GdW5jdGlvbkFyZ3VtZW50EioKB29wdGlv",
+            "bnMYCyADKAsyGS5zdWJzdHJhaXQuRnVuY3Rpb25PcHRpb24SJAoLb3V0cHV0",
+            "X3R5cGUYByABKAsyDy5zdWJzdHJhaXQuVHlwZRIqCgVwaGFzZRgGIAEoDjIb",
+            "LnN1YnN0cmFpdC5BZ2dyZWdhdGlvblBoYXNlEkYKCmludm9jYXRpb24YCiAB",
+            "KA4yMi5zdWJzdHJhaXQuQWdncmVnYXRlRnVuY3Rpb24uQWdncmVnYXRpb25J",
+            "bnZvY2F0aW9uEj8KC2xvd2VyX2JvdW5kGAUgASgLMiouc3Vic3RyYWl0LkV4",
+            "cHJlc3Npb24uV2luZG93RnVuY3Rpb24uQm91bmQSPwoLdXBwZXJfYm91bmQY",
+            "BCABKAsyKi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5XaW5kb3dGdW5jdGlvbi5C",
+            "b3VuZBJECgtib3VuZHNfdHlwZRgMIAEoDjIvLnN1YnN0cmFpdC5FeHByZXNz",
+            "aW9uLldpbmRvd0Z1bmN0aW9uLkJvdW5kc1R5cGUiuAEKB1NvcnRSZWwSJAoG",
+            "Y29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJlbENvbW1vbhIdCgVpbnB1dBgC",
+            "IAEoCzIOLnN1YnN0cmFpdC5SZWwSIwoFc29ydHMYAyADKAsyFC5zdWJzdHJh",
+            "aXQuU29ydEZpZWxkEkMKEmFkdmFuY2VkX2V4dGVuc2lvbhgKIAEoCzInLnN1",
+            "YnN0cmFpdC5leHRlbnNpb25zLkFkdmFuY2VkRXh0ZW5zaW9uIr8BCglGaWx0",
+            "ZXJSZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJlbENvbW1vbhId",
+            "CgVpbnB1dBgCIAEoCzIOLnN1YnN0cmFpdC5SZWwSKAoJY29uZGl0aW9uGAMg",
+            "ASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SQwoSYWR2YW5jZWRfZXh0ZW5z",
+            "aW9uGAogASgLMicuc3Vic3RyYWl0LmV4dGVuc2lvbnMuQWR2YW5jZWRFeHRl",
+            "bnNpb24igwMKBlNldFJlbBIkCgZjb21tb24YASABKAsyFC5zdWJzdHJhaXQu",
+            "UmVsQ29tbW9uEh4KBmlucHV0cxgCIAMoCzIOLnN1YnN0cmFpdC5SZWwSIwoC",
+            "b3AYAyABKA4yFy5zdWJzdHJhaXQuU2V0UmVsLlNldE9wEkMKEmFkdmFuY2Vk",
+            "X2V4dGVuc2lvbhgKIAEoCzInLnN1YnN0cmFpdC5leHRlbnNpb25zLkFkdmFu",
+            "Y2VkRXh0ZW5zaW9uIsgBCgVTZXRPcBIWChJTRVRfT1BfVU5TUEVDSUZJRUQQ",
+            "ABIYChRTRVRfT1BfTUlOVVNfUFJJTUFSWRABEhkKFVNFVF9PUF9NSU5VU19N",
+            "VUxUSVNFVBACEh8KG1NFVF9PUF9JTlRFUlNFQ1RJT05fUFJJTUFSWRADEiAK",
+            "HFNFVF9PUF9JTlRFUlNFQ1RJT05fTVVMVElTRVQQBBIZChVTRVRfT1BfVU5J",
+            "T05fRElTVElOQ1QQBRIUChBTRVRfT1BfVU5JT05fQUxMEAYifwoSRXh0ZW5z",
+            "aW9uU2luZ2xlUmVsEiQKBmNvbW1vbhgBIAEoCzIULnN1YnN0cmFpdC5SZWxD",
+            "b21tb24SHQoFaW5wdXQYAiABKAsyDi5zdWJzdHJhaXQuUmVsEiQKBmRldGFp",
+            "bBgDIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5BbnkiXgoQRXh0ZW5zaW9uTGVh",
+            "ZlJlbBIkCgZjb21tb24YASABKAsyFC5zdWJzdHJhaXQuUmVsQ29tbW9uEiQK",
+            "BmRldGFpbBgCIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5BbnkifwoRRXh0ZW5z",
+            "aW9uTXVsdGlSZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJlbENv",
+            "bW1vbhIeCgZpbnB1dHMYAiADKAsyDi5zdWJzdHJhaXQuUmVsEiQKBmRldGFp",
+            "bBgDIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5BbnkiwwcKC0V4Y2hhbmdlUmVs",
+            "EiQKBmNvbW1vbhgBIAEoCzIULnN1YnN0cmFpdC5SZWxDb21tb24SHQoFaW5w",
+            "dXQYAiABKAsyDi5zdWJzdHJhaXQuUmVsEhcKD3BhcnRpdGlvbl9jb3VudBgD",
+            "IAEoBRI2Cgd0YXJnZXRzGAQgAygLMiUuc3Vic3RyYWl0LkV4Y2hhbmdlUmVs",
+            "LkV4Y2hhbmdlVGFyZ2V0EkEKEXNjYXR0ZXJfYnlfZmllbGRzGAUgASgLMiQu",
+            "c3Vic3RyYWl0LkV4Y2hhbmdlUmVsLlNjYXR0ZXJGaWVsZHNIABJGCg1zaW5n",
+            "bGVfdGFyZ2V0GAYgASgLMi0uc3Vic3RyYWl0LkV4Y2hhbmdlUmVsLlNpbmds",
+            "ZUJ1Y2tldEV4cHJlc3Npb25IABJECgxtdWx0aV90YXJnZXQYByABKAsyLC5z",
+            "dWJzdHJhaXQuRXhjaGFuZ2VSZWwuTXVsdGlCdWNrZXRFeHByZXNzaW9uSAAS",
+            "OAoLcm91bmRfcm9iaW4YCCABKAsyIS5zdWJzdHJhaXQuRXhjaGFuZ2VSZWwu",
+            "Um91bmRSb2JpbkgAEjUKCWJyb2FkY2FzdBgJIAEoCzIgLnN1YnN0cmFpdC5F",
+            "eGNoYW5nZVJlbC5Ccm9hZGNhc3RIABJDChJhZHZhbmNlZF9leHRlbnNpb24Y",
+            "CiABKAsyJy5zdWJzdHJhaXQuZXh0ZW5zaW9ucy5BZHZhbmNlZEV4dGVuc2lv",
+            "bhpFCg1TY2F0dGVyRmllbGRzEjQKBmZpZWxkcxgBIAMoCzIkLnN1YnN0cmFp",
+            "dC5FeHByZXNzaW9uLkZpZWxkUmVmZXJlbmNlGkMKFlNpbmdsZUJ1Y2tldEV4",
+            "cHJlc3Npb24SKQoKZXhwcmVzc2lvbhgBIAEoCzIVLnN1YnN0cmFpdC5FeHBy",
+            "ZXNzaW9uGmAKFU11bHRpQnVja2V0RXhwcmVzc2lvbhIpCgpleHByZXNzaW9u",
+            "GAEgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SHAoUY29uc3RyYWluZWRf",
+            "dG9fY291bnQYAiABKAgaCwoJQnJvYWRjYXN0GhsKClJvdW5kUm9iaW4SDQoF",
+            "ZXhhY3QYASABKAgabgoORXhjaGFuZ2VUYXJnZXQSFAoMcGFydGl0aW9uX2lk",
+            "GAEgAygFEg0KA3VyaRgCIAEoCUgAEigKCGV4dGVuZGVkGAMgASgLMhQuZ29v",
+            "Z2xlLnByb3RvYnVmLkFueUgAQg0KC3RhcmdldF90eXBlQg8KDWV4Y2hhbmdl",
+            "X2tpbmQi0AIKCUV4cGFuZFJlbBIkCgZjb21tb24YASABKAsyFC5zdWJzdHJh",
+            "aXQuUmVsQ29tbW9uEh0KBWlucHV0GAIgASgLMg4uc3Vic3RyYWl0LlJlbBIw",
+            "CgZmaWVsZHMYBCADKAsyIC5zdWJzdHJhaXQuRXhwYW5kUmVsLkV4cGFuZEZp",
+            "ZWxkGo4BCgtFeHBhbmRGaWVsZBI+Cg9zd2l0Y2hpbmdfZmllbGQYAiABKAsy",
+            "Iy5zdWJzdHJhaXQuRXhwYW5kUmVsLlN3aXRjaGluZ0ZpZWxkSAASMQoQY29u",
+            "c2lzdGVudF9maWVsZBgDIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uSABC",
+            "DAoKZmllbGRfdHlwZRo7Cg5Td2l0Y2hpbmdGaWVsZBIpCgpkdXBsaWNhdGVz",
+            "GAEgAygLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24iNwoHUmVsUm9vdBIdCgVp",
+            "bnB1dBgBIAEoCzIOLnN1YnN0cmFpdC5SZWwSDQoFbmFtZXMYAiADKAkisQcK",
+            "A1JlbBIiCgRyZWFkGAEgASgLMhIuc3Vic3RyYWl0LlJlYWRSZWxIABImCgZm",
+            "aWx0ZXIYAiABKAsyFC5zdWJzdHJhaXQuRmlsdGVyUmVsSAASJAoFZmV0Y2gY",
+            "AyABKAsyEy5zdWJzdHJhaXQuRmV0Y2hSZWxIABIsCglhZ2dyZWdhdGUYBCAB",
+            "KAsyFy5zdWJzdHJhaXQuQWdncmVnYXRlUmVsSAASIgoEc29ydBgFIAEoCzIS",
+            "LnN1YnN0cmFpdC5Tb3J0UmVsSAASIgoEam9pbhgGIAEoCzISLnN1YnN0cmFp",
+            "dC5Kb2luUmVsSAASKAoHcHJvamVjdBgHIAEoCzIVLnN1YnN0cmFpdC5Qcm9q",
+            "ZWN0UmVsSAASIAoDc2V0GAggASgLMhEuc3Vic3RyYWl0LlNldFJlbEgAEjkK",
+            "EGV4dGVuc2lvbl9zaW5nbGUYCSABKAsyHS5zdWJzdHJhaXQuRXh0ZW5zaW9u",
+            "U2luZ2xlUmVsSAASNwoPZXh0ZW5zaW9uX211bHRpGAogASgLMhwuc3Vic3Ry",
+            "YWl0LkV4dGVuc2lvbk11bHRpUmVsSAASNQoOZXh0ZW5zaW9uX2xlYWYYCyAB",
+            "KAsyGy5zdWJzdHJhaXQuRXh0ZW5zaW9uTGVhZlJlbEgAEiQKBWNyb3NzGAwg",
+            "ASgLMhMuc3Vic3RyYWl0LkNyb3NzUmVsSAASLAoJcmVmZXJlbmNlGBUgASgL",
+            "Mhcuc3Vic3RyYWl0LlJlZmVyZW5jZVJlbEgAEiQKBXdyaXRlGBMgASgLMhMu",
+            "c3Vic3RyYWl0LldyaXRlUmVsSAASIAoDZGRsGBQgASgLMhEuc3Vic3RyYWl0",
+            "LkRkbFJlbEgAEisKCWhhc2hfam9pbhgNIAEoCzIWLnN1YnN0cmFpdC5IYXNo",
+            "Sm9pblJlbEgAEi0KCm1lcmdlX2pvaW4YDiABKAsyFy5zdWJzdHJhaXQuTWVy",
+            "Z2VKb2luUmVsSAASOAoQbmVzdGVkX2xvb3Bfam9pbhgSIAEoCzIcLnN1YnN0",
+            "cmFpdC5OZXN0ZWRMb29wSm9pblJlbEgAEjkKBndpbmRvdxgRIAEoCzInLnN1",
+            "YnN0cmFpdC5Db25zaXN0ZW50UGFydGl0aW9uV2luZG93UmVsSAASKgoIZXhj",
+            "aGFuZ2UYDyABKAsyFi5zdWJzdHJhaXQuRXhjaGFuZ2VSZWxIABImCgZleHBh",
+            "bmQYECABKAsyFC5zdWJzdHJhaXQuRXhwYW5kUmVsSABCCgoIcmVsX3R5cGUi",
+            "ZgoQTmFtZWRPYmplY3RXcml0ZRINCgVuYW1lcxgBIAMoCRJDChJhZHZhbmNl",
             "ZF9leHRlbnNpb24YCiABKAsyJy5zdWJzdHJhaXQuZXh0ZW5zaW9ucy5BZHZh",
-            "bmNlZEV4dGVuc2lvbhpFCg1TY2F0dGVyRmllbGRzEjQKBmZpZWxkcxgBIAMo",
-            "CzIkLnN1YnN0cmFpdC5FeHByZXNzaW9uLkZpZWxkUmVmZXJlbmNlGkMKFlNp",
-            "bmdsZUJ1Y2tldEV4cHJlc3Npb24SKQoKZXhwcmVzc2lvbhgBIAEoCzIVLnN1",
-            "YnN0cmFpdC5FeHByZXNzaW9uGmAKFU11bHRpQnVja2V0RXhwcmVzc2lvbhIp",
-            "CgpleHByZXNzaW9uGAEgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SHAoU",
-            "Y29uc3RyYWluZWRfdG9fY291bnQYAiABKAgaCwoJQnJvYWRjYXN0GhsKClJv",
-            "dW5kUm9iaW4SDQoFZXhhY3QYASABKAgabgoORXhjaGFuZ2VUYXJnZXQSFAoM",
-            "cGFydGl0aW9uX2lkGAEgAygFEg0KA3VyaRgCIAEoCUgAEigKCGV4dGVuZGVk",
-            "GAMgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueUgAQg0KC3RhcmdldF90eXBl",
-            "Qg8KDWV4Y2hhbmdlX2tpbmQiNwoHUmVsUm9vdBIdCgVpbnB1dBgBIAEoCzIO",
-            "LnN1YnN0cmFpdC5SZWwSDQoFbmFtZXMYAiADKAkimAUKA1JlbBIiCgRyZWFk",
-            "GAEgASgLMhIuc3Vic3RyYWl0LlJlYWRSZWxIABImCgZmaWx0ZXIYAiABKAsy",
-            "FC5zdWJzdHJhaXQuRmlsdGVyUmVsSAASJAoFZmV0Y2gYAyABKAsyEy5zdWJz",
-            "dHJhaXQuRmV0Y2hSZWxIABIsCglhZ2dyZWdhdGUYBCABKAsyFy5zdWJzdHJh",
-            "aXQuQWdncmVnYXRlUmVsSAASIgoEc29ydBgFIAEoCzISLnN1YnN0cmFpdC5T",
-            "b3J0UmVsSAASIgoEam9pbhgGIAEoCzISLnN1YnN0cmFpdC5Kb2luUmVsSAAS",
-            "KAoHcHJvamVjdBgHIAEoCzIVLnN1YnN0cmFpdC5Qcm9qZWN0UmVsSAASIAoD",
-            "c2V0GAggASgLMhEuc3Vic3RyYWl0LlNldFJlbEgAEjkKEGV4dGVuc2lvbl9z",
-            "aW5nbGUYCSABKAsyHS5zdWJzdHJhaXQuRXh0ZW5zaW9uU2luZ2xlUmVsSAAS",
-            "NwoPZXh0ZW5zaW9uX211bHRpGAogASgLMhwuc3Vic3RyYWl0LkV4dGVuc2lv",
-            "bk11bHRpUmVsSAASNQoOZXh0ZW5zaW9uX2xlYWYYCyABKAsyGy5zdWJzdHJh",
-            "aXQuRXh0ZW5zaW9uTGVhZlJlbEgAEiQKBWNyb3NzGAwgASgLMhMuc3Vic3Ry",
-            "YWl0LkNyb3NzUmVsSAASJAoFd3JpdGUYDyABKAsyEy5zdWJzdHJhaXQuV3Jp",
-            "dGVSZWxIABIrCgloYXNoX2pvaW4YDSABKAsyFi5zdWJzdHJhaXQuSGFzaEpv",
-            "aW5SZWxIABItCgptZXJnZV9qb2luGA4gASgLMhcuc3Vic3RyYWl0Lk1lcmdl",
-            "Sm9pblJlbEgAQgoKCHJlbF90eXBlImYKEE5hbWVkT2JqZWN0V3JpdGUSDQoF",
-            "bmFtZXMYASADKAkSQwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vi",
-            "c3RyYWl0LmV4dGVuc2lvbnMuQWR2YW5jZWRFeHRlbnNpb24iNwoPRXh0ZW5z",
-            "aW9uT2JqZWN0EiQKBmRldGFpbBgBIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5B",
-            "bnkizgQKBkRkbFJlbBIzCgxuYW1lZF9vYmplY3QYASABKAsyGy5zdWJzdHJh",
-            "aXQuTmFtZWRPYmplY3RXcml0ZUgAEjYKEGV4dGVuc2lvbl9vYmplY3QYAiAB",
-            "KAsyGi5zdWJzdHJhaXQuRXh0ZW5zaW9uT2JqZWN0SAASLAoMdGFibGVfc2No",
-            "ZW1hGAMgASgLMhYuc3Vic3RyYWl0Lk5hbWVkU3RydWN0EjwKDnRhYmxlX2Rl",
-            "ZmF1bHRzGAQgASgLMiQuc3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0ZXJhbC5T",
-            "dHJ1Y3QSKwoGb2JqZWN0GAUgASgOMhsuc3Vic3RyYWl0LkRkbFJlbC5EZGxP",
-            "YmplY3QSIwoCb3AYBiABKA4yFy5zdWJzdHJhaXQuRGRsUmVsLkRkbE9wEicK",
-            "D3ZpZXdfZGVmaW5pdGlvbhgHIAEoCzIOLnN1YnN0cmFpdC5SZWwiUgoJRGRs",
-            "T2JqZWN0EhoKFkRETF9PQkpFQ1RfVU5TUEVDSUZJRUQQABIUChBERExfT0JK",
-            "RUNUX1RBQkxFEAESEwoPRERMX09CSkVDVF9WSUVXEAIijQEKBURkbE9wEhYK",
-            "EkRETF9PUF9VTlNQRUNJRklFRBAAEhEKDURETF9PUF9DUkVBVEUQARIcChhE",
-            "RExfT1BfQ1JFQVRFX09SX1JFUExBQ0UQAhIQCgxERExfT1BfQUxURVIQAxIP",
-            "CgtERExfT1BfRFJPUBAEEhgKFERETF9PUF9EUk9QX0lGX0VYSVNUEAVCDAoK",
-            "d3JpdGVfdHlwZSKHBAoIV3JpdGVSZWwSMgoLbmFtZWRfdGFibGUYASABKAsy",
-            "Gy5zdWJzdHJhaXQuTmFtZWRPYmplY3RXcml0ZUgAEjUKD2V4dGVuc2lvbl90",
-            "YWJsZRgCIAEoCzIaLnN1YnN0cmFpdC5FeHRlbnNpb25PYmplY3RIABIsCgx0",
-            "YWJsZV9zY2hlbWEYAyABKAsyFi5zdWJzdHJhaXQuTmFtZWRTdHJ1Y3QSJwoC",
-            "b3AYBCABKA4yGy5zdWJzdHJhaXQuV3JpdGVSZWwuV3JpdGVPcBIdCgVpbnB1",
-            "dBgFIAEoCzIOLnN1YnN0cmFpdC5SZWwSLgoGb3V0cHV0GAYgASgOMh4uc3Vi",
-            "c3RyYWl0LldyaXRlUmVsLk91dHB1dE1vZGUidQoHV3JpdGVPcBIYChRXUklU",
-            "RV9PUF9VTlNQRUNJRklFRBAAEhMKD1dSSVRFX09QX0lOU0VSVBABEhMKD1dS",
-            "SVRFX09QX0RFTEVURRACEhMKD1dSSVRFX09QX1VQREFURRADEhEKDVdSSVRF",
-            "X09QX0NUQVMQBCJlCgpPdXRwdXRNb2RlEhsKF09VVFBVVF9NT0RFX1VOU1BF",
-            "Q0lGSUVEEAASGQoVT1VUUFVUX01PREVfTk9fT1VUUFVUEAESHwobT1VUUFVU",
-            "X01PREVfTU9ESUZJRURfVFVQTEVTEAJCDAoKd3JpdGVfdHlwZSLpBAoLSGFz",
-            "aEpvaW5SZWwSJAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJlbENvbW1v",
-            "bhIcCgRsZWZ0GAIgASgLMg4uc3Vic3RyYWl0LlJlbBIdCgVyaWdodBgDIAEo",
-            "CzIOLnN1YnN0cmFpdC5SZWwSNwoJbGVmdF9rZXlzGAQgAygLMiQuc3Vic3Ry",
-            "YWl0LkV4cHJlc3Npb24uRmllbGRSZWZlcmVuY2USOAoKcmlnaHRfa2V5cxgF",
-            "IAMoCzIkLnN1YnN0cmFpdC5FeHByZXNzaW9uLkZpZWxkUmVmZXJlbmNlEi8K",
-            "EHBvc3Rfam9pbl9maWx0ZXIYBiABKAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lv",
-            "bhItCgR0eXBlGAcgASgOMh8uc3Vic3RyYWl0Lkhhc2hKb2luUmVsLkpvaW5U",
-            "eXBlEkMKEmFkdmFuY2VkX2V4dGVuc2lvbhgKIAEoCzInLnN1YnN0cmFpdC5l",
-            "eHRlbnNpb25zLkFkdmFuY2VkRXh0ZW5zaW9uIt4BCghKb2luVHlwZRIZChVK",
-            "T0lOX1RZUEVfVU5TUEVDSUZJRUQQABITCg9KT0lOX1RZUEVfSU5ORVIQARIT",
-            "Cg9KT0lOX1RZUEVfT1VURVIQAhISCg5KT0lOX1RZUEVfTEVGVBADEhMKD0pP",
-            "SU5fVFlQRV9SSUdIVBAEEhcKE0pPSU5fVFlQRV9MRUZUX1NFTUkQBRIYChRK",
-            "T0lOX1RZUEVfUklHSFRfU0VNSRAGEhcKE0pPSU5fVFlQRV9MRUZUX0FOVEkQ",
-            "BxIYChRKT0lOX1RZUEVfUklHSFRfQU5USRAIIusECgxNZXJnZUpvaW5SZWwS",
-            "JAoGY29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJlbENvbW1vbhIcCgRsZWZ0",
-            "GAIgASgLMg4uc3Vic3RyYWl0LlJlbBIdCgVyaWdodBgDIAEoCzIOLnN1YnN0",
-            "cmFpdC5SZWwSNwoJbGVmdF9rZXlzGAQgAygLMiQuc3Vic3RyYWl0LkV4cHJl",
-            "c3Npb24uRmllbGRSZWZlcmVuY2USOAoKcmlnaHRfa2V5cxgFIAMoCzIkLnN1",
-            "YnN0cmFpdC5FeHByZXNzaW9uLkZpZWxkUmVmZXJlbmNlEi8KEHBvc3Rfam9p",
+            "bmNlZEV4dGVuc2lvbiI3Cg9FeHRlbnNpb25PYmplY3QSJAoGZGV0YWlsGAEg",
+            "ASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueSL0BAoGRGRsUmVsEjMKDG5hbWVk",
+            "X29iamVjdBgBIAEoCzIbLnN1YnN0cmFpdC5OYW1lZE9iamVjdFdyaXRlSAAS",
+            "NgoQZXh0ZW5zaW9uX29iamVjdBgCIAEoCzIaLnN1YnN0cmFpdC5FeHRlbnNp",
+            "b25PYmplY3RIABIsCgx0YWJsZV9zY2hlbWEYAyABKAsyFi5zdWJzdHJhaXQu",
+            "TmFtZWRTdHJ1Y3QSPAoOdGFibGVfZGVmYXVsdHMYBCABKAsyJC5zdWJzdHJh",
+            "aXQuRXhwcmVzc2lvbi5MaXRlcmFsLlN0cnVjdBIrCgZvYmplY3QYBSABKA4y",
+            "Gy5zdWJzdHJhaXQuRGRsUmVsLkRkbE9iamVjdBIjCgJvcBgGIAEoDjIXLnN1",
+            "YnN0cmFpdC5EZGxSZWwuRGRsT3ASJwoPdmlld19kZWZpbml0aW9uGAcgASgL",
+            "Mg4uc3Vic3RyYWl0LlJlbBIkCgZjb21tb24YCCABKAsyFC5zdWJzdHJhaXQu",
+            "UmVsQ29tbW9uIlIKCURkbE9iamVjdBIaChZERExfT0JKRUNUX1VOU1BFQ0lG",
+            "SUVEEAASFAoQRERMX09CSkVDVF9UQUJMRRABEhMKD0RETF9PQkpFQ1RfVklF",
+            "VxACIo0BCgVEZGxPcBIWChJERExfT1BfVU5TUEVDSUZJRUQQABIRCg1ERExf",
+            "T1BfQ1JFQVRFEAESHAoYRERMX09QX0NSRUFURV9PUl9SRVBMQUNFEAISEAoM",
+            "RERMX09QX0FMVEVSEAMSDwoLRERMX09QX0RST1AQBBIYChRERExfT1BfRFJP",
+            "UF9JRl9FWElTVBAFQgwKCndyaXRlX3R5cGUirgQKCFdyaXRlUmVsEjIKC25h",
+            "bWVkX3RhYmxlGAEgASgLMhsuc3Vic3RyYWl0Lk5hbWVkT2JqZWN0V3JpdGVI",
+            "ABI1Cg9leHRlbnNpb25fdGFibGUYAiABKAsyGi5zdWJzdHJhaXQuRXh0ZW5z",
+            "aW9uT2JqZWN0SAASLAoMdGFibGVfc2NoZW1hGAMgASgLMhYuc3Vic3RyYWl0",
+            "Lk5hbWVkU3RydWN0EicKAm9wGAQgASgOMhsuc3Vic3RyYWl0LldyaXRlUmVs",
+            "LldyaXRlT3ASHQoFaW5wdXQYBSABKAsyDi5zdWJzdHJhaXQuUmVsEi4KBm91",
+            "dHB1dBgGIAEoDjIeLnN1YnN0cmFpdC5Xcml0ZVJlbC5PdXRwdXRNb2RlEiQK",
+            "BmNvbW1vbhgHIAEoCzIULnN1YnN0cmFpdC5SZWxDb21tb24idQoHV3JpdGVP",
+            "cBIYChRXUklURV9PUF9VTlNQRUNJRklFRBAAEhMKD1dSSVRFX09QX0lOU0VS",
+            "VBABEhMKD1dSSVRFX09QX0RFTEVURRACEhMKD1dSSVRFX09QX1VQREFURRAD",
+            "EhEKDVdSSVRFX09QX0NUQVMQBCJmCgpPdXRwdXRNb2RlEhsKF09VVFBVVF9N",
+            "T0RFX1VOU1BFQ0lGSUVEEAASGQoVT1VUUFVUX01PREVfTk9fT1VUUFVUEAES",
+            "IAocT1VUUFVUX01PREVfTU9ESUZJRURfUkVDT1JEUxACQgwKCndyaXRlX3R5",
+            "cGUigQQKEUNvbXBhcmlzb25Kb2luS2V5EjIKBGxlZnQYASABKAsyJC5zdWJz",
+            "dHJhaXQuRXhwcmVzc2lvbi5GaWVsZFJlZmVyZW5jZRIzCgVyaWdodBgCIAEo",
+            "CzIkLnN1YnN0cmFpdC5FeHByZXNzaW9uLkZpZWxkUmVmZXJlbmNlEj8KCmNv",
+            "bXBhcmlzb24YAyABKAsyKy5zdWJzdHJhaXQuQ29tcGFyaXNvbkpvaW5LZXku",
+            "Q29tcGFyaXNvblR5cGUaiAEKDkNvbXBhcmlzb25UeXBlEkMKBnNpbXBsZRgB",
+            "IAEoDjIxLnN1YnN0cmFpdC5Db21wYXJpc29uSm9pbktleS5TaW1wbGVDb21w",
+            "YXJpc29uVHlwZUgAEiMKGWN1c3RvbV9mdW5jdGlvbl9yZWZlcmVuY2UYAiAB",
+            "KA1IAEIMCgppbm5lcl90eXBlIrYBChRTaW1wbGVDb21wYXJpc29uVHlwZRIm",
+            "CiJTSU1QTEVfQ09NUEFSSVNPTl9UWVBFX1VOU1BFQ0lGSUVEEAASHQoZU0lN",
+            "UExFX0NPTVBBUklTT05fVFlQRV9FURABEi8KK1NJTVBMRV9DT01QQVJJU09O",
+            "X1RZUEVfSVNfTk9UX0RJU1RJTkNUX0ZST00QAhImCiJTSU1QTEVfQ09NUEFS",
+            "SVNPTl9UWVBFX01JR0hUX0VRVUFMEAMinQUKC0hhc2hKb2luUmVsEiQKBmNv",
+            "bW1vbhgBIAEoCzIULnN1YnN0cmFpdC5SZWxDb21tb24SHAoEbGVmdBgCIAEo",
+            "CzIOLnN1YnN0cmFpdC5SZWwSHQoFcmlnaHQYAyABKAsyDi5zdWJzdHJhaXQu",
+            "UmVsEjsKCWxlZnRfa2V5cxgEIAMoCzIkLnN1YnN0cmFpdC5FeHByZXNzaW9u",
+            "LkZpZWxkUmVmZXJlbmNlQgIYARI8CgpyaWdodF9rZXlzGAUgAygLMiQuc3Vi",
+            "c3RyYWl0LkV4cHJlc3Npb24uRmllbGRSZWZlcmVuY2VCAhgBEioKBGtleXMY",
+            "CCADKAsyHC5zdWJzdHJhaXQuQ29tcGFyaXNvbkpvaW5LZXkSLwoQcG9zdF9q",
+            "b2luX2ZpbHRlchgGIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uEi0KBHR5",
+            "cGUYByABKA4yHy5zdWJzdHJhaXQuSGFzaEpvaW5SZWwuSm9pblR5cGUSQwoS",
+            "YWR2YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vic3RyYWl0LmV4dGVuc2lv",
+            "bnMuQWR2YW5jZWRFeHRlbnNpb24i3gEKCEpvaW5UeXBlEhkKFUpPSU5fVFlQ",
+            "RV9VTlNQRUNJRklFRBAAEhMKD0pPSU5fVFlQRV9JTk5FUhABEhMKD0pPSU5f",
+            "VFlQRV9PVVRFUhACEhIKDkpPSU5fVFlQRV9MRUZUEAMSEwoPSk9JTl9UWVBF",
+            "X1JJR0hUEAQSFwoTSk9JTl9UWVBFX0xFRlRfU0VNSRAFEhgKFEpPSU5fVFlQ",
+            "RV9SSUdIVF9TRU1JEAYSFwoTSk9JTl9UWVBFX0xFRlRfQU5USRAHEhgKFEpP",
+            "SU5fVFlQRV9SSUdIVF9BTlRJEAginwUKDE1lcmdlSm9pblJlbBIkCgZjb21t",
+            "b24YASABKAsyFC5zdWJzdHJhaXQuUmVsQ29tbW9uEhwKBGxlZnQYAiABKAsy",
+            "Di5zdWJzdHJhaXQuUmVsEh0KBXJpZ2h0GAMgASgLMg4uc3Vic3RyYWl0LlJl",
+            "bBI7CglsZWZ0X2tleXMYBCADKAsyJC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5G",
+            "aWVsZFJlZmVyZW5jZUICGAESPAoKcmlnaHRfa2V5cxgFIAMoCzIkLnN1YnN0",
+            "cmFpdC5FeHByZXNzaW9uLkZpZWxkUmVmZXJlbmNlQgIYARIqCgRrZXlzGAgg",
+            "AygLMhwuc3Vic3RyYWl0LkNvbXBhcmlzb25Kb2luS2V5Ei8KEHBvc3Rfam9p",
             "bl9maWx0ZXIYBiABKAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbhIuCgR0eXBl",
             "GAcgASgOMiAuc3Vic3RyYWl0Lk1lcmdlSm9pblJlbC5Kb2luVHlwZRJDChJh",
             "ZHZhbmNlZF9leHRlbnNpb24YCiABKAsyJy5zdWJzdHJhaXQuZXh0ZW5zaW9u",
@@ -227,89 +275,105 @@ namespace Substrait.Protobuf {
             "WVBFX09VVEVSEAISEgoOSk9JTl9UWVBFX0xFRlQQAxITCg9KT0lOX1RZUEVf",
             "UklHSFQQBBIXChNKT0lOX1RZUEVfTEVGVF9TRU1JEAUSGAoUSk9JTl9UWVBF",
             "X1JJR0hUX1NFTUkQBhIXChNKT0lOX1RZUEVfTEVGVF9BTlRJEAcSGAoUSk9J",
-            "Tl9UWVBFX1JJR0hUX0FOVEkQCCJ3ChBGdW5jdGlvbkFyZ3VtZW50Eg4KBGVu",
-            "dW0YASABKAlIABIfCgR0eXBlGAIgASgLMg8uc3Vic3RyYWl0LlR5cGVIABIm",
-            "CgV2YWx1ZRgDIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uSABCCgoIYXJn",
-            "X3R5cGUiMgoORnVuY3Rpb25PcHRpb24SDAoEbmFtZRgBIAEoCRISCgpwcmVm",
-            "ZXJlbmNlGAIgAygJItBFCgpFeHByZXNzaW9uEjAKB2xpdGVyYWwYASABKAsy",
-            "HS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRlcmFsSAASOQoJc2VsZWN0aW9u",
-            "GAIgASgLMiQuc3Vic3RyYWl0LkV4cHJlc3Npb24uRmllbGRSZWZlcmVuY2VI",
-            "ABI/Cg9zY2FsYXJfZnVuY3Rpb24YAyABKAsyJC5zdWJzdHJhaXQuRXhwcmVz",
-            "c2lvbi5TY2FsYXJGdW5jdGlvbkgAEj8KD3dpbmRvd19mdW5jdGlvbhgFIAEo",
-            "CzIkLnN1YnN0cmFpdC5FeHByZXNzaW9uLldpbmRvd0Z1bmN0aW9uSAASLwoH",
-            "aWZfdGhlbhgGIAEoCzIcLnN1YnN0cmFpdC5FeHByZXNzaW9uLklmVGhlbkgA",
-            "EkMKEXN3aXRjaF9leHByZXNzaW9uGAcgASgLMiYuc3Vic3RyYWl0LkV4cHJl",
-            "c3Npb24uU3dpdGNoRXhwcmVzc2lvbkgAEkAKEHNpbmd1bGFyX29yX2xpc3QY",
-            "CCABKAsyJC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5TaW5ndWxhck9yTGlzdEgA",
-            "EjoKDW11bHRpX29yX2xpc3QYCSABKAsyIS5zdWJzdHJhaXQuRXhwcmVzc2lv",
-            "bi5NdWx0aU9yTGlzdEgAEioKBGNhc3QYCyABKAsyGi5zdWJzdHJhaXQuRXhw",
-            "cmVzc2lvbi5DYXN0SAASMgoIc3VicXVlcnkYDCABKAsyHi5zdWJzdHJhaXQu",
-            "RXhwcmVzc2lvbi5TdWJxdWVyeUgAEi4KBm5lc3RlZBgNIAEoCzIcLnN1YnN0",
-            "cmFpdC5FeHByZXNzaW9uLk5lc3RlZEgAEi4KBGVudW0YCiABKAsyGi5zdWJz",
-            "dHJhaXQuRXhwcmVzc2lvbi5FbnVtQgIYAUgAGnIKBEVudW0SEwoJc3BlY2lm",
-            "aWVkGAEgASgJSAASNwoLdW5zcGVjaWZpZWQYAiABKAsyIC5zdWJzdHJhaXQu",
-            "RXhwcmVzc2lvbi5FbnVtLkVtcHR5SAAaCwoFRW1wdHk6AhgBOgIYAUILCgll",
-            "bnVtX2tpbmQa5wwKB0xpdGVyYWwSEQoHYm9vbGVhbhgBIAEoCEgAEgwKAmk4",
-            "GAIgASgFSAASDQoDaTE2GAMgASgFSAASDQoDaTMyGAUgASgFSAASDQoDaTY0",
-            "GAcgASgDSAASDgoEZnAzMhgKIAEoAkgAEg4KBGZwNjQYCyABKAFIABIQCgZz",
-            "dHJpbmcYDCABKAlIABIQCgZiaW5hcnkYDSABKAxIABITCgl0aW1lc3RhbXAY",
-            "DiABKANIABIOCgRkYXRlGBAgASgFSAASDgoEdGltZRgRIAEoA0gAElMKFmlu",
-            "dGVydmFsX3llYXJfdG9fbW9udGgYEyABKAsyMS5zdWJzdHJhaXQuRXhwcmVz",
-            "c2lvbi5MaXRlcmFsLkludGVydmFsWWVhclRvTW9udGhIABJTChZpbnRlcnZh",
-            "bF9kYXlfdG9fc2Vjb25kGBQgASgLMjEuc3Vic3RyYWl0LkV4cHJlc3Npb24u",
-            "TGl0ZXJhbC5JbnRlcnZhbERheVRvU2Vjb25kSAASFAoKZml4ZWRfY2hhchgV",
-            "IAEoCUgAEjkKCHZhcl9jaGFyGBYgASgLMiUuc3Vic3RyYWl0LkV4cHJlc3Np",
-            "b24uTGl0ZXJhbC5WYXJDaGFySAASFgoMZml4ZWRfYmluYXJ5GBcgASgMSAAS",
-            "OAoHZGVjaW1hbBgYIAEoCzIlLnN1YnN0cmFpdC5FeHByZXNzaW9uLkxpdGVy",
-            "YWwuRGVjaW1hbEgAEjYKBnN0cnVjdBgZIAEoCzIkLnN1YnN0cmFpdC5FeHBy",
-            "ZXNzaW9uLkxpdGVyYWwuU3RydWN0SAASMAoDbWFwGBogASgLMiEuc3Vic3Ry",
-            "YWl0LkV4cHJlc3Npb24uTGl0ZXJhbC5NYXBIABIWCgx0aW1lc3RhbXBfdHoY",
-            "GyABKANIABIOCgR1dWlkGBwgASgMSAASHwoEbnVsbBgdIAEoCzIPLnN1YnN0",
-            "cmFpdC5UeXBlSAASMgoEbGlzdBgeIAEoCzIiLnN1YnN0cmFpdC5FeHByZXNz",
-            "aW9uLkxpdGVyYWwuTGlzdEgAEioKCmVtcHR5X2xpc3QYHyABKAsyFC5zdWJz",
-            "dHJhaXQuVHlwZS5MaXN0SAASKAoJZW1wdHlfbWFwGCAgASgLMhMuc3Vic3Ry",
-            "YWl0LlR5cGUuTWFwSAASQQoMdXNlcl9kZWZpbmVkGCEgASgLMikuc3Vic3Ry",
-            "YWl0LkV4cHJlc3Npb24uTGl0ZXJhbC5Vc2VyRGVmaW5lZEgAEhAKCG51bGxh",
-            "YmxlGDIgASgIEiAKGHR5cGVfdmFyaWF0aW9uX3JlZmVyZW5jZRgzIAEoDRoo",
-            "CgdWYXJDaGFyEg0KBXZhbHVlGAEgASgJEg4KBmxlbmd0aBgCIAEoDRo6CgdE",
-            "ZWNpbWFsEg0KBXZhbHVlGAEgASgMEhEKCXByZWNpc2lvbhgCIAEoBRINCgVz",
-            "Y2FsZRgDIAEoBRqrAQoDTWFwEj4KCmtleV92YWx1ZXMYASADKAsyKi5zdWJz",
-            "dHJhaXQuRXhwcmVzc2lvbi5MaXRlcmFsLk1hcC5LZXlWYWx1ZRpkCghLZXlW",
-            "YWx1ZRIqCgNrZXkYASABKAsyHS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRl",
-            "cmFsEiwKBXZhbHVlGAIgASgLMh0uc3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0",
-            "ZXJhbBo0ChNJbnRlcnZhbFllYXJUb01vbnRoEg0KBXllYXJzGAEgASgFEg4K",
-            "Bm1vbnRocxgCIAEoBRpKChNJbnRlcnZhbERheVRvU2Vjb25kEgwKBGRheXMY",
-            "ASABKAUSDwoHc2Vjb25kcxgCIAEoBRIUCgxtaWNyb3NlY29uZHMYAyABKAUa",
-            "NwoGU3RydWN0Ei0KBmZpZWxkcxgBIAMoCzIdLnN1YnN0cmFpdC5FeHByZXNz",
-            "aW9uLkxpdGVyYWwaNQoETGlzdBItCgZ2YWx1ZXMYASADKAsyHS5zdWJzdHJh",
-            "aXQuRXhwcmVzc2lvbi5MaXRlcmFsGn4KC1VzZXJEZWZpbmVkEhYKDnR5cGVf",
+            "Tl9UWVBFX1JJR0hUX0FOVEkQCCL8AwoRTmVzdGVkTG9vcEpvaW5SZWwSJAoG",
+            "Y29tbW9uGAEgASgLMhQuc3Vic3RyYWl0LlJlbENvbW1vbhIcCgRsZWZ0GAIg",
+            "ASgLMg4uc3Vic3RyYWl0LlJlbBIdCgVyaWdodBgDIAEoCzIOLnN1YnN0cmFp",
+            "dC5SZWwSKQoKZXhwcmVzc2lvbhgEIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNz",
+            "aW9uEjMKBHR5cGUYBSABKA4yJS5zdWJzdHJhaXQuTmVzdGVkTG9vcEpvaW5S",
+            "ZWwuSm9pblR5cGUSQwoSYWR2YW5jZWRfZXh0ZW5zaW9uGAogASgLMicuc3Vi",
+            "c3RyYWl0LmV4dGVuc2lvbnMuQWR2YW5jZWRFeHRlbnNpb24i3gEKCEpvaW5U",
+            "eXBlEhkKFUpPSU5fVFlQRV9VTlNQRUNJRklFRBAAEhMKD0pPSU5fVFlQRV9J",
+            "Tk5FUhABEhMKD0pPSU5fVFlQRV9PVVRFUhACEhIKDkpPSU5fVFlQRV9MRUZU",
+            "EAMSEwoPSk9JTl9UWVBFX1JJR0hUEAQSFwoTSk9JTl9UWVBFX0xFRlRfU0VN",
+            "SRAFEhgKFEpPSU5fVFlQRV9SSUdIVF9TRU1JEAYSFwoTSk9JTl9UWVBFX0xF",
+            "RlRfQU5USRAHEhgKFEpPSU5fVFlQRV9SSUdIVF9BTlRJEAgidwoQRnVuY3Rp",
+            "b25Bcmd1bWVudBIOCgRlbnVtGAEgASgJSAASHwoEdHlwZRgCIAEoCzIPLnN1",
+            "YnN0cmFpdC5UeXBlSAASJgoFdmFsdWUYAyABKAsyFS5zdWJzdHJhaXQuRXhw",
+            "cmVzc2lvbkgAQgoKCGFyZ190eXBlIjIKDkZ1bmN0aW9uT3B0aW9uEgwKBG5h",
+            "bWUYASABKAkSEgoKcHJlZmVyZW5jZRgCIAMoCSL5RwoKRXhwcmVzc2lvbhIw",
+            "CgdsaXRlcmFsGAEgASgLMh0uc3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0ZXJh",
+            "bEgAEjkKCXNlbGVjdGlvbhgCIAEoCzIkLnN1YnN0cmFpdC5FeHByZXNzaW9u",
+            "LkZpZWxkUmVmZXJlbmNlSAASPwoPc2NhbGFyX2Z1bmN0aW9uGAMgASgLMiQu",
+            "c3Vic3RyYWl0LkV4cHJlc3Npb24uU2NhbGFyRnVuY3Rpb25IABI/Cg93aW5k",
+            "b3dfZnVuY3Rpb24YBSABKAsyJC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5XaW5k",
+            "b3dGdW5jdGlvbkgAEi8KB2lmX3RoZW4YBiABKAsyHC5zdWJzdHJhaXQuRXhw",
+            "cmVzc2lvbi5JZlRoZW5IABJDChFzd2l0Y2hfZXhwcmVzc2lvbhgHIAEoCzIm",
+            "LnN1YnN0cmFpdC5FeHByZXNzaW9uLlN3aXRjaEV4cHJlc3Npb25IABJAChBz",
+            "aW5ndWxhcl9vcl9saXN0GAggASgLMiQuc3Vic3RyYWl0LkV4cHJlc3Npb24u",
+            "U2luZ3VsYXJPckxpc3RIABI6Cg1tdWx0aV9vcl9saXN0GAkgASgLMiEuc3Vi",
+            "c3RyYWl0LkV4cHJlc3Npb24uTXVsdGlPckxpc3RIABIqCgRjYXN0GAsgASgL",
+            "Mhouc3Vic3RyYWl0LkV4cHJlc3Npb24uQ2FzdEgAEjIKCHN1YnF1ZXJ5GAwg",
+            "ASgLMh4uc3Vic3RyYWl0LkV4cHJlc3Npb24uU3VicXVlcnlIABIuCgZuZXN0",
+            "ZWQYDSABKAsyHC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5OZXN0ZWRIABIuCgRl",
+            "bnVtGAogASgLMhouc3Vic3RyYWl0LkV4cHJlc3Npb24uRW51bUICGAFIABpy",
+            "CgRFbnVtEhMKCXNwZWNpZmllZBgBIAEoCUgAEjcKC3Vuc3BlY2lmaWVkGAIg",
+            "ASgLMiAuc3Vic3RyYWl0LkV4cHJlc3Npb24uRW51bS5FbXB0eUgAGgsKBUVt",
+            "cHR5OgIYAToCGAFCCwoJZW51bV9raW5kGvINCgdMaXRlcmFsEhEKB2Jvb2xl",
+            "YW4YASABKAhIABIMCgJpOBgCIAEoBUgAEg0KA2kxNhgDIAEoBUgAEg0KA2kz",
+            "MhgFIAEoBUgAEg0KA2k2NBgHIAEoA0gAEg4KBGZwMzIYCiABKAJIABIOCgRm",
+            "cDY0GAsgASgBSAASEAoGc3RyaW5nGAwgASgJSAASEAoGYmluYXJ5GA0gASgM",
+            "SAASFwoJdGltZXN0YW1wGA4gASgDQgIYAUgAEg4KBGRhdGUYECABKAVIABIO",
+            "CgR0aW1lGBEgASgDSAASUwoWaW50ZXJ2YWxfeWVhcl90b19tb250aBgTIAEo",
+            "CzIxLnN1YnN0cmFpdC5FeHByZXNzaW9uLkxpdGVyYWwuSW50ZXJ2YWxZZWFy",
+            "VG9Nb250aEgAElMKFmludGVydmFsX2RheV90b19zZWNvbmQYFCABKAsyMS5z",
+            "dWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRlcmFsLkludGVydmFsRGF5VG9TZWNv",
+            "bmRIABIUCgpmaXhlZF9jaGFyGBUgASgJSAASOQoIdmFyX2NoYXIYFiABKAsy",
+            "JS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRlcmFsLlZhckNoYXJIABIWCgxm",
+            "aXhlZF9iaW5hcnkYFyABKAxIABI4CgdkZWNpbWFsGBggASgLMiUuc3Vic3Ry",
+            "YWl0LkV4cHJlc3Npb24uTGl0ZXJhbC5EZWNpbWFsSAASHQoTcHJlY2lzaW9u",
+            "X3RpbWVzdGFtcBgiIAEoBEgAEiAKFnByZWNpc2lvbl90aW1lc3RhbXBfdHoY",
+            "IyABKARIABI2CgZzdHJ1Y3QYGSABKAsyJC5zdWJzdHJhaXQuRXhwcmVzc2lv",
+            "bi5MaXRlcmFsLlN0cnVjdEgAEjAKA21hcBgaIAEoCzIhLnN1YnN0cmFpdC5F",
+            "eHByZXNzaW9uLkxpdGVyYWwuTWFwSAASGgoMdGltZXN0YW1wX3R6GBsgASgD",
+            "QgIYAUgAEg4KBHV1aWQYHCABKAxIABIfCgRudWxsGB0gASgLMg8uc3Vic3Ry",
+            "YWl0LlR5cGVIABIyCgRsaXN0GB4gASgLMiIuc3Vic3RyYWl0LkV4cHJlc3Np",
+            "b24uTGl0ZXJhbC5MaXN0SAASKgoKZW1wdHlfbGlzdBgfIAEoCzIULnN1YnN0",
+            "cmFpdC5UeXBlLkxpc3RIABIoCgllbXB0eV9tYXAYICABKAsyEy5zdWJzdHJh",
+            "aXQuVHlwZS5NYXBIABJBCgx1c2VyX2RlZmluZWQYISABKAsyKS5zdWJzdHJh",
+            "aXQuRXhwcmVzc2lvbi5MaXRlcmFsLlVzZXJEZWZpbmVkSAASEAoIbnVsbGFi",
+            "bGUYMiABKAgSIAoYdHlwZV92YXJpYXRpb25fcmVmZXJlbmNlGDMgASgNGigK",
+            "B1ZhckNoYXISDQoFdmFsdWUYASABKAkSDgoGbGVuZ3RoGAIgASgNGjoKB0Rl",
+            "Y2ltYWwSDQoFdmFsdWUYASABKAwSEQoJcHJlY2lzaW9uGAIgASgFEg0KBXNj",
+            "YWxlGAMgASgFGqsBCgNNYXASPgoKa2V5X3ZhbHVlcxgBIAMoCzIqLnN1YnN0",
+            "cmFpdC5FeHByZXNzaW9uLkxpdGVyYWwuTWFwLktleVZhbHVlGmQKCEtleVZh",
+            "bHVlEioKA2tleRgBIAEoCzIdLnN1YnN0cmFpdC5FeHByZXNzaW9uLkxpdGVy",
+            "YWwSLAoFdmFsdWUYAiABKAsyHS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRl",
+            "cmFsGjQKE0ludGVydmFsWWVhclRvTW9udGgSDQoFeWVhcnMYASABKAUSDgoG",
+            "bW9udGhzGAIgASgFGkoKE0ludGVydmFsRGF5VG9TZWNvbmQSDAoEZGF5cxgB",
+            "IAEoBRIPCgdzZWNvbmRzGAIgASgFEhQKDG1pY3Jvc2Vjb25kcxgDIAEoBRo3",
+            "CgZTdHJ1Y3QSLQoGZmllbGRzGAEgAygLMh0uc3Vic3RyYWl0LkV4cHJlc3Np",
+            "b24uTGl0ZXJhbBo1CgRMaXN0Ei0KBnZhbHVlcxgBIAMoCzIdLnN1YnN0cmFp",
+            "dC5FeHByZXNzaW9uLkxpdGVyYWwavwEKC1VzZXJEZWZpbmVkEhYKDnR5cGVf",
             "cmVmZXJlbmNlGAEgASgNEjIKD3R5cGVfcGFyYW1ldGVycxgDIAMoCzIZLnN1",
-            "YnN0cmFpdC5UeXBlLlBhcmFtZXRlchIjCgV2YWx1ZRgCIAEoCzIULmdvb2ds",
-            "ZS5wcm90b2J1Zi5BbnlCDgoMbGl0ZXJhbF90eXBlGuMDCgZOZXN0ZWQSEAoI",
-            "bnVsbGFibGUYASABKAgSIAoYdHlwZV92YXJpYXRpb25fcmVmZXJlbmNlGAIg",
-            "ASgNEjUKBnN0cnVjdBgDIAEoCzIjLnN1YnN0cmFpdC5FeHByZXNzaW9uLk5l",
-            "c3RlZC5TdHJ1Y3RIABIxCgRsaXN0GAQgASgLMiEuc3Vic3RyYWl0LkV4cHJl",
-            "c3Npb24uTmVzdGVkLkxpc3RIABIvCgNtYXAYBSABKAsyIC5zdWJzdHJhaXQu",
-            "RXhwcmVzc2lvbi5OZXN0ZWQuTWFwSAAamgEKA01hcBI9CgprZXlfdmFsdWVz",
-            "GAEgAygLMikuc3Vic3RyYWl0LkV4cHJlc3Npb24uTmVzdGVkLk1hcC5LZXlW",
-            "YWx1ZRpUCghLZXlWYWx1ZRIiCgNrZXkYASABKAsyFS5zdWJzdHJhaXQuRXhw",
-            "cmVzc2lvbhIkCgV2YWx1ZRgCIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9u",
-            "Gi8KBlN0cnVjdBIlCgZmaWVsZHMYASADKAsyFS5zdWJzdHJhaXQuRXhwcmVz",
-            "c2lvbhotCgRMaXN0EiUKBnZhbHVlcxgBIAMoCzIVLnN1YnN0cmFpdC5FeHBy",
-            "ZXNzaW9uQg0KC25lc3RlZF90eXBlGtcBCg5TY2FsYXJGdW5jdGlvbhIaChJm",
-            "dW5jdGlvbl9yZWZlcmVuY2UYASABKA0SLgoJYXJndW1lbnRzGAQgAygLMhsu",
-            "c3Vic3RyYWl0LkZ1bmN0aW9uQXJndW1lbnQSKgoHb3B0aW9ucxgFIAMoCzIZ",
-            "LnN1YnN0cmFpdC5GdW5jdGlvbk9wdGlvbhIkCgtvdXRwdXRfdHlwZRgDIAEo",
-            "CzIPLnN1YnN0cmFpdC5UeXBlEicKBGFyZ3MYAiADKAsyFS5zdWJzdHJhaXQu",
-            "RXhwcmVzc2lvbkICGAEaswcKDldpbmRvd0Z1bmN0aW9uEhoKEmZ1bmN0aW9u",
-            "X3JlZmVyZW5jZRgBIAEoDRIuCglhcmd1bWVudHMYCSADKAsyGy5zdWJzdHJh",
-            "aXQuRnVuY3Rpb25Bcmd1bWVudBIqCgdvcHRpb25zGAsgAygLMhkuc3Vic3Ry",
-            "YWl0LkZ1bmN0aW9uT3B0aW9uEiQKC291dHB1dF90eXBlGAcgASgLMg8uc3Vi",
-            "c3RyYWl0LlR5cGUSKgoFcGhhc2UYBiABKA4yGy5zdWJzdHJhaXQuQWdncmVn",
-            "YXRpb25QaGFzZRIjCgVzb3J0cxgDIAMoCzIULnN1YnN0cmFpdC5Tb3J0Rmll",
-            "bGQSRgoKaW52b2NhdGlvbhgKIAEoDjIyLnN1YnN0cmFpdC5BZ2dyZWdhdGVG",
-            "dW5jdGlvbi5BZ2dyZWdhdGlvbkludm9jYXRpb24SKQoKcGFydGl0aW9ucxgC",
-            "IAMoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uEj8KC2xvd2VyX2JvdW5kGAUg",
+            "YnN0cmFpdC5UeXBlLlBhcmFtZXRlchIlCgV2YWx1ZRgCIAEoCzIULmdvb2ds",
+            "ZS5wcm90b2J1Zi5BbnlIABI2CgZzdHJ1Y3QYBCABKAsyJC5zdWJzdHJhaXQu",
+            "RXhwcmVzc2lvbi5MaXRlcmFsLlN0cnVjdEgAQgUKA3ZhbEIOCgxsaXRlcmFs",
+            "X3R5cGUa4wMKBk5lc3RlZBIQCghudWxsYWJsZRgBIAEoCBIgChh0eXBlX3Zh",
+            "cmlhdGlvbl9yZWZlcmVuY2UYAiABKA0SNQoGc3RydWN0GAMgASgLMiMuc3Vi",
+            "c3RyYWl0LkV4cHJlc3Npb24uTmVzdGVkLlN0cnVjdEgAEjEKBGxpc3QYBCAB",
+            "KAsyIS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5OZXN0ZWQuTGlzdEgAEi8KA21h",
+            "cBgFIAEoCzIgLnN1YnN0cmFpdC5FeHByZXNzaW9uLk5lc3RlZC5NYXBIABqa",
+            "AQoDTWFwEj0KCmtleV92YWx1ZXMYASADKAsyKS5zdWJzdHJhaXQuRXhwcmVz",
+            "c2lvbi5OZXN0ZWQuTWFwLktleVZhbHVlGlQKCEtleVZhbHVlEiIKA2tleRgB",
+            "IAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uEiQKBXZhbHVlGAIgASgLMhUu",
+            "c3Vic3RyYWl0LkV4cHJlc3Npb24aLwoGU3RydWN0EiUKBmZpZWxkcxgBIAMo",
+            "CzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uGi0KBExpc3QSJQoGdmFsdWVzGAEg",
+            "AygLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb25CDQoLbmVzdGVkX3R5cGUa1wEK",
+            "DlNjYWxhckZ1bmN0aW9uEhoKEmZ1bmN0aW9uX3JlZmVyZW5jZRgBIAEoDRIu",
+            "Cglhcmd1bWVudHMYBCADKAsyGy5zdWJzdHJhaXQuRnVuY3Rpb25Bcmd1bWVu",
+            "dBIqCgdvcHRpb25zGAUgAygLMhkuc3Vic3RyYWl0LkZ1bmN0aW9uT3B0aW9u",
+            "EiQKC291dHB1dF90eXBlGAMgASgLMg8uc3Vic3RyYWl0LlR5cGUSJwoEYXJn",
+            "cxgCIAMoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uQgIYARrRCAoOV2luZG93",
+            "RnVuY3Rpb24SGgoSZnVuY3Rpb25fcmVmZXJlbmNlGAEgASgNEi4KCWFyZ3Vt",
+            "ZW50cxgJIAMoCzIbLnN1YnN0cmFpdC5GdW5jdGlvbkFyZ3VtZW50EioKB29w",
+            "dGlvbnMYCyADKAsyGS5zdWJzdHJhaXQuRnVuY3Rpb25PcHRpb24SJAoLb3V0",
+            "cHV0X3R5cGUYByABKAsyDy5zdWJzdHJhaXQuVHlwZRIqCgVwaGFzZRgGIAEo",
+            "DjIbLnN1YnN0cmFpdC5BZ2dyZWdhdGlvblBoYXNlEiMKBXNvcnRzGAMgAygL",
+            "MhQuc3Vic3RyYWl0LlNvcnRGaWVsZBJGCgppbnZvY2F0aW9uGAogASgOMjIu",
+            "c3Vic3RyYWl0LkFnZ3JlZ2F0ZUZ1bmN0aW9uLkFnZ3JlZ2F0aW9uSW52b2Nh",
+            "dGlvbhIpCgpwYXJ0aXRpb25zGAIgAygLMhUuc3Vic3RyYWl0LkV4cHJlc3Np",
+            "b24SRAoLYm91bmRzX3R5cGUYDCABKA4yLy5zdWJzdHJhaXQuRXhwcmVzc2lv",
+            "bi5XaW5kb3dGdW5jdGlvbi5Cb3VuZHNUeXBlEj8KC2xvd2VyX2JvdW5kGAUg",
             "ASgLMiouc3Vic3RyYWl0LkV4cHJlc3Npb24uV2luZG93RnVuY3Rpb24uQm91",
             "bmQSPwoLdXBwZXJfYm91bmQYBCABKAsyKi5zdWJzdHJhaXQuRXhwcmVzc2lv",
             "bi5XaW5kb3dGdW5jdGlvbi5Cb3VuZBInCgRhcmdzGAggAygLMhUuc3Vic3Ry",
@@ -322,142 +386,144 @@ namespace Substrait.Protobuf {
             "BCABKAsyNC5zdWJzdHJhaXQuRXhwcmVzc2lvbi5XaW5kb3dGdW5jdGlvbi5C",
             "b3VuZC5VbmJvdW5kZWRIABobCglQcmVjZWRpbmcSDgoGb2Zmc2V0GAEgASgD",
             "GhsKCUZvbGxvd2luZxIOCgZvZmZzZXQYASABKAMaDAoKQ3VycmVudFJvdxoL",
-            "CglVbmJvdW5kZWRCBgoEa2luZBq1AQoGSWZUaGVuEjIKA2lmcxgBIAMoCzIl",
-            "LnN1YnN0cmFpdC5FeHByZXNzaW9uLklmVGhlbi5JZkNsYXVzZRIjCgRlbHNl",
-            "GAIgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24aUgoISWZDbGF1c2USIQoC",
-            "aWYYASABKAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbhIjCgR0aGVuGAIgASgL",
-            "MhUuc3Vic3RyYWl0LkV4cHJlc3Npb24ajgIKBENhc3QSHQoEdHlwZRgBIAEo",
-            "CzIPLnN1YnN0cmFpdC5UeXBlEiQKBWlucHV0GAIgASgLMhUuc3Vic3RyYWl0",
-            "LkV4cHJlc3Npb24SRAoQZmFpbHVyZV9iZWhhdmlvchgDIAEoDjIqLnN1YnN0",
-            "cmFpdC5FeHByZXNzaW9uLkNhc3QuRmFpbHVyZUJlaGF2aW9yInsKD0ZhaWx1",
-            "cmVCZWhhdmlvchIgChxGQUlMVVJFX0JFSEFWSU9SX1VOU1BFQ0lGSUVEEAAS",
-            "IAocRkFJTFVSRV9CRUhBVklPUl9SRVRVUk5fTlVMTBABEiQKIEZBSUxVUkVf",
-            "QkVIQVZJT1JfVEhST1dfRVhDRVBUSU9OEAIa9QEKEFN3aXRjaEV4cHJlc3Np",
-            "b24SJAoFbWF0Y2gYAyABKAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbhI7CgNp",
-            "ZnMYASADKAsyLi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5Td2l0Y2hFeHByZXNz",
-            "aW9uLklmVmFsdWUSIwoEZWxzZRgCIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNz",
-            "aW9uGlkKB0lmVmFsdWUSKQoCaWYYASABKAsyHS5zdWJzdHJhaXQuRXhwcmVz",
-            "c2lvbi5MaXRlcmFsEiMKBHRoZW4YAiABKAsyFS5zdWJzdHJhaXQuRXhwcmVz",
-            "c2lvbhpeCg5TaW5ndWxhck9yTGlzdBIkCgV2YWx1ZRgBIAEoCzIVLnN1YnN0",
-            "cmFpdC5FeHByZXNzaW9uEiYKB29wdGlvbnMYAiADKAsyFS5zdWJzdHJhaXQu",
-            "RXhwcmVzc2lvbhqfAQoLTXVsdGlPckxpc3QSJAoFdmFsdWUYASADKAsyFS5z",
-            "dWJzdHJhaXQuRXhwcmVzc2lvbhI5CgdvcHRpb25zGAIgAygLMiguc3Vic3Ry",
-            "YWl0LkV4cHJlc3Npb24uTXVsdGlPckxpc3QuUmVjb3JkGi8KBlJlY29yZBIl",
-            "CgZmaWVsZHMYASADKAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbhqjAwoQRW1i",
-            "ZWRkZWRGdW5jdGlvbhIoCglhcmd1bWVudHMYASADKAsyFS5zdWJzdHJhaXQu",
-            "RXhwcmVzc2lvbhIkCgtvdXRwdXRfdHlwZRgCIAEoCzIPLnN1YnN0cmFpdC5U",
-            "eXBlEl0KFnB5dGhvbl9waWNrbGVfZnVuY3Rpb24YAyABKAsyOy5zdWJzdHJh",
-            "aXQuRXhwcmVzc2lvbi5FbWJlZGRlZEZ1bmN0aW9uLlB5dGhvblBpY2tsZUZ1",
-            "bmN0aW9uSAASWwoVd2ViX2Fzc2VtYmx5X2Z1bmN0aW9uGAQgASgLMjouc3Vi",
-            "c3RyYWl0LkV4cHJlc3Npb24uRW1iZWRkZWRGdW5jdGlvbi5XZWJBc3NlbWJs",
-            "eUZ1bmN0aW9uSAAaPgoUUHl0aG9uUGlja2xlRnVuY3Rpb24SEAoIZnVuY3Rp",
-            "b24YASABKAwSFAoMcHJlcmVxdWlzaXRlGAIgAygJGjsKE1dlYkFzc2VtYmx5",
-            "RnVuY3Rpb24SDgoGc2NyaXB0GAEgASgMEhQKDHByZXJlcXVpc2l0ZRgCIAMo",
-            "CUIGCgRraW5kGpoEChBSZWZlcmVuY2VTZWdtZW50EkAKB21hcF9rZXkYASAB",
-            "KAsyLS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5SZWZlcmVuY2VTZWdtZW50Lk1h",
-            "cEtleUgAEkoKDHN0cnVjdF9maWVsZBgCIAEoCzIyLnN1YnN0cmFpdC5FeHBy",
-            "ZXNzaW9uLlJlZmVyZW5jZVNlZ21lbnQuU3RydWN0RmllbGRIABJKCgxsaXN0",
-            "X2VsZW1lbnQYAyABKAsyMi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5SZWZlcmVu",
-            "Y2VTZWdtZW50Lkxpc3RFbGVtZW50SAAabwoGTWFwS2V5Ei4KB21hcF9rZXkY",
-            "ASABKAsyHS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5MaXRlcmFsEjUKBWNoaWxk",
-            "GAIgASgLMiYuc3Vic3RyYWl0LkV4cHJlc3Npb24uUmVmZXJlbmNlU2VnbWVu",
-            "dBpTCgtTdHJ1Y3RGaWVsZBINCgVmaWVsZBgBIAEoBRI1CgVjaGlsZBgCIAEo",
-            "CzImLnN1YnN0cmFpdC5FeHByZXNzaW9uLlJlZmVyZW5jZVNlZ21lbnQaVAoL",
-            "TGlzdEVsZW1lbnQSDgoGb2Zmc2V0GAEgASgFEjUKBWNoaWxkGAIgASgLMiYu",
-            "c3Vic3RyYWl0LkV4cHJlc3Npb24uUmVmZXJlbmNlU2VnbWVudEIQCg5yZWZl",
-            "cmVuY2VfdHlwZRrwCQoOTWFza0V4cHJlc3Npb24SQQoGc2VsZWN0GAEgASgL",
-            "MjEuc3Vic3RyYWl0LkV4cHJlc3Npb24uTWFza0V4cHJlc3Npb24uU3RydWN0",
-            "U2VsZWN0EiAKGG1haW50YWluX3Npbmd1bGFyX3N0cnVjdBgCIAEoCBrVAQoG",
-            "U2VsZWN0EkMKBnN0cnVjdBgBIAEoCzIxLnN1YnN0cmFpdC5FeHByZXNzaW9u",
-            "Lk1hc2tFeHByZXNzaW9uLlN0cnVjdFNlbGVjdEgAEj8KBGxpc3QYAiABKAsy",
-            "Ly5zdWJzdHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhwcmVzc2lvbi5MaXN0U2Vs",
-            "ZWN0SAASPQoDbWFwGAMgASgLMi4uc3Vic3RyYWl0LkV4cHJlc3Npb24uTWFz",
-            "a0V4cHJlc3Npb24uTWFwU2VsZWN0SABCBgoEdHlwZRpVCgxTdHJ1Y3RTZWxl",
-            "Y3QSRQoMc3RydWN0X2l0ZW1zGAEgAygLMi8uc3Vic3RyYWl0LkV4cHJlc3Np",
-            "b24uTWFza0V4cHJlc3Npb24uU3RydWN0SXRlbRpXCgpTdHJ1Y3RJdGVtEg0K",
-            "BWZpZWxkGAEgASgFEjoKBWNoaWxkGAIgASgLMisuc3Vic3RyYWl0LkV4cHJl",
-            "c3Npb24uTWFza0V4cHJlc3Npb24uU2VsZWN0GrQDCgpMaXN0U2VsZWN0ElEK",
-            "CXNlbGVjdGlvbhgBIAMoCzI+LnN1YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tF",
-            "eHByZXNzaW9uLkxpc3RTZWxlY3QuTGlzdFNlbGVjdEl0ZW0SOgoFY2hpbGQY",
-            "AiABKAsyKy5zdWJzdHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhwcmVzc2lvbi5T",
-            "ZWxlY3QalgIKDkxpc3RTZWxlY3RJdGVtEloKBGl0ZW0YASABKAsySi5zdWJz",
-            "dHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhwcmVzc2lvbi5MaXN0U2VsZWN0Lkxp",
-            "c3RTZWxlY3RJdGVtLkxpc3RFbGVtZW50SAASWQoFc2xpY2UYAiABKAsySC5z",
-            "dWJzdHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhwcmVzc2lvbi5MaXN0U2VsZWN0",
-            "Lkxpc3RTZWxlY3RJdGVtLkxpc3RTbGljZUgAGhwKC0xpc3RFbGVtZW50Eg0K",
-            "BWZpZWxkGAEgASgFGicKCUxpc3RTbGljZRINCgVzdGFydBgBIAEoBRILCgNl",
-            "bmQYAiABKAVCBgoEdHlwZRq5AgoJTWFwU2VsZWN0EkQKA2tleRgBIAEoCzI1",
-            "LnN1YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tFeHByZXNzaW9uLk1hcFNlbGVj",
-            "dC5NYXBLZXlIABJVCgpleHByZXNzaW9uGAIgASgLMj8uc3Vic3RyYWl0LkV4",
-            "cHJlc3Npb24uTWFza0V4cHJlc3Npb24uTWFwU2VsZWN0Lk1hcEtleUV4cHJl",
-            "c3Npb25IABI6CgVjaGlsZBgDIAEoCzIrLnN1YnN0cmFpdC5FeHByZXNzaW9u",
-            "Lk1hc2tFeHByZXNzaW9uLlNlbGVjdBoZCgZNYXBLZXkSDwoHbWFwX2tleRgB",
-            "IAEoCRouChBNYXBLZXlFeHByZXNzaW9uEhoKEm1hcF9rZXlfZXhwcmVzc2lv",
-            "bhgBIAEoCUIICgZzZWxlY3QatgMKDkZpZWxkUmVmZXJlbmNlEkIKEGRpcmVj",
-            "dF9yZWZlcmVuY2UYASABKAsyJi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5SZWZl",
-            "cmVuY2VTZWdtZW50SAASQAoQbWFza2VkX3JlZmVyZW5jZRgCIAEoCzIkLnN1",
-            "YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tFeHByZXNzaW9uSAASKwoKZXhwcmVz",
-            "c2lvbhgDIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uSAESTAoOcm9vdF9y",
-            "ZWZlcmVuY2UYBCABKAsyMi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5GaWVsZFJl",
-            "ZmVyZW5jZS5Sb290UmVmZXJlbmNlSAESTgoPb3V0ZXJfcmVmZXJlbmNlGAUg",
-            "ASgLMjMuc3Vic3RyYWl0LkV4cHJlc3Npb24uRmllbGRSZWZlcmVuY2UuT3V0",
-            "ZXJSZWZlcmVuY2VIARoPCg1Sb290UmVmZXJlbmNlGiMKDk91dGVyUmVmZXJl",
-            "bmNlEhEKCXN0ZXBzX291dBgBIAEoDUIQCg5yZWZlcmVuY2VfdHlwZUILCgly",
-            "b290X3R5cGUajAkKCFN1YnF1ZXJ5EjcKBnNjYWxhchgBIAEoCzIlLnN1YnN0",
-            "cmFpdC5FeHByZXNzaW9uLlN1YnF1ZXJ5LlNjYWxhckgAEkIKDGluX3ByZWRp",
-            "Y2F0ZRgCIAEoCzIqLnN1YnN0cmFpdC5FeHByZXNzaW9uLlN1YnF1ZXJ5Lklu",
-            "UHJlZGljYXRlSAASRAoNc2V0X3ByZWRpY2F0ZRgDIAEoCzIrLnN1YnN0cmFp",
-            "dC5FeHByZXNzaW9uLlN1YnF1ZXJ5LlNldFByZWRpY2F0ZUgAEkYKDnNldF9j",
-            "b21wYXJpc29uGAQgASgLMiwuc3Vic3RyYWl0LkV4cHJlc3Npb24uU3VicXVl",
-            "cnkuU2V0Q29tcGFyaXNvbkgAGicKBlNjYWxhchIdCgVpbnB1dBgBIAEoCzIO",
-            "LnN1YnN0cmFpdC5SZWwaVwoLSW5QcmVkaWNhdGUSJgoHbmVlZGxlcxgBIAMo",
-            "CzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uEiAKCGhheXN0YWNrGAIgASgLMg4u",
-            "c3Vic3RyYWl0LlJlbBrcAQoMU2V0UHJlZGljYXRlEk0KDHByZWRpY2F0ZV9v",
-            "cBgBIAEoDjI3LnN1YnN0cmFpdC5FeHByZXNzaW9uLlN1YnF1ZXJ5LlNldFBy",
-            "ZWRpY2F0ZS5QcmVkaWNhdGVPcBIeCgZ0dXBsZXMYAiABKAsyDi5zdWJzdHJh",
-            "aXQuUmVsIl0KC1ByZWRpY2F0ZU9wEhwKGFBSRURJQ0FURV9PUF9VTlNQRUNJ",
-            "RklFRBAAEhcKE1BSRURJQ0FURV9PUF9FWElTVFMQARIXChNQUkVESUNBVEVf",
-            "T1BfVU5JUVVFEAIaggQKDVNldENvbXBhcmlzb24STgoMcmVkdWN0aW9uX29w",
-            "GAEgASgOMjguc3Vic3RyYWl0LkV4cHJlc3Npb24uU3VicXVlcnkuU2V0Q29t",
-            "cGFyaXNvbi5SZWR1Y3Rpb25PcBJQCg1jb21wYXJpc29uX29wGAIgASgOMjku",
-            "c3Vic3RyYWl0LkV4cHJlc3Npb24uU3VicXVlcnkuU2V0Q29tcGFyaXNvbi5D",
-            "b21wYXJpc29uT3ASIwoEbGVmdBgDIAEoCzIVLnN1YnN0cmFpdC5FeHByZXNz",
-            "aW9uEh0KBXJpZ2h0GAQgASgLMg4uc3Vic3RyYWl0LlJlbCKxAQoMQ29tcGFy",
-            "aXNvbk9wEh0KGUNPTVBBUklTT05fT1BfVU5TUEVDSUZJRUQQABIUChBDT01Q",
-            "QVJJU09OX09QX0VREAESFAoQQ09NUEFSSVNPTl9PUF9ORRACEhQKEENPTVBB",
-            "UklTT05fT1BfTFQQAxIUChBDT01QQVJJU09OX09QX0dUEAQSFAoQQ09NUEFS",
-            "SVNPTl9PUF9MRRAFEhQKEENPTVBBUklTT05fT1BfR0UQBiJXCgtSZWR1Y3Rp",
-            "b25PcBIcChhSRURVQ1RJT05fT1BfVU5TUEVDSUZJRUQQABIUChBSRURVQ1RJ",
-            "T05fT1BfQU5ZEAESFAoQUkVEVUNUSU9OX09QX0FMTBACQg8KDXN1YnF1ZXJ5",
-            "X3R5cGVCCgoIcmV4X3R5cGUi/wIKCVNvcnRGaWVsZBIjCgRleHByGAEgASgL",
-            "MhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SNwoJZGlyZWN0aW9uGAIgASgOMiIu",
-            "c3Vic3RyYWl0LlNvcnRGaWVsZC5Tb3J0RGlyZWN0aW9uSAASJwodY29tcGFy",
-            "aXNvbl9mdW5jdGlvbl9yZWZlcmVuY2UYAyABKA1IACLdAQoNU29ydERpcmVj",
-            "dGlvbhIeChpTT1JUX0RJUkVDVElPTl9VTlNQRUNJRklFRBAAEiIKHlNPUlRf",
-            "RElSRUNUSU9OX0FTQ19OVUxMU19GSVJTVBABEiEKHVNPUlRfRElSRUNUSU9O",
-            "X0FTQ19OVUxMU19MQVNUEAISIwofU09SVF9ESVJFQ1RJT05fREVTQ19OVUxM",
-            "U19GSVJTVBADEiIKHlNPUlRfRElSRUNUSU9OX0RFU0NfTlVMTFNfTEFTVBAE",
-            "EhwKGFNPUlRfRElSRUNUSU9OX0NMVVNURVJFRBAFQgsKCXNvcnRfa2luZCKj",
-            "BAoRQWdncmVnYXRlRnVuY3Rpb24SGgoSZnVuY3Rpb25fcmVmZXJlbmNlGAEg",
-            "ASgNEi4KCWFyZ3VtZW50cxgHIAMoCzIbLnN1YnN0cmFpdC5GdW5jdGlvbkFy",
-            "Z3VtZW50EioKB29wdGlvbnMYCCADKAsyGS5zdWJzdHJhaXQuRnVuY3Rpb25P",
-            "cHRpb24SJAoLb3V0cHV0X3R5cGUYBSABKAsyDy5zdWJzdHJhaXQuVHlwZRIq",
-            "CgVwaGFzZRgEIAEoDjIbLnN1YnN0cmFpdC5BZ2dyZWdhdGlvblBoYXNlEiMK",
-            "BXNvcnRzGAMgAygLMhQuc3Vic3RyYWl0LlNvcnRGaWVsZBJGCgppbnZvY2F0",
-            "aW9uGAYgASgOMjIuc3Vic3RyYWl0LkFnZ3JlZ2F0ZUZ1bmN0aW9uLkFnZ3Jl",
-            "Z2F0aW9uSW52b2NhdGlvbhInCgRhcmdzGAIgAygLMhUuc3Vic3RyYWl0LkV4",
-            "cHJlc3Npb25CAhgBGicKDFJlZmVyZW5jZVJlbBIXCg9zdWJ0cmVlX29yZGlu",
-            "YWwYASABKAUihAEKFUFnZ3JlZ2F0aW9uSW52b2NhdGlvbhImCiJBR0dSRUdB",
-            "VElPTl9JTlZPQ0FUSU9OX1VOU1BFQ0lGSUVEEAASHgoaQUdHUkVHQVRJT05f",
-            "SU5WT0NBVElPTl9BTEwQARIjCh9BR0dSRUdBVElPTl9JTlZPQ0FUSU9OX0RJ",
-            "U1RJTkNUEAIq7wEKEEFnZ3JlZ2F0aW9uUGhhc2USIQodQUdHUkVHQVRJT05f",
-            "UEhBU0VfVU5TUEVDSUZJRUQQABItCilBR0dSRUdBVElPTl9QSEFTRV9JTklU",
-            "SUFMX1RPX0lOVEVSTUVESUFURRABEjIKLkFHR1JFR0FUSU9OX1BIQVNFX0lO",
-            "VEVSTUVESUFURV9UT19JTlRFUk1FRElBVEUQAhInCiNBR0dSRUdBVElPTl9Q",
-            "SEFTRV9JTklUSUFMX1RPX1JFU1VMVBADEiwKKEFHR1JFR0FUSU9OX1BIQVNF",
-            "X0lOVEVSTUVESUFURV9UT19SRVNVTFQQBEJXChJpby5zdWJzdHJhaXQucHJv",
-            "dG9QAVoqZ2l0aHViLmNvbS9zdWJzdHJhaXQtaW8vc3Vic3RyYWl0LWdvL3By",
-            "b3RvqgISU3Vic3RyYWl0LlByb3RvYnVmYgZwcm90bzM="));
+            "CglVbmJvdW5kZWRCBgoEa2luZCJWCgpCb3VuZHNUeXBlEhsKF0JPVU5EU19U",
+            "WVBFX1VOU1BFQ0lGSUVEEAASFAoQQk9VTkRTX1RZUEVfUk9XUxABEhUKEUJP",
+            "VU5EU19UWVBFX1JBTkdFEAIatQEKBklmVGhlbhIyCgNpZnMYASADKAsyJS5z",
+            "dWJzdHJhaXQuRXhwcmVzc2lvbi5JZlRoZW4uSWZDbGF1c2USIwoEZWxzZRgC",
+            "IAEoCzIVLnN1YnN0cmFpdC5FeHByZXNzaW9uGlIKCElmQ2xhdXNlEiEKAmlm",
+            "GAEgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SIwoEdGhlbhgCIAEoCzIV",
+            "LnN1YnN0cmFpdC5FeHByZXNzaW9uGo4CCgRDYXN0Eh0KBHR5cGUYASABKAsy",
+            "Dy5zdWJzdHJhaXQuVHlwZRIkCgVpbnB1dBgCIAEoCzIVLnN1YnN0cmFpdC5F",
+            "eHByZXNzaW9uEkQKEGZhaWx1cmVfYmVoYXZpb3IYAyABKA4yKi5zdWJzdHJh",
+            "aXQuRXhwcmVzc2lvbi5DYXN0LkZhaWx1cmVCZWhhdmlvciJ7Cg9GYWlsdXJl",
+            "QmVoYXZpb3ISIAocRkFJTFVSRV9CRUhBVklPUl9VTlNQRUNJRklFRBAAEiAK",
+            "HEZBSUxVUkVfQkVIQVZJT1JfUkVUVVJOX05VTEwQARIkCiBGQUlMVVJFX0JF",
+            "SEFWSU9SX1RIUk9XX0VYQ0VQVElPThACGvUBChBTd2l0Y2hFeHByZXNzaW9u",
+            "EiQKBW1hdGNoGAMgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24SOwoDaWZz",
+            "GAEgAygLMi4uc3Vic3RyYWl0LkV4cHJlc3Npb24uU3dpdGNoRXhwcmVzc2lv",
+            "bi5JZlZhbHVlEiMKBGVsc2UYAiABKAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lv",
+            "bhpZCgdJZlZhbHVlEikKAmlmGAEgASgLMh0uc3Vic3RyYWl0LkV4cHJlc3Np",
+            "b24uTGl0ZXJhbBIjCgR0aGVuGAIgASgLMhUuc3Vic3RyYWl0LkV4cHJlc3Np",
+            "b24aXgoOU2luZ3VsYXJPckxpc3QSJAoFdmFsdWUYASABKAsyFS5zdWJzdHJh",
+            "aXQuRXhwcmVzc2lvbhImCgdvcHRpb25zGAIgAygLMhUuc3Vic3RyYWl0LkV4",
+            "cHJlc3Npb24anwEKC011bHRpT3JMaXN0EiQKBXZhbHVlGAEgAygLMhUuc3Vi",
+            "c3RyYWl0LkV4cHJlc3Npb24SOQoHb3B0aW9ucxgCIAMoCzIoLnN1YnN0cmFp",
+            "dC5FeHByZXNzaW9uLk11bHRpT3JMaXN0LlJlY29yZBovCgZSZWNvcmQSJQoG",
+            "ZmllbGRzGAEgAygLMhUuc3Vic3RyYWl0LkV4cHJlc3Npb24aowMKEEVtYmVk",
+            "ZGVkRnVuY3Rpb24SKAoJYXJndW1lbnRzGAEgAygLMhUuc3Vic3RyYWl0LkV4",
+            "cHJlc3Npb24SJAoLb3V0cHV0X3R5cGUYAiABKAsyDy5zdWJzdHJhaXQuVHlw",
+            "ZRJdChZweXRob25fcGlja2xlX2Z1bmN0aW9uGAMgASgLMjsuc3Vic3RyYWl0",
+            "LkV4cHJlc3Npb24uRW1iZWRkZWRGdW5jdGlvbi5QeXRob25QaWNrbGVGdW5j",
+            "dGlvbkgAElsKFXdlYl9hc3NlbWJseV9mdW5jdGlvbhgEIAEoCzI6LnN1YnN0",
+            "cmFpdC5FeHByZXNzaW9uLkVtYmVkZGVkRnVuY3Rpb24uV2ViQXNzZW1ibHlG",
+            "dW5jdGlvbkgAGj4KFFB5dGhvblBpY2tsZUZ1bmN0aW9uEhAKCGZ1bmN0aW9u",
+            "GAEgASgMEhQKDHByZXJlcXVpc2l0ZRgCIAMoCRo7ChNXZWJBc3NlbWJseUZ1",
+            "bmN0aW9uEg4KBnNjcmlwdBgBIAEoDBIUCgxwcmVyZXF1aXNpdGUYAiADKAlC",
+            "BgoEa2luZBqaBAoQUmVmZXJlbmNlU2VnbWVudBJACgdtYXBfa2V5GAEgASgL",
+            "Mi0uc3Vic3RyYWl0LkV4cHJlc3Npb24uUmVmZXJlbmNlU2VnbWVudC5NYXBL",
+            "ZXlIABJKCgxzdHJ1Y3RfZmllbGQYAiABKAsyMi5zdWJzdHJhaXQuRXhwcmVz",
+            "c2lvbi5SZWZlcmVuY2VTZWdtZW50LlN0cnVjdEZpZWxkSAASSgoMbGlzdF9l",
+            "bGVtZW50GAMgASgLMjIuc3Vic3RyYWl0LkV4cHJlc3Npb24uUmVmZXJlbmNl",
+            "U2VnbWVudC5MaXN0RWxlbWVudEgAGm8KBk1hcEtleRIuCgdtYXBfa2V5GAEg",
+            "ASgLMh0uc3Vic3RyYWl0LkV4cHJlc3Npb24uTGl0ZXJhbBI1CgVjaGlsZBgC",
+            "IAEoCzImLnN1YnN0cmFpdC5FeHByZXNzaW9uLlJlZmVyZW5jZVNlZ21lbnQa",
+            "UwoLU3RydWN0RmllbGQSDQoFZmllbGQYASABKAUSNQoFY2hpbGQYAiABKAsy",
+            "Ji5zdWJzdHJhaXQuRXhwcmVzc2lvbi5SZWZlcmVuY2VTZWdtZW50GlQKC0xp",
+            "c3RFbGVtZW50Eg4KBm9mZnNldBgBIAEoBRI1CgVjaGlsZBgCIAEoCzImLnN1",
+            "YnN0cmFpdC5FeHByZXNzaW9uLlJlZmVyZW5jZVNlZ21lbnRCEAoOcmVmZXJl",
+            "bmNlX3R5cGUa8AkKDk1hc2tFeHByZXNzaW9uEkEKBnNlbGVjdBgBIAEoCzIx",
+            "LnN1YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tFeHByZXNzaW9uLlN0cnVjdFNl",
+            "bGVjdBIgChhtYWludGFpbl9zaW5ndWxhcl9zdHJ1Y3QYAiABKAga1QEKBlNl",
+            "bGVjdBJDCgZzdHJ1Y3QYASABKAsyMS5zdWJzdHJhaXQuRXhwcmVzc2lvbi5N",
+            "YXNrRXhwcmVzc2lvbi5TdHJ1Y3RTZWxlY3RIABI/CgRsaXN0GAIgASgLMi8u",
+            "c3Vic3RyYWl0LkV4cHJlc3Npb24uTWFza0V4cHJlc3Npb24uTGlzdFNlbGVj",
+            "dEgAEj0KA21hcBgDIAEoCzIuLnN1YnN0cmFpdC5FeHByZXNzaW9uLk1hc2tF",
+            "eHByZXNzaW9uLk1hcFNlbGVjdEgAQgYKBHR5cGUaVQoMU3RydWN0U2VsZWN0",
+            "EkUKDHN0cnVjdF9pdGVtcxgBIAMoCzIvLnN1YnN0cmFpdC5FeHByZXNzaW9u",
+            "Lk1hc2tFeHByZXNzaW9uLlN0cnVjdEl0ZW0aVwoKU3RydWN0SXRlbRINCgVm",
+            "aWVsZBgBIAEoBRI6CgVjaGlsZBgCIAEoCzIrLnN1YnN0cmFpdC5FeHByZXNz",
+            "aW9uLk1hc2tFeHByZXNzaW9uLlNlbGVjdBq0AwoKTGlzdFNlbGVjdBJRCglz",
+            "ZWxlY3Rpb24YASADKAsyPi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhw",
+            "cmVzc2lvbi5MaXN0U2VsZWN0Lkxpc3RTZWxlY3RJdGVtEjoKBWNoaWxkGAIg",
+            "ASgLMisuc3Vic3RyYWl0LkV4cHJlc3Npb24uTWFza0V4cHJlc3Npb24uU2Vs",
+            "ZWN0GpYCCg5MaXN0U2VsZWN0SXRlbRJaCgRpdGVtGAEgASgLMkouc3Vic3Ry",
+            "YWl0LkV4cHJlc3Npb24uTWFza0V4cHJlc3Npb24uTGlzdFNlbGVjdC5MaXN0",
+            "U2VsZWN0SXRlbS5MaXN0RWxlbWVudEgAElkKBXNsaWNlGAIgASgLMkguc3Vi",
+            "c3RyYWl0LkV4cHJlc3Npb24uTWFza0V4cHJlc3Npb24uTGlzdFNlbGVjdC5M",
+            "aXN0U2VsZWN0SXRlbS5MaXN0U2xpY2VIABocCgtMaXN0RWxlbWVudBINCgVm",
+            "aWVsZBgBIAEoBRonCglMaXN0U2xpY2USDQoFc3RhcnQYASABKAUSCwoDZW5k",
+            "GAIgASgFQgYKBHR5cGUauQIKCU1hcFNlbGVjdBJECgNrZXkYASABKAsyNS5z",
+            "dWJzdHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhwcmVzc2lvbi5NYXBTZWxlY3Qu",
+            "TWFwS2V5SAASVQoKZXhwcmVzc2lvbhgCIAEoCzI/LnN1YnN0cmFpdC5FeHBy",
+            "ZXNzaW9uLk1hc2tFeHByZXNzaW9uLk1hcFNlbGVjdC5NYXBLZXlFeHByZXNz",
+            "aW9uSAASOgoFY2hpbGQYAyABKAsyKy5zdWJzdHJhaXQuRXhwcmVzc2lvbi5N",
+            "YXNrRXhwcmVzc2lvbi5TZWxlY3QaGQoGTWFwS2V5Eg8KB21hcF9rZXkYASAB",
+            "KAkaLgoQTWFwS2V5RXhwcmVzc2lvbhIaChJtYXBfa2V5X2V4cHJlc3Npb24Y",
+            "ASABKAlCCAoGc2VsZWN0GrYDCg5GaWVsZFJlZmVyZW5jZRJCChBkaXJlY3Rf",
+            "cmVmZXJlbmNlGAEgASgLMiYuc3Vic3RyYWl0LkV4cHJlc3Npb24uUmVmZXJl",
+            "bmNlU2VnbWVudEgAEkAKEG1hc2tlZF9yZWZlcmVuY2UYAiABKAsyJC5zdWJz",
+            "dHJhaXQuRXhwcmVzc2lvbi5NYXNrRXhwcmVzc2lvbkgAEisKCmV4cHJlc3Np",
+            "b24YAyABKAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lvbkgBEkwKDnJvb3RfcmVm",
+            "ZXJlbmNlGAQgASgLMjIuc3Vic3RyYWl0LkV4cHJlc3Npb24uRmllbGRSZWZl",
+            "cmVuY2UuUm9vdFJlZmVyZW5jZUgBEk4KD291dGVyX3JlZmVyZW5jZRgFIAEo",
+            "CzIzLnN1YnN0cmFpdC5FeHByZXNzaW9uLkZpZWxkUmVmZXJlbmNlLk91dGVy",
+            "UmVmZXJlbmNlSAEaDwoNUm9vdFJlZmVyZW5jZRojCg5PdXRlclJlZmVyZW5j",
+            "ZRIRCglzdGVwc19vdXQYASABKA1CEAoOcmVmZXJlbmNlX3R5cGVCCwoJcm9v",
+            "dF90eXBlGowJCghTdWJxdWVyeRI3CgZzY2FsYXIYASABKAsyJS5zdWJzdHJh",
+            "aXQuRXhwcmVzc2lvbi5TdWJxdWVyeS5TY2FsYXJIABJCCgxpbl9wcmVkaWNh",
+            "dGUYAiABKAsyKi5zdWJzdHJhaXQuRXhwcmVzc2lvbi5TdWJxdWVyeS5JblBy",
+            "ZWRpY2F0ZUgAEkQKDXNldF9wcmVkaWNhdGUYAyABKAsyKy5zdWJzdHJhaXQu",
+            "RXhwcmVzc2lvbi5TdWJxdWVyeS5TZXRQcmVkaWNhdGVIABJGCg5zZXRfY29t",
+            "cGFyaXNvbhgEIAEoCzIsLnN1YnN0cmFpdC5FeHByZXNzaW9uLlN1YnF1ZXJ5",
+            "LlNldENvbXBhcmlzb25IABonCgZTY2FsYXISHQoFaW5wdXQYASABKAsyDi5z",
+            "dWJzdHJhaXQuUmVsGlcKC0luUHJlZGljYXRlEiYKB25lZWRsZXMYASADKAsy",
+            "FS5zdWJzdHJhaXQuRXhwcmVzc2lvbhIgCghoYXlzdGFjaxgCIAEoCzIOLnN1",
+            "YnN0cmFpdC5SZWwa3AEKDFNldFByZWRpY2F0ZRJNCgxwcmVkaWNhdGVfb3AY",
+            "ASABKA4yNy5zdWJzdHJhaXQuRXhwcmVzc2lvbi5TdWJxdWVyeS5TZXRQcmVk",
+            "aWNhdGUuUHJlZGljYXRlT3ASHgoGdHVwbGVzGAIgASgLMg4uc3Vic3RyYWl0",
+            "LlJlbCJdCgtQcmVkaWNhdGVPcBIcChhQUkVESUNBVEVfT1BfVU5TUEVDSUZJ",
+            "RUQQABIXChNQUkVESUNBVEVfT1BfRVhJU1RTEAESFwoTUFJFRElDQVRFX09Q",
+            "X1VOSVFVRRACGoIECg1TZXRDb21wYXJpc29uEk4KDHJlZHVjdGlvbl9vcBgB",
+            "IAEoDjI4LnN1YnN0cmFpdC5FeHByZXNzaW9uLlN1YnF1ZXJ5LlNldENvbXBh",
+            "cmlzb24uUmVkdWN0aW9uT3ASUAoNY29tcGFyaXNvbl9vcBgCIAEoDjI5LnN1",
+            "YnN0cmFpdC5FeHByZXNzaW9uLlN1YnF1ZXJ5LlNldENvbXBhcmlzb24uQ29t",
+            "cGFyaXNvbk9wEiMKBGxlZnQYAyABKAsyFS5zdWJzdHJhaXQuRXhwcmVzc2lv",
+            "bhIdCgVyaWdodBgEIAEoCzIOLnN1YnN0cmFpdC5SZWwisQEKDENvbXBhcmlz",
+            "b25PcBIdChlDT01QQVJJU09OX09QX1VOU1BFQ0lGSUVEEAASFAoQQ09NUEFS",
+            "SVNPTl9PUF9FURABEhQKEENPTVBBUklTT05fT1BfTkUQAhIUChBDT01QQVJJ",
+            "U09OX09QX0xUEAMSFAoQQ09NUEFSSVNPTl9PUF9HVBAEEhQKEENPTVBBUklT",
+            "T05fT1BfTEUQBRIUChBDT01QQVJJU09OX09QX0dFEAYiVwoLUmVkdWN0aW9u",
+            "T3ASHAoYUkVEVUNUSU9OX09QX1VOU1BFQ0lGSUVEEAASFAoQUkVEVUNUSU9O",
+            "X09QX0FOWRABEhQKEFJFRFVDVElPTl9PUF9BTEwQAkIPCg1zdWJxdWVyeV90",
+            "eXBlQgoKCHJleF90eXBlIv8CCglTb3J0RmllbGQSIwoEZXhwchgBIAEoCzIV",
+            "LnN1YnN0cmFpdC5FeHByZXNzaW9uEjcKCWRpcmVjdGlvbhgCIAEoDjIiLnN1",
+            "YnN0cmFpdC5Tb3J0RmllbGQuU29ydERpcmVjdGlvbkgAEicKHWNvbXBhcmlz",
+            "b25fZnVuY3Rpb25fcmVmZXJlbmNlGAMgASgNSAAi3QEKDVNvcnREaXJlY3Rp",
+            "b24SHgoaU09SVF9ESVJFQ1RJT05fVU5TUEVDSUZJRUQQABIiCh5TT1JUX0RJ",
+            "UkVDVElPTl9BU0NfTlVMTFNfRklSU1QQARIhCh1TT1JUX0RJUkVDVElPTl9B",
+            "U0NfTlVMTFNfTEFTVBACEiMKH1NPUlRfRElSRUNUSU9OX0RFU0NfTlVMTFNf",
+            "RklSU1QQAxIiCh5TT1JUX0RJUkVDVElPTl9ERVNDX05VTExTX0xBU1QQBBIc",
+            "ChhTT1JUX0RJUkVDVElPTl9DTFVTVEVSRUQQBUILCglzb3J0X2tpbmQi+gMK",
+            "EUFnZ3JlZ2F0ZUZ1bmN0aW9uEhoKEmZ1bmN0aW9uX3JlZmVyZW5jZRgBIAEo",
+            "DRIuCglhcmd1bWVudHMYByADKAsyGy5zdWJzdHJhaXQuRnVuY3Rpb25Bcmd1",
+            "bWVudBIqCgdvcHRpb25zGAggAygLMhkuc3Vic3RyYWl0LkZ1bmN0aW9uT3B0",
+            "aW9uEiQKC291dHB1dF90eXBlGAUgASgLMg8uc3Vic3RyYWl0LlR5cGUSKgoF",
+            "cGhhc2UYBCABKA4yGy5zdWJzdHJhaXQuQWdncmVnYXRpb25QaGFzZRIjCgVz",
+            "b3J0cxgDIAMoCzIULnN1YnN0cmFpdC5Tb3J0RmllbGQSRgoKaW52b2NhdGlv",
+            "bhgGIAEoDjIyLnN1YnN0cmFpdC5BZ2dyZWdhdGVGdW5jdGlvbi5BZ2dyZWdh",
+            "dGlvbkludm9jYXRpb24SJwoEYXJncxgCIAMoCzIVLnN1YnN0cmFpdC5FeHBy",
+            "ZXNzaW9uQgIYASKEAQoVQWdncmVnYXRpb25JbnZvY2F0aW9uEiYKIkFHR1JF",
+            "R0FUSU9OX0lOVk9DQVRJT05fVU5TUEVDSUZJRUQQABIeChpBR0dSRUdBVElP",
+            "Tl9JTlZPQ0FUSU9OX0FMTBABEiMKH0FHR1JFR0FUSU9OX0lOVk9DQVRJT05f",
+            "RElTVElOQ1QQAiInCgxSZWZlcmVuY2VSZWwSFwoPc3VidHJlZV9vcmRpbmFs",
+            "GAEgASgFKu8BChBBZ2dyZWdhdGlvblBoYXNlEiEKHUFHR1JFR0FUSU9OX1BI",
+            "QVNFX1VOU1BFQ0lGSUVEEAASLQopQUdHUkVHQVRJT05fUEhBU0VfSU5JVElB",
+            "TF9UT19JTlRFUk1FRElBVEUQARIyCi5BR0dSRUdBVElPTl9QSEFTRV9JTlRF",
+            "Uk1FRElBVEVfVE9fSU5URVJNRURJQVRFEAISJwojQUdHUkVHQVRJT05fUEhB",
+            "U0VfSU5JVElBTF9UT19SRVNVTFQQAxIsCihBR0dSRUdBVElPTl9QSEFTRV9J",
+            "TlRFUk1FRElBVEVfVE9fUkVTVUxUEARCVwoSaW8uc3Vic3RyYWl0LnByb3Rv",
+            "UAFaKmdpdGh1Yi5jb20vc3Vic3RyYWl0LWlvL3N1YnN0cmFpdC1nby9wcm90",
+            "b6oCElN1YnN0cmFpdC5Qcm90b2J1ZmIGcHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { global::Google.Protobuf.WellKnownTypes.AnyReflection.Descriptor, global::Substrait.Protobuf.ExtensionsReflection.Descriptor, global::Substrait.Protobuf.TypeReflection.Descriptor, },
           new pbr::GeneratedClrTypeInfo(new[] {typeof(global::Substrait.Protobuf.AggregationPhase), }, null, new pbr::GeneratedClrTypeInfo[] {
@@ -478,6 +544,7 @@ namespace Substrait.Protobuf {
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.FetchRel), global::Substrait.Protobuf.FetchRel.Parser, new[]{ "Common", "Input", "Offset", "Count", "AdvancedExtension" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.AggregateRel), global::Substrait.Protobuf.AggregateRel.Parser, new[]{ "Common", "Input", "Groupings", "Measures", "AdvancedExtension" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.AggregateRel.Types.Grouping), global::Substrait.Protobuf.AggregateRel.Types.Grouping.Parser, new[]{ "GroupingExpressions" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.AggregateRel.Types.Measure), global::Substrait.Protobuf.AggregateRel.Types.Measure.Parser, new[]{ "Measure_", "Filter" }, null, null, null, null)}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ConsistentPartitionWindowRel), global::Substrait.Protobuf.ConsistentPartitionWindowRel.Parser, new[]{ "Common", "Input", "WindowFunctions", "PartitionExpressions", "Sorts", "AdvancedExtension" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ConsistentPartitionWindowRel.Types.WindowRelFunction), global::Substrait.Protobuf.ConsistentPartitionWindowRel.Types.WindowRelFunction.Parser, new[]{ "FunctionReference", "Arguments", "Options", "OutputType", "Phase", "Invocation", "LowerBound", "UpperBound", "BoundsType" }, null, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SortRel), global::Substrait.Protobuf.SortRel.Parser, new[]{ "Common", "Input", "Sorts", "AdvancedExtension" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.FilterRel), global::Substrait.Protobuf.FilterRel.Parser, new[]{ "Common", "Input", "Condition", "AdvancedExtension" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SetRel), global::Substrait.Protobuf.SetRel.Parser, new[]{ "Common", "Inputs", "Op", "AdvancedExtension" }, null, new[]{ typeof(global::Substrait.Protobuf.SetRel.Types.SetOp) }, null, null),
@@ -490,30 +557,34 @@ namespace Substrait.Protobuf {
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ExchangeRel.Types.Broadcast), global::Substrait.Protobuf.ExchangeRel.Types.Broadcast.Parser, null, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ExchangeRel.Types.RoundRobin), global::Substrait.Protobuf.ExchangeRel.Types.RoundRobin.Parser, new[]{ "Exact" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ExchangeRel.Types.ExchangeTarget), global::Substrait.Protobuf.ExchangeRel.Types.ExchangeTarget.Parser, new[]{ "PartitionId", "Uri", "Extended" }, new[]{ "TargetType" }, null, null, null)}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ExpandRel), global::Substrait.Protobuf.ExpandRel.Parser, new[]{ "Common", "Input", "Fields" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ExpandRel.Types.ExpandField), global::Substrait.Protobuf.ExpandRel.Types.ExpandField.Parser, new[]{ "SwitchingField", "ConsistentField" }, new[]{ "FieldType" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ExpandRel.Types.SwitchingField), global::Substrait.Protobuf.ExpandRel.Types.SwitchingField.Parser, new[]{ "Duplicates" }, null, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.RelRoot), global::Substrait.Protobuf.RelRoot.Parser, new[]{ "Input", "Names" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Rel), global::Substrait.Protobuf.Rel.Parser, new[]{ "Read", "Filter", "Fetch", "Aggregate", "Sort", "Join", "Project", "Set", "ExtensionSingle", "ExtensionMulti", "ExtensionLeaf", "Cross", "Write", "HashJoin", "MergeJoin" }, new[]{ "RelType" }, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Rel), global::Substrait.Protobuf.Rel.Parser, new[]{ "Read", "Filter", "Fetch", "Aggregate", "Sort", "Join", "Project", "Set", "ExtensionSingle", "ExtensionMulti", "ExtensionLeaf", "Cross", "Reference", "Write", "Ddl", "HashJoin", "MergeJoin", "NestedLoopJoin", "Window", "Exchange", "Expand" }, new[]{ "RelType" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.NamedObjectWrite), global::Substrait.Protobuf.NamedObjectWrite.Parser, new[]{ "Names", "AdvancedExtension" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ExtensionObject), global::Substrait.Protobuf.ExtensionObject.Parser, new[]{ "Detail" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.DdlRel), global::Substrait.Protobuf.DdlRel.Parser, new[]{ "NamedObject", "ExtensionObject", "TableSchema", "TableDefaults", "Object", "Op", "ViewDefinition" }, new[]{ "WriteType" }, new[]{ typeof(global::Substrait.Protobuf.DdlRel.Types.DdlObject), typeof(global::Substrait.Protobuf.DdlRel.Types.DdlOp) }, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.WriteRel), global::Substrait.Protobuf.WriteRel.Parser, new[]{ "NamedTable", "ExtensionTable", "TableSchema", "Op", "Input", "Output" }, new[]{ "WriteType" }, new[]{ typeof(global::Substrait.Protobuf.WriteRel.Types.WriteOp), typeof(global::Substrait.Protobuf.WriteRel.Types.OutputMode) }, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.HashJoinRel), global::Substrait.Protobuf.HashJoinRel.Parser, new[]{ "Common", "Left", "Right", "LeftKeys", "RightKeys", "PostJoinFilter", "Type", "AdvancedExtension" }, null, new[]{ typeof(global::Substrait.Protobuf.HashJoinRel.Types.JoinType) }, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.MergeJoinRel), global::Substrait.Protobuf.MergeJoinRel.Parser, new[]{ "Common", "Left", "Right", "LeftKeys", "RightKeys", "PostJoinFilter", "Type", "AdvancedExtension" }, null, new[]{ typeof(global::Substrait.Protobuf.MergeJoinRel.Types.JoinType) }, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.DdlRel), global::Substrait.Protobuf.DdlRel.Parser, new[]{ "NamedObject", "ExtensionObject", "TableSchema", "TableDefaults", "Object", "Op", "ViewDefinition", "Common" }, new[]{ "WriteType" }, new[]{ typeof(global::Substrait.Protobuf.DdlRel.Types.DdlObject), typeof(global::Substrait.Protobuf.DdlRel.Types.DdlOp) }, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.WriteRel), global::Substrait.Protobuf.WriteRel.Parser, new[]{ "NamedTable", "ExtensionTable", "TableSchema", "Op", "Input", "Output", "Common" }, new[]{ "WriteType" }, new[]{ typeof(global::Substrait.Protobuf.WriteRel.Types.WriteOp), typeof(global::Substrait.Protobuf.WriteRel.Types.OutputMode) }, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ComparisonJoinKey), global::Substrait.Protobuf.ComparisonJoinKey.Parser, new[]{ "Left", "Right", "Comparison" }, null, new[]{ typeof(global::Substrait.Protobuf.ComparisonJoinKey.Types.SimpleComparisonType) }, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ComparisonJoinKey.Types.ComparisonType), global::Substrait.Protobuf.ComparisonJoinKey.Types.ComparisonType.Parser, new[]{ "Simple", "CustomFunctionReference" }, new[]{ "InnerType" }, null, null, null)}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.HashJoinRel), global::Substrait.Protobuf.HashJoinRel.Parser, new[]{ "Common", "Left", "Right", "LeftKeys", "RightKeys", "Keys", "PostJoinFilter", "Type", "AdvancedExtension" }, null, new[]{ typeof(global::Substrait.Protobuf.HashJoinRel.Types.JoinType) }, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.MergeJoinRel), global::Substrait.Protobuf.MergeJoinRel.Parser, new[]{ "Common", "Left", "Right", "LeftKeys", "RightKeys", "Keys", "PostJoinFilter", "Type", "AdvancedExtension" }, null, new[]{ typeof(global::Substrait.Protobuf.MergeJoinRel.Types.JoinType) }, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.NestedLoopJoinRel), global::Substrait.Protobuf.NestedLoopJoinRel.Parser, new[]{ "Common", "Left", "Right", "Expression", "Type", "AdvancedExtension" }, null, new[]{ typeof(global::Substrait.Protobuf.NestedLoopJoinRel.Types.JoinType) }, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.FunctionArgument), global::Substrait.Protobuf.FunctionArgument.Parser, new[]{ "Enum", "Type", "Value" }, new[]{ "ArgType" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.FunctionOption), global::Substrait.Protobuf.FunctionOption.Parser, new[]{ "Name", "Preference" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression), global::Substrait.Protobuf.Expression.Parser, new[]{ "Literal", "Selection", "ScalarFunction", "WindowFunction", "IfThen", "SwitchExpression", "SingularOrList", "MultiOrList", "Cast", "Subquery", "Nested", "Enum" }, new[]{ "RexType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Enum), global::Substrait.Protobuf.Expression.Types.Enum.Parser, new[]{ "Specified", "Unspecified" }, new[]{ "EnumKind" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Enum.Types.Empty), global::Substrait.Protobuf.Expression.Types.Enum.Types.Empty.Parser, null, null, null, null, null)}),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal), global::Substrait.Protobuf.Expression.Types.Literal.Parser, new[]{ "Boolean", "I8", "I16", "I32", "I64", "Fp32", "Fp64", "String", "Binary", "Timestamp", "Date", "Time", "IntervalYearToMonth", "IntervalDayToSecond", "FixedChar", "VarChar", "FixedBinary", "Decimal", "Struct", "Map", "TimestampTz", "Uuid", "Null", "List", "EmptyList", "EmptyMap", "UserDefined", "Nullable", "TypeVariationReference" }, new[]{ "LiteralType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.VarChar), global::Substrait.Protobuf.Expression.Types.Literal.Types.VarChar.Parser, new[]{ "Value", "Length" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal), global::Substrait.Protobuf.Expression.Types.Literal.Parser, new[]{ "Boolean", "I8", "I16", "I32", "I64", "Fp32", "Fp64", "String", "Binary", "Timestamp", "Date", "Time", "IntervalYearToMonth", "IntervalDayToSecond", "FixedChar", "VarChar", "FixedBinary", "Decimal", "PrecisionTimestamp", "PrecisionTimestampTz", "Struct", "Map", "TimestampTz", "Uuid", "Null", "List", "EmptyList", "EmptyMap", "UserDefined", "Nullable", "TypeVariationReference" }, new[]{ "LiteralType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.VarChar), global::Substrait.Protobuf.Expression.Types.Literal.Types.VarChar.Parser, new[]{ "Value", "Length" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.Decimal), global::Substrait.Protobuf.Expression.Types.Literal.Types.Decimal.Parser, new[]{ "Value", "Precision", "Scale" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.Map), global::Substrait.Protobuf.Expression.Types.Literal.Types.Map.Parser, new[]{ "KeyValues" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.Map.Types.KeyValue), global::Substrait.Protobuf.Expression.Types.Literal.Types.Map.Types.KeyValue.Parser, new[]{ "Key", "Value" }, null, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalYearToMonth), global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalYearToMonth.Parser, new[]{ "Years", "Months" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalDayToSecond), global::Substrait.Protobuf.Expression.Types.Literal.Types.IntervalDayToSecond.Parser, new[]{ "Days", "Seconds", "Microseconds" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.Struct), global::Substrait.Protobuf.Expression.Types.Literal.Types.Struct.Parser, new[]{ "Fields" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.List), global::Substrait.Protobuf.Expression.Types.Literal.Types.List.Parser, new[]{ "Values" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.UserDefined), global::Substrait.Protobuf.Expression.Types.Literal.Types.UserDefined.Parser, new[]{ "TypeReference", "TypeParameters", "Value" }, null, null, null, null)}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Literal.Types.UserDefined), global::Substrait.Protobuf.Expression.Types.Literal.Types.UserDefined.Parser, new[]{ "TypeReference", "TypeParameters", "Value", "Struct" }, new[]{ "Val" }, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Nested), global::Substrait.Protobuf.Expression.Types.Nested.Parser, new[]{ "Nullable", "TypeVariationReference", "Struct", "List", "Map" }, new[]{ "NestedType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Nested.Types.Map), global::Substrait.Protobuf.Expression.Types.Nested.Types.Map.Parser, new[]{ "KeyValues" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Nested.Types.Map.Types.KeyValue), global::Substrait.Protobuf.Expression.Types.Nested.Types.Map.Types.KeyValue.Parser, new[]{ "Key", "Value" }, null, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Nested.Types.Struct), global::Substrait.Protobuf.Expression.Types.Nested.Types.Struct.Parser, new[]{ "Fields" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Nested.Types.List), global::Substrait.Protobuf.Expression.Types.Nested.Types.List.Parser, new[]{ "Values" }, null, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.ScalarFunction), global::Substrait.Protobuf.Expression.Types.ScalarFunction.Parser, new[]{ "FunctionReference", "Arguments", "Options", "OutputType", "Args" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction), global::Substrait.Protobuf.Expression.Types.WindowFunction.Parser, new[]{ "FunctionReference", "Arguments", "Options", "OutputType", "Phase", "Sorts", "Invocation", "Partitions", "LowerBound", "UpperBound", "Args" }, null, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound), global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Parser, new[]{ "Preceding", "Following", "CurrentRow", "Unbounded" }, new[]{ "Kind" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Preceding), global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Preceding.Parser, new[]{ "Offset" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction), global::Substrait.Protobuf.Expression.Types.WindowFunction.Parser, new[]{ "FunctionReference", "Arguments", "Options", "OutputType", "Phase", "Sorts", "Invocation", "Partitions", "BoundsType", "LowerBound", "UpperBound", "Args" }, null, new[]{ typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType) }, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound), global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Parser, new[]{ "Preceding", "Following", "CurrentRow", "Unbounded" }, new[]{ "Kind" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Preceding), global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Preceding.Parser, new[]{ "Offset" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Following), global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Following.Parser, new[]{ "Offset" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.CurrentRow), global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.CurrentRow.Parser, null, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Unbounded), global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Unbounded.Parser, null, null, null, null, null)})}),
@@ -541,7 +612,8 @@ namespace Substrait.Protobuf {
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetPredicate), global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetPredicate.Parser, new[]{ "PredicateOp", "Tuples" }, null, new[]{ typeof(global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetPredicate.Types.PredicateOp) }, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetComparison), global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetComparison.Parser, new[]{ "ReductionOp", "ComparisonOp", "Left", "Right" }, null, new[]{ typeof(global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetComparison.Types.ComparisonOp), typeof(global::Substrait.Protobuf.Expression.Types.Subquery.Types.SetComparison.Types.ReductionOp) }, null, null)})}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SortField), global::Substrait.Protobuf.SortField.Parser, new[]{ "Expr", "Direction", "ComparisonFunctionReference" }, new[]{ "SortKind" }, new[]{ typeof(global::Substrait.Protobuf.SortField.Types.SortDirection) }, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.AggregateFunction), global::Substrait.Protobuf.AggregateFunction.Parser, new[]{ "FunctionReference", "Arguments", "Options", "OutputType", "Phase", "Sorts", "Invocation", "Args" }, null, new[]{ typeof(global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation) }, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.AggregateFunction.Types.ReferenceRel), global::Substrait.Protobuf.AggregateFunction.Types.ReferenceRel.Parser, new[]{ "SubtreeOrdinal" }, null, null, null, null)})
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.AggregateFunction), global::Substrait.Protobuf.AggregateFunction.Parser, new[]{ "FunctionReference", "Arguments", "Options", "OutputType", "Phase", "Sorts", "Invocation", "Args" }, null, new[]{ typeof(global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation) }, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.ReferenceRel), global::Substrait.Protobuf.ReferenceRel.Parser, new[]{ "SubtreeOrdinal" }, null, null, null, null)
           }));
     }
     #endregion
@@ -5885,7 +5957,7 @@ namespace Substrait.Protobuf {
         [pbr::OriginalName("JOIN_TYPE_SEMI")] Semi = 5,
         [pbr::OriginalName("JOIN_TYPE_ANTI")] Anti = 6,
         /// <summary>
-        /// This join is useful for nested sub-queries where we need exactly one tuple in output (or throw exception)
+        /// This join is useful for nested sub-queries where we need exactly one record in output (or throw exception)
         /// See Section 3.2 of https://15721.courses.cs.cmu.edu/spring2018/papers/16-optimizer2/hyperjoins-btw2017.pdf
         /// </summary>
         [pbr::OriginalName("JOIN_TYPE_SINGLE")] Single = 7,
@@ -6332,6 +6404,7 @@ namespace Substrait.Protobuf {
     private long count_;
     /// <summary>
     /// the amount of records to return
+    /// use -1 to signal that ALL records should be returned
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
@@ -6695,7 +6768,8 @@ namespace Substrait.Protobuf {
         = pb::FieldCodec.ForMessage(26, global::Substrait.Protobuf.AggregateRel.Types.Grouping.Parser);
     private readonly pbc::RepeatedField<global::Substrait.Protobuf.AggregateRel.Types.Grouping> groupings_ = new pbc::RepeatedField<global::Substrait.Protobuf.AggregateRel.Types.Grouping>();
     /// <summary>
-    /// A list of expression grouping that the aggregation measured should be calculated for.
+    /// A list of one or more grouping expression sets that the aggregation measures should be calculated for.
+    /// Required if there are no measures.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
@@ -6710,6 +6784,7 @@ namespace Substrait.Protobuf {
     private readonly pbc::RepeatedField<global::Substrait.Protobuf.AggregateRel.Types.Measure> measures_ = new pbc::RepeatedField<global::Substrait.Protobuf.AggregateRel.Types.Measure>();
     /// <summary>
     /// A list of one or more aggregate expressions along with an optional filter.
+    /// Required if there are no groupings.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
@@ -7404,6 +7479,884 @@ namespace Substrait.Protobuf {
   }
 
   /// <summary>
+  /// ConsistentPartitionWindowRel provides the ability to perform calculations across sets of rows
+  /// that are related to the current query row. It can be used to execute window functions where
+  /// all the windows share the same partitioning and ordering.
+  /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+  public sealed partial class ConsistentPartitionWindowRel : pb::IMessage<ConsistentPartitionWindowRel>
+  #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      , pb::IBufferMessage
+  #endif
+  {
+    private static readonly pb::MessageParser<ConsistentPartitionWindowRel> _parser = new pb::MessageParser<ConsistentPartitionWindowRel>(() => new ConsistentPartitionWindowRel());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pb::MessageParser<ConsistentPartitionWindowRel> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[7]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ConsistentPartitionWindowRel() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ConsistentPartitionWindowRel(ConsistentPartitionWindowRel other) : this() {
+      common_ = other.common_ != null ? other.common_.Clone() : null;
+      input_ = other.input_ != null ? other.input_.Clone() : null;
+      windowFunctions_ = other.windowFunctions_.Clone();
+      partitionExpressions_ = other.partitionExpressions_.Clone();
+      sorts_ = other.sorts_.Clone();
+      advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ConsistentPartitionWindowRel Clone() {
+      return new ConsistentPartitionWindowRel(this);
+    }
+
+    /// <summary>Field number for the "common" field.</summary>
+    public const int CommonFieldNumber = 1;
+    private global::Substrait.Protobuf.RelCommon common_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.RelCommon Common {
+      get { return common_; }
+      set {
+        common_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "input" field.</summary>
+    public const int InputFieldNumber = 2;
+    private global::Substrait.Protobuf.Rel input_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.Rel Input {
+      get { return input_; }
+      set {
+        input_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "window_functions" field.</summary>
+    public const int WindowFunctionsFieldNumber = 3;
+    private static readonly pb::FieldCodec<global::Substrait.Protobuf.ConsistentPartitionWindowRel.Types.WindowRelFunction> _repeated_windowFunctions_codec
+        = pb::FieldCodec.ForMessage(26, global::Substrait.Protobuf.ConsistentPartitionWindowRel.Types.WindowRelFunction.Parser);
+    private readonly pbc::RepeatedField<global::Substrait.Protobuf.ConsistentPartitionWindowRel.Types.WindowRelFunction> windowFunctions_ = new pbc::RepeatedField<global::Substrait.Protobuf.ConsistentPartitionWindowRel.Types.WindowRelFunction>();
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public pbc::RepeatedField<global::Substrait.Protobuf.ConsistentPartitionWindowRel.Types.WindowRelFunction> WindowFunctions {
+      get { return windowFunctions_; }
+    }
+
+    /// <summary>Field number for the "partition_expressions" field.</summary>
+    public const int PartitionExpressionsFieldNumber = 4;
+    private static readonly pb::FieldCodec<global::Substrait.Protobuf.Expression> _repeated_partitionExpressions_codec
+        = pb::FieldCodec.ForMessage(34, global::Substrait.Protobuf.Expression.Parser);
+    private readonly pbc::RepeatedField<global::Substrait.Protobuf.Expression> partitionExpressions_ = new pbc::RepeatedField<global::Substrait.Protobuf.Expression>();
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public pbc::RepeatedField<global::Substrait.Protobuf.Expression> PartitionExpressions {
+      get { return partitionExpressions_; }
+    }
+
+    /// <summary>Field number for the "sorts" field.</summary>
+    public const int SortsFieldNumber = 5;
+    private static readonly pb::FieldCodec<global::Substrait.Protobuf.SortField> _repeated_sorts_codec
+        = pb::FieldCodec.ForMessage(42, global::Substrait.Protobuf.SortField.Parser);
+    private readonly pbc::RepeatedField<global::Substrait.Protobuf.SortField> sorts_ = new pbc::RepeatedField<global::Substrait.Protobuf.SortField>();
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public pbc::RepeatedField<global::Substrait.Protobuf.SortField> Sorts {
+      get { return sorts_; }
+    }
+
+    /// <summary>Field number for the "advanced_extension" field.</summary>
+    public const int AdvancedExtensionFieldNumber = 10;
+    private global::Substrait.Protobuf.AdvancedExtension advancedExtension_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.AdvancedExtension AdvancedExtension {
+      get { return advancedExtension_; }
+      set {
+        advancedExtension_ = value;
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override bool Equals(object other) {
+      return Equals(other as ConsistentPartitionWindowRel);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool Equals(ConsistentPartitionWindowRel other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (!object.Equals(Common, other.Common)) return false;
+      if (!object.Equals(Input, other.Input)) return false;
+      if(!windowFunctions_.Equals(other.windowFunctions_)) return false;
+      if(!partitionExpressions_.Equals(other.partitionExpressions_)) return false;
+      if(!sorts_.Equals(other.sorts_)) return false;
+      if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (common_ != null) hash ^= Common.GetHashCode();
+      if (input_ != null) hash ^= Input.GetHashCode();
+      hash ^= windowFunctions_.GetHashCode();
+      hash ^= partitionExpressions_.GetHashCode();
+      hash ^= sorts_.GetHashCode();
+      if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void WriteTo(pb::CodedOutputStream output) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      output.WriteRawMessage(this);
+    #else
+      if (common_ != null) {
+        output.WriteRawTag(10);
+        output.WriteMessage(Common);
+      }
+      if (input_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(Input);
+      }
+      windowFunctions_.WriteTo(output, _repeated_windowFunctions_codec);
+      partitionExpressions_.WriteTo(output, _repeated_partitionExpressions_codec);
+      sorts_.WriteTo(output, _repeated_sorts_codec);
+      if (advancedExtension_ != null) {
+        output.WriteRawTag(82);
+        output.WriteMessage(AdvancedExtension);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+      if (common_ != null) {
+        output.WriteRawTag(10);
+        output.WriteMessage(Common);
+      }
+      if (input_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(Input);
+      }
+      windowFunctions_.WriteTo(ref output, _repeated_windowFunctions_codec);
+      partitionExpressions_.WriteTo(ref output, _repeated_partitionExpressions_codec);
+      sorts_.WriteTo(ref output, _repeated_sorts_codec);
+      if (advancedExtension_ != null) {
+        output.WriteRawTag(82);
+        output.WriteMessage(AdvancedExtension);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(ref output);
+      }
+    }
+    #endif
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public int CalculateSize() {
+      int size = 0;
+      if (common_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Common);
+      }
+      if (input_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Input);
+      }
+      size += windowFunctions_.CalculateSize(_repeated_windowFunctions_codec);
+      size += partitionExpressions_.CalculateSize(_repeated_partitionExpressions_codec);
+      size += sorts_.CalculateSize(_repeated_sorts_codec);
+      if (advancedExtension_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(AdvancedExtension);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(ConsistentPartitionWindowRel other) {
+      if (other == null) {
+        return;
+      }
+      if (other.common_ != null) {
+        if (common_ == null) {
+          Common = new global::Substrait.Protobuf.RelCommon();
+        }
+        Common.MergeFrom(other.Common);
+      }
+      if (other.input_ != null) {
+        if (input_ == null) {
+          Input = new global::Substrait.Protobuf.Rel();
+        }
+        Input.MergeFrom(other.Input);
+      }
+      windowFunctions_.Add(other.windowFunctions_);
+      partitionExpressions_.Add(other.partitionExpressions_);
+      sorts_.Add(other.sorts_);
+      if (other.advancedExtension_ != null) {
+        if (advancedExtension_ == null) {
+          AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+        }
+        AdvancedExtension.MergeFrom(other.AdvancedExtension);
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(pb::CodedInputStream input) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      input.ReadRawMessage(this);
+    #else
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            if (common_ == null) {
+              Common = new global::Substrait.Protobuf.RelCommon();
+            }
+            input.ReadMessage(Common);
+            break;
+          }
+          case 18: {
+            if (input_ == null) {
+              Input = new global::Substrait.Protobuf.Rel();
+            }
+            input.ReadMessage(Input);
+            break;
+          }
+          case 26: {
+            windowFunctions_.AddEntriesFrom(input, _repeated_windowFunctions_codec);
+            break;
+          }
+          case 34: {
+            partitionExpressions_.AddEntriesFrom(input, _repeated_partitionExpressions_codec);
+            break;
+          }
+          case 42: {
+            sorts_.AddEntriesFrom(input, _repeated_sorts_codec);
+            break;
+          }
+          case 82: {
+            if (advancedExtension_ == null) {
+              AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+            }
+            input.ReadMessage(AdvancedExtension);
+            break;
+          }
+        }
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+            break;
+          case 10: {
+            if (common_ == null) {
+              Common = new global::Substrait.Protobuf.RelCommon();
+            }
+            input.ReadMessage(Common);
+            break;
+          }
+          case 18: {
+            if (input_ == null) {
+              Input = new global::Substrait.Protobuf.Rel();
+            }
+            input.ReadMessage(Input);
+            break;
+          }
+          case 26: {
+            windowFunctions_.AddEntriesFrom(ref input, _repeated_windowFunctions_codec);
+            break;
+          }
+          case 34: {
+            partitionExpressions_.AddEntriesFrom(ref input, _repeated_partitionExpressions_codec);
+            break;
+          }
+          case 42: {
+            sorts_.AddEntriesFrom(ref input, _repeated_sorts_codec);
+            break;
+          }
+          case 82: {
+            if (advancedExtension_ == null) {
+              AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+            }
+            input.ReadMessage(AdvancedExtension);
+            break;
+          }
+        }
+      }
+    }
+    #endif
+
+    #region Nested types
+    /// <summary>Container for nested types declared in the ConsistentPartitionWindowRel message type.</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static partial class Types {
+      /// <summary>
+      /// This message mirrors the `WindowFunction` message but removes the fields defining the partition,
+      /// sorts, and bounds, since those must be consistent across the various functions in this rel.  Refer
+      /// to the `WindowFunction` message for a description of these fields.
+      /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+      public sealed partial class WindowRelFunction : pb::IMessage<WindowRelFunction>
+      #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          , pb::IBufferMessage
+      #endif
+      {
+        private static readonly pb::MessageParser<WindowRelFunction> _parser = new pb::MessageParser<WindowRelFunction>(() => new WindowRelFunction());
+        private pb::UnknownFieldSet _unknownFields;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pb::MessageParser<WindowRelFunction> Parser { get { return _parser; } }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pbr::MessageDescriptor Descriptor {
+          get { return global::Substrait.Protobuf.ConsistentPartitionWindowRel.Descriptor.NestedTypes[0]; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        pbr::MessageDescriptor pb::IMessage.Descriptor {
+          get { return Descriptor; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public WindowRelFunction() {
+          OnConstruction();
+        }
+
+        partial void OnConstruction();
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public WindowRelFunction(WindowRelFunction other) : this() {
+          functionReference_ = other.functionReference_;
+          arguments_ = other.arguments_.Clone();
+          options_ = other.options_.Clone();
+          outputType_ = other.outputType_ != null ? other.outputType_.Clone() : null;
+          phase_ = other.phase_;
+          invocation_ = other.invocation_;
+          lowerBound_ = other.lowerBound_ != null ? other.lowerBound_.Clone() : null;
+          upperBound_ = other.upperBound_ != null ? other.upperBound_.Clone() : null;
+          boundsType_ = other.boundsType_;
+          _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public WindowRelFunction Clone() {
+          return new WindowRelFunction(this);
+        }
+
+        /// <summary>Field number for the "function_reference" field.</summary>
+        public const int FunctionReferenceFieldNumber = 1;
+        private uint functionReference_;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public uint FunctionReference {
+          get { return functionReference_; }
+          set {
+            functionReference_ = value;
+          }
+        }
+
+        /// <summary>Field number for the "arguments" field.</summary>
+        public const int ArgumentsFieldNumber = 9;
+        private static readonly pb::FieldCodec<global::Substrait.Protobuf.FunctionArgument> _repeated_arguments_codec
+            = pb::FieldCodec.ForMessage(74, global::Substrait.Protobuf.FunctionArgument.Parser);
+        private readonly pbc::RepeatedField<global::Substrait.Protobuf.FunctionArgument> arguments_ = new pbc::RepeatedField<global::Substrait.Protobuf.FunctionArgument>();
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public pbc::RepeatedField<global::Substrait.Protobuf.FunctionArgument> Arguments {
+          get { return arguments_; }
+        }
+
+        /// <summary>Field number for the "options" field.</summary>
+        public const int OptionsFieldNumber = 11;
+        private static readonly pb::FieldCodec<global::Substrait.Protobuf.FunctionOption> _repeated_options_codec
+            = pb::FieldCodec.ForMessage(90, global::Substrait.Protobuf.FunctionOption.Parser);
+        private readonly pbc::RepeatedField<global::Substrait.Protobuf.FunctionOption> options_ = new pbc::RepeatedField<global::Substrait.Protobuf.FunctionOption>();
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public pbc::RepeatedField<global::Substrait.Protobuf.FunctionOption> Options {
+          get { return options_; }
+        }
+
+        /// <summary>Field number for the "output_type" field.</summary>
+        public const int OutputTypeFieldNumber = 7;
+        private global::Substrait.Protobuf.Type outputType_;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.Type OutputType {
+          get { return outputType_; }
+          set {
+            outputType_ = value;
+          }
+        }
+
+        /// <summary>Field number for the "phase" field.</summary>
+        public const int PhaseFieldNumber = 6;
+        private global::Substrait.Protobuf.AggregationPhase phase_ = global::Substrait.Protobuf.AggregationPhase.Unspecified;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.AggregationPhase Phase {
+          get { return phase_; }
+          set {
+            phase_ = value;
+          }
+        }
+
+        /// <summary>Field number for the "invocation" field.</summary>
+        public const int InvocationFieldNumber = 10;
+        private global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation invocation_ = global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation.Unspecified;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation Invocation {
+          get { return invocation_; }
+          set {
+            invocation_ = value;
+          }
+        }
+
+        /// <summary>Field number for the "lower_bound" field.</summary>
+        public const int LowerBoundFieldNumber = 5;
+        private global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound lowerBound_;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound LowerBound {
+          get { return lowerBound_; }
+          set {
+            lowerBound_ = value;
+          }
+        }
+
+        /// <summary>Field number for the "upper_bound" field.</summary>
+        public const int UpperBoundFieldNumber = 4;
+        private global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound upperBound_;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound UpperBound {
+          get { return upperBound_; }
+          set {
+            upperBound_ = value;
+          }
+        }
+
+        /// <summary>Field number for the "bounds_type" field.</summary>
+        public const int BoundsTypeFieldNumber = 12;
+        private global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType boundsType_ = global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType.Unspecified;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType BoundsType {
+          get { return boundsType_; }
+          set {
+            boundsType_ = value;
+          }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override bool Equals(object other) {
+          return Equals(other as WindowRelFunction);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool Equals(WindowRelFunction other) {
+          if (ReferenceEquals(other, null)) {
+            return false;
+          }
+          if (ReferenceEquals(other, this)) {
+            return true;
+          }
+          if (FunctionReference != other.FunctionReference) return false;
+          if(!arguments_.Equals(other.arguments_)) return false;
+          if(!options_.Equals(other.options_)) return false;
+          if (!object.Equals(OutputType, other.OutputType)) return false;
+          if (Phase != other.Phase) return false;
+          if (Invocation != other.Invocation) return false;
+          if (!object.Equals(LowerBound, other.LowerBound)) return false;
+          if (!object.Equals(UpperBound, other.UpperBound)) return false;
+          if (BoundsType != other.BoundsType) return false;
+          return Equals(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override int GetHashCode() {
+          int hash = 1;
+          if (FunctionReference != 0) hash ^= FunctionReference.GetHashCode();
+          hash ^= arguments_.GetHashCode();
+          hash ^= options_.GetHashCode();
+          if (outputType_ != null) hash ^= OutputType.GetHashCode();
+          if (Phase != global::Substrait.Protobuf.AggregationPhase.Unspecified) hash ^= Phase.GetHashCode();
+          if (Invocation != global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation.Unspecified) hash ^= Invocation.GetHashCode();
+          if (lowerBound_ != null) hash ^= LowerBound.GetHashCode();
+          if (upperBound_ != null) hash ^= UpperBound.GetHashCode();
+          if (BoundsType != global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType.Unspecified) hash ^= BoundsType.GetHashCode();
+          if (_unknownFields != null) {
+            hash ^= _unknownFields.GetHashCode();
+          }
+          return hash;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override string ToString() {
+          return pb::JsonFormatter.ToDiagnosticString(this);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void WriteTo(pb::CodedOutputStream output) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          output.WriteRawMessage(this);
+        #else
+          if (FunctionReference != 0) {
+            output.WriteRawTag(8);
+            output.WriteUInt32(FunctionReference);
+          }
+          if (upperBound_ != null) {
+            output.WriteRawTag(34);
+            output.WriteMessage(UpperBound);
+          }
+          if (lowerBound_ != null) {
+            output.WriteRawTag(42);
+            output.WriteMessage(LowerBound);
+          }
+          if (Phase != global::Substrait.Protobuf.AggregationPhase.Unspecified) {
+            output.WriteRawTag(48);
+            output.WriteEnum((int) Phase);
+          }
+          if (outputType_ != null) {
+            output.WriteRawTag(58);
+            output.WriteMessage(OutputType);
+          }
+          arguments_.WriteTo(output, _repeated_arguments_codec);
+          if (Invocation != global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation.Unspecified) {
+            output.WriteRawTag(80);
+            output.WriteEnum((int) Invocation);
+          }
+          options_.WriteTo(output, _repeated_options_codec);
+          if (BoundsType != global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType.Unspecified) {
+            output.WriteRawTag(96);
+            output.WriteEnum((int) BoundsType);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(output);
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+          if (FunctionReference != 0) {
+            output.WriteRawTag(8);
+            output.WriteUInt32(FunctionReference);
+          }
+          if (upperBound_ != null) {
+            output.WriteRawTag(34);
+            output.WriteMessage(UpperBound);
+          }
+          if (lowerBound_ != null) {
+            output.WriteRawTag(42);
+            output.WriteMessage(LowerBound);
+          }
+          if (Phase != global::Substrait.Protobuf.AggregationPhase.Unspecified) {
+            output.WriteRawTag(48);
+            output.WriteEnum((int) Phase);
+          }
+          if (outputType_ != null) {
+            output.WriteRawTag(58);
+            output.WriteMessage(OutputType);
+          }
+          arguments_.WriteTo(ref output, _repeated_arguments_codec);
+          if (Invocation != global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation.Unspecified) {
+            output.WriteRawTag(80);
+            output.WriteEnum((int) Invocation);
+          }
+          options_.WriteTo(ref output, _repeated_options_codec);
+          if (BoundsType != global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType.Unspecified) {
+            output.WriteRawTag(96);
+            output.WriteEnum((int) BoundsType);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(ref output);
+          }
+        }
+        #endif
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public int CalculateSize() {
+          int size = 0;
+          if (FunctionReference != 0) {
+            size += 1 + pb::CodedOutputStream.ComputeUInt32Size(FunctionReference);
+          }
+          size += arguments_.CalculateSize(_repeated_arguments_codec);
+          size += options_.CalculateSize(_repeated_options_codec);
+          if (outputType_ != null) {
+            size += 1 + pb::CodedOutputStream.ComputeMessageSize(OutputType);
+          }
+          if (Phase != global::Substrait.Protobuf.AggregationPhase.Unspecified) {
+            size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Phase);
+          }
+          if (Invocation != global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation.Unspecified) {
+            size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Invocation);
+          }
+          if (lowerBound_ != null) {
+            size += 1 + pb::CodedOutputStream.ComputeMessageSize(LowerBound);
+          }
+          if (upperBound_ != null) {
+            size += 1 + pb::CodedOutputStream.ComputeMessageSize(UpperBound);
+          }
+          if (BoundsType != global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType.Unspecified) {
+            size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) BoundsType);
+          }
+          if (_unknownFields != null) {
+            size += _unknownFields.CalculateSize();
+          }
+          return size;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(WindowRelFunction other) {
+          if (other == null) {
+            return;
+          }
+          if (other.FunctionReference != 0) {
+            FunctionReference = other.FunctionReference;
+          }
+          arguments_.Add(other.arguments_);
+          options_.Add(other.options_);
+          if (other.outputType_ != null) {
+            if (outputType_ == null) {
+              OutputType = new global::Substrait.Protobuf.Type();
+            }
+            OutputType.MergeFrom(other.OutputType);
+          }
+          if (other.Phase != global::Substrait.Protobuf.AggregationPhase.Unspecified) {
+            Phase = other.Phase;
+          }
+          if (other.Invocation != global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation.Unspecified) {
+            Invocation = other.Invocation;
+          }
+          if (other.lowerBound_ != null) {
+            if (lowerBound_ == null) {
+              LowerBound = new global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound();
+            }
+            LowerBound.MergeFrom(other.LowerBound);
+          }
+          if (other.upperBound_ != null) {
+            if (upperBound_ == null) {
+              UpperBound = new global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound();
+            }
+            UpperBound.MergeFrom(other.UpperBound);
+          }
+          if (other.BoundsType != global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType.Unspecified) {
+            BoundsType = other.BoundsType;
+          }
+          _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(pb::CodedInputStream input) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          input.ReadRawMessage(this);
+        #else
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+            switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                break;
+              case 8: {
+                FunctionReference = input.ReadUInt32();
+                break;
+              }
+              case 34: {
+                if (upperBound_ == null) {
+                  UpperBound = new global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound();
+                }
+                input.ReadMessage(UpperBound);
+                break;
+              }
+              case 42: {
+                if (lowerBound_ == null) {
+                  LowerBound = new global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound();
+                }
+                input.ReadMessage(LowerBound);
+                break;
+              }
+              case 48: {
+                Phase = (global::Substrait.Protobuf.AggregationPhase) input.ReadEnum();
+                break;
+              }
+              case 58: {
+                if (outputType_ == null) {
+                  OutputType = new global::Substrait.Protobuf.Type();
+                }
+                input.ReadMessage(OutputType);
+                break;
+              }
+              case 74: {
+                arguments_.AddEntriesFrom(input, _repeated_arguments_codec);
+                break;
+              }
+              case 80: {
+                Invocation = (global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation) input.ReadEnum();
+                break;
+              }
+              case 90: {
+                options_.AddEntriesFrom(input, _repeated_options_codec);
+                break;
+              }
+              case 96: {
+                BoundsType = (global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType) input.ReadEnum();
+                break;
+              }
+            }
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+            switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                break;
+              case 8: {
+                FunctionReference = input.ReadUInt32();
+                break;
+              }
+              case 34: {
+                if (upperBound_ == null) {
+                  UpperBound = new global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound();
+                }
+                input.ReadMessage(UpperBound);
+                break;
+              }
+              case 42: {
+                if (lowerBound_ == null) {
+                  LowerBound = new global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound();
+                }
+                input.ReadMessage(LowerBound);
+                break;
+              }
+              case 48: {
+                Phase = (global::Substrait.Protobuf.AggregationPhase) input.ReadEnum();
+                break;
+              }
+              case 58: {
+                if (outputType_ == null) {
+                  OutputType = new global::Substrait.Protobuf.Type();
+                }
+                input.ReadMessage(OutputType);
+                break;
+              }
+              case 74: {
+                arguments_.AddEntriesFrom(ref input, _repeated_arguments_codec);
+                break;
+              }
+              case 80: {
+                Invocation = (global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation) input.ReadEnum();
+                break;
+              }
+              case 90: {
+                options_.AddEntriesFrom(ref input, _repeated_options_codec);
+                break;
+              }
+              case 96: {
+                BoundsType = (global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType) input.ReadEnum();
+                break;
+              }
+            }
+          }
+        }
+        #endif
+
+      }
+
+    }
+    #endregion
+
+  }
+
+  /// <summary>
   /// The ORDERY BY (or sorting) relational operator. Beside describing a base relation, it includes a list of fields to sort on
   /// </summary>
   [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
@@ -7421,7 +8374,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[7]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[8]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -7741,7 +8694,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[8]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[9]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -8081,7 +9034,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[9]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[10]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -8414,7 +9367,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[10]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[11]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -8708,7 +9661,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[11]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[12]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -8956,7 +9909,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[12]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[13]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -9230,7 +10183,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[13]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[14]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -11165,6 +12118,776 @@ namespace Substrait.Protobuf {
   }
 
   /// <summary>
+  /// Duplicates records by emitting one or more rows per input row.  The number of rows emitted per
+  /// input row is the same for all input rows.
+  ///
+  /// In addition to a field being emitted per input field an extra int64 field is emitted which
+  /// contains a zero-indexed ordinal corresponding to the duplicate definition.
+  /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+  public sealed partial class ExpandRel : pb::IMessage<ExpandRel>
+  #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      , pb::IBufferMessage
+  #endif
+  {
+    private static readonly pb::MessageParser<ExpandRel> _parser = new pb::MessageParser<ExpandRel>(() => new ExpandRel());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pb::MessageParser<ExpandRel> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[15]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ExpandRel() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ExpandRel(ExpandRel other) : this() {
+      common_ = other.common_ != null ? other.common_.Clone() : null;
+      input_ = other.input_ != null ? other.input_.Clone() : null;
+      fields_ = other.fields_.Clone();
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ExpandRel Clone() {
+      return new ExpandRel(this);
+    }
+
+    /// <summary>Field number for the "common" field.</summary>
+    public const int CommonFieldNumber = 1;
+    private global::Substrait.Protobuf.RelCommon common_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.RelCommon Common {
+      get { return common_; }
+      set {
+        common_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "input" field.</summary>
+    public const int InputFieldNumber = 2;
+    private global::Substrait.Protobuf.Rel input_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.Rel Input {
+      get { return input_; }
+      set {
+        input_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "fields" field.</summary>
+    public const int FieldsFieldNumber = 4;
+    private static readonly pb::FieldCodec<global::Substrait.Protobuf.ExpandRel.Types.ExpandField> _repeated_fields_codec
+        = pb::FieldCodec.ForMessage(34, global::Substrait.Protobuf.ExpandRel.Types.ExpandField.Parser);
+    private readonly pbc::RepeatedField<global::Substrait.Protobuf.ExpandRel.Types.ExpandField> fields_ = new pbc::RepeatedField<global::Substrait.Protobuf.ExpandRel.Types.ExpandField>();
+    /// <summary>
+    /// There should be one definition here for each input field.  Any fields beyond the provided
+    /// definitions will be emitted as is (as if a consistent_field record with an identity
+    /// expression was provided).
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public pbc::RepeatedField<global::Substrait.Protobuf.ExpandRel.Types.ExpandField> Fields {
+      get { return fields_; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override bool Equals(object other) {
+      return Equals(other as ExpandRel);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool Equals(ExpandRel other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (!object.Equals(Common, other.Common)) return false;
+      if (!object.Equals(Input, other.Input)) return false;
+      if(!fields_.Equals(other.fields_)) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (common_ != null) hash ^= Common.GetHashCode();
+      if (input_ != null) hash ^= Input.GetHashCode();
+      hash ^= fields_.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void WriteTo(pb::CodedOutputStream output) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      output.WriteRawMessage(this);
+    #else
+      if (common_ != null) {
+        output.WriteRawTag(10);
+        output.WriteMessage(Common);
+      }
+      if (input_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(Input);
+      }
+      fields_.WriteTo(output, _repeated_fields_codec);
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+      if (common_ != null) {
+        output.WriteRawTag(10);
+        output.WriteMessage(Common);
+      }
+      if (input_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(Input);
+      }
+      fields_.WriteTo(ref output, _repeated_fields_codec);
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(ref output);
+      }
+    }
+    #endif
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public int CalculateSize() {
+      int size = 0;
+      if (common_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Common);
+      }
+      if (input_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Input);
+      }
+      size += fields_.CalculateSize(_repeated_fields_codec);
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(ExpandRel other) {
+      if (other == null) {
+        return;
+      }
+      if (other.common_ != null) {
+        if (common_ == null) {
+          Common = new global::Substrait.Protobuf.RelCommon();
+        }
+        Common.MergeFrom(other.Common);
+      }
+      if (other.input_ != null) {
+        if (input_ == null) {
+          Input = new global::Substrait.Protobuf.Rel();
+        }
+        Input.MergeFrom(other.Input);
+      }
+      fields_.Add(other.fields_);
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(pb::CodedInputStream input) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      input.ReadRawMessage(this);
+    #else
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            if (common_ == null) {
+              Common = new global::Substrait.Protobuf.RelCommon();
+            }
+            input.ReadMessage(Common);
+            break;
+          }
+          case 18: {
+            if (input_ == null) {
+              Input = new global::Substrait.Protobuf.Rel();
+            }
+            input.ReadMessage(Input);
+            break;
+          }
+          case 34: {
+            fields_.AddEntriesFrom(input, _repeated_fields_codec);
+            break;
+          }
+        }
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+            break;
+          case 10: {
+            if (common_ == null) {
+              Common = new global::Substrait.Protobuf.RelCommon();
+            }
+            input.ReadMessage(Common);
+            break;
+          }
+          case 18: {
+            if (input_ == null) {
+              Input = new global::Substrait.Protobuf.Rel();
+            }
+            input.ReadMessage(Input);
+            break;
+          }
+          case 34: {
+            fields_.AddEntriesFrom(ref input, _repeated_fields_codec);
+            break;
+          }
+        }
+      }
+    }
+    #endif
+
+    #region Nested types
+    /// <summary>Container for nested types declared in the ExpandRel message type.</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static partial class Types {
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+      public sealed partial class ExpandField : pb::IMessage<ExpandField>
+      #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          , pb::IBufferMessage
+      #endif
+      {
+        private static readonly pb::MessageParser<ExpandField> _parser = new pb::MessageParser<ExpandField>(() => new ExpandField());
+        private pb::UnknownFieldSet _unknownFields;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pb::MessageParser<ExpandField> Parser { get { return _parser; } }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pbr::MessageDescriptor Descriptor {
+          get { return global::Substrait.Protobuf.ExpandRel.Descriptor.NestedTypes[0]; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        pbr::MessageDescriptor pb::IMessage.Descriptor {
+          get { return Descriptor; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public ExpandField() {
+          OnConstruction();
+        }
+
+        partial void OnConstruction();
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public ExpandField(ExpandField other) : this() {
+          switch (other.FieldTypeCase) {
+            case FieldTypeOneofCase.SwitchingField:
+              SwitchingField = other.SwitchingField.Clone();
+              break;
+            case FieldTypeOneofCase.ConsistentField:
+              ConsistentField = other.ConsistentField.Clone();
+              break;
+          }
+
+          _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public ExpandField Clone() {
+          return new ExpandField(this);
+        }
+
+        /// <summary>Field number for the "switching_field" field.</summary>
+        public const int SwitchingFieldFieldNumber = 2;
+        /// <summary>
+        /// Field that switches output based on which duplicate is being output.  Every
+        /// switching_field should contain the same number of duplicates (so that the output rows
+        /// are of consistent size and type).  If there are not enough switching field definitions
+        /// to match the other field definitions NULL will be returned to fill the extras.
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.ExpandRel.Types.SwitchingField SwitchingField {
+          get { return fieldTypeCase_ == FieldTypeOneofCase.SwitchingField ? (global::Substrait.Protobuf.ExpandRel.Types.SwitchingField) fieldType_ : null; }
+          set {
+            fieldType_ = value;
+            fieldTypeCase_ = value == null ? FieldTypeOneofCase.None : FieldTypeOneofCase.SwitchingField;
+          }
+        }
+
+        /// <summary>Field number for the "consistent_field" field.</summary>
+        public const int ConsistentFieldFieldNumber = 3;
+        /// <summary>
+        /// Field that outputs the same value no matter which duplicate is being output.  Equivalent
+        /// to a switching_field that lists the same expression multiple times.
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.Expression ConsistentField {
+          get { return fieldTypeCase_ == FieldTypeOneofCase.ConsistentField ? (global::Substrait.Protobuf.Expression) fieldType_ : null; }
+          set {
+            fieldType_ = value;
+            fieldTypeCase_ = value == null ? FieldTypeOneofCase.None : FieldTypeOneofCase.ConsistentField;
+          }
+        }
+
+        private object fieldType_;
+        /// <summary>Enum of possible cases for the "field_type" oneof.</summary>
+        public enum FieldTypeOneofCase {
+          None = 0,
+          SwitchingField = 2,
+          ConsistentField = 3,
+        }
+        private FieldTypeOneofCase fieldTypeCase_ = FieldTypeOneofCase.None;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public FieldTypeOneofCase FieldTypeCase {
+          get { return fieldTypeCase_; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearFieldType() {
+          fieldTypeCase_ = FieldTypeOneofCase.None;
+          fieldType_ = null;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override bool Equals(object other) {
+          return Equals(other as ExpandField);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool Equals(ExpandField other) {
+          if (ReferenceEquals(other, null)) {
+            return false;
+          }
+          if (ReferenceEquals(other, this)) {
+            return true;
+          }
+          if (!object.Equals(SwitchingField, other.SwitchingField)) return false;
+          if (!object.Equals(ConsistentField, other.ConsistentField)) return false;
+          if (FieldTypeCase != other.FieldTypeCase) return false;
+          return Equals(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override int GetHashCode() {
+          int hash = 1;
+          if (fieldTypeCase_ == FieldTypeOneofCase.SwitchingField) hash ^= SwitchingField.GetHashCode();
+          if (fieldTypeCase_ == FieldTypeOneofCase.ConsistentField) hash ^= ConsistentField.GetHashCode();
+          hash ^= (int) fieldTypeCase_;
+          if (_unknownFields != null) {
+            hash ^= _unknownFields.GetHashCode();
+          }
+          return hash;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override string ToString() {
+          return pb::JsonFormatter.ToDiagnosticString(this);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void WriteTo(pb::CodedOutputStream output) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          output.WriteRawMessage(this);
+        #else
+          if (fieldTypeCase_ == FieldTypeOneofCase.SwitchingField) {
+            output.WriteRawTag(18);
+            output.WriteMessage(SwitchingField);
+          }
+          if (fieldTypeCase_ == FieldTypeOneofCase.ConsistentField) {
+            output.WriteRawTag(26);
+            output.WriteMessage(ConsistentField);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(output);
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+          if (fieldTypeCase_ == FieldTypeOneofCase.SwitchingField) {
+            output.WriteRawTag(18);
+            output.WriteMessage(SwitchingField);
+          }
+          if (fieldTypeCase_ == FieldTypeOneofCase.ConsistentField) {
+            output.WriteRawTag(26);
+            output.WriteMessage(ConsistentField);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(ref output);
+          }
+        }
+        #endif
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public int CalculateSize() {
+          int size = 0;
+          if (fieldTypeCase_ == FieldTypeOneofCase.SwitchingField) {
+            size += 1 + pb::CodedOutputStream.ComputeMessageSize(SwitchingField);
+          }
+          if (fieldTypeCase_ == FieldTypeOneofCase.ConsistentField) {
+            size += 1 + pb::CodedOutputStream.ComputeMessageSize(ConsistentField);
+          }
+          if (_unknownFields != null) {
+            size += _unknownFields.CalculateSize();
+          }
+          return size;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(ExpandField other) {
+          if (other == null) {
+            return;
+          }
+          switch (other.FieldTypeCase) {
+            case FieldTypeOneofCase.SwitchingField:
+              if (SwitchingField == null) {
+                SwitchingField = new global::Substrait.Protobuf.ExpandRel.Types.SwitchingField();
+              }
+              SwitchingField.MergeFrom(other.SwitchingField);
+              break;
+            case FieldTypeOneofCase.ConsistentField:
+              if (ConsistentField == null) {
+                ConsistentField = new global::Substrait.Protobuf.Expression();
+              }
+              ConsistentField.MergeFrom(other.ConsistentField);
+              break;
+          }
+
+          _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(pb::CodedInputStream input) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          input.ReadRawMessage(this);
+        #else
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+            switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                break;
+              case 18: {
+                global::Substrait.Protobuf.ExpandRel.Types.SwitchingField subBuilder = new global::Substrait.Protobuf.ExpandRel.Types.SwitchingField();
+                if (fieldTypeCase_ == FieldTypeOneofCase.SwitchingField) {
+                  subBuilder.MergeFrom(SwitchingField);
+                }
+                input.ReadMessage(subBuilder);
+                SwitchingField = subBuilder;
+                break;
+              }
+              case 26: {
+                global::Substrait.Protobuf.Expression subBuilder = new global::Substrait.Protobuf.Expression();
+                if (fieldTypeCase_ == FieldTypeOneofCase.ConsistentField) {
+                  subBuilder.MergeFrom(ConsistentField);
+                }
+                input.ReadMessage(subBuilder);
+                ConsistentField = subBuilder;
+                break;
+              }
+            }
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+            switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                break;
+              case 18: {
+                global::Substrait.Protobuf.ExpandRel.Types.SwitchingField subBuilder = new global::Substrait.Protobuf.ExpandRel.Types.SwitchingField();
+                if (fieldTypeCase_ == FieldTypeOneofCase.SwitchingField) {
+                  subBuilder.MergeFrom(SwitchingField);
+                }
+                input.ReadMessage(subBuilder);
+                SwitchingField = subBuilder;
+                break;
+              }
+              case 26: {
+                global::Substrait.Protobuf.Expression subBuilder = new global::Substrait.Protobuf.Expression();
+                if (fieldTypeCase_ == FieldTypeOneofCase.ConsistentField) {
+                  subBuilder.MergeFrom(ConsistentField);
+                }
+                input.ReadMessage(subBuilder);
+                ConsistentField = subBuilder;
+                break;
+              }
+            }
+          }
+        }
+        #endif
+
+      }
+
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+      public sealed partial class SwitchingField : pb::IMessage<SwitchingField>
+      #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          , pb::IBufferMessage
+      #endif
+      {
+        private static readonly pb::MessageParser<SwitchingField> _parser = new pb::MessageParser<SwitchingField>(() => new SwitchingField());
+        private pb::UnknownFieldSet _unknownFields;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pb::MessageParser<SwitchingField> Parser { get { return _parser; } }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pbr::MessageDescriptor Descriptor {
+          get { return global::Substrait.Protobuf.ExpandRel.Descriptor.NestedTypes[1]; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        pbr::MessageDescriptor pb::IMessage.Descriptor {
+          get { return Descriptor; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public SwitchingField() {
+          OnConstruction();
+        }
+
+        partial void OnConstruction();
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public SwitchingField(SwitchingField other) : this() {
+          duplicates_ = other.duplicates_.Clone();
+          _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public SwitchingField Clone() {
+          return new SwitchingField(this);
+        }
+
+        /// <summary>Field number for the "duplicates" field.</summary>
+        public const int DuplicatesFieldNumber = 1;
+        private static readonly pb::FieldCodec<global::Substrait.Protobuf.Expression> _repeated_duplicates_codec
+            = pb::FieldCodec.ForMessage(10, global::Substrait.Protobuf.Expression.Parser);
+        private readonly pbc::RepeatedField<global::Substrait.Protobuf.Expression> duplicates_ = new pbc::RepeatedField<global::Substrait.Protobuf.Expression>();
+        /// <summary>
+        /// All duplicates must return the same type class but may differ in nullability.  The effective
+        /// type of the output field will be nullable if any of the duplicate expressions are nullable.
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public pbc::RepeatedField<global::Substrait.Protobuf.Expression> Duplicates {
+          get { return duplicates_; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override bool Equals(object other) {
+          return Equals(other as SwitchingField);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool Equals(SwitchingField other) {
+          if (ReferenceEquals(other, null)) {
+            return false;
+          }
+          if (ReferenceEquals(other, this)) {
+            return true;
+          }
+          if(!duplicates_.Equals(other.duplicates_)) return false;
+          return Equals(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override int GetHashCode() {
+          int hash = 1;
+          hash ^= duplicates_.GetHashCode();
+          if (_unknownFields != null) {
+            hash ^= _unknownFields.GetHashCode();
+          }
+          return hash;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override string ToString() {
+          return pb::JsonFormatter.ToDiagnosticString(this);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void WriteTo(pb::CodedOutputStream output) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          output.WriteRawMessage(this);
+        #else
+          duplicates_.WriteTo(output, _repeated_duplicates_codec);
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(output);
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+          duplicates_.WriteTo(ref output, _repeated_duplicates_codec);
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(ref output);
+          }
+        }
+        #endif
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public int CalculateSize() {
+          int size = 0;
+          size += duplicates_.CalculateSize(_repeated_duplicates_codec);
+          if (_unknownFields != null) {
+            size += _unknownFields.CalculateSize();
+          }
+          return size;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(SwitchingField other) {
+          if (other == null) {
+            return;
+          }
+          duplicates_.Add(other.duplicates_);
+          _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(pb::CodedInputStream input) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          input.ReadRawMessage(this);
+        #else
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+            switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                break;
+              case 10: {
+                duplicates_.AddEntriesFrom(input, _repeated_duplicates_codec);
+                break;
+              }
+            }
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+            switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                break;
+              case 10: {
+                duplicates_.AddEntriesFrom(ref input, _repeated_duplicates_codec);
+                break;
+              }
+            }
+          }
+        }
+        #endif
+
+      }
+
+    }
+    #endregion
+
+  }
+
+  /// <summary>
   /// A relation with output field names.
   ///
   /// This is for use at the root of a `Rel` tree.
@@ -11184,7 +12907,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[14]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[16]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -11418,7 +13141,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[15]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[17]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -11475,14 +13198,32 @@ namespace Substrait.Protobuf {
         case RelTypeOneofCase.Cross:
           Cross = other.Cross.Clone();
           break;
+        case RelTypeOneofCase.Reference:
+          Reference = other.Reference.Clone();
+          break;
         case RelTypeOneofCase.Write:
           Write = other.Write.Clone();
+          break;
+        case RelTypeOneofCase.Ddl:
+          Ddl = other.Ddl.Clone();
           break;
         case RelTypeOneofCase.HashJoin:
           HashJoin = other.HashJoin.Clone();
           break;
         case RelTypeOneofCase.MergeJoin:
           MergeJoin = other.MergeJoin.Clone();
+          break;
+        case RelTypeOneofCase.NestedLoopJoin:
+          NestedLoopJoin = other.NestedLoopJoin.Clone();
+          break;
+        case RelTypeOneofCase.Window:
+          Window = other.Window.Clone();
+          break;
+        case RelTypeOneofCase.Exchange:
+          Exchange = other.Exchange.Clone();
+          break;
+        case RelTypeOneofCase.Expand:
+          Expand = other.Expand.Clone();
           break;
       }
 
@@ -11639,8 +13380,20 @@ namespace Substrait.Protobuf {
       }
     }
 
+    /// <summary>Field number for the "reference" field.</summary>
+    public const int ReferenceFieldNumber = 21;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.ReferenceRel Reference {
+      get { return relTypeCase_ == RelTypeOneofCase.Reference ? (global::Substrait.Protobuf.ReferenceRel) relType_ : null; }
+      set {
+        relType_ = value;
+        relTypeCase_ = value == null ? RelTypeOneofCase.None : RelTypeOneofCase.Reference;
+      }
+    }
+
     /// <summary>Field number for the "write" field.</summary>
-    public const int WriteFieldNumber = 15;
+    public const int WriteFieldNumber = 19;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public global::Substrait.Protobuf.WriteRel Write {
@@ -11651,10 +13404,22 @@ namespace Substrait.Protobuf {
       }
     }
 
+    /// <summary>Field number for the "ddl" field.</summary>
+    public const int DdlFieldNumber = 20;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.DdlRel Ddl {
+      get { return relTypeCase_ == RelTypeOneofCase.Ddl ? (global::Substrait.Protobuf.DdlRel) relType_ : null; }
+      set {
+        relType_ = value;
+        relTypeCase_ = value == null ? RelTypeOneofCase.None : RelTypeOneofCase.Ddl;
+      }
+    }
+
     /// <summary>Field number for the "hash_join" field.</summary>
     public const int HashJoinFieldNumber = 13;
     /// <summary>
-    ///Physical relations
+    /// Physical relations
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
@@ -11678,6 +13443,54 @@ namespace Substrait.Protobuf {
       }
     }
 
+    /// <summary>Field number for the "nested_loop_join" field.</summary>
+    public const int NestedLoopJoinFieldNumber = 18;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.NestedLoopJoinRel NestedLoopJoin {
+      get { return relTypeCase_ == RelTypeOneofCase.NestedLoopJoin ? (global::Substrait.Protobuf.NestedLoopJoinRel) relType_ : null; }
+      set {
+        relType_ = value;
+        relTypeCase_ = value == null ? RelTypeOneofCase.None : RelTypeOneofCase.NestedLoopJoin;
+      }
+    }
+
+    /// <summary>Field number for the "window" field.</summary>
+    public const int WindowFieldNumber = 17;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.ConsistentPartitionWindowRel Window {
+      get { return relTypeCase_ == RelTypeOneofCase.Window ? (global::Substrait.Protobuf.ConsistentPartitionWindowRel) relType_ : null; }
+      set {
+        relType_ = value;
+        relTypeCase_ = value == null ? RelTypeOneofCase.None : RelTypeOneofCase.Window;
+      }
+    }
+
+    /// <summary>Field number for the "exchange" field.</summary>
+    public const int ExchangeFieldNumber = 15;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.ExchangeRel Exchange {
+      get { return relTypeCase_ == RelTypeOneofCase.Exchange ? (global::Substrait.Protobuf.ExchangeRel) relType_ : null; }
+      set {
+        relType_ = value;
+        relTypeCase_ = value == null ? RelTypeOneofCase.None : RelTypeOneofCase.Exchange;
+      }
+    }
+
+    /// <summary>Field number for the "expand" field.</summary>
+    public const int ExpandFieldNumber = 16;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.ExpandRel Expand {
+      get { return relTypeCase_ == RelTypeOneofCase.Expand ? (global::Substrait.Protobuf.ExpandRel) relType_ : null; }
+      set {
+        relType_ = value;
+        relTypeCase_ = value == null ? RelTypeOneofCase.None : RelTypeOneofCase.Expand;
+      }
+    }
+
     private object relType_;
     /// <summary>Enum of possible cases for the "rel_type" oneof.</summary>
     public enum RelTypeOneofCase {
@@ -11694,9 +13507,15 @@ namespace Substrait.Protobuf {
       ExtensionMulti = 10,
       ExtensionLeaf = 11,
       Cross = 12,
-      Write = 15,
+      Reference = 21,
+      Write = 19,
+      Ddl = 20,
       HashJoin = 13,
       MergeJoin = 14,
+      NestedLoopJoin = 18,
+      Window = 17,
+      Exchange = 15,
+      Expand = 16,
     }
     private RelTypeOneofCase relTypeCase_ = RelTypeOneofCase.None;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -11739,9 +13558,15 @@ namespace Substrait.Protobuf {
       if (!object.Equals(ExtensionMulti, other.ExtensionMulti)) return false;
       if (!object.Equals(ExtensionLeaf, other.ExtensionLeaf)) return false;
       if (!object.Equals(Cross, other.Cross)) return false;
+      if (!object.Equals(Reference, other.Reference)) return false;
       if (!object.Equals(Write, other.Write)) return false;
+      if (!object.Equals(Ddl, other.Ddl)) return false;
       if (!object.Equals(HashJoin, other.HashJoin)) return false;
       if (!object.Equals(MergeJoin, other.MergeJoin)) return false;
+      if (!object.Equals(NestedLoopJoin, other.NestedLoopJoin)) return false;
+      if (!object.Equals(Window, other.Window)) return false;
+      if (!object.Equals(Exchange, other.Exchange)) return false;
+      if (!object.Equals(Expand, other.Expand)) return false;
       if (RelTypeCase != other.RelTypeCase) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
@@ -11762,9 +13587,15 @@ namespace Substrait.Protobuf {
       if (relTypeCase_ == RelTypeOneofCase.ExtensionMulti) hash ^= ExtensionMulti.GetHashCode();
       if (relTypeCase_ == RelTypeOneofCase.ExtensionLeaf) hash ^= ExtensionLeaf.GetHashCode();
       if (relTypeCase_ == RelTypeOneofCase.Cross) hash ^= Cross.GetHashCode();
+      if (relTypeCase_ == RelTypeOneofCase.Reference) hash ^= Reference.GetHashCode();
       if (relTypeCase_ == RelTypeOneofCase.Write) hash ^= Write.GetHashCode();
+      if (relTypeCase_ == RelTypeOneofCase.Ddl) hash ^= Ddl.GetHashCode();
       if (relTypeCase_ == RelTypeOneofCase.HashJoin) hash ^= HashJoin.GetHashCode();
       if (relTypeCase_ == RelTypeOneofCase.MergeJoin) hash ^= MergeJoin.GetHashCode();
+      if (relTypeCase_ == RelTypeOneofCase.NestedLoopJoin) hash ^= NestedLoopJoin.GetHashCode();
+      if (relTypeCase_ == RelTypeOneofCase.Window) hash ^= Window.GetHashCode();
+      if (relTypeCase_ == RelTypeOneofCase.Exchange) hash ^= Exchange.GetHashCode();
+      if (relTypeCase_ == RelTypeOneofCase.Expand) hash ^= Expand.GetHashCode();
       hash ^= (int) relTypeCase_;
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
@@ -11840,9 +13671,33 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(114);
         output.WriteMessage(MergeJoin);
       }
-      if (relTypeCase_ == RelTypeOneofCase.Write) {
+      if (relTypeCase_ == RelTypeOneofCase.Exchange) {
         output.WriteRawTag(122);
+        output.WriteMessage(Exchange);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Expand) {
+        output.WriteRawTag(130, 1);
+        output.WriteMessage(Expand);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Window) {
+        output.WriteRawTag(138, 1);
+        output.WriteMessage(Window);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.NestedLoopJoin) {
+        output.WriteRawTag(146, 1);
+        output.WriteMessage(NestedLoopJoin);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Write) {
+        output.WriteRawTag(154, 1);
         output.WriteMessage(Write);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Ddl) {
+        output.WriteRawTag(162, 1);
+        output.WriteMessage(Ddl);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Reference) {
+        output.WriteRawTag(170, 1);
+        output.WriteMessage(Reference);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
@@ -11910,9 +13765,33 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(114);
         output.WriteMessage(MergeJoin);
       }
-      if (relTypeCase_ == RelTypeOneofCase.Write) {
+      if (relTypeCase_ == RelTypeOneofCase.Exchange) {
         output.WriteRawTag(122);
+        output.WriteMessage(Exchange);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Expand) {
+        output.WriteRawTag(130, 1);
+        output.WriteMessage(Expand);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Window) {
+        output.WriteRawTag(138, 1);
+        output.WriteMessage(Window);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.NestedLoopJoin) {
+        output.WriteRawTag(146, 1);
+        output.WriteMessage(NestedLoopJoin);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Write) {
+        output.WriteRawTag(154, 1);
         output.WriteMessage(Write);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Ddl) {
+        output.WriteRawTag(162, 1);
+        output.WriteMessage(Ddl);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Reference) {
+        output.WriteRawTag(170, 1);
+        output.WriteMessage(Reference);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
@@ -11960,14 +13839,32 @@ namespace Substrait.Protobuf {
       if (relTypeCase_ == RelTypeOneofCase.Cross) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(Cross);
       }
+      if (relTypeCase_ == RelTypeOneofCase.Reference) {
+        size += 2 + pb::CodedOutputStream.ComputeMessageSize(Reference);
+      }
       if (relTypeCase_ == RelTypeOneofCase.Write) {
-        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Write);
+        size += 2 + pb::CodedOutputStream.ComputeMessageSize(Write);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Ddl) {
+        size += 2 + pb::CodedOutputStream.ComputeMessageSize(Ddl);
       }
       if (relTypeCase_ == RelTypeOneofCase.HashJoin) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(HashJoin);
       }
       if (relTypeCase_ == RelTypeOneofCase.MergeJoin) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(MergeJoin);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.NestedLoopJoin) {
+        size += 2 + pb::CodedOutputStream.ComputeMessageSize(NestedLoopJoin);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Window) {
+        size += 2 + pb::CodedOutputStream.ComputeMessageSize(Window);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Exchange) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Exchange);
+      }
+      if (relTypeCase_ == RelTypeOneofCase.Expand) {
+        size += 2 + pb::CodedOutputStream.ComputeMessageSize(Expand);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -12054,11 +13951,23 @@ namespace Substrait.Protobuf {
           }
           Cross.MergeFrom(other.Cross);
           break;
+        case RelTypeOneofCase.Reference:
+          if (Reference == null) {
+            Reference = new global::Substrait.Protobuf.ReferenceRel();
+          }
+          Reference.MergeFrom(other.Reference);
+          break;
         case RelTypeOneofCase.Write:
           if (Write == null) {
             Write = new global::Substrait.Protobuf.WriteRel();
           }
           Write.MergeFrom(other.Write);
+          break;
+        case RelTypeOneofCase.Ddl:
+          if (Ddl == null) {
+            Ddl = new global::Substrait.Protobuf.DdlRel();
+          }
+          Ddl.MergeFrom(other.Ddl);
           break;
         case RelTypeOneofCase.HashJoin:
           if (HashJoin == null) {
@@ -12071,6 +13980,30 @@ namespace Substrait.Protobuf {
             MergeJoin = new global::Substrait.Protobuf.MergeJoinRel();
           }
           MergeJoin.MergeFrom(other.MergeJoin);
+          break;
+        case RelTypeOneofCase.NestedLoopJoin:
+          if (NestedLoopJoin == null) {
+            NestedLoopJoin = new global::Substrait.Protobuf.NestedLoopJoinRel();
+          }
+          NestedLoopJoin.MergeFrom(other.NestedLoopJoin);
+          break;
+        case RelTypeOneofCase.Window:
+          if (Window == null) {
+            Window = new global::Substrait.Protobuf.ConsistentPartitionWindowRel();
+          }
+          Window.MergeFrom(other.Window);
+          break;
+        case RelTypeOneofCase.Exchange:
+          if (Exchange == null) {
+            Exchange = new global::Substrait.Protobuf.ExchangeRel();
+          }
+          Exchange.MergeFrom(other.Exchange);
+          break;
+        case RelTypeOneofCase.Expand:
+          if (Expand == null) {
+            Expand = new global::Substrait.Protobuf.ExpandRel();
+          }
+          Expand.MergeFrom(other.Expand);
           break;
       }
 
@@ -12216,12 +14149,66 @@ namespace Substrait.Protobuf {
             break;
           }
           case 122: {
+            global::Substrait.Protobuf.ExchangeRel subBuilder = new global::Substrait.Protobuf.ExchangeRel();
+            if (relTypeCase_ == RelTypeOneofCase.Exchange) {
+              subBuilder.MergeFrom(Exchange);
+            }
+            input.ReadMessage(subBuilder);
+            Exchange = subBuilder;
+            break;
+          }
+          case 130: {
+            global::Substrait.Protobuf.ExpandRel subBuilder = new global::Substrait.Protobuf.ExpandRel();
+            if (relTypeCase_ == RelTypeOneofCase.Expand) {
+              subBuilder.MergeFrom(Expand);
+            }
+            input.ReadMessage(subBuilder);
+            Expand = subBuilder;
+            break;
+          }
+          case 138: {
+            global::Substrait.Protobuf.ConsistentPartitionWindowRel subBuilder = new global::Substrait.Protobuf.ConsistentPartitionWindowRel();
+            if (relTypeCase_ == RelTypeOneofCase.Window) {
+              subBuilder.MergeFrom(Window);
+            }
+            input.ReadMessage(subBuilder);
+            Window = subBuilder;
+            break;
+          }
+          case 146: {
+            global::Substrait.Protobuf.NestedLoopJoinRel subBuilder = new global::Substrait.Protobuf.NestedLoopJoinRel();
+            if (relTypeCase_ == RelTypeOneofCase.NestedLoopJoin) {
+              subBuilder.MergeFrom(NestedLoopJoin);
+            }
+            input.ReadMessage(subBuilder);
+            NestedLoopJoin = subBuilder;
+            break;
+          }
+          case 154: {
             global::Substrait.Protobuf.WriteRel subBuilder = new global::Substrait.Protobuf.WriteRel();
             if (relTypeCase_ == RelTypeOneofCase.Write) {
               subBuilder.MergeFrom(Write);
             }
             input.ReadMessage(subBuilder);
             Write = subBuilder;
+            break;
+          }
+          case 162: {
+            global::Substrait.Protobuf.DdlRel subBuilder = new global::Substrait.Protobuf.DdlRel();
+            if (relTypeCase_ == RelTypeOneofCase.Ddl) {
+              subBuilder.MergeFrom(Ddl);
+            }
+            input.ReadMessage(subBuilder);
+            Ddl = subBuilder;
+            break;
+          }
+          case 170: {
+            global::Substrait.Protobuf.ReferenceRel subBuilder = new global::Substrait.Protobuf.ReferenceRel();
+            if (relTypeCase_ == RelTypeOneofCase.Reference) {
+              subBuilder.MergeFrom(Reference);
+            }
+            input.ReadMessage(subBuilder);
+            Reference = subBuilder;
             break;
           }
         }
@@ -12366,12 +14353,66 @@ namespace Substrait.Protobuf {
             break;
           }
           case 122: {
+            global::Substrait.Protobuf.ExchangeRel subBuilder = new global::Substrait.Protobuf.ExchangeRel();
+            if (relTypeCase_ == RelTypeOneofCase.Exchange) {
+              subBuilder.MergeFrom(Exchange);
+            }
+            input.ReadMessage(subBuilder);
+            Exchange = subBuilder;
+            break;
+          }
+          case 130: {
+            global::Substrait.Protobuf.ExpandRel subBuilder = new global::Substrait.Protobuf.ExpandRel();
+            if (relTypeCase_ == RelTypeOneofCase.Expand) {
+              subBuilder.MergeFrom(Expand);
+            }
+            input.ReadMessage(subBuilder);
+            Expand = subBuilder;
+            break;
+          }
+          case 138: {
+            global::Substrait.Protobuf.ConsistentPartitionWindowRel subBuilder = new global::Substrait.Protobuf.ConsistentPartitionWindowRel();
+            if (relTypeCase_ == RelTypeOneofCase.Window) {
+              subBuilder.MergeFrom(Window);
+            }
+            input.ReadMessage(subBuilder);
+            Window = subBuilder;
+            break;
+          }
+          case 146: {
+            global::Substrait.Protobuf.NestedLoopJoinRel subBuilder = new global::Substrait.Protobuf.NestedLoopJoinRel();
+            if (relTypeCase_ == RelTypeOneofCase.NestedLoopJoin) {
+              subBuilder.MergeFrom(NestedLoopJoin);
+            }
+            input.ReadMessage(subBuilder);
+            NestedLoopJoin = subBuilder;
+            break;
+          }
+          case 154: {
             global::Substrait.Protobuf.WriteRel subBuilder = new global::Substrait.Protobuf.WriteRel();
             if (relTypeCase_ == RelTypeOneofCase.Write) {
               subBuilder.MergeFrom(Write);
             }
             input.ReadMessage(subBuilder);
             Write = subBuilder;
+            break;
+          }
+          case 162: {
+            global::Substrait.Protobuf.DdlRel subBuilder = new global::Substrait.Protobuf.DdlRel();
+            if (relTypeCase_ == RelTypeOneofCase.Ddl) {
+              subBuilder.MergeFrom(Ddl);
+            }
+            input.ReadMessage(subBuilder);
+            Ddl = subBuilder;
+            break;
+          }
+          case 170: {
+            global::Substrait.Protobuf.ReferenceRel subBuilder = new global::Substrait.Protobuf.ReferenceRel();
+            if (relTypeCase_ == RelTypeOneofCase.Reference) {
+              subBuilder.MergeFrom(Reference);
+            }
+            input.ReadMessage(subBuilder);
+            Reference = subBuilder;
             break;
           }
         }
@@ -12399,7 +14440,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[16]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[18]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -12632,7 +14673,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[17]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[19]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -12831,7 +14872,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[18]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[20]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -12856,6 +14897,7 @@ namespace Substrait.Protobuf {
       object_ = other.object_;
       op_ = other.op_;
       viewDefinition_ = other.viewDefinition_ != null ? other.viewDefinition_.Clone() : null;
+      common_ = other.common_ != null ? other.common_.Clone() : null;
       switch (other.WriteTypeCase) {
         case WriteTypeOneofCase.NamedObject:
           NamedObject = other.NamedObject.Clone();
@@ -12976,6 +15018,18 @@ namespace Substrait.Protobuf {
       }
     }
 
+    /// <summary>Field number for the "common" field.</summary>
+    public const int CommonFieldNumber = 8;
+    private global::Substrait.Protobuf.RelCommon common_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.RelCommon Common {
+      get { return common_; }
+      set {
+        common_ = value;
+      }
+    }
+
     private object writeType_;
     /// <summary>Enum of possible cases for the "write_type" oneof.</summary>
     public enum WriteTypeOneofCase {
@@ -13019,6 +15073,7 @@ namespace Substrait.Protobuf {
       if (Object != other.Object) return false;
       if (Op != other.Op) return false;
       if (!object.Equals(ViewDefinition, other.ViewDefinition)) return false;
+      if (!object.Equals(Common, other.Common)) return false;
       if (WriteTypeCase != other.WriteTypeCase) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
@@ -13034,6 +15089,7 @@ namespace Substrait.Protobuf {
       if (Object != global::Substrait.Protobuf.DdlRel.Types.DdlObject.Unspecified) hash ^= Object.GetHashCode();
       if (Op != global::Substrait.Protobuf.DdlRel.Types.DdlOp.Unspecified) hash ^= Op.GetHashCode();
       if (viewDefinition_ != null) hash ^= ViewDefinition.GetHashCode();
+      if (common_ != null) hash ^= Common.GetHashCode();
       hash ^= (int) writeTypeCase_;
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
@@ -13081,6 +15137,10 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(58);
         output.WriteMessage(ViewDefinition);
       }
+      if (common_ != null) {
+        output.WriteRawTag(66);
+        output.WriteMessage(Common);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -13119,6 +15179,10 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(58);
         output.WriteMessage(ViewDefinition);
       }
+      if (common_ != null) {
+        output.WriteRawTag(66);
+        output.WriteMessage(Common);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -13149,6 +15213,9 @@ namespace Substrait.Protobuf {
       }
       if (viewDefinition_ != null) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(ViewDefinition);
+      }
+      if (common_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Common);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -13185,6 +15252,12 @@ namespace Substrait.Protobuf {
           ViewDefinition = new global::Substrait.Protobuf.Rel();
         }
         ViewDefinition.MergeFrom(other.ViewDefinition);
+      }
+      if (other.common_ != null) {
+        if (common_ == null) {
+          Common = new global::Substrait.Protobuf.RelCommon();
+        }
+        Common.MergeFrom(other.Common);
       }
       switch (other.WriteTypeCase) {
         case WriteTypeOneofCase.NamedObject:
@@ -13263,6 +15336,13 @@ namespace Substrait.Protobuf {
             input.ReadMessage(ViewDefinition);
             break;
           }
+          case 66: {
+            if (common_ == null) {
+              Common = new global::Substrait.Protobuf.RelCommon();
+            }
+            input.ReadMessage(Common);
+            break;
+          }
         }
       }
     #endif
@@ -13325,6 +15405,13 @@ namespace Substrait.Protobuf {
             input.ReadMessage(ViewDefinition);
             break;
           }
+          case 66: {
+            if (common_ == null) {
+              Common = new global::Substrait.Protobuf.RelCommon();
+            }
+            input.ReadMessage(Common);
+            break;
+          }
         }
       }
     }
@@ -13377,7 +15464,7 @@ namespace Substrait.Protobuf {
   }
 
   /// <summary>
-  /// The operator that modifies the content of a database (operates on 1 table at a time, but tuple-selection/source can be
+  /// The operator that modifies the content of a database (operates on 1 table at a time, but record-selection/source can be
   /// based on joining of multiple tables).
   /// </summary>
   [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
@@ -13395,7 +15482,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[19]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[21]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -13419,6 +15506,7 @@ namespace Substrait.Protobuf {
       op_ = other.op_;
       input_ = other.input_ != null ? other.input_.Clone() : null;
       output_ = other.output_;
+      common_ = other.common_ != null ? other.common_.Clone() : null;
       switch (other.WriteTypeCase) {
         case WriteTypeOneofCase.NamedTable:
           NamedTable = other.NamedTable.Clone();
@@ -13495,7 +15583,7 @@ namespace Substrait.Protobuf {
     public const int InputFieldNumber = 5;
     private global::Substrait.Protobuf.Rel input_;
     /// <summary>
-    /// The relation that determines the tuples to add/remove/modify
+    /// The relation that determines the records to add/remove/modify
     /// the schema must match with table_schema. Default values must be explicitly stated
     /// in a ProjectRel at the top of the input. The match must also
     /// occur in case of DELETE to ensure multi-engine plans are unequivocal.
@@ -13521,6 +15609,18 @@ namespace Substrait.Protobuf {
       get { return output_; }
       set {
         output_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "common" field.</summary>
+    public const int CommonFieldNumber = 7;
+    private global::Substrait.Protobuf.RelCommon common_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.RelCommon Common {
+      get { return common_; }
+      set {
+        common_ = value;
       }
     }
 
@@ -13566,6 +15666,7 @@ namespace Substrait.Protobuf {
       if (Op != other.Op) return false;
       if (!object.Equals(Input, other.Input)) return false;
       if (Output != other.Output) return false;
+      if (!object.Equals(Common, other.Common)) return false;
       if (WriteTypeCase != other.WriteTypeCase) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
@@ -13580,6 +15681,7 @@ namespace Substrait.Protobuf {
       if (Op != global::Substrait.Protobuf.WriteRel.Types.WriteOp.Unspecified) hash ^= Op.GetHashCode();
       if (input_ != null) hash ^= Input.GetHashCode();
       if (Output != global::Substrait.Protobuf.WriteRel.Types.OutputMode.Unspecified) hash ^= Output.GetHashCode();
+      if (common_ != null) hash ^= Common.GetHashCode();
       hash ^= (int) writeTypeCase_;
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
@@ -13623,6 +15725,10 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(48);
         output.WriteEnum((int) Output);
       }
+      if (common_ != null) {
+        output.WriteRawTag(58);
+        output.WriteMessage(Common);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -13657,6 +15763,10 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(48);
         output.WriteEnum((int) Output);
       }
+      if (common_ != null) {
+        output.WriteRawTag(58);
+        output.WriteMessage(Common);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -13684,6 +15794,9 @@ namespace Substrait.Protobuf {
       }
       if (Output != global::Substrait.Protobuf.WriteRel.Types.OutputMode.Unspecified) {
         size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Output);
+      }
+      if (common_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Common);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -13714,6 +15827,12 @@ namespace Substrait.Protobuf {
       }
       if (other.Output != global::Substrait.Protobuf.WriteRel.Types.OutputMode.Unspecified) {
         Output = other.Output;
+      }
+      if (other.common_ != null) {
+        if (common_ == null) {
+          Common = new global::Substrait.Protobuf.RelCommon();
+        }
+        Common.MergeFrom(other.Common);
       }
       switch (other.WriteTypeCase) {
         case WriteTypeOneofCase.NamedTable:
@@ -13785,6 +15904,13 @@ namespace Substrait.Protobuf {
             Output = (global::Substrait.Protobuf.WriteRel.Types.OutputMode) input.ReadEnum();
             break;
           }
+          case 58: {
+            if (common_ == null) {
+              Common = new global::Substrait.Protobuf.RelCommon();
+            }
+            input.ReadMessage(Common);
+            break;
+          }
         }
       }
     #endif
@@ -13840,6 +15966,13 @@ namespace Substrait.Protobuf {
             Output = (global::Substrait.Protobuf.WriteRel.Types.OutputMode) input.ReadEnum();
             break;
           }
+          case 58: {
+            if (common_ == null) {
+              Common = new global::Substrait.Protobuf.RelCommon();
+            }
+            input.ReadMessage(Common);
+            break;
+          }
         }
       }
     }
@@ -13853,19 +15986,19 @@ namespace Substrait.Protobuf {
       public enum WriteOp {
         [pbr::OriginalName("WRITE_OP_UNSPECIFIED")] Unspecified = 0,
         /// <summary>
-        /// The insert of new tuples in a table
+        /// The insert of new records in a table
         /// </summary>
         [pbr::OriginalName("WRITE_OP_INSERT")] Insert = 1,
         /// <summary>
-        /// The removal of tuples from a table
+        /// The removal of records from a table
         /// </summary>
         [pbr::OriginalName("WRITE_OP_DELETE")] Delete = 2,
         /// <summary>
-        /// The modification of existing tuples within a table
+        /// The modification of existing records within a table
         /// </summary>
         [pbr::OriginalName("WRITE_OP_UPDATE")] Update = 3,
         /// <summary>
-        /// The Creation of a new table, and the insert of new tuples in the table
+        /// The Creation of a new table, and the insert of new records in the table
         /// </summary>
         [pbr::OriginalName("WRITE_OP_CTAS")] Ctas = 4,
       }
@@ -13873,17 +16006,659 @@ namespace Substrait.Protobuf {
       public enum OutputMode {
         [pbr::OriginalName("OUTPUT_MODE_UNSPECIFIED")] Unspecified = 0,
         /// <summary>
-        /// return no tuples at all
+        /// return no records at all
         /// </summary>
         [pbr::OriginalName("OUTPUT_MODE_NO_OUTPUT")] NoOutput = 1,
         /// <summary>
-        /// this mode makes the operator return all the tuple INSERTED/DELETED/UPDATED by the operator.
+        /// this mode makes the operator return all the record INSERTED/DELETED/UPDATED by the operator.
         /// The operator returns the AFTER-image of any change. This can be further manipulated by operators upstreams
-        /// (e.g., retunring the typical "count of modified tuples").
+        /// (e.g., retunring the typical "count of modified records").
         /// For scenarios in which the BEFORE image is required, the user must implement a spool (via references to
         /// subplans in the body of the Rel input) and return those with anounter PlanRel.relations.
         /// </summary>
-        [pbr::OriginalName("OUTPUT_MODE_MODIFIED_TUPLES")] ModifiedTuples = 2,
+        [pbr::OriginalName("OUTPUT_MODE_MODIFIED_RECORDS")] ModifiedRecords = 2,
+      }
+
+    }
+    #endregion
+
+  }
+
+  /// <summary>
+  /// Hash joins and merge joins are a specialization of the general join where the join
+  /// expression is an series of comparisons between fields that are ANDed together.  The
+  /// behavior of this comparison is flexible
+  /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+  public sealed partial class ComparisonJoinKey : pb::IMessage<ComparisonJoinKey>
+  #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      , pb::IBufferMessage
+  #endif
+  {
+    private static readonly pb::MessageParser<ComparisonJoinKey> _parser = new pb::MessageParser<ComparisonJoinKey>(() => new ComparisonJoinKey());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pb::MessageParser<ComparisonJoinKey> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[22]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ComparisonJoinKey() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ComparisonJoinKey(ComparisonJoinKey other) : this() {
+      left_ = other.left_ != null ? other.left_.Clone() : null;
+      right_ = other.right_ != null ? other.right_.Clone() : null;
+      comparison_ = other.comparison_ != null ? other.comparison_.Clone() : null;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ComparisonJoinKey Clone() {
+      return new ComparisonJoinKey(this);
+    }
+
+    /// <summary>Field number for the "left" field.</summary>
+    public const int LeftFieldNumber = 1;
+    private global::Substrait.Protobuf.Expression.Types.FieldReference left_;
+    /// <summary>
+    /// The key to compare from the left table
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.Expression.Types.FieldReference Left {
+      get { return left_; }
+      set {
+        left_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "right" field.</summary>
+    public const int RightFieldNumber = 2;
+    private global::Substrait.Protobuf.Expression.Types.FieldReference right_;
+    /// <summary>
+    /// The key to compare from the right table
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.Expression.Types.FieldReference Right {
+      get { return right_; }
+      set {
+        right_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "comparison" field.</summary>
+    public const int ComparisonFieldNumber = 3;
+    private global::Substrait.Protobuf.ComparisonJoinKey.Types.ComparisonType comparison_;
+    /// <summary>
+    /// Describes how to compare the two keys
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.ComparisonJoinKey.Types.ComparisonType Comparison {
+      get { return comparison_; }
+      set {
+        comparison_ = value;
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override bool Equals(object other) {
+      return Equals(other as ComparisonJoinKey);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool Equals(ComparisonJoinKey other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (!object.Equals(Left, other.Left)) return false;
+      if (!object.Equals(Right, other.Right)) return false;
+      if (!object.Equals(Comparison, other.Comparison)) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (left_ != null) hash ^= Left.GetHashCode();
+      if (right_ != null) hash ^= Right.GetHashCode();
+      if (comparison_ != null) hash ^= Comparison.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void WriteTo(pb::CodedOutputStream output) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      output.WriteRawMessage(this);
+    #else
+      if (left_ != null) {
+        output.WriteRawTag(10);
+        output.WriteMessage(Left);
+      }
+      if (right_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(Right);
+      }
+      if (comparison_ != null) {
+        output.WriteRawTag(26);
+        output.WriteMessage(Comparison);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+      if (left_ != null) {
+        output.WriteRawTag(10);
+        output.WriteMessage(Left);
+      }
+      if (right_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(Right);
+      }
+      if (comparison_ != null) {
+        output.WriteRawTag(26);
+        output.WriteMessage(Comparison);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(ref output);
+      }
+    }
+    #endif
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public int CalculateSize() {
+      int size = 0;
+      if (left_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Left);
+      }
+      if (right_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Right);
+      }
+      if (comparison_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Comparison);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(ComparisonJoinKey other) {
+      if (other == null) {
+        return;
+      }
+      if (other.left_ != null) {
+        if (left_ == null) {
+          Left = new global::Substrait.Protobuf.Expression.Types.FieldReference();
+        }
+        Left.MergeFrom(other.Left);
+      }
+      if (other.right_ != null) {
+        if (right_ == null) {
+          Right = new global::Substrait.Protobuf.Expression.Types.FieldReference();
+        }
+        Right.MergeFrom(other.Right);
+      }
+      if (other.comparison_ != null) {
+        if (comparison_ == null) {
+          Comparison = new global::Substrait.Protobuf.ComparisonJoinKey.Types.ComparisonType();
+        }
+        Comparison.MergeFrom(other.Comparison);
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(pb::CodedInputStream input) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      input.ReadRawMessage(this);
+    #else
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            if (left_ == null) {
+              Left = new global::Substrait.Protobuf.Expression.Types.FieldReference();
+            }
+            input.ReadMessage(Left);
+            break;
+          }
+          case 18: {
+            if (right_ == null) {
+              Right = new global::Substrait.Protobuf.Expression.Types.FieldReference();
+            }
+            input.ReadMessage(Right);
+            break;
+          }
+          case 26: {
+            if (comparison_ == null) {
+              Comparison = new global::Substrait.Protobuf.ComparisonJoinKey.Types.ComparisonType();
+            }
+            input.ReadMessage(Comparison);
+            break;
+          }
+        }
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+            break;
+          case 10: {
+            if (left_ == null) {
+              Left = new global::Substrait.Protobuf.Expression.Types.FieldReference();
+            }
+            input.ReadMessage(Left);
+            break;
+          }
+          case 18: {
+            if (right_ == null) {
+              Right = new global::Substrait.Protobuf.Expression.Types.FieldReference();
+            }
+            input.ReadMessage(Right);
+            break;
+          }
+          case 26: {
+            if (comparison_ == null) {
+              Comparison = new global::Substrait.Protobuf.ComparisonJoinKey.Types.ComparisonType();
+            }
+            input.ReadMessage(Comparison);
+            break;
+          }
+        }
+      }
+    }
+    #endif
+
+    #region Nested types
+    /// <summary>Container for nested types declared in the ComparisonJoinKey message type.</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static partial class Types {
+      /// <summary>
+      /// Most joins will use one of the following behaviors.  To avoid the complexity
+      /// of a function lookup we define the common behaviors here
+      /// </summary>
+      public enum SimpleComparisonType {
+        [pbr::OriginalName("SIMPLE_COMPARISON_TYPE_UNSPECIFIED")] Unspecified = 0,
+        /// <summary>
+        /// Returns true only if both values are equal and not null
+        /// </summary>
+        [pbr::OriginalName("SIMPLE_COMPARISON_TYPE_EQ")] Eq = 1,
+        /// <summary>
+        /// Returns true if both values are equal and not null
+        /// Returns true if both values are null
+        /// Returns false if one value is null and the other value is not null
+        ///
+        /// This can be expressed as a = b OR (isnull(a) AND isnull(b))
+        /// </summary>
+        [pbr::OriginalName("SIMPLE_COMPARISON_TYPE_IS_NOT_DISTINCT_FROM")] IsNotDistinctFrom = 2,
+        /// <summary>
+        /// Returns true if both values are equal and not null
+        /// Returns true if either value is null
+        ///
+        /// This can be expressed as a = b OR isnull(a = b)
+        /// </summary>
+        [pbr::OriginalName("SIMPLE_COMPARISON_TYPE_MIGHT_EQUAL")] MightEqual = 3,
+      }
+
+      /// <summary>
+      /// Describes how the relation should consider if two rows are a match
+      /// </summary>
+      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+      public sealed partial class ComparisonType : pb::IMessage<ComparisonType>
+      #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          , pb::IBufferMessage
+      #endif
+      {
+        private static readonly pb::MessageParser<ComparisonType> _parser = new pb::MessageParser<ComparisonType>(() => new ComparisonType());
+        private pb::UnknownFieldSet _unknownFields;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pb::MessageParser<ComparisonType> Parser { get { return _parser; } }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public static pbr::MessageDescriptor Descriptor {
+          get { return global::Substrait.Protobuf.ComparisonJoinKey.Descriptor.NestedTypes[0]; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        pbr::MessageDescriptor pb::IMessage.Descriptor {
+          get { return Descriptor; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public ComparisonType() {
+          OnConstruction();
+        }
+
+        partial void OnConstruction();
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public ComparisonType(ComparisonType other) : this() {
+          switch (other.InnerTypeCase) {
+            case InnerTypeOneofCase.Simple:
+              Simple = other.Simple;
+              break;
+            case InnerTypeOneofCase.CustomFunctionReference:
+              CustomFunctionReference = other.CustomFunctionReference;
+              break;
+          }
+
+          _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public ComparisonType Clone() {
+          return new ComparisonType(this);
+        }
+
+        /// <summary>Field number for the "simple" field.</summary>
+        public const int SimpleFieldNumber = 1;
+        /// <summary>
+        /// One of the simple comparison behaviors is used
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.ComparisonJoinKey.Types.SimpleComparisonType Simple {
+          get { return HasSimple ? (global::Substrait.Protobuf.ComparisonJoinKey.Types.SimpleComparisonType) innerType_ : global::Substrait.Protobuf.ComparisonJoinKey.Types.SimpleComparisonType.Unspecified; }
+          set {
+            innerType_ = value;
+            innerTypeCase_ = InnerTypeOneofCase.Simple;
+          }
+        }
+        /// <summary>Gets whether the "simple" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasSimple {
+          get { return innerTypeCase_ == InnerTypeOneofCase.Simple; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "simple" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearSimple() {
+          if (HasSimple) {
+            ClearInnerType();
+          }
+        }
+
+        /// <summary>Field number for the "custom_function_reference" field.</summary>
+        public const int CustomFunctionReferenceFieldNumber = 2;
+        /// <summary>
+        /// A custom comparison behavior is used.  This can happen, for example, when using
+        /// collations, where we might want to do something like a case-insensitive comparison.
+        ///
+        /// This must be a binary function with a boolean return type
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public uint CustomFunctionReference {
+          get { return HasCustomFunctionReference ? (uint) innerType_ : 0; }
+          set {
+            innerType_ = value;
+            innerTypeCase_ = InnerTypeOneofCase.CustomFunctionReference;
+          }
+        }
+        /// <summary>Gets whether the "custom_function_reference" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasCustomFunctionReference {
+          get { return innerTypeCase_ == InnerTypeOneofCase.CustomFunctionReference; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "custom_function_reference" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearCustomFunctionReference() {
+          if (HasCustomFunctionReference) {
+            ClearInnerType();
+          }
+        }
+
+        private object innerType_;
+        /// <summary>Enum of possible cases for the "inner_type" oneof.</summary>
+        public enum InnerTypeOneofCase {
+          None = 0,
+          Simple = 1,
+          CustomFunctionReference = 2,
+        }
+        private InnerTypeOneofCase innerTypeCase_ = InnerTypeOneofCase.None;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public InnerTypeOneofCase InnerTypeCase {
+          get { return innerTypeCase_; }
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearInnerType() {
+          innerTypeCase_ = InnerTypeOneofCase.None;
+          innerType_ = null;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override bool Equals(object other) {
+          return Equals(other as ComparisonType);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool Equals(ComparisonType other) {
+          if (ReferenceEquals(other, null)) {
+            return false;
+          }
+          if (ReferenceEquals(other, this)) {
+            return true;
+          }
+          if (Simple != other.Simple) return false;
+          if (CustomFunctionReference != other.CustomFunctionReference) return false;
+          if (InnerTypeCase != other.InnerTypeCase) return false;
+          return Equals(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override int GetHashCode() {
+          int hash = 1;
+          if (HasSimple) hash ^= Simple.GetHashCode();
+          if (HasCustomFunctionReference) hash ^= CustomFunctionReference.GetHashCode();
+          hash ^= (int) innerTypeCase_;
+          if (_unknownFields != null) {
+            hash ^= _unknownFields.GetHashCode();
+          }
+          return hash;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public override string ToString() {
+          return pb::JsonFormatter.ToDiagnosticString(this);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void WriteTo(pb::CodedOutputStream output) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          output.WriteRawMessage(this);
+        #else
+          if (HasSimple) {
+            output.WriteRawTag(8);
+            output.WriteEnum((int) Simple);
+          }
+          if (HasCustomFunctionReference) {
+            output.WriteRawTag(16);
+            output.WriteUInt32(CustomFunctionReference);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(output);
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+          if (HasSimple) {
+            output.WriteRawTag(8);
+            output.WriteEnum((int) Simple);
+          }
+          if (HasCustomFunctionReference) {
+            output.WriteRawTag(16);
+            output.WriteUInt32(CustomFunctionReference);
+          }
+          if (_unknownFields != null) {
+            _unknownFields.WriteTo(ref output);
+          }
+        }
+        #endif
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public int CalculateSize() {
+          int size = 0;
+          if (HasSimple) {
+            size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Simple);
+          }
+          if (HasCustomFunctionReference) {
+            size += 1 + pb::CodedOutputStream.ComputeUInt32Size(CustomFunctionReference);
+          }
+          if (_unknownFields != null) {
+            size += _unknownFields.CalculateSize();
+          }
+          return size;
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(ComparisonType other) {
+          if (other == null) {
+            return;
+          }
+          switch (other.InnerTypeCase) {
+            case InnerTypeOneofCase.Simple:
+              Simple = other.Simple;
+              break;
+            case InnerTypeOneofCase.CustomFunctionReference:
+              CustomFunctionReference = other.CustomFunctionReference;
+              break;
+          }
+
+          _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+        }
+
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void MergeFrom(pb::CodedInputStream input) {
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+          input.ReadRawMessage(this);
+        #else
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+            switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+                break;
+              case 8: {
+                innerType_ = input.ReadEnum();
+                innerTypeCase_ = InnerTypeOneofCase.Simple;
+                break;
+              }
+              case 16: {
+                CustomFunctionReference = input.ReadUInt32();
+                break;
+              }
+            }
+          }
+        #endif
+        }
+
+        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+          uint tag;
+          while ((tag = input.ReadTag()) != 0) {
+            switch(tag) {
+              default:
+                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+                break;
+              case 8: {
+                innerType_ = input.ReadEnum();
+                innerTypeCase_ = InnerTypeOneofCase.Simple;
+                break;
+              }
+              case 16: {
+                CustomFunctionReference = input.ReadUInt32();
+                break;
+              }
+            }
+          }
+        }
+        #endif
+
       }
 
     }
@@ -13894,6 +16669,8 @@ namespace Substrait.Protobuf {
   /// <summary>
   /// The hash equijoin join operator will build a hash table out of the right input based on a set of join keys.
   /// It will then probe that hash table for incoming inputs, finding matches.
+  ///
+  /// Two rows are a match if the comparison function returns true for all keys
   /// </summary>
   [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class HashJoinRel : pb::IMessage<HashJoinRel>
@@ -13910,7 +16687,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[20]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[23]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -13935,6 +16712,7 @@ namespace Substrait.Protobuf {
       right_ = other.right_ != null ? other.right_.Clone() : null;
       leftKeys_ = other.leftKeys_.Clone();
       rightKeys_ = other.rightKeys_.Clone();
+      keys_ = other.keys_.Clone();
       postJoinFilter_ = other.postJoinFilter_ != null ? other.postJoinFilter_.Clone() : null;
       type_ = other.type_;
       advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
@@ -13988,6 +16766,12 @@ namespace Substrait.Protobuf {
     private static readonly pb::FieldCodec<global::Substrait.Protobuf.Expression.Types.FieldReference> _repeated_leftKeys_codec
         = pb::FieldCodec.ForMessage(34, global::Substrait.Protobuf.Expression.Types.FieldReference.Parser);
     private readonly pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.FieldReference> leftKeys_ = new pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.FieldReference>();
+    /// <summary>
+    /// These fields are deprecated in favor of `keys`.  If they are set then
+    /// the two lists (left_keys and right_keys) must have the same length and
+    /// the comparion function is considered to be SimpleEqualityType::EQ
+    /// </summary>
+    [global::System.ObsoleteAttribute]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.FieldReference> LeftKeys {
@@ -13999,10 +16783,37 @@ namespace Substrait.Protobuf {
     private static readonly pb::FieldCodec<global::Substrait.Protobuf.Expression.Types.FieldReference> _repeated_rightKeys_codec
         = pb::FieldCodec.ForMessage(42, global::Substrait.Protobuf.Expression.Types.FieldReference.Parser);
     private readonly pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.FieldReference> rightKeys_ = new pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.FieldReference>();
+    [global::System.ObsoleteAttribute]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.FieldReference> RightKeys {
       get { return rightKeys_; }
+    }
+
+    /// <summary>Field number for the "keys" field.</summary>
+    public const int KeysFieldNumber = 8;
+    private static readonly pb::FieldCodec<global::Substrait.Protobuf.ComparisonJoinKey> _repeated_keys_codec
+        = pb::FieldCodec.ForMessage(66, global::Substrait.Protobuf.ComparisonJoinKey.Parser);
+    private readonly pbc::RepeatedField<global::Substrait.Protobuf.ComparisonJoinKey> keys_ = new pbc::RepeatedField<global::Substrait.Protobuf.ComparisonJoinKey>();
+    /// <summary>
+    /// One or more keys to join on.  The relation is invalid if this is empty
+    /// (unless the deprecated left_keys/right_keys fields are being used).
+    ///
+    /// If a custom comparison function is used then it must be consistent with
+    /// the hash function used for the keys.
+    ///
+    /// In other words, the hash function must return the same hash code when the
+    /// comparison returns true.  For example, if the comparison function is
+    /// "equals ignoring case" then the hash function must return the same hash
+    /// code for strings that differ only by case.  Note: the hash function is not
+    /// specified here.  It is the responsibility of the consumer to find an appropriate
+    /// hash function for a given comparsion function or to reject the plan if it cannot
+    /// do so.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public pbc::RepeatedField<global::Substrait.Protobuf.ComparisonJoinKey> Keys {
+      get { return keys_; }
     }
 
     /// <summary>Field number for the "post_join_filter" field.</summary>
@@ -14061,6 +16872,7 @@ namespace Substrait.Protobuf {
       if (!object.Equals(Right, other.Right)) return false;
       if(!leftKeys_.Equals(other.leftKeys_)) return false;
       if(!rightKeys_.Equals(other.rightKeys_)) return false;
+      if(!keys_.Equals(other.keys_)) return false;
       if (!object.Equals(PostJoinFilter, other.PostJoinFilter)) return false;
       if (Type != other.Type) return false;
       if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
@@ -14076,6 +16888,7 @@ namespace Substrait.Protobuf {
       if (right_ != null) hash ^= Right.GetHashCode();
       hash ^= leftKeys_.GetHashCode();
       hash ^= rightKeys_.GetHashCode();
+      hash ^= keys_.GetHashCode();
       if (postJoinFilter_ != null) hash ^= PostJoinFilter.GetHashCode();
       if (Type != global::Substrait.Protobuf.HashJoinRel.Types.JoinType.Unspecified) hash ^= Type.GetHashCode();
       if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
@@ -14119,6 +16932,7 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(56);
         output.WriteEnum((int) Type);
       }
+      keys_.WriteTo(output, _repeated_keys_codec);
       if (advancedExtension_ != null) {
         output.WriteRawTag(82);
         output.WriteMessage(AdvancedExtension);
@@ -14155,6 +16969,7 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(56);
         output.WriteEnum((int) Type);
       }
+      keys_.WriteTo(ref output, _repeated_keys_codec);
       if (advancedExtension_ != null) {
         output.WriteRawTag(82);
         output.WriteMessage(AdvancedExtension);
@@ -14180,6 +16995,7 @@ namespace Substrait.Protobuf {
       }
       size += leftKeys_.CalculateSize(_repeated_leftKeys_codec);
       size += rightKeys_.CalculateSize(_repeated_rightKeys_codec);
+      size += keys_.CalculateSize(_repeated_keys_codec);
       if (postJoinFilter_ != null) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(PostJoinFilter);
       }
@@ -14221,6 +17037,7 @@ namespace Substrait.Protobuf {
       }
       leftKeys_.Add(other.leftKeys_);
       rightKeys_.Add(other.rightKeys_);
+      keys_.Add(other.keys_);
       if (other.postJoinFilter_ != null) {
         if (postJoinFilter_ == null) {
           PostJoinFilter = new global::Substrait.Protobuf.Expression();
@@ -14291,6 +17108,10 @@ namespace Substrait.Protobuf {
             Type = (global::Substrait.Protobuf.HashJoinRel.Types.JoinType) input.ReadEnum();
             break;
           }
+          case 66: {
+            keys_.AddEntriesFrom(input, _repeated_keys_codec);
+            break;
+          }
           case 82: {
             if (advancedExtension_ == null) {
               AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
@@ -14353,6 +17174,10 @@ namespace Substrait.Protobuf {
             Type = (global::Substrait.Protobuf.HashJoinRel.Types.JoinType) input.ReadEnum();
             break;
           }
+          case 66: {
+            keys_.AddEntriesFrom(ref input, _repeated_keys_codec);
+            break;
+          }
           case 82: {
             if (advancedExtension_ == null) {
               AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
@@ -14406,7 +17231,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[21]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[24]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -14431,6 +17256,7 @@ namespace Substrait.Protobuf {
       right_ = other.right_ != null ? other.right_.Clone() : null;
       leftKeys_ = other.leftKeys_.Clone();
       rightKeys_ = other.rightKeys_.Clone();
+      keys_ = other.keys_.Clone();
       postJoinFilter_ = other.postJoinFilter_ != null ? other.postJoinFilter_.Clone() : null;
       type_ = other.type_;
       advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
@@ -14484,6 +17310,12 @@ namespace Substrait.Protobuf {
     private static readonly pb::FieldCodec<global::Substrait.Protobuf.Expression.Types.FieldReference> _repeated_leftKeys_codec
         = pb::FieldCodec.ForMessage(34, global::Substrait.Protobuf.Expression.Types.FieldReference.Parser);
     private readonly pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.FieldReference> leftKeys_ = new pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.FieldReference>();
+    /// <summary>
+    /// These fields are deprecated in favor of `keys`.  If they are set then
+    /// the two lists (left_keys and right_keys) must have the same length and
+    /// the comparion function is considered to be SimpleEqualityType::EQ
+    /// </summary>
+    [global::System.ObsoleteAttribute]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.FieldReference> LeftKeys {
@@ -14495,10 +17327,39 @@ namespace Substrait.Protobuf {
     private static readonly pb::FieldCodec<global::Substrait.Protobuf.Expression.Types.FieldReference> _repeated_rightKeys_codec
         = pb::FieldCodec.ForMessage(42, global::Substrait.Protobuf.Expression.Types.FieldReference.Parser);
     private readonly pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.FieldReference> rightKeys_ = new pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.FieldReference>();
+    [global::System.ObsoleteAttribute]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.FieldReference> RightKeys {
       get { return rightKeys_; }
+    }
+
+    /// <summary>Field number for the "keys" field.</summary>
+    public const int KeysFieldNumber = 8;
+    private static readonly pb::FieldCodec<global::Substrait.Protobuf.ComparisonJoinKey> _repeated_keys_codec
+        = pb::FieldCodec.ForMessage(66, global::Substrait.Protobuf.ComparisonJoinKey.Parser);
+    private readonly pbc::RepeatedField<global::Substrait.Protobuf.ComparisonJoinKey> keys_ = new pbc::RepeatedField<global::Substrait.Protobuf.ComparisonJoinKey>();
+    /// <summary>
+    /// One or more keys to join on.  The relation is invalid if this is empty
+    /// (unless the deprecated left_keys/right_keys fields are being used).
+    ///
+    /// If a custom comparison function is used then it must be consistent with
+    /// the ordering of the input data.  For example, if the comparison function
+    /// is "&lt;" then we generally expect the data to be sorted in ascending order.
+    ///
+    /// If the comparison function is something like "less than ignoring case" then
+    /// the data should be sorted appropriately (e.g. both "A" and "a" should come
+    /// before "b")
+    ///
+    /// The sort order is not specified here.  It is typically the responsibility of
+    /// the producer to ensure the plan sorts the data if needed (although the consumer
+    /// is free to do so as well).  If possible, the consumer should verify the sort
+    /// order and reject invalid plans.
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public pbc::RepeatedField<global::Substrait.Protobuf.ComparisonJoinKey> Keys {
+      get { return keys_; }
     }
 
     /// <summary>Field number for the "post_join_filter" field.</summary>
@@ -14557,6 +17418,7 @@ namespace Substrait.Protobuf {
       if (!object.Equals(Right, other.Right)) return false;
       if(!leftKeys_.Equals(other.leftKeys_)) return false;
       if(!rightKeys_.Equals(other.rightKeys_)) return false;
+      if(!keys_.Equals(other.keys_)) return false;
       if (!object.Equals(PostJoinFilter, other.PostJoinFilter)) return false;
       if (Type != other.Type) return false;
       if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
@@ -14572,6 +17434,7 @@ namespace Substrait.Protobuf {
       if (right_ != null) hash ^= Right.GetHashCode();
       hash ^= leftKeys_.GetHashCode();
       hash ^= rightKeys_.GetHashCode();
+      hash ^= keys_.GetHashCode();
       if (postJoinFilter_ != null) hash ^= PostJoinFilter.GetHashCode();
       if (Type != global::Substrait.Protobuf.MergeJoinRel.Types.JoinType.Unspecified) hash ^= Type.GetHashCode();
       if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
@@ -14615,6 +17478,7 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(56);
         output.WriteEnum((int) Type);
       }
+      keys_.WriteTo(output, _repeated_keys_codec);
       if (advancedExtension_ != null) {
         output.WriteRawTag(82);
         output.WriteMessage(AdvancedExtension);
@@ -14651,6 +17515,7 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(56);
         output.WriteEnum((int) Type);
       }
+      keys_.WriteTo(ref output, _repeated_keys_codec);
       if (advancedExtension_ != null) {
         output.WriteRawTag(82);
         output.WriteMessage(AdvancedExtension);
@@ -14676,6 +17541,7 @@ namespace Substrait.Protobuf {
       }
       size += leftKeys_.CalculateSize(_repeated_leftKeys_codec);
       size += rightKeys_.CalculateSize(_repeated_rightKeys_codec);
+      size += keys_.CalculateSize(_repeated_keys_codec);
       if (postJoinFilter_ != null) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(PostJoinFilter);
       }
@@ -14717,6 +17583,7 @@ namespace Substrait.Protobuf {
       }
       leftKeys_.Add(other.leftKeys_);
       rightKeys_.Add(other.rightKeys_);
+      keys_.Add(other.keys_);
       if (other.postJoinFilter_ != null) {
         if (postJoinFilter_ == null) {
           PostJoinFilter = new global::Substrait.Protobuf.Expression();
@@ -14787,6 +17654,10 @@ namespace Substrait.Protobuf {
             Type = (global::Substrait.Protobuf.MergeJoinRel.Types.JoinType) input.ReadEnum();
             break;
           }
+          case 66: {
+            keys_.AddEntriesFrom(input, _repeated_keys_codec);
+            break;
+          }
           case 82: {
             if (advancedExtension_ == null) {
               AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
@@ -14849,6 +17720,10 @@ namespace Substrait.Protobuf {
             Type = (global::Substrait.Protobuf.MergeJoinRel.Types.JoinType) input.ReadEnum();
             break;
           }
+          case 66: {
+            keys_.AddEntriesFrom(ref input, _repeated_keys_codec);
+            break;
+          }
           case 82: {
             if (advancedExtension_ == null) {
               AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
@@ -14863,6 +17738,453 @@ namespace Substrait.Protobuf {
 
     #region Nested types
     /// <summary>Container for nested types declared in the MergeJoinRel message type.</summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static partial class Types {
+      public enum JoinType {
+        [pbr::OriginalName("JOIN_TYPE_UNSPECIFIED")] Unspecified = 0,
+        [pbr::OriginalName("JOIN_TYPE_INNER")] Inner = 1,
+        [pbr::OriginalName("JOIN_TYPE_OUTER")] Outer = 2,
+        [pbr::OriginalName("JOIN_TYPE_LEFT")] Left = 3,
+        [pbr::OriginalName("JOIN_TYPE_RIGHT")] Right = 4,
+        [pbr::OriginalName("JOIN_TYPE_LEFT_SEMI")] LeftSemi = 5,
+        [pbr::OriginalName("JOIN_TYPE_RIGHT_SEMI")] RightSemi = 6,
+        [pbr::OriginalName("JOIN_TYPE_LEFT_ANTI")] LeftAnti = 7,
+        [pbr::OriginalName("JOIN_TYPE_RIGHT_ANTI")] RightAnti = 8,
+      }
+
+    }
+    #endregion
+
+  }
+
+  /// <summary>
+  /// The nested loop join (NLJ) operator will hold the entire right input and iterate over it using the
+  /// left input, evaluating the join expression on the Cartesian product of all rows.
+  /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+  public sealed partial class NestedLoopJoinRel : pb::IMessage<NestedLoopJoinRel>
+  #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      , pb::IBufferMessage
+  #endif
+  {
+    private static readonly pb::MessageParser<NestedLoopJoinRel> _parser = new pb::MessageParser<NestedLoopJoinRel>(() => new NestedLoopJoinRel());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pb::MessageParser<NestedLoopJoinRel> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[25]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public NestedLoopJoinRel() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public NestedLoopJoinRel(NestedLoopJoinRel other) : this() {
+      common_ = other.common_ != null ? other.common_.Clone() : null;
+      left_ = other.left_ != null ? other.left_.Clone() : null;
+      right_ = other.right_ != null ? other.right_.Clone() : null;
+      expression_ = other.expression_ != null ? other.expression_.Clone() : null;
+      type_ = other.type_;
+      advancedExtension_ = other.advancedExtension_ != null ? other.advancedExtension_.Clone() : null;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public NestedLoopJoinRel Clone() {
+      return new NestedLoopJoinRel(this);
+    }
+
+    /// <summary>Field number for the "common" field.</summary>
+    public const int CommonFieldNumber = 1;
+    private global::Substrait.Protobuf.RelCommon common_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.RelCommon Common {
+      get { return common_; }
+      set {
+        common_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "left" field.</summary>
+    public const int LeftFieldNumber = 2;
+    private global::Substrait.Protobuf.Rel left_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.Rel Left {
+      get { return left_; }
+      set {
+        left_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "right" field.</summary>
+    public const int RightFieldNumber = 3;
+    private global::Substrait.Protobuf.Rel right_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.Rel Right {
+      get { return right_; }
+      set {
+        right_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "expression" field.</summary>
+    public const int ExpressionFieldNumber = 4;
+    private global::Substrait.Protobuf.Expression expression_;
+    /// <summary>
+    /// optional, defaults to true (a cartesian join)
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.Expression Expression {
+      get { return expression_; }
+      set {
+        expression_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "type" field.</summary>
+    public const int TypeFieldNumber = 5;
+    private global::Substrait.Protobuf.NestedLoopJoinRel.Types.JoinType type_ = global::Substrait.Protobuf.NestedLoopJoinRel.Types.JoinType.Unspecified;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.NestedLoopJoinRel.Types.JoinType Type {
+      get { return type_; }
+      set {
+        type_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "advanced_extension" field.</summary>
+    public const int AdvancedExtensionFieldNumber = 10;
+    private global::Substrait.Protobuf.AdvancedExtension advancedExtension_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Substrait.Protobuf.AdvancedExtension AdvancedExtension {
+      get { return advancedExtension_; }
+      set {
+        advancedExtension_ = value;
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override bool Equals(object other) {
+      return Equals(other as NestedLoopJoinRel);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool Equals(NestedLoopJoinRel other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (!object.Equals(Common, other.Common)) return false;
+      if (!object.Equals(Left, other.Left)) return false;
+      if (!object.Equals(Right, other.Right)) return false;
+      if (!object.Equals(Expression, other.Expression)) return false;
+      if (Type != other.Type) return false;
+      if (!object.Equals(AdvancedExtension, other.AdvancedExtension)) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (common_ != null) hash ^= Common.GetHashCode();
+      if (left_ != null) hash ^= Left.GetHashCode();
+      if (right_ != null) hash ^= Right.GetHashCode();
+      if (expression_ != null) hash ^= Expression.GetHashCode();
+      if (Type != global::Substrait.Protobuf.NestedLoopJoinRel.Types.JoinType.Unspecified) hash ^= Type.GetHashCode();
+      if (advancedExtension_ != null) hash ^= AdvancedExtension.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void WriteTo(pb::CodedOutputStream output) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      output.WriteRawMessage(this);
+    #else
+      if (common_ != null) {
+        output.WriteRawTag(10);
+        output.WriteMessage(Common);
+      }
+      if (left_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(Left);
+      }
+      if (right_ != null) {
+        output.WriteRawTag(26);
+        output.WriteMessage(Right);
+      }
+      if (expression_ != null) {
+        output.WriteRawTag(34);
+        output.WriteMessage(Expression);
+      }
+      if (Type != global::Substrait.Protobuf.NestedLoopJoinRel.Types.JoinType.Unspecified) {
+        output.WriteRawTag(40);
+        output.WriteEnum((int) Type);
+      }
+      if (advancedExtension_ != null) {
+        output.WriteRawTag(82);
+        output.WriteMessage(AdvancedExtension);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+      if (common_ != null) {
+        output.WriteRawTag(10);
+        output.WriteMessage(Common);
+      }
+      if (left_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(Left);
+      }
+      if (right_ != null) {
+        output.WriteRawTag(26);
+        output.WriteMessage(Right);
+      }
+      if (expression_ != null) {
+        output.WriteRawTag(34);
+        output.WriteMessage(Expression);
+      }
+      if (Type != global::Substrait.Protobuf.NestedLoopJoinRel.Types.JoinType.Unspecified) {
+        output.WriteRawTag(40);
+        output.WriteEnum((int) Type);
+      }
+      if (advancedExtension_ != null) {
+        output.WriteRawTag(82);
+        output.WriteMessage(AdvancedExtension);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(ref output);
+      }
+    }
+    #endif
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public int CalculateSize() {
+      int size = 0;
+      if (common_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Common);
+      }
+      if (left_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Left);
+      }
+      if (right_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Right);
+      }
+      if (expression_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Expression);
+      }
+      if (Type != global::Substrait.Protobuf.NestedLoopJoinRel.Types.JoinType.Unspecified) {
+        size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Type);
+      }
+      if (advancedExtension_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(AdvancedExtension);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(NestedLoopJoinRel other) {
+      if (other == null) {
+        return;
+      }
+      if (other.common_ != null) {
+        if (common_ == null) {
+          Common = new global::Substrait.Protobuf.RelCommon();
+        }
+        Common.MergeFrom(other.Common);
+      }
+      if (other.left_ != null) {
+        if (left_ == null) {
+          Left = new global::Substrait.Protobuf.Rel();
+        }
+        Left.MergeFrom(other.Left);
+      }
+      if (other.right_ != null) {
+        if (right_ == null) {
+          Right = new global::Substrait.Protobuf.Rel();
+        }
+        Right.MergeFrom(other.Right);
+      }
+      if (other.expression_ != null) {
+        if (expression_ == null) {
+          Expression = new global::Substrait.Protobuf.Expression();
+        }
+        Expression.MergeFrom(other.Expression);
+      }
+      if (other.Type != global::Substrait.Protobuf.NestedLoopJoinRel.Types.JoinType.Unspecified) {
+        Type = other.Type;
+      }
+      if (other.advancedExtension_ != null) {
+        if (advancedExtension_ == null) {
+          AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+        }
+        AdvancedExtension.MergeFrom(other.AdvancedExtension);
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(pb::CodedInputStream input) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      input.ReadRawMessage(this);
+    #else
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 10: {
+            if (common_ == null) {
+              Common = new global::Substrait.Protobuf.RelCommon();
+            }
+            input.ReadMessage(Common);
+            break;
+          }
+          case 18: {
+            if (left_ == null) {
+              Left = new global::Substrait.Protobuf.Rel();
+            }
+            input.ReadMessage(Left);
+            break;
+          }
+          case 26: {
+            if (right_ == null) {
+              Right = new global::Substrait.Protobuf.Rel();
+            }
+            input.ReadMessage(Right);
+            break;
+          }
+          case 34: {
+            if (expression_ == null) {
+              Expression = new global::Substrait.Protobuf.Expression();
+            }
+            input.ReadMessage(Expression);
+            break;
+          }
+          case 40: {
+            Type = (global::Substrait.Protobuf.NestedLoopJoinRel.Types.JoinType) input.ReadEnum();
+            break;
+          }
+          case 82: {
+            if (advancedExtension_ == null) {
+              AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+            }
+            input.ReadMessage(AdvancedExtension);
+            break;
+          }
+        }
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+            break;
+          case 10: {
+            if (common_ == null) {
+              Common = new global::Substrait.Protobuf.RelCommon();
+            }
+            input.ReadMessage(Common);
+            break;
+          }
+          case 18: {
+            if (left_ == null) {
+              Left = new global::Substrait.Protobuf.Rel();
+            }
+            input.ReadMessage(Left);
+            break;
+          }
+          case 26: {
+            if (right_ == null) {
+              Right = new global::Substrait.Protobuf.Rel();
+            }
+            input.ReadMessage(Right);
+            break;
+          }
+          case 34: {
+            if (expression_ == null) {
+              Expression = new global::Substrait.Protobuf.Expression();
+            }
+            input.ReadMessage(Expression);
+            break;
+          }
+          case 40: {
+            Type = (global::Substrait.Protobuf.NestedLoopJoinRel.Types.JoinType) input.ReadEnum();
+            break;
+          }
+          case 82: {
+            if (advancedExtension_ == null) {
+              AdvancedExtension = new global::Substrait.Protobuf.AdvancedExtension();
+            }
+            input.ReadMessage(AdvancedExtension);
+            break;
+          }
+        }
+      }
+    }
+    #endif
+
+    #region Nested types
+    /// <summary>Container for nested types declared in the NestedLoopJoinRel message type.</summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static partial class Types {
@@ -14901,7 +18223,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[22]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[26]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -15245,7 +18567,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[23]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[27]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -15474,7 +18796,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[24]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[28]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -16827,6 +20149,12 @@ namespace Substrait.Protobuf {
             case LiteralTypeOneofCase.Decimal:
               Decimal = other.Decimal.Clone();
               break;
+            case LiteralTypeOneofCase.PrecisionTimestamp:
+              PrecisionTimestamp = other.PrecisionTimestamp;
+              break;
+            case LiteralTypeOneofCase.PrecisionTimestampTz:
+              PrecisionTimestampTz = other.PrecisionTimestampTz;
+              break;
             case LiteralTypeOneofCase.Struct:
               Struct = other.Struct.Clone();
               break;
@@ -17103,7 +20431,9 @@ namespace Substrait.Protobuf {
         public const int TimestampFieldNumber = 14;
         /// <summary>
         /// Timestamp in units of microseconds since the UNIX epoch.
+        /// Deprecated in favor of `precision_timestamp`
         /// </summary>
+        [global::System.ObsoleteAttribute]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public long Timestamp {
@@ -17114,12 +20444,14 @@ namespace Substrait.Protobuf {
           }
         }
         /// <summary>Gets whether the "timestamp" field is set</summary>
+        [global::System.ObsoleteAttribute]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public bool HasTimestamp {
           get { return literalTypeCase_ == LiteralTypeOneofCase.Timestamp; }
         }
         /// <summary> Clears the value of the oneof if it's currently set to "timestamp" </summary>
+        [global::System.ObsoleteAttribute]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public void ClearTimestamp() {
@@ -17286,6 +20618,62 @@ namespace Substrait.Protobuf {
           }
         }
 
+        /// <summary>Field number for the "precision_timestamp" field.</summary>
+        public const int PrecisionTimestampFieldNumber = 34;
+        /// <summary>
+        /// If the precision is 6 or less then this is the microseconds since the UNIX epoch
+        /// If the precision is more than 6 then this is the nanoseconds since the UNIX epoch
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public ulong PrecisionTimestamp {
+          get { return HasPrecisionTimestamp ? (ulong) literalType_ : 0UL; }
+          set {
+            literalType_ = value;
+            literalTypeCase_ = LiteralTypeOneofCase.PrecisionTimestamp;
+          }
+        }
+        /// <summary>Gets whether the "precision_timestamp" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasPrecisionTimestamp {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestamp; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "precision_timestamp" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearPrecisionTimestamp() {
+          if (HasPrecisionTimestamp) {
+            ClearLiteralType();
+          }
+        }
+
+        /// <summary>Field number for the "precision_timestamp_tz" field.</summary>
+        public const int PrecisionTimestampTzFieldNumber = 35;
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public ulong PrecisionTimestampTz {
+          get { return HasPrecisionTimestampTz ? (ulong) literalType_ : 0UL; }
+          set {
+            literalType_ = value;
+            literalTypeCase_ = LiteralTypeOneofCase.PrecisionTimestampTz;
+          }
+        }
+        /// <summary>Gets whether the "precision_timestamp_tz" field is set</summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public bool HasPrecisionTimestampTz {
+          get { return literalTypeCase_ == LiteralTypeOneofCase.PrecisionTimestampTz; }
+        }
+        /// <summary> Clears the value of the oneof if it's currently set to "precision_timestamp_tz" </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public void ClearPrecisionTimestampTz() {
+          if (HasPrecisionTimestampTz) {
+            ClearLiteralType();
+          }
+        }
+
         /// <summary>Field number for the "struct" field.</summary>
         public const int StructFieldNumber = 25;
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -17314,7 +20702,9 @@ namespace Substrait.Protobuf {
         public const int TimestampTzFieldNumber = 27;
         /// <summary>
         /// Timestamp in units of microseconds since the UNIX epoch.
+        /// Deprecated in favor of `precision_timestamp_tz`
         /// </summary>
+        [global::System.ObsoleteAttribute]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public long TimestampTz {
@@ -17325,12 +20715,14 @@ namespace Substrait.Protobuf {
           }
         }
         /// <summary>Gets whether the "timestamp_tz" field is set</summary>
+        [global::System.ObsoleteAttribute]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public bool HasTimestampTz {
           get { return literalTypeCase_ == LiteralTypeOneofCase.TimestampTz; }
         }
         /// <summary> Clears the value of the oneof if it's currently set to "timestamp_tz" </summary>
+        [global::System.ObsoleteAttribute]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public void ClearTimestampTz() {
@@ -17432,9 +20824,11 @@ namespace Substrait.Protobuf {
         public const int NullableFieldNumber = 50;
         private bool nullable_;
         /// <summary>
-        /// whether the literal type should be treated as a nullable type. Applies to
-        /// all members of union other than the Typed null (which should directly
-        /// declare nullability).
+        /// Whether the literal_type above should be treated as a nullable type.
+        /// Applies to all members of the literal_type oneof EXCEPT:
+        ///  * Type null             (must be nullable by definition)
+        ///  * Type.List empty_list  (use Type.List::nullability)
+        ///  * Type.Map empty_map    (use Type.Map::nullability)
         /// </summary>
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
@@ -17484,6 +20878,8 @@ namespace Substrait.Protobuf {
           VarChar = 22,
           FixedBinary = 23,
           Decimal = 24,
+          PrecisionTimestamp = 34,
+          PrecisionTimestampTz = 35,
           Struct = 25,
           Map = 26,
           TimestampTz = 27,
@@ -17541,6 +20937,8 @@ namespace Substrait.Protobuf {
           if (!object.Equals(VarChar, other.VarChar)) return false;
           if (FixedBinary != other.FixedBinary) return false;
           if (!object.Equals(Decimal, other.Decimal)) return false;
+          if (PrecisionTimestamp != other.PrecisionTimestamp) return false;
+          if (PrecisionTimestampTz != other.PrecisionTimestampTz) return false;
           if (!object.Equals(Struct, other.Struct)) return false;
           if (!object.Equals(Map, other.Map)) return false;
           if (TimestampTz != other.TimestampTz) return false;
@@ -17578,6 +20976,8 @@ namespace Substrait.Protobuf {
           if (literalTypeCase_ == LiteralTypeOneofCase.VarChar) hash ^= VarChar.GetHashCode();
           if (HasFixedBinary) hash ^= FixedBinary.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.Decimal) hash ^= Decimal.GetHashCode();
+          if (HasPrecisionTimestamp) hash ^= PrecisionTimestamp.GetHashCode();
+          if (HasPrecisionTimestampTz) hash ^= PrecisionTimestampTz.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.Struct) hash ^= Struct.GetHashCode();
           if (literalTypeCase_ == LiteralTypeOneofCase.Map) hash ^= Map.GetHashCode();
           if (HasTimestampTz) hash ^= TimestampTz.GetHashCode();
@@ -17716,6 +21116,14 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(138, 2);
             output.WriteMessage(UserDefined);
           }
+          if (HasPrecisionTimestamp) {
+            output.WriteRawTag(144, 2);
+            output.WriteUInt64(PrecisionTimestamp);
+          }
+          if (HasPrecisionTimestampTz) {
+            output.WriteRawTag(152, 2);
+            output.WriteUInt64(PrecisionTimestampTz);
+          }
           if (Nullable != false) {
             output.WriteRawTag(144, 3);
             output.WriteBool(Nullable);
@@ -17842,6 +21250,14 @@ namespace Substrait.Protobuf {
             output.WriteRawTag(138, 2);
             output.WriteMessage(UserDefined);
           }
+          if (HasPrecisionTimestamp) {
+            output.WriteRawTag(144, 2);
+            output.WriteUInt64(PrecisionTimestamp);
+          }
+          if (HasPrecisionTimestampTz) {
+            output.WriteRawTag(152, 2);
+            output.WriteUInt64(PrecisionTimestampTz);
+          }
           if (Nullable != false) {
             output.WriteRawTag(144, 3);
             output.WriteBool(Nullable);
@@ -17913,6 +21329,12 @@ namespace Substrait.Protobuf {
           }
           if (literalTypeCase_ == LiteralTypeOneofCase.Decimal) {
             size += 2 + pb::CodedOutputStream.ComputeMessageSize(Decimal);
+          }
+          if (HasPrecisionTimestamp) {
+            size += 2 + pb::CodedOutputStream.ComputeUInt64Size(PrecisionTimestamp);
+          }
+          if (HasPrecisionTimestampTz) {
+            size += 2 + pb::CodedOutputStream.ComputeUInt64Size(PrecisionTimestampTz);
           }
           if (literalTypeCase_ == LiteralTypeOneofCase.Struct) {
             size += 2 + pb::CodedOutputStream.ComputeMessageSize(Struct);
@@ -18031,6 +21453,12 @@ namespace Substrait.Protobuf {
                 Decimal = new global::Substrait.Protobuf.Expression.Types.Literal.Types.Decimal();
               }
               Decimal.MergeFrom(other.Decimal);
+              break;
+            case LiteralTypeOneofCase.PrecisionTimestamp:
+              PrecisionTimestamp = other.PrecisionTimestamp;
+              break;
+            case LiteralTypeOneofCase.PrecisionTimestampTz:
+              PrecisionTimestampTz = other.PrecisionTimestampTz;
               break;
             case LiteralTypeOneofCase.Struct:
               if (Struct == null) {
@@ -18260,6 +21688,14 @@ namespace Substrait.Protobuf {
                 UserDefined = subBuilder;
                 break;
               }
+              case 272: {
+                PrecisionTimestamp = input.ReadUInt64();
+                break;
+              }
+              case 280: {
+                PrecisionTimestampTz = input.ReadUInt64();
+                break;
+              }
               case 400: {
                 Nullable = input.ReadBool();
                 break;
@@ -18444,6 +21880,14 @@ namespace Substrait.Protobuf {
                 }
                 input.ReadMessage(subBuilder);
                 UserDefined = subBuilder;
+                break;
+              }
+              case 272: {
+                PrecisionTimestamp = input.ReadUInt64();
+                break;
+              }
+              case 280: {
+                PrecisionTimestampTz = input.ReadUInt64();
                 break;
               }
               case 400: {
@@ -20290,7 +23734,15 @@ namespace Substrait.Protobuf {
             public UserDefined(UserDefined other) : this() {
               typeReference_ = other.typeReference_;
               typeParameters_ = other.typeParameters_.Clone();
-              value_ = other.value_ != null ? other.value_.Clone() : null;
+              switch (other.ValCase) {
+                case ValOneofCase.Value:
+                  Value = other.Value.Clone();
+                  break;
+                case ValOneofCase.Struct:
+                  Struct = other.Struct.Clone();
+                  break;
+              }
+
               _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
             }
 
@@ -20332,18 +23784,53 @@ namespace Substrait.Protobuf {
 
             /// <summary>Field number for the "value" field.</summary>
             public const int ValueFieldNumber = 2;
-            private global::Google.Protobuf.WellKnownTypes.Any value_;
             /// <summary>
-            /// the value of the literal, serialized using some type-specific
-            /// protobuf message
+            /// the value of the literal, serialized using some type-specific protobuf message
             /// </summary>
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
             [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
             public global::Google.Protobuf.WellKnownTypes.Any Value {
-              get { return value_; }
+              get { return valCase_ == ValOneofCase.Value ? (global::Google.Protobuf.WellKnownTypes.Any) val_ : null; }
               set {
-                value_ = value;
+                val_ = value;
+                valCase_ = value == null ? ValOneofCase.None : ValOneofCase.Value;
               }
+            }
+
+            /// <summary>Field number for the "struct" field.</summary>
+            public const int StructFieldNumber = 4;
+            /// <summary>
+            /// the value of the literal, serialized using the structure definition in its declaration
+            /// </summary>
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public global::Substrait.Protobuf.Expression.Types.Literal.Types.Struct Struct {
+              get { return valCase_ == ValOneofCase.Struct ? (global::Substrait.Protobuf.Expression.Types.Literal.Types.Struct) val_ : null; }
+              set {
+                val_ = value;
+                valCase_ = value == null ? ValOneofCase.None : ValOneofCase.Struct;
+              }
+            }
+
+            private object val_;
+            /// <summary>Enum of possible cases for the "val" oneof.</summary>
+            public enum ValOneofCase {
+              None = 0,
+              Value = 2,
+              Struct = 4,
+            }
+            private ValOneofCase valCase_ = ValOneofCase.None;
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public ValOneofCase ValCase {
+              get { return valCase_; }
+            }
+
+            [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+            [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+            public void ClearVal() {
+              valCase_ = ValOneofCase.None;
+              val_ = null;
             }
 
             [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -20364,6 +23851,8 @@ namespace Substrait.Protobuf {
               if (TypeReference != other.TypeReference) return false;
               if(!typeParameters_.Equals(other.typeParameters_)) return false;
               if (!object.Equals(Value, other.Value)) return false;
+              if (!object.Equals(Struct, other.Struct)) return false;
+              if (ValCase != other.ValCase) return false;
               return Equals(_unknownFields, other._unknownFields);
             }
 
@@ -20373,7 +23862,9 @@ namespace Substrait.Protobuf {
               int hash = 1;
               if (TypeReference != 0) hash ^= TypeReference.GetHashCode();
               hash ^= typeParameters_.GetHashCode();
-              if (value_ != null) hash ^= Value.GetHashCode();
+              if (valCase_ == ValOneofCase.Value) hash ^= Value.GetHashCode();
+              if (valCase_ == ValOneofCase.Struct) hash ^= Struct.GetHashCode();
+              hash ^= (int) valCase_;
               if (_unknownFields != null) {
                 hash ^= _unknownFields.GetHashCode();
               }
@@ -20396,11 +23887,15 @@ namespace Substrait.Protobuf {
                 output.WriteRawTag(8);
                 output.WriteUInt32(TypeReference);
               }
-              if (value_ != null) {
+              if (valCase_ == ValOneofCase.Value) {
                 output.WriteRawTag(18);
                 output.WriteMessage(Value);
               }
               typeParameters_.WriteTo(output, _repeated_typeParameters_codec);
+              if (valCase_ == ValOneofCase.Struct) {
+                output.WriteRawTag(34);
+                output.WriteMessage(Struct);
+              }
               if (_unknownFields != null) {
                 _unknownFields.WriteTo(output);
               }
@@ -20415,11 +23910,15 @@ namespace Substrait.Protobuf {
                 output.WriteRawTag(8);
                 output.WriteUInt32(TypeReference);
               }
-              if (value_ != null) {
+              if (valCase_ == ValOneofCase.Value) {
                 output.WriteRawTag(18);
                 output.WriteMessage(Value);
               }
               typeParameters_.WriteTo(ref output, _repeated_typeParameters_codec);
+              if (valCase_ == ValOneofCase.Struct) {
+                output.WriteRawTag(34);
+                output.WriteMessage(Struct);
+              }
               if (_unknownFields != null) {
                 _unknownFields.WriteTo(ref output);
               }
@@ -20434,8 +23933,11 @@ namespace Substrait.Protobuf {
                 size += 1 + pb::CodedOutputStream.ComputeUInt32Size(TypeReference);
               }
               size += typeParameters_.CalculateSize(_repeated_typeParameters_codec);
-              if (value_ != null) {
+              if (valCase_ == ValOneofCase.Value) {
                 size += 1 + pb::CodedOutputStream.ComputeMessageSize(Value);
+              }
+              if (valCase_ == ValOneofCase.Struct) {
+                size += 1 + pb::CodedOutputStream.ComputeMessageSize(Struct);
               }
               if (_unknownFields != null) {
                 size += _unknownFields.CalculateSize();
@@ -20453,12 +23955,21 @@ namespace Substrait.Protobuf {
                 TypeReference = other.TypeReference;
               }
               typeParameters_.Add(other.typeParameters_);
-              if (other.value_ != null) {
-                if (value_ == null) {
-                  Value = new global::Google.Protobuf.WellKnownTypes.Any();
-                }
-                Value.MergeFrom(other.Value);
+              switch (other.ValCase) {
+                case ValOneofCase.Value:
+                  if (Value == null) {
+                    Value = new global::Google.Protobuf.WellKnownTypes.Any();
+                  }
+                  Value.MergeFrom(other.Value);
+                  break;
+                case ValOneofCase.Struct:
+                  if (Struct == null) {
+                    Struct = new global::Substrait.Protobuf.Expression.Types.Literal.Types.Struct();
+                  }
+                  Struct.MergeFrom(other.Struct);
+                  break;
               }
+
               _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
             }
 
@@ -20479,14 +23990,25 @@ namespace Substrait.Protobuf {
                     break;
                   }
                   case 18: {
-                    if (value_ == null) {
-                      Value = new global::Google.Protobuf.WellKnownTypes.Any();
+                    global::Google.Protobuf.WellKnownTypes.Any subBuilder = new global::Google.Protobuf.WellKnownTypes.Any();
+                    if (valCase_ == ValOneofCase.Value) {
+                      subBuilder.MergeFrom(Value);
                     }
-                    input.ReadMessage(Value);
+                    input.ReadMessage(subBuilder);
+                    Value = subBuilder;
                     break;
                   }
                   case 26: {
                     typeParameters_.AddEntriesFrom(input, _repeated_typeParameters_codec);
+                    break;
+                  }
+                  case 34: {
+                    global::Substrait.Protobuf.Expression.Types.Literal.Types.Struct subBuilder = new global::Substrait.Protobuf.Expression.Types.Literal.Types.Struct();
+                    if (valCase_ == ValOneofCase.Struct) {
+                      subBuilder.MergeFrom(Struct);
+                    }
+                    input.ReadMessage(subBuilder);
+                    Struct = subBuilder;
                     break;
                   }
                 }
@@ -20509,14 +24031,25 @@ namespace Substrait.Protobuf {
                     break;
                   }
                   case 18: {
-                    if (value_ == null) {
-                      Value = new global::Google.Protobuf.WellKnownTypes.Any();
+                    global::Google.Protobuf.WellKnownTypes.Any subBuilder = new global::Google.Protobuf.WellKnownTypes.Any();
+                    if (valCase_ == ValOneofCase.Value) {
+                      subBuilder.MergeFrom(Value);
                     }
-                    input.ReadMessage(Value);
+                    input.ReadMessage(subBuilder);
+                    Value = subBuilder;
                     break;
                   }
                   case 26: {
                     typeParameters_.AddEntriesFrom(ref input, _repeated_typeParameters_codec);
+                    break;
+                  }
+                  case 34: {
+                    global::Substrait.Protobuf.Expression.Types.Literal.Types.Struct subBuilder = new global::Substrait.Protobuf.Expression.Types.Literal.Types.Struct();
+                    if (valCase_ == ValOneofCase.Struct) {
+                      subBuilder.MergeFrom(Struct);
+                    }
+                    input.ReadMessage(subBuilder);
+                    Struct = subBuilder;
                     break;
                   }
                 }
@@ -22162,6 +25695,7 @@ namespace Substrait.Protobuf {
           sorts_ = other.sorts_.Clone();
           invocation_ = other.invocation_;
           partitions_ = other.partitions_.Clone();
+          boundsType_ = other.boundsType_;
           lowerBound_ = other.lowerBound_ != null ? other.lowerBound_.Clone() : null;
           upperBound_ = other.upperBound_ != null ? other.upperBound_.Clone() : null;
           args_ = other.args_.Clone();
@@ -22178,9 +25712,14 @@ namespace Substrait.Protobuf {
         public const int FunctionReferenceFieldNumber = 1;
         private uint functionReference_;
         /// <summary>
-        /// Points to a function_anchor defined in this plan, which must refer
-        /// to a window function in the associated YAML file. Required; 0 is
-        /// considered to be a valid anchor/reference.
+        /// Points to a function_anchor defined in this plan. The function must be:
+        ///  - a window function
+        ///  - an aggregate function
+        ///
+        /// An aggregate function referenced here should be treated as a window
+        /// function with Window Type STREAMING
+        ///
+        /// Required; 0 is considered to be a valid anchor/reference.
         /// </summary>
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
@@ -22308,7 +25847,7 @@ namespace Substrait.Protobuf {
         /// <summary>
         /// When one or more partition expressions are specified, two records are
         /// considered to be in the same partition if and only if these expressions
-        /// yield an equal tuple of values for both. When computing the window
+        /// yield an equal record of values for both. When computing the window
         /// function, only the subset of records within the bounds that are also in
         /// the same partition as the current record are aggregated.
         /// </summary>
@@ -22316,6 +25855,21 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public pbc::RepeatedField<global::Substrait.Protobuf.Expression> Partitions {
           get { return partitions_; }
+        }
+
+        /// <summary>Field number for the "bounds_type" field.</summary>
+        public const int BoundsTypeFieldNumber = 12;
+        private global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType boundsType_ = global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType.Unspecified;
+        /// <summary>
+        /// Defines the bounds type: ROWS, RANGE
+        /// </summary>
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+        public global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType BoundsType {
+          get { return boundsType_; }
+          set {
+            boundsType_ = value;
+          }
         }
 
         /// <summary>Field number for the "lower_bound" field.</summary>
@@ -22394,6 +25948,7 @@ namespace Substrait.Protobuf {
           if(!sorts_.Equals(other.sorts_)) return false;
           if (Invocation != other.Invocation) return false;
           if(!partitions_.Equals(other.partitions_)) return false;
+          if (BoundsType != other.BoundsType) return false;
           if (!object.Equals(LowerBound, other.LowerBound)) return false;
           if (!object.Equals(UpperBound, other.UpperBound)) return false;
           if(!args_.Equals(other.args_)) return false;
@@ -22412,6 +25967,7 @@ namespace Substrait.Protobuf {
           hash ^= sorts_.GetHashCode();
           if (Invocation != global::Substrait.Protobuf.AggregateFunction.Types.AggregationInvocation.Unspecified) hash ^= Invocation.GetHashCode();
           hash ^= partitions_.GetHashCode();
+          if (BoundsType != global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType.Unspecified) hash ^= BoundsType.GetHashCode();
           if (lowerBound_ != null) hash ^= LowerBound.GetHashCode();
           if (upperBound_ != null) hash ^= UpperBound.GetHashCode();
           hash ^= args_.GetHashCode();
@@ -22462,6 +26018,10 @@ namespace Substrait.Protobuf {
             output.WriteEnum((int) Invocation);
           }
           options_.WriteTo(output, _repeated_options_codec);
+          if (BoundsType != global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType.Unspecified) {
+            output.WriteRawTag(96);
+            output.WriteEnum((int) BoundsType);
+          }
           if (_unknownFields != null) {
             _unknownFields.WriteTo(output);
           }
@@ -22501,6 +26061,10 @@ namespace Substrait.Protobuf {
             output.WriteEnum((int) Invocation);
           }
           options_.WriteTo(ref output, _repeated_options_codec);
+          if (BoundsType != global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType.Unspecified) {
+            output.WriteRawTag(96);
+            output.WriteEnum((int) BoundsType);
+          }
           if (_unknownFields != null) {
             _unknownFields.WriteTo(ref output);
           }
@@ -22527,6 +26091,9 @@ namespace Substrait.Protobuf {
             size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Invocation);
           }
           size += partitions_.CalculateSize(_repeated_partitions_codec);
+          if (BoundsType != global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType.Unspecified) {
+            size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) BoundsType);
+          }
           if (lowerBound_ != null) {
             size += 1 + pb::CodedOutputStream.ComputeMessageSize(LowerBound);
           }
@@ -22565,6 +26132,9 @@ namespace Substrait.Protobuf {
             Invocation = other.Invocation;
           }
           partitions_.Add(other.partitions_);
+          if (other.BoundsType != global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType.Unspecified) {
+            BoundsType = other.BoundsType;
+          }
           if (other.lowerBound_ != null) {
             if (lowerBound_ == null) {
               LowerBound = new global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.Bound();
@@ -22646,6 +26216,10 @@ namespace Substrait.Protobuf {
                 options_.AddEntriesFrom(input, _repeated_options_codec);
                 break;
               }
+              case 96: {
+                BoundsType = (global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType) input.ReadEnum();
+                break;
+              }
             }
           }
         #endif
@@ -22714,6 +26288,10 @@ namespace Substrait.Protobuf {
                 options_.AddEntriesFrom(ref input, _repeated_options_codec);
                 break;
               }
+              case 96: {
+                BoundsType = (global::Substrait.Protobuf.Expression.Types.WindowFunction.Types.BoundsType) input.ReadEnum();
+                break;
+              }
             }
           }
         }
@@ -22724,6 +26302,22 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public static partial class Types {
+          public enum BoundsType {
+            [pbr::OriginalName("BOUNDS_TYPE_UNSPECIFIED")] Unspecified = 0,
+            /// <summary>
+            /// The lower and upper bound specify how many rows before and after the current row
+            /// the window should extend.
+            /// </summary>
+            [pbr::OriginalName("BOUNDS_TYPE_ROWS")] Rows = 1,
+            /// <summary>
+            /// The lower and upper bound describe a range of values.  The window should include all rows
+            /// where the value of the ordering column is greater than or equal to (current_value - lower bound)
+            /// and less than or equal to (current_value + upper bound).  This bounds type is only valid if there
+            /// is a single ordering column.
+            /// </summary>
+            [pbr::OriginalName("BOUNDS_TYPE_RANGE")] Range = 2,
+          }
+
           /// <summary>
           /// Defines one of the two boundaries for the window of a window function.
           /// </summary>
@@ -23908,6 +27502,9 @@ namespace Substrait.Protobuf {
         private static readonly pb::FieldCodec<global::Substrait.Protobuf.Expression.Types.IfThen.Types.IfClause> _repeated_ifs_codec
             = pb::FieldCodec.ForMessage(10, global::Substrait.Protobuf.Expression.Types.IfThen.Types.IfClause.Parser);
         private readonly pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.IfThen.Types.IfClause> ifs_ = new pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.IfThen.Types.IfClause>();
+        /// <summary>
+        /// A list of one or more IfClauses
+        /// </summary>
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public pbc::RepeatedField<global::Substrait.Protobuf.Expression.Types.IfThen.Types.IfClause> Ifs {
@@ -23917,6 +27514,9 @@ namespace Substrait.Protobuf {
         /// <summary>Field number for the "else" field.</summary>
         public const int ElseFieldNumber = 2;
         private global::Substrait.Protobuf.Expression else_;
+        /// <summary>
+        /// The returned Expression if no IfClauses are satisified
+        /// </summary>
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public global::Substrait.Protobuf.Expression Else {
@@ -27670,7 +31270,7 @@ namespace Substrait.Protobuf {
       /// pipeline.
       ///
       /// Note that this does not fundamentally alter the structure of data beyond
-      /// the elimination of unecessary elements.
+      /// the elimination of unnecessary elements.
       /// </summary>
       [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
       public sealed partial class MaskExpression : pb::IMessage<MaskExpression>
@@ -32668,7 +36268,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[25]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[29]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -33024,7 +36624,7 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[26]; }
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[30]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -33494,202 +37094,202 @@ namespace Substrait.Protobuf {
         [pbr::OriginalName("AGGREGATION_INVOCATION_DISTINCT")] Distinct = 2,
       }
 
-      /// <summary>
-      /// This rel is used  to create references,
-      /// in case we refer to a RelRoot field names will be ignored
-      /// </summary>
-      [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
-      public sealed partial class ReferenceRel : pb::IMessage<ReferenceRel>
-      #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
-          , pb::IBufferMessage
-      #endif
-      {
-        private static readonly pb::MessageParser<ReferenceRel> _parser = new pb::MessageParser<ReferenceRel>(() => new ReferenceRel());
-        private pb::UnknownFieldSet _unknownFields;
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public static pb::MessageParser<ReferenceRel> Parser { get { return _parser; } }
-
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public static pbr::MessageDescriptor Descriptor {
-          get { return global::Substrait.Protobuf.AggregateFunction.Descriptor.NestedTypes[0]; }
-        }
-
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        pbr::MessageDescriptor pb::IMessage.Descriptor {
-          get { return Descriptor; }
-        }
-
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public ReferenceRel() {
-          OnConstruction();
-        }
-
-        partial void OnConstruction();
-
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public ReferenceRel(ReferenceRel other) : this() {
-          subtreeOrdinal_ = other.subtreeOrdinal_;
-          _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
-        }
-
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public ReferenceRel Clone() {
-          return new ReferenceRel(this);
-        }
-
-        /// <summary>Field number for the "subtree_ordinal" field.</summary>
-        public const int SubtreeOrdinalFieldNumber = 1;
-        private int subtreeOrdinal_;
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public int SubtreeOrdinal {
-          get { return subtreeOrdinal_; }
-          set {
-            subtreeOrdinal_ = value;
-          }
-        }
-
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public override bool Equals(object other) {
-          return Equals(other as ReferenceRel);
-        }
-
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public bool Equals(ReferenceRel other) {
-          if (ReferenceEquals(other, null)) {
-            return false;
-          }
-          if (ReferenceEquals(other, this)) {
-            return true;
-          }
-          if (SubtreeOrdinal != other.SubtreeOrdinal) return false;
-          return Equals(_unknownFields, other._unknownFields);
-        }
-
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public override int GetHashCode() {
-          int hash = 1;
-          if (SubtreeOrdinal != 0) hash ^= SubtreeOrdinal.GetHashCode();
-          if (_unknownFields != null) {
-            hash ^= _unknownFields.GetHashCode();
-          }
-          return hash;
-        }
-
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public override string ToString() {
-          return pb::JsonFormatter.ToDiagnosticString(this);
-        }
-
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public void WriteTo(pb::CodedOutputStream output) {
-        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
-          output.WriteRawMessage(this);
-        #else
-          if (SubtreeOrdinal != 0) {
-            output.WriteRawTag(8);
-            output.WriteInt32(SubtreeOrdinal);
-          }
-          if (_unknownFields != null) {
-            _unknownFields.WriteTo(output);
-          }
-        #endif
-        }
-
-        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-          if (SubtreeOrdinal != 0) {
-            output.WriteRawTag(8);
-            output.WriteInt32(SubtreeOrdinal);
-          }
-          if (_unknownFields != null) {
-            _unknownFields.WriteTo(ref output);
-          }
-        }
-        #endif
-
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public int CalculateSize() {
-          int size = 0;
-          if (SubtreeOrdinal != 0) {
-            size += 1 + pb::CodedOutputStream.ComputeInt32Size(SubtreeOrdinal);
-          }
-          if (_unknownFields != null) {
-            size += _unknownFields.CalculateSize();
-          }
-          return size;
-        }
-
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public void MergeFrom(ReferenceRel other) {
-          if (other == null) {
-            return;
-          }
-          if (other.SubtreeOrdinal != 0) {
-            SubtreeOrdinal = other.SubtreeOrdinal;
-          }
-          _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
-        }
-
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public void MergeFrom(pb::CodedInputStream input) {
-        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
-          input.ReadRawMessage(this);
-        #else
-          uint tag;
-          while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
-              default:
-                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
-                break;
-              case 8: {
-                SubtreeOrdinal = input.ReadInt32();
-                break;
-              }
-            }
-          }
-        #endif
-        }
-
-        #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-        [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
-          uint tag;
-          while ((tag = input.ReadTag()) != 0) {
-            switch(tag) {
-              default:
-                _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
-                break;
-              case 8: {
-                SubtreeOrdinal = input.ReadInt32();
-                break;
-              }
-            }
-          }
-        }
-        #endif
-
-      }
-
     }
     #endregion
+
+  }
+
+  /// <summary>
+  /// This rel is used  to create references,
+  /// in case we refer to a RelRoot field names will be ignored
+  /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+  public sealed partial class ReferenceRel : pb::IMessage<ReferenceRel>
+  #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      , pb::IBufferMessage
+  #endif
+  {
+    private static readonly pb::MessageParser<ReferenceRel> _parser = new pb::MessageParser<ReferenceRel>(() => new ReferenceRel());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pb::MessageParser<ReferenceRel> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Substrait.Protobuf.AlgebraReflection.Descriptor.MessageTypes[31]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ReferenceRel() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ReferenceRel(ReferenceRel other) : this() {
+      subtreeOrdinal_ = other.subtreeOrdinal_;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ReferenceRel Clone() {
+      return new ReferenceRel(this);
+    }
+
+    /// <summary>Field number for the "subtree_ordinal" field.</summary>
+    public const int SubtreeOrdinalFieldNumber = 1;
+    private int subtreeOrdinal_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public int SubtreeOrdinal {
+      get { return subtreeOrdinal_; }
+      set {
+        subtreeOrdinal_ = value;
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override bool Equals(object other) {
+      return Equals(other as ReferenceRel);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool Equals(ReferenceRel other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (SubtreeOrdinal != other.SubtreeOrdinal) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (SubtreeOrdinal != 0) hash ^= SubtreeOrdinal.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void WriteTo(pb::CodedOutputStream output) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      output.WriteRawMessage(this);
+    #else
+      if (SubtreeOrdinal != 0) {
+        output.WriteRawTag(8);
+        output.WriteInt32(SubtreeOrdinal);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+      if (SubtreeOrdinal != 0) {
+        output.WriteRawTag(8);
+        output.WriteInt32(SubtreeOrdinal);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(ref output);
+      }
+    }
+    #endif
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public int CalculateSize() {
+      int size = 0;
+      if (SubtreeOrdinal != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeInt32Size(SubtreeOrdinal);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(ReferenceRel other) {
+      if (other == null) {
+        return;
+      }
+      if (other.SubtreeOrdinal != 0) {
+        SubtreeOrdinal = other.SubtreeOrdinal;
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(pb::CodedInputStream input) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      input.ReadRawMessage(this);
+    #else
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 8: {
+            SubtreeOrdinal = input.ReadInt32();
+            break;
+          }
+        }
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+        switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+            break;
+          case 8: {
+            SubtreeOrdinal = input.ReadInt32();
+            break;
+          }
+        }
+      }
+    }
+    #endif
 
   }
 

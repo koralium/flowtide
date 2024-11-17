@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Diagnostics.CodeAnalysis;
@@ -20,18 +22,35 @@ namespace FlowtideDotNet.Core.Compute
 {
     internal class FunctionsRegister : IFunctionsRegister
     {
-        private Dictionary<string, FunctionDefinition> _scalarFunctions;
-        private Dictionary<string, AggregateFunctionDefinition> _aggregateFunctions;
+        private readonly Dictionary<string, ColumnFunctionDefinition> _columnScalarFunctions;
+        private readonly Dictionary<string, FunctionDefinition> _scalarFunctions;
+        private readonly Dictionary<string, AggregateFunctionDefinition> _aggregateFunctions;
+        private readonly Dictionary<string, TableFunctionDefinition> _tableFunctions;
+        private readonly Dictionary<string, ColumnAggregateFunctionDefinition> _columnAggregateFunctions;
 
         public FunctionsRegister()
         {
             _scalarFunctions = new Dictionary<string, FunctionDefinition>(StringComparer.OrdinalIgnoreCase);
             _aggregateFunctions = new Dictionary<string, AggregateFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
+            _tableFunctions = new Dictionary<string, TableFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
+
+            _columnScalarFunctions = new Dictionary<string, ColumnFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
+            _columnAggregateFunctions = new Dictionary<string, ColumnAggregateFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
         }
 
         public bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition)
         {
             return _scalarFunctions.TryGetValue($"{uri}:{name}", out functionDefinition);
+        }
+
+        public bool TryGetColumnScalarFunction(string uri, string name, [NotNullWhen(true)] out ColumnFunctionDefinition? functionDefinition)
+        {
+            return _columnScalarFunctions.TryGetValue($"{uri}:{name}", out functionDefinition);
+        }
+
+        public void RegisterColumnScalarFunction(string uri, string name, Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, System.Linq.Expressions.Expression> mapFunc)
+        {
+            _columnScalarFunctions.Add($"{uri}:{name}", new ColumnFunctionDefinition(uri, name, mapFunc));
         }
 
         public void RegisterScalarFunction(string uri, string name, Func<ScalarFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc)
@@ -115,6 +134,22 @@ namespace FlowtideDotNet.Core.Compute
             _aggregateFunctions.Add($"{uri}:{name}", new StreamingAggregateFunctionDefinition(uri, name, mapFunc, stateToValueFunc));
         }
 
+        /// <summary>
+        /// Register a streaming aggregate function that uses columnar data.
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <param name="name"></param>
+        /// <param name="mapFunc"></param>
+        /// <param name="stateToValueFunc"></param>
+        public void RegisterStreamingColumnAggregateFunction(
+            string uri,
+            string name,
+            Func<AggregateFunction, ColumnParameterInfo, ColumnarExpressionVisitor, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
+            Action<ColumnReference, ColumnStore.Column> stateToValueFunc)
+        {
+            _columnAggregateFunctions.Add($"{uri}:{name}", new ColumnStreamingAggregateFunctionDefinition(uri, name, mapFunc, stateToValueFunc));
+        }
+
         public bool TryGetAggregateFunction(string uri, string name, [NotNullWhen(true)] out AggregateFunctionDefinition? aggregateFunctionDefinition)
         {
             return _aggregateFunctions.TryGetValue($"{uri}:{name}", out aggregateFunctionDefinition);
@@ -135,6 +170,32 @@ namespace FlowtideDotNet.Core.Compute
                 commitFunction,
                 mapFunc,
                 stateToValueFunc));
+        }
+
+        public void RegisterTableFunction(string uri, string name, Func<TableFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc)
+        {
+            _tableFunctions.Add($"{uri}:{name}", new TableFunctionDefinition(uri, name, mapFunc));
+        }
+
+        public bool TryGetTableFunction(string uri, string name, [NotNullWhen(true)] out TableFunctionDefinition? tableFunctionDefinition)
+        {
+            return _tableFunctions.TryGetValue($"{uri}:{name}", out tableFunctionDefinition);
+        }
+
+        public void RegisterStatefulColumnAggregateFunction<T>(string uri, string name, IFunctionsRegister.AggregateInitializeFunction<T> initializeFunction, Action<T> disposeFunction, Func<T, Task> commitFunction, IFunctionsRegister.ColumnAggregateMapFunction mapFunc, IFunctionsRegister.ColumnAggregateStateToValueFunction<T> stateToValueFunc)
+        {
+            _columnAggregateFunctions.Add($"{uri}:{name}", new StatefulColumnAggregateFunctionDefinition<T>(
+                initializeFunction,
+                disposeFunction,
+                commitFunction,
+                mapFunc,
+                stateToValueFunc
+                ));
+        }
+
+        public bool TryGetColumnAggregateFunction(string uri, string name, [NotNullWhen(true)] out ColumnAggregateFunctionDefinition? aggregateFunctionDefinition)
+        {
+            return _columnAggregateFunctions.TryGetValue($"{uri}:{name}", out aggregateFunctionDefinition);
         }
     }
 }

@@ -11,12 +11,27 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Tests.Failure
 {
+    internal class TestIngressFactory : RegexConnectorSourceFactory
+    {
+        public TestIngressFactory(string regexPattern) : base(regexPattern)
+        {
+        }
+
+        public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
+        {
+            return new TestIngress(dataflowBlockOptions);
+        }
+    }
+
     internal class TestIngress : ReadBaseOperator<object>
     {
         public TestIngress(DataflowBlockOptions options) : base(options)
@@ -67,7 +82,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
             await output.SendAsync(new StreamEventBatch(new List<RowEvent>()
             {
                 streamEvent
-            }));
+            }, 3));
             await output.SendWatermark(new FlowtideDotNet.Base.Watermark("test", 1));
             output.ExitCheckpointLock();
             await this.RegisterTrigger("on_check", TimeSpan.FromSeconds(5));

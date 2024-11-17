@@ -551,39 +551,39 @@ namespace FlowtideDotNet.Substrait
 
                 var exprVisitor = new SerializerExpressionVisitor();
 
-                foreach(var leftKey in mergeJoinRelation.LeftKeys)
+                for (int i = 0; i < mergeJoinRelation.LeftKeys.Count; i++)
                 {
-                    if (leftKey is DirectFieldReference directFieldReference &&
-                        directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
+                    var leftKey = mergeJoinRelation.LeftKeys[i];
+                    var rightKey = mergeJoinRelation.RightKeys[i];
+                    if (leftKey is DirectFieldReference directFieldReferenceLeft &&
+                        directFieldReferenceLeft.ReferenceSegment is StructReferenceSegment structReferenceSegmentLeft &&
+                        rightKey is DirectFieldReference directFieldReferenceRight &&
+                        directFieldReferenceRight.ReferenceSegment is StructReferenceSegment structReferenceSegmentRight)
                     {
-                        rel.LeftKeys.Add(new Protobuf.Expression.Types.FieldReference()
+                        rel.Keys.Add(new ComparisonJoinKey()
                         {
-                            DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
+                            Comparison = new ComparisonJoinKey.Types.ComparisonType()
                             {
-                                StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
+                                Simple = ComparisonJoinKey.Types.SimpleComparisonType.Eq
+                            },
+                            Left = new Protobuf.Expression.Types.FieldReference()
+                            {
+                                DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
                                 {
-                                    Field = structReferenceSegment.Field
+                                    StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
+                                    {
+                                        Field = structReferenceSegmentLeft.Field
+                                    }
                                 }
-                            }
-                        });
-                    }
-                    else
-                    {
-                        throw new NotImplementedException("Only direct field reference is implemented");
-                    }
-                }
-                foreach (var rightKey in mergeJoinRelation.RightKeys)
-                {
-                    if (rightKey is DirectFieldReference directFieldReference &&
-                        directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
-                    {
-                        rel.RightKeys.Add(new Protobuf.Expression.Types.FieldReference()
-                        {
-                            DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
+                            },
+                            Right = new Protobuf.Expression.Types.FieldReference()
                             {
-                                StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
+                                DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
                                 {
-                                    Field = structReferenceSegment.Field
+                                    StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
+                                    {
+                                        Field = structReferenceSegmentRight.Field
+                                    }
                                 }
                             }
                         });
@@ -678,22 +678,14 @@ namespace FlowtideDotNet.Substrait
 
             public override Rel VisitReferenceRelation(ReferenceRelation referenceRelation, SerializerVisitorState state)
             {
-                var refRel = new CustomProtobuf.ReferenceRelation()
+                var refRel = new ReferenceRel()
                 {
-                    ReferenceId = referenceRelation.RelationId
-                };
-                var rel = new Protobuf.ExtensionLeafRel()
-                {
-                    Detail = new Google.Protobuf.WellKnownTypes.Any()
-                    {
-                        TypeUrl = "flowtide/flowtide.ReferenceRelation",
-                        Value = refRel.ToByteString()
-                    }
+                    SubtreeOrdinal = referenceRelation.RelationId
                 };
 
                 return new Rel()
                 {
-                    ExtensionLeaf = rel
+                    Reference = refRel
                 };
             }
 
@@ -924,6 +916,132 @@ namespace FlowtideDotNet.Substrait
                     ExtensionSingle = rel
                 };
             }
+
+            private static CustomProtobuf.TableFunction CreateTableFunctionProtoDefintion(TableFunction tableFunction, SerializerVisitorState state)
+            {
+                var protoDef = new CustomProtobuf.TableFunction();
+
+                // Serialize the table function
+                protoDef.FunctionReference = state.GetFunctionExtensionAnchor(tableFunction.ExtensionUri, tableFunction.ExtensionName);
+
+                // Serialize the table schema if it exists
+                if (tableFunction.TableSchema != null)
+                {
+                    protoDef.TableSchema = new Protobuf.NamedStruct();
+                    protoDef.TableSchema.Names.AddRange(tableFunction.TableSchema.Names);
+                    if (tableFunction.TableSchema.Struct != null)
+                    {
+                        var anyTypeAnchor = GetAnyTypeId(state);
+                        protoDef.TableSchema.Struct = new Protobuf.Type.Types.Struct();
+                        foreach (var t in tableFunction.TableSchema.Struct.Types)
+                        {
+                            protoDef.TableSchema.Struct.Types_.Add(new Protobuf.Type()
+                            {
+                                UserDefined = new Protobuf.Type.Types.UserDefined()
+                                {
+                                    TypeReference = anyTypeAnchor
+                                }
+                            });
+                        }
+                    }
+                }
+
+                // Serialize function arguments
+                if (tableFunction.Arguments != null)
+                {
+                    var exprVisitor = new SerializerExpressionVisitor();
+                    foreach (var arg in tableFunction.Arguments)
+                    {
+                        protoDef.Arguments.Add(new Protobuf.FunctionArgument()
+                        {
+                            Value = exprVisitor.Visit(arg, state)
+                        });
+                    }
+                }
+
+                return protoDef;
+            }
+
+            private static CustomProtobuf.TableFunctionRelation CreateTableFunctionRelationProtoDefintion(TableFunctionRelation tableFunctionRelation, SerializerVisitorState state)
+            {
+                var protoDef = new CustomProtobuf.TableFunctionRelation
+                {
+                    // Serialize the table function
+                    TableFunction = CreateTableFunctionProtoDefintion(tableFunctionRelation.TableFunction, state)
+                };
+
+                // Set join type
+                switch (tableFunctionRelation.Type)
+                {
+                    case JoinType.Left:
+                        protoDef.Type = CustomProtobuf.TableFunctionRelation.Types.JoinType.Left;
+                        break;
+                    case JoinType.Inner:
+                        protoDef.Type = CustomProtobuf.TableFunctionRelation.Types.JoinType.Inner;
+                        break;
+                    default:
+                        protoDef.Type = CustomProtobuf.TableFunctionRelation.Types.JoinType.Unspecified;
+                        break;
+                }
+
+                if (tableFunctionRelation.JoinCondition != null)
+                {
+                    var exprVisitor = new SerializerExpressionVisitor();
+                    protoDef.JoinCondition = exprVisitor.Visit(tableFunctionRelation.JoinCondition, state);
+                }
+                return protoDef;
+            }
+
+            public override Rel VisitTableFunctionRelation(TableFunctionRelation tableFunctionRelation, SerializerVisitorState state)
+            {
+                var protoDef = CreateTableFunctionRelationProtoDefintion(tableFunctionRelation, state);
+
+                // Check if it has an input, then we will use extension single rel, otherwise leaf.
+                if (tableFunctionRelation.Input != null)
+                {
+                    var rel = new Protobuf.ExtensionSingleRel();
+                    rel.Input = Visit(tableFunctionRelation.Input, state);
+                    rel.Detail = new Google.Protobuf.WellKnownTypes.Any()
+                    {
+                        TypeUrl = "flowtide/flowtide.TableFunctionRelation",
+                        Value = protoDef.ToByteString()
+                    };
+
+                    // Emit info
+                    if (tableFunctionRelation.EmitSet)
+                    {
+                        rel.Common = new Protobuf.RelCommon();
+                        rel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                        rel.Common.Emit.OutputMapping.AddRange(tableFunctionRelation.Emit);
+                    }
+
+                    return new Rel()
+                    {
+                        ExtensionSingle = rel
+                    };
+                }
+                else
+                {
+                    var rel = new Protobuf.ExtensionLeafRel();
+                    rel.Detail = new Google.Protobuf.WellKnownTypes.Any()
+                    {
+                        TypeUrl = "flowtide/flowtide.TableFunctionRelation",
+                        Value = protoDef.ToByteString()
+                    };
+                    // Emit info
+                    if (tableFunctionRelation.EmitSet)
+                    {
+                        rel.Common = new Protobuf.RelCommon();
+                        rel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                        rel.Common.Emit.OutputMapping.AddRange(tableFunctionRelation.Emit);
+                    }
+
+                    return new Rel()
+                    {
+                        ExtensionLeaf = rel
+                    };
+                }
+            }
         }
 
         public static Protobuf.Plan Serialize(Plan plan)
@@ -948,7 +1066,6 @@ namespace FlowtideDotNet.Substrait
                 CustomProtobuf.IterationReferenceReadRelation.Descriptor,
                 CustomProtobuf.IterationRelation.Descriptor,
                 CustomProtobuf.NormalizationRelation.Descriptor,
-                CustomProtobuf.ReferenceRelation.Descriptor,
                 CustomProtobuf.TopNRelation.Descriptor);
             var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
                 .WithIndentation();

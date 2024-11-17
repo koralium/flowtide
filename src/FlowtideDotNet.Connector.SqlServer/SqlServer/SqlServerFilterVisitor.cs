@@ -236,7 +236,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             foreach(var ifThenStatement in ifThenExpression.Ifs)
             {
                 var ifstatement = Visit(ifThenStatement.If, state);
-                var thenstatement = Visit(ifThenExpression.Else, state);
+                var thenstatement = Visit(ifThenStatement.Then, state);
 
                 if (ifstatement == null || thenstatement == null)
                 {

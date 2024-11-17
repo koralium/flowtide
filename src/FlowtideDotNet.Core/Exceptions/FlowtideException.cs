@@ -14,7 +14,7 @@ using System.Runtime.Serialization;
 
 namespace FlowtideDotNet.Core.Exceptions
 {
-    internal class FlowtideException : Exception
+    public class FlowtideException : Exception
     {
         public FlowtideException()
         {
@@ -25,10 +25,6 @@ namespace FlowtideDotNet.Core.Exceptions
         }
 
         public FlowtideException(string? message, Exception? innerException) : base(message, innerException)
-        {
-        }
-
-        protected FlowtideException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
     }

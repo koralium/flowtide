@@ -15,11 +15,12 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.Ingress
 {
-    public class IngressOutput<T>
+    public class IngressOutput<T> : IDisposable
     {
         private readonly IngressState<T> _ingressState;
         private readonly ITargetBlock<IStreamEvent> _targetBlock;
         private bool _inLock;
+        private TaskCompletionSource? _stopEvents;
 
         internal IngressOutput(IngressState<T> ingressState, ITargetBlock<IStreamEvent> targetBlock) 
         {
@@ -32,6 +33,14 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         public Task SendAsync(T data)
         {
+            if (_stopEvents != null)
+            {
+                return _stopEvents.Task;
+            }
+            if (data is IRentable rentable)
+            {
+                rentable.Rent(_ingressState._linkCount);
+            }
             if (_inLock)
             {
                 return _targetBlock.SendAsync(new StreamMessage<T>(data, _ingressState._currentTime), CancellationToken);
@@ -61,6 +70,11 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             _ingressState._checkpointLock.Release();
         }
 
+        internal void Stop()
+        {
+            _stopEvents = new TaskCompletionSource();
+        }
+
         internal void Fault(Exception exception)
         {
             _targetBlock.Fault(exception);
@@ -78,6 +92,10 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         public Task SendWatermark(Watermark watermark)
         {
+            if (_stopEvents != null)
+            {
+                return _stopEvents.Task;
+            }
             Debug.Assert(_ingressState._vertexHandler != null, nameof(_ingressState._vertexHandler));
             watermark.SourceOperatorId = _ingressState._vertexHandler.OperatorId;
             if (_inLock)
@@ -92,6 +110,15 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             await EnterCheckpointLock();
             await _targetBlock.SendAsync(watermark, CancellationToken);
             ExitCheckpointLock();
+        }
+
+        public void Dispose()
+        {
+            if (_stopEvents != null)
+            {
+                _stopEvents.SetResult();
+                _stopEvents = null;
+            }
         }
     }
 }

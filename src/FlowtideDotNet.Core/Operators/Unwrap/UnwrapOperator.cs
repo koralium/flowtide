@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
@@ -57,7 +58,7 @@ namespace FlowtideDotNet.Core.Operators.Unwrap
             return Task.FromResult<object?>(null);
         }
 
-        public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
             List<RowEvent> output = new List<RowEvent>();
             foreach(var e in msg.Events)
@@ -125,9 +126,9 @@ namespace FlowtideDotNet.Core.Operators.Unwrap
 
             if (output.Count > 0)
             {
-                yield return new StreamEventBatch(output);
+                return new SingleAsyncEnumerable<StreamEventBatch>(new StreamEventBatch(output, unwrapRelation.OutputLength));
             }
-            
+            return EmptyAsyncEnumerable<StreamEventBatch>.Instance;
         }
 
         protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)

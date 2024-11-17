@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class SetRelation : Relation
+    public sealed class SetRelation : Relation, IEquatable<SetRelation>
     {
         public required List<Relation> Inputs { get; set; }
 
@@ -33,6 +34,42 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitSetRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is SetRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(SetRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Inputs.SequenceEqual(other.Inputs) &&
+                Equals(Operation, other.Operation);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(base.GetHashCode());
+            foreach (var input in Inputs)
+            {
+                code.Add(input);
+            }
+            code.Add(Operation);
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(SetRelation? left, SetRelation? right)
+        {
+            return EqualityComparer<SetRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(SetRelation? left, SetRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

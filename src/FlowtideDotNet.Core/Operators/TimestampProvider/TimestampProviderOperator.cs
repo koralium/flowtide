@@ -96,7 +96,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
                     {
                         b.Add(currentTimestamp);
                     })
-                }));
+                }, 1));
                 _eventsProcessed.Add(1);
             }
             else
@@ -107,7 +107,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
                     {
                         b.Add(currentTimestamp);
                     })
-                }));
+                }, 1));
                 // Remove the previous row
                 await output.SendAsync(new StreamEventBatch(new List<RowEvent>()
                 {
@@ -115,7 +115,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
                     {
                         b.Add(_state.LastSentTimestamp.Value);
                     })
-                }));
+                }, 1));
                 _eventsProcessed.Add(2);
             }
 

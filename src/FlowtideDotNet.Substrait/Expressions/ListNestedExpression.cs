@@ -10,14 +10,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
-    public class ListNestedExpression : NestedExpression
+    public sealed class ListNestedExpression : NestedExpression, IEquatable<ListNestedExpression>
     {
         public required List<Expression> Values { get; set; }
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
-            return visitor.VisitListNestedExpression(this, state);
+            return visitor.VisitListNestedExpression(this, state)!;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ListNestedExpression expression &&
+                   Equals(expression);
+        }
+
+        public bool Equals(ListNestedExpression? other)
+        {
+            return other != null &&
+                   Values.SequenceEqual(other.Values);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            foreach(var value in Values)
+            {
+                code.Add(value);
+            }
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(ListNestedExpression? left, ListNestedExpression? right)
+        {
+            return EqualityComparer<ListNestedExpression>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(ListNestedExpression? left, ListNestedExpression? right)
+        {
+            return !(left == right);
         }
     }
 }

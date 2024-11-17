@@ -64,17 +64,44 @@ namespace FlowtideDotNet.Core.Flexbuffer
             return new FlxValueRef(span, offset, byteWidth, packedType);
         }
 
-        public static FlxValue FromMemory(Memory<byte> memory)
+        public static FlxValue FromMemory(byte[] memory)
         {
             if (memory.Length < 3)
             {
                 throw new InvalidOperationException($"Invalid buffer {memory}");
             }
-            var span = memory.Span;
+            var span = memory;
             var byteWidth = span[span.Length - 1];
             var packedType = span[span.Length - 2];
             var offset = span.Length - byteWidth - 2;
             return new FlxValue(memory, offset, byteWidth, packedType);
+        }
+
+        public FlxValueRef GetMapValue(in string key)
+        {
+            if (this.ValueType == Type.Map)
+            {
+                var map = AsMap;
+                var index = map.KeyIndex(key);
+                if (index >= 0)
+                {
+                    return map.ValueByIndex(index);
+                }
+            }
+            return FlxValue.Null.GetRef();
+        }
+
+        public FlxValueRef GetVectorValue(in int index)
+        {
+            if (this.ValueType == Type.Vector)
+            {
+                var vec = AsVector;
+                if (index < vec.Length)
+                {
+                    return vec.Get(index);
+                }
+            }
+            return FlxValue.Null.GetRef();
         }
 
         public Type ValueType => _type;
@@ -610,7 +637,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public FlxValueRef Get(in int index)
+        public FlxValueRef Get(scoped in int index)
         {
             //Debug.Assert(index < 0 || index >= _length, $"Bad index {index}, should be 0...{_length}");
             if (index < 0 || index >= _length)
@@ -726,7 +753,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
 
         public FlxVectorRef Values => new FlxVectorRef(_buffer, _offset, _byteWidth, Type.Vector, _length);
 
-        public FlxValueRef ValueByIndex(in int keyIndex)
+        public FlxValueRef ValueByIndex(scoped in int keyIndex)
         {
             if (keyIndex < 0 || keyIndex >= Length)
             {

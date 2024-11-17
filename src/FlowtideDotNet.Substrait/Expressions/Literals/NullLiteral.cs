@@ -10,15 +10,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
-    public class NullLiteral : Literal
+    public sealed class NullLiteral : Literal, IEquatable<NullLiteral>
     {
         public override LiteralType Type => LiteralType.Null;
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
-            return visitor.VisitNullLiteral(this, state);
+            return visitor.VisitNullLiteral(this, state)!;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is NullLiteral;
+        }
+
+        public bool Equals(NullLiteral? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Type);
+        }
+
+        public static bool operator ==(NullLiteral? left, NullLiteral? right)
+        {
+            return EqualityComparer<NullLiteral>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(NullLiteral? left, NullLiteral? right)
+        {
+            return !(left == right);
         }
     }
 }

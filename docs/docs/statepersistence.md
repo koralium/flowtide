@@ -4,7 +4,14 @@ sidebar_position: 2
 
 # State Persistence
 
-All tideflow streams require a persistent storage solution to function.
+:::info
+
+The settings in this page does not cover when setting up Flowtide using Dependency Injection.
+These settings can be applied when setting up a stream using *FlowtideBuilder* class.
+
+:::
+
+All Flowtide streams require a persistent storage solution to function.
 It is responsible for persisting the data at checkpoint intervals to ensure the stream can continue to operate in case of a failure.
 
 At this time there are two different implementations for the persistent storage solution, FasterKV backed, and a temporary file cache solution.

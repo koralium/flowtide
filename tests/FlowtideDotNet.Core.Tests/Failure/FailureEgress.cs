@@ -10,8 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Tests.Failure
@@ -23,13 +27,28 @@ namespace FlowtideDotNet.Core.Tests.Failure
         public Action? OnCompaction { get; set; }
     }
 
+    internal class FailureEgressFactory : RegexConnectorSinkFactory
+    {
+        private readonly FailureEgressOptions failureEgressOptions;
+
+        public FailureEgressFactory(string regexPattern, FailureEgressOptions failureEgressOptions) : base(regexPattern)
+        {
+            this.failureEgressOptions = failureEgressOptions;
+        }
+
+        public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
+        {
+            return new FailureEgress(dataflowBlockOptions, failureEgressOptions);
+        }
+    }
+
     internal class FailureEgress : GroupedWriteBaseOperator<TestWriteState>
     {
         private readonly FailureEgressOptions failureEgressOptions;
         List<int> primaryKeyIds;
         public FailureEgress(
-            
-            ExecutionDataflowBlockOptions executionDataflowBlockOptions, FailureEgressOptions failureEgressOptions) : base(executionDataflowBlockOptions)
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions, 
+            FailureEgressOptions failureEgressOptions) : base(executionDataflowBlockOptions)
         {
             primaryKeyIds = new List<int>();
             primaryKeyIds.Add(0);

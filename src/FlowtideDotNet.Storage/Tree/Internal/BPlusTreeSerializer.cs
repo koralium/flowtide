@@ -10,23 +10,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal class BPlusTreeSerializer<K, V> : IStateSerializer<IBPlusTreeNode>
+    internal class BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer> : IStateSerializer<IBPlusTreeNode>
+        where TKeyContainer: IKeyContainer<K>
+        where TValueContainer: IValueContainer<V>
     {
-        private readonly IBplusTreeSerializer<K> _keySerializer;
-        private readonly IBplusTreeSerializer<V> _valueSerializer;
+        private readonly IBPlusTreeKeySerializer<K, TKeyContainer> _keySerializer;
+        private readonly IBplusTreeValueSerializer<V, TValueContainer> _valueSerializer;
+        private readonly IMemoryAllocator _memoryAllocator;
 
         public BPlusTreeSerializer(
-            IBplusTreeSerializer<K> keySerializer,
-            IBplusTreeSerializer<V> valueSerializer
+            IBPlusTreeKeySerializer<K, TKeyContainer> keySerializer,
+            IBplusTreeValueSerializer<V, TValueContainer> valueSerializer,
+            IMemoryAllocator memoryAllocator
             )
         {
             this._keySerializer = keySerializer;
             this._valueSerializer = valueSerializer;
+            this._memoryAllocator = memoryAllocator;
         }
 
         public IBPlusTreeNode Deserialize(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
@@ -46,27 +53,29 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             if (typeId == 2)
             {
                 var id = reader.ReadInt64();
-                var leaf = new LeafNode<K, V>(id);
-                leaf.next = reader.ReadInt64();
+                
+                
+                var leafNext = reader.ReadInt64();
 
-                _keySerializer.Deserialize(reader, leaf.keys);
-                _valueSerializer.Deserialize(reader, leaf.values);
+                var keyContainer = _keySerializer.Deserialize(reader);
+                var valueContainer = _valueSerializer.Deserialize(reader);
+                var leaf = new LeafNode<K, V, TKeyContainer, TValueContainer>(id, keyContainer, valueContainer);
+                leaf.next = leafNext;
                 return leaf;
             }
             if (typeId == 3)
             {
                 var id = reader.ReadInt64();
 
-                var parent = new InternalNode<K, V>(id);
+                var keyContainer = _keySerializer.Deserialize(reader);
 
-                _keySerializer.Deserialize(reader, parent.keys);
+                var childrenByteLength = reader.ReadInt32();
+                var childrenBytes = reader.ReadBytes(childrenByteLength);
+                var childrenMemory = _memoryAllocator.Allocate(childrenByteLength, 64);
+                childrenBytes.CopyTo(childrenMemory.Memory.Span);
+                var childrenList = new PrimitiveList<long>(childrenMemory, childrenByteLength / sizeof(long), _memoryAllocator);
 
-                var childrenLength = reader.ReadInt32();
-                for (int i = 0; i < childrenLength; i++)
-                {
-                    var childId = reader.ReadInt64();
-                    parent.children.Add(childId);
-                }
+                var parent = new InternalNode<K, V, TKeyContainer>(id, keyContainer, childrenList);
 
                 return parent;
             }
@@ -87,7 +96,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 writeMemStream = stateSerializeOptions.CompressFunc(memoryStream);
             }
             using var writer = new BinaryWriter(writeMemStream);
-            if (value is LeafNode<K, V> leaf)
+            if (value is LeafNode<K, V, TKeyContainer, TValueContainer> leaf)
             {
                 // Write type id
                 writer.Write((byte)2);
@@ -102,18 +111,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 writeMemStream.Close();
                 return memoryStream.ToArray();
             }
-            if (value is InternalNode<K, V> parent)
+            if (value is InternalNode<K, V, TKeyContainer> parent)
             {
                 writer.Write((byte)3);
                 writer.Write(parent.Id);
 
                 _keySerializer.Serialize(writer, parent.keys);
 
-                writer.Write(parent.children.Count);
-                for (int i = 0; i < parent.children.Count; i++)
-                {
-                    writer.Write(parent.children[i]);
-                }
+                var childrenSpan = parent.children.SlicedMemory.Span;
+                writer.Write(childrenSpan.Length);
+                writer.Write(childrenSpan);
                 writer.Flush();
                 writeMemStream.Close();
                 return memoryStream.ToArray();

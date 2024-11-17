@@ -28,6 +28,21 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task SelectOneColumnsWithoutIdAndUpdate()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT firstName FROM users");
+            await WaitForUpdate();
+            var firstUser = Users[0];
+            firstUser.FirstName = "Updated";
+            AddOrUpdateUser(firstUser);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { x.FirstName }));
+        }
+
+        [Fact]
         public async Task SelectWithCase()
         {
             GenerateData();
@@ -80,6 +95,59 @@ namespace FlowtideDotNet.AcceptanceTests
                 FROM orders");
             await WaitForUpdate();
             AssertCurrentDataEqual(Orders.Select(x => new { x.UserKey }).Distinct());
+        }
+
+        [Fact]
+        public async Task SelectSubProperty()
+        {
+            GenerateData();
+            await StartStream(@"
+                CREATE VIEW test AS
+                SELECT map('userkey', userkey) AS user 
+                FROM orders;
+
+                INSERT INTO output 
+                SELECT
+                    user.userkey
+                FROM test");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Orders.Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task SelectSubPropertyDifferentCase()
+        {
+            GenerateData();
+            await StartStream(@"
+                CREATE VIEW test AS
+                SELECT map('userkey', userkey) AS user 
+                FROM orders;
+
+                INSERT INTO output 
+                SELECT
+                    user.userKey
+                FROM test");
+            await WaitForUpdate();
+            // Expect an array where all columns are null since the field was not found in the map
+            AssertCurrentDataEqual(Orders.Select(x => new { UserKey = default(int?) }));
+        }
+
+        [Fact]
+        public async Task SelectWithEqual()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT userkey = 23 FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.UserKey == 23 }));
+        }
+
+        [Fact]
+        public async Task SelectWithNotEqual()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT userkey != 23 FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.UserKey != 23 }));
         }
     }
 }

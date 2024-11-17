@@ -34,6 +34,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 return VisitCreateView(createView, state);
             }
+            if (statement is BeginSubStream beginSubStream)
+            {
+                return VisitBeginSubStream(beginSubStream);
+            }
+            throw new NotImplementedException();
+        }
+
+        protected virtual TReturn VisitBeginSubStream(BeginSubStream beginSubStream)
+        {
             throw new NotImplementedException();
         }
 

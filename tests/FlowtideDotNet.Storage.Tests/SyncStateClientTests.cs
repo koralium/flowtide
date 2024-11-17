@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
@@ -52,11 +53,13 @@ namespace FlowtideDotNet.Storage.Tests
             await manager.LruTable.StopCleanupTask();
 
             var client = manager.GetOrCreateClient("client");
-            var tree = await client.GetOrCreateTree<long, int>("tree", new BPlusTreeOptions<long, int>()
+            var tree = await client.GetOrCreateTree("tree", 
+                new BPlusTreeOptions<long, int, ListKeyContainer<long>, ListValueContainer<int>>()
             {
-                Comparer = new LongComparer(),
-                KeySerializer = new LongSerializer(),
-                ValueSerializer = new IntSerializer()
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             });
             //Version 0
             await tree.Upsert(1, 1);

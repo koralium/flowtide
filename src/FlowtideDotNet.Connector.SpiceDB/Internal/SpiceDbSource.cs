@@ -44,6 +44,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
     {
         private PermissionsService.PermissionsServiceClient? m_client;
         private readonly SpiceDbSourceOptions m_spiceDbSourceOptions;
+        private readonly ReadRelation _readRelation;
         private FlowtideSpiceDbSourceState? m_state;
         private readonly SpiceDbRowEncoder m_rowEncoder;
         private WatchService.WatchServiceClient? m_watchClient;
@@ -58,6 +59,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         public SpiceDbSource(SpiceDbSourceOptions spiceDbSourceOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
             this.m_spiceDbSourceOptions = spiceDbSourceOptions;
+            this._readRelation = readRelation;
             m_rowEncoder = SpiceDbRowEncoder.Create(readRelation.BaseSchema.Names);
 
             if (readRelation.Filter != null)
@@ -247,10 +249,17 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     }
                     // If we managed to start watching again, set health to true
                     SetHealth(true);
-                    if (await watchStream.ResponseStream.MoveNext(output.CancellationToken))
+                    var cancelTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                    if (await watchStream.ResponseStream.MoveNext(cancelTokenSource.Token))
                     {
                         await output.EnterCheckpointLock();
                         var current = watchStream.ResponseStream.Current;
+
+                        if (current.ChangesThrough.Token == m_state.ContinuationToken)
+                        {
+                            continue;
+                        }
+
                         m_state.ContinuationToken = current.ChangesThrough.Token;
                         var revision = GetRevision(current.ChangesThrough.Token);
 
@@ -271,7 +280,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                         }
                         if (outputData.Count > 0)
                         {
-                            await output.SendAsync(new StreamEventBatch(outputData));
+                            await output.SendAsync(new StreamEventBatch(outputData, _readRelation.OutputLength));
                             await output.SendWatermark(GetCurrentWatermark());
                             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                         }
@@ -280,10 +289,17 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 }
                 catch(Exception e)
                 {
-                    if (e is RpcException rpcException &&
-                        rpcException.Status.StatusCode == StatusCode.Unavailable)
+                    if (e is RpcException rpcException)
                     {
-                        Logger.RecievedGrpcNoErrorRetry(StreamName, Name);
+                        if (rpcException.Status.StatusCode == StatusCode.Unavailable)
+                        {
+                            Logger.RecievedGrpcNoErrorRetry(StreamName, Name);
+                        }
+                        else if (rpcException.Status.StatusCode != StatusCode.Cancelled)
+                        {
+                            SetHealth(false);
+                            Logger.ErrorInSpiceDb(e, StreamName, Name);
+                        }
                     }
                     else
                     {
@@ -292,8 +308,6 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     }
                     initWatch = true;
                 }
-               
-                
             }
         }
 
@@ -343,6 +357,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                         try
                         {
                             var readRequest = new ReadRelationshipsRequest();
+
+                            if (m_spiceDbSourceOptions.Consistency != null)
+                            {
+                                readRequest.Consistency = m_spiceDbSourceOptions.Consistency;
+                            }
                             readRequest.RelationshipFilter = new RelationshipFilter()
                             {
                                 ResourceType = readType
@@ -373,7 +392,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                                 {
                                     retries = 0;
                                     cursor = r.AfterResultCursor;
-                                    await output.SendAsync(new StreamEventBatch(outputData));
+                                    await output.SendAsync(new StreamEventBatch(outputData, _readRelation.OutputLength));
                                     outputData = new List<RowEvent>();
                                 }
                                 if (firstToken == null)
@@ -384,7 +403,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                             }
                             if (outputData.Count > 0)
                             {
-                                await output.SendAsync(new StreamEventBatch(outputData));
+                                await output.SendAsync(new StreamEventBatch(outputData, _readRelation.OutputLength));
                             }
                             m_state.TypeTimestamps[readType] = minRevision;
                             break;

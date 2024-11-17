@@ -12,15 +12,32 @@
 
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Storage.DataStructures;
 
 namespace MonitoringPrometheus
 {
+    public class DummyReadFactory : RegexConnectorSourceFactory
+    {
+        public DummyReadFactory(string regexPattern) : base(regexPattern)
+        {
+        }
+
+        public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
+        {
+            return new DummyReadOperator(dataflowBlockOptions);
+        }
+    }
+
     public class DummyReadOperator : ReadBaseOperator<object>
     {
-        private int _watermarkCounter = 1;
         public DummyReadOperator(DataflowBlockOptions options) : base(options)
         {
         }
@@ -34,32 +51,7 @@ namespace MonitoringPrometheus
 
         public override Task OnTrigger(string triggerName, object? state)
         {
-            if (triggerName == "on_check")
-            {
-                RunTask(SendChanges);
-            }
             return Task.CompletedTask;
-        }
-
-        private async Task SendChanges(IngressOutput<StreamEventBatch> output, object? state)
-        {
-            await output.EnterCheckpointLock();
-
-            List<RowEvent> o = new List<RowEvent>();
-            for (int k = 0; k < 1; k++)
-            {
-                o.Add(RowEvent.Create(1, 0, b =>
-                {
-                    for (int z = 0; z < 16; z++)
-                    {
-                        b.Add(123);
-                    }
-                }));
-            }
-            await output.SendAsync(new StreamEventBatch(o));
-            await output.SendWatermark(new FlowtideDotNet.Base.Watermark("dummy", _watermarkCounter++));
-            output.ExitCheckpointLock();
-            ScheduleCheckpoint(TimeSpan.FromSeconds(1));
         }
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
@@ -79,27 +71,35 @@ namespace MonitoringPrometheus
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            for (int i = 0; i < 1_000; i++)
+
+            for (int i = 0; i < 100_000; i++)
             {
                 await output.EnterCheckpointLock();
+                var memoryManager = MemoryAllocator;
+                IColumn[] columns = new IColumn[16];
+                PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
+                PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
-                List<RowEvent> o = new List<RowEvent>();
+
+                for (int b = 0; b < 16; b++)
+                {
+                    columns[b] = Column.Create(memoryManager);
+                }
+
                 for (int k = 0; k < 100; k++)
                 {
-                    o.Add(RowEvent.Create(1, 0, b =>
+                    weights.Add(1);
+                    iterations.Add(0);
+                    for (int z = 0; z < 16; z++)
                     {
-                        for (int z = 0; z < 16; z++)
-                        {
-                            b.Add(123);
-                        }
-                    }));
+                        columns[z].Add(new Int64Value((i * 100) + k));
+                    }
                 }
-                await output.SendAsync(new StreamEventBatch(o));
-                await output.SendWatermark(new FlowtideDotNet.Base.Watermark("dummy", _watermarkCounter++));
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 output.ExitCheckpointLock();
-                ScheduleCheckpoint(TimeSpan.FromSeconds(1));
-                await RegisterTrigger("on_check", TimeSpan.FromSeconds(5));
+
             }
+            ScheduleCheckpoint(TimeSpan.FromSeconds(1));
         }
     }
 }

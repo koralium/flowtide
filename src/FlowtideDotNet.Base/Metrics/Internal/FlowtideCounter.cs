@@ -18,97 +18,33 @@ namespace FlowtideDotNet.Base.Metrics.Internal
     internal class FlowtideCounter<T> : ICounter<T>
         where T : struct
     {
-        private readonly Counter<T> m_counter;
-        private readonly TagList m_globalTags;
+        private readonly ObservableCounter<long> m_counter;
+        private readonly KeyValuePair<string, object?>[] m_globalTags;
+        private long _value;
 
-        public FlowtideCounter(Counter<T> counter, TagList globalTags)
+        public FlowtideCounter(Meter meter, string name, TagList globalTags)
         {
-            this.m_counter = counter;
-            this.m_globalTags = globalTags;
+            this.m_globalTags = globalTags.ToArray();
+            this.m_counter = meter.CreateObservableCounter(name, () =>
+            {
+                return new Measurement<long>(_value, m_globalTags);
+            });
         }
 
         public void Add(T delta)
         {
-            TagList tagList = new TagList();
-            foreach(var tag in m_globalTags)
+            if (delta is long l)
             {
-                tagList.Add(tag);
+                Interlocked.Add(ref _value, l);
             }
-            m_counter.Add(delta, tagList);
-        }
-
-        public void Add(T delta, KeyValuePair<string, object?> tag)
-        {
-            TagList tagList = new TagList();
-            tagList.Add(tag);
-            foreach (var t in m_globalTags)
+            else if (delta is int i)
             {
-                tagList.Add(t);
+                Interlocked.Add(ref _value, i);
             }
-            m_counter.Add(delta, tagList);
-        }
-
-        public void Add(T delta, KeyValuePair<string, object?> tag1, KeyValuePair<string, object?> tag2)
-        {
-            TagList tagList = new TagList();
-            tagList.Add(tag1);
-            tagList.Add(tag2);
-            foreach (var tag in m_globalTags)
+            else
             {
-                tagList.Add(tag);
+                Interlocked.Add(ref _value, Convert.ToInt64(delta));
             }
-            m_counter.Add(delta, tagList);
-        }
-
-        public void Add(T delta, KeyValuePair<string, object?> tag1, KeyValuePair<string, object?> tag2, KeyValuePair<string, object?> tag3)
-        {
-            TagList tagList = new TagList();
-            tagList.Add(tag1);
-            tagList.Add(tag2);
-            tagList.Add(tag3);
-            foreach (var tag in m_globalTags)
-            {
-                tagList.Add(tag);
-            }
-            m_counter.Add(delta, tagList);
-        }
-
-        public void Add(T delta, ReadOnlySpan<KeyValuePair<string, object?>> tags)
-        {
-            TagList tagList = new TagList(tags);
-            foreach (var tag in m_globalTags)
-            {
-                tagList.Add(tag);
-            }
-            m_counter.Add(delta, tagList);
-        }
-
-        public void Add(T delta, params KeyValuePair<string, object?>[] tags)
-        {
-            TagList tagList = new TagList();
-            foreach(var tag in tags)
-            {
-                tagList.Add(tag);
-            }
-            foreach (var tag in m_globalTags)
-            {
-                tagList.Add(tag);
-            }
-            m_counter.Add(delta, tagList);
-        }
-
-        public void Add(T delta, in TagList tagList)
-        {
-            TagList outputList = new TagList();
-            foreach (var tag in tagList)
-            {
-                outputList.Add(tag);
-            }
-            foreach (var tag in m_globalTags)
-            {
-                outputList.Add(tag);
-            }
-            m_counter.Add(delta, outputList);
         }
     }
 }

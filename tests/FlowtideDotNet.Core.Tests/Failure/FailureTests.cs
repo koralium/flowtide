@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.DeviceFactories;
 using FlowtideDotNet.Substrait.Conversion;
 using FlowtideDotNet.Substrait;
 using FASTER.core;
+using FlowtideDotNet.Core.Connectors;
 
 namespace FlowtideDotNet.Core.Tests.Failure
 {
@@ -283,40 +284,29 @@ namespace FlowtideDotNet.Core.Tests.Failure
 
             var tmpStorage = new InMemoryDeviceFactory();
             tmpStorage.Initialize("./data/tmp");
+
+            ConnectorManager connectorManager = new ConnectorManager();
+            connectorManager.AddSource(new TestIngressFactory("*"));
+            connectorManager.AddSink(new FailureEgressFactory("*", new FailureEgressOptions()
+            {
+                OnCheckpoint = () =>
+                {
+                    checkpointCount++;
+                    if (!thrownOnce)
+                    {
+                        thrownOnce = true;
+                        throw new Exception();
+                    }
+                }
+            }));
+
             FlowtideBuilder differentialComputeBuilder = new FlowtideBuilder("teststream")
                 .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                 {
-                    CachePageCount = 100,
-                    CheckpointDir = "./data",
-                    LogDevice = tmpStorage.Get(new FileDescriptor()
-                    {
-                        directoryName = "persistent",
-                        fileName = "log"
-                    }),
-                    TemporaryStorageFactory = tmpStorage
+                    CachePageCount = 100
                 })
                 .AddPlan(optimizedPlan)
-                .AddReadWriteFactory(new TestFactory(
-                    (readRel, opt) =>
-                    {
-                        return new TestIngress(opt);
-                    },
-                    (writeRel, opt) =>
-                    {
-                        return new FailureEgress(opt, new FailureEgressOptions()
-                        {
-                            OnCheckpoint = () =>
-                            {
-                                checkpointCount++;
-                                if (!thrownOnce)
-                                {
-                                    thrownOnce = true;
-                                    throw new Exception();
-                                }
-                            }
-                        });
-                    }
-                    ));
+                .AddConnectorManager(connectorManager);
 
             var stream = differentialComputeBuilder.Build();
             await stream.StartAsync();

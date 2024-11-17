@@ -69,13 +69,13 @@ namespace FlowtideDotNet.Core.Operators.Write
     public abstract class SimpleGroupedWriteOperator : GroupedWriteBaseOperator<SimpleWriteState>
     {
         private MetadataResult? m_metadataResult;
-        private IBPlusTree<RowEvent, int>? m_modified;
+        private IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>? m_modified;
         private bool m_hasModified;
         private readonly ExecutionMode m_executionMode;
         private SimpleWriteState? _state;
         private Watermark? _latestWatermark;
         private ICounter<long>? _eventsProcessed;
-        private IBPlusTree<RowEvent, int>? m_existingData;
+        private IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>? m_existingData;
 
         protected SimpleGroupedWriteOperator(ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -111,7 +111,7 @@ namespace FlowtideDotNet.Core.Operators.Write
             }
         }
 
-        private static async IAsyncEnumerable<KeyValuePair<RowEvent, int>> IteratePerRow(IBPlusTreeIterator<RowEvent, int> iterator)
+        private static async IAsyncEnumerable<KeyValuePair<RowEvent, int>> IteratePerRow(IBPlusTreeIterator<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>> iterator)
         {
             await foreach (var page in iterator)
             {
@@ -272,11 +272,13 @@ namespace FlowtideDotNet.Core.Operators.Write
                     SentInitialData = false
                 };
             }
-            m_modified = await stateManagerClient.GetOrCreateTree("temporary", new BPlusTreeOptions<RowEvent, int>()
+            m_modified = await stateManagerClient.GetOrCreateTree("temporary", 
+                new BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
-                Comparer = PrimaryKeyComparer,
-                ValueSerializer = new IntSerializer(),
-                KeySerializer = new StreamEventBPlusTreeSerializer()
+                Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer),
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
             await m_modified.Clear();
 
@@ -284,11 +286,13 @@ namespace FlowtideDotNet.Core.Operators.Write
             {
                 // Create a tree to store existing data in the destination
                 // This will be used to check written data to existing data if it should be removed from the destination.
-                m_existingData = await stateManagerClient.GetOrCreateTree("existing_data", new BPlusTreeOptions<RowEvent, int>()
+                m_existingData = await stateManagerClient.GetOrCreateTree("existing_data", 
+                    new BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
                 {
-                    Comparer = PrimaryKeyComparer,
-                    ValueSerializer = new IntSerializer(),
-                    KeySerializer = new StreamEventBPlusTreeSerializer()
+                    Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
                 });
 
                 Logger.FetchingExistingDataInDataSource(StreamName, Name);

@@ -8,6 +8,7 @@ appsettings.development.json
 FlowtideDotNet.Console
 
 # User-specific files
+*.idea
 *.rsuser
 *.suo
 *.user

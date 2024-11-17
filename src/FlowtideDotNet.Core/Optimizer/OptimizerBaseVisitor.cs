@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.Optimizer
             for (int i = 0; i < plan.Relations.Count; i++)
             {
                 var relation = plan.Relations[i];
-                var newRelation = this.Visit(relation, null);
+                var newRelation = this.Visit(relation, null!);
 
                 plan.Relations[i] = newRelation;
             }
@@ -140,6 +140,16 @@ namespace FlowtideDotNet.Core.Optimizer
         {
             topNRelation.Input = Visit(topNRelation.Input, state);
             return topNRelation;
+        }
+
+        public override Relation VisitTableFunctionRelation(TableFunctionRelation tableFunctionRelation, object state)
+        {
+            if (tableFunctionRelation.Input != null)
+            {
+                tableFunctionRelation.Input = Visit(tableFunctionRelation.Input, state);
+            }
+
+            return tableFunctionRelation;
         }
     }
 }

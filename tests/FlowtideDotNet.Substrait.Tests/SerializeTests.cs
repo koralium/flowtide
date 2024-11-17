@@ -35,8 +35,7 @@ namespace FlowtideDotNet.Substrait.Tests
             var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
                 CustomProtobuf.IterationReferenceReadRelation.Descriptor,
                 CustomProtobuf.IterationRelation.Descriptor,
-                CustomProtobuf.NormalizationRelation.Descriptor,
-                CustomProtobuf.ReferenceRelation.Descriptor);
+                CustomProtobuf.NormalizationRelation.Descriptor);
             var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
                 .WithIndentation();
             var formatter = new Google.Protobuf.JsonFormatter(settings);
@@ -62,8 +61,62 @@ namespace FlowtideDotNet.Substrait.Tests
                 var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
                     CustomProtobuf.IterationReferenceReadRelation.Descriptor,
                     CustomProtobuf.IterationRelation.Descriptor,
-                    CustomProtobuf.NormalizationRelation.Descriptor,
-                    CustomProtobuf.ReferenceRelation.Descriptor);
+                    CustomProtobuf.NormalizationRelation.Descriptor);
+                var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
+                    .WithIndentation();
+                var formatter = new Google.Protobuf.JsonFormatter(settings);
+                var json = formatter.Format(protoPlan);
+            });
+            Assert.Null(ex);
+        }
+
+        [Fact]
+        public void SerializeTableFunctionInFrom()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                insert into out
+                select a FROM UNNEST(list(1,2,3)) a
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+
+            var ex = Record.Exception(() =>
+            {
+                var protoPlan = SubstraitSerializer.Serialize(plan);
+
+                var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
+                    CustomProtobuf.IterationReferenceReadRelation.Descriptor,
+                    CustomProtobuf.IterationRelation.Descriptor,
+                    CustomProtobuf.NormalizationRelation.Descriptor);
+                var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
+                    .WithIndentation();
+                var formatter = new Google.Protobuf.JsonFormatter(settings);
+                var json = formatter.Format(protoPlan);
+            });
+            Assert.Null(ex);
+        }
+
+        [Fact]
+        public void SerializeTableFunctionInJoin()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any);
+
+                insert into out
+                select t.a FROM table1 t
+                LEFT JOIN UNNEST(t.a) c ON c = 123
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+
+            var ex = Record.Exception(() =>
+            {
+                var protoPlan = SubstraitSerializer.Serialize(plan);
+
+                var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
+                    CustomProtobuf.IterationReferenceReadRelation.Descriptor,
+                    CustomProtobuf.IterationRelation.Descriptor,
+                    CustomProtobuf.NormalizationRelation.Descriptor);
                 var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
                     .WithIndentation();
                 var formatter = new Google.Protobuf.JsonFormatter(settings);

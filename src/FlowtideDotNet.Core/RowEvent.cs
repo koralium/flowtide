@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Core
             return _rowData.GetColumnRef(index);
         }
 
-        internal string ToJson()
+        public string ToJson()
         {
             var c = Compact(new FlexBuffer(ArrayPool<byte>.Shared));
 

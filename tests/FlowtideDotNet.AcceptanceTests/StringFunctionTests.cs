@@ -160,5 +160,23 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { Name = x.FirstName }));
         }
+
+        [Fact]
+        public async Task StringLength()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT LEN(firstName) as length FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { Length = x.FirstName?.Length ?? default(int?) }));
+        }
+
+        [Fact]
+        public async Task StringLengthNullableString()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT LEN(TrimmableNullableString) as length FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { Length = x.TrimmableNullableString?.Length ?? default(int?) }));
+        }
     }
 }

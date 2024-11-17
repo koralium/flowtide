@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
     {
         private readonly TopNComparer _comparer;
         private readonly TopNRelation relation;
-        private IBPlusTree<RowEvent, int>? _tree;
+        private IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>? _tree;
         private ICounter<long>? _eventsOutCounter;
         private ICounter<long>? _eventsProcessed;
 
@@ -95,11 +95,11 @@ namespace FlowtideDotNet.Core.Operators.TopN
             {
                 Debug.Assert(_eventsOutCounter != null, nameof(_eventsOutCounter));
                 _eventsOutCounter.Add(output.Count);
-                yield return new StreamEventBatch(output);
+                yield return new StreamEventBatch(output, relation.OutputLength);
             }
         }
 
-        private async Task GetOutputValues(RowEvent ev, List<RowEvent> output, IBPlusTreeIterator<RowEvent, int> iterator, GenericWriteOperation op)
+        private async Task GetOutputValues(RowEvent ev, List<RowEvent> output, IBPlusTreeIterator<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>> iterator, GenericWriteOperation op)
         {
             await iterator.SeekFirst();
             int count = 0;
@@ -120,7 +120,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
                 for (int i = 0; i < loopEndIndex; i++)
                 {
                     // Count all the weights in the page, since one row could have many duplicates
-                    count += page.Values[i];
+                    count += page.Values.Get(i);
                     if (count >= relation.Count)
                     {
                         break;
@@ -147,7 +147,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
                     if (index >= 0)
                     {
                         // Check if this value already outputs enough rows to satisfy the count
-                        if ((count + page.Values[index] - ev.Weight) >= relation.Count)
+                        if ((count + page.Values.Get(index) - ev.Weight) >= relation.Count)
                         {
                             // Break and do nothing, the count is already satisfied.
                             break;
@@ -192,7 +192,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
                     var page = enumerator.Current;
                     for (int i = pageIndex; i < page.Values.Count; i++)
                     {
-                        count += page.Values[i];
+                        count += page.Values.Get(i);
                         if (count > stopCount)
                         {
                             bumpStartIndex = i;
@@ -215,8 +215,8 @@ namespace FlowtideDotNet.Core.Operators.TopN
                         for (int i = bumpStartIndex; i < page.Values.Count; i++)
                         {
                             // Take the min value of the bump count and the weight of the row
-                            var weightToRemove = Math.Min(bumpCount, page.Values[i]);
-                            output.Add(new RowEvent(weightToRemove * bumpWeightModifier, 0, page.Keys[i].RowData));
+                            var weightToRemove = Math.Min(bumpCount, page.Values.Get(i));
+                            output.Add(new RowEvent(weightToRemove * bumpWeightModifier, 0, page.Keys.Get(i).RowData));
                             bumpCount -= weightToRemove;
                             if (bumpCount == 0)
                             {
@@ -252,11 +252,13 @@ namespace FlowtideDotNet.Core.Operators.TopN
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
             // Create tree that will hold all rows
-            _tree = await stateManagerClient.GetOrCreateTree("topn", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
+            _tree = await stateManagerClient.GetOrCreateTree("topn", 
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
-                Comparer = _comparer,
-                KeySerializer = new StreamEventBPlusTreeSerializer(),
-                ValueSerializer = new IntSerializer()
+                Comparer = new BPlusTreeListComparer<RowEvent>(_comparer),
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
         }
     }

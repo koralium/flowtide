@@ -49,6 +49,25 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, Count = x.Count() }));
         }
 
+        /// <summary>
+        /// Tests that checks that emit is working correctly from aggregate operator
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task AggregateWithGroupOnlyAggregate()
+        {
+            GenerateData(10000);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    '1' as c, count(*)
+                FROM orders
+                GROUP BY userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { c = "1", Count = x.Count() }));
+        }
+
         [Fact]
         public async Task AggregateOnJoinedData()
         {
@@ -147,6 +166,30 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task AggregateStopAndStartStream()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, min(orderkey)
+                FROM orders
+                GROUP BY userkey
+                ");
+            await WaitForUpdate();
+
+            await this.StopStream();
+
+            GenerateData(1000);
+
+            await StartStream();
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, MinVal = x.Min(y => y.OrderKey) }));
+        }
+
+        [Fact]
         public async Task AggregateWithGroupByOnly()
         {
             GenerateData();
@@ -160,6 +203,52 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key }));
+        }
+
+        [Fact]
+        public async Task ListAggWithMapAndUpdates()
+        {
+            GenerateData(1000);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_agg(map('userkey', userkey, 'company', u.companyId))
+                FROM users u
+                ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).Select(x => new KeyValuePair<string, object>[]{
+                new KeyValuePair<string, object>("userkey", x.UserKey),
+                new KeyValuePair<string, object>("company", x.CompanyId!)
+            }).ToList() } });
+
+            GenerateData(1000);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new KeyValuePair<string, object>[]{
+                new KeyValuePair<string, object>("userkey", x.UserKey),
+                new KeyValuePair<string, object>("company", x.CompanyId!)
+            }).ToList() } });
+
+            Users[0].CompanyId = "newCompany";
+            AddOrUpdateUser(Users[0]);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new KeyValuePair<string, object>[]{
+                new KeyValuePair<string, object>("userkey", x.UserKey),
+                new KeyValuePair<string, object>("company", x.CompanyId!)
+            }).ToList() } });
+
+            DeleteUser(Users[10]);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new KeyValuePair<string, object>[]{
+                new KeyValuePair<string, object>("userkey", x.UserKey),
+                new KeyValuePair<string, object>("company", x.CompanyId!)
+            }).ToList() } });
         }
     }
 }

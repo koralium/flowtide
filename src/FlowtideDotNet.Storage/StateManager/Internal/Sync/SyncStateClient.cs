@@ -20,6 +20,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
     internal class SyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler
         where V : ICacheObject
+        where TMetadata : IStorageMetadata
     {
         private bool disposedValue;
         private readonly StateManagerSync stateManager;
@@ -29,18 +30,29 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly StateClientOptions<V> options;
         private readonly bool useReadCache;
         private readonly int m_bplusTreePageSize;
+        private readonly int m_bplusTreePageSizeBytes;
         private readonly ConcurrentDictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
         private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
-        private readonly Histogram<float> m_persistenceReadMsHistogram;
-        private readonly Histogram<float> m_temporaryReadMsHistogram;
+        private readonly Histogram<float>? m_persistenceReadMsHistogram;
+        private readonly Histogram<float>? m_temporaryReadMsHistogram;
+        private readonly Histogram<float>? m_temporaryWriteMsHistogram;
         private readonly TagList tagList;
+
+        // Method containers for addOrUpdate methods to skip casting to Func all the time
+        private Func<long, int> addorUpdate_newValue_container;
+        private Func<long, int, int> addorUpdate_existingValue_container;
 
         /// <summary>
         /// Value of how many pages have changed since last commit.
         /// </summary>
         private long newPages;
+        private long cacheMisses;
+
+        public long CacheMisses => cacheMisses;
+
+        public override long MetadataId => metadataId;
 
         public SyncStateClient(
             StateManagerSync stateManager,
@@ -52,7 +64,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             FileCacheOptions fileCacheOptions,
             Meter meter,
             bool useReadCache,
-            int bplusTreePageSize)
+            int bplusTreePageSize,
+            int bplusTreePageSizeBytes)
         {
             this.stateManager = stateManager;
             this.metadataId = metadataId;
@@ -61,13 +74,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.options = options;
             this.useReadCache = useReadCache;
             this.m_bplusTreePageSize = bplusTreePageSize;
+            this.m_bplusTreePageSizeBytes = bplusTreePageSizeBytes;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name);
             m_modified = new ConcurrentDictionary<long, int>();
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
-            m_persistenceReadMsHistogram = meter.CreateHistogram<float>("flowtide_persistence_read_ms");
-            m_temporaryReadMsHistogram = meter.CreateHistogram<float>("flowtide_temporary_read_ms");
+            if (!string.IsNullOrEmpty(name))
+            {
+                m_persistenceReadMsHistogram = meter.CreateHistogram<float>("flowtide_persistence_read_ms");
+                m_temporaryReadMsHistogram = meter.CreateHistogram<float>("flowtide_temporary_read_ms");
+                m_temporaryWriteMsHistogram = meter.CreateHistogram<float>("flowtide_temporary_write_ms");
+            }
             tagList = options.TagList;
             tagList.Add("state_client", name);
+            addorUpdate_newValue_container = AddOrUpdate_NewValue;
+            addorUpdate_existingValue_container = AddOrUpdate_ExistingValue;
         }
 
         public TMetadata? Metadata
@@ -84,22 +104,35 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public int BPlusTreePageSize => m_bplusTreePageSize;
 
+        public int BPlusTreePageSizeBytes => m_bplusTreePageSizeBytes;
+
+        private class AddOrUpdateState
+        {
+            public bool isFull;
+            public V? value;
+        }
+
+        private AddOrUpdateState _addOrUpdateState = new AddOrUpdateState();
+
+        private int AddOrUpdate_NewValue(long key)
+        {
+            _addOrUpdateState.isFull = stateManager.AddOrUpdate(key, _addOrUpdateState.value!, this);
+            return 0;
+        }
+
+        private int AddOrUpdate_ExistingValue(long key, int old)
+        {
+            _addOrUpdateState.isFull = stateManager.AddOrUpdate(key, _addOrUpdateState.value!, this);
+            return old + 1;
+        }
+
         public bool AddOrUpdate(in long key, V value)
         {
             lock (m_lock)
             {
-                bool isFull = false;
-                m_modified.AddOrUpdate(key, (key) =>
-                {
-                    isFull = stateManager.AddOrUpdate(key, value, this);
-                    return 0;
-                },
-                (key, old) =>
-                {
-                    isFull = stateManager.AddOrUpdate(key, value, this);
-                    return old + 1;
-                });
-                return isFull;
+                _addOrUpdateState.value = value;
+                 m_modified.AddOrUpdate(key, addorUpdate_newValue_container, addorUpdate_existingValue_container);
+                return _addOrUpdateState.isFull;
             }
         }
 
@@ -132,7 +165,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     await session.Write(kv.Key, bytes);
 
                     if (!useReadCache)
-                    {
+                    {   
                         m_fileCache.Free(kv.Key);
                     }
                     else
@@ -142,6 +175,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         m_fileCacheVersion.Remove(kv.Key, out _);
                         m_fileCache.Free(kv.Key);
                     }
+                    val.Return();
                     continue;
                 }
                 {
@@ -182,9 +216,25 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_fileCacheVersion.Clear();
             }
             
+            if (!metadata.CommitedOnce || (metadata.Metadata != null && metadata.Metadata.Updated)) 
             {
-                var bytes = StateClientMetadataSerializer.Serialize(metadata);
-                await session.Write(metadataId, bytes);
+                var previousCommitedOnce = metadata.CommitedOnce;
+                try
+                {
+                    metadata.CommitedOnce = true;
+                    var bytes = StateClientMetadataSerializer.Serialize(metadata);
+                    await session.Write(metadataId, bytes);
+                    if (metadata.Metadata != null)
+                    {
+                        metadata.Metadata.Updated = false;
+                    }
+                    
+                }
+                catch (Exception)
+                {
+                    metadata.CommitedOnce = previousCommitedOnce;
+                    throw;
+                }
             }
         }
 
@@ -215,6 +265,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     return ValueTask.FromResult<V?>(val);
                 }
+                Interlocked.Increment(ref cacheMisses);
                 // Read from temporary file storage
                 if (m_fileCacheVersion.ContainsKey(key))
                 {
@@ -222,7 +273,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     var bytes = m_fileCache.Read(key);
                     var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
                     stateManager.AddOrUpdate(key, value, this);
-                    m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
+                    if (!value.TryRent())
+                    {
+                        throw new InvalidOperationException("Could not rent value when fetched from storage.");
+                    }
+                    if (m_temporaryReadMsHistogram != null)
+                    {
+                        m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
+                    }
+                    
                     return ValueTask.FromResult<V?>(value);
                 }
                 // Read from persistent store
@@ -237,7 +296,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             var bytes = await session.Read(key);
             var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
             stateManager.AddOrUpdate(key, value, this);
-            m_persistenceReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
+            if (!value.TryRent())
+            {
+                throw new InvalidOperationException("Could not rent value when fetched from storage.");
+            }
+            if (m_persistenceReadMsHistogram != null)
+            {
+                m_persistenceReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
+            }
             return value;
         }
 
@@ -274,7 +340,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_fileCache.FreeAll();
                 m_fileCacheVersion.Clear();
             }
-            if (clearMetadata)
+            if (clearMetadata || !metadata.CommitedOnce)
             {
                 Metadata = default;
             }
@@ -320,9 +386,21 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     continue;
                 }
                 value.Item1.ValueRef.value.EnterWriteLock();
-                var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value, stateManager.SerializeOptions);
-                m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);
-                value.Item1.ValueRef.value.ExitWriteLock();
+                var sw = ValueStopwatch.StartNew();
+                try
+                {
+                    var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value, stateManager.SerializeOptions);
+                    m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);
+                }
+                finally
+                {
+                    value.Item1.ValueRef.value.ExitWriteLock();
+                }
+                if (m_temporaryWriteMsHistogram != null)
+                {
+                    m_temporaryWriteMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
+                }
+                
                 m_fileCacheVersion[value.Item1.ValueRef.key] = val;
             }
             m_fileCache.Flush();

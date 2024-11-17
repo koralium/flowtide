@@ -17,16 +17,15 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FASTER.core;
 using Microsoft.Extensions.Logging.Abstractions;
+using FlowtideDotNet.Storage.Memory;
+using System.Diagnostics;
 
 namespace DifferntialCompute.Benchmarks
 {
     public class BPlusTreeInsertionBenchmark
     {
-        private IStateManagerClient nodeClient;
-        private IBPlusTree<long, string> tree;
-
-        [Params(1000, 5000, 10000)]
-        public int CachePageCount;
+        private IStateManagerClient? nodeClient;
+        private IBPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>? tree;
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -35,10 +34,7 @@ namespace DifferntialCompute.Benchmarks
             localStorage.Initialize("./data/temp");
             StateManagerSync stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
-                CachePageCount = CachePageCount,
-                LogDevice = localStorage.Get(new FileDescriptor("persistent", "perstitent.log")),
-                CheckpointDir = "./data",
-                TemporaryStorageFactory = localStorage
+                CachePageCount = 1_000_000
             }, NullLogger.Instance, new System.Diagnostics.Metrics.Meter("storage"), "storage");
             
             stateManager.InitializeAsync().GetAwaiter().GetResult();
@@ -49,12 +45,14 @@ namespace DifferntialCompute.Benchmarks
         [IterationSetup]
         public void IterationSetup()
         {
-            tree = nodeClient.GetOrCreateTree<long, string>("tree", new BPlusTreeOptions<long, string>()
+            Debug.Assert(nodeClient != null);
+            tree = nodeClient.GetOrCreateTree("tree", new BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
             {
                 BucketSize = 1024,
-                Comparer = new LongComparer(),
-                KeySerializer = new LongSerializer(),
-                ValueSerializer = new StringSerializer()
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator =  GlobalMemoryManager.Instance
             }).GetAwaiter().GetResult();
             tree.Clear();
         }
@@ -62,6 +60,7 @@ namespace DifferntialCompute.Benchmarks
         [Benchmark]
         public async Task InsertInOrder()
         {
+            Debug.Assert(tree != null);
             for (int i = 0; i < 1_000_000; i++)
             {
                 await tree.Upsert(i, $"hello{i}");

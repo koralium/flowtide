@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Relations
 {
-    public class PlanRelation : Relation
+    public sealed class PlanRelation : Relation, IEquatable<PlanRelation>
     {
         public override int OutputLength => Root.OutputLength;
 
@@ -21,6 +22,37 @@ namespace FlowtideDotNet.Substrait.Relations
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitPlanRelation(this, state);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is PlanRelation relation &&
+                Equals(relation);
+        }
+
+        public bool Equals(PlanRelation? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(Root, other.Root);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+            code.Add(base.GetHashCode());
+            code.Add(Root);
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(PlanRelation? left, PlanRelation? right)
+        {
+            return EqualityComparer<PlanRelation>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(PlanRelation? left, PlanRelation? right)
+        {
+            return !(left == right);
         }
     }
 }

@@ -10,10 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 namespace FlowtideDotNet.Substrait.Type
 {
     public class AnyType : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.Any;
+
+        public static AnyType Instance { get; } = new AnyType();
     }
 }
