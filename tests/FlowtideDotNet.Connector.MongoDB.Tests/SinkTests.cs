@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
                 mongoDBFixture,
                 "test",
                 "test",
-                new List<string>() { "UserKey" }, "testinsert");
+                new List<string>() { "UserKey" }, "testinsert", addSink: true);
 
             testStream.Generate(userCount);
             await testStream.StartStream(@"
@@ -86,7 +86,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
                 async (col) =>
                 {
                     await col.DeleteManyAsync(Builders<BsonDocument>.Filter.Not(Builders<BsonDocument>.Filter.Eq("_metadata", "1")));
-                });
+                }
+                , addSink: true);
 
             collection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(Builders<BsonDocument>.IndexKeys.Ascending("UserKey")));
 

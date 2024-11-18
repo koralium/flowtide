@@ -41,12 +41,12 @@ namespace FlowtideDotNet.Core.Operators.Read
 
     public record struct DeltaReadEvent(EventBatchWeighted? BatchData, Watermark? Watermark);
 
-    internal class ColumnBatchReadState
+    public class ColumnBatchReadState
     {
         public bool InitialSent { get; set; }
     }
 
-    internal abstract class ColumnBatchReadBaseOperator<TState> : ReadBaseOperator<TState>
+    public abstract class ColumnBatchReadBaseOperator<TState> : ReadBaseOperator<TState>
         where TState: ColumnBatchReadState
     {
         private bool _initialSent;
@@ -58,6 +58,11 @@ namespace FlowtideDotNet.Core.Operators.Read
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _fullLoadTempTree;
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _persistentTree;
         private IBPlusTree<ColumnRowReference, int, NormalizeKeyStorage, PrimitiveListValueContainer<int>>? _deleteTree;
+        private Task? _deltaLoadTask;
+        private object _taskLock = new object();
+
+        private IColumn[]? _deleteTreeToPersistentColumns;
+        private EventBatchData? _deleteTreeTopersistentBatch;
 
         public ColumnBatchReadBaseOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(options)
         {
@@ -76,8 +81,34 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         public override Task OnTrigger(string triggerName, object? state)
         {
-            throw new NotImplementedException();
+            switch (triggerName)
+            {
+                case "delta_load":
+                    lock(_taskLock)
+                    {
+                        if (_deltaLoadTask == null)
+                        {
+                            _deltaLoadTask = RunTask(DeltaLoadTrigger)
+                                .ContinueWith((task) =>
+                                {
+                                    lock (_taskLock)
+                                    {
+                                        _deltaLoadTask = default;
+                                    }
+                                });
+                        }
+                        return Task.CompletedTask;
+                    }
+                    
+            }
+            return Task.CompletedTask;
         }
+
+        protected virtual async Task DeltaLoadTrigger(IngressOutput<StreamEventBatch> output, object? state)
+        {
+            await DoDeltaLoad(output);
+        }
+
 
         protected override async Task InitializeOrRestore(long restoreTime, TState? state, IStateManagerClient stateManagerClient)
         {
@@ -93,6 +124,8 @@ namespace FlowtideDotNet.Core.Operators.Read
             _primaryKeyColumns = await GetPrimaryKeyColumns();
             _otherColumns = [];
             _emitList = [];
+            _deleteTreeToPersistentColumns = new IColumn[_readRelation.BaseSchema.Names.Count];
+            _deleteTreeTopersistentBatch = new EventBatchData(_deleteTreeToPersistentColumns);
 
             if (_readRelation.EmitSet)
             {
@@ -102,6 +135,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                     if (!_primaryKeyColumns.Contains(_readRelation.Emit[i]))
                     {
                         _otherColumns.Add(_readRelation.Emit[i]);
+                        _deleteTreeToPersistentColumns[i] = new AlwaysNullColumn();
                     }
                 }
             }
@@ -114,8 +148,15 @@ namespace FlowtideDotNet.Core.Operators.Read
                     if (!_primaryKeyColumns.Contains(i))
                     {
                         _otherColumns.Add(i);
+                        _deleteTreeToPersistentColumns[i] = new AlwaysNullColumn();
                     }
                 }
+            }
+
+            List<int> deleteTreeKeys = new List<int>();
+            for (int i = 0; i < _primaryKeyColumns.Count; i++)
+            {
+                deleteTreeKeys.Add(i);
             }
 
             _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp", 
@@ -137,8 +178,8 @@ namespace FlowtideDotNet.Core.Operators.Read
             _deleteTree = await stateManagerClient.GetOrCreateTree("delete",
                 new BPlusTreeOptions<ColumnRowReference, int, NormalizeKeyStorage, PrimitiveListValueContainer<int>>()
                 {
-                    Comparer = new NormalizeTreeComparer(_primaryKeyColumns),
-                    KeySerializer = new NormalizeKeyStorageSerializer(_primaryKeyColumns, MemoryAllocator),
+                    Comparer = new NormalizeTreeComparer(deleteTreeKeys),
+                    KeySerializer = new NormalizeKeyStorageSerializer(deleteTreeKeys, MemoryAllocator),
                     ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
                     MemoryAllocator = MemoryAllocator
                 });
@@ -155,9 +196,16 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         protected abstract Task<TState> Checkpoint(long checkpointTime);
 
-        protected abstract IAsyncEnumerable<ColumnReadEvent> FullLoad();
+        protected abstract IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken);
 
-        protected abstract IAsyncEnumerable<DeltaReadEvent> DeltaLoad(long lastWatermark);
+        /// <summary>
+        /// Called when loading delta, the enterCheckpointLock must be called by the the source to make sure that the checkpoint lock is held.
+        /// The lock is released after the data has been sent out completely on the stream.
+        /// </summary>
+        /// <param name="lastWatermark"></param>
+        /// <param name="EnterCheckpointLock"></param>
+        /// <returns></returns>
+        protected abstract IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken);
 
         protected abstract ValueTask<List<int>> GetPrimaryKeyColumns();
 
@@ -168,6 +216,23 @@ namespace FlowtideDotNet.Core.Operators.Read
             {
                 var compareResult = DataValueComparer.Instance.Compare(
                     x.referenceBatch.Columns[_otherColumns[i]].GetValueAt(x.RowIndex, default),
+                    y.referenceBatch.Columns[i].GetValueAt(y.RowIndex, default));
+
+                if (compareResult != 0)
+                {
+                    return compareResult;
+                }
+            }
+            return 0;
+        }
+
+        private int CompareKeys(ColumnRowReference x, ColumnRowReference y)
+        {
+            Debug.Assert(_primaryKeyColumns != null);
+            for (int i = 0; i < _primaryKeyColumns.Count; i++)
+            {
+                var compareResult = DataValueComparer.Instance.Compare(
+                    x.referenceBatch.Columns[i].GetValueAt(x.RowIndex, default),
                     y.referenceBatch.Columns[i].GetValueAt(y.RowIndex, default));
 
                 if (compareResult != 0)
@@ -189,18 +254,15 @@ namespace FlowtideDotNet.Core.Operators.Read
             }
         }
 
-        private async Task DoDeltaLoad(IngressOutput<StreamEventBatch> output)
+        protected async Task DoDeltaLoad(IngressOutput<StreamEventBatch> output)
         {
             Debug.Assert(_persistentTree != null);
             Debug.Assert(_otherColumns != null);
             Debug.Assert(_emitList != null);
             Debug.Assert(_primaryKeyColumns != null);
+            
 
-            Watermark? lastWatermark = default;
-            bool sentData = false;
-            await output.EnterCheckpointLock();
-
-            await foreach (var e in DeltaLoad(0))
+            await foreach (var e in DeltaLoad(output.EnterCheckpointLock, output.ExitCheckpointLock, output.CancellationToken))
             {
                 if (e.BatchData != null)
                 {
@@ -262,6 +324,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                                 // Does not exist
                                 if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
                                 {
+                                    weights.Add(1);
+                                    iterations.Add(0);
                                     toEmitOffsets.Add(input.RowIndex);
                                     return (input, GenericWriteOperation.Upsert);
                                 }
@@ -273,7 +337,6 @@ namespace FlowtideDotNet.Core.Operators.Read
                     // Emit new data
                     if (weights.Count > 0)
                     {
-                        sentData = true;
                         IColumn[] columns = new IColumn[_emitList.Count];
 
                         for (int k = 0; k < _emitList.Count; k++)
@@ -293,7 +356,6 @@ namespace FlowtideDotNet.Core.Operators.Read
                     // Emit deleted data
                     if (deleteBatchKeyOffsets.Count > 0)
                     {
-                        sentData = true;
                         PrimitiveList<int> deleteWeights = new PrimitiveList<int>(MemoryAllocator);
                         PrimitiveList<uint> deleteIterations = new PrimitiveList<uint>(MemoryAllocator);
 
@@ -331,20 +393,9 @@ namespace FlowtideDotNet.Core.Operators.Read
 
                 if (e.Watermark != null)
                 {
-                    lastWatermark = e.Watermark;
+                    await output.SendWatermark(e.Watermark);
                 }
-            }
 
-            if (lastWatermark != null)
-            {
-                sentData = true;
-                await output.SendWatermark(lastWatermark);
-            }
-            output.ExitCheckpointLock();
-
-            if (sentData)
-            {
-                // Schedule checkpoint after a watermark
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }
         }
@@ -361,7 +412,9 @@ namespace FlowtideDotNet.Core.Operators.Read
             // Lock checkpointing until the full load is complete
             await output.EnterCheckpointLock();
 
-            await foreach (var columnReadEvent in FullLoad())
+            long lastWatermark = -1;
+
+            await foreach (var columnReadEvent in FullLoad(output.CancellationToken))
             {
                 PrimitiveList<int> toEmitOffsets = new PrimitiveList<int>(MemoryAllocator);
                 PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
@@ -412,6 +465,8 @@ namespace FlowtideDotNet.Core.Operators.Read
 
                         if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
                         {
+                            weights.Add(1);
+                            iterations.Add(0);
                             toEmitOffsets.Add(input.RowIndex);
                             return (input, GenericWriteOperation.Upsert);
                         }
@@ -472,6 +527,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                 {
                     deleteBatchKeyOffsets.Dispose();
                 }
+
+                lastWatermark = columnReadEvent.Watermark;
             }
 
             var tmpIterator = _fullLoadTempTree.CreateIterator();
@@ -488,7 +545,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             // Go through both trees and find deletions
             while (hasNew || hasOld)
             {
-                int comparison = hasNew && hasOld ? CompareRowReference(tmpEnumerator.Current, persistentEnumerator.Current) : 0;
+                int comparison = hasNew && hasOld ? CompareKeys(tmpEnumerator.Current, persistentEnumerator.Current) : 0;
 
                 // If there is no more old data, then we are done
                 if (!hasOld)
@@ -516,7 +573,10 @@ namespace FlowtideDotNet.Core.Operators.Read
 
             await OutputDeletedRowsFromFullLoad(output);
 
-            // TODO: Output watermark
+            if (lastWatermark >= 0)
+            {
+                await output.SendWatermark(new Watermark(_readRelation.NamedTable.DotSeperated, lastWatermark));
+            }
 
             // Exit the checkpoint lock
             output.ExitCheckpointLock();
@@ -531,13 +591,16 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_otherColumns != null);
             Debug.Assert(_persistentTree != null);
             Debug.Assert(_primaryKeyColumns != null);
+            Debug.Assert(_deleteTreeToPersistentColumns != null);
+            Debug.Assert(_deleteTreeTopersistentBatch != null);
+            Debug.Assert(_emitList != null);
 
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
-            IColumn[] deleteBatchColumns = new IColumn[_readRelation.OutputLength];
+            IColumn[] deleteBatchColumns = new IColumn[_readRelation.BaseSchema.Names.Count];
 
-            for (int i = 0; i < _readRelation.OutputLength; i++)
+            for (int i = 0; i < _readRelation.BaseSchema.Names.Count; i++)
             {
                 deleteBatchColumns[i] = Column.Create(MemoryAllocator);
             }
@@ -549,8 +612,18 @@ namespace FlowtideDotNet.Core.Operators.Read
             {
                 foreach (var kv in page)
                 {
+                    for(int k = 0; k < _primaryKeyColumns.Count; k++)
+                    {
+                        _deleteTreeToPersistentColumns[_primaryKeyColumns[k]] = kv.Key.referenceBatch.Columns[k];
+                    }
+
+                    var columnRef = new ColumnRowReference()
+                    {
+                        referenceBatch = _deleteTreeTopersistentBatch,
+                        RowIndex = kv.Key.RowIndex
+                    };
                     // Go through the deletions and delete them from the persistent tree
-                    var operation = await _persistentTree.RMWNoResult(kv.Key, default, (input, current, exists) =>
+                    var operation = await _persistentTree.RMWNoResult(columnRef, default, (input, current, exists) =>
                     {
                         if (exists)
                         {
@@ -576,7 +649,14 @@ namespace FlowtideDotNet.Core.Operators.Read
                     }
                     if (weights.Count >= 100)
                     {
-                        await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(deleteBatchColumns))));
+                        IColumn[] columns = new IColumn[_emitList.Count];
+
+                        for (int k = 0; k < _emitList.Count; k++)
+                        {
+                            columns[k] = deleteBatchColumns[_emitList[k]];
+                        }
+
+                        await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
 
                         // Reset
                         weights = new PrimitiveList<int>(MemoryAllocator);
@@ -591,7 +671,13 @@ namespace FlowtideDotNet.Core.Operators.Read
 
             if (weights.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(deleteBatchColumns))));
+                IColumn[] columns = new IColumn[_emitList.Count];
+
+                for (int k = 0; k < _emitList.Count; k++)
+                {
+                    columns[k] = deleteBatchColumns[_emitList[k]];
+                }
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
             }
             else
             {
@@ -615,6 +701,9 @@ namespace FlowtideDotNet.Core.Operators.Read
                 await DoFullLoad(output);
                 _initialSent = true;
             }
+
+            await RegisterTrigger("delta_load", TimeSpan.FromMilliseconds(1));
         }
+
     }
 }

@@ -12,12 +12,6 @@
 
 using FlowtideDotNet.Connector.MongoDB;
 using FlowtideDotNet.Connector.MongoDB.Internal;
-using FlowtideDotNet.Core.Connectors;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core
 {
@@ -26,6 +20,12 @@ namespace FlowtideDotNet.Core
         public static IConnectorManager AddMongoDbSink(this IConnectorManager connectorManager, string regexPattern, FlowtideMongoDBSinkOptions options)
         {
             connectorManager.AddSink(new MongoDBSinkFactory(regexPattern, options));
+            return connectorManager;
+        }
+
+        public static IConnectorManager AddMongoDbSource(this IConnectorManager connectorManager, string regexPattern, FlowtideMongoDbSourceOptions options)
+        {
+            connectorManager.AddSource(new MongoDbSourceFactory(regexPattern, options));
             return connectorManager;
         }
     }
