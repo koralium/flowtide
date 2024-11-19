@@ -49,6 +49,7 @@ namespace FlowtideDotNet.SqlServer
 
             using var conn = new SqlConnection(connectionStringFunc());
             conn.Open();
+            conn.ChangeDatabase(tableCatalog);
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "select COLUMN_NAME, DATA_TYPE from INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @tableName AND TABLE_SCHEMA = @tableSchema  AND TABLE_CATALOG = @catalog";
             cmd.Parameters.Add(new SqlParameter("@tableName", name));
