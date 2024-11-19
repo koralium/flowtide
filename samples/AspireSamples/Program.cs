@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using AspireSamples.MongoDbToConsole;
 using Spectre.Console;
 using SqlServerToSqlServerAspire.SqlServerToSqlServer;
 
@@ -20,12 +21,16 @@ var sample = AnsiConsole.Prompt(
         .Title("Select sample:")
         .PageSize(10)
         .AddChoices(new[] {
-            "SqlServer-To-SqlServer"
+            "SqlServer-To-SqlServer",
+            "MongoDB-To-Console",
         }));
 
 switch (sample)
 {
     case "SqlServer-To-SqlServer":
         SqlServerToSqlServerSample.RunSample(builder);
+        break;
+    case "MongoDB-To-Console":
+        MongoDbToConsoleStartup.RunSample(builder);
         break;
 }

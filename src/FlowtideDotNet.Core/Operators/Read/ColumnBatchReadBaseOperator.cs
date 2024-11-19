@@ -33,6 +33,7 @@ using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Base;
+using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Core.Operators.Read
 {
@@ -196,7 +197,7 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         protected abstract Task<TState> Checkpoint(long checkpointTime);
 
-        protected abstract IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken);
+        protected abstract IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, CancellationToken enumeratorCancellationToken = default);
 
         /// <summary>
         /// Called when loading delta, the enterCheckpointLock must be called by the the source to make sure that the checkpoint lock is held.
@@ -205,7 +206,7 @@ namespace FlowtideDotNet.Core.Operators.Read
         /// <param name="lastWatermark"></param>
         /// <param name="EnterCheckpointLock"></param>
         /// <returns></returns>
-        protected abstract IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken);
+        protected abstract IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken, CancellationToken enumeratorCancellationToken = default);
 
         protected abstract ValueTask<List<int>> GetPrimaryKeyColumns();
 

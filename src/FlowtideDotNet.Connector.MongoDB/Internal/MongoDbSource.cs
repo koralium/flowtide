@@ -156,7 +156,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             }
         }
 
-        protected override async IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, [EnumeratorCancellation] CancellationToken cancellationToken)
+        protected override async IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken)
         {
             Debug.Assert(_state != null);
             Debug.Assert(_cursor != null);
@@ -165,9 +165,11 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             PrimitiveList<uint>? iterations = null;
             Column[]? columns = default;
 
-            while (await _cursor.MoveNextAsync())
+            var cancelTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
+
+            while (await _cursor.MoveNextAsync(cancelTokenSource.Token))
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                cancelTokenSource.Token.ThrowIfCancellationRequested();
                 await EnterCheckpointLock();
                 if (weights == null)
                 {
@@ -278,10 +280,12 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             }
         }
 
-        protected override async IAsyncEnumerable<ColumnReadEvent> FullLoad([EnumeratorCancellation] CancellationToken cancellationToken)
+        protected override async IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
         {
             Debug.Assert(collection != null);
             Debug.Assert(_state != null);
+
+            var cancelTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
 
             var isMasterCommand = new BsonDocument { { "hello", 1 } };
             var res = await collection.Database.RunCommandAsync(new BsonDocumentCommand<BsonDocument>(isMasterCommand));
@@ -310,7 +314,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 {
                     _cursor = await collection.WatchAsync(new ChangeStreamOptions()
                     {
-                    });
+                    }, cancellationToken);
                 }
             }
             
@@ -339,9 +343,9 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
             var cursor = await collection.FindAsync(Builders<BsonDocument>.Filter.Empty);
             
-            while (await cursor.MoveNextAsync(cancellationToken))
+            while (await cursor.MoveNextAsync(cancelTokenSource.Token))
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                cancelTokenSource.Token.ThrowIfCancellationRequested();
 
                 PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
                 PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
