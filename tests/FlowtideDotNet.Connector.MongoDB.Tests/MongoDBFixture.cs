@@ -44,5 +44,15 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
             await _mongoDbContainer.StartAsync();
             var execResult = await _mongoDbContainer.ExecAsync(new List<string>() { "/bin/bash", "-c", "echo \"rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017'}]})\" | mongosh --port 27017 --quiet" });
         }
+
+        public async Task StopContainer()
+        {
+            await _mongoDbContainer.StopAsync();
+        }
+
+        public async Task StartContainer()
+        {
+            await _mongoDbContainer.StartAsync();
+        }
     }
 }

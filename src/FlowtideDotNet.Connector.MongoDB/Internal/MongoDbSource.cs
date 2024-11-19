@@ -44,9 +44,12 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         public string? OperationTime { get; set; }
     }
+
     internal class MongoDbSource : ColumnBatchReadBaseOperator<MongoDbSourceState>
     {
         private readonly FlowtideMongoDbSourceOptions _options;
+        private readonly string _databaseName;
+        private readonly string _collectionName;
         private readonly ReadRelation _readRelation;
         private IMongoCollection<BsonDocument>? collection;
         private int _idFieldIndex;
@@ -58,9 +61,17 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         private int _lastWallTime;
         private int _operationCounter;
 
-        public MongoDbSource(FlowtideMongoDbSourceOptions sourceOptions, ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(readRelation, functionsRegister, options)
+        public MongoDbSource(
+            FlowtideMongoDbSourceOptions sourceOptions,
+            string databaseName,
+            string collectionName,
+            ReadRelation readRelation, 
+            IFunctionsRegister functionsRegister, 
+            DataflowBlockOptions options) : base(readRelation, functionsRegister, options)
         {
             this._options = sourceOptions;
+            this._databaseName = databaseName;
+            this._collectionName = collectionName;
             _readRelation = readRelation;
 
             _idFieldIndex = readRelation.BaseSchema.Names.IndexOf("_id");
@@ -96,8 +107,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             var urlBuilder = new MongoUrlBuilder(_options.ConnectionString);
             var connection = urlBuilder.ToMongoUrl();
             var client = new MongoClient(connection);
-            var database = client.GetDatabase(_options.Database);
-            collection = database.GetCollection<BsonDocument>(_options.Collection);
+            var database = client.GetDatabase(_databaseName);
+            collection = database.GetCollection<BsonDocument>(_collectionName);
             return base.InitializeOrRestore(restoreTime, state, stateManagerClient);
         }
 
@@ -217,7 +228,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                         iterations!.Add(0);
                         BsonDocumentToColumns(columns!, doc.FullDocument);
                     }
-                    else
+                    else if (doc.OperationType == ChangeStreamOperationType.Delete)
                     {
                         if (!doc.DocumentKey.TryGetValue("_id", out var id))
                         {
@@ -238,9 +249,13 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                             }
                         }
                     }
+                    else if (doc.OperationType == ChangeStreamOperationType.Drop)
+                    {
+                        _state.ResumeToken = null;
+                        _state.OperationTime = null;
+                        break;
+                    }
                     _state.ResumeToken = doc.ResumeToken.ToJson();
-
-
                 }
 
                 if (weights.Count > 0)
@@ -252,6 +267,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 }
                 ExitCheckpointLock();
             }
+            _cursor = default;
         }
 
         private void BsonDocumentToColumns(Column[] columns, BsonDocument document)

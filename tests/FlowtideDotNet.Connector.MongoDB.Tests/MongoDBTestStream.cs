@@ -58,10 +58,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
         {
             if (addSource)
             {
-                connectorManger.AddMongoDbSource("*", new FlowtideMongoDbSourceOptions()
+                connectorManger.AddMongoDbSource(new FlowtideMongoDbSourceOptions()
                 {
-                    Collection = collection,
-                    Database = databaseName,
                     ConnectionString = mongoDBFixture.GetConnectionString(),
                     DisableOperationTime = disableOperationTime
                 });

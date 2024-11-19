@@ -23,9 +23,14 @@ namespace FlowtideDotNet.Core
             return connectorManager;
         }
 
-        public static IConnectorManager AddMongoDbSource(this IConnectorManager connectorManager, string regexPattern, FlowtideMongoDbSourceOptions options)
+        public static IConnectorManager AddMongoDbSource(this IConnectorManager connectorManager, string connectionString)
         {
-            connectorManager.AddSource(new MongoDbSourceFactory(regexPattern, options));
+            return connectorManager.AddMongoDbSource(new FlowtideMongoDbSourceOptions { ConnectionString = connectionString });
+        }
+
+        public static IConnectorManager AddMongoDbSource(this IConnectorManager connectorManager, FlowtideMongoDbSourceOptions options)
+        {
+            connectorManager.AddSource(new MongoDbSourceFactory(options));
             return connectorManager;
         }
     }

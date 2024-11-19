@@ -23,7 +23,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    internal struct MapValue : IMapValue
+    public struct MapValue : IMapValue
     {
         private readonly IReadOnlyList<KeyValuePair<IDataValue, IDataValue>> keyValuePairs;
 

@@ -22,10 +22,6 @@ namespace FlowtideDotNet.Connector.MongoDB
     {
         public required string ConnectionString { get; set; }
 
-        public required string Database { get; set; }
-
-        public required string Collection { get; set; }
-
         /// <summary>
         /// Used only for testing, to see that the connector functions when operation time is not available.
         /// </summary>

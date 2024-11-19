@@ -184,5 +184,94 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
             stream.AssertCurrentDataEqual(stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName }));
 
         }
+
+        [Fact]
+        public async Task TestMongoDbDropCollection()
+        {
+            var stream = new MongoDBTestStream(mongoDBFixture, "test", "test", new List<string> { "id" }, "TestMongoDbDropCollection", addSource: true);
+
+            stream.Generate(100);
+
+            var mongoClient = new MongoClient(mongoDBFixture.GetConnectionString());
+            var database = mongoClient.GetDatabase("test");
+            var collection = database.GetCollection<User>("test");
+
+            await collection.InsertManyAsync(stream.Users);
+
+            await stream.StartStream(@"
+            CREATE TABLE test.test (
+                id,
+                UserKey,
+                FirstName,
+                LastName
+            );
+
+            INSERT INTO output
+            SELECT UserKey, FirstName, LastName
+            FROM test.test
+            ");
+
+            await stream.WaitForUpdate();
+
+            collection.Database.DropCollection("test");
+
+            await stream.WaitForUpdate();
+
+            while (stream.Users.Count > 0)
+            {
+                stream.DeleteUser(stream.Users.First());
+            }
+
+            stream.AssertCurrentDataEqual(stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName }));
+
+            stream.GenerateUsers(100);
+
+            collection.InsertMany(stream.Users);
+
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual(stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName }));
+        }
+
+        [Fact]
+        public async Task TestSelectUsingDoc()
+        {
+            var stream = new MongoDBTestStream(mongoDBFixture, "test", "test", new List<string> { "id" }, "TestSelectUsingDoc", addSource: true);
+
+            stream.Generate(100);
+
+            var mongoClient = new MongoClient(mongoDBFixture.GetConnectionString());
+            var database = mongoClient.GetDatabase("test");
+            var collection = database.GetCollection<User>("test");
+
+            await collection.InsertManyAsync(stream.Users);
+
+            await stream.StartStream(@"
+            INSERT INTO output
+            SELECT _doc.UserKey, _doc.FirstName, _doc.LastName
+            FROM test.test
+            ");
+
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual(stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName }));
+
+            stream.GenerateUsers(100);
+
+            await collection.InsertManyAsync(stream.Users.Skip(100));
+
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual(stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName }));
+
+            var firstuser = stream.Users.First();
+            stream.DeleteUser(firstuser);
+
+            collection.DeleteMany(Builders<User>.Filter.Eq("UserKey", firstuser.UserKey));
+
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual(stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName }));
+        }
     }
 }

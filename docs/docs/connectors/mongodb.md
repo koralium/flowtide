@@ -7,13 +7,79 @@ sidebar_position: 2
 The MongoDB connector allows you to insert data into a MongoDB collection.
 At this time only a sink is implemented, there is no support yet to have MongoDB as a source.
 
-## Sink
-
-The MongoDB sink allows the insertion of data into a MongoDB collection.
-
 The nuget package for the connector is:
 
 * FlowtideDotNet.Connector.MongoDB
+
+## Source
+
+The MongoDB source allows a user to create a stream that reads data from MongoDB and any changes on the collection.
+The connector requires that change stream is enabled on the MongoDB instance to function.
+
+To add the *MongoDB source* add the following line to the *ConnectorManager*:
+
+```csharp
+connectorManager.AddMongoDbSource("connectionString");
+```
+
+To select data from MongoDB use `{database}.{collectionName}`.
+
+You can also add MongoDB under a catalog:
+
+```csharp
+connectorManager.AddCatalog("mymongodb", c => {
+    c.AddMongoDbSource("connectionString");
+});
+```
+
+This will then be referenced with `mymongodb.{database}.{collectionName}`.
+
+### Accessing properties
+
+By default, the mongoDB source contains two properties defined:
+
+* *_id* - the _id field in MongoDB.
+* *_doc* - Map with key values of all the properties in the document.
+
+Example usage:
+
+```sql
+SELECT _doc.firstName, _doc.lastName
+FROM {database}.{collection}
+```
+
+It is possible to define a schema for easier access by using `CREATE TABLE`:
+
+```sql
+CREATE TABLE {database}.{collection} (
+  firstName,
+  lastName
+);
+
+SELECT firstName, lastName FROM {database}.{collection}
+```
+
+Using create table limits the data that is sent through the stream and only sends out the properties defined in the create table.
+
+:::warning
+
+When using _doc field the entire document is sent through the stream which can result in a performance decrease.
+A better alternative if one does not want to use `CREATE TABLE` is to use `CREATE VIEW` to project the map values earlier in the stream.
+
+```sql
+CREATE VIEW mymongodb AS
+SELECT _doc.firstName, _doc.lastName
+FROM {database}.{collection};
+
+SELECT firstName, lastName FROM mymongodb;
+```
+
+:::
+
+
+## Sink
+
+The MongoDB sink allows the insertion of data into a MongoDB collection.
 
 Its implementation waits fully until the stream has reached a steady state at a time T until it writes data to the collection.
 This means that its table output can always be traced back to a state from the source systems.

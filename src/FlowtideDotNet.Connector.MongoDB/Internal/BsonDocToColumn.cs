@@ -32,7 +32,11 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         public void AddToColumn(Column column, BsonDocument bsonDocument)
         {
-            if (bsonDocument.TryGetValue(propertyName, out var val))
+            if (propertyName == "_doc")
+            {
+                column.Add(BsonMapToDataValue(bsonDocument));
+            }
+            else if (bsonDocument.TryGetValue(propertyName, out var val))
             {
                 BsonValueToColumn(ref column, ref val);
             }
@@ -42,6 +46,12 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             }
         }
 
+        /// <summary>
+        /// Maps directly from bson into the column, this lowers the allocation on the heap compared to getting the IDataValue and then inserting.
+        /// </summary>
+        /// <param name="column"></param>
+        /// <param name="bsonValue"></param>
+        /// <exception cref="NotImplementedException"></exception>
         private void BsonValueToColumn(ref readonly Column column, ref readonly BsonValue bsonValue)
         {
             switch (bsonValue.BsonType)
@@ -76,9 +86,71 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 case BsonType.Timestamp:
                     column.Add(new Int64Value(bsonValue.AsBsonTimestamp.Timestamp));
                     break;
+                case BsonType.Document:
+                    column.Add(BsonMapToDataValue(bsonValue.AsBsonDocument));
+                    break;
+                case BsonType.Array:
+                    column.Add(BsonListToDataValue(bsonValue.AsBsonArray));
+                    break;
                 default:
                     throw new NotImplementedException($"Unknown BSON type {bsonValue.BsonType}");
             }
+        }
+
+        private IDataValue BsonValueToDataValue(in BsonValue bsonValue)
+        {
+            switch (bsonValue.BsonType)
+            {
+                case BsonType.Boolean:
+                    return new BoolValue(bsonValue.AsBoolean);
+                case BsonType.String:
+                    return new StringValue(bsonValue.AsString);
+                case BsonType.Int64:
+                    return new Int64Value(bsonValue.AsInt64);
+                case BsonType.Binary:
+                    return new BinaryValue(bsonValue.AsByteArray);
+                case BsonType.DateTime:
+                    return new Int64Value(bsonValue.ToUniversalTime().Ticks);
+                case BsonType.ObjectId:
+                    return new StringValue(bsonValue.AsObjectId.ToString());
+                case BsonType.Double:
+                    return new DoubleValue(bsonValue.AsDouble);
+                case BsonType.Int32:
+                    return new Int64Value(bsonValue.AsInt32);
+                case BsonType.Null:
+                    return NullValue.Instance;
+                case BsonType.Timestamp:
+                    return new Int64Value(bsonValue.AsBsonTimestamp.Timestamp);
+                case BsonType.Document:
+                    return BsonMapToDataValue(bsonValue.AsBsonDocument);
+                case BsonType.Array:
+                    return BsonListToDataValue(bsonValue.AsBsonArray);
+                default:
+                    throw new NotImplementedException($"Unknown BSON type {bsonValue.BsonType}");
+            }
+        }
+
+        private IDataValue BsonMapToDataValue(BsonDocument bsonDocument)
+        {
+            List<KeyValuePair<IDataValue, IDataValue>> list = new List<KeyValuePair<IDataValue, IDataValue>>();
+            foreach (var kvp in bsonDocument)
+            {
+                var val = kvp.Value;
+                KeyValuePair<IDataValue, IDataValue> propAndValue = new KeyValuePair<IDataValue, IDataValue>(new StringValue(kvp.Name), BsonValueToDataValue(in val));
+                list.Add(propAndValue);
+            }
+
+            return new MapValue(list);
+        }
+
+        private IDataValue BsonListToDataValue(BsonArray bsonArray)
+        {
+            List<IDataValue> list = new List<IDataValue>();
+            foreach (var val in bsonArray)
+            {
+                list.Add(BsonValueToDataValue(val));
+            }
+            return new ListValue(list);
         }
     }
 }

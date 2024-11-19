@@ -14,6 +14,7 @@ using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
 using System;
 using System.Collections.Generic;
@@ -24,18 +25,36 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.MongoDB.Internal
 {
-    internal class MongoDbSourceFactory : RegexConnectorSourceFactory
+    internal class MongoDbSourceFactory : AbstractConnectorSourceFactory, IConnectorTableProviderFactory
     {
         private readonly FlowtideMongoDbSourceOptions options;
+        private readonly MongoDbTableProvider mongoDbTableProvider;
 
-        public MongoDbSourceFactory(string regexPattern, FlowtideMongoDbSourceOptions options) : base(regexPattern)
+        public MongoDbSourceFactory(FlowtideMongoDbSourceOptions options)
         {
             this.options = options;
+            mongoDbTableProvider = new MongoDbTableProvider(options.ConnectionString);
+        }
+
+        public override bool CanHandle(ReadRelation readRelation)
+        {
+            return mongoDbTableProvider.TryGetTableInformation(readRelation.NamedTable.DotSeperated, out _);
+        }
+
+        public ITableProvider Create()
+        {
+            return mongoDbTableProvider;
         }
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            return new MongoDbSource(options, readRelation, functionsRegister, dataflowBlockOptions);
+            if (readRelation.NamedTable.Names.Count != 2)
+            {
+                throw new InvalidOperationException("MongoDB table name must be in the format 'database.collection' but was " + readRelation.NamedTable.DotSeperated);
+            }
+            var database = readRelation.NamedTable.Names[0];
+            var collection = readRelation.NamedTable.Names[1];
+            return new MongoDbSource(options, database, collection, readRelation, functionsRegister, dataflowBlockOptions);
         }
 
         public override Relation ModifyPlan(ReadRelation readRelation)
