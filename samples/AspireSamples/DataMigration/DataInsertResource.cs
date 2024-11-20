@@ -110,6 +110,12 @@ namespace AspireSamples.DataMigration
                     });
 
                     await dataInsertResource.afterStart(logger, tokenSource.Token);
+
+                    await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
+                    {
+                        ResourceType = "Data-Insert",
+                        State = "Finished"
+                    });
                 }
             });
 

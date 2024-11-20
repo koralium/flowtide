@@ -1,2 +1,2 @@
 ﻿INSERT INTO console
-SELECT * FROM test.test;
+SELECT * FROM test.users;

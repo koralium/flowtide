@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Sinks;
 using FlowtideDotNet.DependencyInjection;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -32,7 +33,8 @@ builder.Services.AddFlowtideStream("stream")
     .AddSqlFileAsPlan("stream.sql")
     .AddConnectors(c =>
     {
-        c.AddMongoDbSource(builder.Configuration.GetConnectionString("source")!);
+        c.AddMongoDbSource(builder.Configuration.GetConnectionString("mongo")!);
+        c.AddConsoleSink("console");
     })
     .AddStorage(c =>
     {

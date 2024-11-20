@@ -390,6 +390,10 @@ namespace FlowtideDotNet.Core.Operators.Read
                     {
                         deleteBatchKeyOffsets.Dispose();
                     }
+
+                    e.BatchData.EventBatchData.Dispose();
+                    e.BatchData.Weights.Dispose();
+                    e.BatchData.Iterations.Dispose();
                 }
 
                 if (e.Watermark != null)
@@ -530,10 +534,14 @@ namespace FlowtideDotNet.Core.Operators.Read
                 }
 
                 lastWatermark = columnReadEvent.Watermark;
+
+                columnReadEvent.BatchData.Weights.Dispose();
+                columnReadEvent.BatchData.Iterations.Dispose();
+                //columnReadEvent.BatchData.EventBatchData.Dispose();
             }
 
-            var tmpIterator = _fullLoadTempTree.CreateIterator();
-            var persistentIterator = _persistentTree.CreateIterator();
+            using var tmpIterator = _fullLoadTempTree.CreateIterator();
+            using var persistentIterator = _persistentTree.CreateIterator();
             await tmpIterator.SeekFirst();
             await persistentIterator.SeekFirst();
 
@@ -606,7 +614,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                 deleteBatchColumns[i] = Column.Create(MemoryAllocator);
             }
 
-            var deleteIterator = _deleteTree.CreateIterator();
+            using var deleteIterator = _deleteTree.CreateIterator();
             await deleteIterator.SeekFirst();
 
             await foreach (var page in deleteIterator)
