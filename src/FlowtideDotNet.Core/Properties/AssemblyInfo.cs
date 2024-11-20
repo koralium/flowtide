@@ -19,3 +19,5 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Sharepoint")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Benchmarks")]
 [assembly: InternalsVisibleTo("SqlSampleWithUI")]
+// added only for the purpose of debugging
+[assembly: InternalsVisibleTo("FlowtideDotNet.StateDiagnostics")]

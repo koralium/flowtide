@@ -30,5 +30,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
         public EventBatchData batch;
         public int index;
         public IDataValue insertValue;
+
+        public override string ToString()
+        {
+            List<string> vals = new List<string>();
+            for (int i = 0; i < batch.Columns.Count; i++)
+            {
+                vals.Add(batch.Columns[i].GetValueAt(index, default).ToString()!);
+            }
+            return $"{{{string.Join(",", vals)}}}";
+        }
     }
 }

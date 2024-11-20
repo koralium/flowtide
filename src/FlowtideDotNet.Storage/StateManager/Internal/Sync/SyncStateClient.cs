@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Utils;
 using System.Collections.Concurrent;
@@ -24,6 +25,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
     {
         private bool disposedValue;
         private readonly StateManagerSync stateManager;
+        private readonly string name;
         private readonly long metadataId;
         private StateClientMetadata<TMetadata> metadata;
         private readonly IPersistentStorageSession session;
@@ -68,6 +70,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             int bplusTreePageSizeBytes)
         {
             this.stateManager = stateManager;
+            this.name = name;
             this.metadataId = metadataId;
             this.metadata = metadata;
             this.session = session;
@@ -293,7 +296,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             Debug.Assert(options.ValueSerializer != null);
             var sw = ValueStopwatch.StartNew();
-            var bytes = await session.Read(key);
+            byte[]? bytes = default;
+            try
+            {
+                bytes = await session.Read(key);
+            }
+            catch(Exception e)
+            {
+                throw new FlowtidePersistentStorageException($"Error reading persistent data in client '{name}' with key '{key}'", e);
+            }
+            
             var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
             stateManager.AddOrUpdate(key, value, this);
             if (!value.TryRent())
