@@ -39,11 +39,12 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public SqlServerSourceFactory(
             Func<string> connectionStringFunc, 
-            Func<ReadRelation, string>? tableNameTransform = null)
+            Func<ReadRelation, string>? tableNameTransform = null,
+            bool useDatabaseDefinedInConnectionStringOnly = false)
         {
             this._connectionStringFunc = connectionStringFunc;
             this.customTableNameFunc = tableNameTransform;
-            _tableProvider = new SqlServerTableProvider(connectionStringFunc);
+            _tableProvider = new SqlServerTableProvider(connectionStringFunc, useDatabaseDefinedInConnectionStringOnly);
         }
 
         /// <summary>
