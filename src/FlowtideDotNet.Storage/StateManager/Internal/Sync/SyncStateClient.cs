@@ -205,6 +205,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 var bytes = StateClientMetadataSerializer.Serialize(metadata);
                 await session.Write(metadataId, bytes);
+                await session.Commit();
             }
         }
 

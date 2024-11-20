@@ -24,6 +24,11 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             this.session = session;
         }
 
+        public Task Commit()
+        {
+            return Task.CompletedTask;
+        }
+
         public async Task Delete(long key)
         {
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
