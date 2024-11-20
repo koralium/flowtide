@@ -303,7 +303,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             catch(Exception e)
             {
-                throw new FlowtidePersistentStorageException($"Error reading persistent data in client '{name}' with key '{key}'", e)
+                throw new FlowtidePersistentStorageException($"Error reading persistent data in client '{name}' with key '{key}'", e);
             }
             
             var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
