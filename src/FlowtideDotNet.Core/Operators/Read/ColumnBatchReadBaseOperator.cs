@@ -34,6 +34,7 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Base;
 using System.Runtime.CompilerServices;
+using FlowtideDotNet.Base.Metrics;
 
 namespace FlowtideDotNet.Core.Operators.Read
 {
@@ -64,6 +65,7 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         private IColumn[]? _deleteTreeToPersistentColumns;
         private EventBatchData? _deleteTreeTopersistentBatch;
+        private ICounter<long>? _eventsCounter;
 
         public ColumnBatchReadBaseOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(options)
         {
@@ -120,6 +122,11 @@ namespace FlowtideDotNet.Core.Operators.Read
             else
             {
                 _initialSent = false;
+            }
+
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = this.Metrics.CreateCounter<long>("events");
             }
 
             _primaryKeyColumns = await GetPrimaryKeyColumns();
@@ -261,6 +268,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_otherColumns != null);
             Debug.Assert(_emitList != null);
             Debug.Assert(_primaryKeyColumns != null);
+            Debug.Assert(_eventsCounter != null);
             
 
             await foreach (var e in DeltaLoad(output.EnterCheckpointLock, output.ExitCheckpointLock, output.CancellationToken))
@@ -345,6 +353,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                             columns[k] = new ColumnWithOffset(e.BatchData.EventBatchData.Columns[_emitList[k]], toEmitOffsets, false);
                         }
                         // Send out the data
+                        _eventsCounter.Add(weights.Count);
                         await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                     }
                     else
@@ -384,6 +393,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                             }
                         }
                         var outputBatch = new StreamEventBatch(new EventBatchWeighted(deleteWeights, deleteIterations, new EventBatchData(deleteColumns)));
+                        _eventsCounter.Add(deleteWeights.Count);
                         await output.SendAsync(outputBatch);
                     }
                     else
@@ -391,7 +401,6 @@ namespace FlowtideDotNet.Core.Operators.Read
                         deleteBatchKeyOffsets.Dispose();
                     }
 
-                    e.BatchData.EventBatchData.Dispose();
                     e.BatchData.Weights.Dispose();
                     e.BatchData.Iterations.Dispose();
                 }
@@ -413,6 +422,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_deleteTree != null);
             Debug.Assert(_emitList != null);
             Debug.Assert(_primaryKeyColumns != null);
+            Debug.Assert(_eventsCounter != null);
 
             // Lock checkpointing until the full load is complete
             await output.EnterCheckpointLock();
@@ -488,6 +498,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                         columns[k] = new ColumnWithOffset(columnReadEvent.BatchData.EventBatchData.Columns[_emitList[k]], toEmitOffsets, false);
                     }
                     // Send out the data
+                    _eventsCounter.Add(weights.Count);
                     await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 }
                 else
@@ -525,6 +536,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                             deleteColumns[emitIndex] = deleteBatchColumns[i];
                         }
                     }
+
+                    _eventsCounter.Add(deleteWeights.Count);
                     var outputBatch = new StreamEventBatch(new EventBatchWeighted(deleteWeights, deleteIterations, new EventBatchData(deleteColumns)));
                     await output.SendAsync(outputBatch);
                 }
@@ -537,7 +550,6 @@ namespace FlowtideDotNet.Core.Operators.Read
 
                 columnReadEvent.BatchData.Weights.Dispose();
                 columnReadEvent.BatchData.Iterations.Dispose();
-                //columnReadEvent.BatchData.EventBatchData.Dispose();
             }
 
             using var tmpIterator = _fullLoadTempTree.CreateIterator();
@@ -603,6 +615,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_deleteTreeToPersistentColumns != null);
             Debug.Assert(_deleteTreeTopersistentBatch != null);
             Debug.Assert(_emitList != null);
+            Debug.Assert(_eventsCounter != null);
 
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
@@ -665,6 +678,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                             columns[k] = deleteBatchColumns[_emitList[k]];
                         }
 
+                        _eventsCounter.Add(weights.Count);
                         await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
 
                         // Reset
@@ -686,6 +700,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                 {
                     columns[k] = deleteBatchColumns[_emitList[k]];
                 }
+                _eventsCounter.Add(weights.Count);
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
             }
             else

@@ -41,6 +41,7 @@ builder.Services.AddFlowtideStream("stream")
     .AddStorage(c =>
     {
         c.MinPageCount = 0;
+        c.MaxProcessMemory = 2L * 1024 * 1024 * 1024;
         c.AddTemporaryDevelopmentStorage();
     });
 

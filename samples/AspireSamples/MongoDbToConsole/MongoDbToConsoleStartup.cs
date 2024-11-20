@@ -49,7 +49,7 @@ namespace AspireSamples.MongoDbToConsole
 
                 // Small wait to ensure the resource is ready to be updated
                 // If done immediately, the container might overwrite the state
-                await Task.Delay(100);
+                await Task.Delay(1000);
                 await resourceNotification.PublishUpdateAsync(mongoInitialize.Resource, s => s with
                 {
                     ResourceType = "Container",
@@ -62,7 +62,6 @@ namespace AspireSamples.MongoDbToConsole
             var dataInsert = DataInsertResource.AddDataInsert(builder, "data-insert",
                 async (logger, statusUpdate, token) =>
                 {
-                    //var endPointDetails = source.Resource.GetEndpoint("mongo");
                     var connStr = await source.Resource.ConnectionStringExpression.GetValueAsync(token);
                     MongoClient mongoClient = new MongoClient(connStr);
 
@@ -70,15 +69,34 @@ namespace AspireSamples.MongoDbToConsole
                     var userCollection = database.GetCollection<User>("users");
                     var orderCollection = database.GetCollection<Order>("orders");
 
-                    var users = dataGenerator.GenerateUsers(100_000);
-                    var orders = dataGenerator.GenerateOrders(100_000);
+                    var users = dataGenerator.GenerateUsers(1000);
+                    var orders = dataGenerator.GenerateOrders(1000);
 
                     await userCollection.InsertManyAsync(users);
                     await orderCollection.InsertManyAsync(orders);
                 },
-                (logger, token) =>
+                async (logger, token) =>
                 {
-                    return Task.CompletedTask;
+                    var connStr = await source.Resource.ConnectionStringExpression.GetValueAsync(token);
+                    MongoClient mongoClient = new MongoClient(connStr);
+
+                    var database = mongoClient.GetDatabase("test");
+                    var userCollection = database.GetCollection<User>("users");
+                    var orderCollection = database.GetCollection<Order>("orders");
+
+                    while (true)
+                    {
+                        token.ThrowIfCancellationRequested();
+
+                        logger.LogInformation("Adding 100 users and 100 orders to mongodb.");
+                        var users = dataGenerator.GenerateUsers(100);
+                        var orders = dataGenerator.GenerateOrders(100);
+
+                        await userCollection.InsertManyAsync(users);
+                        await orderCollection.InsertManyAsync(orders);
+
+                        await Task.Delay(1000);
+                    }
                 })
                 .WaitFor(mongoInitialize);
 
