@@ -84,5 +84,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return ListValues().GetEnumerator();
         }
+
+        public override string ToString()
+        {
+            return $"[{String.Join(',', ListValues().Select(x => x.ToString()))}]";
+        }
     }
 }
