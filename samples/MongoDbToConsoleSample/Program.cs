@@ -25,6 +25,8 @@ builder.Logging.AddOpenTelemetry(log =>
     log.AddOtlpExporter();
 });
 
+
+
 // Add health checks
 builder.Services.AddHealthChecks()
     .AddFlowtideCheck();
@@ -38,9 +40,9 @@ builder.Services.AddFlowtideStream("stream")
     })
     .AddStorage(c =>
     {
+        c.MinPageCount = 0;
         c.AddTemporaryDevelopmentStorage();
     });
-// Add services to the container.
 
 var app = builder.Build();
 
