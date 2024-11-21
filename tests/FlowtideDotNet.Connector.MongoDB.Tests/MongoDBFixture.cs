@@ -18,20 +18,47 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
 {
     public class MongoDBFixture : IAsyncLifetime
     {
-        private readonly IContainer _mongoDbContainer = new ContainerBuilder()
-                .WithImage("mongo:7.0")
-                .WithPortBinding(27017, false)
-                .WithCommand("--replSet", "rs0", "--bind_ip_all", "--port", "27017")
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("Waiting for connections"))
-            .Build();
+        private readonly IContainer _mongoDbContainer;
+        private readonly bool disableChangeStream;
 
-        private readonly MongoDbContainer _mongoDbContainer2 =
-        new MongoDbBuilder().WithCommand("--replSet", "rs0", "--bind_ip_all", "--port", "27017").Build();
+        public MongoDBFixture()
+            : this(false)
+        {
+            
+        }
+
+        protected MongoDBFixture(bool disableChangeStream)
+        {
+            if (disableChangeStream)
+            {
+                _mongoDbContainer = new ContainerBuilder()
+                    .WithImage("mongo:7.0")
+                    // Use a different port since there was some issues when running multiple containers on the same port
+                    .WithPortBinding(27018, false)
+                    .WithCommand("--bind_ip_all", "--port", "27018")
+                    .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("Waiting for connections"))
+                    .Build();
+            }
+            else
+            {
+                _mongoDbContainer = new ContainerBuilder()
+                    .WithImage("mongo:7.0")
+                    .WithPortBinding(27017, false)
+                    .WithCommand("--replSet", "rs0", "--bind_ip_all", "--port", "27017")
+                    .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("Waiting for connections"))
+                    .Build();
+            }
+
+            this.disableChangeStream = disableChangeStream;
+        }
 
         public string GetConnectionString()
         {
-            return $"mongodb://localhost:{_mongoDbContainer.GetMappedPublicPort(27017)}"; // $"mongodb://localhost:{_mongoDbContainer.GetMappedPublicPort(27017)}";
-            //return _mongoDbContainer.GetConnectionString();
+            if (disableChangeStream)
+            {
+                return $"mongodb://localhost:{_mongoDbContainer.GetMappedPublicPort(27018)}";
+            }
+            return $"mongodb://localhost:{_mongoDbContainer.GetMappedPublicPort(27017)}";
         }
 
         public async Task DisposeAsync()
@@ -42,7 +69,11 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
         public async Task InitializeAsync()
         {
             await _mongoDbContainer.StartAsync();
-            var execResult = await _mongoDbContainer.ExecAsync(new List<string>() { "/bin/bash", "-c", "echo \"rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017'}]})\" | mongosh --port 27017 --quiet" });
+            
+            if (!disableChangeStream)
+            {
+                var execResult = await _mongoDbContainer.ExecAsync(new List<string>() { "/bin/bash", "-c", "echo \"rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017'}]})\" | mongosh --port 27017 --quiet" });
+            }
         }
 
         public async Task StopContainer()

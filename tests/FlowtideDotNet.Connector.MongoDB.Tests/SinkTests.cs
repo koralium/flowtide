@@ -15,6 +15,7 @@ using MongoDB.Driver;
 
 namespace FlowtideDotNet.Connector.MongoDB.Tests
 {
+    [Collection("MongoDB Tests")]
     public class SinkTests : IClassFixture<MongoDBFixture>
     {
         private readonly MongoDBFixture mongoDBFixture;

@@ -61,7 +61,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
                 connectorManger.AddMongoDbSource(new FlowtideMongoDbSourceOptions()
                 {
                     ConnectionString = mongoDBFixture.GetConnectionString(),
-                    DisableOperationTime = disableOperationTime
+                    DisableOperationTime = disableOperationTime,
+                    FullReloadIntervalForNonReplicaSets = TimeSpan.FromMilliseconds(50)
                 });
             }
             else

@@ -21,6 +21,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.MongoDB.Tests
 {
+    [Collection("MongoDB Tests")]
     public class SourceTests : IClassFixture<MongoDBFixture>
     {
         private readonly MongoDBFixture mongoDBFixture;

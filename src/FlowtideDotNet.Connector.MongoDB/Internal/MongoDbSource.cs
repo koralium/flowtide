@@ -19,6 +19,7 @@ using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Bson.IO;
 using MongoDB.Bson.Serialization;
@@ -56,6 +57,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         private readonly BsonDocToColumn[] _bsonDocToColumns;
         private IChangeStreamCursor<ChangeStreamDocument<BsonDocument>>? _cursor;
         private MongoDbSourceState? _state;
+        private bool _watchDisabled = false;
+        private DateTimeOffset? _lastFullLoad;
 
         // These variables are in use if the mongodb does not return ClusterTime
         private int _lastWallTime;
@@ -121,37 +124,57 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         protected override async Task DeltaLoadTrigger(IngressOutput<StreamEventBatch> output, object? state)
         {
             Debug.Assert(_state != null);
+            if (_watchDisabled && _options.EnableFullReloadForNonReplicaSets)
+            {
+                if (_lastFullLoad == null || (DateTimeOffset.UtcNow - _lastFullLoad) > _options.FullReloadIntervalForNonReplicaSets)
+                {
+                    await DoFullLoad(output);
+                }
+                return;
+            }
             if (_cursor != null)
             {
                 await DoDeltaLoad(output);
             }
             else
             {
-                if (_state.ResumeToken != null)
+                try
                 {
-                    // If there is a resume token that can be used to continue listening
-                    _cursor = await collection.WatchAsync(new ChangeStreamOptions()
+                    if (_state.ResumeToken != null)
                     {
-                        ResumeAfter = BsonDocument.Parse(_state.ResumeToken)
-                    });
-                    await DoDeltaLoad(output);
-                }
-                else if (_state.OperationTime != null && !_options.DisableOperationTime)
-                {
-                    // If there is an operation time that can be used to continue listening
-                    using JsonReader jsonReader = new JsonReader(_state.OperationTime);
-                    var context = BsonDeserializationContext.CreateRoot(jsonReader);
-                    var parsedTimestamp = BsonTimestampSerializer.Instance.Deserialize(context);
-                    _cursor = await collection.WatchAsync(new ChangeStreamOptions()
+                        // If there is a resume token that can be used to continue listening
+                        _cursor = await collection.WatchAsync(new ChangeStreamOptions()
+                        {
+                            ResumeAfter = BsonDocument.Parse(_state.ResumeToken)
+                        });
+                        await DoDeltaLoad(output);
+                    }
+                    else if (_state.OperationTime != null && !_options.DisableOperationTime)
                     {
-                        StartAtOperationTime = parsedTimestamp
-                    });
-                    await DoDeltaLoad(output);
+                        // If there is an operation time that can be used to continue listening
+                        using JsonReader jsonReader = new JsonReader(_state.OperationTime);
+                        var context = BsonDeserializationContext.CreateRoot(jsonReader);
+                        var parsedTimestamp = BsonTimestampSerializer.Instance.Deserialize(context);
+                        _cursor = await collection.WatchAsync(new ChangeStreamOptions()
+                        {
+                            StartAtOperationTime = parsedTimestamp
+                        });
+                        await DoDeltaLoad(output);
+                    }
+                    else
+                    {
+                        // no resume token, must do a full load
+                        await DoFullLoad(output);
+                    }
                 }
-                else
+                catch (MongoCommandException e)
                 {
-                    // no resume token, must do a full load
-                    await DoFullLoad(output);
+                    Logger.LogWarning(e, "Failed to start change stream for MongoDB, using full load on interval to detect changes.");
+                    _watchDisabled = true;
+                    if ((_lastFullLoad == null || (DateTimeOffset.UtcNow - _lastFullLoad) > _options.FullReloadIntervalForNonReplicaSets) && _options.EnableFullReloadForNonReplicaSets)
+                    {
+                        await DoFullLoad(output);
+                    }
                 }
             }
         }
@@ -285,40 +308,50 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             Debug.Assert(collection != null);
             Debug.Assert(_state != null);
 
+            _lastFullLoad = DateTimeOffset.UtcNow;
+
             var cancelTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
 
             var isMasterCommand = new BsonDocument { { "hello", 1 } };
             var res = await collection.Database.RunCommandAsync(new BsonDocumentCommand<BsonDocument>(isMasterCommand));
 
 
-            if (_cursor == null)
+            if (_cursor == null && !_watchDisabled)
             {
-                if (_state.ResumeToken != null)
+                try
                 {
-                    _cursor = await collection.WatchAsync(new ChangeStreamOptions()
+                    if (_state.ResumeToken != null)
                     {
-                        ResumeAfter = BsonDocument.Parse(_state.ResumeToken)
-                    });
+                        _cursor = await collection.WatchAsync(new ChangeStreamOptions()
+                        {
+                            ResumeAfter = BsonDocument.Parse(_state.ResumeToken)
+                        });
+                    }
+                    else if (res.TryGetValue("operationTime", out var operationTime) && operationTime is BsonTimestamp operationTimestamp && !_options.DisableOperationTime)
+                    {
+                        var startOperationTime = new BsonTimestamp(operationTimestamp.Timestamp, operationTimestamp.Increment + 1);
+                        _state.OperationTime = startOperationTime.ToJson();
+                        _cursor = await collection.WatchAsync(new ChangeStreamOptions()
+                        {
+                            // Add 1 to increment since otherwise it will look at the last operation which is already handled when loading the full data
+                            StartAtOperationTime = startOperationTime
+                        });
+                    }
+                    else
+                    {
+                        _cursor = await collection.WatchAsync(new ChangeStreamOptions()
+                        {
+                        }, cancellationToken);
+                    }
+
+                    this.DeltaLoadInterval = TimeSpan.FromMilliseconds(1);
                 }
-                else if (res.TryGetValue("operationTime", out var operationTime) && operationTime is BsonTimestamp operationTimestamp && !_options.DisableOperationTime)
+                catch(MongoCommandException e)
                 {
-                    var startOperationTime = new BsonTimestamp(operationTimestamp.Timestamp, operationTimestamp.Increment + 1);
-                    _state.OperationTime = startOperationTime.ToJson();
-                    _cursor = await collection.WatchAsync(new ChangeStreamOptions()
-                    {
-                        // Add 1 to increment since otherwise it will look at the last operation which is already handled when loading the full data
-                        StartAtOperationTime = startOperationTime
-                    });
-                }
-                else
-                {
-                    _cursor = await collection.WatchAsync(new ChangeStreamOptions()
-                    {
-                    }, cancellationToken);
+                    Logger.LogWarning(e, "Failed to start change stream for MongoDB, using full load on interval to detect changes.");
+                    _watchDisabled = true;
                 }
             }
-            
-            
 
             if (!res.TryGetValue("localTime", out var timestamp))
             {
@@ -338,8 +371,6 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             {
                 throw new NotSupportedException("MongoDB source requires localTime to be either int64 or datetime.");
             }
-
-            
 
             var cursor = await collection.FindAsync(Builders<BsonDocument>.Filter.Empty);
             

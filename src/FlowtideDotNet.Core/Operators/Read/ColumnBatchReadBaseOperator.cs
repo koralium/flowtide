@@ -51,6 +51,9 @@ namespace FlowtideDotNet.Core.Operators.Read
     public abstract class ColumnBatchReadBaseOperator<TState> : ReadBaseOperator<TState>
         where TState: ColumnBatchReadState
     {
+        public const string DeltaLoadTriggerName = "delta_load";
+        public const string FullLoadTriggerName = "full_load";
+
         private bool _initialSent;
         private readonly ReadRelation _readRelation;
         private readonly Func<EventBatchData, int, bool>? _filter;
@@ -86,7 +89,7 @@ namespace FlowtideDotNet.Core.Operators.Read
         {
             switch (triggerName)
             {
-                case "delta_load":
+                case DeltaLoadTriggerName:
                     lock(_taskLock)
                     {
                         if (_deltaLoadTask == null)
@@ -173,7 +176,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                     Comparer = new NormalizeTreeComparer(_primaryKeyColumns),
                     KeySerializer = new NormalizeKeyStorageSerializer(_primaryKeyColumns, MemoryAllocator),
                     ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator),
-                    MemoryAllocator = MemoryAllocator
+                    MemoryAllocator = MemoryAllocator,
+                    UseByteBasedPageSizes = true
                 });
             _persistentTree = await stateManagerClient.GetOrCreateTree("persistent",
                 new BPlusTreeOptions<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>()
@@ -181,7 +185,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                     Comparer = new NormalizeTreeComparer(_primaryKeyColumns),
                     KeySerializer = new NormalizeKeyStorageSerializer(_primaryKeyColumns, MemoryAllocator),
                     ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator),
-                    MemoryAllocator = MemoryAllocator
+                    MemoryAllocator = MemoryAllocator,
+                    UseByteBasedPageSizes = true
                 });
             _deleteTree = await stateManagerClient.GetOrCreateTree("delete",
                 new BPlusTreeOptions<ColumnRowReference, int, NormalizeKeyStorage, PrimitiveListValueContainer<int>>()
@@ -189,7 +194,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                     Comparer = new NormalizeTreeComparer(deleteTreeKeys),
                     KeySerializer = new NormalizeKeyStorageSerializer(deleteTreeKeys, MemoryAllocator),
                     ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
-                    MemoryAllocator = MemoryAllocator
+                    MemoryAllocator = MemoryAllocator,
+                    UseByteBasedPageSizes = true
                 });
         }
 
@@ -428,6 +434,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             await output.EnterCheckpointLock();
 
             long lastWatermark = -1;
+            bool sentData = false;
 
             await foreach (var columnReadEvent in FullLoad(output.CancellationToken))
             {
@@ -500,6 +507,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                     // Send out the data
                     _eventsCounter.Add(weights.Count);
                     await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                    sentData = true;
                 }
                 else
                 {
@@ -540,6 +548,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                     _eventsCounter.Add(deleteWeights.Count);
                     var outputBatch = new StreamEventBatch(new EventBatchWeighted(deleteWeights, deleteIterations, new EventBatchData(deleteColumns)));
                     await output.SendAsync(outputBatch);
+                    sentData = true;
                 }
                 else
                 {
@@ -592,9 +601,9 @@ namespace FlowtideDotNet.Core.Operators.Read
 
             await _fullLoadTempTree.Clear();
 
-            await OutputDeletedRowsFromFullLoad(output);
+            sentData |= await OutputDeletedRowsFromFullLoad(output);
 
-            if (lastWatermark >= 0)
+            if (lastWatermark >= 0 && sentData)
             {
                 await output.SendWatermark(new Watermark(_readRelation.NamedTable.DotSeperated, lastWatermark));
             }
@@ -602,11 +611,14 @@ namespace FlowtideDotNet.Core.Operators.Read
             // Exit the checkpoint lock
             output.ExitCheckpointLock();
 
-            // Schedule a checkpoint
-            ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+            if (sentData)
+            {
+                // Schedule a checkpoint
+                ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+            }
         }
 
-        private async Task OutputDeletedRowsFromFullLoad(IngressOutput<StreamEventBatch> output)
+        private async Task<bool> OutputDeletedRowsFromFullLoad(IngressOutput<StreamEventBatch> output)
         {
             Debug.Assert(_deleteTree != null);
             Debug.Assert(_otherColumns != null);
@@ -616,6 +628,8 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_deleteTreeTopersistentBatch != null);
             Debug.Assert(_emitList != null);
             Debug.Assert(_eventsCounter != null);
+
+            bool sentData = false;
 
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
@@ -680,7 +694,7 @@ namespace FlowtideDotNet.Core.Operators.Read
 
                         _eventsCounter.Add(weights.Count);
                         await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
-
+                        sentData = true;
                         // Reset
                         weights = new PrimitiveList<int>(MemoryAllocator);
                         iterations = new PrimitiveList<uint>(MemoryAllocator);
@@ -702,6 +716,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                 }
                 _eventsCounter.Add(weights.Count);
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                sentData = true;
             }
             else
             {
@@ -715,6 +730,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             }
 
             await _deleteTree.Clear();
+            return sentData;
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
@@ -726,8 +742,13 @@ namespace FlowtideDotNet.Core.Operators.Read
                 _initialSent = true;
             }
 
-            await RegisterTrigger("delta_load", TimeSpan.FromMilliseconds(1));
+            await RegisterTrigger(DeltaLoadTriggerName, TimeSpan.FromMilliseconds(1));
+            await RegisterTrigger(FullLoadTriggerName, FullLoadInterval);
         }
+
+        protected virtual TimeSpan? DeltaLoadInterval { get; set; } = TimeSpan.FromSeconds(1);
+
+        protected virtual TimeSpan? FullLoadInterval { get; set; }
 
     }
 }

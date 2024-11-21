@@ -23,6 +23,16 @@ namespace FlowtideDotNet.Connector.MongoDB
         public required string ConnectionString { get; set; }
 
         /// <summary>
+        /// Allows flowtide to do a full reload of the data on interval when watch/change stream is not supported.
+        /// </summary>
+        public bool EnableFullReloadForNonReplicaSets { get; set; } = true;
+
+        /// <summary>
+        /// Interval for full reload of the data when watch/change stream is not supported.
+        /// </summary>
+        public TimeSpan FullReloadIntervalForNonReplicaSets { get; set; } = TimeSpan.FromMinutes(10);
+
+        /// <summary>
         /// Used only for testing, to see that the connector functions when operation time is not available.
         /// </summary>
         internal bool DisableOperationTime { get; set; }
