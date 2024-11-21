@@ -52,6 +52,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         private readonly string _databaseName;
         private readonly string _collectionName;
         private readonly ReadRelation _readRelation;
+        private readonly string _displayName;
         private IMongoCollection<BsonDocument>? collection;
         private int _idFieldIndex;
         private readonly BsonDocToColumn[] _bsonDocToColumns;
@@ -76,6 +77,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             this._databaseName = databaseName;
             this._collectionName = collectionName;
             _readRelation = readRelation;
+            _displayName = $"MongoDB Source ({databaseName}.{collectionName})";
 
             _idFieldIndex = readRelation.BaseSchema.Names.IndexOf("_id");
             if (_idFieldIndex < 0)
@@ -90,7 +92,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             }
         }
 
-        public override string DisplayName => "MongoDB Source";
+        public override string DisplayName => _displayName;
 
         protected override Task InitializeOrRestore(long restoreTime, MongoDbSourceState? state, IStateManagerClient stateManagerClient)
         {
@@ -169,7 +171,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 }
                 catch (MongoCommandException e)
                 {
-                    Logger.LogWarning(e, "Failed to start change stream for MongoDB, using full load on interval to detect changes.");
+                    Logger.ChangeStreamDisabledUsingFullLoad(e, StreamName, Name);
                     _watchDisabled = true;
                     if ((_lastFullLoad == null || (DateTimeOffset.UtcNow - _lastFullLoad) > _options.FullReloadIntervalForNonReplicaSets) && _options.EnableFullReloadForNonReplicaSets)
                     {
@@ -348,7 +350,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 }
                 catch(MongoCommandException e)
                 {
-                    Logger.LogWarning(e, "Failed to start change stream for MongoDB, using full load on interval to detect changes.");
+                    Logger.ChangeStreamDisabledUsingFullLoad(e, StreamName, Name);
                     _watchDisabled = true;
                 }
             }
