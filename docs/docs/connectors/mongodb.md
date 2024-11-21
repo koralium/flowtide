@@ -5,7 +5,6 @@ sidebar_position: 2
 # MongoDB Connector
 
 The MongoDB connector allows you to insert data into a MongoDB collection.
-At this time only a sink is implemented, there is no support yet to have MongoDB as a source.
 
 The nuget package for the connector is:
 
