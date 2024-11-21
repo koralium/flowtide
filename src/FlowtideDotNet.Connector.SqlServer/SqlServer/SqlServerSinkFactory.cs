@@ -31,13 +31,12 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
     internal class SqlServerSinkFactory : AbstractConnectorSinkFactory
     {
         private readonly SqlServerSinkOptions sqlServerSinkOptions;
-        private HashSet<string>? _tableNames;
         private readonly SqlServerTableProvider _sqlServerTableProvider;
 
         public SqlServerSinkFactory(SqlServerSinkOptions sqlServerSinkOptions)
         {
             this.sqlServerSinkOptions = sqlServerSinkOptions;
-            _sqlServerTableProvider = new SqlServerTableProvider(sqlServerSinkOptions.ConnectionStringFunc);
+            _sqlServerTableProvider = new SqlServerTableProvider(sqlServerSinkOptions.ConnectionStringFunc, sqlServerSinkOptions.UseDatabaseDefinedInConnectionStringOnly);
         }
 
         /// <summary>

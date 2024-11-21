@@ -16,21 +16,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.SqlServer
+namespace FlowtideDotNet.Storage.Exceptions
 {
-    public class SqlServerSinkOptions
+    public class FlowtidePersistentStorageException : Exception
     {
-        public required Func<string> ConnectionStringFunc { get; set; }
+        public FlowtidePersistentStorageException(string message) : base(message)
+        {
+        }
 
-        /// <summary>
-        /// Set custom primary keys for the table.
-        /// If not set, the primary keys are collected from the database.
-        /// </summary>
-        public List<string>? CustomPrimaryKeys { get; set; }
-
-        /// <summary>
-        /// If set to false, the sink will look at any database on the server that the connection string points to.
-        /// </summary>
-        public bool UseDatabaseDefinedInConnectionStringOnly { get; set; }
+        public FlowtidePersistentStorageException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
     }
 }
