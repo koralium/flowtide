@@ -85,7 +85,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Pe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Storage.SqlServer", "src\FlowtideDotNet.Storage.SqlServer\FlowtideDotNet.Storage.SqlServer.csproj", "{55E7BEDA-9B88-4162-9DFD-38351F4368D5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Storage.SqlServer.Tests", "tests\FlowtideDotNet.Storage.SqlServer.Tests\FlowtideDotNet.Storage.SqlServer.Tests.csproj", "{AD341C23-9081-4831-A3D1-45488A30C45F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Storage.SqlServer.Tests", "tests\FlowtideDotNet.Storage.SqlServer.Tests\FlowtideDotNet.Storage.SqlServer.Tests.csproj", "{AD341C23-9081-4831-A3D1-45488A30C45F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
