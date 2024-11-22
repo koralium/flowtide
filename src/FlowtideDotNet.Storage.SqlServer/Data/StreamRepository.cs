@@ -32,7 +32,6 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
             await connection.OpenAsync();
             await cmd.ExecuteNonQueryAsync();
-            Stream.Reset();
         }
 
         public static async Task<StreamInfo> UpsertStream(string name, string connectionString)
