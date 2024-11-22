@@ -233,7 +233,8 @@ namespace FlowtideDotNet.Substrait.Sql
                             seg = newSegment;
                         }
 
-                        name = $"{GetName(emitInfoPartial.Index[0])}.{string.Join('.', mapIdentifiers)}";
+                        var lastIdentifier = mapIdentifiers.Last();
+                        name = lastIdentifier; // Use the last identifier as name
 
                         // TODO: For now we just return any type, but we should try to find the correct type
                         type = new AnyType();

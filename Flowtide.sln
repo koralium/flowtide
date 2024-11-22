@@ -87,6 +87,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlServerToSqlServerStream"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AspireSamples", "samples\AspireSamples\AspireSamples.csproj", "{D1154C96-1B2B-40AC-B6ED-A556A7C24D28}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MongoDbToConsoleSample", "samples\MongoDbToConsoleSample\MongoDbToConsoleSample.csproj", "{B45112E8-01AD-4EC8-A2F2-DC16D8672A2C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -249,6 +251,10 @@ Global
 		{D1154C96-1B2B-40AC-B6ED-A556A7C24D28}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D1154C96-1B2B-40AC-B6ED-A556A7C24D28}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D1154C96-1B2B-40AC-B6ED-A556A7C24D28}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B45112E8-01AD-4EC8-A2F2-DC16D8672A2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B45112E8-01AD-4EC8-A2F2-DC16D8672A2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B45112E8-01AD-4EC8-A2F2-DC16D8672A2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B45112E8-01AD-4EC8-A2F2-DC16D8672A2C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -293,6 +299,7 @@ Global
 		{079CC855-A000-4E1C-9128-FE025A57FFCD} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 		{1148EF8A-E121-4DDF-A4A8-4A9C42E4F225} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
 		{D1154C96-1B2B-40AC-B6ED-A556A7C24D28} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
+		{B45112E8-01AD-4EC8-A2F2-DC16D8672A2C} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {314C9503-DE99-42AA-8FB0-E355C91986C4}

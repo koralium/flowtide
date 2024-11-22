@@ -172,10 +172,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 timestampInterval = TimeSpan.FromSeconds(1);
             }
+
+            SetupConnectorManager();
+            foreach(var tableProvider in _connectorManager.GetTableProviders())
+            {
+                sqlPlanBuilder.AddTableProvider(tableProvider);
+            }
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
 
-            SetupConnectorManager();
+            
 
 
 #if DEBUG_WRITE
