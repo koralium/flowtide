@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
@@ -123,6 +124,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Column Copy(IMemoryAllocator memoryAllocator)
         {
             throw new NotSupportedException();
         }

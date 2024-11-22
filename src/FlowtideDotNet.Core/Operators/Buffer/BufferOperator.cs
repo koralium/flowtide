@@ -13,13 +13,19 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
-using FlowtideDotNet.Core.Operators.Set;
-using FlowtideDotNet.Core.Storage;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Buffer
@@ -27,13 +33,13 @@ namespace FlowtideDotNet.Core.Operators.Buffer
     internal class BufferOperator : UnaryVertex<StreamEventBatch, object?>
     {
         private ICounter<long>? _eventsCounter;
-        private IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>? _tree;
-        private readonly BufferRelation bufferRelation;
         private ICounter<long>? _eventsProcessed;
+        private readonly BufferRelation _bufferRelation;
+        private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _tree;
 
         public BufferOperator(BufferRelation bufferRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
-            this.bufferRelation = bufferRelation;
+            this._bufferRelation = bufferRelation;
         }
 
         public override string DisplayName => "Buffer";
@@ -60,26 +66,23 @@ namespace FlowtideDotNet.Core.Operators.Buffer
 
             var it = _tree.CreateIterator();
             await it.SeekFirst();
-            List<RowEvent> output = new List<RowEvent>();
-            await foreach(var page in it)
-            {
-                foreach(var kv in page)
-                {
-                    output.Add(new RowEvent(kv.Value, 0, kv.Key.RowData));
-                }
 
-                if (output.Count > 100)
-                {
-                    _eventsCounter.Add(output.Count);
-                    yield return new StreamEventBatch(output, bufferRelation.OutputLength);
-                    output = new List<RowEvent>();
-                }
-            }
-            if (output.Count > 0)
+            await foreach (var page in it)
             {
-                _eventsCounter.Add(output.Count);
-                yield return new StreamEventBatch(output, bufferRelation.OutputLength);
+                IColumn[] columns = new IColumn[_bufferRelation.OutputLength];
+                PrimitiveList<int> weights = page.Values.GetPrimitiveListCopy(MemoryAllocator);
+                PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+
+                iterations.InsertStaticRange(0, 0, weights.Count);
+
+                for (int i = 0; i < page.Keys._data.Columns.Count; i++)
+                {
+                     columns[i] = page.Keys._data.Columns[i].Copy(MemoryAllocator);
+                }
+                _eventsCounter.Add(weights.Count);
+                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
             }
+
             await _tree.Clear();
         }
 
@@ -88,14 +91,29 @@ namespace FlowtideDotNet.Core.Operators.Buffer
             Debug.Assert(_tree != null);
             Debug.Assert(_eventsProcessed != null);
             _eventsProcessed.Add(msg.Events.Count);
-            foreach(var e in msg.Events)
+
+            EventBatchData? outputData = default;
+
+            if (_bufferRelation.EmitSet)
             {
-                var ev = e;
-                if (bufferRelation.EmitSet)
+                var columns = new IColumn[_bufferRelation.OutputLength];
+
+                for (int i = 0; i < _bufferRelation.Emit.Count; i++)
                 {
-                    ev = new RowEvent(e.Weight, e.Iteration, ArrayRowData.Create(e.RowData, bufferRelation.Emit));
+                    columns[i] = msg.Data.EventBatchData.Columns[_bufferRelation.Emit[i]];
                 }
-                await _tree.RMW(ev, ev.Weight, (input, current, exists) =>
+                outputData = new EventBatchData(columns);
+            }
+            else
+            {
+                outputData = msg.Data.EventBatchData;
+            }
+
+            for (int i = 0; i < msg.Data.Weights.Count; i++)
+            {
+                var rowRef = new ColumnRowReference() { referenceBatch = outputData, RowIndex = i };
+
+                await _tree.RMWNoResult(rowRef, msg.Data.Weights[i], (input, current, exists) =>
                 {
                     if (exists)
                     {
@@ -129,15 +147,14 @@ namespace FlowtideDotNet.Core.Operators.Buffer
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            
-            // Temporary tree for storing the input events
-            _tree = await stateManagerClient.GetOrCreateTree("input", 
-                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
+
+            _tree = await stateManagerClient.GetOrCreateTree("tree", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>()
             {
-                Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer()),
-                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                MemoryAllocator = MemoryAllocator
+                Comparer = new ColumnComparer(_bufferRelation.OutputLength),
+                KeySerializer = new ColumnStoreSerializer(_bufferRelation.OutputLength, MemoryAllocator),
+                MemoryAllocator = MemoryAllocator,
+                UseByteBasedPageSizes = true,
+                ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator)
             });
         }
     }

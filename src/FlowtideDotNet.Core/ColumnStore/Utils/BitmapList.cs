@@ -1093,5 +1093,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             return (((end - start) + 31) / 32) * 4;
         }
+
+        public BitmapList Copy(IMemoryAllocator memoryAllocator)
+        {
+            var mem = MemorySlice;
+            var newMem = memoryAllocator.Allocate(mem.Length, 64);
+            mem.Span.CopyTo(newMem.Memory.Span);
+            return new BitmapList(newMem, _length, memoryAllocator);
+        }
     }
 }

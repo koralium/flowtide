@@ -714,7 +714,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             {
                 var actual = column.GetValueAt(i, default);
                 Assert.True(actual.IsNull);
-            } 
+            }
 
             for (int i = 5; i < 55; i++)
             {
@@ -810,7 +810,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                     }
                     Assert.Equal(existing[i], actualByteList.ToArray());
                 }
-                
+
             }
 
             for (int i = 0; i < 50; i++)
@@ -1086,6 +1086,22 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             string json = Encoding.UTF8.GetString(stream.ToArray());
 
             Assert.Equal("[1,3]", json);
+        }
+
+        [Fact]
+        public void TestCopy()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new ListValue(new Int64Value(1), new Int64Value(3))
+            };
+
+            Column copy = column.Copy(GlobalMemoryManager.Instance);
+
+            Assert.Single(copy);
+            Assert.Equal(2, copy.GetValueAt(0, default).AsList.Count);
+            Assert.Equal(1, copy.GetValueAt(0, default).AsList.GetAt(0).AsLong);
+            Assert.Equal(3, copy.GetValueAt(0, default).AsList.GetAt(1).AsLong);
         }
     }
 }

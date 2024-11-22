@@ -81,6 +81,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
+        internal UnionColumn(List<IDataColumn> columns, TypeList typeList, IntList offsets, sbyte[] typeIds, IMemoryAllocator memoryAllocator)
+        {
+            _memoryAllocator = memoryAllocator;
+            _valueColumns = columns;
+            _typeIds = typeIds;
+            _typeList = typeList;
+            _offsets = offsets;
+        }
+
         internal IDataColumn GetDataColumn(int i)
         {
             return _valueColumns[i];
@@ -751,6 +760,18 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
             var valueColumn = _valueColumns[valueColumnIndex];
             valueColumn.WriteToJson(in writer, _offsets.Get(index));
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            List<IDataColumn> columns = new List<IDataColumn>(_valueColumns.Count);
+
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                columns.Add(_valueColumns[i].Copy(memoryAllocator));
+            }
+
+            return new UnionColumn(columns, _typeList.Copy(memoryAllocator), _offsets.Copy(memoryAllocator), _typeIds.ToArray(), memoryAllocator);
         }
     }
 }

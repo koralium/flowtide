@@ -33,13 +33,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Random r = new Random(123);
             for (int i = 0; i < 1000; i++)
             {
-                var byteSize =  r.Next(20);
+                var byteSize = r.Next(20);
                 byte[] data = new byte[byteSize];
                 r.NextBytes(data);
                 expected.Add(data);
 
                 column.Add(new BinaryValue(data));
-            }   
+            }
 
             column.RemoveRange(100, 100);
             expected.RemoveRange(100, 100);
@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                     expected.Add(data);
                     column.Add(new BinaryValue(data));
                 }
-                
+
             }
 
             column.RemoveRange(100, 100);
@@ -115,6 +115,33 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             string json = Encoding.UTF8.GetString(stream.ToArray());
 
             Assert.Equal("\"SGVsbG8gV29ybGQ=\"", json);
+        }
+
+        [Fact]
+        public void TestCopy()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<byte[]> expected = new List<byte[]>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var byteSize = r.Next(20);
+                byte[] data = new byte[byteSize];
+                r.NextBytes(data);
+                expected.Add(data);
+
+                column.Add(new BinaryValue(data));
+            }
+
+            Column copy = column.Copy(GlobalMemoryManager.Instance);
+
+            Assert.Equal(1000, copy.Count);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                Assert.Equal(expected[i], copy.GetValueAt(i, default).AsBinary);
+            }
         }
     }
 }
