@@ -591,5 +591,118 @@ namespace FlowtideDotNet.AcceptanceTests
                     suborder?.OrderKey
                 });
         }
+
+        [Fact]
+        public async Task RightJoinMergeJoin()
+        {
+            GenerateData(1000);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM orders o
+                RIGHT JOIN users u
+                ON o.userkey = u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from user in Users
+                join order in Orders on user.UserKey equals order.UserKey into gj
+                from suborder in gj.DefaultIfEmpty()
+                select new
+                {
+                    suborder?.OrderKey,
+                    user.FirstName,
+                    user.LastName
+                });
+
+            GenerateData();
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from user in Users
+                join order in Orders on user.UserKey equals order.UserKey into gj
+                from suborder in gj.DefaultIfEmpty()
+                select new
+                {
+                    suborder?.OrderKey,
+                    user.FirstName,
+                    user.LastName
+                });
+        }
+
+
+        [Fact]
+        public async Task FullOuterJoinMergeJoin()
+        {
+            GenerateData(1000);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.userKey, u.firstName, u.LastName
+                FROM orders o
+                FULL OUTER JOIN users u
+                ON o.userkey = u.userkey");
+            await WaitForUpdate();
+
+            var rightJoin = (from user in Users
+             join order in Orders on user.UserKey equals order.UserKey into gj
+             from suborder in gj.DefaultIfEmpty()
+             select new
+             {
+                 suborder?.OrderKey,
+                 user.UserKey,
+                 user.FirstName,
+                 user.LastName
+             });
+
+            var leftJoin = (
+                from order in Orders
+                join user in Users on order.UserKey equals user.UserKey into gj
+                from subuser in gj.DefaultIfEmpty()
+                select new
+                {
+                    order?.OrderKey,
+                    subuser.UserKey,
+                    subuser.FirstName,
+                    subuser.LastName
+                });
+
+            var fullOuterJoin = leftJoin.Union(rightJoin).ToList();
+
+            AssertCurrentDataEqual(fullOuterJoin);
+
+            GenerateData();
+
+            await WaitForUpdate();
+
+            rightJoin = (from user in Users
+                             join order in Orders on user.UserKey equals order.UserKey into gj
+                             from suborder in gj.DefaultIfEmpty()
+                             select new
+                             {
+                                 suborder?.OrderKey,
+                                 user.UserKey,
+                                 user.FirstName,
+                                 user.LastName
+                             });
+
+            leftJoin = (
+                from order in Orders
+                join user in Users on order.UserKey equals user.UserKey into gj
+                from subuser in gj.DefaultIfEmpty()
+                select new
+                {
+                    order?.OrderKey,
+                    subuser.UserKey,
+                    subuser.FirstName,
+                    subuser.LastName
+                });
+
+            fullOuterJoin = leftJoin.Union(rightJoin).ToList();
+
+            AssertCurrentDataEqual(fullOuterJoin);
+        }
     }
 }
