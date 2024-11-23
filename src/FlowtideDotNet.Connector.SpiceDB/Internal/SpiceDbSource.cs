@@ -257,6 +257,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
 
                         if (current.ChangesThrough.Token == m_state.ContinuationToken)
                         {
+                            output.ExitCheckpointLock();
                             continue;
                         }
 
