@@ -53,6 +53,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             _internalColumn = internalColumn;
         }
 
+        internal ListColumn(Column internalColumn, IntList offsets)
+        {
+            _internalColumn = internalColumn;
+            _offsets = offsets;
+        }
+
         public int Add(in IDataValue value)
         {
             var list = value.AsList;
@@ -426,6 +432,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             writer.WriteEndArray();
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new ListColumn(_internalColumn.Copy(memoryAllocator), _offsets.Copy(memoryAllocator));
         }
     }
 }

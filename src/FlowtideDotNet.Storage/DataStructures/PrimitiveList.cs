@@ -250,5 +250,14 @@ namespace FlowtideDotNet.Storage.DataStructures
         {
             _length = 0;
         }
+
+        public PrimitiveList<T> Copy(IMemoryAllocator memoryAllocator)
+        {
+            var slicedMem = SlicedMemory;
+            var newMemory = memoryAllocator.Allocate(slicedMem.Length, 64);
+            slicedMem.Span.CopyTo(newMemory.Memory.Span);
+
+            return new PrimitiveList<T>(newMemory, _length, memoryAllocator);
+        }
     }
 }

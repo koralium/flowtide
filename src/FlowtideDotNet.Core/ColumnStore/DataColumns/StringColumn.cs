@@ -47,6 +47,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             _binaryList = new BinaryList(offsetMemory, offsetLength, dataMemory, memoryAllocator);
         }
 
+        internal StringColumn(BinaryList binaryList)
+        {
+            _binaryList = binaryList;
+        }
+
         public int Add<T>(in T value) where T : IDataValue
         {
             var index = _binaryList.Count;
@@ -235,6 +240,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
         {
             writer.WriteStringValue(_binaryList.Get(index));
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new StringColumn(_binaryList.Copy(memoryAllocator));
         }
     }
 }

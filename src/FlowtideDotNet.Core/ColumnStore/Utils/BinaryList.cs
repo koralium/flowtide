@@ -340,5 +340,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var offsetToInsertAt = _offsets.Get(index);
             _offsets.InsertRangeStaticValue(index, count, offsetToInsertAt);
         }
+
+        public BinaryList Copy(IMemoryAllocator memoryAllocator)
+        {
+            var dataMemoryCopy = memoryAllocator.Allocate(DataMemory.Length, 64);
+            DataMemory.Span.CopyTo(dataMemoryCopy.Memory.Span);
+            var offsetMemoryCopy = memoryAllocator.Allocate(OffsetMemory.Length, 64);
+            OffsetMemory.Span.CopyTo(offsetMemoryCopy.Memory.Span);
+
+            return new BinaryList(offsetMemoryCopy, _offsets.Count, dataMemoryCopy, memoryAllocator);
+        }
     }
 }

@@ -124,5 +124,26 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal("\"hello\"", json);
         }
+
+        [Fact]
+        public void TestCopy()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                column.Add(new StringValue($"hello{i}"));
+            }
+
+            var copy = column.Copy(GlobalMemoryManager.Instance);
+
+            Assert.Equal(1000, copy.Count);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                var actual = copy.GetValueAt(i, default);
+                Assert.Equal($"hello{i}", actual.AsString.ToString());
+            }
+        }
     }
 }
