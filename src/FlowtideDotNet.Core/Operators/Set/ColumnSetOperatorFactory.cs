@@ -10,19 +10,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Core.Operators.Set.Structs;
+using FlowtideDotNet.Substrait.Relations;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Set
 {
     internal class ColumnSetOperatorFactory
     {
-        public static ColumnSetOperator CreateColumnSetOperator()
+        public static MultipleInputVertex<StreamEventBatch, SetOperatorState> CreateColumnSetOperator(SetRelation setRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
-            return new ColumnSetOperator();
+            if (setRelation.Operation == SetOperation.UnionAll)
+            {
+                return new UnionAllSetOperator(setRelation, executionDataflowBlockOptions);
+            }
+
+            switch(setRelation.Inputs.Count)
+            {
+                case 1:
+                    return new ColumnSetOperator<InputWeights1>(setRelation, executionDataflowBlockOptions);
+                case 2:
+                    return new ColumnSetOperator<InputWeights2>(setRelation, executionDataflowBlockOptions);
+                case 3:
+                    return new ColumnSetOperator<InputWeights3>(setRelation, executionDataflowBlockOptions);
+                case 4:
+                    return new ColumnSetOperator<InputWeights4>(setRelation, executionDataflowBlockOptions);
+                case 5:
+                    return new ColumnSetOperator<InputWeights5>(setRelation, executionDataflowBlockOptions);
+                case 6:
+                    return new ColumnSetOperator<InputWeights6>(setRelation, executionDataflowBlockOptions);
+                case 7:
+                    return new ColumnSetOperator<InputWeights7>(setRelation, executionDataflowBlockOptions);
+                case 8:
+                    return new ColumnSetOperator<InputWeights8>(setRelation, executionDataflowBlockOptions);
+                default:
+                    throw new NotSupportedException($"Input count {setRelation.Inputs.Count} is not supported, only 8 inputs are supported at this time.");
+            }
         }
     }
 }

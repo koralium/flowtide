@@ -18,8 +18,16 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Set.Structs
 {
-    public interface ISetStruct
+    internal static class InputWeightExtensions
     {
-
+        public static void Add<TStruct>(ref TStruct inputWeight, TStruct other)
+            where TStruct : IInputWeight
+        {
+            for (int i = 0; i < inputWeight.Count; i++)
+            {
+                int value = inputWeight.GetValue(i) + other.GetValue(i);
+                inputWeight.SetValue(i, value);
+            }
+        }
     }
 }
