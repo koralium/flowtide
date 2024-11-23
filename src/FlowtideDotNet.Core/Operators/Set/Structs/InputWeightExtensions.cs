@@ -10,18 +10,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Substrait.Relations
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Core.Operators.Set.Structs
 {
-    public enum SetOperation
+    internal static class InputWeightExtensions
     {
-        Unspecified = 0,
-        MinusPrimary = 1,
-        MinusMultiset = 2,
-        MinusPrimaryAll = 7,
-        IntersectionPrimary = 3,
-        IntersectionMultiset = 4,
-        IntersectionMultisetAll = 8,
-        UnionDistinct = 5,
-        UnionAll = 6,
+        public static void Add<TStruct>(ref TStruct inputWeight, TStruct other)
+            where TStruct : IInputWeight
+        {
+            for (int i = 0; i < inputWeight.Count; i++)
+            {
+                int value = inputWeight.GetValue(i) + other.GetValue(i);
+                inputWeight.SetValue(i, value);
+            }
+        }
     }
 }

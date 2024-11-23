@@ -4,7 +4,8 @@ sidebar_position: 1
 
 # Union
 
-The *UNION* operator concatenates results from one or several *SELECT* statements.
+## Union All
+The *UNION ALL* operator concatenates results from one or several *SELECT* statements.
 
 ```sql
 select_stament
@@ -12,4 +13,12 @@ UNION ALL
 select_stament
 ```
 
-Only union all is supported at this time.
+## Union Distinct
+
+The *UNION DISTINCT* operator concatenates results from one or several *SELECT* statements and only return the distinct rows.
+
+```sql
+select_stament
+UNION DISTINCT
+select_stament
+```
