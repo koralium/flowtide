@@ -417,7 +417,7 @@ namespace FlowtideDotNet.Core.Engine
         private IStreamVertex VisitGetTimestampTable(ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new TimestampProviderOperator(getTimestampInterval, DefaultBlockOptions);
+            var op = new TimestampProviderOperator(TimeProvider.System, getTimestampInterval, DefaultBlockOptions);
             if (op is ISourceBlock<IStreamEvent> sourceBlock)
             {
                 if (state != null)
