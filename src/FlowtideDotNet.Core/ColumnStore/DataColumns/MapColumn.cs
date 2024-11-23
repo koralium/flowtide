@@ -65,6 +65,13 @@ namespace FlowtideDotNet.Core.ColumnStore
             _offsets = new IntList(offsetMemory, offsetLength, memoryAllocator);
         }
 
+        internal MapColumn(Column keyColumn, Column valueColumn, IntList offset)
+        {
+            _keyColumn = keyColumn;
+            _valueColumn = valueColumn;
+            _offsets = offset;
+        }
+
         private (int, int) GetOffsets(in int index)
         {
             var startOffset = _offsets.Get(index);
@@ -553,6 +560,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             writer.WriteEndObject();
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new MapColumn(_keyColumn.Copy(memoryAllocator), _valueColumn.Copy(memoryAllocator), _offsets.Copy(memoryAllocator));
         }
     }
 }

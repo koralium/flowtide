@@ -50,6 +50,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             _values = new PrimitiveList<decimal>(memory, length, memoryAllocator);   
         }
 
+        internal DecimalColumn(PrimitiveList<decimal> values)
+        {
+            _values = values;
+        }
+
         public int Add<T>(in T value) where T : IDataValue
         {
             var index = _values.Count;
@@ -223,6 +228,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
         {
             writer.WriteNumberValue(_values.Get(index));
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new DecimalColumn(_values.Copy(memoryAllocator));
         }
     }
 }

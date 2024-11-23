@@ -178,5 +178,23 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal("1.23", json);
         }
+
+        [Fact]
+        public void TestCopy()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                column.Add(new DoubleValue(i));
+            }
+
+            Column copy = column.Copy(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                Assert.Equal(i, copy.GetValueAt(i, default).AsDouble);
+            }
+        }
     }
 }

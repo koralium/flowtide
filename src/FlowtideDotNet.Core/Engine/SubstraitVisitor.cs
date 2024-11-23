@@ -399,7 +399,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitSetRelation(SetRelation setRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new SetOperator(setRelation, DefaultBlockOptions);
+            var op = ColumnSetOperatorFactory.CreateColumnSetOperator(setRelation, DefaultBlockOptions); // new SetOperator(setRelation, DefaultBlockOptions);
             
             if (state != null)
             {
