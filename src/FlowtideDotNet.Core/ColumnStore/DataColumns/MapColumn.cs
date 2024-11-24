@@ -101,6 +101,18 @@ namespace FlowtideDotNet.Core.ColumnStore
             return endOffset - startOffset;
         }
 
+        public IDataValue GetKeyAt(in int rowIndex, in int keyIndex)
+        {
+            var (startOffset, endOffset) = GetOffsets(in rowIndex);
+            var actualIndex = startOffset + keyIndex;
+            if (actualIndex >= endOffset)
+            {
+                return NullValue.Instance;
+            }
+
+            return _keyColumn.GetValueAt(actualIndex, default);
+        }
+
         public void GetKeyAt(in int rowIndex, in int keyIndex, in DataValueContainer dataValueContainer)
         {
             var (startOffset, endOffset) = GetOffsets(in rowIndex);
@@ -125,6 +137,18 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             _valueColumn.GetValueAt(actualIndex, dataValueContainer, default);
+        }
+
+        public IDataValue GetMapValueAt(in int rowIndex, in int keyIndex)
+        {
+            var (startOffset, endOffset) = GetOffsets(in rowIndex);
+            var actualIndex = startOffset + keyIndex;
+            if (actualIndex >= endOffset)
+            {
+                return NullValue.Instance;
+            }
+
+            return _valueColumn.GetValueAt(actualIndex, default);
         }
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)

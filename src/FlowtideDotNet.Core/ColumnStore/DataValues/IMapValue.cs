@@ -22,6 +22,8 @@ namespace FlowtideDotNet.Core.ColumnStore
     {
         int GetLength();
         void GetKeyAt(in int index, DataValueContainer result);
+        IDataValue GetKeyAt(in int index);
         void GetValueAt(in int index, DataValueContainer result);
+        IDataValue GetValueAt(in int index);
     }
 }
