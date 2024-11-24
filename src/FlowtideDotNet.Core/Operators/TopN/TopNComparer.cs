@@ -10,31 +10,72 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Tree;
 
 namespace FlowtideDotNet.Core.Operators.TopN
 {
-    internal class TopNComparer : IComparer<RowEvent>
+    internal class TopNComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
     {
-        private readonly Func<RowEvent, RowEvent, int> compareFunction;
+        private readonly IColumnComparer<ColumnRowReference> _sortComparer;
+        private DataValueContainer _dataValueContainer;
 
-        public TopNComparer(Func<RowEvent, RowEvent, int> compareFunction)
+        public TopNComparer(IColumnComparer<ColumnRowReference> sortComparer)
         {
-            this.compareFunction = compareFunction;
+            _sortComparer = sortComparer;
+            _dataValueContainer = new DataValueContainer();
         }
-        public int Compare(RowEvent x, RowEvent y)
-        {
-            var result = compareFunction(x, y);
 
-            if (result != 0)
+        public bool SeekNextPageForValue => false;
+
+        public int CompareTo(in ColumnRowReference x, in ColumnRowReference y)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int CompareTo(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, in int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int FindIndex(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer)
+        {
+            int index = -1;
+            int start = 0;
+            int end = keyContainer.Count - 1;
+
+            (start, end) = keyContainer._data.FindBoundries(key, start, end, _sortComparer);
+
+            if (start < 0)
             {
-                return result;
+                return start;
             }
-            return RowEvent.Compare(x, y);
+
+            if (start == end)
+            {
+                return start;
+            }
+
+            for (int i = 0; i < keyContainer._data.Columns.Count; i++)
+            {
+                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, _dataValueContainer, default);
+                var (low, high) = keyContainer._data.Columns[i].SearchBoundries(_dataValueContainer, start, end, default);
+
+                if (low < 0)
+                {
+                    return low;
+                }
+                else
+                {
+                    index = low;
+                    start = low;
+                    end = high;
+                }
+            }
+
+            return index;
         }
     }
 }

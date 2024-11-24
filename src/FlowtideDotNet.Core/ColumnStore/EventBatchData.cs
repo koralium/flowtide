@@ -10,8 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,7 +22,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    public class EventBatchData : IDisposable
+    public class EventBatchData : IDisposable, IReadOnlyList<ColumnRowReference>
     {
         private readonly IColumn[] columns;
         private bool disposedValue;
@@ -32,6 +35,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public IReadOnlyList<IColumn> Columns => columns;
+
+        public ColumnRowReference this[int index] => GetRowReference(index);
 
         public IColumn GetColumn(in int index)
         {
@@ -56,6 +61,11 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
             }
             return 0;
+        }
+
+        public (int start, int end) FindBoundries(ColumnRowReference key, in int index, in int end, IColumnComparer<ColumnRowReference> comparer)
+        {
+            return BoundarySearch.SearchBoundries<ColumnRowReference>(this, key, index, end, comparer);
         }
 
         protected virtual void Dispose(bool disposing)
@@ -104,6 +114,29 @@ namespace FlowtideDotNet.Core.ColumnStore
                 size += columns[i].GetByteSize(start, end);
             }
             return size;
+        }
+
+        public ColumnRowReference GetRowReference(in int index)
+        {
+            return new ColumnRowReference() { referenceBatch = this, RowIndex = index };
+        }
+
+        private IEnumerable<ColumnRowReference> GetRows()
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                yield return GetRowReference(i);
+            }
+        }
+
+        public IEnumerator<ColumnRowReference> GetEnumerator()
+        {
+            return GetRows().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetRows().GetEnumerator();
         }
     }
 }
