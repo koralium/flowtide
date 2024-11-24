@@ -14,6 +14,7 @@ using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
@@ -27,6 +28,7 @@ namespace FlowtideDotNet.Core.Compute
         private readonly Dictionary<string, AggregateFunctionDefinition> _aggregateFunctions;
         private readonly Dictionary<string, TableFunctionDefinition> _tableFunctions;
         private readonly Dictionary<string, ColumnAggregateFunctionDefinition> _columnAggregateFunctions;
+        private readonly Dictionary<string, ColumnTableFunctionDefinition> _columnTableFunctions;
 
         public FunctionsRegister()
         {
@@ -36,6 +38,7 @@ namespace FlowtideDotNet.Core.Compute
 
             _columnScalarFunctions = new Dictionary<string, ColumnFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
             _columnAggregateFunctions = new Dictionary<string, ColumnAggregateFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
+            _columnTableFunctions = new Dictionary<string, ColumnTableFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
         }
 
         public bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition)
@@ -177,9 +180,22 @@ namespace FlowtideDotNet.Core.Compute
             _tableFunctions.Add($"{uri}:{name}", new TableFunctionDefinition(uri, name, mapFunc));
         }
 
+        public void RegisterColumnTableFunction(
+            string uri, 
+            string name,
+            Func<TableFunction, ColumnParameterInfo, ColumnarExpressionVisitor, IMemoryAllocator, TableFunctionResult> mapFunc)
+        {
+            _columnTableFunctions.Add($"{uri}:{name}", new ColumnTableFunctionDefinition(uri, name, mapFunc));
+        }
+
         public bool TryGetTableFunction(string uri, string name, [NotNullWhen(true)] out TableFunctionDefinition? tableFunctionDefinition)
         {
             return _tableFunctions.TryGetValue($"{uri}:{name}", out tableFunctionDefinition);
+        }
+
+        public bool TryGetColumnTableFunction(string uri, string name, [NotNullWhen(true)] out ColumnTableFunctionDefinition? tableFunctionDefinition)
+        {
+            return _columnTableFunctions.TryGetValue($"{uri}:{name}", out tableFunctionDefinition);
         }
 
         public void RegisterStatefulColumnAggregateFunction<T>(string uri, string name, IFunctionsRegister.AggregateInitializeFunction<T> initializeFunction, Action<T> disposeFunction, Func<T, Task> commitFunction, IFunctionsRegister.ColumnAggregateMapFunction mapFunc, IFunctionsRegister.ColumnAggregateStateToValueFunction<T> stateToValueFunc)
