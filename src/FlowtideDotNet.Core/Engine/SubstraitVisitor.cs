@@ -19,7 +19,6 @@ using FlowtideDotNet.Core.Operators.Join.NestedLoopJoin;
 using FlowtideDotNet.Core.Operators.Normalization;
 using FlowtideDotNet.Core.Operators.Project;
 using FlowtideDotNet.Core.Operators.Set;
-using FlowtideDotNet.Core.Operators.Unwrap;
 using FlowtideDotNet.Core.Operators.VirtualTable;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
@@ -266,23 +265,6 @@ namespace FlowtideDotNet.Core.Engine
                 dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
                 return op;
             }
-        }
-
-        public override IStreamVertex VisitUnwrapRelation(UnwrapRelation unwrapRelation, ITargetBlock<IStreamEvent>? state)
-        {
-            var id = _operatorId++;
-
-            var op = new UnwrapOperator(unwrapRelation, functionsRegister, DefaultBlockOptions);
-
-            if (state != null)
-            {
-                op.LinkTo(state);
-            }
-
-            unwrapRelation.Input.Accept(this, op);
-            dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
-
-            return op;
         }
 
         public override IStreamVertex VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, ITargetBlock<IStreamEvent>? state)

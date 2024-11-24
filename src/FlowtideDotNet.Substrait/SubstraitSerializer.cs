@@ -785,11 +785,6 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
-            public override Rel VisitUnwrapRelation(UnwrapRelation unwrapRelation, SerializerVisitorState state)
-            {
-                throw new NotImplementedException("Unwrap cant be serialized yet");
-            }
-
             private static uint GetAnyTypeId(SerializerVisitorState state)
             {
                 if (!state._typeExtensions.TryGetValue("any", out var id))
