@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -32,6 +33,8 @@ namespace FlowtideDotNet.Core.Operators.TopN
         private readonly int _outputLength;
         private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _tree;
 
+        private ICounter<long>? _eventsOutCounter;
+        private ICounter<long>? _eventsProcessed;
 
         public TopNOperator(TopNRelation relation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -62,9 +65,13 @@ namespace FlowtideDotNet.Core.Operators.TopN
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
             Debug.Assert(_tree != null);
+            Debug.Assert(_eventsProcessed != null);
+            Debug.Assert(_eventsOutCounter != null, nameof(_eventsOutCounter));
 
             var inputWeights = msg.Data.Weights;
             var inputBatch = msg.Data.EventBatchData;
+
+            _eventsProcessed.Add(inputWeights.Count);
 
             PrimitiveList<int> inBatchWeights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> inBatchIterations = new PrimitiveList<uint>(MemoryAllocator);
@@ -117,6 +124,8 @@ namespace FlowtideDotNet.Core.Operators.TopN
 
             if (foundOffsets.Count > 0)
             {
+                _eventsOutCounter.Add(foundOffsets.Count);
+
                 IColumn[] outputColumns = new IColumn[_outputLength];
 
                 for (int i = 0; i < outputColumns.Length; i++)
@@ -135,6 +144,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
 
             if (deleteWeights.Count > 0)
             {
+                _eventsOutCounter.Add(deleteWeights.Count);
                 yield return new StreamEventBatch(new EventBatchWeighted(deleteWeights, deleteIterations, new EventBatchData(deleteColumns)));
             }
             else
@@ -322,6 +332,15 @@ namespace FlowtideDotNet.Core.Operators.TopN
 
         protected override async Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
         {
+            if (_eventsOutCounter == null)
+            {
+                _eventsOutCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
+
             _tree = await stateManagerClient.GetOrCreateTree("tree", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>()
             {
                 KeySerializer = new ColumnStoreSerializer(_relation.Input.OutputLength, MemoryAllocator),
