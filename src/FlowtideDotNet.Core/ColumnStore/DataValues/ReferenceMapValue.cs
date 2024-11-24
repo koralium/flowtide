@@ -68,6 +68,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             mapColumn.GetKeyAt(this.index, index, result);
         }
 
+        public IDataValue GetKeyAt(in int index)
+        {
+            return mapColumn.GetKeyAt(this.index, index);
+        }
+
         public int GetLength()
         {
             return mapColumn.GetElementLength(index);
@@ -76,6 +81,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void GetValueAt(in int index, DataValueContainer result)
         {
             mapColumn.GetMapValueAt(this.index, index, result);
+        }
+
+        public IDataValue GetValueAt(in int index)
+        {
+            return mapColumn.GetMapValueAt(this.index, index);
         }
 
         IEnumerator IEnumerable.GetEnumerator()
