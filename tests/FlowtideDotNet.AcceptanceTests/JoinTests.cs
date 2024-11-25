@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.AcceptanceTests.Entities;
 using Xunit.Abstractions;
-using static SqlParser.Ast.JoinConstraint;
 
 namespace FlowtideDotNet.AcceptanceTests
 {
@@ -233,6 +232,548 @@ namespace FlowtideDotNet.AcceptanceTests
                     user.FirstName,
                     user.LastName
                 });
+        }
+
+        /// <summary>
+        /// Uses modulo operation between both datasets to force a block nested loop join
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task InnerJoinBlockLoopModulus()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey % u.userkey = 0");
+            await WaitForUpdate();
+            var result = from o in Orders
+                         from u in Users
+                         where o.UserKey % u.UserKey == 0
+                         select new
+                         {
+                             o.OrderKey,
+                             u.FirstName,
+                             u.LastName
+                         };
+
+            AssertCurrentDataEqual(result);
+
+            GenerateData(100);
+            await WaitForUpdate();
+            result = from o in Orders
+                     from u in Users
+                     where o.UserKey % u.UserKey == 0
+                     select new
+                     {
+                         o.OrderKey,
+                         u.FirstName,
+                         u.LastName
+                     };
+
+            AssertCurrentDataEqual(result);
+        }
+
+
+        private record LeftJoinBlockLoopModulusResult(int? orderkey, string? firstname, string? lastname);
+
+        /// <summary>
+        /// Uses modulo operation between both datasets to force a block nested loop join
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task LeftJoinBlockLoopModulus()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM orders o
+                LEFT JOIN users u
+                ON o.userkey % u.userkey = 0 AND u.userkey % 2 = 0");
+            await WaitForUpdate();
+
+            List<LeftJoinBlockLoopModulusResult> expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var order in Orders)
+            {
+                bool joinFound = false;
+                foreach (var user in Users)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, null, null));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LeftJoinBlockLoopModulusUsersFirst()
+        {
+            GenerateCompanies(10);
+            GenerateUsers(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM users u
+                LEFT JOIN orders o
+                ON o.userkey % u.userkey = 0 AND u.userkey % 2 = 0");
+            await WaitForUpdate();
+
+            List<LeftJoinBlockLoopModulusResult> expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var user in Users)
+            {
+                bool joinFound = false;
+                foreach (var order in Orders)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+
+            GenerateOrders(100);
+
+            await WaitForUpdate();
+
+            expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var user in Users)
+            {
+                bool joinFound = false;
+                foreach (var order in Orders)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LeftJoinBlockLoopModulusDeleteFirstTwoUsers()
+        {
+            GenerateCompanies(10);
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM users u
+                LEFT JOIN orders o
+                ON o.userkey % u.userkey = 0 AND u.userkey % 2 = 0");
+            await WaitForUpdate();
+
+            List<LeftJoinBlockLoopModulusResult> expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var user in Users)
+            {
+                bool joinFound = false;
+                foreach (var order in Orders)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+
+            var firstUser = Users.First();
+            var secondUser = Users.Skip(1).First();
+            DeleteUser(firstUser);
+            DeleteUser(secondUser);
+            //GenerateOrders(18);
+
+            await WaitForUpdate();
+
+            expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var user in Users)
+            {
+                bool joinFound = false;
+                foreach (var order in Orders)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LeftJoinBlockLoopModulusDeleteAllOrders()
+        {
+            GenerateCompanies(10);
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM users u
+                LEFT JOIN orders o
+                ON o.userkey % u.userkey = 0 AND u.userkey % 2 = 0");
+            await WaitForUpdate();
+
+            List<LeftJoinBlockLoopModulusResult> expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var user in Users)
+            {
+                bool joinFound = false;
+                foreach (var order in Orders)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+
+            var orderList = Orders.ToList();
+            foreach(var order in orderList)
+            {
+                DeleteOrder(order);
+            }
+
+            await WaitForUpdate();
+
+            expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var user in Users)
+            {
+                bool joinFound = false;
+                foreach (var order in Orders)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        //[Fact]
+        //public async Task LeftJoinBlockLoopModulusOrdersFirst()
+        //{
+        //    GenerateCompanies(10);
+        //    GenerateOrders(100);
+        //    await StartStream(@"
+        //        INSERT INTO output 
+        //        SELECT 
+        //            o.orderkey, u.firstName, u.LastName
+        //        FROM orders o
+        //        LEFT JOIN users u
+        //        ON o.userkey % u.userkey = 0 AND u.userkey % 2 = 0");
+        //    await WaitForUpdate();
+
+        //    GenerateUsers(100);
+
+        //    await WaitForUpdate();
+
+        //    List<LeftJoinBlockLoopModulusResult> expected = new List<LeftJoinBlockLoopModulusResult>();
+
+        //    foreach (var order in Orders)
+        //    {
+        //        bool joinFound = false;
+        //        foreach (var user in Users)
+        //        {
+        //            if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+        //            {
+        //                joinFound = true;
+        //                expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+        //            }
+        //        }
+        //        if (!joinFound)
+        //        {
+        //            expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, null, null));
+        //        }
+        //    }
+
+        //    AssertCurrentDataEqual(expected);
+        //}
+
+        [Fact]
+        public async Task RightJoinBlockLoopModulusDeleteFirstTwo()
+        {
+            GenerateData(5);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM orders o
+                RIGHT JOIN users u
+                ON o.userkey % u.userkey = 0 AND u.userkey % 2 = 0");
+            await WaitForUpdate();
+
+            List<LeftJoinBlockLoopModulusResult> expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var user in Users)
+            {
+                bool joinFound = false;
+                foreach (var order in Orders)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+
+            var firstUser = Users.First();
+            var secondUser = Users.Skip(1).First();
+            DeleteUser(firstUser);
+            DeleteUser(secondUser);
+
+            await WaitForUpdate();
+
+            expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var user in Users)
+            {
+                bool joinFound = false;
+                foreach (var order in Orders)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task RightJoinBlockLoopModulusUsersFirst()
+        {
+            GenerateCompanies(10);
+            GenerateUsers(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM orders o
+                RIGHT JOIN users u
+                ON o.userkey % u.userkey = 0 AND u.userkey % 2 = 0");
+            await WaitForUpdate();
+
+            List<LeftJoinBlockLoopModulusResult> expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var user in Users)
+            {
+                bool joinFound = false;
+                foreach (var order in Orders)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+
+            GenerateOrders(100);
+
+            await WaitForUpdate();
+
+            expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var user in Users)
+            {
+                bool joinFound = false;
+                foreach (var order in Orders)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task RightJoinBlockLoopModulusDeleteAllOrders()
+        {
+            GenerateCompanies(10);
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM orders o
+                RIGHT JOIN users u
+                ON o.userkey % u.userkey = 0 AND u.userkey % 2 = 0");
+            await WaitForUpdate();
+
+            List<LeftJoinBlockLoopModulusResult> expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var user in Users)
+            {
+                bool joinFound = false;
+                foreach (var order in Orders)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+
+            var orderList = Orders.ToList();
+
+            foreach (var order in orderList)
+            {
+                DeleteOrder(order);
+            }
+
+            await WaitForUpdate();
+
+            expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var user in Users)
+            {
+                bool joinFound = false;
+                foreach (var order in Orders)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task FullOuterJoinBlockLoopModulus()
+        {
+            GenerateCompanies(10);
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM orders o
+                FULL OUTER JOIN users u
+                ON o.userkey % u.userkey = 0 AND u.userkey % 2 = 0");
+            await WaitForUpdate();
+
+            List<LeftJoinBlockLoopModulusResult> expected = new List<LeftJoinBlockLoopModulusResult>();
+
+            foreach (var user in Users)
+            {
+                bool joinFound = false;
+                foreach (var order in Orders)
+                {
+                    if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                }
+                if (!joinFound)
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
         }
 
         [Fact]

@@ -371,10 +371,10 @@ namespace FlowtideDotNet.Core.Engine
         {
             var id = _operatorId++;
             
-            if (joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Inner)
+            if (joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right || joinRelation.Type == JoinType.Outer)
             {
                 //throw new NotSupportedException();
-                var op = new BlockNestedJoinOperator(joinRelation, functionsRegister, DefaultBlockOptions);
+                var op = new ColumnBlockNestedJoinOperator(joinRelation, functionsRegister, DefaultBlockOptions);
 
                 if (state != null)
                 {

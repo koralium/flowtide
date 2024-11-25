@@ -130,7 +130,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                     System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field - relativeIndex),
                     state.IndexParameters[parameterIndex],
                     System.Linq.Expressions.Expression.Constant(structReferenceSegment.Child, typeof(ReferenceSegment)),
-                    state.ResultDataValue);
+                    System.Linq.Expressions.Expression.Constant(new DataValueContainer()));
 
                 return getValueExpr;
             }
