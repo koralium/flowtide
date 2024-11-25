@@ -419,7 +419,6 @@ namespace FlowtideDotNet.AcceptanceTests
             var secondUser = Users.Skip(1).First();
             DeleteUser(firstUser);
             DeleteUser(secondUser);
-            //GenerateOrders(18);
 
             await WaitForUpdate();
 
@@ -509,46 +508,6 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expected);
         }
-
-        //[Fact]
-        //public async Task LeftJoinBlockLoopModulusOrdersFirst()
-        //{
-        //    GenerateCompanies(10);
-        //    GenerateOrders(100);
-        //    await StartStream(@"
-        //        INSERT INTO output 
-        //        SELECT 
-        //            o.orderkey, u.firstName, u.LastName
-        //        FROM orders o
-        //        LEFT JOIN users u
-        //        ON o.userkey % u.userkey = 0 AND u.userkey % 2 = 0");
-        //    await WaitForUpdate();
-
-        //    GenerateUsers(100);
-
-        //    await WaitForUpdate();
-
-        //    List<LeftJoinBlockLoopModulusResult> expected = new List<LeftJoinBlockLoopModulusResult>();
-
-        //    foreach (var order in Orders)
-        //    {
-        //        bool joinFound = false;
-        //        foreach (var user in Users)
-        //        {
-        //            if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
-        //            {
-        //                joinFound = true;
-        //                expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
-        //            }
-        //        }
-        //        if (!joinFound)
-        //        {
-        //            expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, null, null));
-        //        }
-        //    }
-
-        //    AssertCurrentDataEqual(expected);
-        //}
 
         [Fact]
         public async Task RightJoinBlockLoopModulusDeleteFirstTwo()
