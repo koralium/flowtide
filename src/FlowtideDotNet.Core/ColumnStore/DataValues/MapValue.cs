@@ -76,6 +76,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             keyValuePairs[index].Key.CopyToContainer(result);
         }
 
+        public IDataValue GetKeyAt(in int index)
+        {
+            return keyValuePairs[index].Key;
+        }
+
         public int GetLength()
         {
             return keyValuePairs.Count;
@@ -84,6 +89,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void GetValueAt(in int index, DataValueContainer result)
         {
             keyValuePairs[index].Value.CopyToContainer(result);
+        }
+
+        public IDataValue GetValueAt(in int index)
+        {
+            return keyValuePairs[index].Value;
         }
 
         IEnumerator IEnumerable.GetEnumerator()

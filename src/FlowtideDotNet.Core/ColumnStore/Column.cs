@@ -967,5 +967,10 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             _dataColumn!.WriteToJson(in writer, index);
         }
+
+        public Column Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new Column(_nullCounter, _dataColumn?.Copy(memoryAllocator), _validityList!.Copy(memoryAllocator), _type, memoryAllocator);
+        }
     }
 }

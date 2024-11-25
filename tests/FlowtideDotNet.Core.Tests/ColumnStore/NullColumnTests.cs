@@ -57,5 +57,20 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal("null", json);
         }
+
+        [Fact]
+        public void TestCopy()
+        {
+            NullColumn column = new NullColumn();
+
+            for (int i = 0; i < 1000; i++)
+            {
+                column.Add(NullValue.Instance);
+            }
+
+            IDataColumn copy = column.Copy(GlobalMemoryManager.Instance);
+
+            Assert.Equal(1000, copy.Count);
+        }
     }
 }

@@ -385,5 +385,49 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal("{\"5\":\"hello\",\"a\":2}", json);
         }
+
+        [Fact]
+        public void TestCopy()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var dictSize = r.Next(20);
+
+                Dictionary<IDataValue, IDataValue> actual = new Dictionary<IDataValue, IDataValue>();
+                for (int k = 0; k < dictSize; k++)
+                {
+                    actual.Add(new StringValue(k.ToString()), new StringValue(k.ToString()));
+                }
+                column.Add(new MapValue(actual));
+            }
+
+            Column copy = column.Copy(GlobalMemoryManager.Instance);
+
+            Assert.Equal(1000, copy.Count);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                var actual = copy.GetValueAt(i, default);
+                var dict = actual.AsMap;
+                var dictLength = dict.GetLength();
+                Assert.Equal(column.GetValueAt(i, default).AsMap.GetLength(), dictLength);
+
+                DataValueContainer dataValueContainer = new DataValueContainer();
+                DataValueContainer dataValueContainer2 = new DataValueContainer();
+                for (int k = 0; k < dictLength; k++)
+                {
+                    dict.GetKeyAt(k, dataValueContainer);
+                    column.GetValueAt(i, default).AsMap.GetKeyAt(k, dataValueContainer2);
+                    Assert.Equal(dataValueContainer2.AsString.ToString(), dataValueContainer.AsString.ToString());
+
+                    dict.GetValueAt(k, dataValueContainer);
+                    column.GetValueAt(i, default).AsMap.GetValueAt(k, dataValueContainer2);
+                    Assert.Equal(dataValueContainer2.AsString.ToString(), dataValueContainer.AsString.ToString());
+                }
+            }
+        }
     }
 }

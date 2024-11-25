@@ -289,5 +289,15 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_data != null);
             writer.WriteNumberValue(_data.Get(index));
         }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            Debug.Assert(_data != null);
+            var mem = _data.Memory;
+            var newMem = memoryAllocator.Allocate(mem.Length, 64);
+            mem.Span.CopyTo(newMem.Memory.Span);
+
+            return new Int64Column(newMem, Count, memoryAllocator);
+        }
     }
 }

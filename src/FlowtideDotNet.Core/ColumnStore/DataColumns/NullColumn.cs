@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
@@ -143,6 +144,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
         {
             writer.WriteNullValue();
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new NullColumn(_count);
         }
     }
 }

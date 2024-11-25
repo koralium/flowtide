@@ -38,6 +38,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data = new BinaryList(offsetMemory, offsetLength, dataMemory, memoryAllocator);
         }
 
+        internal BinaryColumn(BinaryList data)
+        {
+            _data = data;
+        }
+
         public int Count => _data.Count;
 
         public ArrowTypeId Type => ArrowTypeId.Binary;
@@ -212,6 +217,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
         {
             writer.WriteBase64StringValue(_data.GetMemory(index).Span);
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new BinaryColumn(_data.Copy(memoryAllocator));
         }
     }
 }

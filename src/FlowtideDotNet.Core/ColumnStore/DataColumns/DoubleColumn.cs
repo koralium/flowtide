@@ -48,6 +48,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data = new PrimitiveList<double>(memory, count, memoryAllocator);
         }
 
+        internal DoubleColumn(PrimitiveList<double> data)
+        {
+            _data = data;
+        }
+
         public int Add<T>(in T value) where T : IDataValue
         {
             var index = _data.Count;
@@ -225,6 +230,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
         {
             writer.WriteNumberValue(_data.Get(index));
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new DoubleColumn(_data.Copy(memoryAllocator));
         }
     }
 }

@@ -12,6 +12,7 @@
 
 using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using FlowtideDotNet.Storage.Serializers;
@@ -322,7 +323,7 @@ namespace FlowtideDotNet.Storage.Tests
             device.readFailure = true;
             
 
-            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () =>
             {
                 await tree.GetValue(7);
             });
