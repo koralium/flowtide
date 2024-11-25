@@ -374,7 +374,7 @@ namespace FlowtideDotNet.Core.Engine
             if (joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right || joinRelation.Type == JoinType.Outer)
             {
                 //throw new NotSupportedException();
-                var op = new ColumnBlockNestedJoinOperator(joinRelation, functionsRegister, DefaultBlockOptions);
+                var op = new BlockNestedJoinOperator(joinRelation, functionsRegister, DefaultBlockOptions);
 
                 if (state != null)
                 {
