@@ -187,7 +187,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
                         return (input, GenericWriteOperation.Upsert);
                     });
 
-                    if (value.joinWeight == 0 && _joinRelation.Type == JoinType.Right)
+                    if (value.joinWeight == 0 && (_joinRelation.Type == JoinType.Right || _joinRelation.Type == JoinType.Outer))
                     {
                         // Output null values here
                         weights.Add(value.weight);
@@ -284,7 +284,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
                         return (input, GenericWriteOperation.Upsert);
                     });
 
-                    if (value.joinWeight == 0 && _joinRelation.Type == JoinType.Left)
+                    if (value.joinWeight == 0 && (_joinRelation.Type == JoinType.Left || _joinRelation.Type == JoinType.Outer))
                     {
                         // Output null values here
                         weights.Add(value.weight);
@@ -378,7 +378,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             rightWeights.joinWeight += outputWeight;
             leftWeights.joinWeight += outputWeight;
 
-            if (_joinRelation.Type == JoinType.Left)
+            if (_joinRelation.Type == JoinType.Left || _joinRelation.Type == JoinType.Outer)
             {
                 // Check if it was previously a left values null right, then output a negation
                 if (previousJoinWeight == 0 && leftWeights.joinWeight > 0)
@@ -453,7 +453,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             rightWeights.joinWeight += outputWeight;
             leftWeights.joinWeight += outputWeight;
 
-            if (_joinRelation.Type == JoinType.Right)
+            if (_joinRelation.Type == JoinType.Right || _joinRelation.Type == JoinType.Outer)
             {
                 // Check if it was previously a left values null right, then output a negation
                 if (previousJoinWeight == 0 && rightWeights.joinWeight > 0)

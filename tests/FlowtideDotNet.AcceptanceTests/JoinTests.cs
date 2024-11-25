@@ -553,7 +553,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task RightJoinBlockLoopModulusDeleteFirstTwo()
         {
-            GenerateData(5);
+            GenerateData(100);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
@@ -754,22 +754,38 @@ namespace FlowtideDotNet.AcceptanceTests
                 ON o.userkey % u.userkey = 0 AND u.userkey % 2 = 0");
             await WaitForUpdate();
 
+            bool[] joinFoundLeft = new bool[Orders.Count];
+            bool[] joinFoundRight = new bool[Users.Count];
             List<LeftJoinBlockLoopModulusResult> expected = new List<LeftJoinBlockLoopModulusResult>();
 
-            foreach (var user in Users)
+            for (int orderIndex = 0; orderIndex < Orders.Count; orderIndex++)
             {
-                bool joinFound = false;
-                foreach (var order in Orders)
+                var order = Orders[orderIndex];
+                for (int userIndex = 0; userIndex < Users.Count; userIndex++)
                 {
+                    var user = Users[userIndex];
                     if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
                     {
-                        joinFound = true;
+                        joinFoundLeft[orderIndex] = true;
+                        joinFoundRight[userIndex] = true;
                         expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
                     }
                 }
-                if (!joinFound)
+            }
+
+            for (int orderIndex = 0; orderIndex < Orders.Count; orderIndex++)
+            {
+                if (!joinFoundLeft[orderIndex])
                 {
-                    expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                    expected.Add(new LeftJoinBlockLoopModulusResult(Orders[orderIndex].OrderKey, null, null));
+                }
+            }
+
+            for (int userIndex = 0; userIndex < Users.Count; userIndex++)
+            {
+                if (!joinFoundRight[userIndex])
+                {
+                    expected.Add(new LeftJoinBlockLoopModulusResult(null, Users[userIndex].FirstName, Users[userIndex].LastName));
                 }
             }
 
