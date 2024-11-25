@@ -25,6 +25,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         private readonly int columnCount;
         internal EventBatchData _data;
         private DataValueContainer _dataValueContainer;
+        private int _count;
 
         public ColumnKeyStorageContainer(int columnCount, IMemoryAllocator memoryAllocator)
         {
@@ -37,16 +38,18 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _data = new EventBatchData(columns);
             this.columnCount = columnCount;
             _dataValueContainer = new DataValueContainer();
+            _count = 0;
         }
 
-        internal ColumnKeyStorageContainer(int columnCount, EventBatchData eventBatchData)
+        internal ColumnKeyStorageContainer(int columnCount, EventBatchData eventBatchData, int count)
         {
             this.columnCount = columnCount;
             _data = eventBatchData;
             _dataValueContainer = new DataValueContainer();
+            _count = 0;
         }
 
-        public int Count => _data.Count;
+        public int Count => _count;
 
         public void Add(ColumnRowReference key)
         {
@@ -55,6 +58,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, _dataValueContainer, default);
                 _data.Columns[i].Add(_dataValueContainer);
             }
+            _count++;
         }
 
         public void AddRangeFrom(IKeyContainer<ColumnRowReference> container, int start, int count)
@@ -65,6 +69,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 {
                     _data.Columns[i].InsertRangeFrom(_data.Columns[i].Count, columnKeyStorageContainer._data.Columns[i], start, count);
                 }
+                _count += count;
             }
             else
             {
@@ -103,8 +108,8 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, _dataValueContainer, default);
                 _data.Columns[i].InsertAt(index, _dataValueContainer);
-                //_data.Columns[i].InsertAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
             }
+            _count++;
         }
 
         public void Insert_Internal(int index, ColumnRowReference key)
@@ -114,6 +119,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, _dataValueContainer, default);
                 _data.Columns[i].InsertAt(index, _dataValueContainer);
             }
+            _count++;
         }
 
         public void RemoveAt(int index)
@@ -122,6 +128,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 _data.Columns[i].RemoveAt(index);
             }
+            _count--;
         }
 
         public void RemoveRange(int start, int count)
@@ -130,6 +137,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 _data.Columns[i].RemoveRange(start, count);
             }
+            _count -= count;
         }
 
         public void Update(int index, ColumnRowReference key)
