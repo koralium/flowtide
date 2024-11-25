@@ -72,5 +72,17 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(1000, copy.Count);
         }
+
+        [Fact]
+        public void TestUpdateNullColumn()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(NullValue.Instance);
+
+            column.UpdateAt(0, NullValue.Instance);
+
+            Assert.Single(column);
+        }
     }
 }
