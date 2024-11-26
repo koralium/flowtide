@@ -103,6 +103,34 @@ namespace FlowtideDotNet.AcceptanceTests
                 .Select(x => new { Userkey = x.Key, Sum = (double)x.Sum(y => y.OrderKey), Count = x.Count() }));
         }
 
+        /// <summary>
+        /// Test case to solve bug when using multiple aggregates and group by's
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task MultipleMaxAggregates()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, max(orderkey), max(orderkey)
+                FROM orders
+                GROUP BY userkey, orderkey
+                ");
+            await WaitForUpdate();
+
+            for (int i = 0; i < 10; i++)
+            {
+                GenerateData();
+                await WaitForUpdate();
+            }
+
+            AssertCurrentDataEqual(Orders
+                .GroupBy(x => $"{x.UserKey}:{x.OrderKey}")
+                .Select(x => new { Userkey = int.Parse(x.Key.Substring(0, x.Key.IndexOf(':'))), Max1 = (double)x.Max(y => y.OrderKey), Max2 = x.Max(y => y.OrderKey) }));
+        }
+
         [Fact]
         public async Task HavingSameAggregate()
         {
