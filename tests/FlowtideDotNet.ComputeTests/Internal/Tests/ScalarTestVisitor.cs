@@ -23,8 +23,21 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
     {
         public override object VisitTestCase([NotNull] FuncTestCaseParser.TestCaseContext context)
         {
-            //context.functionName.
+            var functionName = IdentifierParser.ParseIdentifier(context.functionName);
+
+            context.arguments();
             return base.VisitTestCase(context);
+        }
+
+        public override object VisitArguments([NotNull] FuncTestCaseParser.ArgumentsContext context)
+        {
+            return base.VisitArguments(context);
+        }
+
+        public override object VisitArgument([NotNull] FuncTestCaseParser.ArgumentContext context)
+        {
+            //context.
+            return base.VisitArgument(context);
         }
 
         public override object VisitIdentifier([NotNull] FuncTestCaseParser.IdentifierContext context)
