@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Antlr4.Runtime;
+using FlowtideDotNet.ComputeTests.Internal.Tests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,8 +34,8 @@ namespace FlowtideDotNet.ComputeTests
 
             var context = parser.doc();
 
-            var visitor = new TestCaseVisitor();
-            visitor.Visit(context);
+            var visitor = new TestDocumentVisitor();
+            var testDoc = visitor.Visit(context);
         }
     }
 }

@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Antlr4.Runtime.Misc;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,23 +18,19 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.ComputeTests.Internal.Tests
 {
-    internal class TestGroupVisitor : FuncTestCaseParserBaseVisitor<ScalarTestGroup>
+    internal static class ResultParser
     {
-        public override ScalarTestGroup VisitScalarFuncTestGroup([NotNull] FuncTestCaseParser.ScalarFuncTestGroupContext context)
+        public static ExpectedResult ParseExpectedResult(FuncTestCaseParser.ResultContext context)
         {
-            var description = TestGroupDescriptionParser.ParseTestGroupDescription(context.testGroupDescription());
 
-            var scalarTests = context.testCase();
-
-            List<ScalarTestCase> testCases = new List<ScalarTestCase>();
-
-            var testCaseVisitor = new ScalarTestVisitor();
-            foreach (var scalarTest in scalarTests)
+            var value = context.argument();
+            if (value != null)
             {
-                var testCase = testCaseVisitor.VisitTestCase(scalarTest);
-                testCases.Add(testCase);
+                var dataValue = ArgumentParser.ParseArgument(value);
+                return new ExpectedResult(dataValue, false);
             }
-            return new ScalarTestGroup(description, testCases);
+
+            return new ExpectedResult(null, true);
         }
     }
 }

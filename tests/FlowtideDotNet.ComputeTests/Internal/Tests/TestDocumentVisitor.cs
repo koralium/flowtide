@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Antlr4.Runtime.Misc;
+using FlowtideDotNet.ComputeTests.Internal.Header;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,23 +20,23 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.ComputeTests.Internal.Tests
 {
-    internal class TestGroupVisitor : FuncTestCaseParserBaseVisitor<ScalarTestGroup>
+    internal class TestDocumentVisitor : FuncTestCaseParserBaseVisitor<TestDocument>
     {
-        public override ScalarTestGroup VisitScalarFuncTestGroup([NotNull] FuncTestCaseParser.ScalarFuncTestGroupContext context)
+
+        public override TestDocument VisitDoc([NotNull] FuncTestCaseParser.DocContext context)
         {
-            var description = TestGroupDescriptionParser.ParseTestGroupDescription(context.testGroupDescription());
+            var headerInfo = HeaderParser.ParseHeader(context.header());
 
-            var scalarTests = context.testCase();
+            var testGroups = context.testGroup();
 
-            List<ScalarTestCase> testCases = new List<ScalarTestCase>();
-
-            var testCaseVisitor = new ScalarTestVisitor();
-            foreach (var scalarTest in scalarTests)
+            List<ScalarTestGroup> scalarTestGroups = new List<ScalarTestGroup>();
+            foreach (var testGroup in testGroups)
             {
-                var testCase = testCaseVisitor.VisitTestCase(scalarTest);
-                testCases.Add(testCase);
+                var testGroupVisitor = new TestGroupVisitor();
+                scalarTestGroups.Add(testGroupVisitor.Visit(testGroup));
             }
-            return new ScalarTestGroup(description, testCases);
+
+            return new TestDocument(headerInfo, scalarTestGroups);
         }
     }
 }

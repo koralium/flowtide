@@ -10,17 +10,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Substrait\grammar\FuncTestCaseLexer.g4" />
-    <None Remove="Substrait\grammar\FuncTestCaseParser.g4" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="xunit" Version="2.5.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
 	<PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
 	<PackageReference Include="Antlr4BuildTasks" Version="12.2.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FlowtideDotNet.Core\FlowtideDotNet.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
