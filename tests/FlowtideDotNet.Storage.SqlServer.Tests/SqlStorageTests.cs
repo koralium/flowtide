@@ -92,6 +92,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             {
                 var page = await session.Read(i);
                 Assert.NotEmpty(page);
+                Assert.Equal(Encoding.UTF8.GetBytes(i.ToString()), page);
             }
 
             var numberOfPersistedPages = await _fixture.ExecuteReader<int>($"SELECT COUNT(*) FROM [dbo].[StreamPages] WHERE streamKey = {streamKey}", reader =>
@@ -273,6 +274,56 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             Assert.NotNull(page);
             Assert.NotEmpty(page);
             Assert.Equal(1, numberOfPages);
+        }
+
+        [Fact]
+        public async Task SessionReadReturnsWrittenData()
+        {
+            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
+            {
+                ConnectionString = _fixture.ConnectionString,
+                WritePagesBulkLimit = 1,
+                BulkCopySettings = new SqlServerBulkCopySettings(),
+            });
+
+            var name = $"test_{nameof(SessionReadReturnsWrittenData)}";
+            await storage.InitializeAsync(new StorageInitializationMetadata(name));
+            var session = storage.CreateSession();
+
+            var pageId = 2;
+            var data = Guid.NewGuid().ToByteArray();
+
+            await session.Write(pageId, data);
+            await session.Commit();
+
+            var readData = await session.Read(pageId);
+
+            Assert.Equal(data, readData);
+        }
+
+        [Fact]
+        public async Task StorageReadReturnsWrittenData()
+        {
+            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
+            {
+                ConnectionString = _fixture.ConnectionString,
+                WritePagesBulkLimit = 1,
+                BulkCopySettings = new SqlServerBulkCopySettings(),
+            });
+
+            var name = $"test_{nameof(StorageReadReturnsWrittenData)}";
+            await storage.InitializeAsync(new StorageInitializationMetadata(name));
+
+            var pageId = 2;
+            var data = Guid.NewGuid().ToByteArray();
+
+            await storage.Write(pageId, data);
+            await storage.CheckpointAsync([], false);
+
+            var hasPage = storage.TryGetValue(pageId, out var readData);
+
+            Assert.True(hasPage);
+            Assert.Equal(data, readData);
         }
 
 
