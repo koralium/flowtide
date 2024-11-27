@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.ComputeTests.Internal.Tests
 {
+#nullable enable
     internal class TestDocument
     {
         public HeaderResult Header { get; }

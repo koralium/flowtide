@@ -12,6 +12,7 @@
 
 namespace FlowtideDotNet.ComputeTests.Internal.Tests
 {
+#nullable enable
     internal class ExpectedResult
     {
         public string? ExpectedValue { get; }

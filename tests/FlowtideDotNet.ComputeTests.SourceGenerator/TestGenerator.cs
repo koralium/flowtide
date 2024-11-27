@@ -1,6 +1,16 @@
-﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -87,7 +97,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
             }
         }
 
-            public void Execute(AdditionalText text, SourceProductionContext context)
+        public void Execute(AdditionalText text, SourceProductionContext context)
         {
             var fileName = Path.GetFileName(text.Path);
             var className = Path.GetFileNameWithoutExtension(fileName);
@@ -98,18 +108,18 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
             // Make first character uppercase
             folderName = char.ToUpper(folderName[0]) + folderName.Substring(1);
 
-            OutputWriter calcGeneratedClassBuilder = new OutputWriter();
-            calcGeneratedClassBuilder.AppendLine("using System;");
-            calcGeneratedClassBuilder.AppendLine("using FlowtideDotNet.Core.ColumnStore;");
-            calcGeneratedClassBuilder.AppendLine("using FlowtideDotNet.Core.Compute;");
-            calcGeneratedClassBuilder.AppendLine("using FlowtideDotNet.Core.Compute.Internal;");
-            calcGeneratedClassBuilder.AppendLine("using FlowtideDotNet.Substrait.Expressions;");
-            calcGeneratedClassBuilder.AppendLine("using FlowtideDotNet.Core.Compute.Columnar;");
-            calcGeneratedClassBuilder.AppendLine("using FlowtideDotNet.Storage.Memory;");
-            calcGeneratedClassBuilder.AppendLine("using FlowtideDotNet.Core.ColumnStore.Comparers;");
-            calcGeneratedClassBuilder.AppendLine("using FlowtideDotNet.Core.ColumnStore.DataValues;");
+            OutputWriter testClassBuilder = new OutputWriter();
+            testClassBuilder.AppendLine("using System;");
+            testClassBuilder.AppendLine("using FlowtideDotNet.Core.ColumnStore;");
+            testClassBuilder.AppendLine("using FlowtideDotNet.Core.Compute;");
+            testClassBuilder.AppendLine("using FlowtideDotNet.Core.Compute.Internal;");
+            testClassBuilder.AppendLine("using FlowtideDotNet.Substrait.Expressions;");
+            testClassBuilder.AppendLine("using FlowtideDotNet.Core.Compute.Columnar;");
+            testClassBuilder.AppendLine("using FlowtideDotNet.Storage.Memory;");
+            testClassBuilder.AppendLine("using FlowtideDotNet.Core.ColumnStore.Comparers;");
+            testClassBuilder.AppendLine("using FlowtideDotNet.Core.ColumnStore.DataValues;");
 
-            calcGeneratedClassBuilder.AppendLine();
+            testClassBuilder.AppendLine();
 
             var content = text.GetText();
             var textContent = content.ToString();
@@ -131,28 +141,26 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                 includePath = includePath.Substring(11);
             }
 
-            calcGeneratedClassBuilder.AppendLine($"namespace {folderName}");
-            calcGeneratedClassBuilder.StartCurly();
+            testClassBuilder.AppendLine($"namespace {folderName}");
+            testClassBuilder.StartCurly();
 
             // Make class name first letter uppercase
             className = char.ToUpper(className[0]) + className.Substring(1);
 
-            calcGeneratedClassBuilder.AppendLine($"public class {className}");
+            testClassBuilder.AppendLine($"public class {className}");
 
-            calcGeneratedClassBuilder.StartCurly();
+            testClassBuilder.StartCurly();
 
             int i = 0;
             foreach (var testGroup in testDocument.ScalarTestGroups)
             {
                 if (i > 0)
                 {
-                    calcGeneratedClassBuilder.AppendLine();
+                    testClassBuilder.AppendLine();
                 }
 
-                calcGeneratedClassBuilder.AppendLine($"public static IEnumerable<object[]> GetDataForTest{i}()");
-                calcGeneratedClassBuilder.StartCurly();
-
-                
+                testClassBuilder.AppendLine($"public static IEnumerable<object[]> GetDataForTest{i}()");
+                testClassBuilder.StartCurly();
 
                 foreach (var test in testGroup.TestCases)
                 {
@@ -166,15 +174,15 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
 
                     argumentValues.Add(test.ExpectedResult.ExpectedValue);
                     var argList = string.Join(", ", argumentValues);
-                    calcGeneratedClassBuilder.AppendLine($"yield return new object[] {{ {argList} }};");
+                    testClassBuilder.AppendLine($"yield return new object[] {{ {argList} }};");
                 }
 
-                calcGeneratedClassBuilder.EndCurly();
+                testClassBuilder.EndCurly();
 
-                calcGeneratedClassBuilder.AppendLine();
+                testClassBuilder.AppendLine();
 
-                calcGeneratedClassBuilder.AppendLine($"[Theory(DisplayName = \"{testGroup.Description}\")]");
-                calcGeneratedClassBuilder.AppendLine($"[MemberData(nameof(GetDataForTest{i}))]");
+                testClassBuilder.AppendLine($"[Theory(DisplayName = \"{testGroup.Description}\")]");
+                testClassBuilder.AppendLine($"[MemberData(nameof(GetDataForTest{i}))]");
 
                 List<string> argNames = new()
                 {
@@ -183,69 +191,69 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                     "IDataValue expected"
                 };
 
-                calcGeneratedClassBuilder.AppendLine($"public void Test{i}({string.Join(", ", argNames)})");
+                testClassBuilder.AppendLine($"public void Test{i}({string.Join(", ", argNames)})");
 
-                calcGeneratedClassBuilder.StartCurly();
+                testClassBuilder.StartCurly();
 
-                calcGeneratedClassBuilder.AppendLine("FunctionsRegister register = new FunctionsRegister();");
-                calcGeneratedClassBuilder.AppendLine("BuiltinFunctions.RegisterFunctions(register);");
+                testClassBuilder.AppendLine("FunctionsRegister register = new FunctionsRegister();");
+                testClassBuilder.AppendLine("BuiltinFunctions.RegisterFunctions(register);");
 
-                calcGeneratedClassBuilder.AppendLine("var expressionList = new List<Expression>();");
+                testClassBuilder.AppendLine("var expressionList = new List<Expression>();");
 
-                calcGeneratedClassBuilder.AppendLine("for (int argIndex = 0; argIndex < arguments.Length; argIndex++)");
-                calcGeneratedClassBuilder.StartCurly();
+                testClassBuilder.AppendLine("for (int argIndex = 0; argIndex < arguments.Length; argIndex++)");
+                testClassBuilder.StartCurly();
 
-                calcGeneratedClassBuilder.AppendLine("expressionList.Add(new DirectFieldReference()");
-                calcGeneratedClassBuilder.StartCurly();
-                calcGeneratedClassBuilder.AppendLine("ReferenceSegment = new StructReferenceSegment()");
-                calcGeneratedClassBuilder.StartCurly();
-                calcGeneratedClassBuilder.AppendLine($"Field = argIndex");
-                calcGeneratedClassBuilder.EndCurly();
+                testClassBuilder.AppendLine("expressionList.Add(new DirectFieldReference()");
+                testClassBuilder.StartCurly();
+                testClassBuilder.AppendLine("ReferenceSegment = new StructReferenceSegment()");
+                testClassBuilder.StartCurly();
+                testClassBuilder.AppendLine($"Field = argIndex");
+                testClassBuilder.EndCurly();
 
-                calcGeneratedClassBuilder.EndCurly(");");
-                calcGeneratedClassBuilder.EndCurly();
+                testClassBuilder.EndCurly(");");
+                testClassBuilder.EndCurly();
 
-                calcGeneratedClassBuilder.AppendLine("var compiledMethod = ColumnProjectCompiler.Compile(");
-                calcGeneratedClassBuilder.Indent();
-                calcGeneratedClassBuilder.AppendLine("new ScalarFunction()");
-                calcGeneratedClassBuilder.StartCurly();
-                calcGeneratedClassBuilder.AppendLine($"ExtensionName = functionName,");
-                calcGeneratedClassBuilder.AppendLine($"ExtensionUri = \"{includePath}\",");
-                calcGeneratedClassBuilder.AppendLine("Arguments = expressionList");
+                testClassBuilder.AppendLine("var compiledMethod = ColumnProjectCompiler.Compile(");
+                testClassBuilder.Indent();
+                testClassBuilder.AppendLine("new ScalarFunction()");
+                testClassBuilder.StartCurly();
+                testClassBuilder.AppendLine($"ExtensionName = functionName,");
+                testClassBuilder.AppendLine($"ExtensionUri = \"{includePath}\",");
+                testClassBuilder.AppendLine("Arguments = expressionList");
 
-                calcGeneratedClassBuilder.EndCurly();
-                calcGeneratedClassBuilder.Dedent();
+                testClassBuilder.EndCurly();
+                testClassBuilder.Dedent();
 
-                calcGeneratedClassBuilder.AppendLine(", register);");
+                testClassBuilder.AppendLine(", register);");
 
-                calcGeneratedClassBuilder.AppendLine("Column[] columns = new Column[arguments.Length];");
+                testClassBuilder.AppendLine("Column[] columns = new Column[arguments.Length];");
 
-                calcGeneratedClassBuilder.AppendLine("for (int i = 0; i < arguments.Length; i++)");
-                calcGeneratedClassBuilder.StartCurly();
-                calcGeneratedClassBuilder.AppendLine("columns[i] = Column.Create(GlobalMemoryManager.Instance);");
-                calcGeneratedClassBuilder.AppendLine("columns[i].Add(arguments[i]);");
-                calcGeneratedClassBuilder.EndCurly();
+                testClassBuilder.AppendLine("for (int i = 0; i < arguments.Length; i++)");
+                testClassBuilder.StartCurly();
+                testClassBuilder.AppendLine("columns[i] = Column.Create(GlobalMemoryManager.Instance);");
+                testClassBuilder.AppendLine("columns[i].Add(arguments[i]);");
+                testClassBuilder.EndCurly();
 
                 // Create result column
-                calcGeneratedClassBuilder.AppendLine("Column resultColumn = Column.Create(GlobalMemoryManager.Instance);");
+                testClassBuilder.AppendLine("Column resultColumn = Column.Create(GlobalMemoryManager.Instance);");
 
                 // Execute the compiled method
-                calcGeneratedClassBuilder.AppendLine("compiledMethod(new EventBatchData(columns), 0, resultColumn);");
+                testClassBuilder.AppendLine("compiledMethod(new EventBatchData(columns), 0, resultColumn);");
 
-                calcGeneratedClassBuilder.AppendLine("var actual = resultColumn.GetValueAt(0, default);");
+                testClassBuilder.AppendLine("var actual = resultColumn.GetValueAt(0, default);");
 
-                calcGeneratedClassBuilder.AppendLine("Assert.Equal(expected, actual, (x, y) => DataValueComparer.CompareTo(x, y) == 0);");
+                testClassBuilder.AppendLine("Assert.Equal(expected, actual, (x, y) => DataValueComparer.CompareTo(x, y) == 0);");
 
-                calcGeneratedClassBuilder.EndCurly();
+                testClassBuilder.EndCurly();
 
                 i++;
             }
 
-            calcGeneratedClassBuilder.EndCurly();
+            testClassBuilder.EndCurly();
 
-            calcGeneratedClassBuilder.EndCurly();
+            testClassBuilder.EndCurly();
 
-            context.AddSource($"{folderName}.{className}.Generated.cs", calcGeneratedClassBuilder.ToString());
+            context.AddSource($"{folderName}.{className}.Generated.cs", testClassBuilder.ToString());
         }
     }
 }
