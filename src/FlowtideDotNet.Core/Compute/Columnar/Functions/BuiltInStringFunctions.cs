@@ -19,6 +19,7 @@ using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -30,6 +31,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
     internal static class BuiltInStringFunctions
     {
+        private const string NegativeStart = "negative_start";
+        private const string WrapFromEnd = "WRAP_FROM_END";
+        private const string LeftOfBeginning = "LEFT_OF_BEGINNING";
+
         private static readonly StringValue EmptyString = new StringValue("");
         public static void RegisterFunctions(IFunctionsRegister functionsRegister)
         {
@@ -56,7 +61,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                         length = Expression.Constant(new Int64Value(1));
                     }
 
-                    MethodInfo? toStringMethod = typeof(BuiltInStringFunctions).GetMethod("Substring", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                    string methodName = nameof(Substring);
+                    if (scalarFunction.Options != null && scalarFunction.Options.TryGetValue(NegativeStart, out var negativeStart))
+                    {
+                        if (negativeStart == WrapFromEnd)
+                        {
+                            methodName = nameof(SubstringWrapFromEnd);
+                        }
+                    }
+                    
+
+                    MethodInfo? toStringMethod = typeof(BuiltInStringFunctions).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
                     Debug.Assert(toStringMethod != null);
                     var genericMethod = toStringMethod.MakeGenericMethod(expr.Type, start.Type, length.Type);
                     var resultContainer = Expression.Constant(new DataValueContainer());
@@ -140,6 +155,56 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.CharLength, typeof(BuiltInStringFunctions), nameof(CharLengthImplementation));
         }
 
+        private static IDataValue SubstringWrapFromEnd<T1, T2, T3>(T1 value, T2 start, T3 length, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (start.Type != ArrowTypeId.Int64)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (length.Type != ArrowTypeId.Int64)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var str = value.AsString.ToString();
+            var startInt = (int)start.AsLong;
+            var lengthInt = (int)length.AsLong;
+
+            if (startInt > str.Length)
+            {
+                result._type = ArrowTypeId.String;
+                result._stringValue = EmptyString;
+                return result;
+            }
+
+            if (startInt < 0)
+            {
+                startInt = str.Length + startInt + 1;
+            }
+
+            if (lengthInt == -1)
+            {
+                lengthInt = str.Length - startInt + 1;
+            }
+            else
+            {
+                lengthInt = Math.Min(lengthInt, str.Length - startInt + 1);
+            }
+            result._type = ArrowTypeId.String;
+            var stringInfo = new StringInfo(str);
+            result._stringValue = new StringValue(stringInfo.SubstringByTextElements(startInt - 1, lengthInt));
+            return result;
+        }
+
         private static IDataValue Substring<T1, T2, T3>(T1 value, T2 start, T3 length, DataValueContainer result)
             where T1 : IDataValue
             where T2 : IDataValue
@@ -179,7 +244,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 lengthInt = Math.Min(lengthInt, str.Length - startInt);
             }
             result._type = ArrowTypeId.String;
-            result._stringValue = new StringValue(str.Substring(startInt - 1, lengthInt));
+            var stringInfo = new StringInfo(str);
+            result._stringValue = new StringValue(stringInfo.SubstringByTextElements(startInt - 1, lengthInt));
             return result;
         }
 
