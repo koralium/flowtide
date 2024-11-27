@@ -8,8 +8,8 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
 
-
-	  <!--<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <!-- Remove comments to see output test files -->
+	 <!--<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 	  <CompilerGeneratedFilesOutputPath>.\GeneratedFiles</CompilerGeneratedFilesOutputPath>-->
   </PropertyGroup>
 
