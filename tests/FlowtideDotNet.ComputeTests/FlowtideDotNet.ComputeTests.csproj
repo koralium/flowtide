@@ -7,7 +7,16 @@
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+
+
+	  <!--<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+	  <CompilerGeneratedFilesOutputPath>.\GeneratedFiles</CompilerGeneratedFilesOutputPath>-->
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Substrait\grammar\FuncTestCaseLexer.g4" />
+    <None Remove="Substrait\grammar\FuncTestCaseParser.g4" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
@@ -20,10 +29,22 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FlowtideDotNet.Core\FlowtideDotNet.Core.csproj" />
+    <ProjectReference Include="..\FlowtideDotNet.ComputeTests.SourceGenerator\FlowtideDotNet.ComputeTests.SourceGenerator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
+
+	<ItemGroup>
+		<AdditionalFiles Include="Substrait/cases/string/substring.test" />
+		<AdditionalFiles Include="Substrait/cases/string/replace.test" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="GeneratedFiles\FlowtideDotNet.ComputeTests.SourceGenerator\" />
+	</ItemGroup>
+	
+
 
 </Project>

@@ -6,11 +6,14 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <IsRoslynComponent>true</IsRoslynComponent>
     <IncludeBuildOutput>false</IncludeBuildOutput>
-    <LangVersion>10</LangVersion>
+	  <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
+	  <LangVersion>10</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" GeneratePathProperty="true" PrivateAssets="all">
+		</PackageReference>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="*">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -21,5 +24,26 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
+
+	<PropertyGroup>
+		<GetTargetPathDependsOn>$(GetTargetPathDependsOn);GetDependencyTargetPaths</GetTargetPathDependsOn>
+	</PropertyGroup>
+
+	<Target Name="GetDependencyTargetPaths">
+		<ItemGroup>
+			<TargetPathWithTargetPlatformMoniker Include="$(ProjectDir)$(OutputPath)Antlr4.Runtime.Standard.dll" IncludeRuntimeDependency="false" />
+		</ItemGroup>
+	</Target>
+
+
+	<!--<Target Name="GetDependencyTargetPaths">
+		<ItemGroup>
+			<TargetPathWithTargetPlatformMoniker Include="$(PKGCore)\lib\netstandard2.0\Antlr4.Runtime.Standard.dll" IncludeRuntimeDependency="false" />
+			--><!-- Pack both our DLL and the dependencies into a generated Nuget Package --><!--
+			<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+			<None Include="$(PKGCore)\lib\netstandard2.0\Antlr4.Runtime.Standard.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+		</ItemGroup>
+	</Target>-->
+	
 
 </Project>
