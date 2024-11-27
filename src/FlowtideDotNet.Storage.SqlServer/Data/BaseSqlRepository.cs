@@ -40,7 +40,6 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             ManagedPages.AddOrCreate(new ManagedStreamPage(page.PageId, page.Version, page.PageKey));
         }
 
-
         public async Task SaveStreamPagesAsync(SqlTransaction? transaction = null)
         {
             if (UnpersistedPages.Count == 0)
@@ -126,8 +125,13 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             return []; //todo: throw?
         }
 
-        private async Task SaveStreamPagesAsync(StreamPageDataReader reader, SqlConnection connection)
+        public async Task SaveStreamPagesAsync(StreamPageDataReader reader, SqlConnection connection)
         {
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
             using var bulkCopy = new SqlBulkCopy(connection)
             {
                 DestinationTableName = Settings.BulkCopySettings.DestinationTableName,
@@ -146,17 +150,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
                 ColumnOrderHints = { { "PageKey", SortOrder.Ascending }, { "StreamKey", SortOrder.Ascending } }
             };
 
-            if (connection.State != ConnectionState.Open)
-            {
-                await connection.OpenAsync();
-            }
-
             await bulkCopy.WriteToServerAsync(reader);
             await reader.DisposeAsync();
             await connection.DisposeAsync();
         }
 
-        private async Task SaveStreamPagesAsync(StreamPageDataReader reader, SqlTransaction transaction)
+        public async Task SaveStreamPagesAsync(StreamPageDataReader reader, SqlTransaction transaction)
         {
             using var bulkCopy = new SqlBulkCopy(transaction.Connection, SqlBulkCopyOptions.Default, transaction)
             {

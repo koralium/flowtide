@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Microsoft.Data.SqlClient;
+
 namespace FlowtideDotNet.Storage.SqlServer.Data
 {
     internal sealed class StreamPageRepository : BaseSqlRepository
@@ -27,11 +29,21 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             base.AddStreamPage(key, value);
             if (UnpersistedPages.Count > _settings.WritePagesBulkLimit)
             {
-                _backgroundTasks.Enqueue(Task.Run(() => SaveStreamPagesAsync(null)));
+                var pages = UnpersistedPages.ToArray();
+                UnpersistedPages.Clear();
+                _backgroundTasks.Enqueue(Task.Run(() => SaveStreamPagesAsync(pages)));
             }
         }
 
-        public Task CommitAsync()
+        private async Task SaveStreamPagesAsync(StreamPage[] pages)
+        {
+            var reader = new StreamPageDataReader(pages);
+            using var connection = new SqlConnection(Settings.ConnectionString);
+            await connection.OpenAsync();
+            await SaveStreamPagesAsync(reader, connection);
+        }
+
+        public async Task CommitAsync()
         {
             var exceptions = new List<Exception>();
             while (_backgroundTasks.TryDequeue(out var task))
@@ -44,7 +56,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
                     }
                     else if (!task.IsCompleted)
                     {
-                        task.Wait();
+                        await task;
                     }
                 }
                 catch (Exception ex)
@@ -59,7 +71,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
                 throw new AggregateException(exceptions);
             }
 
-            return SaveStreamPagesAsync();
+            await SaveStreamPagesAsync();
         }
 
         public Task DeleteAsync(long key)
