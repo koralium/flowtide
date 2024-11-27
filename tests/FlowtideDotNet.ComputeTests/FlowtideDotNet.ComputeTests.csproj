@@ -14,8 +14,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Substrait\grammar\FuncTestCaseLexer.g4" />
-    <None Remove="Substrait\grammar\FuncTestCaseParser.g4" />
+    <None Remove="Substrait\cases\string\lower.test" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,12 +36,8 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<AdditionalFiles Include="Substrait/cases/string/substring.test" />
 		<AdditionalFiles Include="Substrait/cases/string/replace.test" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="GeneratedFiles\FlowtideDotNet.ComputeTests.SourceGenerator\" />
+		<AdditionalFiles Include="Substrait\cases\string\lower.test" />
 	</ItemGroup>
 	
 

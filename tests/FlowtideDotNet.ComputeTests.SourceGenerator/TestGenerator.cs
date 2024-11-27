@@ -8,8 +8,11 @@ using System.Text;
 
 namespace FlowtideDotNet.ComputeTests.SourceGenerator
 {
+    /// <summary>
+    /// Generator that creates test classes for each test file
+    /// </summary>
     [Generator]
-    public class Class1 : IIncrementalGenerator
+    public class TestGenerator : IIncrementalGenerator
     {
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
@@ -141,8 +144,6 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
             int i = 0;
             foreach (var testGroup in testDocument.ScalarTestGroups)
             {
-                //int maxArgCount = testGroup.TestCases.Max(test => test.Arguments.Count);
-
                 if (i > 0)
                 {
                     calcGeneratedClassBuilder.AppendLine();
@@ -181,10 +182,6 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                     "IDataValue[] arguments",
                     "IDataValue expected"
                 };
-                //for (int j = 0; j < maxArgCount; j++)
-                //{
-                //    argNames.Add($"IDataValue arg{j}");
-                //}
 
                 calcGeneratedClassBuilder.AppendLine($"public void Test{i}({string.Join(", ", argNames)})");
 
@@ -215,29 +212,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                 calcGeneratedClassBuilder.AppendLine($"ExtensionName = functionName,");
                 calcGeneratedClassBuilder.AppendLine($"ExtensionUri = \"{includePath}\",");
                 calcGeneratedClassBuilder.AppendLine("Arguments = expressionList");
-                //calcGeneratedClassBuilder.StartCurly();
-                //for (int j = 0; j < maxArgCount; j++)
-                //{
-                //    calcGeneratedClassBuilder.AppendLine("new DirectFieldReference()");
-                //    calcGeneratedClassBuilder.StartCurly();
-                //    calcGeneratedClassBuilder.AppendLine("ReferenceSegment = new StructReferenceSegment()");
-                //    calcGeneratedClassBuilder.StartCurly();
-                //    calcGeneratedClassBuilder.AppendLine($"Field = {j}");
-                //    calcGeneratedClassBuilder.EndCurly();
-                //    calcGeneratedClassBuilder.EndCurlyNoNewLine();
 
-                //    if ((j + 1) < maxArgCount)
-                //    {
-                //        calcGeneratedClassBuilder.AppendLineNoIndent(",");
-                //    }
-                //    else
-                //    {
-                //        calcGeneratedClassBuilder.AppendLine();
-                //    }
-
-                //}
-
-                //calcGeneratedClassBuilder.EndCurly();
                 calcGeneratedClassBuilder.EndCurly();
                 calcGeneratedClassBuilder.Dedent();
 
