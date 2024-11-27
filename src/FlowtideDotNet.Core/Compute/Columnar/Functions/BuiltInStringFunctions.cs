@@ -13,12 +13,14 @@
 using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.StringAgg;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -28,9 +30,38 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
     internal static class BuiltInStringFunctions
     {
+        private static readonly StringValue EmptyString = new StringValue("");
         public static void RegisterFunctions(IFunctionsRegister functionsRegister)
         {
             ColumnStringAggAggregation.Register(functionsRegister);
+
+            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Substring,
+                (scalarFunction, parameters, visitor) =>
+                {
+                    if (scalarFunction.Arguments.Count < 2)
+                    {
+                        throw new InvalidOperationException("Substring function must have atleast 2 arguments");
+                    }
+
+                    var expr = visitor.Visit(scalarFunction.Arguments[0], parameters)!;
+                    var start = visitor.Visit(scalarFunction.Arguments[1], parameters)!;
+
+                    Expression? length = default;
+                    if (scalarFunction.Arguments.Count == 3)
+                    {
+                        length = visitor.Visit(scalarFunction.Arguments[2], parameters)!;
+                    }
+                    else
+                    {
+                        length = Expression.Constant(new Int64Value(1));
+                    }
+
+                    MethodInfo? toStringMethod = typeof(BuiltInStringFunctions).GetMethod("Substring", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                    Debug.Assert(toStringMethod != null);
+                    var genericMethod = toStringMethod.MakeGenericMethod(expr.Type, start.Type, length.Type);
+                    var resultContainer = Expression.Constant(new DataValueContainer());
+                    return System.Linq.Expressions.Expression.Call(genericMethod, expr, start, length, resultContainer);
+                });
 
             functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Concat,
                 (func, parameters, visitor) =>
@@ -107,6 +138,49 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Encode, typeof(BuiltInStringFunctions), nameof(StringBase64EncodeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Decode, typeof(BuiltInStringFunctions), nameof(StringBase64DecodeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.CharLength, typeof(BuiltInStringFunctions), nameof(CharLengthImplementation));
+        }
+
+        private static IDataValue Substring<T1, T2, T3>(T1 value, T2 start, T3 length, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (start.Type != ArrowTypeId.Int64)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (length.Type != ArrowTypeId.Int64)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var str = value.AsString.ToString();
+            var startInt = (int)start.AsLong;
+            var lengthInt = (int)length.AsLong;
+
+            if (startInt > str.Length)
+            {
+                result._type = ArrowTypeId.String;
+                result._stringValue = EmptyString;
+                return result;
+            }
+            if (lengthInt == -1)
+            {
+                lengthInt = str.Length - startInt;
+            }
+            else
+            {
+                lengthInt = Math.Min(lengthInt, str.Length - startInt);
+            }
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(str.Substring(startInt - 1, lengthInt));
+            return result;
         }
 
         private static IDataValue UpperImplementation<T>(T value, DataValueContainer result)

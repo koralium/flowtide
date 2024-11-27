@@ -173,6 +173,11 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                     argumentValues.Add(dataList);
 
                     argumentValues.Add(test.ExpectedResult.ExpectedValue);
+
+                    
+                    var optionsList = $"new SortedList<string, string>() {{ {string.Join(", ", test.Options.Select(x => $"{{ \"{x.Key}\", \"{x.Value}\" }}"))} }}";
+                    argumentValues.Add(optionsList);
+
                     var argList = string.Join(", ", argumentValues);
                     testClassBuilder.AppendLine($"yield return new object[] {{ {argList} }};");
                 }
@@ -188,7 +193,8 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                 {
                     "string functionName",
                     "IDataValue[] arguments",
-                    "IDataValue expected"
+                    "IDataValue expected",
+                    "SortedList<string, string> options"
                 };
 
                 testClassBuilder.AppendLine($"public void Test{i}({string.Join(", ", argNames)})");
@@ -219,6 +225,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                 testClassBuilder.StartCurly();
                 testClassBuilder.AppendLine($"ExtensionName = functionName,");
                 testClassBuilder.AppendLine($"ExtensionUri = \"{includePath}\",");
+                testClassBuilder.AppendLine($"Options = options,");
                 testClassBuilder.AppendLine("Arguments = expressionList");
 
                 testClassBuilder.EndCurly();
