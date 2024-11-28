@@ -14,6 +14,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Substrait\cases\string\char_length.test" />
+    <None Remove="Substrait\cases\string\like.test" />
     <None Remove="Substrait\cases\string\lower.test" />
     <None Remove="Substrait\cases\string\ltrim.test" />
     <None Remove="Substrait\cases\string\rtrim.test" />

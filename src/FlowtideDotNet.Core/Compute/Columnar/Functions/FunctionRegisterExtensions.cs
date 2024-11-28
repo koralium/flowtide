@@ -23,24 +23,63 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
     internal static class FunctionRegisterExtensions
     {
-        private record MethodDetails(MethodInfo methodInfo, ParameterInfo[] parameters, List<Type> genericArguments);
-        private static void RegisterMethod(string extensionUri, string extensionName, IFunctionsRegister functionRegister, MethodInfo[] methods)
+        private record MethodDetails(MethodInfo methodInfo, ParameterInfo[] parameters, List<Type> genericArguments, string? option, string? optionValue);
+        private static void RegisterMethod(string extensionUri, string extensionName, IFunctionsRegister functionRegister, string methodName, MethodInfo[] methods)
         {
-            Dictionary<int, MethodDetails> methodDetails = new Dictionary<int, MethodDetails>();
+            Dictionary<int, List<MethodDetails>> methodDetails = new Dictionary<int, List<MethodDetails>>();
 
             for (int i =0; i < methods.Length; i++)
             {
+                string? optionName = null;
+                string? optionValue = null;
+                if (methods[i].Name != methodName)
+                {
+                    var option = methods[i].Name.Substring(methodName.Length);
+                    if (!option.StartsWith("_"))
+                    {
+                        continue;
+                    }
+                    option = option.Substring(1);
+                    var split = option.Split("__");
+                    optionName = split[0];
+                    optionValue = split.Length > 1 ? split[1] : null;
+                }
                 var methodParameters = methods[i].GetParameters();
                 var genericArguments = methods[i].GetGenericArguments().ToList();
-                methodDetails.Add(genericArguments.Count, new MethodDetails(methods[i], methodParameters, genericArguments));
+                if (!methodDetails.TryGetValue(genericArguments.Count, out var list))
+                {
+                    list = new List<MethodDetails>();
+                    methodDetails.Add(genericArguments.Count, list);
+                }
+                list.Add(new MethodDetails(methods[i], methodParameters, genericArguments, optionName, optionValue));
             }
             
 
             functionRegister.RegisterColumnScalarFunction(extensionUri, extensionName, (func, paramInfo, visitor) =>
             {
-                if (!methodDetails.TryGetValue(func.Arguments.Count, out var methodInformation))
+                if (!methodDetails.TryGetValue(func.Arguments.Count, out var methodsInformation))
                 {
                     throw new InvalidOperationException("Generic argument count does not match function argument count");
+                }
+
+                MethodDetails? methodInformation = null;
+                if (func.Options != null && func.Options.Count > 0)
+                {
+                    if (func.Options.Count > 1)
+                    {
+                        throw new NotSupportedException("Only one option is supported at this time.");
+                    }
+
+                    methodInformation = methodsInformation.FirstOrDefault(x => x.option == func.Options.Keys[0] && x.optionValue == func.Options.Values[0]);
+                }
+                if (methodInformation == null)
+                {
+                    // Default take the first one
+                    methodInformation = methodsInformation.FirstOrDefault();
+                    if (methodInformation == null)
+                    {
+                        throw new InvalidOperationException("Method not found");
+                    }
                 }
                 var genericArguments = methodInformation.genericArguments;
                 var methodParameters = methodInformation.parameters;
@@ -89,9 +128,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
         public static void RegisterScalarMethod(this IFunctionsRegister functionsRegister, string extensionUri, string extensionName, System.Type classType, string methodName)
         {
-            var methods = classType.GetMethods(BindingFlags.NonPublic | BindingFlags.Static).Where(x => x.Name == methodName).ToArray();
+            var methods = classType.GetMethods(BindingFlags.NonPublic | BindingFlags.Static).Where(x => x.Name.StartsWith(methodName)).ToArray();
             Debug.Assert(methods != null, "Method not found");
-            RegisterMethod(extensionUri, extensionName, functionsRegister, methods);
+            RegisterMethod(extensionUri, extensionName, functionsRegister, methodName, methods);
         }
     }
 }
