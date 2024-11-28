@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     }
                     else
                     {
-                        length = Expression.Constant(new Int64Value(1));
+                        length = Expression.Constant(new Int64Value(-1));
                     }
 
                     string methodName = nameof(Substring);
@@ -297,11 +297,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             }
             if (lengthInt == -1)
             {
-                lengthInt = str.Length - startInt;
+                lengthInt = str.Length - startInt + 1;
             }
             else
             {
-                lengthInt = Math.Min(lengthInt, str.Length - startInt);
+                lengthInt = Math.Min(lengthInt, str.Length - startInt + 1);
             }
             result._type = ArrowTypeId.String;
             var stringInfo = new StringInfo(str);
