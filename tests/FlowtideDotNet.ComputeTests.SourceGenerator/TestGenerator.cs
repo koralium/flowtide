@@ -193,6 +193,9 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
 
                     argumentValues.Add(test.ExpectedResult.ExpectedValue);
 
+                    var optionsList = $"new SortedList<string, string>() {{ {string.Join(", ", test.Options.Select(x => $"{{ \"{x.Key}\", \"{x.Value}\" }}"))} }}";
+                    argumentValues.Add(optionsList);
+
                     var argList = string.Join(", ", argumentValues);
 
                     testClassBuilder.AppendLine($"yield return new object[] {{ {argList} }};");
@@ -209,7 +212,8 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                 {
                     "string functionName",
                     "EventBatchData rowBatch",
-                    "IDataValue expected"
+                    "IDataValue expected",
+                    "SortedList<string, string> options"
                 };
 
                 testClassBuilder.AppendLine($"public async Task Test{testIndex}({string.Join(", ", argNames)})");
@@ -239,12 +243,14 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
 
                 testClassBuilder.AppendLine($"ExtensionName = functionName,");
                 testClassBuilder.AppendLine($"ExtensionUri = \"{includePath}\",");
+                testClassBuilder.AppendLine($"Options = options,");
                 testClassBuilder.AppendLine("Arguments = expressionList");
                 testClassBuilder.EndCurly(";");
 
 
                 // Create the state manager for aggregations that require trees
-                testClassBuilder.AppendLine("StateManagerSync stateManager = new StateManagerSync<object>(new StateManagerOptions(), NullLogger.Instance, new System.Diagnostics.Metrics.Meter(\"\"), \"\");");
+                testClassBuilder.AppendLine("using StateManagerSync stateManager = new StateManagerSync<object>(new StateManagerOptions(), NullLogger.Instance, new System.Diagnostics.Metrics.Meter(\"\"), \"\");");
+                testClassBuilder.AppendLine("await stateManager.InitializeAsync();");
                 testClassBuilder.AppendLine("var stateClient = stateManager.GetOrCreateClient(\"a\");");
 
                 // Compile

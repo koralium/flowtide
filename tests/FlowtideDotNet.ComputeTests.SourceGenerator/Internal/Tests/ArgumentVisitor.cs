@@ -11,8 +11,10 @@
 // limitations under the License.
 
 using Antlr4.Runtime.Misc;
+using FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -63,10 +65,21 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
         public override string VisitFloatArg([NotNull] FuncTestCaseParser.FloatArgContext context)
         {
             var literal = context.numericLiteral();
+            var txt = literal.GetText();
 
-            var val = double.Parse(literal.GetText());
+            return DataTypeValueWriter.WriteDataValue(txt, "fp64");
+            //if (txt == "inf")
+            //{
+            //    return "new DoubleValue(double.PositiveInfinity)";
+            //}
+            //else if (txt == "-inf")
+            //{
+            //    return "new DoubleValue(double.NegativeInfinity)";
+            //}
 
-            return $"new DoubleValue({val})";
+            //var val = double.Parse(literal.GetText(), CultureInfo.InvariantCulture);
+
+            //return $"new DoubleValue({val.ToString(CultureInfo.InvariantCulture)})";
         }
 
         public override string VisitIntArg([NotNull] FuncTestCaseParser.IntArgContext context)

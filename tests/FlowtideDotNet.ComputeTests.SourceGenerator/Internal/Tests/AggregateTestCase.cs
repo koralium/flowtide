@@ -28,11 +28,15 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
 
         public ExpectedResult ExpectedResult { get; }
 
-        public AggregateTestCase(string functionName, IReadOnlyList<IReadOnlyList<string>> columns, ExpectedResult expectedResult)
+        public SortedList<string, string> Options { get; }
+
+        public AggregateTestCase(string functionName, IReadOnlyList<IReadOnlyList<string>> columns, ExpectedResult expectedResult, SortedList<string, string> options)
         {
             FunctionName = functionName;
             Columns = columns;
-            ExpectedResult = expectedResult;
+            ExpectedResult = expectedResult;            
+            Options = options;
+
         }
     }
 }

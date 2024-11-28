@@ -56,7 +56,8 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
         {
             var funcCallResult = new AggregateFuncCallVisitor().Visit(context.aggFuncCall());
             var expectedResult = ResultParser.ParseExpectedResult(context.result());
-            return new AggregateTestCase(funcCallResult.functionName, funcCallResult.columns, expectedResult);
+            var options = OptionsParser.GetOptions(context.funcOptions());
+            return new AggregateTestCase(funcCallResult.functionName, funcCallResult.columns, expectedResult, options);
         }
     }
 }

@@ -27,21 +27,25 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
             switch (dataType)
             {
                 case "i8":
-                    return $"new Int64Value({value})";
                 case "i16":
-                    return $"new Int64Value({value})";
                 case "i32":
-                    return $"new Int64Value({value})";
                 case "i64":
                     return $"new Int64Value({value})";
-                case "f32":
-                    return $"new DoubleValue({value})";
-                case "f64":
+                case "fp32":
+                case "fp64":
+                    if (value == "inf")
+                    {
+                        return "new DoubleValue(double.PositiveInfinity)";
+                    }
+                    else if (value == "-inf")
+                    {
+                        return "new DoubleValue(double.NegativeInfinity)";
+                    }
                     return $"new DoubleValue({value})";
                 case "str":
                     return $"new StringValue(\"{value}\")";
             }
-            throw new NotImplementedException();
+            throw new NotImplementedException(dataType);
         }
     }
 }
