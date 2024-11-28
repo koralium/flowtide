@@ -19,6 +19,7 @@ using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
@@ -67,6 +68,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                         if (negativeStart == WrapFromEnd)
                         {
                             methodName = nameof(SubstringWrapFromEnd);
+                        }
+                        else if (negativeStart == LeftOfBeginning)
+                        {
+                            methodName = nameof(SubstringLeftOfBeginning);
+                        }
+                        else
+                        {
+                            throw new NotSupportedException($"Substring option {NegativeStart}={negativeStart} is not supported.");
                         }
                     }
                     
@@ -155,29 +164,93 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.CharLength, typeof(BuiltInStringFunctions), nameof(CharLengthImplementation));
         }
 
-        private static IDataValue SubstringWrapFromEnd<T1, T2, T3>(T1 value, T2 start, T3 length, DataValueContainer result)
+        private static bool SubstringTryGetParameters<T1, T2, T3>(
+            T1 value, 
+            T2 start, 
+            T3 length,
+            [NotNullWhen(true)] out string? stringVal,
+            out int startInt,
+            out int lengthInt)
             where T1 : IDataValue
             where T2 : IDataValue
             where T3 : IDataValue
         {
             if (value.Type != ArrowTypeId.String)
             {
-                result._type = ArrowTypeId.Null;
-                return result;
+                stringVal = default;
+                startInt = 0;
+                lengthInt = 0;
+                return false;
             }
             if (start.Type != ArrowTypeId.Int64)
             {
-                result._type = ArrowTypeId.Null;
-                return result;
+                stringVal = default;
+                startInt = 0;
+                lengthInt = 0;
+                return false;
             }
             if (length.Type != ArrowTypeId.Int64)
+            {
+                stringVal = default;
+                startInt = 0;
+                lengthInt = 0;
+                return false;
+            }
+
+            stringVal = value.AsString.ToString();
+            startInt = (int)start.AsLong;
+            lengthInt = (int)length.AsLong;
+            return true;
+        }
+
+        private static IDataValue SubstringLeftOfBeginning<T1, T2, T3>(T1 value, T2 start, T3 length, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (!SubstringTryGetParameters(value, start, length, out var str, out var startInt, out var lengthInt))
             {
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            var str = value.AsString.ToString();
-            var startInt = (int)start.AsLong;
-            var lengthInt = (int)length.AsLong;
+
+            if (startInt > str.Length)
+            {
+                result._type = ArrowTypeId.String;
+                result._stringValue = EmptyString;
+                return result;
+            }
+
+            if (startInt < 0)
+            {
+                lengthInt = lengthInt + startInt - 1; // Negate by -1 to cover 0 
+                startInt = 1;
+            }
+
+            if (lengthInt < -1)
+            {
+                lengthInt = str.Length - startInt + 1;
+            }
+            else
+            {
+                lengthInt = Math.Min(lengthInt, str.Length - startInt + 1);
+            }
+            result._type = ArrowTypeId.String;
+            var stringInfo = new StringInfo(str);
+            result._stringValue = new StringValue(stringInfo.SubstringByTextElements(startInt - 1, lengthInt));
+            return result;
+        }
+
+        private static IDataValue SubstringWrapFromEnd<T1, T2, T3>(T1 value, T2 start, T3 length, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (!SubstringTryGetParameters(value, start, length, out var str, out var startInt, out var lengthInt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
 
             if (startInt > str.Length)
             {
@@ -210,24 +283,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T2 : IDataValue
             where T3 : IDataValue
         {
-            if (value.Type != ArrowTypeId.String)
+            if (!SubstringTryGetParameters(value, start, length, out var str, out var startInt, out var lengthInt))
             {
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            if (start.Type != ArrowTypeId.Int64)
-            {
-                result._type = ArrowTypeId.Null;
-                return result;
-            }
-            if (length.Type != ArrowTypeId.Int64)
-            {
-                result._type = ArrowTypeId.Null;
-                return result;
-            }
-            var str = value.AsString.ToString();
-            var startInt = (int)start.AsLong;
-            var lengthInt = (int)length.AsLong;
 
             if (startInt > str.Length)
             {
