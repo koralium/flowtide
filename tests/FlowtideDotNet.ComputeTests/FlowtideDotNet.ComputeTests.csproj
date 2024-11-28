@@ -37,14 +37,11 @@
 
 	<ItemGroup>
 		<AdditionalFiles Include="Substrait/cases/string/replace.test" />
-		<AdditionalFiles Include="Substrait\cases\string\lower.test" />
-		<AdditionalFiles Include="Substrait\cases\string\substring.test" />
+		<AdditionalFiles Include="Substrait/cases/string/lower.test" />
+		<AdditionalFiles Include="Substrait/cases/string/substring.test" />
+		<AdditionalFiles Include="Substrait/cases/aggregate_generic/count.test" />
+		<AdditionalFiles Include="Substrait/cases/arithmetic/max.test" />
+		<AdditionalFiles Include="Substrait/cases/arithmetic/min.test" />
 	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="GeneratedFiles\FlowtideDotNet.ComputeTests.SourceGenerator\" />
-	</ItemGroup>
-	
-
 
 </Project>

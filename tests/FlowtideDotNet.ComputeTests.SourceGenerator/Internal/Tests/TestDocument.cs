@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.ComputeTests.Internal.Header;
+using FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,10 +27,13 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
 
         public IReadOnlyList<ScalarTestGroup>? ScalarTestGroups { get; }
 
-        public TestDocument(HeaderResult header, IReadOnlyList<ScalarTestGroup>? scalarTestGroups)
+        public IReadOnlyList<AggregateTestGroup>? AggregateTestGroups { get; }
+
+        public TestDocument(HeaderResult header, IReadOnlyList<ScalarTestGroup>? scalarTestGroups, IReadOnlyList<AggregateTestGroup>? aggregateTestGroups)
         {
             Header = header;
             ScalarTestGroups = scalarTestGroups;
+            AggregateTestGroups = aggregateTestGroups;
         }
     }
 }

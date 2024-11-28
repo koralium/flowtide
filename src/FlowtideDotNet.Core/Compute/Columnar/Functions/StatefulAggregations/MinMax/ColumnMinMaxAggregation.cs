@@ -162,11 +162,18 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
                 return;
             }
             var enumerator = iterator.GetAsyncEnumerator();
-            await enumerator.MoveNextAsync();
-            var page = enumerator.Current;
+            if (await enumerator.MoveNextAsync())
+            {
+                var page = enumerator.Current;
 
-            var value = page.Keys._data.Columns[singleton.KeyLength].GetValueAt(singleton.searchComparer.Start, default);
-            outputColumn.Add(value);
+                var value = page.Keys._data.Columns[singleton.KeyLength].GetValueAt(singleton.searchComparer.Start, default);
+                outputColumn.Add(value);
+            }
+            else
+            {
+                outputColumn.Add(NullValue.Instance);
+            }
+            
         }
 
         private static Task<MinMaxColumnAggregationSingleton> InitializeMin(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
