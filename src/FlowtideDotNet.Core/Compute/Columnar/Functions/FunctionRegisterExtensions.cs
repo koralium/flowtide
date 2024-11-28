@@ -23,17 +23,28 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
     internal static class FunctionRegisterExtensions
     {
-        private static void RegisterMethod(string extensionUri, string extensionName, IFunctionsRegister functionRegister, MethodInfo method)
+        private record MethodDetails(MethodInfo methodInfo, ParameterInfo[] parameters, List<Type> genericArguments);
+        private static void RegisterMethod(string extensionUri, string extensionName, IFunctionsRegister functionRegister, MethodInfo[] methods)
         {
-            var methodParameters = method.GetParameters();
-            var genericArguments = method.GetGenericArguments().ToList();
+            Dictionary<int, MethodDetails> methodDetails = new Dictionary<int, MethodDetails>();
+
+            for (int i =0; i < methods.Length; i++)
+            {
+                var methodParameters = methods[i].GetParameters();
+                var genericArguments = methods[i].GetGenericArguments().ToList();
+                methodDetails.Add(genericArguments.Count, new MethodDetails(methods[i], methodParameters, genericArguments));
+            }
+            
 
             functionRegister.RegisterColumnScalarFunction(extensionUri, extensionName, (func, paramInfo, visitor) =>
             {
-                if (genericArguments.Count != func.Arguments.Count)
+                if (!methodDetails.TryGetValue(func.Arguments.Count, out var methodInformation))
                 {
                     throw new InvalidOperationException("Generic argument count does not match function argument count");
                 }
+                var genericArguments = methodInformation.genericArguments;
+                var methodParameters = methodInformation.parameters;
+                var method = methodInformation.methodInfo;
                 System.Type[] genericTypes = new System.Type[genericArguments.Count];
                 System.Linq.Expressions.Expression[] parameters = new System.Linq.Expressions.Expression[methodParameters.Length];
                 for (int i = 0; i < func.Arguments.Count; i++)
@@ -78,9 +89,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
         public static void RegisterScalarMethod(this IFunctionsRegister functionsRegister, string extensionUri, string extensionName, System.Type classType, string methodName)
         {
-            var method = classType.GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static);
-            Debug.Assert(method != null, "Method not found");
-            RegisterMethod(extensionUri, extensionName, functionsRegister, method);
+            var methods = classType.GetMethods(BindingFlags.NonPublic | BindingFlags.Static).Where(x => x.Name == methodName).ToArray();
+            Debug.Assert(methods != null, "Method not found");
+            RegisterMethod(extensionUri, extensionName, functionsRegister, methods);
         }
     }
 }

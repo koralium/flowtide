@@ -35,6 +35,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         private const string NegativeStart = "negative_start";
         private const string WrapFromEnd = "WRAP_FROM_END";
         private const string LeftOfBeginning = "LEFT_OF_BEGINNING";
+        private const string NullHandling = "null_handling";
+        private const string AcceptNulls = "ACCEPT_NULLS";
+        private const string IgnoreNulls = "IGNORE_NULLS";
 
         private static readonly StringValue EmptyString = new StringValue("");
         public static void RegisterFunctions(IFunctionsRegister functionsRegister)
@@ -90,6 +93,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Concat,
                 (func, parameters, visitor) =>
                 {
+                    bool ignoreNulls = false;
+
+                    if(func.Options != null && func.Options.TryGetValue(NullHandling, out var nullHandling) && nullHandling == IgnoreNulls)
+                    {
+                        ignoreNulls = true;
+                    }
+
                     List<System.Linq.Expressions.Expression> expressions = new List<System.Linq.Expressions.Expression>();
                     var stringBuilder = new StringBuilder();
 
@@ -140,7 +150,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                         var appendLine = System.Linq.Expressions.Expression.Call(stringBuilderConstant, appendMethod, toStringCall);
                         var appendLineCastedToString = System.Linq.Expressions.Expression.Call(stringBuilderConstant, appendMethod, toStringFromCastToString);
                         var checkIfString = System.Linq.Expressions.Expression.IfThenElse(typeIsStringCheck, appendLine, appendLineCastedToString);
-                        var nullCheck = System.Linq.Expressions.Expression.IfThenElse(typeIsNullCheck, nullValueReturn, checkIfString);
+                        System.Linq.Expressions.Expression? nullCheck = default;
+                        if (ignoreNulls)
+                        {
+                            nullCheck = System.Linq.Expressions.Expression.IfThen(typeIsStringCheck, checkIfString);
+                        }
+                        else
+                        {
+                            nullCheck = System.Linq.Expressions.Expression.IfThenElse(typeIsNullCheck, nullValueReturn, checkIfString);
+                        }
                         blockExpressions.Add(nullCheck);
                     }
                     blockExpressions.Add(returnLabel);
@@ -351,6 +369,38 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             return result;
         }
 
+        /// <summary>
+        /// Trim with a string with to trim info this method cant use built in C# trim since it allows strings and not just chars
+        /// </summary>
+        /// <typeparam name="T1"></typeparam>
+        /// <typeparam name="T2"></typeparam>
+        /// <param name="value"></param>
+        /// <param name="toTrim"></param>
+        /// <param name="result"></param>
+        /// <returns></returns>
+        private static IDataValue TrimImplementation<T1, T2>(T1 value, T2 toTrim, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (toTrim.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.String;
+            var toTrimStr = toTrim.AsString.ToString();
+            var valueStr = value.AsString.ToString();
+
+            result._stringValue = new StringValue(valueStr.Trim(toTrimStr.ToCharArray()));
+            return result;
+        }
+
         private static IDataValue LTrimImplementation<T>(T value, DataValueContainer result)
             where T : IDataValue
         {
@@ -365,6 +415,30 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             return result;
         }
 
+        private static IDataValue LTrimImplementation<T1, T2>(T1 value, T2 toTrim, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (toTrim.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.String;
+            var toTrimStr = toTrim.AsString.ToString();
+            var valueStr = value.AsString.ToString();
+
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(valueStr.TrimStart(toTrimStr.ToCharArray()));
+            return result;
+        }
+
         private static IDataValue RTrimImplementation<T>(T value, DataValueContainer result)
             where T : IDataValue
         {
@@ -376,6 +450,30 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
             result._type = ArrowTypeId.String;
             result._stringValue = new StringValue(value.AsString.ToString().TrimEnd());
+            return result;
+        }
+
+        private static IDataValue RTrimImplementation<T1, T2>(T1 value, T2 toTrim, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (toTrim.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.String;
+            var toTrimStr = toTrim.AsString.ToString();
+            var valueStr = value.AsString.ToString();
+
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(valueStr.TrimEnd(toTrimStr.ToCharArray()));
             return result;
         }
 
