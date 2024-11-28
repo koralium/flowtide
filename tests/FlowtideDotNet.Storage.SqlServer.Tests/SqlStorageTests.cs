@@ -199,7 +199,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var settings = new SqlServerPersistentStorageSettings
             {
                 ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 1,
+                WritePagesBulkLimit = 100,
                 BulkCopySettings = new SqlServerBulkCopySettings(),
             };
 
@@ -212,33 +212,37 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
 
             var pageId = 2;
             var session = storage.CreateSession();
+
             await session.Write(pageId, Encoding.UTF8.GetBytes("1"));
             await session.Commit();
 
             await storage.CheckpointAsync([], false); // new version
-            await session.Write(pageId, Encoding.UTF8.GetBytes("1"));
+
+            await session.Write(pageId, Encoding.UTF8.GetBytes("2"));
             await session.Commit();
 
-            await storage.InitializeAsync(metadata); // new version was not checkpointed so should be removed from db
+            // new version was not checkpointed so it should be removed from the database
+            await storage.InitializeAsync(metadata);
 
-            var pages = await _fixture.ExecuteReader<IEnumerable<(int pageId, int version)>>(
+            var pages = await _fixture.ExecuteReader<IEnumerable<(long pageId, int version)>>(
                 $"SELECT pageId, version FROM [dbo].[StreamPages] WHERE pageId = {pageId} and streamKey = {streamKey}",
                 reader =>
             {
-                reader.Read();
-                var pages = new List<(int pageId, int version)>();
+                var pages = new List<(long pageId, int version)>();
                 while (reader.Read())
                 {
-                    pages.Add((reader.GetInt32(0), reader.GetInt32(1)));
+                    pages.Add((reader.GetInt64(0), reader.GetInt32(1)));
                 }
 
                 return pages;
             });
-
-
+            
+            // create a new session and use that to read as that will not have the cached page metadata
+            var newSession = storage.CreateSession();
+            var page = await newSession.Read(pageId);
             Assert.All(pages, p => Assert.Equal(1, p.version));
+            Assert.Equal(Encoding.UTF8.GetBytes("1"), page);
         }
-
 
         [Fact]
         public async Task StorageCompactRemovesOldVersions()
