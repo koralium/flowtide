@@ -40,28 +40,6 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             ManagedPages.AddOrCreate(new ManagedStreamPage(page.PageId, page.Version, page.PageKey));
         }
 
-        public async Task SaveStreamPagesAsync(SqlTransaction? transaction = null)
-        {
-            if (UnpersistedPages.Count == 0)
-            {
-                return;
-            }
-
-            var pages = UnpersistedPages.ToArray();
-            UnpersistedPages.Clear();
-            var reader = new StreamPageDataReader(pages);
-
-            if (transaction == null)
-            {
-                using var connection = new SqlConnection(Settings.ConnectionString);
-                await connection.OpenAsync();
-                await SaveStreamPagesAsync(reader, connection);
-            }
-            else
-            {
-                await SaveStreamPagesAsync(reader, transaction);
-            }
-        }
 
         public byte[]? Read(long key)
         {
@@ -123,6 +101,29 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             }
 
             return []; //todo: throw?
+        }
+
+        public async Task SaveStreamPagesAsync(SqlTransaction? transaction = null)
+        {
+            if (UnpersistedPages.Count == 0)
+            {
+                return;
+            }
+
+            var pages = UnpersistedPages.ToArray();
+            UnpersistedPages.Clear();
+            var reader = new StreamPageDataReader(pages);
+
+            if (transaction == null)
+            {
+                using var connection = new SqlConnection(Settings.ConnectionString);
+                await connection.OpenAsync();
+                await SaveStreamPagesAsync(reader, connection);
+            }
+            else
+            {
+                await SaveStreamPagesAsync(reader, transaction);
+            }
         }
 
         public async Task SaveStreamPagesAsync(StreamPageDataReader reader, SqlConnection connection)
@@ -192,7 +193,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
         public async Task DeleteUnsuccessfulVersionsAsync(SqlTransaction transaction)
         {
             using var cmd = new SqlCommand("DELETE FROM StreamPages WHERE Version > @Version AND StreamKey = @StreamKey");
-            cmd.Parameters.AddWithValue("@Version", Stream.Metadata.CurrentVersion);
+            cmd.Parameters.AddWithValue("@Version", Stream.Metadata.LastSucessfulVersion);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
             cmd.Transaction = transaction;
             cmd.Connection = transaction.Connection;
@@ -202,10 +203,14 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
         public async Task DeleteOldVersionsInDbAsync(SqlTransaction transaction)
         {
             using var cmd = new SqlCommand(@"DELETE FROM StreamPages
-                WHERE StreamKey = @StreamKey AND Id NOT IN (
-                    SELECT Id
-                    FROM StreamPages t1
-                    WHERE t1.Version = (SELECT MAX(t2.Version) FROM StreamPages t2 WHERE t2.PageId = t1.PageId)
+                WHERE StreamKey = @StreamKey AND Id IN (
+                SELECT Id
+                FROM StreamPages t1
+                WHERE t1.Version = (SELECT MAX(t2.Version) 
+                	FROM StreamPages t2 
+                	JOIN Streams t3 ON t3.StreamKey = t2.StreamKey
+                	WHERE t2.PageId = t1.PageId 
+                	AND t2.Version < t3.LastSuccessfulVersion)
                 );", transaction.Connection);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
             cmd.Transaction = transaction;
