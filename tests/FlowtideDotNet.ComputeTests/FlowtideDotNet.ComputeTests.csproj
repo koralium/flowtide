@@ -38,11 +38,8 @@
 	<ItemGroup>
 		<AdditionalFiles Include="Substrait/cases/string/replace.test" />
 		<AdditionalFiles Include="Substrait\cases\string\lower.test" />
-    <AdditionalFiles Include="Substrait\cases\aggregate_generic\count.test" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="GeneratedFiles\FlowtideDotNet.ComputeTests.SourceGenerator\" />
+		<AdditionalFiles Include="Substrait\cases\string\substring.test" />
+		<AdditionalFiles Include="Substrait\cases\aggregate_generic\count.test" />
 	</ItemGroup>
 	
 

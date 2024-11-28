@@ -10,25 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
 using System.Collections.Generic;
+using System.Text;
 
-namespace FlowtideDotNet.ComputeTests.Internal.Tests
+namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
 {
-    internal class ScalarTestCase
+    internal static class OptionsParser
     {
-        public string FunctionName { get; }
-        public IReadOnlyList<string> Arguments { get; }
-
-        public ExpectedResult ExpectedResult { get; }
-
-        public SortedList<string, string> Options { get; }
-
-        public ScalarTestCase(string functionName, IReadOnlyList<string> arguments, ExpectedResult expectedResult, SortedList<string, string> options)
+        public static SortedList<string, string> GetOptions(FuncTestCaseParser.FuncOptionsContext context)
         {
-            FunctionName = functionName;
-            Arguments = arguments;
-            ExpectedResult = expectedResult;
-            Options = options;
+            if (context == null)
+            {
+                return new SortedList<string, string>();
+            }
+            return new OptionsVisitor().Visit(context) as SortedList<string, string>;
         }
     }
 }
