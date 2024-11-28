@@ -15,6 +15,9 @@
 
   <ItemGroup>
     <None Remove="Substrait\cases\string\lower.test" />
+    <None Remove="Substrait\cases\string\ltrim.test" />
+    <None Remove="Substrait\cases\string\rtrim.test" />
+    <None Remove="Substrait\cases\string\trim.test" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,9 +39,7 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<AdditionalFiles Include="Substrait/cases/string/replace.test" />
-		<AdditionalFiles Include="Substrait/cases/string/lower.test" />
-		<AdditionalFiles Include="Substrait/cases/string/substring.test" />
+		<AdditionalFiles Include="Substrait/cases/string/*.test" />
 		<AdditionalFiles Include="Substrait/cases/aggregate_generic/count.test" />
 		<AdditionalFiles Include="Substrait/cases/arithmetic/max.test" />
 		<AdditionalFiles Include="Substrait/cases/arithmetic/min.test" />
