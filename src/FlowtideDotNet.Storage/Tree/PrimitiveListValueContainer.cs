@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Storage.Tree
     public class PrimitiveListValueContainer<T> : IValueContainer<T>
         where T : unmanaged
     {
-        private PrimitiveList<T> _values;
+        private readonly PrimitiveList<T> _values;
 
         public Memory<byte> Memory => _values.SlicedMemory;
 
@@ -92,5 +92,10 @@ namespace FlowtideDotNet.Storage.Tree
         {
             return (end - start + 1) * sizeof(T);
         }
+
+        public PrimitiveList<T> GetPrimitiveListCopy(IMemoryAllocator memoryAllocator)
+        {
+            return _values.Copy(memoryAllocator);
+        } 
     }
 }

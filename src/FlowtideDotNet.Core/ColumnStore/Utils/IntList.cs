@@ -315,5 +315,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             _length = 0;
         }
+
+        public IntList Copy(IMemoryAllocator memoryAllocator)
+        {
+            var mem = Memory;
+            var newMemory = memoryAllocator.Allocate(mem.Length, 64);
+            mem.Span.CopyTo(newMemory.Memory.Span);
+
+            return new IntList(newMemory, _length, memoryAllocator);
+        }
     }
 }

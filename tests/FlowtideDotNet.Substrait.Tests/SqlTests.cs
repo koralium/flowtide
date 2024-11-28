@@ -464,7 +464,7 @@ namespace FlowtideDotNet.Substrait.Tests
                     {
                         new SetRelation()
                         {
-                            Operation = SetOperation.UnionAll,
+                            Operation = SetOperation.UnionDistinct,
                             Inputs = new List<Relation>()
                             {
                                 new ProjectRelation()

@@ -799,5 +799,22 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Empty(column);
             Assert.Equal(0, column.GetDataColumn(0).Count);
         }
+
+        [Fact]
+        public void TestCopy()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            var copy = column.Copy(GlobalMemoryManager.Instance);
+
+            Assert.Equal(2, copy.Count);
+
+            Assert.Equal(1, copy.GetValueAt(0, default).AsLong);
+            Assert.Equal(3, copy.GetValueAt(1, default).AsDecimal);
+        }
     }
 }

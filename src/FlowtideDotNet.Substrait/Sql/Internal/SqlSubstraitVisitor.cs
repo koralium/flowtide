@@ -1051,13 +1051,59 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override RelationData? VisitSetOperation(SetExpression.SetOperation setOperation, object? state)
         {
-            if (setOperation.Op != SetOperator.Union)
+            SetOperation operation = SetOperation.Unspecified;
+            if (setOperation.Op == SetOperator.Union)
             {
-                throw new NotImplementedException($"The set operation {setOperation.Op.ToString()} is not yet supported in SQL.");
+                if (setOperation.SetQuantifier == SetQuantifier.All)
+                {
+                    operation = SetOperation.UnionAll;
+                }
+                else if (setOperation.SetQuantifier == SetQuantifier.None)
+                {
+                    operation = SetOperation.UnionDistinct;
+                }
+                else if (setOperation.SetQuantifier == SetQuantifier.Distinct)
+                {
+                    operation = SetOperation.UnionDistinct;
+                }
+                else
+                {
+                    throw new NotImplementedException($"Set quantifier {setOperation.SetQuantifier} is not supported at this time on {setOperation.Op}.");
+                }
             }
-            if (setOperation.SetQuantifier != SetQuantifier.All && setOperation.SetQuantifier != SetQuantifier.None)
+            else if (setOperation.Op == SetOperator.Except)
             {
-                throw new NotImplementedException("Only union all is supported in SQL at this time.");
+                if (setOperation.SetQuantifier == SetQuantifier.Distinct)
+                {
+                    operation = SetOperation.MinusPrimary;
+                }
+                else if (setOperation.SetQuantifier == SetQuantifier.All)
+                {
+                    operation = SetOperation.MinusPrimaryAll;
+                }
+                else
+                {
+                    throw new NotImplementedException($"Set quantifier {setOperation.SetQuantifier} is not supported at this time on {setOperation.Op}.");
+                }
+            }
+            else if (setOperation.Op == SetOperator.Intersect)
+            {
+                if (setOperation.SetQuantifier == SetQuantifier.Distinct)
+                {
+                    operation = SetOperation.IntersectionMultiset;
+                }
+                else if (setOperation.SetQuantifier == SetQuantifier.All)
+                {
+                    operation = SetOperation.IntersectionMultisetAll;
+                }
+                else
+                {
+                    throw new NotImplementedException($"Set quantifier {setOperation.SetQuantifier} is not supported at this time on {setOperation.Op}.");
+                }
+            }
+            else
+            {
+                throw new NotImplementedException($"Set operation {setOperation.Op} is not supported at this time.");
             }
 
             var left = Visit(setOperation.Left, state);
@@ -1073,7 +1119,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     left.Relation,
                     right.Relation
                 },
-                Operation = SetOperation.UnionAll
+                Operation = operation
             };
 
             return new RelationData(setRelation, left.EmitData);
