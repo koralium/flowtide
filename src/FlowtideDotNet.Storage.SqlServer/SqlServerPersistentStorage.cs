@@ -47,7 +47,6 @@ namespace FlowtideDotNet.Storage.SqlServer
 
                 await _streamRepository.SaveStreamPagesAsync(transaction);
                 await _streamRepository.DeleteOldVersionsInDbAsync(transaction);
-                await _streamRepository.DeleteUnsuccessfulVersionsAsync(transaction);
 
                 var deletedPages = _sessionRepositories.SelectMany(s => s.GetDeletedPages()).ToList();
                 if (deletedPages.Count > 0)
