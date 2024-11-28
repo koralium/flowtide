@@ -12,6 +12,7 @@
 
 using Antlr4.Runtime.Misc;
 using FlowtideDotNet.ComputeTests.Internal.Header;
+using FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,15 +29,29 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
             var headerInfo = HeaderParser.ParseHeader(context.header());
 
             var testGroups = context.testGroup();
-
-            List<ScalarTestGroup> scalarTestGroups = new List<ScalarTestGroup>();
-            foreach (var testGroup in testGroups)
+            if (headerInfo.Version.IsScalar)
             {
-                var testGroupVisitor = new TestGroupVisitor();
-                scalarTestGroups.Add(testGroupVisitor.Visit(testGroup));
-            }
+                
+                List<ScalarTestGroup> scalarTestGroups = new List<ScalarTestGroup>();
+                foreach (var testGroup in testGroups)
+                {
+                    var testGroupVisitor = new TestGroupVisitor();
+                    scalarTestGroups.Add(testGroupVisitor.Visit(testGroup));
+                }
 
-            return new TestDocument(headerInfo, scalarTestGroups);
+                return new TestDocument(headerInfo, scalarTestGroups, null);
+            }
+            else
+            {
+                List<AggregateTestGroup> aggregateTestGroups = new List<AggregateTestGroup>();
+                foreach (var testGroup in testGroups)
+                {
+                    var testGroupVisitor = new AggregateTestGroupVisitor();
+                    aggregateTestGroups.Add(testGroupVisitor.Visit(testGroup));
+                }
+                return new TestDocument(headerInfo, null, aggregateTestGroups);
+            }
+            
         }
     }
 }

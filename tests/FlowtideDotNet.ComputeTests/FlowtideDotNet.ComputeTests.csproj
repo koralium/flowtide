@@ -9,8 +9,8 @@
     <IsTestProject>true</IsTestProject>
 
     <!-- Remove comments to see output test files -->
-	 <!--<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-	  <CompilerGeneratedFilesOutputPath>.\GeneratedFiles</CompilerGeneratedFilesOutputPath>-->
+	 <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+	  <CompilerGeneratedFilesOutputPath>.\GeneratedFiles</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,6 +38,11 @@
 	<ItemGroup>
 		<AdditionalFiles Include="Substrait/cases/string/replace.test" />
 		<AdditionalFiles Include="Substrait\cases\string\lower.test" />
+    <AdditionalFiles Include="Substrait\cases\aggregate_generic\count.test" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="GeneratedFiles\FlowtideDotNet.ComputeTests.SourceGenerator\" />
 	</ItemGroup>
 	
 
