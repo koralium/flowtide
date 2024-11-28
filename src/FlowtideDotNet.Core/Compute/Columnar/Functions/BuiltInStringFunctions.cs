@@ -13,12 +13,16 @@
 using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.StringAgg;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -28,9 +32,60 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
     internal static class BuiltInStringFunctions
     {
+        private const string NegativeStart = "negative_start";
+        private const string WrapFromEnd = "WRAP_FROM_END";
+        private const string LeftOfBeginning = "LEFT_OF_BEGINNING";
+
+        private static readonly StringValue EmptyString = new StringValue("");
         public static void RegisterFunctions(IFunctionsRegister functionsRegister)
         {
             ColumnStringAggAggregation.Register(functionsRegister);
+
+            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Substring,
+                (scalarFunction, parameters, visitor) =>
+                {
+                    if (scalarFunction.Arguments.Count < 2)
+                    {
+                        throw new InvalidOperationException("Substring function must have atleast 2 arguments");
+                    }
+
+                    var expr = visitor.Visit(scalarFunction.Arguments[0], parameters)!;
+                    var start = visitor.Visit(scalarFunction.Arguments[1], parameters)!;
+
+                    Expression? length = default;
+                    if (scalarFunction.Arguments.Count == 3)
+                    {
+                        length = visitor.Visit(scalarFunction.Arguments[2], parameters)!;
+                    }
+                    else
+                    {
+                        length = Expression.Constant(new Int64Value(-1));
+                    }
+
+                    string methodName = nameof(Substring);
+                    if (scalarFunction.Options != null && scalarFunction.Options.TryGetValue(NegativeStart, out var negativeStart))
+                    {
+                        if (negativeStart == WrapFromEnd)
+                        {
+                            methodName = nameof(SubstringWrapFromEnd);
+                        }
+                        else if (negativeStart == LeftOfBeginning)
+                        {
+                            methodName = nameof(SubstringLeftOfBeginning);
+                        }
+                        else
+                        {
+                            throw new NotSupportedException($"Substring option {NegativeStart}={negativeStart} is not supported.");
+                        }
+                    }
+                    
+
+                    MethodInfo? toStringMethod = typeof(BuiltInStringFunctions).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                    Debug.Assert(toStringMethod != null);
+                    var genericMethod = toStringMethod.MakeGenericMethod(expr.Type, start.Type, length.Type);
+                    var resultContainer = Expression.Constant(new DataValueContainer());
+                    return System.Linq.Expressions.Expression.Call(genericMethod, expr, start, length, resultContainer);
+                });
 
             functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Concat,
                 (func, parameters, visitor) =>
@@ -107,6 +162,151 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Encode, typeof(BuiltInStringFunctions), nameof(StringBase64EncodeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Decode, typeof(BuiltInStringFunctions), nameof(StringBase64DecodeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.CharLength, typeof(BuiltInStringFunctions), nameof(CharLengthImplementation));
+        }
+
+        private static bool SubstringTryGetParameters<T1, T2, T3>(
+            T1 value, 
+            T2 start, 
+            T3 length,
+            [NotNullWhen(true)] out string? stringVal,
+            out int startInt,
+            out int lengthInt)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                stringVal = default;
+                startInt = 0;
+                lengthInt = 0;
+                return false;
+            }
+            if (start.Type != ArrowTypeId.Int64)
+            {
+                stringVal = default;
+                startInt = 0;
+                lengthInt = 0;
+                return false;
+            }
+            if (length.Type != ArrowTypeId.Int64)
+            {
+                stringVal = default;
+                startInt = 0;
+                lengthInt = 0;
+                return false;
+            }
+
+            stringVal = value.AsString.ToString();
+            startInt = (int)start.AsLong;
+            lengthInt = (int)length.AsLong;
+            return true;
+        }
+
+        private static IDataValue SubstringLeftOfBeginning<T1, T2, T3>(T1 value, T2 start, T3 length, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (!SubstringTryGetParameters(value, start, length, out var str, out var startInt, out var lengthInt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            if (startInt > str.Length)
+            {
+                result._type = ArrowTypeId.String;
+                result._stringValue = EmptyString;
+                return result;
+            }
+
+            if (startInt < 0)
+            {
+                lengthInt = lengthInt + startInt - 1; // Negate by -1 to cover 0 
+                startInt = 1;
+            }
+
+            if (lengthInt < -1)
+            {
+                lengthInt = str.Length - startInt + 1;
+            }
+            else
+            {
+                lengthInt = Math.Min(lengthInt, str.Length - startInt + 1);
+            }
+            result._type = ArrowTypeId.String;
+            var stringInfo = new StringInfo(str);
+            result._stringValue = new StringValue(stringInfo.SubstringByTextElements(startInt - 1, lengthInt));
+            return result;
+        }
+
+        private static IDataValue SubstringWrapFromEnd<T1, T2, T3>(T1 value, T2 start, T3 length, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (!SubstringTryGetParameters(value, start, length, out var str, out var startInt, out var lengthInt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            if (startInt > str.Length)
+            {
+                result._type = ArrowTypeId.String;
+                result._stringValue = EmptyString;
+                return result;
+            }
+
+            if (startInt < 0)
+            {
+                startInt = str.Length + startInt + 1;
+            }
+
+            if (lengthInt == -1)
+            {
+                lengthInt = str.Length - startInt + 1;
+            }
+            else
+            {
+                lengthInt = Math.Min(lengthInt, str.Length - startInt + 1);
+            }
+            result._type = ArrowTypeId.String;
+            var stringInfo = new StringInfo(str);
+            result._stringValue = new StringValue(stringInfo.SubstringByTextElements(startInt - 1, lengthInt));
+            return result;
+        }
+
+        private static IDataValue Substring<T1, T2, T3>(T1 value, T2 start, T3 length, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (!SubstringTryGetParameters(value, start, length, out var str, out var startInt, out var lengthInt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            if (startInt > str.Length)
+            {
+                result._type = ArrowTypeId.String;
+                result._stringValue = EmptyString;
+                return result;
+            }
+            if (lengthInt == -1)
+            {
+                lengthInt = str.Length - startInt + 1;
+            }
+            else
+            {
+                lengthInt = Math.Min(lengthInt, str.Length - startInt + 1);
+            }
+            result._type = ArrowTypeId.String;
+            var stringInfo = new StringInfo(str);
+            result._stringValue = new StringValue(stringInfo.SubstringByTextElements(startInt - 1, lengthInt));
+            return result;
         }
 
         private static IDataValue UpperImplementation<T>(T value, DataValueContainer result)

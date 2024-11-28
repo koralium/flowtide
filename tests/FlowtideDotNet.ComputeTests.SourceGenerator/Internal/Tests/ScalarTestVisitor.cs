@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Antlr4.Runtime.Misc;
+using FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,7 +27,8 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
             var functionName = IdentifierParser.ParseIdentifier(context.functionName);
             var arguments = ArgumentParser.ParseArguments(context.arguments());
             var result = ResultParser.ParseExpectedResult(context.result());
-            return new ScalarTestCase(functionName, arguments, result);
+            var options = OptionsParser.GetOptions(context.funcOptions());
+            return new ScalarTestCase(functionName, arguments, result, options);
         }
     }
 }
