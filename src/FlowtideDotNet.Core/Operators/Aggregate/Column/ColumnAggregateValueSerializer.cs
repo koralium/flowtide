@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             writer.Write(weightMemory.Length);
             writer.Write(weightMemory.Span);
 
-            var recordBatch = EventArrowSerializer.BatchToArrow(values._eventBatch, values.Count);
+            var recordBatch = EventArrowSerializer.BatchToArrow(values._eventBatch, values._weights.Count);
             var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
             batchWriter.WriteRecordBatch(recordBatch);
         }

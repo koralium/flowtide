@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             this.columnCount = columnCount;
             _data = eventBatchData;
             _dataValueContainer = new DataValueContainer();
-            _count = 0;
+            _count = count;
         }
 
         public int Count => _count;
