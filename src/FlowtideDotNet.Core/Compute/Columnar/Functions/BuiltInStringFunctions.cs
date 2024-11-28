@@ -40,6 +40,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         private const string IgnoreNulls = "IGNORE_NULLS";
 
         private static readonly StringValue EmptyString = new StringValue("");
+        private static readonly StringValue BackslashString = new StringValue("\\");
+
         public static void RegisterFunctions(IFunctionsRegister functionsRegister)
         {
             ColumnStringAggAggregation.Register(functionsRegister);
@@ -499,6 +501,29 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             return result;
         }
 
+        private static IDataValue StartsWithImplementation_case_sensitivity__CASE_INSENSITIVE<T1, T2>(T1 value, T2 prefix, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String || prefix.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Boolean;
+                result._boolValue = new BoolValue(false);
+                return result;
+            }
+
+            result._type = ArrowTypeId.Boolean;
+            result._boolValue = new BoolValue(value.AsString.ToString().StartsWith(prefix.AsString.ToString(), StringComparison.InvariantCultureIgnoreCase));
+            return result;
+        }
+
+        private static IDataValue LikeImplementation<T1, T2>(T1 value, T2 comp, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            return LikeImplementation(value, comp, BackslashString, result);
+        }
+
         private static IDataValue LikeImplementation<T1, T2, T3>(T1 value, T2 comp, T3 escapeChar, DataValueContainer result)
             where T1 : IDataValue
             where T2 : IDataValue
@@ -661,7 +686,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             }
 
             result._type = ArrowTypeId.Int64;
-            result._int64Value = new Int64Value(value.AsString.ToString().Length);
+            
+            result._int64Value = new Int64Value(new StringInfo(value.AsString.ToString()).LengthInTextElements);
             return result;
         }
 
