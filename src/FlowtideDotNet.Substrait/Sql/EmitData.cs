@@ -233,8 +233,16 @@ namespace FlowtideDotNet.Substrait.Sql
                             seg = newSegment;
                         }
 
-                        var lastIdentifier = mapIdentifiers.Last();
-                        name = lastIdentifier; // Use the last identifier as name
+                        if (mapIdentifiers.Count > 0)
+                        {
+                            var lastIdentifier = mapIdentifiers.Last();
+                            name = lastIdentifier; // Use the last identifier as name
+                        }
+                        else
+                        {
+                            name = GetName(emitInfoPartial.Index[0]);
+                        }
+                        
 
                         // TODO: For now we just return any type, but we should try to find the correct type
                         type = new AnyType();

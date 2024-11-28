@@ -28,6 +28,15 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task SelectOneColumnsWithTableAliasAndBrackets()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT u.[firstName] FROM users u");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { x.FirstName }));
+        }
+
+        [Fact]
         public async Task SelectOneColumnsWithoutIdAndUpdate()
         {
             GenerateData();
