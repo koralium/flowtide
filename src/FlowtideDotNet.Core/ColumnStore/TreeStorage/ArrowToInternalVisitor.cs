@@ -21,6 +21,7 @@ using SqlParser.Ast;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -173,17 +174,22 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Visit(DenseUnionArray array)
         {
+            Debug.Assert(CurrentField != null);
             _nullCount = 0;
             _bitmapList = null;
 
+            var type = (UnionType)CurrentField.DataType;
+            
             var typeMemory = GetMemoryOwner(array.TypeBuffer);
             var offsetMemory = GetMemoryOwner(array.ValueOffsetBuffer);
 
             List<IDataColumn> columns = new List<IDataColumn>();
             for (int i = 0; i < array.Fields.Count; i++)
             {
+                var previousField = CurrentField;
+                CurrentField = type.Fields[i];
                 array.Fields[i].Accept(this);
-
+                CurrentField = previousField;
                 if (_typeId == ArrowTypeId.Null)
                 {
                     _dataColumn = new NullColumn(_nullCount);
