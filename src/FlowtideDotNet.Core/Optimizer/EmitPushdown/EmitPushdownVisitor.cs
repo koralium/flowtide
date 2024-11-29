@@ -747,7 +747,13 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             }
             if (bufferRelation.EmitSet)
             {
+                List<int> emitList = new List<int>();
+                for (int i = 0; i < bufferRelation.Emit.Count; i++)
+                {
+                    emitList.Add(i);
+                }
                 bufferRelation.Input.Emit = bufferRelation.Emit;
+                bufferRelation.Emit = emitList;
             }
 
             return base.VisitBufferRelation(bufferRelation, state);
