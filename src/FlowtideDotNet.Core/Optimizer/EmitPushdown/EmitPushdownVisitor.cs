@@ -399,9 +399,41 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 List<int> leftEmit = new List<int>();
                 List<int> rightEmit = new List<int>();
 
+                Dictionary<int, int> leftEmitToInternal = new Dictionary<int, int>();
+                if (joinRelation.Left.EmitSet)
+                {
+                    for (int i = 0; i < joinRelation.Left.Emit.Count; i++)
+                    {
+                        leftEmitToInternal.Add(i, joinRelation.Left.Emit[i]);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < joinRelation.Left.OutputLength; i++)
+                    {
+                        leftEmitToInternal.Add(i, i);
+                    }
+                }
+
+                Dictionary<int, int> rightEmitToInternal = new Dictionary<int, int>();
+                if (joinRelation.Right.EmitSet)
+                {
+                    for (int i = 0; i < joinRelation.Right.Emit.Count; i++)
+                    {
+                        rightEmitToInternal.Add(i, joinRelation.Right.Emit[i]);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < joinRelation.Right.OutputLength; i++)
+                    {
+                        rightEmitToInternal.Add(i, i);
+                    }
+                }
+
                 foreach (var field in leftUsage)
                 {
-                    leftEmit.Add(field);
+                    leftEmit.Add(leftEmitToInternal[field]);
                     oldToNew.Add(field, replacementCounter);
                     replacementCounter += 1;
                 }
@@ -410,10 +442,11 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 {
                     var rightIndex = field - joinRelation.Left.OutputLength;
 
-                    rightEmit.Add(rightIndex);
+                    rightEmit.Add(rightEmitToInternal[rightIndex]);
                     oldToNew.Add(field, replacementCounter);
                     replacementCounter += 1;
                 }
+
                 if (leftEmit.Count < joinRelation.Left.OutputLength)
                 {
                     joinRelation.Left.Emit = leftEmit;
@@ -511,6 +544,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                         }
                     }
                 }
+
 
                 leftUsage = leftUsage.Distinct().OrderBy(x => x).ToList();
                 rightUsage = rightUsage.Distinct().OrderBy(x => x).ToList();
@@ -695,6 +729,28 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
             }
             return base.VisitFilterRelation(filterRelation, state);
+        }
+
+        public override Relation VisitBufferRelation(BufferRelation bufferRelation, object state)
+        {
+            if (bufferRelation.Input is ReferenceRelation referenceRelation)
+            {
+                return bufferRelation;
+            }
+            if (bufferRelation.Input is IterationReferenceReadRelation)
+            {
+                return bufferRelation;
+            }
+            if (bufferRelation.Input is IterationRelation)
+            {
+                return bufferRelation;
+            }
+            if (bufferRelation.EmitSet)
+            {
+                bufferRelation.Input.Emit = bufferRelation.Emit;
+            }
+
+            return base.VisitBufferRelation(bufferRelation, state);
         }
     }
 }
