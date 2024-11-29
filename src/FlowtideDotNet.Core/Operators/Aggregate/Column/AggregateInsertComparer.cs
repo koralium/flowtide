@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, dataValueContainer, default);
                 var (low, high) = keyContainer._data.Columns[i].SearchBoundries(dataValueContainer, start, end, default);
 
-                if (low != 0)
+                if (low < 0)
                 {
                     return low;
                 }
