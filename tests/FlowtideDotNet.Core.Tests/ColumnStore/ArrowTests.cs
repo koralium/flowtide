@@ -357,6 +357,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new Int64Value(1));
             column.Add(new StringValue("2"));
             column.Add(new Int64Value(2));
+            column.Add(new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("hello"), new StringValue("world"))));
 
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
