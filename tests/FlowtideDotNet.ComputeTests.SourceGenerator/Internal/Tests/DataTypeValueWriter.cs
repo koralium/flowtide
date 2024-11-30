@@ -41,9 +41,15 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
                     {
                         return "new DoubleValue(double.NegativeInfinity)";
                     }
+                    else if (value == "nan")
+                    {
+                        return "new DoubleValue(double.NaN)";
+                    }
                     return $"new DoubleValue({value})";
                 case "str":
                     return $"new StringValue(\"{value}\")";
+                case "dec":
+                    return $"new DecimalValue({value}m)";
             }
             throw new NotImplementedException(dataType);
         }

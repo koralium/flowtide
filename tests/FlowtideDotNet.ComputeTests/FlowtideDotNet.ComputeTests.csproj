@@ -14,8 +14,23 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="OtherCases\comparison\is_finite.test" />
     <None Remove="OtherCases\string\lower.test" />
     <None Remove="OtherCases\string\strpos.test" />
+    <None Remove="Substrait\cases\boolean\not.test" />
+    <None Remove="Substrait\cases\boolean\xor.test" />
+    <None Remove="Substrait\cases\comparison\between.test" />
+    <None Remove="Substrait\cases\comparison\coalesce.test" />
+    <None Remove="Substrait\cases\comparison\gt.test" />
+    <None Remove="Substrait\cases\comparison\gte.test" />
+    <None Remove="Substrait\cases\comparison\is_finite.test" />
+    <None Remove="Substrait\cases\comparison\is_infinite.test" />
+    <None Remove="Substrait\cases\comparison\is_nan.test" />
+    <None Remove="Substrait\cases\comparison\is_not_null.test" />
+    <None Remove="Substrait\cases\comparison\is_null.test" />
+    <None Remove="Substrait\cases\comparison\lt.test" />
+    <None Remove="Substrait\cases\comparison\lte.test" />
+    <None Remove="Substrait\cases\comparison\not_equal.test" />
     <None Remove="Substrait\cases\string\char_length.test" />
     <None Remove="Substrait\cases\string\like.test" />
     <None Remove="Substrait\cases\string\lower.test" />
@@ -35,7 +50,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FlowtideDotNet.Core\FlowtideDotNet.Core.csproj" />
-    <ProjectReference Include="..\FlowtideDotNet.ComputeTests.SourceGenerator\FlowtideDotNet.ComputeTests.SourceGenerator.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+    <ProjectReference Include="..\FlowtideDotNet.ComputeTests.SourceGenerator\FlowtideDotNet.ComputeTests.SourceGenerator.csproj" ReferenceOutputAssembly="true" OutputItemType="Analyzer" />
   </ItemGroup>
 
   <ItemGroup>
@@ -45,6 +60,9 @@
 	<ItemGroup>
 		<AdditionalFiles Include="OtherCases/string/*.test" />
 		<AdditionalFiles Include="Substrait/cases/string/*.test" />
+		<AdditionalFiles Include="Substrait/cases/boolean/*.test" />
+		<AdditionalFiles Include="Substrait/cases/comparison/*.test" />
+		<AdditionalFiles Include="OtherCases\comparison\*.test" />
 		<AdditionalFiles Include="Substrait/cases/aggregate_generic/count.test" />
 		<AdditionalFiles Include="Substrait/cases/arithmetic/max.test" />
 		<AdditionalFiles Include="Substrait/cases/arithmetic/min.test" />

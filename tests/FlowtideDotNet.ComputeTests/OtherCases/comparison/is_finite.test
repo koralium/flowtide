@@ -1,0 +1,7 @@
+﻿### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_comparison.yaml'
+
+# Other types: check is finite for other types
+is_finite(3::i64) = true::bool
+is_finite(0.55::dec<18,0>) = true::bool
+is_finite('hello'::str) = null::bool

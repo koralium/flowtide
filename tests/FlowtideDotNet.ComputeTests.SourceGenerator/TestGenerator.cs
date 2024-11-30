@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.ComputeTests.Internal.Tests;
+using FlowtideDotNet.ComputeTests.SourceGenerator.Internal;
 using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.IO;
@@ -116,7 +117,28 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
             var content = text.GetText();
             var textContent = content.ToString();
 
-            var testDocument = new TestCaseParser().Parse(textContent);
+            TestDocument testDocument;
+            var errorReporter = new ErrorReporter(text.Path, context);
+            try
+            {
+                testDocument = new TestCaseParser().Parse(textContent, errorReporter);
+            }
+            catch
+            {
+                if (errorReporter.ErrorReported)
+                {
+                    return;
+                }
+                throw;
+            }
+
+            if (testDocument == null)
+            {
+                
+                
+                throw new System.Exception("Failed to parse test document");
+            }
+            
 
             if (testDocument.ScalarTestGroups != null)
             {
@@ -348,7 +370,11 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                     testClassBuilder.AppendLine();
                 }
 
-                testClassBuilder.AppendLine($"public static IEnumerable<object[]> GetDataForTest{i}()");
+                var desc = testGroup.Description;
+                // Remove special characters and whitespace from desc
+                desc = new string(desc.Where(c => char.IsLetterOrDigit(c)).ToArray());
+
+                testClassBuilder.AppendLine($"public static IEnumerable<object[]> GetDataForTest{desc}{i}()");
                 testClassBuilder.StartCurly();
 
                 foreach (var test in testGroup.TestCases)
@@ -376,7 +402,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                 testClassBuilder.AppendLine();
 
                 testClassBuilder.AppendLine($"[Theory(DisplayName = \"{testGroup.Description}\")]");
-                testClassBuilder.AppendLine($"[MemberData(nameof(GetDataForTest{i}))]");
+                testClassBuilder.AppendLine($"[MemberData(nameof(GetDataForTest{desc}{i}))]");
 
                 List<string> argNames = new()
                 {
@@ -386,7 +412,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                     "SortedList<string, string> options"
                 };
 
-                testClassBuilder.AppendLine($"public void Test{i}({string.Join(", ", argNames)})");
+                testClassBuilder.AppendLine($"public void Test{desc}{i}({string.Join(", ", argNames)})");
 
                 testClassBuilder.StartCurly();
 

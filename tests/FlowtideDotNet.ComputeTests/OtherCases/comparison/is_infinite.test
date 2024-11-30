@@ -1,0 +1,7 @@
+﻿### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_comparison.yaml'
+
+# Other types: check is infinite for other types
+is_infinite(3::i64) = false::bool
+is_infinite(0.55::dec<18,0>) = false::bool
+is_infinite('hello'::str) = null::bool
