@@ -1,0 +1,15 @@
+﻿### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_string.yaml'
+
+# basic: Basic examples without any special cases
+strpos('abcdef'::str, 'cde'::str) = 3::i32
+strpos('abcdef'::str, 'abc'::str) = 1::i32
+strpos('abcdef'::str, 'gh'::str) = 0::i32
+strpos('abcd'::str, 'AB'::str) = 0::i32
+
+# null: One or both arguments are null
+strpos(null::str, 'cde'::str) = null::i32
+strpos('abcdef'::str, null::str) = null::i32
+
+# case_insenstivity: Case insensitivity
+strpos('abcd'::str, 'AB'::str) [case_sensitivity:CASE_INSENSITIVE] = 1::i32

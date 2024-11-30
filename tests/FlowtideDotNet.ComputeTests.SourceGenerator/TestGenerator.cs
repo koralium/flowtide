@@ -107,6 +107,9 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
             // Get the last folder name that the file is in
             var folderName = Path.GetFileName(Path.GetDirectoryName(text.Path));
 
+            // Get the folder name previous of folder name
+            var parentFolderName = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(text.Path)));
+
             // Make first character uppercase
             folderName = char.ToUpper(folderName[0]) + folderName.Substring(1);
 
@@ -117,15 +120,15 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
 
             if (testDocument.ScalarTestGroups != null)
             {
-                ExecuteScalar(text, context, testDocument, folderName, className);
+                ExecuteScalar(text, context, testDocument, parentFolderName, folderName, className);
             }
             if (testDocument.AggregateTestGroups != null)
             {
-                ExecuteAggregate(text, context, testDocument, folderName, className);
+                ExecuteAggregate(text, context, testDocument, parentFolderName, folderName, className);
             }
         }
 
-        private void ExecuteAggregate(AdditionalText text, SourceProductionContext context, TestDocument testDocument, string folderName, string className)
+        private void ExecuteAggregate(AdditionalText text, SourceProductionContext context, TestDocument testDocument, string parentFolderName, string folderName, string className)
         {
             OutputWriter testClassBuilder = new OutputWriter();
 
@@ -166,7 +169,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
             // Make class name first letter uppercase
             className = char.ToUpper(className[0]) + className.Substring(1);
 
-            testClassBuilder.AppendLine($"public class {className}");
+            testClassBuilder.AppendLine($"public partial class {className}");
 
             testClassBuilder.StartCurly();
 
@@ -294,10 +297,10 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
             testClassBuilder.EndCurly();
             testClassBuilder.EndCurly();
 
-            context.AddSource($"{folderName}.{className}.Generated.cs", testClassBuilder.ToString());
+            context.AddSource($"{parentFolderName}.{folderName}.{className}.Generated.cs", testClassBuilder.ToString());
         }
 
-        private void ExecuteScalar(AdditionalText text, SourceProductionContext context, TestDocument testDocument, string folderName, string className)
+        private void ExecuteScalar(AdditionalText text, SourceProductionContext context, TestDocument testDocument, string parentFolderName, string folderName, string className)
         {
             OutputWriter testClassBuilder = new OutputWriter();
             testClassBuilder.AppendLine("using System;");
@@ -333,7 +336,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
             // Make class name first letter uppercase
             className = char.ToUpper(className[0]) + className.Substring(1);
 
-            testClassBuilder.AppendLine($"public class {className}");
+            testClassBuilder.AppendLine($"public partial class {className}");
 
             testClassBuilder.StartCurly();
 
@@ -446,7 +449,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
 
             testClassBuilder.EndCurly();
 
-            context.AddSource($"{folderName}.{className}.Generated.cs", testClassBuilder.ToString());
+            context.AddSource($"{parentFolderName}.{folderName}.{className}.Generated.cs", testClassBuilder.ToString());
         }
     }
 }
