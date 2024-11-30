@@ -94,6 +94,33 @@ namespace FlowtideDotNet.AcceptanceTests
                 );
         }
 
+        /// <summary>
+        /// Special case test when gettimestamp creates buffer operator before the join and the join is followed by a filter
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task GetTimestampInFilterJoinFilterPushedInfront()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                orderkey, orderdate < gettimestamp() as active
+            FROM Orders o
+            JOIN users u2 ON o.userkey = u2.userkey
+            JOIN users u ON o.userkey = u.userkey AND o.userkey = u2.userkey
+            where orderdate < gettimestamp() 
+            ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                Orders.Where(x => x.Orderdate < DateTime.UtcNow).Select(o => new {
+                    o.OrderKey,
+                    Active = o.Orderdate < DateTime.UtcNow
+                })
+                );
+        }
+
         [Fact]
         public async Task GetTimestampInBufferedView()
         {

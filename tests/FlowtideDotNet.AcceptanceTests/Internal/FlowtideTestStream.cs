@@ -200,8 +200,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _persistentStorage = CreatePersistentStorage(testName, ignoreSameDataCheck);
             _notificationReciever = new NotificationReciever(CheckpointComplete);
 
+            plan = Core.Optimizer.PlanOptimizer.Optimize(plan);
+
+            var emitValidationVisitor = new EmitLengthValidatorVisitor();
+            foreach (var relation in plan.Relations)
+            {
+                emitValidationVisitor.Visit(relation, default!);
+            }
+
             flowtideBuilder
-                .AddPlan(plan)
+                .AddPlan(plan, false)
                 .SetParallelism(parallelism)
 #if DEBUG_WRITE
                 .WithLoggerFactory(loggerFactory)

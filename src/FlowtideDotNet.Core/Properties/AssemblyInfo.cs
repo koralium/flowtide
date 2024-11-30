@@ -21,3 +21,5 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("SqlSampleWithUI")]
 // added only for the purpose of debugging
 [assembly: InternalsVisibleTo("FlowtideDotNet.StateDiagnostics")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.ComputeTests")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.AcceptanceTests")]
