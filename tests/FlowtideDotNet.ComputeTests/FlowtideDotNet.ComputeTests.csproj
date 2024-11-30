@@ -31,6 +31,8 @@
     <None Remove="Substrait\cases\comparison\lt.test" />
     <None Remove="Substrait\cases\comparison\lte.test" />
     <None Remove="Substrait\cases\comparison\not_equal.test" />
+    <None Remove="Substrait\cases\rounding\floor.test" />
+    <None Remove="Substrait\cases\rounding\round.test" />
     <None Remove="Substrait\cases\string\char_length.test" />
     <None Remove="Substrait\cases\string\like.test" />
     <None Remove="Substrait\cases\string\lower.test" />
@@ -62,6 +64,7 @@
 		<AdditionalFiles Include="Substrait/cases/string/*.test" />
 		<AdditionalFiles Include="Substrait/cases/boolean/*.test" />
 		<AdditionalFiles Include="Substrait/cases/comparison/*.test" />
+		<AdditionalFiles Include="Substrait/cases/rounding/*.test" />
 		<AdditionalFiles Include="OtherCases\comparison\*.test" />
 		<AdditionalFiles Include="Substrait/cases/aggregate_generic/count.test" />
 		<AdditionalFiles Include="Substrait/cases/arithmetic/max.test" />
