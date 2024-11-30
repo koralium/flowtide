@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Comparers
 {
-    internal interface IColumnComparer<T>
+    public interface IColumnComparer<T>
     {
         public int Compare(in T x, in T y);
     }
