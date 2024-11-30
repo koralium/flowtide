@@ -305,7 +305,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             if (x.Type == ArrowTypeId.Double)
             {
                 var val = x.AsDouble;
-                if (val == double.PositiveInfinity || val == double.NegativeInfinity || double.IsNaN(val))
+                if (val == double.PositiveInfinity || val == double.NegativeInfinity)
                 {
                     result._type = ArrowTypeId.Boolean;
                     result._boolValue = new BoolValue(true);
