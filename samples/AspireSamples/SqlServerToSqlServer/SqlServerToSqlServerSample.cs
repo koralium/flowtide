@@ -37,10 +37,7 @@ namespace SqlServerToSqlServerAspire.SqlServerToSqlServer
 
             var sqldb1 = builder.AddSqlServer("sqldb1");
 
-            var sqldb2 = builder.AddSqlServer("sqldb2")
-                .WithBindMount("./sqlserverconfig", "/usr/config")
-                .WithBindMount("./SqlServerToSqlServer/seedscriptdb2.sql", "/docker-entrypoint-initdb.d/init.sql")
-                .WithEntrypoint("/usr/config/entrypoint.sh");
+            var sqldb2 = builder.AddSqlServer("sqldb2");
 
             builder.Eventing.Subscribe<BeforeResourceStartedEvent>(sqldb1.Resource, (r, token) =>
             {
@@ -52,6 +49,40 @@ namespace SqlServerToSqlServerAspire.SqlServerToSqlServer
             var dataInsert = DataInsertResource.AddDataInsert(builder, "data-insert",
                 async (logger, statusUpdate, token) =>
                 {
+                    // Create destination tables
+                    var connectionStringDb2 = await sqldb2.Resource.GetConnectionStringAsync();
+                    SqlConnection sqlConnectionDb2 = new SqlConnection(connectionStringDb2);
+                    await sqlConnectionDb2.OpenAsync();
+
+                    var createDestDbCmd = @"
+                    IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = N'test')
+                    BEGIN
+                      CREATE DATABASE test;
+                    END";
+
+                    using SqlCommand createDestDbCommand = new SqlCommand(createDestDbCmd, sqlConnectionDb2);
+                    await createDestDbCommand.ExecuteNonQueryAsync();
+
+                    await sqlConnectionDb2.ChangeDatabaseAsync("test");
+
+                    var createDestTableCmd = @"
+                    IF OBJECT_ID(N'destinationtable', N'U') IS NULL
+                    BEGIN
+                        CREATE TABLE destinationtable
+                        (
+                            OrderKey 	 INT PRIMARY KEY NOT NULL,
+                            OrderDate    DATETIME2 NOT NULL,
+                            FirstName   VARCHAR(255) NULL,
+                            LastName  VARCHAR(255) NULL,
+                        );
+                    END
+                    ";
+
+                    using SqlCommand createDestTableCommand = new SqlCommand(createDestTableCmd, sqlConnectionDb2);
+                    await createDestTableCommand.ExecuteNonQueryAsync();
+
+                    await sqlConnectionDb2.CloseAsync();
+
                     // Initial data insert and table creation
                     var connectionString = await sqldb1.Resource.GetConnectionStringAsync();
                     ServiceCollection services = new ServiceCollection();
