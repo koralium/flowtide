@@ -182,6 +182,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Encode, typeof(BuiltInStringFunctions), nameof(StringBase64EncodeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Decode, typeof(BuiltInStringFunctions), nameof(StringBase64DecodeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.CharLength, typeof(BuiltInStringFunctions), nameof(CharLengthImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StrPos, typeof(BuiltInStringFunctions), nameof(StrPosImplementation));
         }
 
         private static bool SubstringTryGetParameters<T1, T2, T3>(
@@ -688,6 +689,36 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             result._type = ArrowTypeId.Int64;
             
             result._int64Value = new Int64Value(new StringInfo(value.AsString.ToString()).LengthInTextElements);
+            return result;
+        }
+
+        private static IDataValue StrPosImplementation<T1, T2>(T1 value, T2 toFind, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String || toFind.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.Int64;
+            result._int64Value = new Int64Value(value.AsString.ToString().IndexOf(toFind.AsString.ToString()) + 1);
+            return result;
+        }
+
+        private static IDataValue StrPosImplementation_case_sensitivity__CASE_INSENSITIVE<T1, T2>(T1 value, T2 toFind, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String || toFind.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.Int64;
+            result._int64Value = new Int64Value(value.AsString.ToString().IndexOf(toFind.AsString.ToString(), StringComparison.InvariantCultureIgnoreCase) + 1);
             return result;
         }
 

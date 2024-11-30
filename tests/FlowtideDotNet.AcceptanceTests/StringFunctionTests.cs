@@ -178,5 +178,15 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { Length = x.TrimmableNullableString?.Length ?? default(int?) }));
         }
+
+        [Fact]
+        public async Task SelectWithStrPos()
+        {
+            GenerateData();
+            var start = Users[0].FirstName!.Substring(1, 2);
+            await StartStream($"INSERT INTO output SELECT strpos(firstName, '{start}') as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.IndexOf(start) + 1 }));
+        }
     }
 }
