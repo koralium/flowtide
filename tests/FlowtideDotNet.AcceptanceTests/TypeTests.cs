@@ -49,7 +49,7 @@ namespace FlowtideDotNet.AcceptanceTests
             SELECT
             Money
             FROM orders
-            WHERE money < 500
+            WHERE money < cast(500 as decimal)
             ");
             await WaitForUpdate();
 
