@@ -96,6 +96,13 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             Debug.Assert(_leftTree != null, nameof(_leftTree));
             Debug.Assert(_rightTree != null, nameof(_rightTree));
 
+#if DEBUG_WRITE
+            allInput!.WriteLine("Checkpoint");
+            await allInput.FlushAsync();
+            outputWriter!.WriteLine("Checkpoint");
+            await outputWriter.FlushAsync();
+#endif
+
             await _leftTree.Commit();
             await _rightTree.Commit();
 
@@ -317,6 +324,9 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
 
 #if DEBUG_WRITE
+            allInput!.WriteLine("Watermark");
+            await allInput.FlushAsync();
+            outputWriter!.WriteLine("Watermark");
             foreach (var o in outputBatch.Events)
             {
                 outputWriter!.WriteLine($"{o.Weight} {o.ToJson()}");
