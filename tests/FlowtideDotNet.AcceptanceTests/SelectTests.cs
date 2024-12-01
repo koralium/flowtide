@@ -158,5 +158,49 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = x.UserKey != 23 }));
         }
+
+        [Fact]
+        public async Task SelectWithoutFrom()
+        {
+            await StartStream("INSERT INTO output SELECT 1 as number, 'abc' as str");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { number = 1, str = "abc" } });
+        }
+
+        [Fact]
+        public async Task SelectFromValuesList()
+        {
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT * FROM 
+                (
+                    VALUES 
+                    (1, 'a'),
+                    (2, 'b'),
+                    (3, 'c')
+                )");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { val = 1, str = "a" }, new { val = 2, str = "b" }, new { val = 3, str = "c" } });
+        }
+
+        [Fact]
+        public async Task SelectFromValuesListWithAliases()
+        {
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT number, str FROM 
+                (
+                    VALUES 
+                    (1, 'a'),
+                    (2, 'b'),
+                    (3, 'c')
+                ) t(number, str)");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { val = 1, str = "a" }, new { val = 2, str = "b" }, new { val = 3, str = "c" } });
+        }
     }
 }
