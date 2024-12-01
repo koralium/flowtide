@@ -54,6 +54,12 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
         private List<int> _leftOutputIndices;
         private List<int> _rightOutputIndices;
 
+#if DEBUG_WRITE
+        // Debug data
+        private StreamWriter? allInput;
+        private StreamWriter? outputWriter;
+#endif
+
 
         public BlockNestedJoinOperator(JoinRelation joinRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
@@ -307,7 +313,18 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             await _leftTemporary.Clear();
 
             _eventsOutCounter.Add(weights.Count);
-            yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+
+            var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+
+#if DEBUG_WRITE
+            foreach (var o in outputBatch.Events)
+            {
+                outputWriter!.WriteLine($"{o.Weight} {o.ToJson()}");
+            }
+            await outputWriter!.FlushAsync();
+#endif
+
+            yield return outputBatch;
         }
 
         private static (List<int> incomingIndices, List<int> outgoingIndex) GetOutputColumns(JoinRelation joinRelation, int relative, int maxSize)
@@ -502,6 +519,15 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             Debug.Assert(_eventsProcessed != null, nameof(_eventsProcessed));
             _eventsProcessed.Add(msg.Events.Count);
 
+#if DEBUG_WRITE
+            allInput!.WriteLine("New batch");
+            foreach (var e in msg.Events)
+            {
+                allInput!.WriteLine($"{targetId}, {e.Weight} {e.ToJson()}");
+            }
+            allInput!.Flush();
+#endif
+
             if (targetId == 0)
             {
                 for (int i = 0; i < msg.Data.Weights.Count; i++)
@@ -555,6 +581,24 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
         protected override async Task InitializeOrRestore(JoinState? state, IStateManagerClient stateManagerClient)
         {
             Logger.BlockNestedLoopInUse(StreamName, Name);
+
+#if DEBUG_WRITE
+            if (!Directory.Exists("debugwrite"))
+                {
+                    var dir = Directory.CreateDirectory("debugwrite");
+                }
+            if (allInput != null)
+            {
+                allInput.WriteLine("Restart");
+            }
+            else
+            {
+                allInput = File.CreateText($"debugwrite/{StreamName}-{Name}.all.txt");
+                outputWriter = File.CreateText($"debugwrite/{StreamName}-{Name}.output.txt");
+            }
+#endif
+
+
             _leftTree = await stateManagerClient.GetOrCreateTree("left",
                 new BPlusTreeOptions<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>()
                 {
