@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
 
         public void Serialize(in BinaryWriter writer, in ListAggKeyStorageContainer values)
         {
-            var recordBatch = EventArrowSerializer.BatchToArrow(values._data);
+            var recordBatch = EventArrowSerializer.BatchToArrow(values._data, values.Count);
             var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
             batchWriter.WriteRecordBatch(recordBatch);
         }

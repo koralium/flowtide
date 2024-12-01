@@ -999,6 +999,34 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     throw new InvalidOperationException("Left joins must have an 'ON' expression.");
                 }
             }
+            else if (join.JoinOperator is JoinOperator.RightOuter rightJoin)
+            {
+                joinRelation.Type = JoinType.Right;
+                if (rightJoin.JoinConstraint is JoinConstraint.On on)
+                {
+                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                    var condition = exprVisitor.Visit(on.Expression, joinEmitData);
+                    joinRelation.Expression = condition.Expr;
+                }
+                else
+                {
+                    throw new InvalidOperationException("Right joins must have an 'ON' expression.");
+                }
+            }
+            else if (join.JoinOperator is JoinOperator.FullOuter fullOuterJoin)
+            {
+                joinRelation.Type = JoinType.Outer;
+                if (fullOuterJoin.JoinConstraint is JoinConstraint.On on)
+                {
+                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                    var condition = exprVisitor.Visit(on.Expression, joinEmitData);
+                    joinRelation.Expression = condition.Expr;
+                }
+                else
+                {
+                    throw new InvalidOperationException("Full outer joins must have an 'ON' expression.");
+                }
+            }
             else
             {
                 throw new NotImplementedException($"Join type '{join.JoinOperator!.GetType().Name}' is not yet supported in SQL mode.");
