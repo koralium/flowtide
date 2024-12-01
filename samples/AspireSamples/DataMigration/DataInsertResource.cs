@@ -101,7 +101,21 @@ namespace AspireSamples.DataMigration
                         ResourceType = "Data-Insert",
                         State = "Insert initial"
                     });
-                    await dataInsertResource.initialInsert(logger, statusUpdater, tokenSource.Token);
+                    try
+                    {
+                        await dataInsertResource.initialInsert(logger, statusUpdater, tokenSource.Token);
+                    }
+                    catch(Exception e)
+                    {
+                        logger.LogError(e, "Error inserting initial data");
+                        await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
+                        {
+                            ResourceType = "Data-Insert",
+                            State = "Failed"
+                        });
+                        return;
+                    }
+                    
 
                     await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
                     {

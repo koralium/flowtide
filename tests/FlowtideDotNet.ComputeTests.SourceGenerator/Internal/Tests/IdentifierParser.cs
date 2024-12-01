@@ -30,6 +30,11 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
         {
             public override string VisitIdentifier([NotNull] FuncTestCaseParser.IdentifierContext context)
             {
+                var identifier = context.Identifier();
+                if (identifier == null)
+                {
+                    return context.GetText();
+                }
                 return context.Identifier().GetText();
             }
         }

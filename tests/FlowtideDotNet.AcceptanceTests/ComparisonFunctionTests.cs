@@ -72,7 +72,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT is_infinite(firstName) FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { val = false }));
+            AssertCurrentDataEqual(Users.Select(x => new { val = default(string) }));
         }
 
         [Fact]
@@ -140,7 +140,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     is_nan(0/0), is_nan(1/2), is_nan(userkey), is_nan(nullablestring) 
                 FROM users u");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { nan = true, not_nan = false, userkey = false, nullString = x.NullableString == null ? default(bool?) : true}));
+            AssertCurrentDataEqual(Users.Select(x => new { nan = true, not_nan = false, userkey = false, nullString = default(string)}));
         }
 
         [Fact]

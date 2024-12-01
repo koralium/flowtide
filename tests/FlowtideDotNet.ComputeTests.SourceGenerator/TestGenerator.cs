@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.ComputeTests.Internal.Tests;
+using FlowtideDotNet.ComputeTests.SourceGenerator.Internal;
 using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
 using System.IO;
@@ -107,25 +108,49 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
             // Get the last folder name that the file is in
             var folderName = Path.GetFileName(Path.GetDirectoryName(text.Path));
 
+            // Get the folder name previous of folder name
+            var parentFolderName = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(text.Path)));
+
             // Make first character uppercase
             folderName = char.ToUpper(folderName[0]) + folderName.Substring(1);
 
             var content = text.GetText();
             var textContent = content.ToString();
 
-            var testDocument = new TestCaseParser().Parse(textContent);
+            TestDocument testDocument;
+            var errorReporter = new ErrorReporter(text.Path, context);
+            try
+            {
+                testDocument = new TestCaseParser().Parse(textContent, errorReporter);
+            }
+            catch
+            {
+                if (errorReporter.ErrorReported)
+                {
+                    return;
+                }
+                throw;
+            }
+
+            if (testDocument == null)
+            {
+                
+                
+                throw new System.Exception("Failed to parse test document");
+            }
+            
 
             if (testDocument.ScalarTestGroups != null)
             {
-                ExecuteScalar(text, context, testDocument, folderName, className);
+                ExecuteScalar(text, context, testDocument, parentFolderName, folderName, className);
             }
             if (testDocument.AggregateTestGroups != null)
             {
-                ExecuteAggregate(text, context, testDocument, folderName, className);
+                ExecuteAggregate(text, context, testDocument, parentFolderName, folderName, className);
             }
         }
 
-        private void ExecuteAggregate(AdditionalText text, SourceProductionContext context, TestDocument testDocument, string folderName, string className)
+        private void ExecuteAggregate(AdditionalText text, SourceProductionContext context, TestDocument testDocument, string parentFolderName, string folderName, string className)
         {
             OutputWriter testClassBuilder = new OutputWriter();
 
@@ -166,7 +191,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
             // Make class name first letter uppercase
             className = char.ToUpper(className[0]) + className.Substring(1);
 
-            testClassBuilder.AppendLine($"public class {className}");
+            testClassBuilder.AppendLine($"public partial class {className}");
 
             testClassBuilder.StartCurly();
 
@@ -294,10 +319,10 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
             testClassBuilder.EndCurly();
             testClassBuilder.EndCurly();
 
-            context.AddSource($"{folderName}.{className}.Generated.cs", testClassBuilder.ToString());
+            context.AddSource($"{parentFolderName}.{folderName}.{className}.Generated.cs", testClassBuilder.ToString());
         }
 
-        private void ExecuteScalar(AdditionalText text, SourceProductionContext context, TestDocument testDocument, string folderName, string className)
+        private void ExecuteScalar(AdditionalText text, SourceProductionContext context, TestDocument testDocument, string parentFolderName, string folderName, string className)
         {
             OutputWriter testClassBuilder = new OutputWriter();
             testClassBuilder.AppendLine("using System;");
@@ -333,7 +358,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
             // Make class name first letter uppercase
             className = char.ToUpper(className[0]) + className.Substring(1);
 
-            testClassBuilder.AppendLine($"public class {className}");
+            testClassBuilder.AppendLine($"public partial class {className}");
 
             testClassBuilder.StartCurly();
 
@@ -345,7 +370,11 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                     testClassBuilder.AppendLine();
                 }
 
-                testClassBuilder.AppendLine($"public static IEnumerable<object[]> GetDataForTest{i}()");
+                var desc = testGroup.Description;
+                // Remove special characters and whitespace from desc
+                desc = new string(desc.Where(c => char.IsLetterOrDigit(c)).ToArray());
+
+                testClassBuilder.AppendLine($"public static IEnumerable<object[]> GetDataForTest{desc}{i}()");
                 testClassBuilder.StartCurly();
 
                 foreach (var test in testGroup.TestCases)
@@ -373,7 +402,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                 testClassBuilder.AppendLine();
 
                 testClassBuilder.AppendLine($"[Theory(DisplayName = \"{testGroup.Description}\")]");
-                testClassBuilder.AppendLine($"[MemberData(nameof(GetDataForTest{i}))]");
+                testClassBuilder.AppendLine($"[MemberData(nameof(GetDataForTest{desc}{i}))]");
 
                 List<string> argNames = new()
                 {
@@ -383,7 +412,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
                     "SortedList<string, string> options"
                 };
 
-                testClassBuilder.AppendLine($"public void Test{i}({string.Join(", ", argNames)})");
+                testClassBuilder.AppendLine($"public void Test{desc}{i}({string.Join(", ", argNames)})");
 
                 testClassBuilder.StartCurly();
 
@@ -446,7 +475,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator
 
             testClassBuilder.EndCurly();
 
-            context.AddSource($"{folderName}.{className}.Generated.cs", testClassBuilder.ToString());
+            context.AddSource($"{parentFolderName}.{folderName}.{className}.Generated.cs", testClassBuilder.ToString());
         }
     }
 }

@@ -57,5 +57,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             container._type = ArrowTypeId.Boolean;
             container._boolValue = this;
         }
+
+        public override string ToString()
+        {
+            return value ? "true" : "false";
+        }
     }
 }

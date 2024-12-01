@@ -68,18 +68,6 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
             var txt = literal.GetText();
 
             return DataTypeValueWriter.WriteDataValue(txt, "fp64");
-            //if (txt == "inf")
-            //{
-            //    return "new DoubleValue(double.PositiveInfinity)";
-            //}
-            //else if (txt == "-inf")
-            //{
-            //    return "new DoubleValue(double.NegativeInfinity)";
-            //}
-
-            //var val = double.Parse(literal.GetText(), CultureInfo.InvariantCulture);
-
-            //return $"new DoubleValue({val.ToString(CultureInfo.InvariantCulture)})";
         }
 
         public override string VisitIntArg([NotNull] FuncTestCaseParser.IntArgContext context)
@@ -92,6 +80,13 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
         public override string VisitNullArg([NotNull] FuncTestCaseParser.NullArgContext context)
         {
             return "NullValue.Instance";
+        }
+
+        public override string VisitDecimalArg([NotNull] FuncTestCaseParser.DecimalArgContext context)
+        {
+            var literal = context.numericLiteral();
+            var txt = literal.GetText();
+            return DataTypeValueWriter.WriteDataValue(txt, "dec");
         }
     }
 }

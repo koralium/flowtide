@@ -17,7 +17,7 @@ namespace FlowtideDotNet.ComputeTests
 {
     internal class TestCaseParser
     {
-        public TestDocument Parse(string text)
+        public TestDocument Parse(string text, IAntlrErrorListener<IToken> errorListener = default)
         {
             ICharStream stream = CharStreams.fromString(text);
             var lexer = new FuncTestCaseLexer(stream);
@@ -26,6 +26,12 @@ namespace FlowtideDotNet.ComputeTests
             {
                 BuildParseTree = true
             };
+            parser.RemoveErrorListeners();
+            if (errorListener != null)
+            {
+                parser.AddErrorListener(errorListener);
+            }
+            
 
             var context = parser.doc();
 
