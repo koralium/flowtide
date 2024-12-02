@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using Xunit.Abstractions;
 
@@ -263,6 +264,104 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(result);
 
             GenerateData(100);
+            await WaitForUpdate();
+            result = from o in Orders
+                     from u in Users
+                     where o.UserKey % u.UserKey == 0
+                     select new
+                     {
+                         o.OrderKey,
+                         u.FirstName,
+                         u.LastName
+                     };
+
+            AssertCurrentDataEqual(result);
+        }
+
+        [Fact]
+        public async Task InnerJoinBlockLoopModulusUsersFromLeft()
+        {
+            GenerateCompanies(10);
+
+            GenerateUsers(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM users u
+                INNER JOIN orders o
+                ON o.userkey % u.userkey = 0");
+            await WaitForUpdate();
+
+            GenerateOrders(100);
+
+            await WaitForUpdate();
+
+            var result = from o in Orders
+                         from u in Users
+                         where o.UserKey % u.UserKey == 0
+                         select new
+                         {
+                             o.OrderKey,
+                             u.FirstName,
+                             u.LastName
+                         };
+
+            AssertCurrentDataEqual(result);
+
+            GenerateData(100);
+            await WaitForUpdate();
+            result = from o in Orders
+                     from u in Users
+                     where o.UserKey % u.UserKey == 0
+                     select new
+                     {
+                         o.OrderKey,
+                         u.FirstName,
+                         u.LastName
+                     };
+
+            AssertCurrentDataEqual(result);
+        }
+
+        [Fact]
+        public async Task InnerJoinBlockLoopModulusUsersJoinFromRight()
+        {
+            GenerateCompanies(10);
+
+            GenerateUsers(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, u.firstName, u.LastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey % u.userkey = 0");
+            await WaitForUpdate();
+
+            GenerateOrders(100);
+            GenerateProjects(100);
+            GenerateProjectMembers(100);
+
+            await WaitForUpdate();
+
+            var result = from o in Orders
+                         from u in Users
+                         where o.UserKey % u.UserKey == 0
+                         select new
+                         {
+                             o.OrderKey,
+                             u.FirstName,
+                             u.LastName
+                         };
+
+            AssertCurrentDataEqual(result);
+
+            Randomizer.Seed = new Random(8675309);
+            GenerateCompanies(10);
+            GenerateUsers(100);
+            await WaitForUpdate();
+            GenerateOrders(100);
             await WaitForUpdate();
             result = from o in Orders
                      from u in Users

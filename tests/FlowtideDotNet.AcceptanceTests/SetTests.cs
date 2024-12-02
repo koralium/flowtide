@@ -74,9 +74,32 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
 
-            var lastUser = Users.Last();
+            var expected = Users.Select(x => new { x.UserKey }).Union(Users.Select(u => new { UserKey = u.UserKey + 1 })).Except(Users.Select(x => new { x.UserKey })).Distinct().ToList();
+            AssertCurrentDataEqual(expected);
+        }
 
-            AssertCurrentDataEqual(new [] { new { UserKey = lastUser.UserKey + 1 } });
+        [Fact]
+        public async Task TestExceptDistinctWithUpdate()
+        {
+            GenerateData();
+            await StartStream(@"
+            CREATE VIEW test AS
+            SELECT UserKey FROM users
+            UNION
+            SELECT UserKey + 1 FROM users;
+
+            INSERT INTO output
+            SELECT UserKey FROM test
+            EXCEPT DISTINCT
+            SELECT UserKey FROM users");
+
+            await WaitForUpdate();
+
+            GenerateData();
+
+            await WaitForUpdate();
+            var expected = Users.Select(x => new { x.UserKey }).Union(Users.Select(u => new { UserKey = u.UserKey + 1 })).Except(Users.Select(x => new {x.UserKey})).Distinct().ToList();
+            AssertCurrentDataEqual(expected);
         }
 
         [Fact]
@@ -144,7 +167,65 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(Users.Select(u => new { u.UserKey }).Concat(Users.Skip(1).Select(u => new { u.UserKey })));
+            var unionOtherset = Users.Select(u => new { u.UserKey }).Concat(Users.Select(u => new { u.UserKey })).ToList();
+            var unionTest = Users.Select(u => new { u.UserKey }).Concat(Users.Select(u => new { UserKey = u.UserKey + 1 })).ToList();
+
+            var expected = Users.Take(0).Select(x => new { x.UserKey }).ToList();
+
+            for (int i = 0; i < unionTest.Count; i++)
+            {
+                if (unionOtherset.Contains(unionTest[i]))
+                {
+                    expected.Add(unionTest[i]);
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task TestIntersectAllWithUpdate()
+        {
+            GenerateData();
+
+            var firstUser = Users.First();
+
+            await StartStream(@"
+            CREATE VIEW test AS
+            SELECT UserKey FROM users
+            UNION ALL
+            SELECT UserKey + 1 FROM users;
+
+            CREATE VIEW otherset AS
+            SELECT UserKey FROM users
+            UNION ALL
+            SELECT UserKey FROM users;            
+
+            INSERT INTO output
+            SELECT UserKey FROM test
+            INTERSECT ALL
+            SELECT UserKey FROM otherset");
+
+            await WaitForUpdate();
+
+            GenerateData();
+
+            await WaitForUpdate();
+
+            var unionOtherset = Users.Select(u => new { u.UserKey }).Concat(Users.Select(u => new { u.UserKey })).ToList();
+            var unionTest = Users.Select(u => new { u.UserKey }).Concat(Users.Select(u => new { UserKey = u.UserKey + 1 })).ToList();
+
+            var expected = Users.Take(0).Select(x => new { x.UserKey }).ToList();
+
+            for (int i = 0; i < unionTest.Count; i++)
+            {
+                if (unionOtherset.Contains(unionTest[i]))
+                {
+                    expected.Add(unionTest[i]);
+                }
+            }
+
+            AssertCurrentDataEqual(expected);
         }
     }
 }
