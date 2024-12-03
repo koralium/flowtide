@@ -430,7 +430,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                 outNode = Visit(fromTable, state);
             }
-            //outNode = new RelationData(new VirtualTableReadRelation(), new EmitData());
+
             if (outNode == null)
             {
                 if (select.Projection != null)
@@ -1118,11 +1118,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     if (relationData.Relation is VirtualTableReadRelation virtualTableReadRelation)
                     {
                         virtualTableReadRelation.BaseSchema.Names = columnAliases;
-                    }
-                    //else
-                    //{
-                    //    throw new NotImplementedException("Column aliasing in derived tables is not supported at this time.");
-                    //}   
+                    }  
                 }
                 
                 // Append the alias to the emit data so its possible to find columns from the emit data
