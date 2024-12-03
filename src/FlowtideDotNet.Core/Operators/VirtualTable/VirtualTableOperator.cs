@@ -28,13 +28,26 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
         private readonly IFunctionsRegister functionsRegister;
         private IReadOnlySet<string>? watermarkNames;
         private bool hasSentInitial = false;
-
+        private int[] _emitList;
         public override string DisplayName => "Virtual Table";
 
         public VirtualTableOperator(VirtualTableReadRelation virtualTableReadRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(options)
         {
             this.virtualTableReadRelation = virtualTableReadRelation;
             this.functionsRegister = functionsRegister;
+
+            if (virtualTableReadRelation.EmitSet)
+            {
+                _emitList = virtualTableReadRelation.Emit.ToArray();
+            }
+            else
+            {
+                _emitList = new int[virtualTableReadRelation.OutputLength];
+                for (int i = 0; i < virtualTableReadRelation.OutputLength; i++)
+                {
+                    _emitList[i] = i;
+                }
+            }
         }
 
         public override Task Compact()
@@ -102,9 +115,9 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
             {
                 weights.Add(1);
                 iterations.Add(0);
-                for (int i = 0; i < row.Fields.Count; i++)
+                for (int i = 0; i < _emitList.Length; i++)
                 {
-                    var compiledColumnProjection = ColumnProjectCompiler.Compile(row.Fields[i], functionsRegister);
+                    var compiledColumnProjection = ColumnProjectCompiler.Compile(row.Fields[_emitList[i]], functionsRegister);
                     compiledColumnProjection(emptyBatch, 0, columns[i]);
                 }
             }
