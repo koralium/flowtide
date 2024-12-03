@@ -64,36 +64,72 @@ namespace FlowtideDotNet.Substrait.Sql
             return clone;
         }
 
-        public EmitData CloneWithAlias(string alias)
+        public EmitData CloneWithAlias(string alias, List<string>? columnNames)
         {
             var clone = new EmitData();
-            foreach (var kv in emitList)
+
+            if (columnNames != null)
             {
-                clone.emitList.Add(kv.Key, kv.Value);
+                for (int index = 0; index < columnNames.Count; index++)
+                {
+                    var name = columnNames[index];
+                    var emitInfo = new EmitInformation();
+                    emitInfo.Index.Add(index);
+                    clone.emitList.Add(new Expression.CompoundIdentifier(new Sequence<Ident>(new List<Ident> { new Ident(name) })), emitInfo);
+                }
+
+                foreach (var name in columnNames)
+                {
+                    clone.compundIdentifiers.Add(name, new Expression.CompoundIdentifier(new Sequence<Ident>(new List<Ident> { new Ident(name) })));
+                }
+
+                clone._names.AddRange(columnNames);
             }
-            foreach (var kv in compundIdentifiers)
+            else
             {
-                clone.compundIdentifiers.Add(kv.Key, kv.Value);
+                foreach (var kv in emitList)
+                {
+                    clone.emitList.Add(kv.Key, kv.Value);
+                }
+
+                foreach (var kv in compundIdentifiers)
+                {
+                    clone.compundIdentifiers.Add(kv.Key, kv.Value);
+                }
+
+                foreach (var name in _names)
+                {
+                    clone._names.Add(name);
+                }
             }
-            foreach (var name in _names)
-            {
-                clone._names.Add(name);
-            }
+
             foreach (var type in _types)
             {
                 clone._types.Add(type);
             }
-            foreach (var ci in compundIdentifiers)
+            if (columnNames != null)
             {
-                if (emitList.TryGetValue(ci.Value, out var indexInfo))
+                for (int index = 0; index < columnNames.Count; index++)
                 {
-                    clone.AddWithAlias(new Expression.CompoundIdentifier(new Sequence<Ident>(ci.Value.Idents.Prepend(new Ident(alias)))), indexInfo.Index.First());
-                }
-                else
-                {
-                    throw new InvalidOperationException("Could not find index information");
+                    var name = columnNames[index];
+                    clone.AddWithAlias(new Expression.CompoundIdentifier(new Sequence<Ident>(new List<Ident>() { new Ident(alias), new Ident(name) })), index);
                 }
             }
+            else
+            {
+                foreach (var ci in compundIdentifiers)
+                {
+                    if (emitList.TryGetValue(ci.Value, out var indexInfo))
+                    {
+                        clone.AddWithAlias(new Expression.CompoundIdentifier(new Sequence<Ident>(ci.Value.Idents.Prepend(new Ident(alias)))), indexInfo.Index.First());
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Could not find index information");
+                    }
+                }
+            }
+            
             return clone;
         }
 

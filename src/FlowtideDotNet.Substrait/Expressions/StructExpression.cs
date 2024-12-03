@@ -10,44 +10,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-using FlowtideDotNet.Substrait.Expressions;
-using Substrait.Protobuf;
-
-namespace FlowtideDotNet.Substrait.Type
+namespace FlowtideDotNet.Substrait.Expressions
 {
-    public sealed class VirtualTable : IEquatable<VirtualTable>
+    public class StructExpression : NestedExpression, IEquatable<StructExpression>
     {
-        public required List<StructExpression> Expressions { get; set; }
+        public required List<Expression> Fields { get; set; }
+
+        public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
+        {
+            return visitor.VisitStructExpression(this, state)!;
+        }
 
         public override bool Equals(object? obj)
         {
-            return obj is VirtualTable table &&
-                   Equals(table);
+            return obj is StructExpression expression &&
+                   Equals(expression);
         }
 
-        public bool Equals(VirtualTable? other)
+        public bool Equals(StructExpression? other)
         {
             return other != null &&
-                   Expressions.SequenceEqual(other.Expressions);
+                   Fields.SequenceEqual(other.Fields);
         }
 
         public override int GetHashCode()
         {
             var code = new HashCode();
-            foreach (var value in Expressions)
+            foreach (var field in Fields)
             {
-                code.Add(value);
+                code.Add(field);
             }
             return code.ToHashCode();
         }
 
-        public static bool operator ==(VirtualTable? left, VirtualTable? right)
+        public static bool operator ==(StructExpression? left, StructExpression? right)
         {
-            return EqualityComparer<VirtualTable>.Default.Equals(left, right);
+            return EqualityComparer<StructExpression>.Default.Equals(left, right);
         }
 
-        public static bool operator !=(VirtualTable? left, VirtualTable? right)
+        public static bool operator !=(StructExpression? left, StructExpression? right)
         {
             return !(left == right);
         }

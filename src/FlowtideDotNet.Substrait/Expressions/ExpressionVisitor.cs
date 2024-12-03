@@ -161,5 +161,17 @@ namespace FlowtideDotNet.Substrait.Expressions
             castExpression.Expression.Accept(this, state);
             return default;
         }
+
+        public virtual TOutput? VisitStructExpression(StructExpression structExpression, TState state)
+        {
+            if (structExpression.Fields != null)
+            {
+                foreach (var field in structExpression.Fields)
+                {
+                    field.Accept(this, state);
+                }
+            }
+            return default;
+        }
     }
 }
