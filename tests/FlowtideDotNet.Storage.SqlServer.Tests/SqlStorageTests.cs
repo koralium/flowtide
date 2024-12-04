@@ -343,9 +343,9 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
 
             var name = $"test_{nameof(InitializeWaitsForSessionBackgroundTasksAndResetsCache)}";
             var initMetadata = new StorageInitializationMetadata(name);
-            var streamKey = await GetStreamKey(name);
 
             await storage.InitializeAsync(initMetadata);
+            var streamKey = await GetStreamKey(name);
 
             var session = storage.CreateSession();
 
