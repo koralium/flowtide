@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Azure;
 using Microsoft.Data.SqlClient;
 using System.Buffers.Binary;
 using System.Data;
@@ -19,7 +20,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 {
     internal abstract class BaseSqlRepository : IDisposable
     {
-        public Dictionary<long, HashSet<ManagedStreamPage>> ManagedPages { get; private set; }
+        public Dictionary<long, ManagedStreamPage> ManagedPages { get; private set; }
         public List<StreamPage> UnpersistedPages { get; private set; } = [];
         private bool disposedValue;
 
@@ -37,7 +38,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
         {
             var page = new StreamPage(ToPageKey(key, Stream.Metadata.CurrentVersion), Stream.Metadata.StreamKey, key, value, Stream.Metadata.CurrentVersion);
             UnpersistedPages.Add(page);
-            ManagedPages.AddOrCreate(new ManagedStreamPage(page.PageId, page.Version, page.PageKey));
+            ManagedPages.AddOrReplacePage(new ManagedStreamPage(page.PageId, page.Version, page.PageKey));
         }
 
         public byte[]? Read(long key)
@@ -49,10 +50,15 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             cmd.Parameters.AddWithValue("@streamKey", Stream.Metadata.StreamKey);
 
             string query;
-            if (ManagedPages.TryGetLatestPageVersion(key, out var info))
+            if (ManagedPages.TryGetValue(key, out var page))
             {
+                if (page.ShouldDelete)
+                {
+                    return null;
+                }
+
                 query = "SELECT Payload FROM StreamPages WHERE PageId = @key AND StreamKey = @streamKey AND Version = @version";
-                cmd.Parameters.AddWithValue("@version", info.Value.Version);
+                cmd.Parameters.AddWithValue("@version", page.Version);
             }
             else
             {
@@ -68,7 +74,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
                 return reader.GetFieldValue<byte[]>(0);
             }
 
-            return null; //todo: throw?
+            return null;
         }
 
         public async Task<byte[]> ReadAsync(long key)
@@ -80,10 +86,15 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             cmd.Parameters.AddWithValue("@streamKey", Stream.Metadata.StreamKey);
 
             string query;
-            if (ManagedPages.TryGetLatestPageVersion(key, out var info))
+            if (ManagedPages.TryGetValue(key, out var page))
             {
+                if (page.ShouldDelete)
+                {
+                    return []; //todo: throw?
+                }
+
                 query = "SELECT Payload FROM StreamPages WHERE PageId = @key AND StreamKey = @streamKey AND Version = @version";
-                cmd.Parameters.AddWithValue("@version", info.Value.Version);
+                cmd.Parameters.AddWithValue("@version", page.Version);
             }
             else
             {

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Microsoft.Data.SqlClient;
+using System.Linq;
 
 namespace FlowtideDotNet.Storage.SqlServer.Data
 {
@@ -80,29 +81,28 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public Task DeleteAsync(long key)
         {
-            // todo: should a page be readable after delete (if not checkpointed)?
-            // todo: if a page is deleted, does that mean that all versions of that page are deleted or can an older version still be read?
-            ManagedPages.MarkDeleted(key);
+            ManagedPages.MarkPageDeleted(key);
             return Task.CompletedTask;
+        }
+
+        public void RestoreDeletedPages()
+        {
+            foreach (var page in GetDeletedPages())
+            {
+                ManagedPages.AddOrReplacePage(page.CopyAsNotDeleted());
+            }
         }
 
         public IEnumerable<ManagedStreamPage> GetDeletedPages()
         {
-            return ManagedPages.SelectMany(s => s.Value).Where(s => s.ShouldDelete);
+            return ManagedPages.Where(s => s.Value.ShouldDelete).Select(s => s.Value);
         }
 
         public void RemoveDeletedPagesFromMemory(IEnumerable<ManagedStreamPage> pages)
         {
-            foreach (var page in pages)
+            foreach (var page in pages.Where(page => ManagedPages.TryGetValue(page.PageId, out var set)))
             {
-                if (ManagedPages.TryGetValue(page.PageId, out var set))
-                {
-                    set.Remove(page);
-                    if (set.Count == 0)
-                    {
-                        ManagedPages.Remove(page.PageId);
-                    }
-                }
+                ManagedPages.Remove(page.PageId);
             }
         }
 

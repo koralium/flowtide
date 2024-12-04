@@ -24,5 +24,13 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
         {
             return new(PageId, Version, PageKey, true);
         }
+
+        /// <summary>
+        /// Creates a copy of the current <see cref="ManagedStreamPage"/> with <see cref="ShouldDelete"/> set to <c>false</c>.
+        /// </summary>
+        public readonly ManagedStreamPage CopyAsNotDeleted()
+        {
+            return new(PageId, Version, PageKey, false);
+        }
     }
 }

@@ -10,73 +10,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Data;
-using System.Diagnostics.CodeAnalysis;
-
 namespace FlowtideDotNet.Storage.SqlServer.Data
 {
     internal static class StreamPageInfoExtensions
     {
-        public static bool TryGetValue(this HashSet<ManagedStreamPage> streamPages, long pageId, [NotNullWhen(true)] out ManagedStreamPage? info)
+        public static void AddOrReplacePage(this Dictionary<long, ManagedStreamPage> dict, ManagedStreamPage page)
         {
-            if (streamPages.Any(s => s.PageId == pageId))
+            if (!dict.TryAdd(page.PageId, page))
             {
-                info = streamPages.Last(s => s.PageId == pageId);
-                return true;
-            }
-
-            info = null;
-            return false;
-        }
-
-        public static void AddOrCreate(this Dictionary<long, HashSet<ManagedStreamPage>> dict, ManagedStreamPage page)
-        {
-            if (dict.TryGetValue(page.PageId, out var set))
-            {
-                set.Add(page);
-            }
-            else
-            {
-                dict.Add(page.PageId, [page]);
+                dict[page.PageId] = page;
             }
         }
 
-        /// <summary>
-        /// Marks all versions in the set as deleted for the given <paramref name="page"/>.
-        /// </summary>
-        public static void MarkDeleted(this Dictionary<long, HashSet<ManagedStreamPage>> dict, ManagedStreamPage page)
-            => MarkDeleted(dict, page.PageId);
+        public static void MarkPageDeleted(this Dictionary<long, ManagedStreamPage> dict, ManagedStreamPage page)
+            => AddOrReplacePage(dict, page.CopyAsDeleted());
 
-        public static void MarkDeleted(this Dictionary<long, HashSet<ManagedStreamPage>> dict, long key)
+        public static void MarkPageDeleted(this Dictionary<long, ManagedStreamPage> dict, long key)
         {
-            if (dict.TryGetValue(key, out var set))
+            if (dict.TryGetValue(key, out var page))
             {
-                foreach (var item in set.ToArray())
-                {
-                    set.Remove(item);
-                    set.Add(item.CopyAsDeleted());
-                }
+                AddOrReplacePage(dict, page.CopyAsDeleted());
             }
-        }
-
-        public static bool TryGetLatestPageVersion(this Dictionary<long, HashSet<ManagedStreamPage>> dict, ManagedStreamPage page, [NotNullWhen(true)] out ManagedStreamPage? latestPage)
-            => dict.TryGetLatestPageVersion(page.PageId, out latestPage);
-
-        public static bool TryGetLatestPageVersion(this Dictionary<long, HashSet<ManagedStreamPage>> dict, long pageId, [NotNullWhen(true)] out ManagedStreamPage? latestPage)
-        {
-            if (dict.TryGetValue(pageId, out var set))
-            {
-                latestPage = set.MaxBy(s => s.Version);
-                return true;
-            }
-
-            latestPage = null;
-            return false;
-        }
-
-        public static IEnumerable<ManagedStreamPage> GetDeletedPageVersions(this Dictionary<long, HashSet<ManagedStreamPage>> dict)
-        {
-            return dict.Where(s => s.Value != null).SelectMany(s => s.Value).Where(s => s.ShouldDelete);
         }
     }
 }

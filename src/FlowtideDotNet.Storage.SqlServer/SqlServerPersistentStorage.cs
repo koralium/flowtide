@@ -137,6 +137,11 @@ namespace FlowtideDotNet.Storage.SqlServer
 
         public ValueTask RecoverAsync(long checkpointVersion)
         {
+            foreach (var repository in _sessionRepositories)
+            {
+                repository.RestoreDeletedPages();
+            }
+
             return ValueTask.CompletedTask;
         }
 

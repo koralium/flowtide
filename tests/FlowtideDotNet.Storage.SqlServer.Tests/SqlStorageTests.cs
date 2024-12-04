@@ -1,4 +1,5 @@
 using FlowtideDotNet.Storage.Persistence;
+using Renci.SshNet;
 using System.Text;
 
 namespace FlowtideDotNet.Storage.SqlServer.Tests
@@ -342,6 +343,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
 
             var name = $"test_{nameof(InitializeWaitsForSessionBackgroundTasksAndResetsCache)}";
             var initMetadata = new StorageInitializationMetadata(name);
+            var streamKey = await GetStreamKey(name);
 
             await storage.InitializeAsync(initMetadata);
 
@@ -362,7 +364,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             await session.Commit();
             await storage.CheckpointAsync([], false);
 
-            var numberOfPages = await _fixture.ExecuteReader($"SELECT COUNT(*) FROM [dbo].[StreamPages]", reader =>
+            var numberOfPages = await _fixture.ExecuteReader($"SELECT COUNT(*) FROM [dbo].[StreamPages] WHERE StreamKey = {streamKey}", reader =>
             {
                 reader.Read();
                 return reader.GetInt32(0);
@@ -372,6 +374,36 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
 
             Assert.Equal(expectedPageBytes, page);
             Assert.Equal(2, numberOfPages); // checkpoint should also add one page
+        }
+
+        [Fact]
+        public async Task DeletedPageIsNonReadableUntilRestore()
+        {
+            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
+            {
+                ConnectionString = _fixture.ConnectionString,
+                WritePagesBulkLimit = 1,
+                BulkCopySettings = new SqlServerBulkCopySettings(),
+            });
+
+            var name = $"test_{nameof(DeletedPageIsNonReadableUntilRestore)}";
+            await storage.InitializeAsync(new StorageInitializationMetadata(name));
+
+            var session = storage.CreateSession();
+
+            var pageId = 2;
+            await session.Write(pageId, Encoding.UTF8.GetBytes("a"));
+            await session.Commit();
+            await session.Delete(pageId);
+
+            var deletedPageData = await session.Read(pageId);
+
+            await storage.RecoverAsync(1);
+
+            var restoredPageData = await session.Read(pageId);
+
+            Assert.Empty(deletedPageData);
+            Assert.NotEmpty(restoredPageData);
         }
 
         private Task<int> GetStreamKey(string streamName)
