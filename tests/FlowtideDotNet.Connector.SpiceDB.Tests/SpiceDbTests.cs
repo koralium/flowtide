@@ -540,5 +540,12 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             Assert.Equal(10, existing.Count);
 
         }
+
+        [Fact]
+        public void NonExisitngStopTypeThrowsError()
+        {
+            var schemaText = File.ReadAllText("schema.txt");
+            Assert.Throws<ArgumentException>(() => SpiceDbToFlowtide.Convert(schemaText, "document", "view", "spicedb", "nonexisting"));
+        }
     }
 }
