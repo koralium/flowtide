@@ -216,11 +216,9 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
                 WHERE StreamKey = @StreamKey AND Id IN (
                 SELECT Id
                 FROM StreamPages t1
-                WHERE t1.Version = (SELECT MAX(t2.Version) 
+                WHERE t1.Version < (SELECT MAX(t2.Version) 
                 	FROM StreamPages t2 
-                	JOIN Streams t3 ON t3.StreamKey = t2.StreamKey
-                	WHERE t2.PageId = t1.PageId 
-                	AND t2.Version < t3.LastSuccessfulVersion)
+                	WHERE t2.PageId = t1.PageId AND StreamKey = @StreamKey)
                 );", transaction.Connection);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
             cmd.Transaction = transaction;
