@@ -65,6 +65,13 @@ namespace FlowtideDotNet.Core.ColumnStore
             _offsets = new IntList(offsetMemory, offsetLength, memoryAllocator);
         }
 
+        internal MapColumn(Column keyColumn, Column valueColumn, IntList offset)
+        {
+            _keyColumn = keyColumn;
+            _valueColumn = valueColumn;
+            _offsets = offset;
+        }
+
         private (int, int) GetOffsets(in int index)
         {
             var startOffset = _offsets.Get(index);
@@ -94,6 +101,18 @@ namespace FlowtideDotNet.Core.ColumnStore
             return endOffset - startOffset;
         }
 
+        public IDataValue GetKeyAt(in int rowIndex, in int keyIndex)
+        {
+            var (startOffset, endOffset) = GetOffsets(in rowIndex);
+            var actualIndex = startOffset + keyIndex;
+            if (actualIndex >= endOffset)
+            {
+                return NullValue.Instance;
+            }
+
+            return _keyColumn.GetValueAt(actualIndex, default);
+        }
+
         public void GetKeyAt(in int rowIndex, in int keyIndex, in DataValueContainer dataValueContainer)
         {
             var (startOffset, endOffset) = GetOffsets(in rowIndex);
@@ -118,6 +137,18 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             _valueColumn.GetValueAt(actualIndex, dataValueContainer, default);
+        }
+
+        public IDataValue GetMapValueAt(in int rowIndex, in int keyIndex)
+        {
+            var (startOffset, endOffset) = GetOffsets(in rowIndex);
+            var actualIndex = startOffset + keyIndex;
+            if (actualIndex >= endOffset)
+            {
+                return NullValue.Instance;
+            }
+
+            return _valueColumn.GetValueAt(actualIndex, default);
         }
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
@@ -553,6 +584,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             writer.WriteEndObject();
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new MapColumn(_keyColumn.Copy(memoryAllocator), _valueColumn.Copy(memoryAllocator), _offsets.Copy(memoryAllocator));
         }
     }
 }

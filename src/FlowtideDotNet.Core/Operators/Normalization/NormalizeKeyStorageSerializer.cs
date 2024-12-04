@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         public void Serialize(in BinaryWriter writer, in NormalizeKeyStorage values)
         {
-            var recordBatch = EventArrowSerializer.BatchToArrow(values._data);
+            var recordBatch = EventArrowSerializer.BatchToArrow(values._data, values.Count);
             var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
             batchWriter.WriteRecordBatch(recordBatch);
         }

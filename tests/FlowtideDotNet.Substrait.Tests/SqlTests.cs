@@ -464,7 +464,7 @@ namespace FlowtideDotNet.Substrait.Tests
                     {
                         new SetRelation()
                         {
-                            Operation = SetOperation.UnionAll,
+                            Operation = SetOperation.UnionDistinct,
                             Inputs = new List<Relation>()
                             {
                                 new ProjectRelation()
@@ -1987,6 +1987,59 @@ namespace FlowtideDotNet.Substrait.Tests
                         }
                    }
                }, opt => opt.AllowingInfiniteRecursion().IncludingAllRuntimeProperties().IncludingAllDeclaredProperties().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+        }
+
+        [Fact]
+        public void SelectWithoutFrom()
+        {
+            builder.Sql(@"
+                SELECT 1 as number, 'abc' as str
+            ");
+
+            var plan = builder.GetPlan();
+
+            plan.Should().BeEquivalentTo(
+                new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new VirtualTableReadRelation()
+                        {
+                            BaseSchema = new NamedStruct()
+                            {
+                                Names = new List<string>() { "number", "str" },
+                                Struct = new Struct()
+                                {
+                                    Types = new List<SubstraitBaseType>()
+                                    {
+                                        new Int64Type(),
+                                        new StringType()
+                                    }
+                                }
+                            },
+                            Values = new VirtualTable()
+                            {
+                                Expressions = new List<StructExpression>()
+                                {
+                                    new StructExpression()
+                                    {
+                                        Fields = new List<Expression>()
+                                        {
+                                            new NumericLiteral()
+                                            {
+                                                Value = 1
+                                            },
+                                            new StringLiteral()
+                                            {
+                                                Value = "abc"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
         }
 
     }

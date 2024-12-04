@@ -212,6 +212,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     
                     await foreach(var page in _rightIterator)
                     {
+                        bool pageUpdated = false;
                         var pageKeyStorage = page.Keys;
                         if (!firstPage)
                         {
@@ -234,16 +235,19 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     break;
                                 }
                             }
-                            int outputWeight = page.Values.Get(k).weight * msg.Data.Weights[i];
-                            joinWeight += outputWeight;
-                            for (int z = 0; z < rightColumns.Count; z++)
-                            {
-                                pageKeyStorage!._data.Columns[_rightOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
-                                rightColumns[z].Add(_dataValueContainer);
-                            }
-                            foundOffsets.Add(i);
-                            iterations.Add(msg.Data.Iterations[i]);
-                            weights.Add(outputWeight);
+                            pageUpdated |= RecieveLeftHandleElement(
+                                in i,
+                                in k,
+                                in weight,
+                                in msg,
+                                in foundOffsets,
+                                in weights,
+                                in iterations,
+                                page.Values,
+                                in pageKeyStorage,
+                                in rightColumns,
+                                ref joinWeight
+                                );
 
                             var newCacheMisses = GetCacheMisses();
                             var deltaCacheMisses = newCacheMisses - startCacheMisses;
@@ -290,6 +294,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 }
                             }
                         }
+                        if (pageUpdated)
+                        {
+                            await page.SavePage(false);
+                        }
                         if (_searchRightComparer.end < (page.Keys.Count - 1))
                         {
                             break;
@@ -298,7 +306,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
 
                 // If it is a left join we must output the left side even if there is no match
-                if (joinWeight == 0 && _mergeJoinRelation.Type == JoinType.Left)
+                if (joinWeight == 0 && (_mergeJoinRelation.Type == JoinType.Left || _mergeJoinRelation.Type == JoinType.Outer))
                 {
                     foundOffsets.Add(i);
                     iterations.Add(msg.Data.Iterations[i]);
@@ -433,7 +441,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     break;
                                 }
                             }
-                            pageUpdated = RecieveRightHandleElement(
+                            pageUpdated |= RecieveRightHandleElement(
                                 in i, 
                                 in k, 
                                 in weight, 
@@ -500,6 +508,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         {
                             break;
                         }
+                    }
+                }
+
+                // If it is a left join we must output the left side even if there is no match
+                if (joinWeight == 0 && (_mergeJoinRelation.Type == JoinType.Right || _mergeJoinRelation.Type == JoinType.Outer))
+                {
+                    foundOffsets.Add(i);
+                    iterations.Add(msg.Data.Iterations[i]);
+                    weights.Add(weight);
+                    for (int z = 0; z < leftColumns.Count; z++)
+                    {
+                        leftColumns[z].Add(NullValue.Instance);
                     }
                 }
                 var insertWeights = new JoinWeights() { weight = weight, joinWeight = joinWeight };
@@ -592,7 +612,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             iterations.Add(msg.Data.Iterations[i]);
             weights.Add(outputWeight);
 
-            if (_mergeJoinRelation.Type == JoinType.Left)
+            if (_mergeJoinRelation.Type == JoinType.Left || _mergeJoinRelation.Type == JoinType.Outer)
             {
                 pageUpdated = true;
                 if (joinStorageValue.joinWeight == 0)
@@ -620,6 +640,69 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     {
                         pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
                         leftColumns[z].Add(_dataValueContainer);
+                    }
+                    foundOffsets.Add(msg.Data.Weights.Count);
+                    weights.Add(joinStorageValue.weight);
+                    iterations.Add(msg.Data.Iterations[i]);
+                }
+            }
+            return pageUpdated;
+        }
+
+        private bool RecieveLeftHandleElement(
+            in int i,
+            in int k,
+            in int weight,
+            in StreamEventBatch msg,
+            in PrimitiveList<int> foundOffsets,
+            in PrimitiveList<int> weights,
+            in PrimitiveList<uint> iterations,
+            in IValueContainer<JoinWeights> values,
+            in ColumnKeyStorageContainer pageKeyStorage,
+            in List<Column> rightColumns,
+            ref int joinWeight)
+        {
+            bool pageUpdated = false;
+            ref var joinStorageValue = ref values.GetRef(k);
+            int outputWeight = joinStorageValue.weight * weight;
+            joinWeight += outputWeight;
+            for (int z = 0; z < rightColumns.Count; z++)
+            {
+                pageKeyStorage._data.Columns[_rightOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
+                rightColumns[z].Add(_dataValueContainer);
+            }
+            foundOffsets.Add(i);
+            iterations.Add(msg.Data.Iterations[i]);
+            weights.Add(outputWeight);
+
+            if (_mergeJoinRelation.Type == JoinType.Right || _mergeJoinRelation.Type == JoinType.Outer)
+            {
+                pageUpdated = true;
+                if (joinStorageValue.joinWeight == 0)
+                {
+                    // If it was zero before, we must emit a left with right null to negate previous value
+
+                    // TODO: Can optimize here since we are copying the same value from left two times.
+                    // If offsets where also used on these values, we could just copy the offset
+                    for (int z = 0; z < rightColumns.Count; z++)
+                    {
+                        pageKeyStorage!._data.Columns[_rightOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
+                        rightColumns[z].Add(_dataValueContainer);
+                    }
+                    foundOffsets.Add(msg.Data.Weights.Count);
+                    weights.Add(-joinStorageValue.weight);
+                    iterations.Add(msg.Data.Iterations[i]);
+                }
+
+                joinStorageValue.joinWeight += outputWeight;
+
+                if (joinStorageValue.joinWeight == 0)
+                {
+                    // Became 0 this time, must emit a left with right null
+                    for (int z = 0; z < rightColumns.Count; z++)
+                    {
+                        pageKeyStorage!._data.Columns[_rightOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
+                        rightColumns[z].Add(_dataValueContainer);
                     }
                     foundOffsets.Add(msg.Data.Weights.Count);
                     weights.Add(joinStorageValue.weight);

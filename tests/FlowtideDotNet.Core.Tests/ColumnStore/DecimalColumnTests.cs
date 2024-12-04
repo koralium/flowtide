@@ -106,5 +106,40 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal("1.23", json);
         }
+
+        [Fact]
+        public void TestCopy()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                if (r.Next(0, 2) == 0)
+                {
+                    column.Add(new DecimalValue(i));
+                }
+                else
+                {
+                    column.Add(NullValue.Instance);
+                }
+            }
+
+            Column copy = column.Copy(GlobalMemoryManager.Instance);
+
+            Assert.Equal(column.Count, copy.Count);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                var actual = copy.GetValueAt(i, default);
+                if (column.GetValueAt(i, default).IsNull)
+                {
+                    Assert.True(actual.IsNull);
+                }
+                else
+                {
+                    Assert.Equal(column.GetValueAt(i, default).AsDecimal, actual.AsDecimal);
+                }
+            }
+        }
     }
 }

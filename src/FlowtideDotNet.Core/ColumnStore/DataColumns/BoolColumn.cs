@@ -251,5 +251,13 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             writer.WriteBooleanValue(_data.Get(index));
         }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            var mem = _data.MemorySlice;
+            var newMemory = memoryAllocator.Allocate(mem.Length, 64);
+            mem.Span.CopyTo(newMemory.Memory.Span);
+            return new BoolColumn(newMemory, Count, memoryAllocator);
+        }
     }
 }

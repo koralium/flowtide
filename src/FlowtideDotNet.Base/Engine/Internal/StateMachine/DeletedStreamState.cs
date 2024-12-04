@@ -52,6 +52,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             return Task.CompletedTask;
         }
 
+        public override Task StopAsync()
+        {
+            throw new NotSupportedException("Stream already deleted");
+        }
+
         public override Task TriggerCheckpoint(bool isScheduled = false)
         {
             return Task.CompletedTask;

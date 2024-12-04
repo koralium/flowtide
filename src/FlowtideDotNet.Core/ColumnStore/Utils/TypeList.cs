@@ -289,5 +289,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             _length = 0;
         }
+
+        public TypeList Copy(IMemoryAllocator memoryAllocator)
+        {
+            var mem = SlicedMemory;
+            var newMem = memoryAllocator.Allocate(mem.Length, 64);
+            mem.Span.CopyTo(newMem.Memory.Span);
+
+            return new TypeList(newMem, _length, memoryAllocator);
+        }
     }
 }

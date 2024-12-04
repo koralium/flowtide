@@ -112,12 +112,6 @@ namespace FlowtideDotNet.Substrait.Modifier
             return iterationReferenceReadRelation;
         }
 
-        public override Relation VisitUnwrapRelation(UnwrapRelation unwrapRelation, object? state)
-        {
-            unwrapRelation.Input = Visit(unwrapRelation.Input, state);
-            return unwrapRelation;
-        }
-
         public override Relation VisitVirtualTableReadRelation(VirtualTableReadRelation virtualTableReadRelation, object? state)
         {
             return virtualTableReadRelation;

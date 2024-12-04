@@ -348,11 +348,8 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             else if (value.Type == ArrowTypeId.Null)
             {
-                if (_type == ArrowTypeId.Null)
-                {
-                    _nullCounter++;
-                }
-                else
+                // If it is null and being updated to null nothing needs to be updated
+                if (_type != ArrowTypeId.Null)
                 {
                     CheckNullInitialization();
                     if (_validityList.Get(index))
@@ -966,6 +963,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             _dataColumn!.WriteToJson(in writer, index);
+        }
+
+        public Column Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new Column(_nullCounter, _dataColumn?.Copy(memoryAllocator), _validityList!.Copy(memoryAllocator), _type, memoryAllocator);
         }
     }
 }

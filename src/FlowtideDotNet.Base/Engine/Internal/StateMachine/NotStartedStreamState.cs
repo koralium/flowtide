@@ -61,7 +61,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task StartAsync()
         {
+            Debug.Assert(_context != null);
+            _context._wantedState = StreamStateValue.Running;
             return TransitionTo(StreamStateValue.Starting);
+        }
+
+        public override Task StopAsync()
+        {
+            throw new NotImplementedException();
         }
 
         public override Task TriggerCheckpoint(bool isScheduled = false)

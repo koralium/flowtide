@@ -20,6 +20,8 @@ namespace FlowtideDotNet.Substrait.Expressions
 
         public required List<Expression> Arguments { get; set; }
 
+        public SortedList<string, string>? Options { get; set; }
+
         public override bool Equals(object? obj)
         {
             return obj is AggregateFunction function &&

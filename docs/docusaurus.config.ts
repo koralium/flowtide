@@ -85,7 +85,7 @@ const config: Config = {
           position: 'left',
           label: 'Documentation',
         },
-        // {to: '/blog', label: 'Blog', position: 'left'},
+        {to: '/blog', label: 'Blog', position: 'left'},
         {
           href: 'https://github.com/koralium/flowtide',
           label: 'GitHub',

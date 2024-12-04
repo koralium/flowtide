@@ -10,15 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
-using FlowtideDotNet.Core.Compute.Internal;
-using FlowtideDotNet.Core.Operators.VirtualTable;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using System;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -27,19 +25,18 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
     internal class TableFunctionReadOperator : IngressVertex<StreamEventBatch, TableFunctionReadState>
     {
         private IReadOnlySet<string>? _watermarkNames;
-        private readonly Func<RowEvent, IEnumerable<RowEvent>> _func;
         private readonly TableFunctionRelation _tableFunctionRelation;
+        private readonly IFunctionsRegister _functionsRegister;
+        private Func<EventBatchData, int, IEnumerable<EventBatchWeighted>>? _func;
         private bool _hasSentInitial = false;
-        private RowEvent _emptyRow;
 
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
 
         public TableFunctionReadOperator(TableFunctionRelation tableFunctionRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(options)
         {
-            _func = TableFunctionCompiler.CompileWithArg(tableFunctionRelation.TableFunction, functionsRegister);
-            _emptyRow = new RowEvent();
-            this._tableFunctionRelation = tableFunctionRelation;
+            _tableFunctionRelation = tableFunctionRelation;
+            _functionsRegister = functionsRegister;
         }
 
         public override string DisplayName => "TableFunction";
@@ -70,6 +67,10 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
 
         protected override Task InitializeOrRestore(long restoreTime, TableFunctionReadState? state, IStateManagerClient stateManagerClient)
         {
+            if (state != null)
+            {
+                _hasSentInitial = state.HasSentInitial;
+            }
             if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
@@ -81,10 +82,8 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
 
             _watermarkNames = new HashSet<string>() { Name };
 
-            if (state != null)
-            {
-                _hasSentInitial = state.HasSentInitial;
-            }
+            var compileResult = ColumnTableFunctionCompiler.CompileWithArg(_tableFunctionRelation.TableFunction, _functionsRegister, MemoryAllocator);
+            _func = compileResult.Function;
 
             return Task.CompletedTask;
         }
@@ -99,23 +98,22 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
+            Debug.Assert(_func != null);
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_eventsProcessed != null);
 
             if (!_hasSentInitial)
             {
-                List<RowEvent> outputEvents = new List<RowEvent>();
+                var batches = _func(new EventBatchData(Array.Empty<IColumn>()), 0);
 
-                var rows = _func(_emptyRow);
 
-                outputEvents.AddRange(rows);
+                foreach(var batch in batches)
+                {
+                    _eventsCounter.Add(batch.Count);
+                    _eventsProcessed.Add(batch.Count);
+                    await output.SendAsync(new StreamEventBatch(batch));
+                }
 
-                // Add metrics
-                _eventsCounter.Add(outputEvents.Count);
-                _eventsProcessed.Add(outputEvents.Count);
-
-                // Send the events
-                await output.SendAsync(new StreamEventBatch(outputEvents, _tableFunctionRelation.OutputLength));
                 await output.SendWatermark(new Base.Watermark(Name, 1));
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                 _hasSentInitial = true;

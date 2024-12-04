@@ -14,6 +14,7 @@ using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
 using FlowtideDotNet.Substrait.Type;
 using Microsoft.Data.SqlClient;
+using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.SqlServer
@@ -21,11 +22,14 @@ namespace FlowtideDotNet.SqlServer
     public class SqlServerTableProvider : ITableProvider
     {
         private readonly Func<string> connectionStringFunc;
+        private readonly bool mustBeInConnectionStringDb;
 
-        public SqlServerTableProvider(Func<string> connectionStringFunc)
+        public SqlServerTableProvider(Func<string> connectionStringFunc, bool mustBeInConnectionStringDb)
         {
             this.connectionStringFunc = connectionStringFunc;
+            this.mustBeInConnectionStringDb = mustBeInConnectionStringDb;
         }
+
         public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
             var tableNameSplitted = tableName.Split(".");
@@ -47,8 +51,34 @@ namespace FlowtideDotNet.SqlServer
                 return false;
             }
 
-            using var conn = new SqlConnection(connectionStringFunc());
+            var connStr = connectionStringFunc();
+
+            if (mustBeInConnectionStringDb)
+            {
+                var connStrBuilder = new SqlConnectionStringBuilder(connStr);
+
+                if (tableCatalog != null && connStrBuilder.InitialCatalog != tableCatalog)
+                {
+                    tableMetadata = default;
+                    return false;
+                }
+            }
+
+            using var conn = new SqlConnection(connStr);
             conn.Open();
+            try
+            {
+                conn.ChangeDatabase(tableCatalog);
+            }
+            catch(DbException dbException)
+            {
+                if (dbException.Message.Contains("not able to access the database"))
+                {
+                    tableMetadata = default;
+                    return false;
+                }
+            }
+            
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "select COLUMN_NAME, DATA_TYPE from INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @tableName AND TABLE_SCHEMA = @tableSchema  AND TABLE_CATALOG = @catalog";
             cmd.Parameters.Add(new SqlParameter("@tableName", name));

@@ -15,6 +15,7 @@ using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
+using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Compute;
@@ -73,6 +74,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public int CachePageCount { get; set; } = 1000;
 
         public Watermark? LastWatermark => _lastWatermark;
+
+        public StreamStateValue State => _stream!.State;
 
         public FlowtideTestStream(string testName)
         {
@@ -169,10 +172,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 timestampInterval = TimeSpan.FromSeconds(1);
             }
+
+            SetupConnectorManager();
+            foreach(var tableProvider in _connectorManager.GetTableProviders())
+            {
+                sqlPlanBuilder.AddTableProvider(tableProvider);
+            }
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
 
-            SetupConnectorManager();
+            
 
 
 #if DEBUG_WRITE
@@ -191,8 +200,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _persistentStorage = CreatePersistentStorage(testName, ignoreSameDataCheck);
             _notificationReciever = new NotificationReciever(CheckpointComplete);
 
+            plan = Core.Optimizer.PlanOptimizer.Optimize(plan);
+
+            var emitValidationVisitor = new EmitLengthValidatorVisitor();
+            foreach (var relation in plan.Relations)
+            {
+                emitValidationVisitor.Visit(relation, default!);
+            }
+
             flowtideBuilder
-                .AddPlan(plan)
+                .AddPlan(plan, false)
                 .SetParallelism(parallelism)
 #if DEBUG_WRITE
                 .WithLoggerFactory(loggerFactory)
@@ -454,6 +471,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public StreamGraph GetDiagnosticsGraph()
         {
             return _stream!.GetDiagnosticsGraph();
+        }
+
+        public Task StopStream()
+        {
+            return _stream!.StopAsync();
+        }
+
+        public Task StartStream()
+        {
+            return _stream!.StartAsync();
         }
     }
 }

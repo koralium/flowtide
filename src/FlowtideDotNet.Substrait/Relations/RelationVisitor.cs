@@ -74,11 +74,6 @@ namespace FlowtideDotNet.Substrait.Relations
             throw new NotImplementedException("Normalization relation is not implemented");
         }
 
-        public virtual TReturn VisitUnwrapRelation(UnwrapRelation unwrapRelation, TState state)
-        {
-            throw new NotImplementedException("Unwrap relation is not implemented");
-        }
-
         public virtual TReturn VisitVirtualTableReadRelation(VirtualTableReadRelation virtualTableReadRelation, TState state)
         {
             throw new NotImplementedException("Virtual table read relation is not implemented");

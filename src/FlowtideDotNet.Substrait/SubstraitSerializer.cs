@@ -258,6 +258,22 @@ namespace FlowtideDotNet.Substrait
                     MultiOrList = list
                 };
             }
+
+            public override Protobuf.Expression? VisitStructExpression(StructExpression structExpression, SerializerVisitorState state)
+            {
+                var s = new Protobuf.Expression.Types.Nested.Types.Struct();
+                foreach (var field in structExpression.Fields)
+                {
+                    s.Fields.Add(Visit(field, state));
+                }
+                return new Protobuf.Expression()
+                {
+                    Nested = new Protobuf.Expression.Types.Nested()
+                    {
+                        Struct = s
+                    }
+                };
+            }
         }
 
         private sealed class SerializerVisitor : RelationVisitor<Protobuf.Rel, SerializerVisitorState>
@@ -764,14 +780,14 @@ namespace FlowtideDotNet.Substrait
                 var rel = new Protobuf.ReadRel();
                 rel.VirtualTable = new ReadRel.Types.VirtualTable();
 
-                foreach(var val in virtualTableReadRelation.Values.JsonValues)
+                var exprVisitor = new SerializerExpressionVisitor();
+                foreach (var val in virtualTableReadRelation.Values.Expressions)
                 {
-                    var s = new Protobuf.Expression.Types.Literal.Types.Struct();
-                    s.Fields.Add(new Protobuf.Expression.Types.Literal
+                    var expr = exprVisitor.Visit(val, state);
+                    if (expr?.Nested?.Struct != null)
                     {
-                        String = val
-                    });
-                    rel.VirtualTable.Values.Add(s);
+                        rel.VirtualTable.Expressions.Add(expr.Nested.Struct);
+                    }
                 }
                 if (virtualTableReadRelation.EmitSet)
                 {
@@ -783,11 +799,6 @@ namespace FlowtideDotNet.Substrait
                 {
                     Read = rel
                 };
-            }
-
-            public override Rel VisitUnwrapRelation(UnwrapRelation unwrapRelation, SerializerVisitorState state)
-            {
-                throw new NotImplementedException("Unwrap cant be serialized yet");
             }
 
             private static uint GetAnyTypeId(SerializerVisitorState state)

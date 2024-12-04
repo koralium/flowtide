@@ -88,6 +88,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 await block.DeleteAsync();
             });
 
+            _context._stateManager.Dispose();
+
             await TransitionTo(StreamStateValue.Deleted);
         }
 
@@ -109,6 +111,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override Task DeleteAsync()
         {
             return Task.CompletedTask;
+        }
+
+        public override Task StopAsync()
+        {
+            throw new NotSupportedException("Stream is being deleted");
         }
     }
 }

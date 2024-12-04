@@ -19,7 +19,6 @@ using FlowtideDotNet.Core.Operators.Join.NestedLoopJoin;
 using FlowtideDotNet.Core.Operators.Normalization;
 using FlowtideDotNet.Core.Operators.Project;
 using FlowtideDotNet.Core.Operators.Set;
-using FlowtideDotNet.Core.Operators.Unwrap;
 using FlowtideDotNet.Core.Operators.VirtualTable;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
@@ -268,23 +267,6 @@ namespace FlowtideDotNet.Core.Engine
             }
         }
 
-        public override IStreamVertex VisitUnwrapRelation(UnwrapRelation unwrapRelation, ITargetBlock<IStreamEvent>? state)
-        {
-            var id = _operatorId++;
-
-            var op = new UnwrapOperator(unwrapRelation, functionsRegister, DefaultBlockOptions);
-
-            if (state != null)
-            {
-                op.LinkTo(state);
-            }
-
-            unwrapRelation.Input.Accept(this, op);
-            dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
-
-            return op;
-        }
-
         public override IStreamVertex VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, ITargetBlock<IStreamEvent>? state)
         {
             if (parallelism > 1)
@@ -371,7 +353,7 @@ namespace FlowtideDotNet.Core.Engine
         {
             var id = _operatorId++;
             
-            if (joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Inner)
+            if (joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right || joinRelation.Type == JoinType.Outer)
             {
                 //throw new NotSupportedException();
                 var op = new BlockNestedJoinOperator(joinRelation, functionsRegister, DefaultBlockOptions);
@@ -399,7 +381,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitSetRelation(SetRelation setRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new SetOperator(setRelation, DefaultBlockOptions);
+            var op = ColumnSetOperatorFactory.CreateColumnSetOperator(setRelation, DefaultBlockOptions); // new SetOperator(setRelation, DefaultBlockOptions);
             
             if (state != null)
             {
@@ -417,7 +399,7 @@ namespace FlowtideDotNet.Core.Engine
         private IStreamVertex VisitGetTimestampTable(ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new TimestampProviderOperator(getTimestampInterval, DefaultBlockOptions);
+            var op = new TimestampProviderOperator(TimeProvider.System, getTimestampInterval, DefaultBlockOptions);
             if (op is ISourceBlock<IStreamEvent> sourceBlock)
             {
                 if (state != null)
@@ -576,7 +558,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitVirtualTableReadRelation(VirtualTableReadRelation virtualTableReadRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            VirtualTableOperator op = new VirtualTableOperator(virtualTableReadRelation, DefaultBlockOptions);
+            VirtualTableOperator op = new VirtualTableOperator(virtualTableReadRelation, functionsRegister, DefaultBlockOptions);
 
             if (state != null)
             {

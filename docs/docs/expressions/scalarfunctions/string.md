@@ -194,6 +194,19 @@ Returns the number of characters in a string, if the input is not a string or nu
 
 ### SQL Usage
 
-```
+```sql
 SELECT LEN(c1) FROM ...
+```
+
+## Strpos
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#strpos)
+
+Finds the index of a substring in another string. This function follows the substrait implementation and returns
+index 1 for the first character.
+
+### SQL Usage
+
+```sql
+SELECT strpos(c1, 'abc') FROM ...
 ```

@@ -151,5 +151,10 @@ namespace FlowtideDotNet.Core.Optimizer
 
             return tableFunctionRelation;
         }
+
+        public override Relation VisitVirtualTableReadRelation(VirtualTableReadRelation virtualTableReadRelation, object state)
+        {
+            return virtualTableReadRelation;
+        }
     }
 }
