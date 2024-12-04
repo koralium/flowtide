@@ -542,14 +542,14 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
         }
 
         [Fact]
-        public void NonExisitngStopTypeThrowsError()
+        public void NonExistingStopTypeThrowsError()
         {
             var schemaText = File.ReadAllText("schema.txt");
             Assert.Throws<ArgumentException>(() => SpiceDbToFlowtide.Convert(schemaText, "document", "view", "spicedb", "nonexisting"));
         }
 
         [Fact]
-        public void NonExisitngResourceTypeThrowsError()
+        public void NonExistingResourceTypeThrowsError()
         {
             var schemaText = File.ReadAllText("schema.txt");
             Assert.Throws<ArgumentException>(() => SpiceDbToFlowtide.Convert(schemaText, "nonexisting", "view", "spicedb"));
