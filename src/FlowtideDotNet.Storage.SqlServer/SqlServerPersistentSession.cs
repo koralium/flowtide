@@ -17,10 +17,10 @@ namespace FlowtideDotNet.Storage.SqlServer
 {
     internal class SqlServerPersistentSession : IPersistentStorageSession
     {
-        private readonly StreamPageRepository _repo;
+        private readonly SessionRepository _repo;
         private bool _disposedValue;
 
-        internal SqlServerPersistentSession(StreamPageRepository repo)
+        internal SqlServerPersistentSession(SessionRepository repo)
         {
             _repo = repo;
         }

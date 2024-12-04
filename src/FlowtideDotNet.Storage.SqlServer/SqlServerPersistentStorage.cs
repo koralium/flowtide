@@ -23,10 +23,10 @@ namespace FlowtideDotNet.Storage.SqlServer
         public long CurrentVersion => _stream?.Metadata.CurrentVersion ?? 0;
 
         private StreamInfo? _stream;
-        private StreamRepository? _streamRepository;
+        private StorageRepository? _streamRepository;
         private bool _disposedValue;
         private readonly SqlServerPersistentStorageSettings _settings;
-        private readonly List<StreamPageRepository> _sessionRepositories = [];
+        private readonly List<SessionRepository> _sessionRepositories = [];
         public SqlServerPersistentStorage(SqlServerPersistentStorageSettings settings)
         {
             _settings = settings;
@@ -103,15 +103,15 @@ namespace FlowtideDotNet.Storage.SqlServer
         public IPersistentStorageSession CreateSession()
         {
             ArgumentNullException.ThrowIfNull(_stream);
-            var repo = new StreamPageRepository(_stream, _settings);
+            var repo = new SessionRepository(_stream, _settings);
             _sessionRepositories.Add(repo);
             return new SqlServerPersistentSession(repo);
         }
 
         public async Task InitializeAsync(StorageInitializationMetadata metadata)
         {
-            _stream = await StreamRepository.UpsertStream(metadata.StreamName, _settings.ConnectionString);
-            _streamRepository = new StreamRepository(_stream, _settings);
+            _stream = await StorageRepository.UpsertStream(metadata.StreamName, _settings.ConnectionString);
+            _streamRepository = new StorageRepository(_stream, _settings);
 
             foreach (var repo in _sessionRepositories)
             {

@@ -15,9 +15,9 @@ using System.Data;
 
 namespace FlowtideDotNet.Storage.SqlServer.Data
 {
-    internal sealed class StreamRepository : BaseSqlRepository
+    internal sealed class StorageRepository : BaseSqlRepository
     {
-        public StreamRepository(StreamInfo stream, SqlServerPersistentStorageSettings settings)
+        public StorageRepository(StreamInfo stream, SqlServerPersistentStorageSettings settings)
             : base(stream, settings)
         {
         }

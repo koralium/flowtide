@@ -15,11 +15,11 @@ using System.Linq;
 
 namespace FlowtideDotNet.Storage.SqlServer.Data
 {
-    internal sealed class StreamPageRepository : BaseSqlRepository
+    internal sealed class SessionRepository : BaseSqlRepository
     {
         private readonly SqlServerPersistentStorageSettings _settings;
         private readonly Queue<Task> _backgroundTasks = [];
-        public StreamPageRepository(StreamInfo stream, SqlServerPersistentStorageSettings settings)
+        public SessionRepository(StreamInfo stream, SqlServerPersistentStorageSettings settings)
             : base(stream, settings)
         {
             _settings = settings;
