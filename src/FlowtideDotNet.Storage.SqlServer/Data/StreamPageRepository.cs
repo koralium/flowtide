@@ -45,6 +45,13 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task CommitAsync()
         {
+            await WaitForBackgroundTasks();
+            await SaveStreamPagesAsync();
+            // todo: do we need to delete old versions etc. here as well (or only on checkpoint)?
+        }
+
+        private async Task WaitForBackgroundTasks(bool throwOnError = true)
+        {
             var exceptions = new List<Exception>();
             while (_backgroundTasks.TryDequeue(out var task))
             {
@@ -65,13 +72,10 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
                 }
             }
 
-            // todo: do we need to delete old versions etc. here as well (or only on checkpoint)?
-            if (exceptions.Count > 0)
+            if (throwOnError && exceptions.Count > 0)
             {
                 throw new AggregateException(exceptions);
             }
-
-            await SaveStreamPagesAsync();
         }
 
         public Task DeleteAsync(long key)
@@ -101,6 +105,11 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
                 }
             }
         }
-    }
 
+        public async Task ClearLocalAndWaitForBackgroundTasks()
+        {
+            ClearLocal();
+            await WaitForBackgroundTasks(throwOnError: false);
+        }
+    }
 }

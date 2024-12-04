@@ -40,7 +40,6 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             ManagedPages.AddOrCreate(new ManagedStreamPage(page.PageId, page.Version, page.PageKey));
         }
 
-
         public byte[]? Read(long key)
         {
             using var connection = new SqlConnection(Settings.ConnectionString);
@@ -277,6 +276,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public void ClearLocal()
+        {
+            UnpersistedPages = [];
+            ManagedPages = [];
         }
     }
 }

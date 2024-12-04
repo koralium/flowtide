@@ -112,6 +112,12 @@ namespace FlowtideDotNet.Storage.SqlServer
         {
             _stream = await StreamRepository.UpsertStream(metadata.StreamName, _settings.ConnectionString);
             _streamRepository = new StreamRepository(_stream, _settings);
+
+            foreach (var repo in _sessionRepositories)
+            {
+                await repo.ClearLocalAndWaitForBackgroundTasks();
+            }
+
             using var connection = new SqlConnection(_settings.ConnectionString);
             await connection.OpenAsync();
             using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();

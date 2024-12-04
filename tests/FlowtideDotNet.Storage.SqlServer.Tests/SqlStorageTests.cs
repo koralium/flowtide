@@ -236,7 +236,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
 
                 return pages;
             });
-            
+
             // create a new session and use that to read as that will not have the cached page metadata
             var newSession = storage.CreateSession();
             var page = await newSession.Read(pageId);
@@ -330,6 +330,49 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             Assert.Equal(data, readData);
         }
 
+        [Fact]
+        public async Task InitializeWaitsForSessionBackgroundTasksAndResetsCache()
+        {
+            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
+            {
+                ConnectionString = _fixture.ConnectionString,
+                WritePagesBulkLimit = 1,
+                BulkCopySettings = new SqlServerBulkCopySettings(),
+            });
+
+            var name = $"test_{nameof(InitializeWaitsForSessionBackgroundTasksAndResetsCache)}";
+            var initMetadata = new StorageInitializationMetadata(name);
+
+            await storage.InitializeAsync(initMetadata);
+
+            var session = storage.CreateSession();
+
+            var pageId = 2;
+
+            // even though a crash will occur, the pages should be persisted and then removed due to incomplete version
+            await session.Write(pageId, Encoding.UTF8.GetBytes("a"));
+            await session.Write(pageId + 1, Encoding.UTF8.GetBytes("b"));
+
+            // a crash occured, init is called again
+            await storage.InitializeAsync(initMetadata);
+
+            var expectedPageBytes = Encoding.UTF8.GetBytes("c");
+            await session.Write(pageId, expectedPageBytes);
+
+            await session.Commit();
+            await storage.CheckpointAsync([], false);
+
+            var numberOfPages = await _fixture.ExecuteReader($"SELECT COUNT(*) FROM [dbo].[StreamPages]", reader =>
+            {
+                reader.Read();
+                return reader.GetInt32(0);
+            });
+
+            var page = await session.Read(pageId);
+
+            Assert.Equal(expectedPageBytes, page);
+            Assert.Equal(2, numberOfPages); // checkpoint should also add one page
+        }
 
         private Task<int> GetStreamKey(string streamName)
         {
