@@ -124,8 +124,8 @@ namespace FlowtideDotNet.Storage.SqlServer
 
             try
             {
-                await _streamRepository.DeleteOldVersionsInDbAsync(transaction);
                 await _streamRepository.DeleteUnsuccessfulVersionsAsync(transaction);
+                await _streamRepository.DeleteOldVersionsInDbAsync(transaction);
                 await transaction.CommitAsync();
             }
             catch
