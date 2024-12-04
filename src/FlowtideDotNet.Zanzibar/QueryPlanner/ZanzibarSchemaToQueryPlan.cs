@@ -23,6 +23,10 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
     {
         public static List<ZanzibarRelation> GenerateQueryPlan(ZanzibarSchema schema, string type, string relation, HashSet<string> stopTypes)
         {
+            if (!schema.Types.ContainsKey(type))
+            {
+                throw new ArgumentException($"Type {type} is not in the schema");
+            }
             if (stopTypes.Count > 0)
             {
                 foreach (var stopType in stopTypes)
