@@ -48,7 +48,6 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
         {
             await WaitForBackgroundTasks();
             await SaveStreamPagesAsync();
-            // todo: do we need to delete old versions etc. here as well (or only on checkpoint)?
         }
 
         private async Task WaitForBackgroundTasks(bool throwOnError = true)
