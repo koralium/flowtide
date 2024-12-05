@@ -15,6 +15,7 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
@@ -23,6 +24,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -44,6 +46,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public DoubleColumn(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
         {
             _data = new PrimitiveList<double>(memory, count, memoryAllocator);
+        }
+
+        internal DoubleColumn(PrimitiveList<double> data)
+        {
+            _data = data;
         }
 
         public int Add<T>(in T value) where T : IDataValue
@@ -201,6 +208,33 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int GetByteSize()
         {
             return Count * sizeof(double);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is DoubleColumn doubleColumn)
+            {
+                _data.InsertRangeFrom(index, doubleColumn._data, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _data.InsertStaticRange(index, 0, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteNumberValue(_data.Get(index));
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new DoubleColumn(_data.Copy(memoryAllocator));
         }
     }
 }

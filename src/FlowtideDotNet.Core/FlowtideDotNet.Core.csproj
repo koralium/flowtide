@@ -7,17 +7,12 @@
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants>$(DefineConstants);TRACE</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DefineConstants>$(DefineConstants)TRACE</DefineConstants>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Apache.Arrow" Version="16.1.0" />
     <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
+
+	  <PackageReference Include="Fody" Version="6.6.3" PrivateAssets="all" />
+	  <PackageReference Include="InlineIL.Fody" Version="1.7.2" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

@@ -28,7 +28,6 @@ using IToken = Antlr4.Runtime.IToken;
 /// <see cref="SpicedbParser"/>.
 /// </summary>
 [System.CodeDom.Compiler.GeneratedCode("ANTLR", "4.13.1")]
-[System.CLSCompliant(false)]
 public interface ISpicedbParserListener : IParseTreeListener {
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="SpicedbParser.parse"/>.

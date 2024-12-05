@@ -19,5 +19,7 @@ namespace FlowtideDotNet.Base.Engine
         void OnStreamStateChange(StreamStateValue newState);
 
         void OnCheckpointComplete();
+
+        void OnFailure(Exception? exception);
     }
 }

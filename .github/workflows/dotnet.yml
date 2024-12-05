@@ -39,3 +39,4 @@ jobs:
       with:
         name: debugwrites
         path: ./tests/FlowtideDotNet.AcceptanceTests/bin/Debug/net8.0/debugwrite
+

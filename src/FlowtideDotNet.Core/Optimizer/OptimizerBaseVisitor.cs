@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.Optimizer
             for (int i = 0; i < plan.Relations.Count; i++)
             {
                 var relation = plan.Relations[i];
-                var newRelation = this.Visit(relation, null);
+                var newRelation = this.Visit(relation, null!);
 
                 plan.Relations[i] = newRelation;
             }
@@ -150,6 +150,11 @@ namespace FlowtideDotNet.Core.Optimizer
             }
 
             return tableFunctionRelation;
+        }
+
+        public override Relation VisitVirtualTableReadRelation(VirtualTableReadRelation virtualTableReadRelation, object state)
+        {
+            return virtualTableReadRelation;
         }
     }
 }

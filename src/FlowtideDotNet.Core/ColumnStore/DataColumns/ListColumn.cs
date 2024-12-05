@@ -26,6 +26,7 @@ using static Substrait.Protobuf.Expression.Types.Literal.Types;
 using System.Collections;
 using static SqlParser.Ast.TableConstraint;
 using FlowtideDotNet.Storage.Memory;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -50,6 +51,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _offsets = new IntList(offsetMemory, offsetCount, memoryAllocator);
             _internalColumn = internalColumn;
+        }
+
+        internal ListColumn(Column internalColumn, IntList offsets)
+        {
+            _internalColumn = internalColumn;
+            _offsets = offsets;
         }
 
         public int Add(in IDataValue value)
@@ -78,9 +85,18 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             var list = value.AsList;
             var listLength = list.Count;
-            for (int i = 0; i < listLength; i++)
+
+            if (list is ReferenceListValue referenceListVal)
             {
-                _internalColumn.Add(list.GetAt(i));
+                var lastOffset = _offsets.Get(Count);
+                _internalColumn.InsertRangeFrom(lastOffset, referenceListVal.column, referenceListVal.start, referenceListVal.Count);
+            }
+            else
+            {
+                for (int i = 0; i < listLength; i++)
+                {
+                    _internalColumn.Add(list.GetAt(i));
+                }
             }
             _offsets.Add(_internalColumn.Count);
 
@@ -158,10 +174,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             if (value.Type == ArrowTypeId.Null)
             {
-                for (int i = currentEnd - 1; i >= currentStart; i--)
-                {
-                    _internalColumn.RemoveAt(currentStart);
-                }
+                _internalColumn.RemoveRange(currentStart, currentEnd - currentStart);
                 _offsets.Update(index + 1, currentStart, currentStart - currentEnd);
                 return index;
             }
@@ -202,6 +215,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     _internalColumn.InsertAt(currentStart + currentLength + i, list.GetAt(currentLength + i));
                 }
 
+
                 // Update offset
                 _offsets.Update(index + 1, currentStart + listLength, listLength - currentLength);
             }
@@ -212,7 +226,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var startOffset = _offsets.Get(index);
             var endOffset = _offsets.Get(index + 1);
-            _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
+
+            if (endOffset > startOffset)
+            {
+                _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
+            }   
+            
             _offsets.RemoveAt(index + 1, startOffset - endOffset);
         }
 
@@ -228,12 +247,20 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             var startOffset = _offsets.Get(index);
 
-            for (int i = 0; i < list.Count; i++)
+            if (list is ReferenceListValue referenceListVal)
             {
-                _internalColumn.InsertAt(startOffset + i, list.GetAt(i));
+                _internalColumn.InsertRangeFrom(startOffset, referenceListVal.column, referenceListVal.start, referenceListVal.Count);
+                _offsets.InsertAt(index + 1, startOffset + referenceListVal.Count, referenceListVal.Count);   
             }
+            else
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    _internalColumn.InsertAt(startOffset + i, list.GetAt(i));
+                }
 
-            _offsets.InsertAt(index + 1, startOffset + list.Count, list.Count);
+                _offsets.InsertAt(index + 1, startOffset + list.Count, list.Count);
+            }   
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(Apache.Arrow.ArrowBuffer nullBuffer, int nullCount)
@@ -338,20 +365,78 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Remove the offsets
             _offsets.RemoveRange(start, count, startOffset - endOffset);
 
-            // Remove the values in the internal column
-            _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
+            if (endOffset > startOffset)
+            {
+                // Remove the values in the internal column
+                _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
+            }
         }
 
         public int GetByteSize(int start, int end)
         {
             var startOffset = _offsets.Get(start);
             var endOffset = _offsets.Get(end + 1);
-            return _internalColumn.GetByteSize(startOffset, endOffset) + ((end - start + 1) * sizeof(int));
+
+            if (startOffset == endOffset)
+            {
+                return sizeof(int);
+            }
+            return _internalColumn.GetByteSize(startOffset, endOffset - 1) + ((end - start + 1) * sizeof(int));
         }
 
         public int GetByteSize()
         {
             return _internalColumn.GetByteSize() + (_offsets.Count * sizeof(int));
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is ListColumn listColumn)
+            {
+                var startOffset = _offsets.Get(index);
+
+                var otherStartOffset = listColumn._offsets.Get(start);
+                var otherEndOffset = listColumn._offsets.Get(start + count);
+
+                if (otherEndOffset > otherStartOffset)
+                {
+                    // Insert the values
+                    _internalColumn.InsertRangeFrom(startOffset, listColumn._internalColumn, otherStartOffset, otherEndOffset - otherStartOffset);
+                }
+
+                // Insert the offsets
+                _offsets.InsertRangeFrom(index + 1, listColumn._offsets, start + 1, count, otherEndOffset - otherStartOffset, startOffset - otherStartOffset);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            var startOffset = _offsets.Get(index);
+            _offsets.InsertRangeStaticValue(index, count, startOffset);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteStartArray();
+
+            var startOffset = _offsets.Get(index);
+            var endOffset = _offsets.Get(index + 1);
+
+            for (int i = startOffset; i < endOffset; i++)
+            {
+                _internalColumn.WriteToJson(in writer, i);
+            }
+
+            writer.WriteEndArray();
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new ListColumn(_internalColumn.Copy(memoryAllocator), _offsets.Copy(memoryAllocator));
         }
     }
 }

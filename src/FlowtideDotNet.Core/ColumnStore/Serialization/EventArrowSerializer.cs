@@ -51,14 +51,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return customMetadata;
         }
 
-        public static RecordBatch BatchToArrow(EventBatchData eventBatchData)
+        public static RecordBatch BatchToArrow(EventBatchData eventBatchData, int count)
         {
             var schemaBuilder = new Apache.Arrow.Schema.Builder();
             List<IArrowArray> arrays = new List<IArrowArray>();
-            int length = 0;
+            int length = count;
             for (int i = 0; i < eventBatchData.Columns.Count; i++)
             {
-                length = eventBatchData.Columns[i].Count;
                 var (array, type) = eventBatchData.Columns[i].ToArrowArray();
                 Dictionary<string, string>? customMetadata = GetCustomMetadata(type);
                 schemaBuilder.Field(new Apache.Arrow.Field($"{i}", type, true, customMetadata));

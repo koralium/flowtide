@@ -17,6 +17,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
@@ -49,7 +50,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new BoolValue(false));
             column.Add(new BoolValue(true));
 
-            var (start, end) = column.SearchBoundries(new BoolValue(false), 0,3, default, false);
+            var (start, end) = column.SearchBoundries(new BoolValue(false), 0, 3, default, false);
             Assert.Equal(0, start);
             Assert.Equal(2, end);
 
@@ -119,7 +120,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 {
                     column.Add(NullValue.Instance);
                 }
-                
+
             }
 
             column.RemoveRange(100, 100);
@@ -139,6 +140,48 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 {
                     Assert.True(actual.IsNull);
                 }
+            }
+        }
+
+        [Fact]
+        public void TestJsonEncoding()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new BoolValue(true));
+
+            using MemoryStream stream = new MemoryStream();
+            Utf8JsonWriter writer = new Utf8JsonWriter(stream);
+
+            column.WriteToJson(in writer, 0);
+            writer.Flush();
+
+            string json = Encoding.UTF8.GetString(stream.ToArray());
+
+            Assert.Equal("true", json);
+        }
+
+        [Fact]
+        public void TestCopy()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            List<bool> expected = new List<bool>();
+            Random r = new Random(123);
+            for (int i = 0; i < 1000; i++)
+            {
+                var boolVal = r.NextDouble() > 0.5;
+                expected.Add(boolVal);
+                column.Add(new BoolValue(boolVal));
+            }
+
+            Column copy = column.Copy(GlobalMemoryManager.Instance);
+
+            Assert.Equal(1000, copy.Count);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                Assert.Equal(expected[i], copy.GetValueAt(i, default).AsBool);
             }
         }
     }

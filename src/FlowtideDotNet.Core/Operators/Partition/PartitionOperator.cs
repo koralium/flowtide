@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.PartitionVertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
@@ -46,7 +47,7 @@ namespace FlowtideDotNet.Core.Operators.Partition
             return Task.CompletedTask;
         }
 
-        protected override async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
+        protected override IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
         {
             Debug.Assert(_eventsProcessed != null);
             _eventsProcessed.Add(data.Events.Count);
@@ -62,14 +63,21 @@ namespace FlowtideDotNet.Core.Operators.Partition
                 }
                 outputs[partitionId]!.Add(e);
             }
+
+            List<KeyValuePair<int, StreamMessage<StreamEventBatch>>> output = new List<KeyValuePair<int, StreamMessage<StreamEventBatch>>>();
             for (int i = 0; i < targetNumber; i++)
             {
                 if (outputs[i] != null)
                 {
-                    yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(i, new StreamMessage<StreamEventBatch>(new StreamEventBatch(outputs[i]!, columnCount), time));
+                    output.Add(new KeyValuePair<int, StreamMessage<StreamEventBatch>>(i, new StreamMessage<StreamEventBatch>(new StreamEventBatch(outputs[i]!, columnCount), time)));
                     outputs[i] = null;
                 }
             }
+            if (output.Count > 0)
+            {
+                return output.ToAsyncEnumerable();
+            }
+            return EmptyAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>>.Instance;
         }
     }
 }

@@ -103,6 +103,34 @@ namespace FlowtideDotNet.AcceptanceTests
                 .Select(x => new { Userkey = x.Key, Sum = (double)x.Sum(y => y.OrderKey), Count = x.Count() }));
         }
 
+        /// <summary>
+        /// Test case to solve bug when using multiple aggregates and group by's
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task MultipleMaxAggregates()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, max(orderkey), max(orderkey)
+                FROM orders
+                GROUP BY userkey, orderkey
+                ");
+            await WaitForUpdate();
+
+            for (int i = 0; i < 10; i++)
+            {
+                GenerateData();
+                await WaitForUpdate();
+            }
+
+            AssertCurrentDataEqual(Orders
+                .GroupBy(x => $"{x.UserKey}:{x.OrderKey}")
+                .Select(x => new { Userkey = int.Parse(x.Key.Substring(0, x.Key.IndexOf(':'))), Max1 = (double)x.Max(y => y.OrderKey), Max2 = x.Max(y => y.OrderKey) }));
+        }
+
         [Fact]
         public async Task HavingSameAggregate()
         {
@@ -166,6 +194,30 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task AggregateStopAndStartStream()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, min(orderkey)
+                FROM orders
+                GROUP BY userkey
+                ");
+            await WaitForUpdate();
+
+            await this.StopStream();
+
+            GenerateData(1000);
+
+            await StartStream();
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, MinVal = x.Min(y => y.OrderKey) }));
+        }
+
+        [Fact]
         public async Task AggregateWithGroupByOnly()
         {
             GenerateData();
@@ -195,7 +247,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).Select(x => new KeyValuePair<string, object>[]{
                 new KeyValuePair<string, object>("userkey", x.UserKey),
-                new KeyValuePair<string, object>("company", x.CompanyId)
+                new KeyValuePair<string, object>("company", x.CompanyId!)
             }).ToList() } });
 
             GenerateData(1000);
@@ -204,7 +256,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new KeyValuePair<string, object>[]{
                 new KeyValuePair<string, object>("userkey", x.UserKey),
-                new KeyValuePair<string, object>("company", x.CompanyId)
+                new KeyValuePair<string, object>("company", x.CompanyId!)
             }).ToList() } });
 
             Users[0].CompanyId = "newCompany";
@@ -214,7 +266,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new KeyValuePair<string, object>[]{
                 new KeyValuePair<string, object>("userkey", x.UserKey),
-                new KeyValuePair<string, object>("company", x.CompanyId)
+                new KeyValuePair<string, object>("company", x.CompanyId!)
             }).ToList() } });
 
             DeleteUser(Users[10]);
@@ -223,7 +275,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new KeyValuePair<string, object>[]{
                 new KeyValuePair<string, object>("userkey", x.UserKey),
-                new KeyValuePair<string, object>("company", x.CompanyId)
+                new KeyValuePair<string, object>("company", x.CompanyId!)
             }).ToList() } });
         }
     }

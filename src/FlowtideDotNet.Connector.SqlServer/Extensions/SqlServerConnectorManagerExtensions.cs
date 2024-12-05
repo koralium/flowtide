@@ -21,15 +21,44 @@ namespace FlowtideDotNet.Core
         public static IConnectorManager AddSqlServerSource(
             this IConnectorManager connectorManager, 
             Func<string> connectionStringFunc,
-            Func<ReadRelation, string>? tableNameTransform = null)
+            Func<ReadRelation, string>? tableNameTransform = null,
+            bool useDatabaseDefinedInConnectionStringOnly = false)
         {
-            connectorManager.AddSource(new SqlServerSourceFactory(connectionStringFunc, tableNameTransform));
+            connectorManager.AddSource(new SqlServerSourceFactory(connectionStringFunc, tableNameTransform, useDatabaseDefinedInConnectionStringOnly));
+            return connectorManager;
+        }
+
+        public static IConnectorManager AddSqlServerSink(this IConnectorManager connectorManager, Func<string> connectionStringFunc)
+        {
+            connectorManager.AddSink(new SqlServerSinkFactory(new SqlServerSinkOptions()
+            {
+                ConnectionStringFunc = connectionStringFunc
+            }));
             return connectorManager;
         }
 
         public static IConnectorManager AddSqlServerSink(this IConnectorManager connectorManager, SqlServerSinkOptions options)
         {
             connectorManager.AddSink(new SqlServerSinkFactory(options));
+            return connectorManager;
+        }
+
+        /// <summary>
+        /// Add both source and sink for a sql server connection string under a catalog.
+        /// 
+        /// Reference the tables with {catalogName}.{tableName}
+        /// </summary>
+        /// <param name="connectorManager"></param>
+        /// <param name="catalogName"></param>
+        /// <param name="connectionStringFunc"></param>
+        /// <returns></returns>
+        public static IConnectorManager AddSqlServerAsCatalog(this IConnectorManager connectorManager, string catalogName, Func<string> connectionStringFunc)
+        {
+            connectorManager.AddCatalog(catalogName, opt =>
+            {
+                opt.AddSqlServerSource(connectionStringFunc);
+                opt.AddSqlServerSink(connectionStringFunc);
+            });
             return connectorManager;
         }
     }

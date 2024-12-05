@@ -20,6 +20,7 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -38,7 +39,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
     internal class ColumnNormalizationOperator : UnaryVertex<StreamEventBatch, NormalizationState>
     {
 #if DEBUG_WRITE
-        private StreamWriter allOutput;
+        private StreamWriter? allOutput;
 #endif
 
         private readonly NormalizationRelation _normalizationRelation;
@@ -106,8 +107,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         public override async Task<NormalizationState> OnCheckpoint()
         {
 #if DEBUG_WRITE
-            allOutput.WriteLine("Checkpoint");
-            await allOutput.FlushAsync();
+            allOutput!.WriteLine("Checkpoint");
+            await allOutput!.FlushAsync();
 #endif
 
             await _tree!.Commit();
@@ -216,9 +217,9 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 #if DEBUG_WRITE
                 foreach (var o in outputBatch.Events)
                 {
-                    allOutput.WriteLine($"{o.Weight} {o.ToJson()}");
+                    allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
-                await allOutput.FlushAsync();
+                await allOutput!.FlushAsync();
 #endif
                 yield return outputBatch;
             }
@@ -329,7 +330,9 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 {
                     Comparer = new NormalizeTreeComparer(_normalizationRelation.KeyIndex),
                     KeySerializer = new NormalizeKeyStorageSerializer(_normalizationRelation.KeyIndex, MemoryAllocator),
-                    ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator)
+                    ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator),
+                    UseByteBasedPageSizes = true,
+                    MemoryAllocator = MemoryAllocator
                 });
         }
     }

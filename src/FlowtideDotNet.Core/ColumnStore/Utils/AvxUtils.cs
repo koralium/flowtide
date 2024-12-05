@@ -240,6 +240,72 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        public static unsafe void MemCopyAdditionByTypeScalar(
+            Span<int> source,
+            Span<int> destination,
+            Span<sbyte> typeIds,
+            int sourceIndex,
+            int destIndex,
+            int length,
+            Span<int> toAdd)
+        {
+            int i = 0;
+            for (; i < length; i++)
+            {
+                var typeId = typeIds[sourceIndex + i];
+                destination[destIndex + i] = source[sourceIndex + i] + toAdd[typeId];
+            }
+        }
+
+        public static unsafe void MemCopyAdditionByType(
+            Span<int> source, 
+            Span<int> destination,
+            Span<sbyte> typeIds,
+            int sourceIndex,
+            int destIndex,
+            int length,
+            Span<int> toAdd,
+            int numberOfTypes)
+        {
+            if (!Avx2.IsSupported || numberOfTypes > 8)
+            {
+                MemCopyAdditionByTypeScalar(source, destination, typeIds, sourceIndex, destIndex, length, toAdd);
+                return;
+            }
+
+            fixed (int* pSource = source)
+            fixed (int* pDest = destination)
+            fixed (sbyte* pTypeIds = typeIds)
+            fixed (int* pToAdd = toAdd)
+            {
+                int vecLength = Vector256<int>.Count;
+                Vector256<int> valueToAddVec = Vector256.Load(pToAdd);
+
+                int i;
+                for (i = 0; i <= length - vecLength; i += vecLength)
+                {
+                    // Load 8 ints from source array and 8 typeids
+                    Vector256<int> srcVec = Avx2.LoadVector256(pSource + sourceIndex + i);
+                    Vector128<sbyte> typeIdVec = Avx2.LoadVector128(pTypeIds + sourceIndex + i);
+
+                    var typeIdVecInt = Avx2.ConvertToVector256Int32(typeIdVec);
+                    var additions = Avx2.PermuteVar8x32(valueToAddVec, typeIdVecInt);
+
+                    // Use the mask to conditionally add valueToAddVec
+                    Vector256<int> addedVec = Avx2.Add(srcVec, additions);
+
+                    // Store the result
+                    Avx2.Store(pDest + destIndex + i, addedVec);
+                }
+
+                for (; i < length; i++)
+                {
+                    var typeId = typeIds[sourceIndex + i];
+                    pDest[destIndex + i] = pSource[sourceIndex + i] + toAdd[typeId];
+                }
+            }
+        }
+
         public static unsafe void InPlaceMemCopyAdditionByType(
             Span<int> array, 
             Span<sbyte> typeIds, 

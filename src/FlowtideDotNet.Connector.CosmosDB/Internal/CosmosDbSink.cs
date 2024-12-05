@@ -292,8 +292,9 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             {
                 Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer!),
                 ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer())
-            });
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
+                });
 
             // Clear the modified tree in case of a crash
             await m_modified.Clear();

@@ -76,7 +76,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (sentData)
             {
                 await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));
-                this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+                this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(200));
             }
             
             output.ExitCheckpointLock();
@@ -90,7 +90,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             else if (triggerName == "crash")
             {
-                RunTask((output, state) => throw new Exception("crash"));
+                RunTask((output, state) => throw new CrashException("crash"));
             }
             return Task.CompletedTask;
         }

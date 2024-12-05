@@ -119,7 +119,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task SelectWithSubstringNoLength()
         {
             GenerateData(1000);
-            await StartStream($"INSERT INTO output SELECT substring(firstName, 2) as Name FROM users");
+            await StartStream($"INSERT INTO output SELECT substring(firstName, 3) as Name FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.Substring(2) }));
         }
@@ -128,7 +128,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task SelectWithSubstringWithLength()
         {
             GenerateData(1000);
-            await StartStream($"INSERT INTO output SELECT substring(firstName, 2, 2) as Name FROM users");
+            await StartStream($"INSERT INTO output SELECT substring(firstName, 3, 2) as Name FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.Substring(2, Math.Min(2, x.FirstName.Length - 2)) }));
         }
@@ -177,6 +177,16 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream("INSERT INTO output SELECT LEN(TrimmableNullableString) as length FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { Length = x.TrimmableNullableString?.Length ?? default(int?) }));
+        }
+
+        [Fact]
+        public async Task SelectWithStrPos()
+        {
+            GenerateData();
+            var start = Users[0].FirstName!.Substring(1, 2);
+            await StartStream($"INSERT INTO output SELECT strpos(firstName, '{start}') as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.IndexOf(start) + 1 }));
         }
     }
 }

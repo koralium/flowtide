@@ -17,6 +17,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.SqlServer.SqlServer;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
@@ -385,6 +386,17 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                         {
                             throw;
                         }
+                    }
+                }
+
+                if (weights.Count == 0)
+                {
+                    weights.Dispose();
+                    iterations.Dispose();
+                    for (int i = 0; i < outputColumns.Length; i++)
+                    {
+                        outputColumns[i].Dispose();
+                        outputColumns[i] = null!;
                     }
                 }
 

@@ -27,9 +27,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
     {
         private readonly List<int> _columnsToStore;
         internal readonly EventBatchData _data;
-
+        private DataValueContainer _dataValueContaienr;
         public NormalizeKeyStorage(List<int> columnsToStore, IMemoryAllocator memoryAllocator)
         {
+            _dataValueContaienr = new DataValueContainer();
             _columnsToStore = columnsToStore;
             IColumn[] columns = new IColumn[columnsToStore.Count];
             var memoryManager = memoryAllocator;
@@ -42,6 +43,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         internal NormalizeKeyStorage(List<int> columnsToStore, EventBatchData eventBatchData)
         {
+            _dataValueContaienr = new DataValueContainer();
             _columnsToStore = columnsToStore;
             _data = eventBatchData;
         }
@@ -53,7 +55,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             // Add is only run internally to copy values in the tree
             for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                _data.Columns[i].Add(key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
+                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, _dataValueContaienr, default);
+                _data.Columns[i].Add(_dataValueContaienr);
             }
         }
 
@@ -61,9 +64,9 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             if (container is NormalizeKeyStorage columnKeyStorageContainer)
             {
-                for (int i = start; i < start + count; i++)
+                for (int i = 0; i < _columnsToStore.Count; i++)
                 {
-                    Add(columnKeyStorageContainer.Get(i));
+                    _data.Columns[i].InsertRangeFrom(_data.Columns[i].Count, columnKeyStorageContainer._data.Columns[i], start, count);
                 }
             }
             else
@@ -90,7 +93,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                _data.Columns[i].InsertAt(index, key.referenceBatch.Columns[_columnsToStore[i]].GetValueAt(key.RowIndex, default));
+                key.referenceBatch.Columns[_columnsToStore[i]].GetValueAt(key.RowIndex, _dataValueContaienr, default);
+                _data.Columns[i].InsertAt(index, _dataValueContaienr);
             }
         }
 
@@ -115,7 +119,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             // Update is only run internally to copy values in the tree
             for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                _data.Columns[i].UpdateAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
+                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, _dataValueContaienr, default);
+                _data.Columns[i].UpdateAt(index, _dataValueContaienr);
             }
         }
 
@@ -123,7 +128,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             for (int i = 0; i < _columnsToStore.Count; i++)
             {
-                _data.Columns[i].InsertAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
+                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, _dataValueContaienr, default);
+                _data.Columns[i].InsertAt(index, _dataValueContaienr);
             }
         }
 

@@ -147,7 +147,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             var innerType = instrument.GetType().GetGenericArguments()[0];
             if (typeDefinition.Equals(typeof(Counter<>)))
             {
-                AddCounter(innerType, instrument, meterListener);
+                AddCounter(innerType, instrument, meterListener, false);
             }
             else if (typeDefinition.Equals(typeof(Histogram<>)))
             {
@@ -155,15 +155,15 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             }
             else if (typeDefinition.Equals(typeof(UpDownCounter<>)))
             {
-                AddCounter(innerType, instrument, meterListener);
+                AddCounter(innerType, instrument, meterListener, false);
             }
             else if (typeDefinition.Equals(typeof(ObservableCounter<>)))
             {
-                AddCounter(innerType, instrument, meterListener);
+                AddCounter(innerType, instrument, meterListener, true);
             }
             else if (typeDefinition.Equals(typeof(ObservableUpDownCounter<>)))
             {
-                AddCounter(innerType, instrument, meterListener);
+                AddCounter(innerType, instrument, meterListener, true);
             }
             else if (typeDefinition.Equals(typeof(ObservableGauge<>)))
             {
@@ -185,9 +185,9 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             meterListener.EnableMeasurementEvents(instrument);
         }
 
-        private void AddCounter(Type innerType, Instrument instrument, MeterListener meterListener)
+        private void AddCounter(Type innerType, Instrument instrument, MeterListener meterListener, bool isObservable)
         {
-            var counter = new CounterInstrument(instrument.Name.Replace(".", "_"));
+            var counter = new CounterInstrument(instrument.Name.Replace(".", "_"), isObservable);
             _instruments.AddOrUpdate($"{instrument.Meter.Name}.{instrument.Name}", counter, (key, old) => counter);
             meterListener.EnableMeasurementEvents(instrument);
         }

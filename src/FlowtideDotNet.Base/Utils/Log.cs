@@ -171,5 +171,29 @@ namespace FlowtideDotNet.Base.Utils
           Level = LogLevel.Error,
           Message = "Stream error, stream: `{stream}`")]
         public static partial void StreamError(this ILogger logger, Exception? e, string stream);
+
+        [LoggerMessage(
+            EventId = 26,
+            Level = LogLevel.Information,
+            Message = "Stopping stream: `{stream}`")]
+        public static partial void StoppingStream(this ILogger logger, string stream);
+
+        [LoggerMessage(
+            EventId = 27,
+            Level = LogLevel.Information,
+            Message = "Stopped stream: `{stream}`")]
+        public static partial void StoppedStream(this ILogger logger, string stream);
+
+        [LoggerMessage(
+            EventId = 28,
+            Level = LogLevel.Information,
+            Message = "Starting shutdown checkpoint for stream `{stream}`.")]
+        public static partial void StartingShutdownCheckpoint(this ILogger logger, string stream);
+
+        [LoggerMessage(
+           EventId = 29,
+           Level = LogLevel.Information,
+           Message = "Shutdown checkpoint done in stream `{stream}`.")]
+        public static partial void ShutdownCheckpointDone(this ILogger logger, string stream);
     }
 }

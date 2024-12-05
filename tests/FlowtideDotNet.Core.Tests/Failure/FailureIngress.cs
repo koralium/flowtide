@@ -80,8 +80,6 @@ namespace FlowtideDotNet.Core.Tests.Failure
             });
 
             throw new Exception();
-
-            output.ExitCheckpointLock();
         }
     }
 }

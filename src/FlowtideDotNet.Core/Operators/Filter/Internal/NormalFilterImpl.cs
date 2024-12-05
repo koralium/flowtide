@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.Relations;
@@ -52,7 +53,7 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
             return Task.FromResult<object?>(null);
         }
 
-        public async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        public IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
             List<RowEvent> output = new List<RowEvent>();
 
@@ -88,17 +89,17 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
                     }
                 }
             }
-            
 
             if (output.Count > 0)
             {
-                yield return new StreamEventBatch(output, filterRelation.OutputLength);
+                return new SingleAsyncEnumerable<StreamEventBatch>(new StreamEventBatch(output, filterRelation.OutputLength));
             }
+            return EmptyAsyncEnumerable<StreamEventBatch>.Instance;
         }
 
-        public async IAsyncEnumerable<StreamEventBatch> OnTrigger(string triggerName, object? state)
+        public IAsyncEnumerable<StreamEventBatch> OnTrigger(string triggerName, object? state)
         {
-            yield break;
+            return EmptyAsyncEnumerable<StreamEventBatch>.Instance;
         }
     }
 }

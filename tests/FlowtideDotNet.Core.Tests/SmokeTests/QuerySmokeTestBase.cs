@@ -32,9 +32,9 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
     {
         FlowtideBuilder differentialComputeBuilder;
         SubstraitDeserializer deserializer;
-        FlowtideDotNet.Base.Engine.DataflowStream dataflowStream;
+        FlowtideDotNet.Base.Engine.DataflowStream? dataflowStream;
         private int changesCounter = 0;
-        private DefaultStreamScheduler _streamScheduler;
+        private DefaultStreamScheduler? _streamScheduler;
         //List<LineItem>? actualData;
         public QuerySmokeTestBase()
         {
@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             deserializer = new SubstraitDeserializer();
         }
 
-        public abstract void AddReadResolvers(IConnectorManager connectorManager);
+        protected abstract void AddReadResolvers(IConnectorManager connectorManager);
 
         public async Task DisposeAsync()
         {
@@ -65,7 +65,10 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             var plan = deserializer.Deserialize(plantext);
             PlanModifier planModifier = new PlanModifier();
             planModifier.AddRootPlan(plan);
+            // Supress since write to table is required for this test
+#pragma warning disable CS0618 // Type or member is obsolete
             planModifier.WriteToTable("testoutput");
+#pragma warning restore CS0618 // Type or member is obsolete
             var modifiedPlan = planModifier.Modify();
 
             modifiedPlan = PlanOptimizer.Optimize(modifiedPlan, settings);
@@ -73,13 +76,10 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             ConnectorManager connectorManager = new ConnectorManager();
             AddReadResolvers(connectorManager);
 
-            bool gotData = false;
-
             _streamScheduler = new DefaultStreamScheduler();
             connectorManager.AddSink(new TestWriteOperatorFactory<TResult>("*", primaryKeysOutput, (rows) =>
             {
                 changesCounter++;
-                gotData = true;
                 datachange(rows);
                 return Task.CompletedTask;
             }));
@@ -105,9 +105,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 .WithLoggerFactory(loggerFactory)
                 .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                 {
-                    CachePageCount = 100000,
-                    LogDevice = logDevice,
-                    CheckpointManager = checkpointManager
+                    CachePageCount = 100000
                 })
                 .Build();
 
@@ -149,6 +147,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0 });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter == 0)
             {
@@ -188,7 +187,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             var lineItemsExpected = TpchData.GetLineItems()
                 .OrderBy(x => x.Orderkey)
                 .ThenBy(x => x.Linenumber)
-                .Where(x => x.Shipmode.Equals("truck", StringComparison.OrdinalIgnoreCase))
+                .Where(x => x.Shipmode!.Equals("truck", StringComparison.OrdinalIgnoreCase))
                 .ToList();
             Assert.Equal(lineItemsExpected.Count, actualData!.Count);
             for (int i = 0; i < lineItemsExpected.Count; i++)
@@ -222,14 +221,14 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                         Linenumber = l.Linenumber,
                         Quantity = l.Quantity,
                         Custkey = r.Custkey,
-                        Orderstatus = r.Orderstatus,
+                        Orderstatus = r.Orderstatus!,
                     };
                 })
                 .OrderBy(x => x.Orderkey)
                 .ThenBy(x => x.Linenumber)
                 .ToList();
 
-            actualData = actualData.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
+            actualData = actualData!.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
 
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
@@ -248,6 +247,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter == 0)
             {
@@ -264,14 +264,14 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                         Linenumber = l.Linenumber,
                         Quantity = l.Quantity,
                         Custkey = r.Custkey,
-                        Orderstatus = r.Orderstatus,
+                        Orderstatus = r.Orderstatus!,
                     };
                 })
                 .OrderBy(x => x.Orderkey)
                 .ThenBy(x => x.Linenumber)
                 .ToList();
 
-            actualData = actualData.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
+            actualData = actualData!.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
 
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
@@ -280,19 +280,19 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             }
         }
 
-        public abstract Task ClearAllTables();
+        protected abstract Task ClearAllTables();
 
-        public abstract Task AddLineItems(IEnumerable<LineItem> lineItems);
+        protected abstract Task AddLineItems(IEnumerable<LineItem> lineItems);
 
-        public abstract Task AddOrders(IEnumerable<Order> orders);
+        protected abstract Task AddOrders(IEnumerable<Order> orders);
 
-        public abstract Task AddShipmodes(IEnumerable<Shipmode> shipmodes);
+        protected abstract Task AddShipmodes(IEnumerable<Shipmode> shipmodes);
 
-        public abstract Task UpdateShipmodes(IEnumerable<Shipmode> shipmode);
+        protected abstract Task UpdateShipmodes(IEnumerable<Shipmode> shipmode);
 
-        public abstract Task Crash();
+        protected abstract Task Crash();
 
-        public abstract Task Restart();
+        protected abstract Task Restart();
 
         [Fact]
         public async Task LineItemInnerJoinOrders()
@@ -319,14 +319,14 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                         Linenumber = l.Linenumber,
                         Quantity = l.Quantity,
                         Custkey = r.Custkey,
-                        Orderstatus = r.Orderstatus,
+                        Orderstatus = r.Orderstatus!,
                     };
                 })
                 .OrderBy(x => x.Orderkey)
                 .ThenBy(x => x.Linenumber)
                 .ToList();
 
-            actualData = actualData.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
+            actualData = actualData!.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
 
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
@@ -360,14 +360,14 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                         Linenumber = l.Linenumber,
                         Quantity = l.Quantity,
                         Custkey = r.Custkey,
-                        Orderstatus = r.Orderstatus,
+                        Orderstatus = r.Orderstatus!,
                     };
                 })
                 .OrderBy(x => x.Orderkey)
                 .ThenBy(x => x.Linenumber)
                 .ToList();
 
-            actualData = actualData.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
+            actualData = actualData!.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
 
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
@@ -406,7 +406,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 .ThenBy(x => x.Linenumber)
                 .ToList();
 
-            actualData = actualData.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
+            actualData = actualData!.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
 
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
@@ -426,6 +426,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter < 1)
             {
@@ -439,8 +440,8 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Linenumber = 1,
                 Orderkey = 14977
             };
-            Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Single(actualData!);
+            actualData![0].Should().BeEquivalentTo(expectedData);
 
             await AddShipmodes(new List<Shipmode>() { truck });
 
@@ -510,6 +511,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter < 1)
             {
@@ -523,8 +525,8 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Linenumber = 1,
                 Orderkey = 14977
             };
-            Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Single(actualData!);
+            actualData![0].Should().BeEquivalentTo(expectedData);
 
             await AddShipmodes(new List<Shipmode>() { truck });
 
@@ -594,6 +596,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter < 1)
             {
@@ -601,7 +604,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
             }
 
-            Assert.Empty(actualData);
+            Assert.Empty(actualData!);
 
             await AddShipmodes(new List<Shipmode>() { truck });
 
@@ -617,8 +620,8 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Linenumber = 1,
                 Orderkey = 14977
             };
-            Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Single(actualData!);
+            actualData![0].Should().BeEquivalentTo(expectedData);
 
             await UpdateShipmodes(new List<Shipmode>(){ new Shipmode()
             {
@@ -664,6 +667,8 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 });
+            Debug.Assert(_streamScheduler != null);
+            Debug.Assert(dataflowStream != null);
 
             while (changesCounter < 1)
             {

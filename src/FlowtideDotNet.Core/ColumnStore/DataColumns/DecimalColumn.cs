@@ -17,6 +17,7 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
@@ -25,6 +26,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -46,6 +48,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public DecimalColumn(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _values = new PrimitiveList<decimal>(memory, length, memoryAllocator);   
+        }
+
+        internal DecimalColumn(PrimitiveList<decimal> values)
+        {
+            _values = values;
         }
 
         public int Add<T>(in T value) where T : IDataValue
@@ -199,6 +206,33 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int GetByteSize()
         {
             return Count * sizeof(decimal);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            if (other is DecimalColumn decimalColumn)
+            {
+                _values.InsertRangeFrom(index, decimalColumn._values, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            _values.InsertStaticRange(index, 0, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            writer.WriteNumberValue(_values.Get(index));
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new DecimalColumn(_values.Copy(memoryAllocator));
         }
     }
 }

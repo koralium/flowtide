@@ -27,6 +27,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Substrait.Protobuf;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -35,9 +36,9 @@ namespace FlowtideDotNet.Benchmarks
 {
     public class ColumnStoreTreeBenchmark
     {
-        private IStateManagerClient nodeClient;
-        private IBPlusTree<ColumnRowReference, string, ColumnKeyStorageContainer, ListValueContainer<string>> tree;
-        private IBPlusTree<RowEvent, string, ListKeyContainer<RowEvent>, ListValueContainer<string>> flxTree;
+        private IStateManagerClient? nodeClient;
+        private IBPlusTree<ColumnRowReference, string, ColumnKeyStorageContainer, ListValueContainer<string>>? tree;
+        private IBPlusTree<RowEvent, string, ListKeyContainer<RowEvent>, ListValueContainer<string>>? flxTree;
 
         //[Params(1000, 5000, 10000)]
         //public int CachePageCount;
@@ -55,10 +56,7 @@ namespace FlowtideDotNet.Benchmarks
             localStorage.Initialize("./data/temp");
             StateManagerSync stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
-                CachePageCount = 1_000_000,
-                LogDevice = localStorage.Get(new FileDescriptor("persistent", "perstitent.log")),
-                CheckpointDir = "./data",
-                TemporaryStorageFactory = localStorage
+                CachePageCount = 1_000_000
             }, NullLogger.Instance, new System.Diagnostics.Metrics.Meter("storage"), "storage");
 
             stateManager.InitializeAsync().GetAwaiter().GetResult();
@@ -78,12 +76,14 @@ namespace FlowtideDotNet.Benchmarks
         [IterationSetup]
         public void IterationSetup()
         {
+            Debug.Assert(nodeClient != null);
             tree = nodeClient.GetOrCreateTree("tree", new BPlusTreeOptions<ColumnRowReference, string, ColumnKeyStorageContainer, ListValueContainer<string>>()
             {
                 BucketSize = 1024,
                 Comparer = new ColumnComparer(1),
                 KeySerializer = new ColumnStoreSerializer(1, GlobalMemoryManager.Instance),
-                ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             }).GetAwaiter().GetResult();
             tree.Clear();
             flxTree = nodeClient.GetOrCreateTree("flxtree", new BPlusTreeOptions<RowEvent, string, ListKeyContainer<RowEvent>, ListValueContainer<string>>()
@@ -91,13 +91,17 @@ namespace FlowtideDotNet.Benchmarks
                 BucketSize = 1024,
                 Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer()),
                 KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<string>(new StringSerializer())
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance,
+                UseByteBasedPageSizes = true,
+                PageSizeBytes = 32 * 1024
             }).GetAwaiter().GetResult();
         }
 
         [Benchmark]
         public async Task FlxValueInsertInOrder()
         {
+            Debug.Assert(flxTree != null);
             for (int i = 0; i < 1_000_000; i++)
             {
                 await flxTree.Upsert(rowEvents[i], $"hello{i}");
@@ -107,6 +111,7 @@ namespace FlowtideDotNet.Benchmarks
         [Benchmark]
         public async Task ColumnarInsertInOrder()
         {
+            Debug.Assert(tree != null);
             for (int i = 0; i < 1_000_000; i++)
             {
                 await tree.Upsert(new ColumnRowReference()

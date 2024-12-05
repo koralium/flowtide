@@ -107,7 +107,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 return VisitSetOperation(setOperation, state);
             }
+            if (setExpression is SetExpression.ValuesExpression valuesExpression)
+            {
+                return VisitValuesExpression(valuesExpression, state);
+            }
             throw new NotImplementedException($"{setExpression.GetType().Name} is not yet supported in SQL.");
+        }
+
+        protected virtual TReturn VisitValuesExpression(SetExpression.ValuesExpression valuesExpression, TState state)
+        {
+            throw new NotImplementedException();
         }
 
         protected virtual TReturn VisitSetOperation(SetExpression.SetOperation setOperation, TState state)

@@ -21,7 +21,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private readonly DataflowBlockOptions blockOptions;
         private MultipleInputTarget<IStreamEvent>? target;
 
-        public string OperatorName { get; private set; }
+        private string? _operatorName;
+        public string OperatorName => _operatorName ?? throw new InvalidOperationException("OperatorName can only be fetched after setup.");
 
         public MultipleInputTargetHolder(int targetId, DataflowBlockOptions blockOptions)
         {
@@ -46,7 +47,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             target.ReleaseCheckpoint();
         }
 
-        public Task Completion => target.Completion;
+        public Task Completion => target?.Completion ?? throw new InvalidOperationException("Completion can only be fetched after setup.");
 
         public void Complete()
         {
@@ -68,7 +69,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         internal void Setup(string operatorName)
         {
-            OperatorName = operatorName;
+            _operatorName = operatorName;
         }
     }
 }

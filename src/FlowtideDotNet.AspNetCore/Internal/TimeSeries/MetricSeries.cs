@@ -66,7 +66,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             _valueSerializer = new DoubleValueSerializer(GlobalMemoryManager.Instance);
             _client = await _stateManager.CreateClientAsync<IBPlusTreeNode, BPlusTreeMetadata>(string.Empty, new FlowtideDotNet.Storage.StateManager.Internal.StateClientOptions<IBPlusTreeNode>()
             {
-                ValueSerializer = new BPlusTreeSerializer<long, double, TimestampKeyContainer, DoubleValueContainer>(_keySerializer, _valueSerializer),
+                ValueSerializer = new BPlusTreeSerializer<long, double, TimestampKeyContainer, DoubleValueContainer>(_keySerializer, _valueSerializer, GlobalMemoryManager.Instance),
             });
         }
 
@@ -88,7 +88,10 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                     Comparer = new TimestampComparer(),
                     KeySerializer = _keySerializer!,
                     ValueSerializer = _valueSerializer!,
-                    BucketSize = 4096
+                    BucketSize = 1024,
+                    UseByteBasedPageSizes = false,
+                    PageSizeBytes = 32 * 1024,
+                    MemoryAllocator = GlobalMemoryManager.Instance
                 });
                 await tree.InitializeAsync();
                 serie = new MetricSerie(name, tags, tree);

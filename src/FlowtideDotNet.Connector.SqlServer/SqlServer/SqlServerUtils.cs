@@ -22,80 +22,13 @@ using Microsoft.Extensions.Primitives;
 using FlowtideDotNet.Core.ColumnStore;
 using System.Collections.Generic;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Substrait.Type;
+using FlowtideDotNet.Core.Exceptions;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
     internal static class SqlServerUtils
     {
-        public static Func<SqlDataReader, RowEvent> GetStreamEventCreator(ReadRelation readRelation)
-        {
-            List<Action<SqlDataReader, IFlexBufferVectorBuilder>> columns = new List<Action<SqlDataReader, IFlexBufferVectorBuilder>>();
-            for (int i = 0; i < readRelation.BaseSchema.Struct.Types.Count; i++)
-            {
-                var type = readRelation.BaseSchema.Struct.Types[i];
-
-                int index = i;
-                switch (type.Type)
-                {
-                    case Type.SubstraitType.String:
-                        columns.Add((reader, builder) =>
-                        {
-                            builder.Add(reader.GetString(index));
-                        });
-                        break;
-                    case Type.SubstraitType.Int32:
-                        columns.Add((reader, builder) =>
-                        {
-                            if (reader.IsDBNull(index))
-                            {
-                                builder.AddNull();
-                                return;
-                            }
-
-                            builder.Add(reader.GetInt32(index));
-                        });
-                        break;
-                    case Type.SubstraitType.Int64:
-                        columns.Add((reader, builder) =>
-                        {
-                            if (reader.IsDBNull(index))
-                            {
-                                builder.AddNull();
-                                return;
-                            }
-
-                            builder.Add(reader.GetInt64(index));
-                        });
-                        break;
-                    case Type.SubstraitType.Date:
-                        columns.Add((reader, builder) =>
-                        {
-                            if (reader.IsDBNull(index))
-                            {
-                                builder.AddNull();
-                                return;
-                            }
-                            var dateTime = reader.GetDateTime(index);
-                            var unixTime = ((DateTimeOffset)dateTime).ToUnixTimeMilliseconds() * 1000;
-                            builder.Add(unixTime);
-                        });
-                        break;
-                    default:
-                        throw new NotImplementedException($"{type.Type}");
-                }
-            }
-            return (reader) =>
-            {
-                return RowEvent.Create(1, 0, builder =>
-                {
-                    for (int i = 0; i < columns.Count; i++)
-                    {
-                        columns[i](reader, builder);
-                    }
-                });
-            };
-        }
-
         public static List<Action<SqlDataReader, IColumn>> GetColumnEventCreator(ReadOnlyCollection<DbColumn> dbColumns)
         {
             List<Action<SqlDataReader, IColumn>> output = new List<Action<SqlDataReader, IColumn>>();
@@ -291,6 +224,52 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 }
             }
             return output;
+        }
+
+        public static SubstraitBaseType GetSubstraitType(string dataTypeName)
+        {
+            switch (dataTypeName.ToLower())
+            {
+                case "nchar":
+                case "char":
+                case "varchar":
+                case "nvarchar":
+                case "ntext":
+                case "text":
+                case "xml":
+                    return new StringType();
+                case "tinyint":
+                case "smallint":
+                case "int":
+                    return new Int64Type();
+                case "money":
+                case "decimal":
+                    return new DecimalType();
+                case "date":
+                case "datetime":
+                case "smalldatetime":
+                case "datetime2":
+                    return new Int64Type();
+                case "time":
+                    return new Int64Type();
+                case "bit":
+                    return new BoolType();
+                case "bigint":
+                    return new Int64Type();
+                case "real":
+                    return new Fp64Type();
+                case "float":
+                    return new Fp64Type();
+                case "uniqueidentifier":
+                    return new StringType();
+                case "binary":
+                case "varbinary":
+                    return new BinaryType();
+                case "image":
+                    return new BinaryType();
+                default:
+                    return new AnyType();
+            }
         }
 
         public static Func<SqlDataReader, RowEvent> GetStreamEventCreator(ReadOnlyCollection<DbColumn> dbColumns)
@@ -591,6 +570,10 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
             List<string> primaryKeyEquals = new List<string>();
             List<string> columnSelects = new List<string>();
+            if (readRelation.BaseSchema.Struct == null) 
+            {
+                throw new FlowtideException("Struct must be defined in the base schema for SQL Server.");
+            }
             for (int i = 0; i < readRelation.BaseSchema.Struct.Types.Count; i++)
             {
                 if (primaryKeys.Contains(readRelation.BaseSchema.Names[i], StringComparer.OrdinalIgnoreCase))
@@ -951,9 +934,9 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return (outdata, pkValues);
         }
 
-        public static List<Func<RowEvent, object>> GetDataTableValueMaps(List<DbColumn> columns)
+        public static List<Func<RowEvent, object?>> GetDataTableValueMaps(List<DbColumn> columns)
         {
-            List<Func<RowEvent, object>> output = new List<Func<RowEvent, object>>();
+            List<Func<RowEvent, object?>> output = new List<Func<RowEvent, object?>>();
 
             for (int i = 0; i < columns.Count; i++)
             {
@@ -966,6 +949,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         {
             var t = dbColumn.DataType;
 
+            if (t == null)
+            {
+                throw new FlowtideException("Could not get data type from SQL Server");
+            }
+
             if (t.Equals(typeof(string)))
             {
                 return (e) =>
@@ -975,7 +963,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     {
                         return null;
                     }
-                    return c.AsString;
+                    if (c.ValueType == FlexBuffers.Type.String)
+                    {
+                        return c.AsString;
+                    }
+                    return c.ToJson;
                 };
             }
             if (t.Equals(typeof(int)))

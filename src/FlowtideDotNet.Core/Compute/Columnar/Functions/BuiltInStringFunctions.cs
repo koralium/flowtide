@@ -13,11 +13,16 @@
 using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.StringAgg;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -27,18 +32,84 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
     internal static class BuiltInStringFunctions
     {
+        private const string NegativeStart = "negative_start";
+        private const string WrapFromEnd = "WRAP_FROM_END";
+        private const string LeftOfBeginning = "LEFT_OF_BEGINNING";
+        private const string NullHandling = "null_handling";
+        private const string AcceptNulls = "ACCEPT_NULLS";
+        private const string IgnoreNulls = "IGNORE_NULLS";
+
+        private static readonly StringValue EmptyString = new StringValue("");
+        private static readonly StringValue BackslashString = new StringValue("\\");
+
         public static void RegisterFunctions(IFunctionsRegister functionsRegister)
         {
             ColumnStringAggAggregation.Register(functionsRegister);
 
+            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Substring,
+                (scalarFunction, parameters, visitor) =>
+                {
+                    if (scalarFunction.Arguments.Count < 2)
+                    {
+                        throw new InvalidOperationException("Substring function must have atleast 2 arguments");
+                    }
+
+                    var expr = visitor.Visit(scalarFunction.Arguments[0], parameters)!;
+                    var start = visitor.Visit(scalarFunction.Arguments[1], parameters)!;
+
+                    Expression? length = default;
+                    if (scalarFunction.Arguments.Count == 3)
+                    {
+                        length = visitor.Visit(scalarFunction.Arguments[2], parameters)!;
+                    }
+                    else
+                    {
+                        length = Expression.Constant(new Int64Value(-1));
+                    }
+
+                    string methodName = nameof(Substring);
+                    if (scalarFunction.Options != null && scalarFunction.Options.TryGetValue(NegativeStart, out var negativeStart))
+                    {
+                        if (negativeStart == WrapFromEnd)
+                        {
+                            methodName = nameof(SubstringWrapFromEnd);
+                        }
+                        else if (negativeStart == LeftOfBeginning)
+                        {
+                            methodName = nameof(SubstringLeftOfBeginning);
+                        }
+                        else
+                        {
+                            throw new NotSupportedException($"Substring option {NegativeStart}={negativeStart} is not supported.");
+                        }
+                    }
+                    
+
+                    MethodInfo? toStringMethod = typeof(BuiltInStringFunctions).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                    Debug.Assert(toStringMethod != null);
+                    var genericMethod = toStringMethod.MakeGenericMethod(expr.Type, start.Type, length.Type);
+                    var resultContainer = Expression.Constant(new DataValueContainer());
+                    return System.Linq.Expressions.Expression.Call(genericMethod, expr, start, length, resultContainer);
+                });
+
             functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Concat,
                 (func, parameters, visitor) =>
                 {
+                    bool ignoreNulls = false;
+
+                    if(func.Options != null && func.Options.TryGetValue(NullHandling, out var nullHandling) && nullHandling == IgnoreNulls)
+                    {
+                        ignoreNulls = true;
+                    }
+
                     List<System.Linq.Expressions.Expression> expressions = new List<System.Linq.Expressions.Expression>();
                     var stringBuilder = new StringBuilder();
 
                     var appendMethod = typeof(StringBuilder).GetMethod("Append", new System.Type[] { typeof(string) });
                     var toStringMethod = typeof(FlxString).GetMethod("ToString", new System.Type[] { });
+                    Debug.Assert(appendMethod != null);
+                    Debug.Assert(toStringMethod != null);
+
                     var stringBuilderConstant = System.Linq.Expressions.Expression.Constant(stringBuilder);
 
                     DataValueContainer nullContainer = new DataValueContainer();
@@ -81,7 +152,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                         var appendLine = System.Linq.Expressions.Expression.Call(stringBuilderConstant, appendMethod, toStringCall);
                         var appendLineCastedToString = System.Linq.Expressions.Expression.Call(stringBuilderConstant, appendMethod, toStringFromCastToString);
                         var checkIfString = System.Linq.Expressions.Expression.IfThenElse(typeIsStringCheck, appendLine, appendLineCastedToString);
-                        var nullCheck = System.Linq.Expressions.Expression.IfThenElse(typeIsNullCheck, nullValueReturn, checkIfString);
+                        System.Linq.Expressions.Expression? nullCheck = default;
+                        if (ignoreNulls)
+                        {
+                            nullCheck = System.Linq.Expressions.Expression.IfThen(typeIsStringCheck, checkIfString);
+                        }
+                        else
+                        {
+                            nullCheck = System.Linq.Expressions.Expression.IfThenElse(typeIsNullCheck, nullValueReturn, checkIfString);
+                        }
                         blockExpressions.Add(nullCheck);
                     }
                     blockExpressions.Add(returnLabel);
@@ -103,6 +182,152 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Encode, typeof(BuiltInStringFunctions), nameof(StringBase64EncodeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Decode, typeof(BuiltInStringFunctions), nameof(StringBase64DecodeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.CharLength, typeof(BuiltInStringFunctions), nameof(CharLengthImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StrPos, typeof(BuiltInStringFunctions), nameof(StrPosImplementation));
+        }
+
+        private static bool SubstringTryGetParameters<T1, T2, T3>(
+            T1 value, 
+            T2 start, 
+            T3 length,
+            [NotNullWhen(true)] out string? stringVal,
+            out int startInt,
+            out int lengthInt)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                stringVal = default;
+                startInt = 0;
+                lengthInt = 0;
+                return false;
+            }
+            if (start.Type != ArrowTypeId.Int64)
+            {
+                stringVal = default;
+                startInt = 0;
+                lengthInt = 0;
+                return false;
+            }
+            if (length.Type != ArrowTypeId.Int64)
+            {
+                stringVal = default;
+                startInt = 0;
+                lengthInt = 0;
+                return false;
+            }
+
+            stringVal = value.AsString.ToString();
+            startInt = (int)start.AsLong;
+            lengthInt = (int)length.AsLong;
+            return true;
+        }
+
+        private static IDataValue SubstringLeftOfBeginning<T1, T2, T3>(T1 value, T2 start, T3 length, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (!SubstringTryGetParameters(value, start, length, out var str, out var startInt, out var lengthInt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            if (startInt > str.Length)
+            {
+                result._type = ArrowTypeId.String;
+                result._stringValue = EmptyString;
+                return result;
+            }
+
+            if (startInt < 0)
+            {
+                lengthInt = lengthInt + startInt - 1; // Negate by -1 to cover 0 
+                startInt = 1;
+            }
+
+            if (lengthInt < -1)
+            {
+                lengthInt = str.Length - startInt + 1;
+            }
+            else
+            {
+                lengthInt = Math.Min(lengthInt, str.Length - startInt + 1);
+            }
+            result._type = ArrowTypeId.String;
+            var stringInfo = new StringInfo(str);
+            result._stringValue = new StringValue(stringInfo.SubstringByTextElements(startInt - 1, lengthInt));
+            return result;
+        }
+
+        private static IDataValue SubstringWrapFromEnd<T1, T2, T3>(T1 value, T2 start, T3 length, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (!SubstringTryGetParameters(value, start, length, out var str, out var startInt, out var lengthInt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            if (startInt > str.Length)
+            {
+                result._type = ArrowTypeId.String;
+                result._stringValue = EmptyString;
+                return result;
+            }
+
+            if (startInt < 0)
+            {
+                startInt = str.Length + startInt + 1;
+            }
+
+            if (lengthInt == -1)
+            {
+                lengthInt = str.Length - startInt + 1;
+            }
+            else
+            {
+                lengthInt = Math.Min(lengthInt, str.Length - startInt + 1);
+            }
+            result._type = ArrowTypeId.String;
+            var stringInfo = new StringInfo(str);
+            result._stringValue = new StringValue(stringInfo.SubstringByTextElements(startInt - 1, lengthInt));
+            return result;
+        }
+
+        private static IDataValue Substring<T1, T2, T3>(T1 value, T2 start, T3 length, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (!SubstringTryGetParameters(value, start, length, out var str, out var startInt, out var lengthInt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            if (startInt > str.Length)
+            {
+                result._type = ArrowTypeId.String;
+                result._stringValue = EmptyString;
+                return result;
+            }
+            if (lengthInt == -1)
+            {
+                lengthInt = str.Length - startInt + 1;
+            }
+            else
+            {
+                lengthInt = Math.Min(lengthInt, str.Length - startInt + 1);
+            }
+            result._type = ArrowTypeId.String;
+            var stringInfo = new StringInfo(str);
+            result._stringValue = new StringValue(stringInfo.SubstringByTextElements(startInt - 1, lengthInt));
+            return result;
         }
 
         private static IDataValue UpperImplementation<T>(T value, DataValueContainer result)
@@ -147,6 +372,38 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             return result;
         }
 
+        /// <summary>
+        /// Trim with a string with to trim info this method cant use built in C# trim since it allows strings and not just chars
+        /// </summary>
+        /// <typeparam name="T1"></typeparam>
+        /// <typeparam name="T2"></typeparam>
+        /// <param name="value"></param>
+        /// <param name="toTrim"></param>
+        /// <param name="result"></param>
+        /// <returns></returns>
+        private static IDataValue TrimImplementation<T1, T2>(T1 value, T2 toTrim, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (toTrim.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.String;
+            var toTrimStr = toTrim.AsString.ToString();
+            var valueStr = value.AsString.ToString();
+
+            result._stringValue = new StringValue(valueStr.Trim(toTrimStr.ToCharArray()));
+            return result;
+        }
+
         private static IDataValue LTrimImplementation<T>(T value, DataValueContainer result)
             where T : IDataValue
         {
@@ -161,6 +418,30 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             return result;
         }
 
+        private static IDataValue LTrimImplementation<T1, T2>(T1 value, T2 toTrim, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (toTrim.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.String;
+            var toTrimStr = toTrim.AsString.ToString();
+            var valueStr = value.AsString.ToString();
+
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(valueStr.TrimStart(toTrimStr.ToCharArray()));
+            return result;
+        }
+
         private static IDataValue RTrimImplementation<T>(T value, DataValueContainer result)
             where T : IDataValue
         {
@@ -172,6 +453,30 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
             result._type = ArrowTypeId.String;
             result._stringValue = new StringValue(value.AsString.ToString().TrimEnd());
+            return result;
+        }
+
+        private static IDataValue RTrimImplementation<T1, T2>(T1 value, T2 toTrim, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (toTrim.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.String;
+            var toTrimStr = toTrim.AsString.ToString();
+            var valueStr = value.AsString.ToString();
+
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(valueStr.TrimEnd(toTrimStr.ToCharArray()));
             return result;
         }
 
@@ -195,6 +500,29 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             result._type = ArrowTypeId.Boolean;
             result._boolValue = new BoolValue(value.AsString.ToString().StartsWith(prefix.AsString.ToString()));
             return result;
+        }
+
+        private static IDataValue StartsWithImplementation_case_sensitivity__CASE_INSENSITIVE<T1, T2>(T1 value, T2 prefix, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String || prefix.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Boolean;
+                result._boolValue = new BoolValue(false);
+                return result;
+            }
+
+            result._type = ArrowTypeId.Boolean;
+            result._boolValue = new BoolValue(value.AsString.ToString().StartsWith(prefix.AsString.ToString(), StringComparison.InvariantCultureIgnoreCase));
+            return result;
+        }
+
+        private static IDataValue LikeImplementation<T1, T2>(T1 value, T2 comp, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            return LikeImplementation(value, comp, BackslashString, result);
         }
 
         private static IDataValue LikeImplementation<T1, T2, T3>(T1 value, T2 comp, T3 escapeChar, DataValueContainer result)
@@ -359,7 +687,38 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             }
 
             result._type = ArrowTypeId.Int64;
-            result._int64Value = new Int64Value(value.AsString.ToString().Length);
+            
+            result._int64Value = new Int64Value(new StringInfo(value.AsString.ToString()).LengthInTextElements);
+            return result;
+        }
+
+        private static IDataValue StrPosImplementation<T1, T2>(T1 value, T2 toFind, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String || toFind.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.Int64;
+            result._int64Value = new Int64Value(value.AsString.ToString().IndexOf(toFind.AsString.ToString()) + 1);
+            return result;
+        }
+
+        private static IDataValue StrPosImplementation_case_sensitivity__CASE_INSENSITIVE<T1, T2>(T1 value, T2 toFind, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String || toFind.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            result._type = ArrowTypeId.Int64;
+            result._int64Value = new Int64Value(value.AsString.ToString().IndexOf(toFind.AsString.ToString(), StringComparison.InvariantCultureIgnoreCase) + 1);
             return result;
         }
 

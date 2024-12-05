@@ -24,6 +24,10 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             get
             {
+                if (EmitSet)
+                {
+                    return Emit.Count;
+                }
                 return BaseSchema.Names.Count;
             }
         }

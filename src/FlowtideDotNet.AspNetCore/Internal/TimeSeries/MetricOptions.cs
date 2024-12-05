@@ -14,7 +14,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 {
     public class MetricOptions
     {
-        public List<string> Prefixes { get; set; }
+        public List<string>? Prefixes { get; set; }
 
         /// <summary>
         /// Time between capturing the values to time series.

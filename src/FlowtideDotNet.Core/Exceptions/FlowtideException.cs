@@ -27,9 +27,5 @@ namespace FlowtideDotNet.Core.Exceptions
         public FlowtideException(string? message, Exception? innerException) : base(message, innerException)
         {
         }
-
-        protected FlowtideException(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
-        }
     }
 }

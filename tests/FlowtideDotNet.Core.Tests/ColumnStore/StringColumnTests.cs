@@ -17,6 +17,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
@@ -103,6 +104,45 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 {
                     Assert.Equal(expected[i], actual.AsString.ToString());
                 }
+            }
+        }
+
+        [Fact]
+        public void TestJsonEncoding()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new StringValue("hello"));
+
+            using NativeBufferWriter nativeBufferWriter = new NativeBufferWriter(GlobalMemoryManager.Instance);
+            Utf8JsonWriter writer = new Utf8JsonWriter(nativeBufferWriter);
+
+            column.WriteToJson(in writer, 0);
+            writer.Flush();
+
+            string json = Encoding.UTF8.GetString(nativeBufferWriter.WrittenSpan);
+
+            Assert.Equal("\"hello\"", json);
+        }
+
+        [Fact]
+        public void TestCopy()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                column.Add(new StringValue($"hello{i}"));
+            }
+
+            var copy = column.Copy(GlobalMemoryManager.Instance);
+
+            Assert.Equal(1000, copy.Count);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                var actual = copy.GetValueAt(i, default);
+                Assert.Equal($"hello{i}", actual.AsString.ToString());
             }
         }
     }

@@ -137,12 +137,15 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
                 }
             }
 
-            for (int i = 0; i < aggregateRelation.Measures.Count; i++)
+            if (aggregateRelation.Measures != null)
             {
-                aggregateRelation.Measures[i].Filter = replacer.Visit(aggregateRelation.Measures[i].Filter, state)!;
-                for (int k = 0; k < aggregateRelation.Measures[i].Measure.Arguments.Count; k++)
+                for (int i = 0; i < aggregateRelation.Measures.Count; i++)
                 {
-                    aggregateRelation.Measures[i].Measure.Arguments[k] = replacer.Visit(aggregateRelation.Measures[i].Measure.Arguments[k], state)!;
+                    aggregateRelation.Measures[i].Filter = replacer.Visit(aggregateRelation.Measures[i].Filter!, state)!;
+                    for (int k = 0; k < aggregateRelation.Measures[i].Measure.Arguments.Count; k++)
+                    {
+                        aggregateRelation.Measures[i].Measure.Arguments[k] = replacer.Visit(aggregateRelation.Measures[i].Measure.Arguments[k], state)!;
+                    }
                 }
             }
 
@@ -196,7 +199,7 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
             joinRelation.Right = Visit(joinRelation.Right, state);
 
             var replacer = new GetTimestampReplacer(joinRelation.Left.OutputLength + joinRelation.Right.OutputLength);
-            replacer.Visit(joinRelation.Expression, state);
+            replacer.Visit(joinRelation.Expression!, state);
 
             if (replacer.ContainsGetTimestamp)
             {

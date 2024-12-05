@@ -35,12 +35,16 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
     {
         private readonly Func<string> _connectionStringFunc;
         private readonly Func<ReadRelation, string>? customTableNameFunc;
-        private HashSet<string>? _tableNames;
+        private readonly SqlServerTableProvider _tableProvider;
 
-        public SqlServerSourceFactory(Func<string> connectionStringFunc, Func<ReadRelation, string>? tableNameTransform = null)
+        public SqlServerSourceFactory(
+            Func<string> connectionStringFunc, 
+            Func<ReadRelation, string>? tableNameTransform = null,
+            bool useDatabaseDefinedInConnectionStringOnly = false)
         {
             this._connectionStringFunc = connectionStringFunc;
             this.customTableNameFunc = tableNameTransform;
+            _tableProvider = new SqlServerTableProvider(connectionStringFunc, useDatabaseDefinedInConnectionStringOnly);
         }
 
         /// <summary>
@@ -57,17 +61,14 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override bool CanHandle(ReadRelation readRelation)
         {
-            if (_tableNames == null)
-            {
-                _tableNames = LoadAvailableTablesList().GetAwaiter().GetResult();
-            }
             var tableName = customTableNameFunc?.Invoke(readRelation) ?? readRelation.NamedTable.DotSeperated;
-            return _tableNames.Contains(tableName);
+
+            return _tableProvider.TryGetTableInformation(tableName, out _);
         }
 
         public ITableProvider Create()
         {
-            return new SqlServerTableProvider(_connectionStringFunc);
+            return _tableProvider;
         }
 
         public override Relation ModifyPlan(ReadRelation readRelation)

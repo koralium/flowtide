@@ -44,7 +44,6 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
         public async ValueTask<byte[]> Read(long key)
         {
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            var input = new SpanByte();
             var result = await session.ReadAsync(ref key, token: tokenSource.Token);
             var (status, bytes) = result.Complete();
             if (bytes == null)

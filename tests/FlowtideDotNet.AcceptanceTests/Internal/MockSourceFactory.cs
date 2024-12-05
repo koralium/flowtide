@@ -51,7 +51,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     readRelation.BaseSchema.Names.Add(table.Columns[primaryKeyIndex]);
                     if (readRelation.BaseSchema.Struct == null)
                     {
-                        readRelation.BaseSchema.Struct = new Struct();
+                        readRelation.BaseSchema.Struct = new Struct()
+                        {
+                            Types = new List<SubstraitBaseType>()
+                        };
                     }
                     readRelation.BaseSchema.Struct.Types.Add(new AnyType());
                     pks.Add(readRelation.BaseSchema.Names.Count - 1);

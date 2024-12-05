@@ -396,20 +396,12 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
             if (lo < end)
             {
-                try
+                // Check that the next value is the same, if not we are at the of the bounds.
+                int c = comparer.Compare(list.Get(lo + 1), in value);
+                if (c != 0)
                 {
-                    // Check that the next value is the same, if not we are at the of the bounds.
-                    int c = comparer.Compare(list.Get(lo + 1), in value);
-                    if (c != 0)
-                    {
-                        return (lowerbound, lowerbound);
-                    }
+                    return (lowerbound, lowerbound);
                 }
-                catch(Exception e)
-                {
-                    throw;
-                }
-                
             }
             else
             {
@@ -441,6 +433,98 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             }
 
             return (lowerbound, upperbound);
+        }
+
+
+        public static unsafe (int, int) SearchBoundriesInt64Asc(in NativeLongList list, int start, int end, long value)
+        {
+            if (end < start)
+            {
+                return (~start, ~start);
+            }
+            var arr = list.Pointer + start;
+            var size = end - start + 1;
+            while (size > 2)
+            {
+                var middle = size >> 1;
+                size = (size + 1) >> 1;
+                // Hack since cmov is not available so far from what has been benchmarked.
+                // Clt returns 0 or 1, so we can multiply by the result to get the correct index.
+                arr += (middle * UnsafeEx.Clt(arr[middle], value));
+            }
+
+            arr += UnsafeEx.Cgt(size, 1) & UnsafeEx.Clt(*arr, value);
+            arr += UnsafeEx.Cgt(size, 0) & UnsafeEx.Clt(*arr, value);
+
+            
+            start = (int)(arr - list.Pointer);
+            int lowIndex = start;
+            if (start > end || *arr != value)
+            {
+                return (~start, ~start);
+            }
+
+            if (start == end || arr[1] != value)
+            {
+                return (start, start);
+            }
+
+            size = end - start + 1;
+            while (size > 2)
+            {
+                var middle = size >> 1;
+                size = (size + 1) >> 1;
+                arr += middle * UnsafeEx.Cle(arr[middle], value);
+            }
+            arr += UnsafeEx.Cgt(size, 1) & UnsafeEx.Cle(*arr, value);
+            arr += UnsafeEx.Cgt(size, 0) & UnsafeEx.Cle(*arr, value);
+
+            return (lowIndex, (int)(arr - list.Pointer) - 1);
+        }
+
+        public static unsafe (int, int) SearchBoundriesInt64Desc(in NativeLongList list, int start, int end, long value)
+        {
+            if (end < start)
+            {
+                return (~start, ~start);
+            }
+            var arr = list.Pointer + start;
+            var size = end - start + 1;
+            while (size > 2)
+            {
+                var middle = size >> 1;
+                size = (size + 1) >> 1;
+                // Hack since cmov is not available so far from what has been benchmarked.
+                // Clt returns 0 or 1, so we can multiply by the result to get the correct index.
+                arr += (middle * UnsafeEx.Cgt(arr[middle], value));
+            }
+
+            arr += UnsafeEx.Cgt(size, 1) & UnsafeEx.Cgt(*arr, value);
+            arr += UnsafeEx.Cgt(size, 0) & UnsafeEx.Cgt(*arr, value);
+
+            start = (int)(arr - list.Pointer);
+            int lowIndex = start;
+            if (start > end || *arr != value)
+            {
+                return (~start, ~start);
+            }
+
+            if (start == end || arr[1] != value)
+            {
+                return (start, start);
+            }
+
+            size = end - start + 1;
+            while (size > 2)
+            {
+                var middle = size >> 1;
+                size = (size + 1) >> 1;
+                arr += middle * UnsafeEx.Cge(arr[middle], value);
+            }
+            arr += UnsafeEx.Cgt(size, 1) & UnsafeEx.Cge(*arr, value);
+            arr += UnsafeEx.Cgt(size, 0) & UnsafeEx.Cge(*arr, value);
+
+            return (lowIndex, (int)(arr - list.Pointer) - 1);
         }
 
         public static (int, int) SearchBoundries(in NativeLongList list, in long value, in int index, in int end, IColumnComparer<long> comparer)

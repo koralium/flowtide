@@ -20,6 +20,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
     internal class TemporarySyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler
         where V : ICacheObject
+        where TMetadata : IStorageMetadata
     {
         private StateClientMetadata<TMetadata> metadata;
         private readonly SyncStateClient<V, TMetadata> baseClient;
@@ -43,7 +44,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
-        public int BPlusTreePageSize => 1024;
+        public int BPlusTreePageSize => baseClient.BPlusTreePageSize;
+
+        public int BPlusTreePageSizeBytes => baseClient.BPlusTreePageSizeBytes;
+
+        public long CacheMisses => baseClient.CacheMisses;
+
+        public override long MetadataId => baseClient.MetadataId;
 
         public bool AddOrUpdate(in long key, V value)
         {

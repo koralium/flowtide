@@ -27,25 +27,25 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
         {
             // Check root expression
             var visitor = new JoinExpressionVisitor(joinRelation.Left.OutputLength);
-            visitor.Visit(joinRelation.Expression, state);
+            visitor.Visit(joinRelation.Expression!, state);
             if (!visitor.unknownCase)
             {
                 // Only fields from left is used
-                if (visitor.fieldInLeft && !visitor.fieldInRight && joinRelation.Type != JoinType.Left)
+                if (visitor.fieldInLeft && !visitor.fieldInRight && joinRelation.Type == JoinType.Inner)
                 {
                     joinRelation.Left = new FilterRelation()
                     {
-                        Condition = joinRelation.Expression,
+                        Condition = joinRelation.Expression!,
                         Input = joinRelation.Left
                     };
                     joinRelation.Expression = new BoolLiteral() { Value = true };
                 }
                 // Only field in right is used
-                else if (!visitor.fieldInLeft && visitor.fieldInRight)
+                else if (!visitor.fieldInLeft && visitor.fieldInRight && joinRelation.Type == JoinType.Inner)
                 {
                     joinRelation.Right = new FilterRelation()
                     {
-                        Condition = joinRelation.Expression,
+                        Condition = joinRelation.Expression!,
                         Input = joinRelation.Right
                     };
                     joinRelation.Expression = new BoolLiteral() { Value = true };
@@ -63,14 +63,14 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                     var expr = andFunctionScalar.Arguments[i];
                     var andVisitor = new JoinExpressionVisitor(joinRelation.Left.OutputLength);
                     andVisitor.Visit(expr, state);
-                    if (andVisitor.fieldInLeft && !andVisitor.fieldInRight && joinRelation.Type != JoinType.Left)
+                    if (andVisitor.fieldInLeft && !andVisitor.fieldInRight && joinRelation.Type == JoinType.Inner)
                     {
                         leftPushDown.Add(expr);
                         andFunctionScalar.Arguments.RemoveAt(i);
                         i--;
                     }
                     // Only field in right is used
-                    else if (!andVisitor.fieldInLeft && andVisitor.fieldInRight)
+                    else if (!andVisitor.fieldInLeft && andVisitor.fieldInRight && joinRelation.Type == JoinType.Inner)
                     {
                         rightPushDown.Add(expr);
                         andFunctionScalar.Arguments.RemoveAt(i);

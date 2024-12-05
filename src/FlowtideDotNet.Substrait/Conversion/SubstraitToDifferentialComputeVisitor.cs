@@ -79,12 +79,6 @@ namespace FlowtideDotNet.Substrait.Conversion
             return writeRelation;
         }
 
-        public override Relation VisitUnwrapRelation(UnwrapRelation unwrapRelation, object state)
-        {
-            unwrapRelation.Input = Visit(unwrapRelation.Input, state);
-            return unwrapRelation;
-        }
-
         public override Relation VisitSetRelation(SetRelation setRelation, object state)
         {
             for(int i = 0; i < setRelation.Inputs.Count; i++)

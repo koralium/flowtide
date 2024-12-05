@@ -82,6 +82,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
 
+        internal long* Pointer => _longData;
+
         public NativeLongList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = memory;
@@ -173,6 +175,28 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 span[index] = BinaryPrimitives.ReverseEndianness(value);
             }
             _length++;
+        }
+
+        public void InsertRangeFrom(int index, NativeLongList other, int start, int count)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            var otherSpan = other.AccessSpan;
+            span.Slice(index, _length - index).CopyTo(span.Slice(index + count, _length - index));
+            otherSpan.Slice(start, count).CopyTo(span.Slice(index));
+            _length += count;
+        }
+
+        public void InsertStaticRange(int index, long value, int count)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            span.Slice(index, _length - index).CopyTo(span.Slice(index + count, _length - index));
+            for (int i = 0; i < count; i++)
+            {
+                span[index + i] = value;
+            }
+            _length += count;
         }
 
         public void RemoveAt(int index)

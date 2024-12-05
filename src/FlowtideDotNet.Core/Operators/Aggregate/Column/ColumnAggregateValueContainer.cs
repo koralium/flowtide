@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Operators.Normalization;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
@@ -69,10 +70,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         {
             if (container is ColumnAggregateValueContainer columnKeyStorageContainer)
             {
-                for (int i = start; i < start + count; i++)
+                for (int i =0; i < columnCount; i++)
                 {
-                    Add(columnKeyStorageContainer.Get(i));
+                    _eventBatch.Columns[i].InsertRangeFrom(_eventBatch.Columns[i].Count, columnKeyStorageContainer._eventBatch.Columns[i], start, count);
                 }
+                _weights.AddRangeFrom(columnKeyStorageContainer._weights, start, count);
+                _previousValueSent.AddRangeFrom(columnKeyStorageContainer._previousValueSent, start, count);
             }
             else
             {
@@ -135,11 +138,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
+            for (int i = 0; i < columnCount; i++)
             {
-                RemoveAt(i);
+                _eventBatch.Columns[i].RemoveRange(start, count);
             }
+            _weights.RemoveRange(start, count);
+            _previousValueSent.RemoveRange(start, count);
         }
 
         public void Update(int index, ColumnAggregateStateReference value)

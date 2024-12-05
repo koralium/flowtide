@@ -29,6 +29,15 @@ namespace FlowtideDotNet.Core
         private readonly List<IConnectorSourceFactory> _connectorSourceFactories = new List<IConnectorSourceFactory>();
         private readonly List<IConnectorTableProviderFactory> _connectorTableProviderFactories = new List<IConnectorTableProviderFactory>();
         private readonly List<ITableProvider> _tableProviders = new List<ITableProvider>();
+        private SortedList<string, ICatalogConnectorManager> _catalogs = new SortedList<string, ICatalogConnectorManager>();
+
+        public void AddCatalog(string catalogName, Action<ICatalogConnectorManager> options)
+        {
+            var catalogManager = new CatalogConnectorManager(catalogName);
+            options(catalogManager);
+            _catalogs.Add(catalogName,catalogManager);
+            _tableProviders.Add(catalogManager);
+        }
 
         public void AddSink(IConnectorSinkFactory connectorSinkFactory)
         {
@@ -51,6 +60,10 @@ namespace FlowtideDotNet.Core
 
         public IConnectorSinkFactory GetSinkFactory(WriteRelation writeRelation)
         {
+            if (_catalogs.TryGetValue(writeRelation.NamedObject.Names[0], out var catalog))
+            {
+                return catalog.GetSinkFactory(writeRelation);
+            }
             var possibleConnectors = _connectorSinkFactories.Where(x => x.CanHandle(writeRelation));
             var count = possibleConnectors.Count();
             if (count > 1)
@@ -66,6 +79,10 @@ namespace FlowtideDotNet.Core
 
         public IConnectorSourceFactory GetSourceFactory(ReadRelation readRelation)
         {
+            if (_catalogs.TryGetValue(readRelation.NamedTable.Names[0], out var catalog))
+            {
+                return catalog.GetSourceFactory(readRelation);
+            }
             var possibleConnectors = _connectorSourceFactories.Where(x => x.CanHandle(readRelation));
             var count = possibleConnectors.Count();
             if (count > 1)

@@ -18,6 +18,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using FlowtideDotNet.Substrait.Expressions;
+using System.Text.Json;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -65,5 +67,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         int GetByteSize();
 
         int GetByteSize(int start, int end);
+
+        void InsertRangeFrom(int index, IColumn otherColumn, int start, int count);
+
+        void WriteToJson(ref readonly Utf8JsonWriter writer, in int index);
+
+        Column Copy(IMemoryAllocator memoryAllocator);
     }
 }

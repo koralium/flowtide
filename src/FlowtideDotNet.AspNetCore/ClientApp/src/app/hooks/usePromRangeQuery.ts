@@ -38,7 +38,9 @@ export const usePromInstantQuery = (query: string, time?: PrometheusQueryDate) :
         .catch((err) => {
             setError(err)
         })
-    }, [query, time])
+    }, 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [query, time])
 
     if (error) {
         return { result: result as any, loading: false, error };
@@ -68,7 +70,9 @@ export const usePromRangeQuery = (query: string, start: PrometheusQueryDate, end
         .catch((err) => {
             setError(err)
         })
-    }, [query, start, end, step])
+    }, 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [query, start, end, step])
 
     if (error) {
         return { result: result as any, loading: false, error };

@@ -16,9 +16,9 @@ namespace FlowtideDotNet.Substrait.Sql
 {
     public static class SqlPlanBuilderExtensions
     {
-        public static SqlPlanBuilder AddSqlServerProvider(this SqlPlanBuilder builder, Func<string> connectionStringFunc)
+        public static SqlPlanBuilder AddSqlServerProvider(this SqlPlanBuilder builder, Func<string> connectionStringFunc, bool useDatabaseDefinedInConnectionStringOnly = false)
         {
-            builder.AddTableProvider(new SqlServerTableProvider(connectionStringFunc));
+            builder.AddTableProvider(new SqlServerTableProvider(connectionStringFunc, useDatabaseDefinedInConnectionStringOnly));
             return builder;
         }
     }

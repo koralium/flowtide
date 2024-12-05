@@ -17,6 +17,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
@@ -157,6 +158,42 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 {
                     Assert.True(column.GetValueAt(i, default).IsNull);
                 }
+            }
+        }
+
+        [Fact]
+        public void TestJsonEncoding()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(new DoubleValue(1.23));
+
+            using MemoryStream stream = new MemoryStream();
+            Utf8JsonWriter writer = new Utf8JsonWriter(stream);
+
+            column.WriteToJson(in writer, 0);
+            writer.Flush();
+
+            string json = Encoding.UTF8.GetString(stream.ToArray());
+
+            Assert.Equal("1.23", json);
+        }
+
+        [Fact]
+        public void TestCopy()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                column.Add(new DoubleValue(i));
+            }
+
+            Column copy = column.Copy(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                Assert.Equal(i, copy.GetValueAt(i, default).AsDouble);
             }
         }
     }

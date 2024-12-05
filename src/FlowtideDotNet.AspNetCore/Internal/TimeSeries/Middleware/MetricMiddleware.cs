@@ -178,7 +178,7 @@ namespace FlowtideDotNet.AspNetCore.Internal.TimeSeries.Middleware
 
             var promExecutor = new PromExecutor(_series);
 
-            await promExecutor.InstantQuery(httpContext.Response.Body, queryString, timestamp);
+            await promExecutor.InstantQuery(httpContext.Response.Body, queryString!, timestamp);
         }
     }
 }

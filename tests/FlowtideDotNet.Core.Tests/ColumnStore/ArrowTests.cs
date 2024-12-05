@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
                 column
-            ]));
+            ]), column.Count);
 
             var memoryStream = new System.IO.MemoryStream();
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
                 column
-            ]));
+            ]), column.Count);
 
             var memoryStream = new System.IO.MemoryStream();
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
@@ -107,7 +107,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
                 column
-            ]));
+            ]), column.Count);
 
             var memoryStream = new MemoryStream();
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
@@ -175,7 +175,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
                 column
-            ]));
+            ]), column.Count);
 
             MemoryStream memoryStream = new MemoryStream();
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
@@ -284,7 +284,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
                 column
-            ]));
+            ]), column.Count);
 
             MemoryStream memoryStream = new MemoryStream();
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
@@ -357,11 +357,12 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new Int64Value(1));
             column.Add(new StringValue("2"));
             column.Add(new Int64Value(2));
+            column.Add(new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("hello"), new StringValue("world"))));
 
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
                 column
-            ]));
+            ]), column.Count);
 
             MemoryStream memoryStream = new MemoryStream();
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
@@ -450,7 +451,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
                 column
-            ]));
+            ]), column.Count);
 
             MemoryStream memoryStream = new MemoryStream();
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
@@ -486,7 +487,47 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.True(arr.GetValue(0));
             Assert.True(arr.IsNull(1));
             Assert.False(arr.GetValue(2));
+        }
 
+        [Fact]
+        public void NullColumnToArrow()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+
+            var result = column.ToArrowArray();
+            var arrowArray = (Apache.Arrow.NullArray)result.Item1;
+            Assert.Equal(3, arrowArray.NullCount);
+            Assert.Equal(3, arrowArray.Length);
+        }
+
+        [Fact]
+        public void NullSerializeDeserialize()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+
+            var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
+            [
+                column
+            ]), column.Count);
+
+            MemoryStream memoryStream = new MemoryStream();
+            var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            writer.WriteRecordBatch(recordBatch);
+            writer.Dispose();
+            memoryStream.Position = 0;
+            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var deserializedRecordBatch = reader.ReadNextRecordBatch();
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
+
+            Assert.True(deserializedBatch.Columns[0].GetValueAt(0, default).Type == ArrowTypeId.Null);
+            Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);
+            Assert.True(deserializedBatch.Columns[0].GetValueAt(2, default).Type == ArrowTypeId.Null);
         }
 
         [Fact]
@@ -500,7 +541,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
                 column
-            ]));
+            ]), column.Count);
 
             MemoryStream memoryStream = new MemoryStream();
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
@@ -544,7 +585,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
                 column
-            ]));
+            ]), column.Count);
 
             MemoryStream memoryStream = new MemoryStream();
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
@@ -571,7 +612,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
                 column
-            ]));
+            ]), column.Count);
 
             MemoryStream memoryStream = new MemoryStream();
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
@@ -619,7 +660,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
                 column
-            ]));
+            ]), column.Count);
 
             MemoryStream memoryStream = new MemoryStream();
 
@@ -652,7 +693,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
                 column
-            ]));
+            ]), column.Count);
 
             MemoryStream memoryStream = new MemoryStream();
 

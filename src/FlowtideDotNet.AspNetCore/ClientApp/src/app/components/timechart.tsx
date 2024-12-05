@@ -42,7 +42,6 @@ export const TimeChart = (props: TimeChartProps) => {
     const interval = (timespan.end - timespan.start) / 10;
 
     
-
     useEffect(() => {
         if (chartRef.current === null) {
             return;
@@ -137,7 +136,9 @@ export const TimeChart = (props: TimeChartProps) => {
                 Chart.getChart(chartId.current)?.destroy()
             }
         };
-      }, []);
+      }, 
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      []);
 
     useEffect(() => {
         
@@ -201,7 +202,9 @@ export const TimeChart = (props: TimeChartProps) => {
             chart.data.labels = labels
             chart.update();
         }
-    }, [props.datasets])
+    }, 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [props.datasets])
 
     return (
         <div className="chart-container" style={

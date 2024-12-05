@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             return Task.CompletedTask;
         }
 
-        public Task Delete(long key)
+        public virtual Task Delete(long key)
         {
             fileCache.Free(key);
             return Task.CompletedTask;
@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             return ValueTask.FromResult(fileCache.Read(key));
         }
 
-        public Task Write(long key, byte[] value)
+        public virtual Task Write(long key, byte[] value)
         {
             fileCache.WriteAsync(key, value);
             fileCache.Flush();

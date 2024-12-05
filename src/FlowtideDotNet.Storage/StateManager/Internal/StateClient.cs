@@ -15,5 +15,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
     {
         public abstract void Dispose();
         public abstract ValueTask Reset(bool clearMetadata);
+        public abstract long MetadataId { get; }
     }
 }

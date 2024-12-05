@@ -26,6 +26,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -132,9 +133,9 @@ namespace FlowtideDotNet.Core.ColumnStore
             var val = dataValue.AsLong;
             if (desc)
             {
-                return BoundarySearch.SearchBoundries(_data, val, start, end, Int64ComparerDesc.Instance);
+                return BoundarySearch.SearchBoundriesInt64Desc(_data, start, end, val);
             }
-            return BoundarySearch.SearchBoundries(_data, val, start, end, Int64Comparer.Instance);
+            return BoundarySearch.SearchBoundriesInt64Asc(_data, start, end, val);
         }
 
         public int Update(in int index, in IDataValue value)
@@ -261,6 +262,42 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int GetByteSize()
         {
             return Count * sizeof(long);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        {
+            Debug.Assert(_data != null);
+            if (other is Int64Column int64Column)
+            {
+                Debug.Assert(int64Column._data != null);
+                _data.InsertRangeFrom(index, int64Column._data, start, count);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            Debug.Assert(_data != null);
+            _data.InsertStaticRange(index, 0, count);
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            Debug.Assert(_data != null);
+            writer.WriteNumberValue(_data.Get(index));
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            Debug.Assert(_data != null);
+            var mem = _data.Memory;
+            var newMem = memoryAllocator.Allocate(mem.Length, 64);
+            mem.Span.CopyTo(newMem.Memory.Span);
+
+            return new Int64Column(newMem, Count, memoryAllocator);
         }
     }
 }
