@@ -1,4 +1,5 @@
 using FlowtideDotNet.Storage.Persistence;
+using FlowtideDotNet.Storage.SqlServer.Exceptions;
 using System.Text;
 
 namespace FlowtideDotNet.Storage.SqlServer.Tests
@@ -11,31 +12,6 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
         public SqlStorageTests(SqlServerFixture fixture)
         {
             _fixture = fixture;
-        }
-
-        [Fact]
-        public async Task DeletedSessionPageIsAvailableUntilCheckpoint()
-        {
-            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 100,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            });
-
-            await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(DeletedSessionPageIsAvailableUntilCheckpoint)}"));
-            var pageId = 1;
-
-            var session = storage.CreateSession();
-            await session.Write(pageId, Encoding.UTF8.GetBytes(pageId.ToString()));
-            await session.Commit();
-            await session.Delete(pageId);
-            var storedPage = await session.Read(pageId);
-            await storage.CheckpointAsync([], false);
-            var removedPage = await session.Read(pageId);
-
-            Assert.NotNull(storedPage);
-            Assert.Empty(removedPage);
         }
 
         [Fact]
@@ -53,15 +29,31 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
 
             var session = storage.CreateSession();
             await session.Write(pageId, Encoding.UTF8.GetBytes(pageId.ToString()));
-            var unpersistedPage = await session.Read(pageId);
             await session.Commit();
             var persitedPage = await session.Read(pageId);
 
-            Assert.Empty(unpersistedPage);
             Assert.NotEmpty(persitedPage);
 
             await session.Delete(pageId);
             await storage.CheckpointAsync([], false);
+        }
+
+        [Fact]
+        public async Task ReadingNonExistingPageThrows()
+        {
+            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
+            {
+                ConnectionString = _fixture.ConnectionString,
+                WritePagesBulkLimit = 100,
+                BulkCopySettings = new SqlServerBulkCopySettings(),
+            });
+
+            await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(SessionPagesArePersistedOnCommit)}"));
+            var session = storage.CreateSession();
+            await Assert.ThrowsAsync<PageNotFoundException>(async () =>
+            {
+                await session.Read(1);
+            });
         }
 
         [Fact]
@@ -353,6 +345,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             // even though a crash will occur, the pages should be persisted and then removed due to incomplete version
             await session.Write(pageId, Encoding.UTF8.GetBytes("a"));
             await session.Write(pageId + 1, Encoding.UTF8.GetBytes("b"));
+            await session.Commit();
 
             // a crash occured, init is called again
             await storage.InitializeAsync(initMetadata);
@@ -376,7 +369,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
         }
 
         [Fact]
-        public async Task DeletedPageIsNonReadableUntilRestore()
+        public async Task ReadingDeletedPageThrows()
         {
             var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
             {
@@ -385,7 +378,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
                 BulkCopySettings = new SqlServerBulkCopySettings(),
             });
 
-            var name = $"test_{nameof(DeletedPageIsNonReadableUntilRestore)}";
+            var name = $"test_{nameof(ReadingDeletedPageThrows)}";
             await storage.InitializeAsync(new StorageInitializationMetadata(name));
 
             var session = storage.CreateSession();
@@ -395,13 +388,35 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             await session.Commit();
             await session.Delete(pageId);
 
-            var deletedPageData = await session.Read(pageId);
+            await Assert.ThrowsAsync<DeletedPageAccessException>(async () =>
+            {
+                await session.Read(pageId);
+            });
+        }
 
+        [Fact]
+        public async Task DeletedAndRestoredPageIsReadable()
+        {
+            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
+            {
+                ConnectionString = _fixture.ConnectionString,
+                WritePagesBulkLimit = 1,
+                BulkCopySettings = new SqlServerBulkCopySettings(),
+            });
+
+            var name = $"test_{nameof(DeletedAndRestoredPageIsReadable)}";
+            await storage.InitializeAsync(new StorageInitializationMetadata(name));
+
+            var session = storage.CreateSession();
+
+            var pageId = 2;
+            await session.Write(pageId, Encoding.UTF8.GetBytes("a"));
+            await session.Commit();
+            await session.Delete(pageId);
             await storage.RecoverAsync(1);
 
             var restoredPageData = await session.Read(pageId);
 
-            Assert.Empty(deletedPageData);
             Assert.NotEmpty(restoredPageData);
         }
 

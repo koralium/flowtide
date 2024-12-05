@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Azure;
+using FlowtideDotNet.Storage.SqlServer.Exceptions;
 using Microsoft.Data.SqlClient;
 using System.Buffers.Binary;
 using System.Data;
@@ -90,7 +91,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             {
                 if (page.ShouldDelete)
                 {
-                    return []; //todo: throw?
+                    throw new DeletedPageAccessException(key, Stream.Metadata.Name);
                 }
 
                 query = "SELECT Payload FROM StreamPages WHERE PageId = @key AND StreamKey = @streamKey AND Version = @version";
@@ -110,7 +111,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
                 return await reader.GetFieldValueAsync<byte[]>(0);
             }
 
-            return []; //todo: throw?
+            throw new PageNotFoundException(key, Stream.Metadata.Name);
         }
 
         public async Task SaveStreamPagesAsync(SqlTransaction? transaction = null)
