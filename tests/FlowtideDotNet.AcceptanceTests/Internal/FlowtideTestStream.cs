@@ -320,6 +320,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
             await scheduler!.Tick();
+            CheckForErrors();
         }
 
         private void CheckForErrors()

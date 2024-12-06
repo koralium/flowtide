@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         private readonly WriteRelation writeRelation;
         private readonly StreamEventToJson streamEventToJson;
 
-        public GenericWriteOperator(GenericDataSink<T> genericDataSink, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+        public GenericWriteOperator(GenericDataSink<T> genericDataSink, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(executionMode, executionDataflowBlockOptions)
         {
             this.genericDataSink = genericDataSink;
@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         protected override async Task<MetadataResult> SetupAndLoadMetadataAsync()
         {
             var primaryKeyColumnNames = await genericDataSink.GetPrimaryKeyNames();
-            
+
             List<int> primaryKeyIndices = new List<int>();
             foreach (var primaryKeyColumnName in primaryKeyColumnNames)
             {
@@ -65,7 +65,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 
         private async IAsyncEnumerable<FlowtideGenericWriteObject<T>> ChangesToGeneric(IAsyncEnumerable<SimpleChangeEvent> rows)
         {
-            await foreach(var row in rows)
+            await foreach (var row in rows)
             {
                 using var memoryStream = new MemoryStream();
                 streamEventToJson.Write(memoryStream, row.Row);
