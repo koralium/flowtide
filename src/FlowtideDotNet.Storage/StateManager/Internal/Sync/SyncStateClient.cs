@@ -134,7 +134,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             lock (m_lock)
             {
                 _addOrUpdateState.value = value;
-                 m_modified.AddOrUpdate(key, addorUpdate_newValue_container, addorUpdate_existingValue_container);
+                m_modified.AddOrUpdate(key, addorUpdate_newValue_container, addorUpdate_existingValue_container);
                 return _addOrUpdateState.isFull;
             }
         }
@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     await session.Write(kv.Key, bytes);
 
                     if (!useReadCache)
-                    {   
+                    {
                         m_fileCache.Free(kv.Key);
                     }
                     else
@@ -218,8 +218,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_fileCache.FreeAll();
                 m_fileCacheVersion.Clear();
             }
-            
-            if (!metadata.CommitedOnce || (metadata.Metadata != null && metadata.Metadata.Updated)) 
+
+            if (!metadata.CommitedOnce || (metadata.Metadata != null && metadata.Metadata.Updated))
             {
                 var previousCommitedOnce = metadata.CommitedOnce;
                 try
@@ -231,8 +231,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         metadata.Metadata.Updated = false;
                     }
-
-                    await session.Commit();
                 }
                 catch (Exception)
                 {
@@ -240,6 +238,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     throw;
                 }
             }
+
+            await session.Commit();
         }
 
         public void Delete(in long key)
@@ -285,7 +285,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
                     }
-                    
+
                     return ValueTask.FromResult<V?>(value);
                 }
                 // Read from persistent store
@@ -302,11 +302,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 bytes = await session.Read(key);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 throw new FlowtidePersistentStorageException($"Error reading persistent data in client '{name}' with key '{key}'", e);
             }
-            
+
             var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
             stateManager.AddOrUpdate(key, value, this);
             if (!value.TryRent())
@@ -344,7 +344,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             lock (m_lock)
             {
-                foreach(var kv in m_modified)
+                foreach (var kv in m_modified)
                 {
                     stateManager.DeleteFromCache(kv.Key);
                     m_fileCache.Free(kv.Key);
@@ -393,7 +393,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         val = -2;
                     }
                 }
-                
+
                 if (m_fileCacheVersion.TryGetValue(value.Item1.ValueRef.key, out var storedVersion) && storedVersion == val)
                 {
                     continue;
@@ -413,7 +413,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     m_temporaryWriteMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
                 }
-                
+
                 m_fileCacheVersion[value.Item1.ValueRef.key] = val;
             }
             m_fileCache.Flush();
