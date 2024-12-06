@@ -24,6 +24,9 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task ResetStream()
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
             ArgumentNullException.ThrowIfNull(Stream.Metadata.StreamKey);
             using var connection = new SqlConnection(Settings.ConnectionString);
             using var cmd = new SqlCommand(
@@ -56,6 +59,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
                         SELECT @StreamKey AS StreamKey, @Version AS Version;
                     END", connection);
+
             command.Parameters.Add(new SqlParameter("@UniqueStreamName", name));
 
             await connection.OpenAsync();
@@ -72,6 +76,9 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task UpdateStreamVersion()
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
             using var connection = new SqlConnection(Settings.ConnectionString);
             using var cmd = new SqlCommand("UPDATE Streams SET LastSuccessfulVersion = @Version WHERE StreamKey = @StreamKey", connection);
             cmd.Parameters.AddWithValue("@Version", Stream.Metadata.CurrentVersion);
@@ -87,6 +94,10 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task UpdateStreamVersion(SqlTransaction transaction)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
+
             using var cmd = new SqlCommand("UPDATE Streams SET LastSuccessfulVersion = @Version WHERE StreamKey = @StreamKey");
             cmd.Parameters.AddWithValue("@Version", Stream.Metadata.CurrentVersion);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);

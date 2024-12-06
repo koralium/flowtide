@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using Microsoft.Data.SqlClient;
-using System.Linq;
 
 namespace FlowtideDotNet.Storage.SqlServer.Data
 {
@@ -19,6 +18,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
     {
         private readonly SqlServerPersistentStorageSettings _settings;
         private readonly Queue<Task> _backgroundTasks = [];
+
         public SessionRepository(StreamInfo stream, SqlServerPersistentStorageSettings settings)
             : base(stream, settings)
         {
@@ -30,6 +30,9 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             base.AddStreamPage(key, value);
             if (UnpersistedPages.Count > _settings.WritePagesBulkLimit)
             {
+#if DEBUG_WRITE
+                DebugWriter!.WriteMessage($"AddStreamPage creating bg task");
+#endif
                 var pages = UnpersistedPages.ToArray();
                 UnpersistedPages.Clear();
                 _backgroundTasks.Enqueue(Task.Run(() => SaveStreamPagesAsync(pages)));
@@ -38,6 +41,9 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         private async Task SaveStreamPagesAsync(StreamPage[] pages)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
             var reader = new StreamPageDataReader(pages);
             using var connection = new SqlConnection(Settings.ConnectionString);
             await connection.OpenAsync();
@@ -46,12 +52,27 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task CommitAsync()
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
             await WaitForBackgroundTasks();
             await SaveStreamPagesAsync();
         }
 
+        public async Task CommitAsync(SqlTransaction transaction)
+        {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
+            await WaitForBackgroundTasks();
+            await SaveStreamPagesAsync(transaction);
+        }
+
         private async Task WaitForBackgroundTasks(bool throwOnError = true)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
             var exceptions = new List<Exception>();
             while (_backgroundTasks.TryDequeue(out var task))
             {
@@ -80,12 +101,18 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public Task DeleteAsync(long key)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
             ManagedPages.MarkPageDeleted(key);
             return Task.CompletedTask;
         }
 
         public void RestoreDeletedPages()
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
             foreach (var page in GetDeletedPages())
             {
                 ManagedPages.AddOrReplacePage(page.CopyAsNotDeleted());
@@ -94,11 +121,18 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public IEnumerable<ManagedStreamPage> GetDeletedPages()
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
             return ManagedPages.Where(s => s.Value.ShouldDelete).Select(s => s.Value);
         }
 
         public void RemoveDeletedPagesFromMemory(IEnumerable<ManagedStreamPage> pages)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+            DebugWriter!.DumpObj(pages);
+#endif
             foreach (var page in pages.Where(page => ManagedPages.TryGetValue(page.PageId, out var set)))
             {
                 ManagedPages.Remove(page.PageId);
@@ -107,6 +141,9 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task ClearLocalAndWaitForBackgroundTasks()
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
             ClearLocal();
             await WaitForBackgroundTasks(throwOnError: false);
         }

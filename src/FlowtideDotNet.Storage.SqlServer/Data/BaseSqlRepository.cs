@@ -15,6 +15,8 @@ using FlowtideDotNet.Storage.SqlServer.Exceptions;
 using Microsoft.Data.SqlClient;
 using System.Buffers.Binary;
 using System.Data;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace FlowtideDotNet.Storage.SqlServer.Data
@@ -28,6 +30,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
         public StreamInfo Stream { get; }
         public SqlServerPersistentStorageSettings Settings { get; }
 
+
         protected BaseSqlRepository(StreamInfo stream, SqlServerPersistentStorageSettings settings)
         {
             Stream = stream;
@@ -35,8 +38,18 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             ManagedPages = [];
         }
 
+        public DebugWriter? DebugWriter { get; private set; }
+        public void AddDebugWriter(DebugWriter writer)
+        {
+            DebugWriter = writer;
+        }
+
         public virtual void AddStreamPage(long key, byte[] value)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall([$"{key}", $"v{Stream.Metadata.CurrentVersion}"]);
+#endif
+
             var page = new StreamPage(ToPageKey(key, Stream.Metadata.CurrentVersion), Stream.Metadata.StreamKey, key, value, Stream.Metadata.CurrentVersion);
             UnpersistedPages.Add(page);
             ManagedPages.AddOrReplacePage(new ManagedStreamPage(page.PageId, page.Version, page.PageKey));
@@ -44,6 +57,10 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public byte[]? Read(long key)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall([key]);
+#endif
+
             using var connection = new SqlConnection(Settings.ConnectionString);
             using var cmd = new SqlCommand();
             cmd.Connection = connection;
@@ -53,6 +70,10 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             string query;
             if (ManagedPages.TryGetValue(key, out var page))
             {
+#if DEBUG_WRITE
+                DebugWriter.WriteMessage($"ManagedPages({key}, {page.Version})");
+#endif
+
                 if (page.ShouldDelete)
                 {
                     return null;
@@ -80,6 +101,10 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task<byte[]> ReadAsync(long key)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall([key]);
+#endif
+
             using var connection = new SqlConnection(Settings.ConnectionString);
             using var cmd = new SqlCommand();
             cmd.Connection = connection;
@@ -89,6 +114,9 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             string query;
             if (ManagedPages.TryGetValue(key, out var page))
             {
+#if DEBUG_WRITE
+                DebugWriter.WriteMessage($"Found ManagedPages({key}, {page.Version})");
+#endif
                 if (page.ShouldDelete)
                 {
                     throw new DeletedPageAccessException(key, Stream.Metadata.Name);
@@ -116,6 +144,9 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task SaveStreamPagesAsync(SqlTransaction? transaction = null)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
             if (UnpersistedPages.Count == 0)
             {
                 return;
@@ -139,6 +170,10 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task SaveStreamPagesAsync(StreamPageDataReader reader, SqlConnection connection)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
+
             if (connection.State != ConnectionState.Open)
             {
                 await connection.OpenAsync();
@@ -169,6 +204,10 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task SaveStreamPagesAsync(StreamPageDataReader reader, SqlTransaction transaction)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
+
             using var bulkCopy = new SqlBulkCopy(transaction.Connection, SqlBulkCopyOptions.Default, transaction)
             {
                 DestinationTableName = Settings.BulkCopySettings.DestinationTableName,
@@ -193,6 +232,10 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task DeleteUnsuccessfulVersionsAsync()
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
+
             using var connection = new SqlConnection(Settings.ConnectionString);
             using var cmd = new SqlCommand("DELETE FROM StreamPages WHERE Version > @Version AND StreamKey = @StreamKey", connection);
             cmd.Parameters.AddWithValue("@Version", Stream.Metadata.CurrentVersion);
@@ -203,6 +246,10 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task DeleteUnsuccessfulVersionsAsync(SqlTransaction transaction)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
+
             using var cmd = new SqlCommand("DELETE FROM StreamPages WHERE Version > @Version AND StreamKey = @StreamKey");
             cmd.Parameters.AddWithValue("@Version", Stream.Metadata.LastSucessfulVersion);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
@@ -213,6 +260,10 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task DeleteOldVersionsInDbAsync(SqlTransaction transaction)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
+
             using var cmd = new SqlCommand(@"DELETE FROM StreamPages
                 WHERE StreamKey = @StreamKey AND Id IN (
                 SELECT Id
@@ -229,6 +280,10 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public async Task DeleteOldVersionsInDbFromPagesAsync(IEnumerable<ManagedStreamPage> pages, SqlTransaction transaction)
         {
+#if DEBUG_WRITE
+            DebugWriter!.WriteCall();
+#endif
+
             if (!pages.Any())
             {
                 return;
