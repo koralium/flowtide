@@ -41,7 +41,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return base.CheckpointAsync(metadata, includeIndex);
         }
 
-        public override Task InitializeAsync()
+        public override Task InitializeAsync(StorageInitializationMetadata metadata)
         {
             lock (_writtenKeys)
             {
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     _writtenValues[kvp.Key] = kvp.Value;
                 }
             }
-            return base.InitializeAsync();
+            return base.InitializeAsync(metadata);
         }
 
         public void AddWrittenKey(long key, byte[] data)

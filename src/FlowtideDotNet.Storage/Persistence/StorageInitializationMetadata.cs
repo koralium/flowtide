@@ -10,16 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
 namespace FlowtideDotNet.Storage.Persistence
 {
-    public interface IPersistentStorageSession : IDisposable
+    public class StorageInitializationMetadata
     {
-        ValueTask<byte[]> Read(long key);
+        public string StreamName { get; }
 
-        Task Write(long key, byte[] value);
-
-        Task Delete(long key);
-
-        Task Commit();
+        public StorageInitializationMetadata(string streamName)
+        {
+            StreamName = streamName;
+        }
     }
 }

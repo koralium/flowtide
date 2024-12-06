@@ -10,16 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Storage.Persistence
+namespace FlowtideDotNet.Storage.SqlServer.Exceptions
 {
-    public interface IPersistentStorageSession : IDisposable
+    public class DeletedPageAccessException : Exception
     {
-        ValueTask<byte[]> Read(long key);
+        public DeletedPageAccessException(long pageId, string stream) : base($"Page with id \"{pageId}\" has been deleted on stream \"{stream}\"")
+        {
 
-        Task Write(long key, byte[] value);
-
-        Task Delete(long key);
-
-        Task Commit();
+        }
     }
 }
