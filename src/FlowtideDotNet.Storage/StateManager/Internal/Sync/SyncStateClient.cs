@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
     internal class SyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler
         where V : ICacheObject
-        where TMetadata : IStorageMetadata
+        where TMetadata : class, IStorageMetadata
     {
         private bool disposedValue;
         private readonly StateManagerSync stateManager;
@@ -219,6 +219,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_fileCacheVersion.Clear();
             }
 
+            await WriteMetadata();
+            await session.Commit();
+        }
+
+        private async Task WriteMetadata()
+        {
             if (!metadata.CommitedOnce || (metadata.Metadata != null && metadata.Metadata.Updated))
             {
                 var previousCommitedOnce = metadata.CommitedOnce;
@@ -238,8 +244,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     throw;
                 }
             }
-
-            await session.Commit();
         }
 
         public void Delete(in long key)
