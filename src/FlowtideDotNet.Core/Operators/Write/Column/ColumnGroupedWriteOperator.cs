@@ -82,7 +82,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                     Comparer = new WriteTreeInsertComparer(primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList(), m_writeRelation.OutputLength),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
                     KeySerializer = new ColumnStoreSerializer(m_writeRelation.OutputLength, MemoryAllocator),
-                    MemoryAllocator = MemoryAllocator
+                    MemoryAllocator = MemoryAllocator,
+                    UseByteBasedPageSizes = true
                 });
 
             m_modified = await stateManagerClient.GetOrCreateTree("temporary",
@@ -91,7 +92,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                     Comparer = new ModifiedTreeComparer(primaryKeyColumns.ToList()),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
                     KeySerializer = new ModifiedKeyStorageSerializer(primaryKeyColumns.ToList(), MemoryAllocator),
-                    MemoryAllocator = MemoryAllocator
+                    MemoryAllocator = MemoryAllocator,
+                    UseByteBasedPageSizes = true
                 });
             await m_modified.Clear();
 
@@ -107,7 +109,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                     Comparer = new ModifiedTreeComparer(primaryKeyColumns.ToList()),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
                     KeySerializer = new ModifiedKeyStorageSerializer(primaryKeyColumns.ToList(), MemoryAllocator),
-                    MemoryAllocator = MemoryAllocator
+                    MemoryAllocator = MemoryAllocator,
+                    UseByteBasedPageSizes = true
                 });
                 await UpsertExistingData();
             }
