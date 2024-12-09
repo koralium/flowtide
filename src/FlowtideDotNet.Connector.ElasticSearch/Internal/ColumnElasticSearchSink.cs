@@ -12,6 +12,7 @@
 
 using Elasticsearch.Net;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Connector.ElasticSearch.Exceptions;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Operators.Write.Column;
@@ -44,6 +45,8 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         private readonly IReadOnlyList<int> m_primaryKeys;
         private readonly string m_displayName;
         private readonly string m_indexName;
+        private ICounter<long>? m_eventsCounter;
+
 
         public ColumnElasticSearchSink(FlowtideElasticsearchOptions elasticsearchOptions, ExecutionMode executionMode, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
             : base(executionMode, writeRelation, executionDataflowBlockOptions)
@@ -142,6 +145,10 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
         protected override Task InitializeOrRestore(long restoreTime, ElasticState? state, IStateManagerClient stateManagerClient)
         {
+            if (m_eventsCounter == null)
+            {
+                m_eventsCounter = Metrics.CreateCounter<long>("events");
+            }
             m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
             return base.InitializeOrRestore(restoreTime, state, stateManagerClient);
         }
@@ -150,6 +157,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         {
             Debug.Assert(m_client != null);
             Debug.Assert(m_serializer != null);
+            Debug.Assert(m_eventsCounter != null);
 
             int batchCount = 0;
             using MemoryStream memoryStream = new MemoryStream();
@@ -175,7 +183,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                 batchCount++;
                 if (batchCount >= 1000)
                 {
-
+                    m_eventsCounter.Add(batchCount);
                     BulkResponse? response;
                     try
                     {
@@ -217,7 +225,8 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
             if (batchCount > 0)
             {
-               var response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
+                m_eventsCounter.Add(batchCount);
+                var response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
 
                 if (response.Errors)
                 {
