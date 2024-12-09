@@ -12,33 +12,47 @@
 
 using Elasticsearch.Net;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Connector.ElasticSearch.Exceptions;
 using FlowtideDotNet.Core.Operators.Write;
+using FlowtideDotNet.Core.Operators.Write.Column;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using Microsoft.Extensions.Logging;
 using Nest;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 {
-    internal class ElasticSearchSink : SimpleGroupedWriteOperator
+    internal class ElasticState : ColumnWriteState
+    {
+
+    }
+
+    internal class ColumnElasticSearchSink : ColumnGroupedWriteOperator<ElasticState>
     {
         private static byte NewlineChar = Encoding.UTF8.GetBytes("\n")[0];
-        private readonly WriteRelation writeRelation;
+        private readonly WriteRelation m_writeRelation;
         private readonly FlowtideElasticsearchOptions m_elasticsearchOptions;
         private ElasticClient? m_client;
-        private readonly StreamEventToJsonElastic m_serializer;
+        private readonly ColumnToJsonElastic m_serializer;
         private readonly IReadOnlyList<int> m_primaryKeys;
         private readonly string m_displayName;
         private readonly string m_indexName;
+        private ICounter<long>? m_eventsCounter;
 
-        public ElasticSearchSink(WriteRelation writeRelation, FlowtideElasticsearchOptions elasticsearchOptions, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
-            : base(executionMode, executionDataflowBlockOptions)
+
+        public ColumnElasticSearchSink(FlowtideElasticsearchOptions elasticsearchOptions, ExecutionMode executionMode, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+            : base(executionMode, writeRelation, executionDataflowBlockOptions)
         {
-            this.writeRelation = writeRelation;
+            m_elasticsearchOptions = elasticsearchOptions;
+
             if (elasticsearchOptions.GetIndexNameFunc == null)
             {
                 m_indexName = writeRelation.NamedObject.DotSeperated;
@@ -47,12 +61,12 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             {
                 m_indexName = elasticsearchOptions.GetIndexNameFunc(writeRelation);
             }
-            
-            this.m_elasticsearchOptions = elasticsearchOptions;
+
+            m_writeRelation = writeRelation;
             m_displayName = $"ElasticSearchSink-{m_indexName}";
             var idFieldIndex = FindUnderscoreIdField(writeRelation);
             m_primaryKeys = new List<int>() { idFieldIndex };
-            m_serializer = new StreamEventToJsonElastic(idFieldIndex, m_indexName, writeRelation.TableSchema.Names);
+            m_serializer = new ColumnToJsonElastic(writeRelation.TableSchema.Names, idFieldIndex, m_indexName);
         }
 
         private static int FindUnderscoreIdField(WriteRelation writeRelation)
@@ -68,6 +82,25 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         }
 
         public override string DisplayName => m_displayName;
+
+        protected override ElasticState Checkpoint(long checkpointTime)
+        {
+            return new ElasticState();
+        }
+
+        protected override ValueTask<IReadOnlyList<int>> GetPrimaryKeyColumns()
+        {
+            return ValueTask.FromResult(m_primaryKeys);
+        }
+
+        protected override Task OnInitialDataSent()
+        {
+            if (m_elasticsearchOptions.OnInitialDataSent != null)
+            {
+                return m_elasticsearchOptions.OnInitialDataSent(m_client!, m_writeRelation, m_indexName);
+            }
+            return base.OnInitialDataSent();
+        }
 
         internal void CreateIndexAndMappings()
         {
@@ -110,25 +143,21 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             }
         }
 
-        protected override Task<MetadataResult> SetupAndLoadMetadataAsync()
+        protected override Task InitializeOrRestore(long restoreTime, ElasticState? state, IStateManagerClient stateManagerClient)
         {
-            m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
-            return Task.FromResult(new MetadataResult(m_primaryKeys));
-        }
-
-        protected override Task OnInitialDataSent()
-        {
-            if (m_elasticsearchOptions.OnInitialDataSent != null)
+            if (m_eventsCounter == null)
             {
-                return m_elasticsearchOptions.OnInitialDataSent(m_client!, writeRelation, m_indexName);
+                m_eventsCounter = Metrics.CreateCounter<long>("events");
             }
-            return base.OnInitialDataSent();
+            m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
+            return base.InitializeOrRestore(restoreTime, state, stateManagerClient);
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
+        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken)
         {
             Debug.Assert(m_client != null);
             Debug.Assert(m_serializer != null);
+            Debug.Assert(m_eventsCounter != null);
 
             int batchCount = 0;
             using MemoryStream memoryStream = new MemoryStream();
@@ -138,28 +167,41 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!row.IsDeleted)
                 {
-                    m_serializer.WriteIndexUpsertMetadata(jsonWriter, row.Row);
+                    m_serializer.WriteIndexUpsertMetadata(in jsonWriter, row.EventBatchData, row.Index);
                     jsonWriter.Reset();
                     memoryStream.WriteByte(NewlineChar);
-                    m_serializer.WriteObject(jsonWriter, row.Row);
+                    m_serializer.WriteObject(in jsonWriter, row.EventBatchData, row.Index);
                     jsonWriter.Reset();
                     memoryStream.WriteByte(NewlineChar);
                 }
                 else
                 {
-                    m_serializer.WriteIndexDeleteMetadata(jsonWriter, row.Row);
+                    m_serializer.WriteIndexDeleteMetadata(in jsonWriter, row.EventBatchData, row.Index);
                     jsonWriter.Reset();
                     memoryStream.WriteByte(NewlineChar);
                 }
                 batchCount++;
                 if (batchCount >= 1000)
                 {
+                    m_eventsCounter.Add(batchCount);
+                    BulkResponse? response;
+                    try
+                    {
+                        response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
+                    }
+                    catch(Exception e)
+                    {
+                        if (e is TaskCanceledException)
+                        {
+                            throw new Exception("Upload to elasticsearch was cancelled", e);
+                        }
+                        throw;
+                    }
                     
-                    var response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
 
                     if (response.Errors)
                     {
-                        foreach(var itemWithError in response.ItemsWithErrors)
+                        foreach (var itemWithError in response.ItemsWithErrors)
                         {
                             Logger.ElasticSearchInsertError(itemWithError.Error.ToString(), StreamName, Name);
                         }
@@ -183,6 +225,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
             if (batchCount > 0)
             {
+                m_eventsCounter.Add(batchCount);
                 var response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
 
                 if (response.Errors)
@@ -201,6 +244,11 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                 {
                     throw new InvalidOperationException("Error in elasticsearch sink");
                 }
+            }
+
+            if (m_elasticsearchOptions.OnDataSent != null)
+            {
+                await m_elasticsearchOptions.OnDataSent(m_client, m_writeRelation, m_indexName, watermark);
             }
         }
     }
