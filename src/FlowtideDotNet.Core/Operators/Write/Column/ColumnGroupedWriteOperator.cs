@@ -160,9 +160,9 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             Debug.Assert(m_tree != null);
             Debug.Assert(m_writeTreeSearchComparer != null);
 
-            var modifiedIterator = m_modified.CreateIterator();
+            using var modifiedIterator = m_modified.CreateIterator();
             await modifiedIterator.SeekFirst();
-            var treeIterator = m_tree.CreateIterator();
+            using var treeIterator = m_tree.CreateIterator();
 
             await foreach (var page in modifiedIterator)
             {
@@ -225,8 +225,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             Debug.Assert(m_existingData != null);
             Debug.Assert(m_existingRowComparer != null);
 
-            var treeIterator = m_modified.CreateIterator();
-            var existingIterator = m_existingData.CreateIterator();
+            using var treeIterator = m_modified.CreateIterator();
+            using var existingIterator = m_existingData.CreateIterator();
 
             await treeIterator.SeekFirst();
             await existingIterator.SeekFirst();
@@ -311,7 +311,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             {
                 m_hasModified = true;
                 var rowReference = new ColumnRowReference() { referenceBatch = batch, RowIndex = i };
-                var (op, res) = await m_tree.RMW(in rowReference, weights[i], (input, current, found) =>
+                await m_tree.RMWNoResult(in rowReference, weights[i], (input, current, found) =>
                 {
                     if (found)
                     {
