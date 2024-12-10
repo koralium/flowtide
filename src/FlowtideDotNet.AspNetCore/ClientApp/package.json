@@ -15,7 +15,7 @@
     "chart.js": "^4.4.4",
     "chartjs-adapter-date-fns": "^3.0.0",
     "date-fns": "^4.1.0",
-    "next": "14.2.13",
+    "next": "14.2.16",
     "prometheus-query": "^3.4.0",
     "react": "^18",
     "react-dom": "^18",
