@@ -14,6 +14,7 @@ using FlowtideDotNet.Connector.ElasticSearch;
 using FlowtideDotNet.Connector.ElasticSearch.Internal;
 using FlowtideDotNet.Substrait.Relations;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -38,7 +39,7 @@ namespace FlowtideDotNet.Core.Engine
                 }
                 transform?.Invoke(writeRel);
 
-                var sink = new ElasticSearchSink(writeRel, options, options.ExecutionMode, opt);
+                var sink = new ColumnElasticSearchSink(options, options.ExecutionMode, writeRel, opt);
                 sink.CreateIndexAndMappings();
                 return sink;
             });
