@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Extensions
                 }
                 transform?.Invoke(writeRel);
 
-                return new MongoDBSink(options, writeRel, options.ExecutionMode, opt);
+                return new MongoDBSink(options, options.ExecutionMode, writeRel, opt);
             });
             return factory;
         }

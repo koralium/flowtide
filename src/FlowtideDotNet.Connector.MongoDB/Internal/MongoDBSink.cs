@@ -1,40 +1,37 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//  
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-using FlowtideDotNet.Base;
+﻿using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core.Operators.Write;
+using FlowtideDotNet.Core.Operators.Write.Column;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Diagnostics;
-using System.Diagnostics.Tracing;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.MongoDB.Internal
 {
-    internal class MongoDBSink : SimpleGroupedWriteOperator
+    internal class MongoDbSinkState : ColumnWriteState
     {
-        private readonly FlowtideMongoDBSinkOptions options;
-        private readonly StreamEventToBson streamEventToBson;
-        private IMongoCollection<BsonDocument>? collection;
+
+    }
+    class MongoDBSink : ColumnGroupedWriteOperator<MongoDbSinkState>
+    {
+        private readonly FlowtideMongoDBSinkOptions m_options;
+        private readonly ColumnsToBsonDoc m_serializer;
         private readonly List<int> primaryKeys;
+        private IMongoCollection<BsonDocument>? collection;
         private ICounter<long>? _eventsCounter;
 
-        public MongoDBSink(FlowtideMongoDBSinkOptions options, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
+        public MongoDBSink(
+            FlowtideMongoDBSinkOptions options,
+            ExecutionMode executionMode, 
+            WriteRelation writeRelation, 
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+            : base(executionMode, writeRelation, executionDataflowBlockOptions)
         {
-            this.options = options;
-            streamEventToBson = new StreamEventToBson(writeRelation.TableSchema.Names);
+            m_options = options;
+            m_serializer = new ColumnsToBsonDoc(writeRelation.TableSchema.Names);
             primaryKeys = new List<int>();
             foreach (var primaryKey in options.PrimaryKeys)
             {
@@ -49,12 +46,17 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         public override string DisplayName => "MongoDB Sink";
 
+        protected override MongoDbSinkState Checkpoint(long checkpointTime)
+        {
+            return new MongoDbSinkState();
+        }
+
         protected override Task OnInitialDataSent()
         {
             Debug.Assert(collection != null);
-            if (options.OnInitialDataSent != null)
+            if (m_options.OnInitialDataSent != null)
             {
-                return options.OnInitialDataSent(collection);
+                return m_options.OnInitialDataSent(collection);
             }
             else
             {
@@ -62,22 +64,24 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             }
         }
 
-        protected override Task<MetadataResult> SetupAndLoadMetadataAsync()
+        protected override async Task InitializeOrRestore(long restoreTime, MongoDbSinkState? state, IStateManagerClient stateManagerClient)
         {
+            await base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+            var urlBuilder = new MongoUrlBuilder(m_options.ConnectionString);
+            var connection = urlBuilder.ToMongoUrl();
+            var client = new MongoClient(connection);
+
+            var database = client.GetDatabase(m_options.Database);
+            collection = database.GetCollection<BsonDocument>(m_options.Collection);
             if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
             }
+        }
 
-            var urlBuilder = new MongoUrlBuilder(options.ConnectionString);
-            var connection = urlBuilder.ToMongoUrl();
-            var client = new MongoClient(connection);
-            
-            
-            var database = client.GetDatabase(options.Database);
-            collection = database.GetCollection<BsonDocument>(options.Collection);
-            
-            return Task.FromResult(new MetadataResult(primaryKeys));
+        protected override ValueTask<IReadOnlyList<int>> GetPrimaryKeyColumns()
+        {
+            return new ValueTask<IReadOnlyList<int>>(primaryKeys);
         }
 
         private Task WriteData(List<WriteModel<BsonDocument>> writes, CancellationToken cancellationToken)
@@ -122,23 +126,22 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             }
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
+        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken)
         {
             Debug.Assert(collection != null);
             Debug.Assert(_eventsCounter != null);
 
             List<WriteModel<BsonDocument>> writes = new List<WriteModel<BsonDocument>>();
             List<Task> writeTasks = new List<Task>();
-            await foreach(var row in rows)
+            await foreach (var row in rows)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 FilterDefinition<BsonDocument>[] filters = new FilterDefinition<BsonDocument>[primaryKeys.Count];
                 for (int i = 0; i < primaryKeys.Count; i++)
                 {
-                    var pkname = options.PrimaryKeys[i];
-                    var col = row.Row.GetColumn(primaryKeys[i]);
+                    var pkname = m_options.PrimaryKeys[i];
                     // Need to take the row value into a bson value
-                    filters[i] = Builders<BsonDocument>.Filter.Eq(pkname, StreamEventToBson.ToBsonValue(col));
+                    filters[i] = Builders<BsonDocument>.Filter.Eq(pkname, m_serializer.ColumnIndexToBson(row.EventBatchData.Columns[primaryKeys[i]], row.Index));
                 }
                 FilterDefinition<BsonDocument>? filter = null;
                 if (filters.Length > 1)
@@ -155,19 +158,19 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 }
                 else
                 {
-                    var doc = streamEventToBson.ToBson(row.Row);
-                    if (options.TransformDocument != null)
+                    var doc = m_serializer.ToBson(row.EventBatchData, row.Index);
+                    if (m_options.TransformDocument != null)
                     {
-                        options.TransformDocument(doc);
+                        m_options.TransformDocument(doc);
                     }
                     writes.Add(new ReplaceOneModel<BsonDocument>(filter, doc) { IsUpsert = true });
                 }
 
-                if (writes.Count >= options.DocumentsPerBatch)
+                if (writes.Count >= m_options.DocumentsPerBatch)
                 {
-                    while (writeTasks.Count >= options.ParallelBatches)
+                    while (writeTasks.Count >= m_options.ParallelBatches)
                     {
-                        for(int i = 0; i < writeTasks.Count; i++)
+                        for (int i = 0; i < writeTasks.Count; i++)
                         {
                             if (writeTasks[i].IsCompleted)
                             {
@@ -186,7 +189,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                                 writeTasks.RemoveAt(i);
                             }
                         }
-                        if (writeTasks.Count >= options.ParallelBatches)
+                        if (writeTasks.Count >= m_options.ParallelBatches)
                         {
                             await Task.WhenAny(writeTasks);
                         }
@@ -205,9 +208,9 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
             await Task.WhenAll(writeTasks);
 
-            if (options.OnWatermarkUpdate != null)
+            if (m_options.OnWatermarkUpdate != null)
             {
-                await options.OnWatermarkUpdate(watermark);
+                await m_options.OnWatermarkUpdate(watermark);
             }
         }
     }
