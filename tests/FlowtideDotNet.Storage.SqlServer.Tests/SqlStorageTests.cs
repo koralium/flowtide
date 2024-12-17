@@ -14,15 +14,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             _fixture = fixture;
         }
 
-        [Fact]
-        public async Task SessionPagesArePersistedOnCommit()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task SessionPagesArePersistedOnCommit(string schema)
         {
-            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 100,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            });
+            var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(SessionPagesArePersistedOnCommit)}"));
             var pageId = 1;
@@ -38,15 +35,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             await storage.CheckpointAsync([], false);
         }
 
-        [Fact]
-        public async Task ReadingNonExistingPageThrows()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task ReadingNonExistingPageThrows(string schema)
         {
-            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 100,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            });
+            var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(SessionPagesArePersistedOnCommit)}"));
             var session = storage.CreateSession();
@@ -56,20 +50,17 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             });
         }
 
-        [Fact]
-        public async Task SessionCommitWaitsForAllWrites()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task SessionCommitWaitsForAllWrites(string schema)
         {
-            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 1,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            });
+            var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(SessionCommitWaitsForAllWrites)}";
             await storage.InitializeAsync(new StorageInitializationMetadata(name));
             var session = storage.CreateSession();
-            var streamKey = await GetStreamKey(name);
+            var streamKey = await GetStreamKey(name, schema);
 
             var numberOfPages = 5;
 
@@ -87,7 +78,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
                 Assert.Equal(Encoding.UTF8.GetBytes(i.ToString()), page);
             }
 
-            var numberOfPersistedPages = await _fixture.ExecuteReader<int>($"SELECT COUNT(*) FROM [dbo].[StreamPages] WHERE streamKey = {streamKey}", reader =>
+            var numberOfPersistedPages = await _fixture.ExecuteReader<int>($"SELECT COUNT(*) FROM {schema}.[StreamPages] WHERE streamKey = {streamKey}", reader =>
             {
                 reader.Read();
                 return reader.GetInt32(0);
@@ -96,15 +87,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             Assert.Equal(numberOfPages, numberOfPersistedPages);
         }
 
-        [Fact]
-        public async Task CheckpointWritesStoragePages()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task CheckpointWritesStoragePages(string schema)
         {
-            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 1,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            });
+            var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var pageId = 2;
 
@@ -118,15 +106,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             Assert.NotEmpty(page);
         }
 
-        [Fact]
-        public async Task StorageTryGetValueReturnsFalseForNonExistingPage()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task StorageTryGetValueReturnsFalseForNonExistingPage(string schema)
         {
-            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 1,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            });
+            var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(StorageTryGetValueReturnsFalseForNonExistingPage)}"));
 
@@ -135,15 +120,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             Assert.Null(page);
         }
 
-        [Fact]
-        public async Task StorageResetResetsVersionAndRemovesPages()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task StorageResetResetsVersionAndRemovesPages(string schema)
         {
-            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 1,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            });
+            var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var pageId = 2;
             await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(StorageTryGetValueReturnsFalseForNonExistingPage)}"));
@@ -163,16 +145,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             Assert.Null(page);
         }
 
-        [Fact]
-        public async Task StorageInitializeSetsCurrentVersion()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task StorageInitializeSetsCurrentVersion(string schema)
         {
-            var settings = new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 1,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            };
-
+            var settings = GetSettings(schema, 1);
             var metadata = new StorageInitializationMetadata($"test_{nameof(StorageInitializeSetsCurrentVersion)}");
             var storage = new SqlServerPersistentStorage(settings);
 
@@ -185,22 +163,19 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             Assert.Equal(2, storage.CurrentVersion);
         }
 
-        [Fact]
-        public async Task StorageInitializeRemovesUnsuccessfulPageVersions()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task StorageInitializeRemovesUnsuccessfulPageVersions(string schema)
         {
-            var settings = new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 100,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            };
+            var settings = GetSettings(schema);
 
             var name = $"test_{nameof(StorageInitializeRemovesUnsuccessfulPageVersions)}";
             var metadata = new StorageInitializationMetadata(name);
             var storage = new SqlServerPersistentStorage(settings);
 
             await storage.InitializeAsync(metadata);
-            var streamKey = await GetStreamKey(name);
+            var streamKey = await GetStreamKey(name, schema);
 
             var pageId = 2;
             var session = storage.CreateSession();
@@ -217,7 +192,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             await storage.InitializeAsync(metadata);
 
             var pages = await _fixture.ExecuteReader<IEnumerable<(long pageId, int version)>>(
-                $"SELECT pageId, version FROM [dbo].[StreamPages] WHERE pageId = {pageId} and streamKey = {streamKey}",
+                $"SELECT pageId, version FROM {schema}.[StreamPages] WHERE pageId = {pageId} and streamKey = {streamKey}",
                 reader =>
             {
                 var pages = new List<(long pageId, int version)>();
@@ -236,19 +211,16 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             Assert.Equal(Encoding.UTF8.GetBytes("1"), page);
         }
 
-        [Fact]
-        public async Task StorageCompactRemovesOldVersions()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task StorageCompactRemovesOldVersions(string schema)
         {
-            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 1,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            });
+            var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(StorageCompactRemovesOldVersions)}";
             await storage.InitializeAsync(new StorageInitializationMetadata(name));
-            var streamKey = await GetStreamKey(name);
+            var streamKey = await GetStreamKey(name, schema);
 
             var pageId = 2;
             await storage.Write(pageId, Encoding.UTF8.GetBytes(pageId.ToString()));
@@ -260,7 +232,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
 
             var hasPage = storage.TryGetValue(pageId, out var page);
 
-            var numberOfPages = await _fixture.ExecuteReader($"SELECT COUNT(*) FROM [dbo].[StreamPages] WHERE pageId = {pageId} AND streamKey = {streamKey}", reader =>
+            var numberOfPages = await _fixture.ExecuteReader($"SELECT COUNT(*) FROM {schema}.[StreamPages] WHERE pageId = {pageId} AND streamKey = {streamKey}", reader =>
             {
                 reader.Read();
                 return reader.GetInt32(0);
@@ -272,15 +244,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             Assert.Equal(1, numberOfPages);
         }
 
-        [Fact]
-        public async Task SessionReadReturnsWrittenData()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task SessionReadReturnsWrittenData(string schema)
         {
-            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 1,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            });
+            var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(SessionReadReturnsWrittenData)}";
             await storage.InitializeAsync(new StorageInitializationMetadata(name));
@@ -297,15 +266,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             Assert.Equal(data, readData);
         }
 
-        [Fact]
-        public async Task StorageReadReturnsWrittenData()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task StorageReadReturnsWrittenData(string schema)
         {
-            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 1,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            });
+            var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(StorageReadReturnsWrittenData)}";
             await storage.InitializeAsync(new StorageInitializationMetadata(name));
@@ -322,21 +288,18 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             Assert.Equal(data, readData);
         }
 
-        [Fact]
-        public async Task InitializeWaitsForSessionBackgroundTasksAndResetsCache()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task InitializeWaitsForSessionBackgroundTasksAndResetsCache(string schema)
         {
-            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 1,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            });
+            var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(InitializeWaitsForSessionBackgroundTasksAndResetsCache)}";
             var initMetadata = new StorageInitializationMetadata(name);
 
             await storage.InitializeAsync(initMetadata);
-            var streamKey = await GetStreamKey(name);
+            var streamKey = await GetStreamKey(name, schema);
 
             var session = storage.CreateSession();
 
@@ -356,7 +319,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             await session.Commit();
             await storage.CheckpointAsync([], false);
 
-            var numberOfPages = await _fixture.ExecuteReader($"SELECT COUNT(*) FROM [dbo].[StreamPages] WHERE StreamKey = {streamKey}", reader =>
+            var numberOfPages = await _fixture.ExecuteReader($"SELECT COUNT(*) FROM {schema}.[StreamPages] WHERE StreamKey = {streamKey}", reader =>
             {
                 reader.Read();
                 return reader.GetInt32(0);
@@ -368,15 +331,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             Assert.Equal(2, numberOfPages); // checkpoint should also add one page
         }
 
-        [Fact]
-        public async Task ReadingDeletedPageThrows()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task ReadingDeletedPageThrows(string schema)
         {
-            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 1,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            });
+            var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(ReadingDeletedPageThrows)}";
             await storage.InitializeAsync(new StorageInitializationMetadata(name));
@@ -394,15 +354,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             });
         }
 
-        [Fact]
-        public async Task DeletedAndRestoredPageIsReadable()
+        [Theory]
+        [InlineData("dbo")]
+        [InlineData("test")]
+        public async Task DeletedAndRestoredPageIsReadable(string schema)
         {
-            var storage = new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
-            {
-                ConnectionString = _fixture.ConnectionString,
-                WritePagesBulkLimit = 1,
-                BulkCopySettings = new SqlServerBulkCopySettings(),
-            });
+            var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(DeletedAndRestoredPageIsReadable)}";
             await storage.InitializeAsync(new StorageInitializationMetadata(name));
@@ -420,13 +377,27 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             Assert.NotEmpty(restoredPageData);
         }
 
-        private Task<int> GetStreamKey(string streamName)
+        private Task<int> GetStreamKey(string streamName, string schema)
         {
-            return _fixture.ExecuteReader($"SELECT streamKey FROM [dbo].[Streams] WHERE UniqueStreamName = '{streamName}'", reader =>
+            return _fixture.ExecuteReader($"SELECT streamKey FROM {schema}.[Streams] WHERE UniqueStreamName = '{streamName}'", reader =>
             {
                 reader.Read();
                 return reader.GetInt32(0);
             });
+        }
+
+        private SqlServerPersistentStorageSettings GetSettings(string schema, int writePagesBulkLimit = 100)
+        {
+            var settings = new SqlServerPersistentStorageSettings
+            {
+                ConnectionString = _fixture.ConnectionString,
+                WritePagesBulkLimit = writePagesBulkLimit,
+                BulkCopySettings = new SqlServerBulkCopySettings(),
+                StreamTableName = $"[{schema}].[Streams]",
+                StreamPageTableName = $"[{schema}].[StreamPages]"
+            };
+
+            return settings;
         }
     }
 }

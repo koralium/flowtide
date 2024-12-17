@@ -67,8 +67,9 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             await _msSqlContainer.StartAsync();
 
             await RunCommand("CREATE DATABASE StorageTestDb");
-            var creationScript = await File.ReadAllTextAsync("create_tables.sql");
-            await RunCommand(creationScript);
+            await RunCommand(await File.ReadAllTextAsync("create_tables.sql"));
+            await RunCommand("CREATE SCHEMA [test]");
+            await RunCommand(await File.ReadAllTextAsync("create_alt_schema_tables.sql"));
         }
     }
 }
