@@ -136,6 +136,38 @@ builder
 | DirectoryPath | ./data/tempFiles      | Path where the files will be stored |
 
 
+## SQL server storage
+
+:::warning
+
+SQL Server storage support is still experimental.
+
+:::
+
+Store persistent data to sql server. 
+
+Before using this storage solution you must manually create required tables using this creation script: [Sql tables creation script](link_to_sql_create_script).
+
+The sql user running the system requires the following specific permissions:
+* `SELECT`
+* `INSERT`
+* `DELETE`
+* `UPDATE`
+
+```csharp
+builder.Services.AddFlowtideStream("yourstream")
+    [...]
+    .AddStorage(s =>
+    {
+        // register sql server storage using default settings
+        s.AddSqlServerStorage("[connectionstring]");
+        // or use the overload to specify more settings
+        s.AddSqlServerStorage(new SqlServerPersistentStorageSettings()
+        {
+            ConnectionString = "[connectionstring]",
+        });
+    });
+```
 
 ## Storage solution
 
