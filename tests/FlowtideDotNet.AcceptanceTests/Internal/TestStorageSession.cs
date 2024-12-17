@@ -23,6 +23,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     internal class TestStorageSession : FileCachePersistentSession
     {
         private readonly TestStorage testStorage;
+        public bool HasCommitted { get; private set; } = true;
 
         public TestStorageSession(FileCache fileCache, TestStorage testStorage) : base(fileCache)
         {
@@ -31,8 +32,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public override Task Write(long key, byte[] value)
         {
+            HasCommitted = false;
             testStorage.AddWrittenKey(key, value);
             return base.Write(key, value);
+        }
+
+        override public Task Commit()
+        {
+            HasCommitted = true;
+            return Task.CompletedTask;
         }
     }
 }

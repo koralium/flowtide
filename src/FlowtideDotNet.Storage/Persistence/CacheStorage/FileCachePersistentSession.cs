@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             this.fileCache = fileCache;
         }
 
-        public Task Commit()
+        public virtual Task Commit()
         {
             return Task.CompletedTask;
         }
