@@ -165,6 +165,10 @@ builder.Services.AddFlowtideStream("yourstream")
         s.AddSqlServerStorage(new SqlServerPersistentStorageSettings()
         {
             ConnectionString = "[connectionstring]",
+            // if you created the tables on a non default schema (or with another name) you can specify the full name for the tables used here.
+            // it's also possible to specify the database name as part of table name.
+            StreamTableName = "[MySchema].[Streams]",
+            StreamPageTableName = "[MyDatabase].[MySchema].[StreamPages2]"
         });
     });
 ```
