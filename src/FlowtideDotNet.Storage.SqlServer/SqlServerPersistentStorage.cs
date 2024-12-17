@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Storage.SqlServer
 
         public async Task InitializeAsync(StorageInitializationMetadata metadata)
         {
-            _stream = await StorageRepository.UpsertStream(metadata.StreamName, _settings.ConnectionString);
+            _stream = await StorageRepository.UpsertStream(metadata.StreamName, _settings);
             _storageRepository = new StorageRepository(_stream, _settings);
 #if DEBUG_WRITE
             _debugWriter = new DebugWriter(_stream.Metadata.Name);

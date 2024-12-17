@@ -16,6 +16,12 @@ namespace FlowtideDotNet.Storage.SqlServer
 {
     public static class SqlServerStorageExtensions
     {
+        /// <summary>
+        /// Adds SQL Server storage to the Flowtide storage builder using the specified connection string.
+        /// </summary>
+        /// <param name="storageBuilder">The Flowtide storage builder.</param>
+        /// <param name="connectionString">The connection string for the SQL Server database.</param>
+        /// <returns>The updated Flowtide storage builder.</returns>
         public static IFlowtideStorageBuilder AddSqlServerStorage
             (this IFlowtideStorageBuilder storageBuilder, string connectionString)
         {
@@ -27,6 +33,12 @@ namespace FlowtideDotNet.Storage.SqlServer
             return storageBuilder;
         }
 
+        /// <summary>
+        /// Adds SQL Server storage to the Flowtide storage builder using the specified settings.
+        /// </summary>
+        /// <param name="storageBuilder">The Flowtide storage builder.</param>
+        /// <param name="settings">The settings for the SQL Server persistent storage.</param>
+        /// <returns>The updated Flowtide storage builder.</returns>
         public static IFlowtideStorageBuilder AddSqlServerStorage
             (this IFlowtideStorageBuilder storageBuilder, SqlServerPersistentStorageSettings settings)
         {

@@ -79,12 +79,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
                     return null;
                 }
 
-                query = "SELECT Payload FROM StreamPages WHERE PageId = @key AND StreamKey = @streamKey AND Version = @version";
+                query = $"SELECT Payload FROM {Settings.StreamPageTableName} WHERE PageId = @key AND StreamKey = @streamKey AND Version = @version";
                 cmd.Parameters.AddWithValue("@version", page.Version);
             }
             else
             {
-                query = "SELECT Payload FROM StreamPages WHERE PageId = @key AND StreamKey = @streamKey";
+                query = $"SELECT Payload FROM {Settings.StreamPageTableName} WHERE PageId = @key AND StreamKey = @streamKey";
             }
 
             cmd.CommandText = query;
@@ -122,12 +122,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
                     throw new DeletedPageAccessException(key, Stream.Metadata.Name);
                 }
 
-                query = "SELECT Payload FROM StreamPages WHERE PageId = @key AND StreamKey = @streamKey AND Version = @version";
+                query = $"SELECT Payload FROM {Settings.StreamPageTableName} WHERE PageId = @key AND StreamKey = @streamKey AND Version = @version";
                 cmd.Parameters.AddWithValue("@version", page.Version);
             }
             else
             {
-                query = "SELECT Payload FROM StreamPages WHERE PageId = @key AND StreamKey = @streamKey";
+                query = $"SELECT Payload FROM {Settings.StreamPageTableName} WHERE PageId = @key AND StreamKey = @streamKey";
             }
 
             cmd.CommandText = query;
@@ -181,7 +181,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
             using var bulkCopy = new SqlBulkCopy(connection)
             {
-                DestinationTableName = Settings.BulkCopySettings.DestinationTableName,
+                DestinationTableName = Settings.StreamPageTableName,
                 BatchSize = Settings.BulkCopySettings.BatchSize,
                 NotifyAfter = Settings.BulkCopySettings.NotifyAfter,
                 EnableStreaming = Settings.BulkCopySettings.EnableStreaming,
@@ -210,7 +210,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
             using var bulkCopy = new SqlBulkCopy(transaction.Connection, SqlBulkCopyOptions.Default, transaction)
             {
-                DestinationTableName = Settings.BulkCopySettings.DestinationTableName,
+                DestinationTableName = Settings.StreamPageTableName,
                 BatchSize = Settings.BulkCopySettings.BatchSize,
                 NotifyAfter = Settings.BulkCopySettings.NotifyAfter,
                 EnableStreaming = Settings.BulkCopySettings.EnableStreaming,
@@ -237,7 +237,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 #endif
 
             using var connection = new SqlConnection(Settings.ConnectionString);
-            using var cmd = new SqlCommand("DELETE FROM StreamPages WHERE Version > @Version AND StreamKey = @StreamKey", connection);
+            using var cmd = new SqlCommand($"DELETE FROM {Settings.StreamPageTableName} WHERE Version > @Version AND StreamKey = @StreamKey", connection);
             cmd.Parameters.AddWithValue("@Version", Stream.Metadata.CurrentVersion);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
             await connection.OpenAsync();
@@ -250,7 +250,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall();
 #endif
 
-            using var cmd = new SqlCommand("DELETE FROM StreamPages WHERE Version > @Version AND StreamKey = @StreamKey");
+            using var cmd = new SqlCommand($"DELETE FROM {Settings.StreamPageTableName} WHERE Version > @Version AND StreamKey = @StreamKey");
             cmd.Parameters.AddWithValue("@Version", Stream.Metadata.LastSucessfulVersion);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
             cmd.Transaction = transaction;
@@ -264,12 +264,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall();
 #endif
 
-            using var cmd = new SqlCommand(@"DELETE FROM StreamPages
+            using var cmd = new SqlCommand($@"DELETE FROM {Settings.StreamPageTableName}
                 WHERE StreamKey = @StreamKey AND Id IN (
                 SELECT Id
-                FROM StreamPages t1
+                FROM {Settings.StreamPageTableName} t1
                 WHERE t1.Version < (SELECT MAX(t2.Version) 
-                	FROM StreamPages t2 
+                	FROM {Settings.StreamPageTableName} t2 
                 	WHERE t2.PageId = t1.PageId AND StreamKey = @StreamKey)
                 );", transaction.Connection);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
@@ -294,7 +294,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             cmd.Transaction = transaction;
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
 
-            var sb = new StringBuilder("DELETE FROM StreamPages WHERE StreamKey = @streamKey AND (");
+            var sb = new StringBuilder($"DELETE FROM {Settings.StreamPageTableName} WHERE StreamKey = @streamKey AND (");
             var index = 0;
             var parameterList = new List<string>();
             foreach (var page in pages)

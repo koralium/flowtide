@@ -30,31 +30,33 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             ArgumentNullException.ThrowIfNull(Stream.Metadata.StreamKey);
             using var connection = new SqlConnection(Settings.ConnectionString);
             using var cmd = new SqlCommand(
-                "DELETE FROM StreamPages WHERE StreamKey = @StreamKey; " +
-                "UPDATE Streams SET LastSuccessfulVersion = 0 WHERE StreamKey = @StreamKey", connection);
+                $"DELETE FROM {Settings.StreamPageTableName} WHERE StreamKey = @StreamKey; " +
+                $"UPDATE {Settings.StreamTableName} SET LastSuccessfulVersion = 0 WHERE StreamKey = @StreamKey", connection);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
             await connection.OpenAsync();
             await cmd.ExecuteNonQueryAsync();
         }
 
-        public static async Task<StreamInfo> UpsertStream(string name, string connectionString)
+        public static async Task<StreamInfo> UpsertStream(string name, SqlServerPersistentStorageSettings settings)
         {
-            using var connection = new SqlConnection(connectionString);
-            using var command = new SqlCommand(@"
+            using var connection = new SqlConnection(settings.ConnectionString);
+            using var command = new SqlCommand($@"
                     DECLARE @StreamKey INT;
                     DECLARE @Version INT = 0;
 
                     BEGIN
-                        IF NOT EXISTS (SELECT StreamKey FROM Streams WHERE UniqueStreamName = @UniqueStreamName)
+                        IF NOT EXISTS (SELECT StreamKey FROM {settings.StreamTableName} WHERE UniqueStreamName = @UniqueStreamName)
                         BEGIN
-                            INSERT INTO Streams (UniqueStreamName, LastSuccessfulVersion)
+                            INSERT INTO {settings.StreamTableName} (UniqueStreamName, LastSuccessfulVersion)
                             VALUES (@uniqueStreamName, @Version);
                             
                             SET @StreamKey = SCOPE_IDENTITY();
                         END
                         ELSE
                         BEGIN
-                            SELECT @StreamKey = StreamKey, @Version = LastSuccessfulVersion FROM Streams WHERE UniqueStreamName = @UniqueStreamName;
+                            SELECT @StreamKey = StreamKey, @Version = LastSuccessfulVersion 
+                            FROM {settings.StreamTableName} 
+                            WHERE UniqueStreamName = @UniqueStreamName;
                         END
 
                         SELECT @StreamKey AS StreamKey, @Version AS Version;
@@ -80,7 +82,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall();
 #endif
             using var connection = new SqlConnection(Settings.ConnectionString);
-            using var cmd = new SqlCommand("UPDATE Streams SET LastSuccessfulVersion = @Version WHERE StreamKey = @StreamKey", connection);
+            using var cmd = new SqlCommand($"UPDATE {Settings.StreamTableName} SET LastSuccessfulVersion = @Version WHERE StreamKey = @StreamKey", connection);
             cmd.Parameters.AddWithValue("@Version", Stream.Metadata.CurrentVersion);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
 
@@ -98,7 +100,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall();
 #endif
 
-            using var cmd = new SqlCommand("UPDATE Streams SET LastSuccessfulVersion = @Version WHERE StreamKey = @StreamKey");
+            using var cmd = new SqlCommand($"UPDATE {Settings.StreamTableName} SET LastSuccessfulVersion = @Version WHERE StreamKey = @StreamKey");
             cmd.Parameters.AddWithValue("@Version", Stream.Metadata.CurrentVersion);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
             cmd.Transaction = transaction;
