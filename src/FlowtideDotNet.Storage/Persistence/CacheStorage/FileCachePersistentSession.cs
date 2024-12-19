@@ -21,6 +21,11 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             this.fileCache = fileCache;
         }
 
+        public virtual Task Commit()
+        {
+            return Task.CompletedTask;
+        }
+
         public virtual Task Delete(long key)
         {
             fileCache.Free(key);

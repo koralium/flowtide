@@ -21,6 +21,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private HashSet<long> _writtenKeys = new HashSet<long>();
         private Dictionary<long, byte[]> _writtenValues = new Dictionary<long, byte[]>();
         private Dictionary<long, byte[]> _lastCheckpointValues = new Dictionary<long, byte[]>();
+        private readonly List<TestStorageSession> _sessions = new List<TestStorageSession>();
         private readonly bool _ignoreSameDataCheck;
         public TestStorage(FileCacheOptions fileCacheOptions, bool ignoreSameDataCheck, bool ignoreDispose = false) : base(fileCacheOptions, ignoreDispose)
         {
@@ -29,6 +30,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public override ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
         {
+            if (!_sessions.TrueForAll(s => s.HasCommitted))
+            {
+                throw new InvalidOperationException("Not all sessions have committed");
+            }
+
             lock (_writtenKeys)
             {
                 _writtenKeys.Clear();
@@ -41,7 +47,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return base.CheckpointAsync(metadata, includeIndex);
         }
 
-        public override Task InitializeAsync()
+        public override Task InitializeAsync(StorageInitializationMetadata metadata)
         {
             lock (_writtenKeys)
             {
@@ -52,7 +58,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     _writtenValues[kvp.Key] = kvp.Value;
                 }
             }
-            return base.InitializeAsync();
+            return base.InitializeAsync(metadata);
         }
 
         public void AddWrittenKey(long key, byte[] data)
@@ -80,7 +86,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public override IPersistentStorageSession CreateSession()
         {
-            return new TestStorageSession(m_fileCache, this);
+            var session = new TestStorageSession(m_fileCache, this);
+            _sessions.Add(session);
+            return session;
         }
     }
 }
