@@ -62,5 +62,7 @@ jobs:
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.SpiceDB/FlowtideDotNet.Connector.SpiceDB.csproj
     - name: Package DependencyInjection
       run: dotnet pack -c Release -o . src/FlowtideDotNet.DependencyInjection/FlowtideDotNet.DependencyInjection.csproj
+    - name: Package Storage SqlServer
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Storage.SqlServer/FlowtideDotNet.Storage.SqlServer.csproj
     - name: Publish
       run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_KEY }} -s https://api.nuget.org/v3/index.json
