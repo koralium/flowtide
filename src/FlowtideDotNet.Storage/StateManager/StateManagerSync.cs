@@ -215,7 +215,7 @@ namespace FlowtideDotNet.Storage.StateManager
 
         internal ValueTask<IStateClient<TValue, TMetadata>> CreateClientAsync<TValue, TMetadata>(string client, StateClientOptions<TValue> options)
             where TValue : ICacheObject
-            where TMetadata : IStorageMetadata
+            where TMetadata : class, IStorageMetadata
         {
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
@@ -299,7 +299,7 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
             m_lruTable.Clear();
-            await m_persistentStorage.InitializeAsync().ConfigureAwait(false);
+            await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName)).ConfigureAwait(false);
 
             if (m_persistentStorage.TryGetValue(1, out var metadataBytes))
             {
