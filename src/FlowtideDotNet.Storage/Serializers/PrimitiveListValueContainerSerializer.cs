@@ -30,6 +30,11 @@ namespace FlowtideDotNet.Storage.Serializers
             _memoryAllocator = memoryAllocator;
         }
 
+        public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
+        {
+            return Task.CompletedTask;
+        }
+
         public PrimitiveListValueContainer<T> CreateEmpty()
         {
             return new PrimitiveListValueContainer<T>(_memoryAllocator);
@@ -47,6 +52,11 @@ namespace FlowtideDotNet.Storage.Serializers
             memory.CopyTo(nativeMemory.Memory.Span);
 
             return new PrimitiveListValueContainer<T>(nativeMemory, count, memoryAllocator);
+        }
+
+        public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
+        {
+            return Task.CompletedTask;
         }
 
         public void Serialize(in BinaryWriter writer, in PrimitiveListValueContainer<T> values)

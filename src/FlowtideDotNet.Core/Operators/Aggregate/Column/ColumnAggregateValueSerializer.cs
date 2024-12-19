@@ -35,6 +35,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             this.measureCount = measureCount;
             this.memoryAllocator = memoryAllocator;
         }
+
+        public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
+        {
+            return Task.CompletedTask;
+        }
+
         public ColumnAggregateValueContainer CreateEmpty()
         {
             return new ColumnAggregateValueContainer(measureCount, memoryAllocator);
@@ -61,6 +67,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             var weightsList = new PrimitiveList<int>(weightNativeMemory, recordBatch.Length, memoryAllocator);
 
             return new ColumnAggregateValueContainer(measureCount, eventBatch, weightsList, previousValueList);
+        }
+
+        public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
+        {
+            return Task.CompletedTask;
         }
 
         public void Serialize(in BinaryWriter writer, in ColumnAggregateValueContainer values)

@@ -25,6 +25,12 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
         {
             this.memoryAllocator = memoryAllocator;
         }
+
+        public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
+        {
+            return Task.CompletedTask;
+        }
+
         public TimestampKeyContainer CreateEmpty()
         {
             return new TimestampKeyContainer(memoryAllocator);
@@ -39,6 +45,11 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
             memory.CopyTo(nativeMemory.Memory.Span);
             return new TimestampKeyContainer(new PrimitiveList<long>(nativeMemory, count / 8, memoryAllocator));
+        }
+
+        public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
+        {
+            return Task.CompletedTask;
         }
 
         public void Serialize(in BinaryWriter writer, in TimestampKeyContainer values)

@@ -19,7 +19,7 @@ using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
-    internal class SyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler
+    internal class SyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler, IStateSerializerInitializeReader, IStateSerializerCheckpointWriter
         where V : ICacheObject
         where TMetadata : IStorageMetadata
     {
@@ -204,6 +204,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                 }
             }
+
+            // Checkpoint the serializer
+            await options.ValueSerializer.CheckpointAsync(this, metadata);
+
             var modifiedPagesCount = m_modified.Count;
             Debug.Assert(stateManager.m_metadata != null);
             // Add modified page count to the page commits counter
@@ -421,6 +425,33 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 m_fileCache.ClearTemporaryAllocations();
             }
+        }
+
+        public async Task InitializeSerializerAsync()
+        {
+            Debug.Assert(options.ValueSerializer != null);
+            await options.ValueSerializer.InitializeAsync(this, metadata);
+        }
+
+        public async Task<Memory<byte>> ReadPage(long pageId)
+        {
+            return await session.Read(pageId);
+        }
+
+        Memory<byte> IStateSerializerCheckpointWriter.RequestPageMemory(int expectedSize)
+        {
+            // Can be changed later to request memory from persistent storage
+            return new byte[expectedSize];
+        }
+
+        Task IStateSerializerCheckpointWriter.WritePageMemory(long pageId, Memory<byte> memory)
+        {
+            return session.Write(pageId, memory.ToArray());
+        }
+
+        Task IStateSerializerCheckpointWriter.RemovePage(long pageId)
+        {
+            return session.Delete(pageId);
         }
     }
 }
