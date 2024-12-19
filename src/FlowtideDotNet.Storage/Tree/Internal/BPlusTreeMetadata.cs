@@ -17,9 +17,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 {
     internal class BPlusTreeMetadata : IStorageMetadata
     {
-        public static BPlusTreeMetadata Create(int bucketLength, long root, long left, int pageSizeBytes)
+        public static BPlusTreeMetadata Create(int bucketLength, long root, long left, int pageSizeBytes, List<long> keyMetadataPages, List<long> valueMetadataPages)
         {
-            var newMetadata = new BPlusTreeMetadata(bucketLength, root, left, pageSizeBytes);
+            var newMetadata = new BPlusTreeMetadata(bucketLength, root, left, pageSizeBytes, keyMetadataPages, valueMetadataPages);
             newMetadata.Updated = true;
             return newMetadata;
         }
@@ -32,13 +32,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         /// <param name="left"></param>
         /// <param name="pageSizeBytes"></param>
         [JsonConstructor]
-        public BPlusTreeMetadata(int bucketLength, long root, long left, int pageSizeBytes)
+        public BPlusTreeMetadata(int bucketLength, long root, long left, int pageSizeBytes, List<long> keyMetadataPages, List<long> valueMetadataPages)
         {
             BucketLength = bucketLength;
             Root = root;
             Left = left;
             PageSizeBytes = pageSizeBytes;
             Updated = false;
+            KeyMetadataPages = keyMetadataPages;
+            ValueMetadataPages = valueMetadataPages;
         }
 
         public int BucketLength { get; }
@@ -51,12 +53,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public long Left { get; }
         public int PageSizeBytes { get; }
 
+        public List<long> KeyMetadataPages { get; }
+
+        public List<long> ValueMetadataPages { get; }
+
         [JsonIgnore]
         public bool Updated { get; set; }
 
         public BPlusTreeMetadata UpdateRoot(long newRoot)
         {
-            var newMetadata = new BPlusTreeMetadata(BucketLength, newRoot, Left, PageSizeBytes);
+            var newMetadata = new BPlusTreeMetadata(BucketLength, newRoot, Left, PageSizeBytes, KeyMetadataPages, ValueMetadataPages);
             newMetadata.Updated = true;
             return newMetadata;
         }

@@ -35,6 +35,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             this._memoryAllocator = memoryAllocator;
         }
 
+        public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
+        {
+            return Task.CompletedTask;
+        }
+
         public ModifiedKeyStorage CreateEmpty()
         {
             return new ModifiedKeyStorage(_columnsToStore, _memoryAllocator);
@@ -48,6 +53,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, _memoryAllocator);
 
             return new ModifiedKeyStorage(_columnsToStore, eventBatch);
+        }
+
+        public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
+        {
+            return Task.CompletedTask;
         }
 
         public void Serialize(in BinaryWriter writer, in ModifiedKeyStorage values)

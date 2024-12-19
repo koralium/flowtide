@@ -35,6 +35,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             _groupingKeyLength = groupingKeyLength;
             _memoryAllocator = memoryAllocator;
         }
+
+        public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
+        {
+            return Task.CompletedTask;
+        }
+
         public ListAggKeyStorageContainer CreateEmpty()
         {
             return new ListAggKeyStorageContainer(_groupingKeyLength, _memoryAllocator);
@@ -48,6 +54,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, _memoryAllocator);
 
             return new ListAggKeyStorageContainer(_groupingKeyLength, eventBatch);
+        }
+
+        public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
+        {
+            return Task.CompletedTask;
         }
 
         public void Serialize(in BinaryWriter writer, in ListAggKeyStorageContainer values)

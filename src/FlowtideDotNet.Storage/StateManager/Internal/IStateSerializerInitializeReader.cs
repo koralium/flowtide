@@ -10,23 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
-    internal interface IStateClient<V, TMetadata>
+    public interface IStateSerializerInitializeReader
     {
-        TMetadata? Metadata { get; set; }
         long GetNewPageId();
-        bool AddOrUpdate(in long key, V value);
-        Task WaitForNotFullAsync();
-        ValueTask<V?> GetValue(in long key, string from);
-        ValueTask Commit();
-        void Delete(in long key);
-        ValueTask Reset(bool clearMetadata);
-        int BPlusTreePageSize { get; }
-        int BPlusTreePageSizeBytes { get; }
 
-        long CacheMisses { get; }
-
-        Task InitializeSerializerAsync();
+        Task<Memory<byte>> ReadPage(long pageId);
     }
 }

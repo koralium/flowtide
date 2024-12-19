@@ -30,6 +30,12 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _columnCount = columnCount;
             _memoryAllocator = memoryAllocator;
         }
+
+        public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
+        {
+            return Task.CompletedTask;
+        }
+
         public ColumnValueStorageContainer CreateEmpty()
         {
             return new ColumnValueStorageContainer(_columnCount, _memoryAllocator);
@@ -38,6 +44,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         public ColumnValueStorageContainer Deserialize(in BinaryReader reader)
         {
             throw new NotImplementedException();
+        }
+
+        public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
+        {
+            return Task.CompletedTask;
         }
 
         public void Serialize(in BinaryWriter writer, in ColumnValueStorageContainer values)

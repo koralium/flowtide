@@ -34,6 +34,11 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             _memoryAllocator = memoryAllocator;
         }
 
+        public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
+        {
+            return Task.CompletedTask;
+        }
+
         public NormalizeValueStorage CreateEmpty()
         {
             return new NormalizeValueStorage(_columnsToStore, _memoryAllocator);    
@@ -47,6 +52,11 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, _memoryAllocator);
 
             return new NormalizeValueStorage(_columnsToStore, eventBatch, recordBatch.Length);
+        }
+
+        public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
+        {
+            return Task.CompletedTask;
         }
 
         public void Serialize(in BinaryWriter writer, in NormalizeValueStorage values)

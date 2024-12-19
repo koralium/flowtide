@@ -30,6 +30,11 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
             this.sizePerElement = sizePerElement;
         }
 
+        public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
+        {
+            return Task.CompletedTask;
+        }
+
         public ListKeyContainerWithSize CreateEmpty()
         {
             return new ListKeyContainerWithSize(1);
@@ -40,25 +45,14 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
             throw new NotImplementedException();
         }
 
+        public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
+        {
+            return Task.CompletedTask;
+        }
+
         public void Serialize(in BinaryWriter writer, in ListKeyContainerWithSize values)
         {
             throw new NotImplementedException();
         }
-        //public ListKeyContainerWithSize<K> CreateEmpty()
-        //{
-        //    return new ListKeyContainerWithSize<K>(sizePerElement);
-        //}
-
-        //public ListKeyContainerWithSize<K> Deserialize(in BinaryReader reader)
-        //{
-        //    var container = new ListKeyContainerWithSize<K>(sizePerElement);
-        //    serializer.Deserialize(reader, container._list);
-        //    return container;
-        //}
-
-        //public void Serialize(in BinaryWriter writer, in ListKeyContainerWithSize<K> values)
-        //{
-        //    serializer.Serialize(writer, values._list);
-        //}
     }
 }

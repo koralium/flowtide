@@ -27,6 +27,12 @@ namespace FlowtideDotNet.Storage.Serializers
         {
             this.serializer = serializer;
         }
+
+        public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
+        {
+            return Task.CompletedTask;
+        }
+
         public ListValueContainer<V> CreateEmpty()
         {
             return new ListValueContainer<V>();
@@ -37,6 +43,11 @@ namespace FlowtideDotNet.Storage.Serializers
             var container = new ListValueContainer<V>();
             serializer.Deserialize(reader, container._values);
             return container;
+        }
+
+        public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
+        {
+            return Task.CompletedTask;
         }
 
         public void Serialize(in BinaryWriter writer, in ListValueContainer<V> values)

@@ -26,5 +26,23 @@ namespace FlowtideDotNet.Storage.Tree
         TKeyContainer Deserialize(in BinaryReader reader);
 
         void Serialize(in BinaryWriter writer, in TKeyContainer values);
+
+        /// <summary>
+        /// Called on each checkpoint, its primary function is to allow a serializer to write any potential metadata
+        /// such as schema information, global dictionaries and similar.
+        /// </summary>
+        /// <param name="context"></param>
+        /// <returns></returns>
+        Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context);
+
+        /// <summary>
+        /// Called once during the initialization of the serializer.
+        /// This allows the serializer to fetch metadata pages such as schema information, global dictionaries and similar.
+        /// During initialize any in memory data should be cleared and refetched since it can be called after a restore from
+        /// a previous checkpoint.
+        /// </summary>
+        /// <param name="context">Context that allows reading pages and also allocating new page ids.</param>
+        /// <returns></returns>
+        Task InitializeAsync(IBPlusTreeSerializerInitializeContext context);
     }
 }

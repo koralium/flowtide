@@ -16,6 +16,11 @@ namespace FlowtideDotNet.Storage.Serializers
 {
     public class StringSerializer : IBplusTreeSerializer<string>
     {
+        public Task CheckpointAsync()
+        {
+            return Task.CompletedTask;
+        }
+
         public void Deserialize(in BinaryReader reader, in List<string> values)
         {
             var count = reader.ReadInt32();

@@ -12,8 +12,10 @@
 
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
+using System.Collections.Immutable;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
@@ -24,6 +26,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private readonly IBPlusTreeKeySerializer<K, TKeyContainer> _keySerializer;
         private readonly IBplusTreeValueSerializer<V, TValueContainer> _valueSerializer;
         private readonly IMemoryAllocator _memoryAllocator;
+        private readonly BPlusTreeSerializerCheckpointContext _serializeContext;
 
         public BPlusTreeSerializer(
             IBPlusTreeKeySerializer<K, TKeyContainer> keySerializer,
@@ -31,9 +34,69 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             IMemoryAllocator memoryAllocator
             )
         {
-            this._keySerializer = keySerializer;
-            this._valueSerializer = valueSerializer;
-            this._memoryAllocator = memoryAllocator;
+            _keySerializer = keySerializer;
+            _valueSerializer = valueSerializer;
+            _memoryAllocator = memoryAllocator;
+            _serializeContext = new BPlusTreeSerializerCheckpointContext();
+        }
+
+        public async Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata)
+            where TMetadata : IStorageMetadata
+        {
+            if (metadata is StateClientMetadata<BPlusTreeMetadata> treeMetadata &&
+                treeMetadata.Metadata != null)
+            {
+                // Initialize context that will update the list of written page ids.
+                _serializeContext.Initialize(treeMetadata.Metadata.KeyMetadataPages, checkpointWriter);
+                await _keySerializer.CheckpointAsync(_serializeContext);
+
+                if (_serializeContext.ListUpdated)
+                {
+                    treeMetadata.Metadata.Updated = true;
+                }
+
+                _serializeContext.Initialize(treeMetadata.Metadata.ValueMetadataPages, checkpointWriter);
+                await _valueSerializer.CheckpointAsync(_serializeContext);
+
+                if (_serializeContext.ListUpdated)
+                {
+                    treeMetadata.Metadata.Updated = true;
+                }
+
+                return;
+            }
+            throw new NotSupportedException();
+        }
+
+        public async Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
+        {
+            if (metadata is StateClientMetadata<BPlusTreeMetadata> treeMetadata)
+            {
+                IReadOnlyList<long> keyMetadataPages;
+                IReadOnlyList<long> valueMetadataPages;
+
+                if (treeMetadata.Metadata != null)
+                {
+                    keyMetadataPages = treeMetadata.Metadata.KeyMetadataPages;
+                    valueMetadataPages = treeMetadata.Metadata.ValueMetadataPages;
+                }
+                else 
+                { 
+                    keyMetadataPages = ImmutableList<long>.Empty;
+                    valueMetadataPages = ImmutableList<long>.Empty;
+                }
+
+                // Initialize the key serializer
+                var keyContext = new BPlusTreeSerializerInitializeContext(reader, keyMetadataPages);
+                await _keySerializer.InitializeAsync(keyContext);
+
+                // Initialize the value serializer
+                var valueContext = new BPlusTreeSerializerInitializeContext(reader, valueMetadataPages);
+                await _valueSerializer.InitializeAsync(valueContext);
+
+                return;
+            }
+            throw new NotSupportedException();
         }
 
         public IBPlusTreeNode Deserialize(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)

@@ -19,6 +19,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         byte[] Serialize(in ICacheObject value, in StateSerializeOptions stateSerializeOptions);
 
         ICacheObject DeserializeCacheObject(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions);
+
+        Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata)
+            where TMetadata : IStorageMetadata;
+
+        Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata)
+            where TMetadata : IStorageMetadata;
     }
     internal interface IStateSerializer<T> : IStateSerializer
         where T: ICacheObject
