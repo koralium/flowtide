@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private async ValueTask<IStateClient<V, TMetadata>> CreateStateClient<V, TMetadata>(string name, IStateSerializer<V> serializer)
             where V : ICacheObject
-            where TMetadata : IStorageMetadata
+            where TMetadata : class, IStorageMetadata
         {
             var combinedName = $"{m_name}_{name}";
             var stateClient = await stateManager.CreateClientAsync<V, TMetadata>(combinedName, new StateClientOptions<V>()

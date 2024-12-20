@@ -10,16 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Storage.Persistence
+namespace FlowtideDotNet.Storage.SqlServer.Exceptions
 {
-    public interface IPersistentStorageSession : IDisposable
+    public class PageNotFoundException : Exception
     {
-        ValueTask<byte[]> Read(long key);
+        public PageNotFoundException(long pageId, string stream) : base($"Page data not found for page id \"{pageId}\" on stream \"{stream}\"")
+        {
 
-        Task Write(long key, byte[] value);
-
-        Task Delete(long key);
-
-        Task Commit();
+        }
     }
 }
