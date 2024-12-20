@@ -794,8 +794,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             var typeIdsPointer = arrowSerializer.UnionCreateTypeIdsVector(pointerStack.Slice(0, count));
             var typePointer = arrowSerializer.AddUnionType(typeIdsPointer, ArrowUnionMode.Sparse);
 
+            var childrenStack = pointerStack.Slice(_valueColumns.Count);
+            count = 0;
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                if (_valueColumns[i] != null)
+                {
+                    pointerStack[count] = _valueColumns[i].CreateSchemaField(ref arrowSerializer, emptyStringPointer, childrenStack);
+                    count++;
+                }
+            }
+            var childrenPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, count));
 
-            throw new NotImplementedException();
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Union, typePointer, childrenOffset: childrenPointer);
         }
     }
 }
