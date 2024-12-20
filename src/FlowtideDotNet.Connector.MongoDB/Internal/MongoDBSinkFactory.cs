@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new MongoDBSink(options, writeRelation, options.ExecutionMode, dataflowBlockOptions);
+            return new MongoDBSink(options, options.ExecutionMode, writeRelation, dataflowBlockOptions);
         }
     }
 }
