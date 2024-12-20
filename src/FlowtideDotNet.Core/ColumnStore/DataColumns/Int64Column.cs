@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
@@ -298,6 +299,17 @@ namespace FlowtideDotNet.Core.ColumnStore
             mem.Span.CopyTo(newMem.Memory.Span);
 
             return new Int64Column(newMem, Count, memoryAllocator);
+        }
+
+        public int SchemaFieldCountEstimate()
+        {
+            return 1;
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var typePointer = arrowSerializer.AddInt64Type();
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Int, typePointer);
         }
     }
 }

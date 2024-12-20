@@ -438,5 +438,19 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return new ListColumn(_internalColumn.Copy(memoryAllocator), _offsets.Copy(memoryAllocator));
         }
+
+        public int SchemaFieldCountEstimate()
+        {
+            return 1 + _internalColumn.SchemaFieldCountEstimate();
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var typePointer = arrowSerializer.AddListType();
+            var childStack = pointerStack.Slice(1);
+            pointerStack[0] = _internalColumn.CreateSchemaField(ref arrowSerializer, emptyStringPointer, childStack);
+            var childVectorPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, 1));
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.List, typePointer, childrenOffset: childVectorPointer);
+        }
     }
 }

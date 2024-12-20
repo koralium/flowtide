@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
@@ -63,7 +64,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public Column()
         {
-            
+
         }
 
         internal void Assign(IMemoryAllocator memoryAllocator)
@@ -126,7 +127,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public ArrowTypeId Type => _type;
-        IDataColumn IColumn.DataColumn =>  _dataColumn!;
+        IDataColumn IColumn.DataColumn => _dataColumn!;
 
         public IDataValue this[int index] => GetValueAt(index, default);
 
@@ -265,7 +266,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public void InsertAt<T>(in int index, in T value)
-            where T: IDataValue
+            where T : IDataValue
         {
             Debug.Assert(_validityList != null);
             if (value.Type != _type)
@@ -419,7 +420,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 else
                 {
                     _nullCounter -= _validityList.CountFalseInRange(index, count);
-                    _validityList.RemoveRange(index, count);   
+                    _validityList.RemoveRange(index, count);
                 }
             }
             if (_dataColumn != null)
@@ -560,7 +561,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     {
                         return BoundarySearch.SearchBoundriesForDataColumnDesc(in _dataColumn!, in value, in start, end, child, _validityList);
                     }
-                    
+
                 }
                 return _dataColumn!.SearchBoundries(in value, in start, in end, child, desc);
             }
@@ -723,7 +724,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 _nullCounter = 0;
                 _dataColumn.AddToNewList(value);
             }
-            
+
         }
 
         public int EndNewList()
@@ -779,7 +780,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 return 0;
             }
-            
+
             return _dataColumn!.GetByteSize(start, end) + _validityList!.GetByteSize(start, end);
         }
 
@@ -825,7 +826,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         else if (_nullCounter > 0)
                         {
                             Debug.Assert(_validityList != null);
-                            
+
                             // Set entire range as not null, no need to update null counter since nothing is null in the copy
                             _validityList.InsertTrueInRange(index, count);
                         }
@@ -871,7 +872,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                             _validityList.Unset(Count - 1);
                         }
                         // Check if we need to copy over null values
-                        if (column._nullCounter > 0 || _nullCounter  > 0)
+                        if (column._nullCounter > 0 || _nullCounter > 0)
                         {
                             if (column._nullCounter > 0)
                             {
@@ -968,6 +969,31 @@ namespace FlowtideDotNet.Core.ColumnStore
         public Column Copy(IMemoryAllocator memoryAllocator)
         {
             return new Column(_nullCounter, _dataColumn?.Copy(memoryAllocator), _validityList!.Copy(memoryAllocator), _type, memoryAllocator);
+        }
+
+        public int SchemaFieldCountEstimate()
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return 1;
+            }
+
+            return 1 + _dataColumn!.SchemaFieldCountEstimate();
+        }
+
+        internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                var nullTypePointer = arrowSerializer.AddNullType();
+                return arrowSerializer.CreateField(emptyStringPointer, true, (byte)ArrowTypeId.Null, nullTypePointer);
+            }
+            throw new NotImplementedException();
+        }
+
+        int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            return CreateSchemaField(ref arrowSerializer, emptyStringPointer, pointerStack);
         }
     }
 }

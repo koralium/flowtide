@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
@@ -222,6 +223,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new BinaryColumn(_data.Copy(memoryAllocator));
+        }
+
+        public int SchemaFieldCountEstimate()
+        {
+            return 1;
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var binaryTypeOffset = arrowSerializer.AddBinaryType();
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Binary, binaryTypeOffset);
         }
     }
 }

@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Memory;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
@@ -25,12 +26,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics.X86;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
-using static SqlParser.Ast.Expression;
-using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -772,6 +768,34 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
 
             return new UnionColumn(columns, _typeList.Copy(memoryAllocator), _offsets.Copy(memoryAllocator), _typeIds.ToArray(), memoryAllocator);
+        }
+
+        public int SchemaFieldCountEstimate()
+        {
+            int size = 1;
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                size += _valueColumns[i].SchemaFieldCountEstimate();
+            }
+            return size;
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            int count = 0;
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                if (_valueColumns[i] != null)
+                {
+                    pointerStack[count] = (int)_valueColumns[i].Type;
+                    count++;
+                }
+            }
+            var typeIdsPointer = arrowSerializer.UnionCreateTypeIdsVector(pointerStack.Slice(0, count));
+            var typePointer = arrowSerializer.AddUnionType(typeIdsPointer, ArrowUnionMode.Sparse);
+
+
+            throw new NotImplementedException();
         }
     }
 }

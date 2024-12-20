@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
@@ -258,6 +259,17 @@ namespace FlowtideDotNet.Core.ColumnStore
             var newMemory = memoryAllocator.Allocate(mem.Length, 64);
             mem.Span.CopyTo(newMemory.Memory.Span);
             return new BoolColumn(newMemory, Count, memoryAllocator);
+        }
+
+        public int SchemaFieldCountEstimate()
+        {
+            return 1;
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var boolTypePointer = arrowSerializer.AddBooleanType();
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Bool, boolTypePointer);
         }
     }
 }

@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
@@ -186,6 +187,16 @@ namespace FlowtideDotNet.Core.ColumnStore
         public Column Copy(IMemoryAllocator memoryAllocator)
         {
             throw new NotSupportedException();
+        }
+
+        public int SchemaFieldCountEstimate()
+        {
+            return innerColumn.SchemaFieldCountEstimate();
+        }
+
+        int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            throw new NotImplementedException();
         }
     }
 }

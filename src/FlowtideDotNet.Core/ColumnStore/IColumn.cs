@@ -20,6 +20,7 @@ using System.Threading.Tasks;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Text.Json;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -57,6 +58,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             where T : IDataValue;
 
         (IArrowArray, IArrowType) ToArrowArray();
+
+        int SchemaFieldCountEstimate();
+
+        internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack);
 
         void Rent(int count);
 
