@@ -96,5 +96,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             baseClient.Evict(valuesToEvict, isCleanup);
         }
+
+        public Task InitializeSerializerAsync()
+        {
+            return baseClient.InitializeSerializerAsync();
+        }
     }
 }
