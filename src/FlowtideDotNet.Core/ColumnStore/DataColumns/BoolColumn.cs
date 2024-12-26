@@ -271,5 +271,29 @@ namespace FlowtideDotNet.Core.ColumnStore
             var boolTypePointer = arrowSerializer.AddBooleanType();
             return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Bool, boolTypePointer);
         }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 1, GetByteSize());
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.CreateBuffer(1, 1);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        {
+            var (offset, length) = arrowSerializer.WriteBufferData(_data.MemorySlice.Span);
+            var buffer = recordBatchStruct.Buffers(bufferIndex);
+            buffer.SetOffset(offset);
+            buffer.SetLength(length);
+            bufferIndex++;
+        }
     }
 }

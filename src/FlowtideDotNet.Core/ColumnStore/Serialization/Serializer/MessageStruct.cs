@@ -7,6 +7,16 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
+    internal enum MessageHeader : byte
+    {
+        NONE = 0,
+        Schema = 1,
+        DictionaryBatch = 2,
+        RecordBatch = 3,
+        Tensor = 4,
+        SparseTensor = 5,
+    };
+
     internal ref struct MessageStruct
     {
         private readonly Span<byte> span;
@@ -67,7 +77,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return BinaryPrimitives.ReadInt32LittleEndian(readSpan);
         }
 
-        public SchemaStruct Schema()
+        public SchemaStruct Schema => GetSchema();
+
+        public SchemaStruct GetSchema()
         {
             int o = __offset(8);
             return new SchemaStruct(span, __indirect(position + o));
@@ -78,6 +90,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             int o = __offset(8);
             return new RecordBatchStruct(span, __indirect(position + o));
         }
+
+        public int HeaderPosition()
+        {
+            int o = __offset(8);
+            return __indirect(position + o);
+        }
+
+        public Span<byte> Span => span;
+
 
         private int __offset(int vtableOffset)
         {

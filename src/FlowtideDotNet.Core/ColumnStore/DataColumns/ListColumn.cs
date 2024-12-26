@@ -441,7 +441,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int SchemaFieldCountEstimate()
         {
-            return 1 + _internalColumn.SchemaFieldCountEstimate();
+            return 1 + _internalColumn.GetSchemaFieldCountEstimate();
         }
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
@@ -451,6 +451,36 @@ namespace FlowtideDotNet.Core.ColumnStore
             pointerStack[0] = _internalColumn.CreateSchemaField(ref arrowSerializer, emptyStringPointer, childStack);
             var childVectorPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, 1));
             return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.List, typePointer, childrenOffset: childVectorPointer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            var innerEstimate = _internalColumn.GetSerializationEstimate();
+            return new SerializationEstimation(innerEstimate.fieldNodeCount + 1, innerEstimate.bufferCount + 1, innerEstimate.bodyLength + (_offsets.Count * sizeof(int)));
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            _internalColumn.AddFieldNodes(ref arrowSerializer);
+            arrowSerializer.CreateFieldNode(_offsets.Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            _internalColumn.AddBuffers(ref arrowSerializer);
+
+            arrowSerializer.CreateBuffer(1, 1);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        {
+            var (offset, length) = arrowSerializer.WriteBufferData(_offsets.Memory.Span);
+            var buffer = recordBatchStruct.Buffers(bufferIndex);
+            buffer.SetOffset(offset);
+            buffer.SetLength(length);
+            bufferIndex++;
+
+            _internalColumn.WriteDataToBuffer(ref arrowSerializer, in recordBatchStruct, ref bufferIndex);
         }
     }
 }

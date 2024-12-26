@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> OffsetMemory => _offsets.Memory;
 
-        public Memory<byte> DataMemory => _memoryOwner?.Memory ?? new Memory<byte>();
+        public Memory<byte> DataMemory => _memoryOwner?.Memory.Slice(0, _length) ?? new Memory<byte>();
 
         public int Count => _offsets.Count - 1;
 

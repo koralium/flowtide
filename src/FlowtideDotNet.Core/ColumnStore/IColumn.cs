@@ -59,9 +59,17 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         (IArrowArray, IArrowType) ToArrowArray();
 
-        int SchemaFieldCountEstimate();
+        int GetSchemaFieldCountEstimate();
+
+        SerializationEstimation GetSerializationEstimate();
 
         internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack);
+
+        internal void AddFieldNodes(ref ArrowSerializer arrowSerializer);
+
+        internal void AddBuffers(ref ArrowSerializer arrowSerializer);
+
+        internal void WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex);
 
         void Rent(int count);
 

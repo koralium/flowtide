@@ -47,6 +47,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             m_space = m_maxSize;
         }
 
+        public ArrowSerializer(Memory<byte> memory, Span<int> vtable, Span<int> vtables, int space)
+        {
+            m_destination = memory.Span;
+            m_vtable = vtable;
+            m_vtables = vtables;
+            m_maxSize = m_destination.Length;
+            m_space = space;
+        }
+
         private int Offset { get { return m_maxSize - m_space; } }
 
         public Span<byte> CopyToStart(int padding)
@@ -399,12 +408,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return vtableloc;
         }
 
-        public void Finish(int rootTable)
+        public int Finish(int rootTable)
         {
-            Finish(rootTable, false);
+            return Finish(rootTable, false);
         }
 
-        void Finish(int rootTable, bool sizePrefix)
+        int Finish(int rootTable, bool sizePrefix)
         {
             Prep(m_minAlign, sizeof(int) + (sizePrefix ? sizeof(int) : 0));
             AddOffset(rootTable);
@@ -413,6 +422,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 AddInt(m_maxSize - m_space);
             }
             m_position = m_space;
+            return m_space;
         }
 
         private static int CalculatePaddedBufferLength(int length)

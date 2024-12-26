@@ -971,7 +971,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             return new Column(_nullCounter, _dataColumn?.Copy(memoryAllocator), _validityList!.Copy(memoryAllocator), _type, memoryAllocator);
         }
 
-        public int SchemaFieldCountEstimate()
+        public int GetSchemaFieldCountEstimate()
         {
             if (_type == ArrowTypeId.Null)
             {
@@ -988,12 +988,78 @@ namespace FlowtideDotNet.Core.ColumnStore
                 var nullTypePointer = arrowSerializer.AddNullType();
                 return arrowSerializer.CreateField(emptyStringPointer, true, (byte)ArrowTypeId.Null, nullTypePointer);
             }
-            throw new NotImplementedException();
+            
+            return _dataColumn!.CreateSchemaField(ref arrowSerializer, emptyStringPointer, pointerStack);
         }
 
         int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             return CreateSchemaField(ref arrowSerializer, emptyStringPointer, pointerStack);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return new SerializationEstimation(1, 1, sizeof(int));
+            }
+
+            var estimate = _dataColumn!.GetSerializationEstimate();
+            return new SerializationEstimation(1 + estimate.fieldNodeCount, 1 + estimate.bufferCount, estimate.bodyLength + _validityList!.GetByteSize(0, Count - 1));
+        }
+
+        void IColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer)
+        {
+            AddFieldNodes(ref arrowSerializer);
+        }
+
+        internal void AddFieldNodes(ref ArrowSerializer arrowSerializer)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                arrowSerializer.CreateFieldNode(_nullCounter, _nullCounter);
+                return;
+            }
+
+            _dataColumn!.AddFieldNodes(ref arrowSerializer, _nullCounter);
+        }
+
+        void IColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            AddBuffers(ref arrowSerializer);
+        }
+
+        internal void AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return;
+            }
+            _dataColumn!.AddBuffers(ref arrowSerializer);
+            if (_nullCounter > 0)
+            {
+                arrowSerializer.CreateBuffer(1, 1);
+            }
+        }
+
+        void IColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        {
+            this.WriteDataToBuffer(ref arrowSerializer, in recordBatchStruct, ref bufferIndex);
+        }
+
+        internal void WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return;
+            }
+            var (offset, length) = arrowSerializer.WriteBufferData(_validityList!.MemorySlice.Span);
+            var validityBuffer = recordBatchStruct.Buffers(bufferIndex);
+            validityBuffer.SetOffset(offset);
+            validityBuffer.SetLength(length);
+            bufferIndex++;
+
+            _dataColumn!.WriteDataToBuffer(ref arrowSerializer, in recordBatchStruct, ref bufferIndex);
         }
     }
 }

@@ -235,5 +235,38 @@ namespace FlowtideDotNet.Core.ColumnStore
             var binaryTypeOffset = arrowSerializer.AddBinaryType();
             return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Binary, binaryTypeOffset);
         }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 2, GetByteSize());
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.CreateBuffer(1, 1);
+            arrowSerializer.CreateBuffer(1, 1);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        {
+            // Write offset data
+            var (offset, length) = arrowSerializer.WriteBufferData(_data.OffsetMemory.Span);
+            var buffer = recordBatchStruct.Buffers(bufferIndex);
+            buffer.SetOffset(offset);
+            buffer.SetLength(length);
+            bufferIndex++;
+
+            // Write binary data
+            (offset, length) = arrowSerializer.WriteBufferData(_data.DataMemory.Span);
+            buffer = recordBatchStruct.Buffers(bufferIndex);
+            buffer.SetOffset(offset);
+            buffer.SetLength(length);
+            bufferIndex++;
+        }
     }
 }

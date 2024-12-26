@@ -87,5 +87,13 @@ namespace FlowtideDotNet.Core.ColumnStore
         int SchemaFieldCountEstimate();
 
         internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack);
+
+        internal void AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount);
+
+        internal void AddBuffers(ref ArrowSerializer arrowSerializer);
+
+        internal void WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex);
+
+        SerializationEstimation GetSerializationEstimate();
     }
 }

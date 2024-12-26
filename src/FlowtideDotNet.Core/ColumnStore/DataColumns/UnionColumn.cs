@@ -792,7 +792,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 }
             }
             var typeIdsPointer = arrowSerializer.UnionCreateTypeIdsVector(pointerStack.Slice(0, count));
-            var typePointer = arrowSerializer.AddUnionType(typeIdsPointer, ArrowUnionMode.Sparse);
+            var typePointer = arrowSerializer.AddUnionType(typeIdsPointer, ArrowUnionMode.Dense);
 
             var childrenStack = pointerStack.Slice(_valueColumns.Count);
             count = 0;
@@ -807,6 +807,70 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             var childrenPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, count));
 
             return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Union, typePointer, childrenOffset: childrenPointer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            int bodyLength = Count * sizeof(int);
+            int fieldCount = 1;
+            int bufferCount = 2;
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                var estimate = _valueColumns[i].GetSerializationEstimate();
+                bodyLength += estimate.bodyLength;
+                fieldCount += estimate.fieldNodeCount;
+                bufferCount += estimate.bufferCount;
+            }
+            return new SerializationEstimation(fieldCount, bufferCount, bodyLength);
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            for (int i = _valueColumns.Count - 1; i >= 0; i--)
+            {
+                if (_valueColumns[i] != null)
+                {
+                    _valueColumns[i].AddFieldNodes(ref arrowSerializer, 0);
+                }
+            }
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            for (int i = _valueColumns.Count - 1; i >= 0; i--)
+            {
+                if (_valueColumns[i] != null)
+                {
+                    _valueColumns[i].AddBuffers(ref arrowSerializer);
+                }
+            }
+
+            arrowSerializer.CreateBuffer(1, 1);
+            arrowSerializer.CreateBuffer(1, 1);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        {
+            var (offset, length) = arrowSerializer.WriteBufferData(_typeList.SlicedMemory.Span);
+            var buffer = recordBatchStruct.Buffers(bufferIndex);
+            buffer.SetOffset(offset);
+            buffer.SetLength(length);
+            bufferIndex++;
+
+            (offset, length) = arrowSerializer.WriteBufferData(_offsets.Memory.Span);
+            buffer = recordBatchStruct.Buffers(bufferIndex);
+            buffer.SetOffset(offset);
+            buffer.SetLength(length);
+            bufferIndex++;
+
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                if (_valueColumns[i] != null)
+                {
+                    _valueColumns[i].WriteDataToBuffer(ref arrowSerializer, in recordBatchStruct, ref bufferIndex);
+                }
+            }
         }
     }
 }

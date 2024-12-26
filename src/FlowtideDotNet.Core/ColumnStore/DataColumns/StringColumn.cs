@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
+using SqlParser.Ast;
 using System;
 using System.Buffers;
 using System.Collections;
@@ -257,6 +258,37 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var typePointer = arrowSerializer.AddUtf8Type();
             return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Utf8, typePointer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 2, GetByteSize());
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.CreateBuffer(1, 1);
+            arrowSerializer.CreateBuffer(1, 1);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        {
+            var (offset, length) = arrowSerializer.WriteBufferData(_binaryList.OffsetMemory.Span);
+            var buffer = recordBatchStruct.Buffers(bufferIndex);
+            buffer.SetOffset(offset);
+            buffer.SetLength(length);
+            bufferIndex++;
+
+            (offset, length) = arrowSerializer.WriteBufferData(_binaryList.DataMemory.Span);
+            buffer = recordBatchStruct.Buffers(bufferIndex);
+            buffer.SetOffset(offset);
+            buffer.SetLength(length);
+            bufferIndex++;
         }
     }
 }

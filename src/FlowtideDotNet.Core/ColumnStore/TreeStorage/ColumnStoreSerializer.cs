@@ -30,11 +30,13 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
     {
         private readonly int columnCount;
         private readonly IMemoryAllocator memoryAllocator;
+        private readonly EventBatchSerializer _batchSerializer;
 
         public ColumnStoreSerializer(int columnCount, IMemoryAllocator memoryAllocator)
         {
             this.columnCount = columnCount;
             this.memoryAllocator = memoryAllocator;
+            _batchSerializer = new EventBatchSerializer();
         }
         public ColumnKeyStorageContainer CreateEmpty()
         {
@@ -60,6 +62,23 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Serialize(in BinaryWriter writer, in ColumnKeyStorageContainer values)
         {
+            var schemaBytes = _batchSerializer.SerializeSchema(values._data);
+            var messageStruct = MessageStruct.GetRootAsMessage(in schemaBytes, 0);
+            var schemaStruct = messageStruct.GetSchema();
+
+            for (int i = 0; i < schemaStruct.FieldsLength; i++)
+            {
+                var ff = schemaStruct.Fields(i);
+                if (ff.TypeType == ArrowType.Int)
+                {
+                    var typeInt = ff.TypeAsInt();
+                }
+            }
+
+            _batchSerializer.SerializeRecordBatch(values._data);
+
+            // Serialize the record batch
+
             var recordBatch = EventArrowSerializer.BatchToArrow(values._data, values.Count);
             var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
             batchWriter.WriteRecordBatch(recordBatch);

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,12 +29,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             } 
         }
 
-        public byte TypeType 
+        public ArrowType TypeType 
         { 
             get 
             { 
                 int o = __offset(8); 
-                return o != 0 ? Get(o + position) : (byte)0; 
+                return o != 0 ? (ArrowType)Get(o + position) : (ArrowType)0; 
             } 
         }
 
@@ -50,6 +51,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         { 
             return __vector_as_span<byte>(4, 1);
         }
+
+        public TypeUtf8Struct TypeAsUtf8() 
+        { 
+            int o = __offset(10);
+            return new TypeUtf8Struct(span, __indirect(position + o)); 
+        }
+
+        public TypeIntStruct TypeAsInt()
+        {
+            int o = __offset(10);
+            return new TypeIntStruct(span, __indirect(position + o));
+        }
+
+        private int __indirect(int offset)
+        {
+            return offset + GetInt(in span, in offset);
+        }
+
 
         public static int GetInt(ref readonly Span<byte> span, ref readonly int offset)
         {

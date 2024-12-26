@@ -311,5 +311,31 @@ namespace FlowtideDotNet.Core.ColumnStore
             var typePointer = arrowSerializer.AddInt64Type();
             return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Int, typePointer);
         }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 1, GetByteSize());
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            Debug.Assert(_data != null);
+            arrowSerializer.CreateBuffer(1, 1);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        {
+            Debug.Assert(_data != null);
+            var (offset, length) = arrowSerializer.WriteBufferData(_data.SlicedMemory.Span);
+            var buffer = recordBatchStruct.Buffers(bufferIndex);
+            buffer.SetOffset(offset);
+            buffer.SetLength(length);
+            bufferIndex++;
+        }
     }
 }

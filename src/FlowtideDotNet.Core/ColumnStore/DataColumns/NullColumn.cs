@@ -162,5 +162,23 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             var typePointer = arrowSerializer.AddNullType();
             return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Null, typePointer);
         }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 0, sizeof(int));
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(_count, _count);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        {
+        }
     }
 }

@@ -6,11 +6,13 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
+#pragma warning disable CS0282 // There is no defined ordering between fields in multiple declarations of partial struct
     internal ref partial struct ArrowSerializer
+#pragma warning restore CS0282 // There is no defined ordering between fields in multiple declarations of partial struct
     {
         public int CreateMessage(
             short version = 0,
-            byte headerType = 0,
+            MessageHeader headerType = 0,
             int headerOffset = 0,
             int bodyLength = 0,
             int custom_metadataOffset = 0)
@@ -44,9 +46,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             AddShort(0, version, 0); 
         }
 
-        void AddHeaderType(byte headerType) 
+        void AddHeaderType(MessageHeader headerType) 
         { 
-            AddByte(1, headerType, 0); 
+            AddByte(1, (byte)headerType, 0); 
         }
     }
 }

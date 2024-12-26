@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
-    internal ref struct RecordBatchStruct
+    internal readonly ref struct RecordBatchStruct
     {
         private readonly Span<byte> span;
         private readonly int position;

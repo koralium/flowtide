@@ -189,14 +189,34 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotSupportedException();
         }
 
-        public int SchemaFieldCountEstimate()
+        public int GetSchemaFieldCountEstimate()
         {
-            return innerColumn.SchemaFieldCountEstimate();
+            return innerColumn.GetSchemaFieldCountEstimate();
         }
 
         int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             throw new NotImplementedException();
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            throw new NotSupportedException();
+        }
+
+        void IColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer)
+        {
+            throw new NotSupportedException();
+        }
+
+        void IColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            throw new NotSupportedException();
+        }
+
+        void IColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        {
+            throw new NotSupportedException();
         }
     }
 }
