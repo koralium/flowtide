@@ -48,6 +48,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             m_bodyLength += bodyPaddingLength;
             m_destination.Slice(0, bodyPaddingLength).Fill(0);
+            m_position += m_bodyLength;
             return m_bodyLength;
         }
     }

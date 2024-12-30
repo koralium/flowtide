@@ -20,11 +20,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
     internal class EventBatchSerializer
     {
-        //private byte[] schemaMemory;
         private int[] vtable;
         private int[] vtables;
         private int[] stackPointers;
-        //private byte[] recordBatchMemory;
         private byte[] memory;
         private bool _schemaWritten;
         private int _space;
@@ -32,19 +30,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         public EventBatchSerializer()
         {
             memory = new byte[4096];
-            //schemaMemory = new byte[4096];
             vtable = new int[256];
             vtables = new int[256];
             stackPointers = new int[256];
-            //recordBatchMemory = new byte[4096];
         }
 
-        public Span<byte> SerializeRecordBatch(EventBatchData eventBatchData)
+        public SerializationEstimation GetSerializationEstimation(EventBatchData eventBatchData)
         {
-            if (_schemaWritten)
-            {
-                
-            }
             SerializationEstimation serializationEstimation = new SerializationEstimation();
 
             for (int i = 0; i < eventBatchData.Columns.Count; i++)
@@ -54,11 +46,35 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 serializationEstimation.bodyLength += estimate.bodyLength;
                 serializationEstimation.bufferCount += estimate.bufferCount;
             }
+            return serializationEstimation;
+        }
 
-            var overhead = 200 + (serializationEstimation.fieldNodeCount * 100); //100 bytes per field as a big overestimate
-            
-            if (memory.Length < (serializationEstimation.bodyLength + overhead) * 2)
-                memory = new byte[(serializationEstimation.bodyLength + overhead) * 2];
+        public int GetEstimatedBufferSize(SerializationEstimation serializationEstimation)
+        {
+            var overhead = 200 + (serializationEstimation.fieldNodeCount * 100);
+            return serializationEstimation.bodyLength + overhead + (serializationEstimation.bufferCount * 8);
+        }
+
+        public Span<byte> SerializeRecordBatch(EventBatchData eventBatchData, int count, SerializationEstimation serializationEstimation)
+        {
+            ArrowSerializer arrowSerializer = new ArrowSerializer(memory, vtable, vtables);
+            if (_schemaWritten)
+            {
+                arrowSerializer.SetSpacePosition(_space);
+                var schemaPadding = arrowSerializer.WriteMessageLengthAndPadding();
+                arrowSerializer.CopyToStart(schemaPadding);
+            }
+
+            var estimateBufferSize = GetEstimatedBufferSize(serializationEstimation);
+
+            if (memory.Length < estimateBufferSize)
+            {
+                if (_schemaWritten)
+                {
+                    throw new InvalidOperationException("Schema has been written, but buffer is too small to write record batch");
+                }
+                memory = new byte[estimateBufferSize];
+            }
 
             if ((serializationEstimation.fieldNodeCount * 2) > vtable.Length)
             {
@@ -66,8 +82,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 vtables = new int[serializationEstimation.fieldNodeCount * 2];
                 stackPointers = new int[serializationEstimation.fieldNodeCount * 2];
             }
-
-            ArrowSerializer arrowSerializer = new ArrowSerializer(memory, vtable, vtables);
 
             arrowSerializer.RecordBatchStartNodesVector(serializationEstimation.fieldNodeCount);
             for (int i = eventBatchData.Columns.Count - 1; i >= 0; i--)
@@ -84,7 +98,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
             var buffersPointer = arrowSerializer.EndVector();
 
-            var recordBatchPointer = arrowSerializer.CreateRecordBatch(eventBatchData.Count, nodesPointer, buffersPointer);
+            var recordBatchPointer = arrowSerializer.CreateRecordBatch(count, nodesPointer, buffersPointer);
 
             var messagePointer = arrowSerializer.CreateMessage(4, MessageHeader.RecordBatch, recordBatchPointer, 1);
 
@@ -101,43 +115,33 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 eventBatchData.Columns[i].WriteDataToBuffer(ref arrowSerializer, ref recordBatchStruct, ref bufferIndex);
             }
 
-            for (int i = 0; i < recordBatchStruct.BuffersLength; i++)
-            {
-                var buffer = recordBatchStruct.Buffers(i);
-            }
-
             var totalBodyLength = arrowSerializer.FinishWritingBufferData();
             message.SetBodyLength(totalBodyLength);
-            
-            return new byte[0];
+
+            return memory.AsSpan().Slice(0, arrowSerializer.Position);
+            //return new byte[0];
         }
 
-        public Span<byte> SerializeSchema(EventBatchData eventBatchData)
+        public Span<byte> SerializeSchema(EventBatchData eventBatchData, SerializationEstimation serializationEstimation)
         {
-            int schemaFieldCount = 0;
-            for (int i = 0; i <  eventBatchData.Columns.Count; i++)
-            {
-                schemaFieldCount = eventBatchData.Columns[i].GetSchemaFieldCountEstimate();
-            }
-            var overhead = 200 + (schemaFieldCount * 100); //100 bytes per field as a big overestimate
+            var estimateBufferSize = GetEstimatedBufferSize(serializationEstimation);
 
-            if (overhead > memory.Length)
-                memory = new byte[overhead];
-            if ((schemaFieldCount * 2) > vtable.Length)
+            if (estimateBufferSize > memory.Length)
+                memory = new byte[estimateBufferSize];
+            if ((serializationEstimation.fieldNodeCount * 2) > vtable.Length)
             {
-                vtable = new int[schemaFieldCount * 2];
-                vtables = new int[schemaFieldCount * 2];
-                stackPointers = new int[schemaFieldCount * 2];
+                vtable = new int[serializationEstimation.fieldNodeCount * 2];
+                vtables = new int[serializationEstimation.fieldNodeCount * 2];
+                stackPointers = new int[serializationEstimation.fieldNodeCount * 2];
             }
             ArrowSerializer arrowSerializer = new ArrowSerializer(memory, vtable, vtables);
-
-            var emptyStringOffset = arrowSerializer.CreateEmptyString();
 
             var stack = stackPointers.AsSpan();
             var childrenStack = stack.Slice(eventBatchData.Columns.Count);
             for (int i = 0; i < eventBatchData.Columns.Count; i++)
             {
-                stack[i] = eventBatchData.Columns[i].CreateSchemaField(ref arrowSerializer, emptyStringOffset, childrenStack);
+                var strPos = arrowSerializer.CreateString(i.ToString());
+                stack[i] = eventBatchData.Columns[i].CreateSchemaField(ref arrowSerializer, strPos, childrenStack);
             }
 
             var fieldsPointer = arrowSerializer.SchemaCreateFieldsVector(stack.Slice(0, eventBatchData.Columns.Count));

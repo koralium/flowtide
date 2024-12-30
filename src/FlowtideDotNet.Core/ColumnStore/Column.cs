@@ -1005,7 +1005,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             var estimate = _dataColumn!.GetSerializationEstimate();
-            return new SerializationEstimation(1 + estimate.fieldNodeCount, 1 + estimate.bufferCount, estimate.bodyLength + _validityList!.GetByteSize(0, Count - 1));
+            return new SerializationEstimation(estimate.fieldNodeCount, 1 + estimate.bufferCount, estimate.bodyLength + _validityList!.GetByteSize(0, Count - 1));
         }
 
         void IColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer)
