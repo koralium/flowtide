@@ -38,5 +38,7 @@ namespace FlowtideDotNet.AcceptanceTests.Entities
         public double DoubleValue { get; set; }
 
         public bool Active { get; set; }
+
+        public DateTime? BirthDate { get; set; }
     }
 }

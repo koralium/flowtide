@@ -12,6 +12,7 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Compute.Internal;
 using System;
 using System.Collections.Generic;
@@ -32,12 +33,18 @@ namespace FlowtideDotNet.Core.Compute.Columnar
         private static DoubleValue OneDoubleValue = new DoubleValue(1.0);
         private static DoubleValue ZeroDoubleValue = new DoubleValue(0.0);
 
+        internal class CastToStringContainer
+        {
+            public byte[] utf8bytes = new byte[128];
+        }
+
         internal static Expression CallCastToString(Expression value, Expression result)
         {
             var genericMethod = typeof(ColumnCastImplementations).GetMethod(nameof(CastToString), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
             Debug.Assert(genericMethod != null);
             var method = genericMethod.MakeGenericMethod(value.Type);
-            return Expression.Call(method, value, result);
+            var container = Expression.Constant(new CastToStringContainer());
+            return Expression.Call(method, value, result, container);
         }
 
         internal static Expression CallCastToInt(Expression value, Expression result)
@@ -72,7 +79,52 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             return Expression.Call(method, value, result);
         }
 
-        internal static IDataValue CastToString<T>(T value, DataValueContainer result)
+        internal static Expression CallCastToTimestamp(Expression value, Expression result)
+        {
+            var genericMethod = typeof(ColumnCastImplementations).GetMethod(nameof(CastToTimestamp), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Debug.Assert(genericMethod != null);
+            var method = genericMethod.MakeGenericMethod(value.Type);
+            return Expression.Call(method, value, result);
+        }
+
+        internal static IDataValue CastToTimestamp<T>(T value, DataValueContainer result)
+            where T : IDataValue
+        {
+            if (value.IsNull)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            if (value.Type == ArrowTypeId.Timestamp)
+            {
+                result._type = ArrowTypeId.Timestamp;
+                result._timestampValue = value.AsTimestamp;
+                return result;
+            }
+            if (value.Type == ArrowTypeId.String)
+            {
+                if (DateTimeOffset.TryParse(value.AsString.ToString(), out var parsedTime))
+                {
+                    result._type = ArrowTypeId.Timestamp;
+                    result._timestampValue = new TimestampTzValue(parsedTime.Ticks, (short)parsedTime.Offset.TotalMinutes);
+                    return result;
+                }
+            }
+            if (value.Type == ArrowTypeId.Int64)
+            {
+                result._type = ArrowTypeId.Timestamp;
+                // Time is in microseconds
+                result._timestampValue = TimestampTzValue.FromUnixMicroseconds(value.AsLong);
+                return result;
+
+            }
+
+            result._type = ArrowTypeId.Null;
+            return result;
+        }
+
+        internal static IDataValue CastToString<T>(T value, DataValueContainer result, CastToStringContainer container)
             where T : IDataValue
         {
             if (value.IsNull)
@@ -115,6 +167,21 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             {
                 result._type = ArrowTypeId.String;
                 result._stringValue = new StringValue(value.AsDecimal.ToString());
+                return result;
+            }
+            if (value.Type == ArrowTypeId.Timestamp)
+            {
+                result._type = ArrowTypeId.String;
+                var dto = value.AsTimestamp.ToDateTimeOffset();
+                if (dto.TryFormat(container.utf8bytes, out var bytesWritten, "yyyy-MM-ddTHH:mm:ss.fffZ"))
+                {
+                    result._stringValue = new StringValue(container.utf8bytes.AsMemory().Slice(0, bytesWritten));
+                }
+                else
+                {
+                    result._stringValue = new StringValue(value.AsTimestamp.ToDateTimeOffset().ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
+                }
+                
                 return result;
             }
 
@@ -168,6 +235,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                 case ArrowTypeId.Decimal128:
                     result._type = ArrowTypeId.Int64;
                     result._int64Value = new Int64Value((long)value.AsDecimal);
+                    return result;
+                case ArrowTypeId.Timestamp:
+                    result._type = ArrowTypeId.Int64;
+                    result._int64Value = new Int64Value(value.AsTimestamp.UnixTimestampMicroseconds);
                     return result;
                 default:
                     result._type = ArrowTypeId.Null;

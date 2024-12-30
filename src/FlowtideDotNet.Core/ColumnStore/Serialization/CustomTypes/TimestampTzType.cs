@@ -10,40 +10,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.Flexbuffer;
+using Apache.Arrow.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore
+namespace FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes
 {
-    public interface IDataValue
+    internal class TimestampTzType : FixedSizeBinaryType, ICustomArrowType
     {
-        ArrowTypeId Type { get; }
+        public const string TypeName = "TimestampTz";
+        public const string ExtensionName = "flowtide.timestamptz";
+        public static readonly TimestampTzType Default = new TimestampTzType();
 
-        long AsLong { get; }
+        public TimestampTzType() : base(10)
+        {
+        }
 
-        FlxString AsString { get; }
+        public override string Name => TypeName;
 
-        bool AsBool { get; }
-
-        double AsDouble { get; }
-
-        IListValue AsList { get; }
-
-        Span<byte> AsBinary { get; }
-
-        IMapValue AsMap { get; }
-
-        decimal AsDecimal { get; }
-
-        bool IsNull { get; }
-
-        TimestampTzValue AsTimestamp { get; }
-
-        void CopyToContainer(DataValueContainer container);
+        public string CustomTypeName => ExtensionName;
     }
 }

@@ -88,5 +88,12 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
             var txt = literal.GetText();
             return DataTypeValueWriter.WriteDataValue(txt, "dec");
         }
+
+        public override string VisitTimestampArg([NotNull] FuncTestCaseParser.TimestampArgContext context)
+        {
+            var literal = context.TimestampLiteral();
+            var txt = literal.GetText();
+            return DataTypeValueWriter.WriteDataValue(txt, "ts");
+        }
     }
 }

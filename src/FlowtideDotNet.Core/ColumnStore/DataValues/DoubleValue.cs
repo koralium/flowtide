@@ -48,6 +48,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public bool IsNull => false;
 
+        public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
         public int CompareTo(in IDataValue other)
         {
             return AsDouble.CompareTo(other.AsDouble);

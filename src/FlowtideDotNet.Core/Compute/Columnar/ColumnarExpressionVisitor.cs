@@ -157,7 +157,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
         {
             if(numericLiteral.Value % 1 == 0)
             {
-                return System.Linq.Expressions.Expression.Constant(new Int64Value((int)numericLiteral.Value), typeof(IDataValue));
+                return System.Linq.Expressions.Expression.Constant(new Int64Value((long)numericLiteral.Value), typeof(IDataValue));
             }
             return System.Linq.Expressions.Expression.Constant(new DoubleValue((double)numericLiteral.Value), typeof(IDataValue));
         }
@@ -186,6 +186,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                 case SubstraitType.Fp32:
                 case SubstraitType.Fp64:
                     return ColumnCastImplementations.CallCastToDouble(expr, state.ResultDataValue);
+                case SubstraitType.TimestampTz:
+                    return ColumnCastImplementations.CallCastToTimestamp(expr, state.ResultDataValue);
             }
 
             throw new InvalidOperationException($"The type {castExpression.Type.Type} is not supported in cast.");

@@ -1,0 +1,9 @@
+﻿### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_datetime.yaml'
+
+# Timestamp values no offset
+strftime('2016-12-31T13:30:15'::ts, '%Y-%m-%d %H:%M:%S'::str) = '2016-12-31 13:30:15'::str
+strftime('2016-12-31T13:45:15'::ts, '%Y-%m-%d %H:%M:%S'::str) = '2016-12-31 13:45:15'::str
+
+# Integer values unix timestamp in dotnet ticks
+strftime(14832030150000000::i32, '%Y-%m-%d %H:%M:%S'::str) = '2016-12-31 16:50:15'::str

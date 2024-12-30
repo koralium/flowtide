@@ -48,6 +48,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Comparers
                     return x.AsBinary.SequenceCompareTo(y.AsBinary);
                 case ArrowTypeId.Decimal128:
                     return x.AsDecimal.CompareTo(y.AsDecimal);
+                case ArrowTypeId.Timestamp:
+                    return x.AsTimestamp.CompareTo(y.AsTimestamp);
                 case ArrowTypeId.Map:
                     return CompareMaps(x.AsMap, y.AsMap);
                 case ArrowTypeId.List:

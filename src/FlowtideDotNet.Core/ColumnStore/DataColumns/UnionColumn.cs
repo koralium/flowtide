@@ -132,6 +132,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     case ArrowTypeId.Decimal128:
                         valueColumns.Add(new DecimalColumn(_memoryAllocator));
                         break;
+                    case ArrowTypeId.Timestamp:
+                        valueColumns.Add(new TimestampTzColumn(_memoryAllocator));
+                        break;
                     default:
                         throw new NotImplementedException();
                 }
