@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 case BsonType.Binary:
                     return new BinaryValue(bsonValue.AsByteArray);
                 case BsonType.DateTime:
-                    return new Int64Value(bsonValue.ToUniversalTime().Ticks);
+                    return new TimestampTzValue(bsonValue.ToUniversalTime());
                 case BsonType.ObjectId:
                     return new StringValue(bsonValue.AsObjectId.ToString());
                 case BsonType.Double:
@@ -120,7 +120,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 case BsonType.Null:
                     return NullValue.Instance;
                 case BsonType.Timestamp:
-                    return new Int64Value(bsonValue.AsBsonTimestamp.Timestamp);
+                    return new TimestampTzValue(bsonValue.AsBsonTimestamp.Timestamp, 0);
                 case BsonType.Document:
                     return BsonMapToDataValue(bsonValue.AsBsonDocument);
                 case BsonType.Array:

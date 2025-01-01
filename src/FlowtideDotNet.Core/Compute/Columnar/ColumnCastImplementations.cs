@@ -114,10 +114,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             if (value.Type == ArrowTypeId.Int64)
             {
                 result._type = ArrowTypeId.Timestamp;
-                // Time is in microseconds
-                result._timestampValue = TimestampTzValue.FromUnixMicroseconds(value.AsLong);
+                // Time is in ticks from unix time
+                result._timestampValue = TimestampTzValue.FromUnixMicroseconds(value.AsLong / 10);
                 return result;
-
             }
 
             result._type = ArrowTypeId.Null;
