@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                     GetMetadata = () =>
                     {
                         var metadata = new Metadata();
-                        metadata.Add("Authorization", "Bearer somerandomkeyhere");
+                        metadata.Add("Authorization", $"Bearer {TestName}");
                         return metadata;
                     }
                 });
@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                     GetMetadata = () =>
                     {
                         var metadata = new Metadata();
-                        metadata.Add("Authorization", "Bearer somerandomkeyhere");
+                        metadata.Add("Authorization", $"Bearer {TestName}");
                         return metadata;
                     }
                 });
