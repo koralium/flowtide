@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Substrait.Type;
 using FlowtideDotNet.Core.Exceptions;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
@@ -842,6 +843,54 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return output;
         }
 
+        public static Action<DataTable, bool, EventBatchData, int> GetDataRowFromColumnsFunc(
+            IReadOnlyCollection<DbColumn> columns, 
+            IReadOnlyList<int> primaryKeys,
+            DataValueContainer dataValueContainer)
+        {
+            var columnList = columns.ToList();
+            var mapFuncs = GetColumnsToDataTableValueMaps(columnList, dataValueContainer);
+            var columnNames = columnList.Select(x => x.ColumnName).ToList();
+            return (table, isDeleted, batch, index) =>
+            {
+                var row = table.NewRow();
+
+                if (isDeleted)
+                {
+                    row["md_operation"] = "D";
+                    // Set only primaryKeys
+                    for (int i = 0; i < columnNames.Count; i++)
+                    {
+                        if (primaryKeys.Contains(i))
+                        {
+                            row[columnNames[i]] = mapFuncs[i](batch, index);
+                        }
+                        else
+                        {
+                            row[columnNames[i]] = DBNull.Value;
+                        }
+                    }
+                    table.Rows.Add(row);
+                    return;
+                }
+
+                row["md_operation"] = "I";
+                for (int i = 0; i < columnNames.Count; i++)
+                {
+                    var val = mapFuncs[i](batch, index);
+                    if (val == null)
+                    {
+                        val = DBNull.Value;
+                    }
+                    else
+                    {
+                        row[columnNames[i]] = val;
+                    }
+                }
+                table.Rows.Add(row);
+            };
+        }
+
         public static Action<DataTable, bool, RowEvent> GetDataRowMapFunc(IReadOnlyCollection<DbColumn> columns, IReadOnlyList<int> primaryKeys)
         {
             var columnList = columns.ToList();
@@ -934,6 +983,17 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return (outdata, pkValues);
         }
 
+        public static List<Func<EventBatchData, int, object?>> GetColumnsToDataTableValueMaps(List<DbColumn> columns, DataValueContainer dataValueContainer)
+        {
+            List<Func<EventBatchData, int, object?>> output = new List<Func<EventBatchData, int, object?>>();
+            for (int i = 0; i < columns.Count; i++)
+            {
+                output.Add(GetColumnToDataTableValueMap(columns[i], dataValueContainer, i));
+            }
+            return output;
+
+        }
+
         public static List<Func<RowEvent, object?>> GetDataTableValueMaps(List<DbColumn> columns)
         {
             List<Func<RowEvent, object?>> output = new List<Func<RowEvent, object?>>();
@@ -943,6 +1003,221 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 output.Add(GetDataTableValueMap(columns[i], i));
             }
             return output;
+        }
+
+        public static Func<EventBatchData, int, object?> GetColumnToDataTableValueMap(DbColumn dbColumn, DataValueContainer dataValueContainer, int columnIndex)
+        {
+            var t = dbColumn.DataType;
+
+            if (t == null)
+            {
+                throw new FlowtideException("Could not get data type from SQL Server");
+            }
+
+            if (t.Equals(typeof(string)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.String)
+                    {
+                        return dataValueContainer.AsString.ToString();
+                    }
+                    // Json as fallback
+                    using MemoryStream stream = new();
+                    using Utf8JsonWriter utf8JsonWriter = new Utf8JsonWriter(stream);
+                    batch.Columns[columnIndex].WriteToJson(in utf8JsonWriter, index);
+                    return Encoding.UTF8.GetString(stream.ToArray());
+                };
+            }
+            if (t.Equals(typeof(int)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsLong;
+                };
+            }
+            if (t.Equals(typeof(DateTime)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return DateTimeOffset.UnixEpoch.AddTicks(dataValueContainer.AsLong).DateTime;
+                };
+            }
+            if (t.Equals(typeof(double))) // float
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsDouble;
+                };
+            }
+            if (t.Equals(typeof(float))) // real
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsDouble;
+                };
+            }
+            if (t.Equals(typeof(decimal)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Double)
+                    {
+                        return (decimal)dataValueContainer.AsDouble;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Int64)
+                    {
+                        return (decimal)dataValueContainer.AsLong;
+                    }
+                    return dataValueContainer.AsDecimal;
+                };
+            }
+            if (t.Equals(typeof(bool)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Boolean)
+                    {
+                        return dataValueContainer.AsBool;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Int64)
+                    {
+                        return dataValueContainer.AsLong > 0;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.String)
+                    {
+                        var stringVal = dataValueContainer.AsString.ToString();
+                        if (stringVal.Equals("true", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+                        if (stringVal.Equals("false", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return false;
+                        }
+                    }
+                    throw new NotSupportedException("Bool can only support bool or int values");
+                };
+            }
+            if (t.Equals(typeof(short)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsLong;
+                };
+            }
+            if (t.Equals(typeof(long)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsLong;
+                };
+            }
+            if (t.Equals(typeof(Guid)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.String)
+                    {
+                        return new Guid(dataValueContainer.AsString.ToString());
+                    }
+                    else
+                    {
+                        var blob = dataValueContainer.AsBinary;
+                        return new Guid(blob);
+                    }
+                };
+            }
+            if (t.Equals(typeof(byte))) // tiny int
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+
+                    return dataValueContainer.AsLong;
+                };
+            }
+            if (t.Equals(typeof(byte[]))) // binary
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsBinary.ToArray();
+                };
+            }
+            if (t.Equals(typeof(TimeSpan))) // time(7)
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+
+                    return TimeSpan.FromTicks(dataValueContainer.AsLong);
+                };
+            }
+
+            throw new NotImplementedException();
         }
 
         public static Func<RowEvent, object?> GetDataTableValueMap(DbColumn dbColumn, int index)

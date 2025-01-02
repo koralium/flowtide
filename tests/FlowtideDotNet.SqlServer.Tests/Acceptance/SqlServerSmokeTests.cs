@@ -32,6 +32,7 @@ using FlowtideDotNet.Core;
 using System.Diagnostics.Metrics;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 {
@@ -226,7 +227,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             {
                 return Task.CompletedTask;
             }, nodeMetrics, stateClient, new NullLoggerFactory(), memoryManager);
-            var sink = new SqlServerSink(new Connector.SqlServer.SqlServerSinkOptions() { ConnectionStringFunc = () => sqlServerFixture.ConnectionString }, writeRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
+            var sink = new ColumnSqlServerSink(new Connector.SqlServer.SqlServerSinkOptions() { ConnectionStringFunc = () => sqlServerFixture.ConnectionString }, writeRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
 
             sink.Setup("mergejoinstream", "op");
             sink.CreateBlock();
@@ -242,6 +243,8 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                     b.Add(1);
                 })
             }, 1), 0));
+
+            await sink.SendAsync(new Watermark("test", 1));
 
             await sink.SendAsync(new Checkpoint(0, 1));
 
