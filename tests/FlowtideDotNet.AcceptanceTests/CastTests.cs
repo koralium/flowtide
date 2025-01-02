@@ -362,13 +362,13 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task ConvertIntegerInUnixMicrosecondsToTimestamp()
+        public async Task ConvertIntegerInUnixDotnetTicksToTimestamp()
         {
             GenerateData();
             await StartStream(@"
             INSERT INTO output
             SELECT 
-                CAST(1609459200000000 AS TIMESTAMP)
+                CAST(16094592000000000 AS TIMESTAMP)
             FROM users
             ");
 
@@ -384,7 +384,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream(@"
             INSERT INTO output
             SELECT 
-                CAST(CAST(1609459200000000 AS TIMESTAMP) AS STRING)
+                CAST(CAST(16094592000000000 AS TIMESTAMP) AS STRING)
             FROM users
             ");
 
@@ -400,7 +400,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream(@"
             INSERT INTO output
             SELECT 
-                CAST(CAST(1609459200000000 AS TIMESTAMP) AS INT)
+                CAST(CAST(16094592000000000 AS TIMESTAMP) AS INT)
             FROM users
             ");
 

@@ -266,7 +266,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     }
                     else if (column is DateTimeOffset dateTimeOffset)
                     {
-                        b.Add(dateTimeOffset.Ticks);
+                        b.Add(dateTimeOffset.Subtract(DateTimeOffset.UnixEpoch).Ticks);
                     }
                     else
                     {
