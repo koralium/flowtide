@@ -669,6 +669,10 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 baseType = new Fp64Type();
             }
+            else if (cast.DataType is DataType.Timestamp tt)
+            {
+                baseType = new TimestampType();
+            }
             else
             {
                 throw new NotImplementedException($"The data type '{cast.DataType.GetType().Name}' is not yet supported in cast for SQL.");

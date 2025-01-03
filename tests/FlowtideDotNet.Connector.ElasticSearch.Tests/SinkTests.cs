@@ -1,4 +1,5 @@
 using Elasticsearch.Net;
+using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Connector.CosmosDB.Tests;
 using FlowtideDotNet.Connector.ElasticSearch.Exceptions;
 using Nest;
@@ -26,9 +27,9 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             INSERT INTO testindex
             SELECT 
                 UserKey as _id,
-                FirstName,
-                LastName,
-                UserKey as pk
+                FirstName as firstName,
+                LastName as lastName,
+                CAST(BirthDate as TIMESTAMP) as birthDate
             FROM users
             ");
 
@@ -36,14 +37,21 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
 
             var lastUser = stream.Users.Last();
             bool success = false;
+            StringResponse? stringResponse;
             do
             {
                 await stream.SchedulerTick();
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
-                success = resp.ApiCall.HttpStatusCode == 200;
+                stringResponse = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
+                success = stringResponse.ApiCall.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
-            
+
+            var resp = await elasticClient.SourceAsync<User>(lastUser.UserKey.ToString(), g => g.Index("testindex"));
+
+            var mappingInfo = elasticClient.Indices.GetMapping<User>(b => b.Index("testindex"));
+            var birthDateField = mappingInfo.Indices["testindex"].Mappings.Properties["birthDate"];
+            Assert.Equal("date", birthDateField.Type);
+            Assert.Equal(lastUser.BirthDate!.Value.ToUniversalTime(), resp.Body.BirthDate!.Value.ToUniversalTime(), TimeSpan.FromMilliseconds(1));
         }
 
         [Fact]

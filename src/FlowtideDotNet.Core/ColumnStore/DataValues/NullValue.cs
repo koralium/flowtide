@@ -44,6 +44,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public bool IsNull => true;
 
+        public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
         public void CopyToContainer(DataValueContainer container)
         {
             container._type = ArrowTypeId.Null;

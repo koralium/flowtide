@@ -34,6 +34,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T1 : IDataValue
             where T2 : IDataValue
         {
+            if (value.Type == ArrowTypeId.Timestamp)
+            {
+                var dt = value.AsTimestamp.ToDateTimeOffset().DateTime;
+                result._type = ArrowTypeId.String;
+                result._stringValue = new StringValue(Strftime.ToStrFTime(dt, format.AsString.ToString(), CultureInfo.InvariantCulture));
+                return result;
+            }
             long timestamp = 0;
             if (value.Type == ArrowTypeId.Int64)
             {

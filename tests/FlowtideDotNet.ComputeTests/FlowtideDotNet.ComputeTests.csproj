@@ -66,9 +66,14 @@
 		<AdditionalFiles Include="Substrait/cases/comparison/*.test" />
 		<AdditionalFiles Include="Substrait/cases/rounding/*.test" />
 		<AdditionalFiles Include="OtherCases\comparison\*.test" />
+    <AdditionalFiles Include="OtherCases\datetime\*.test" />
 		<AdditionalFiles Include="Substrait/cases/aggregate_generic/count.test" />
 		<AdditionalFiles Include="Substrait/cases/arithmetic/max.test" />
 		<AdditionalFiles Include="Substrait/cases/arithmetic/min.test" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="GeneratedFiles\" />
 	</ItemGroup>
 
 </Project>
