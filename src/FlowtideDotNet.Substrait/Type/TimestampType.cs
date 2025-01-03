@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    internal class TimestampType : SubstraitBaseType
+    public class TimestampType : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.TimestampTz;
     }

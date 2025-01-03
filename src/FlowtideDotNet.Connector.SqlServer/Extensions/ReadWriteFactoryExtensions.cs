@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Core.Engine
                     return null;
                 }
                 transform?.Invoke(relation);
-                return new SqlServerSink(new Connector.SqlServer.SqlServerSinkOptions()
+                return new ColumnSqlServerSink(new Connector.SqlServer.SqlServerSinkOptions()
                 {
                     ConnectionStringFunc = connectionStringFunc
                 }, relation, dataflowopts);
@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Core.Engine
                     return null;
                 }
                 transform?.Invoke(relation);
-                return new SqlServerSink(sqlServerSinkOptions, relation, dataflowopts);
+                return new ColumnSqlServerSink(sqlServerSinkOptions, relation, dataflowopts);
             });
             return readWriteFactory;
         }

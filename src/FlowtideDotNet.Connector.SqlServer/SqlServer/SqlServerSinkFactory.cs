@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new SqlServerSink(sqlServerSinkOptions, writeRelation, dataflowBlockOptions);
+            return new ColumnSqlServerSink(sqlServerSinkOptions, writeRelation, dataflowBlockOptions);
         }
     }
 }
