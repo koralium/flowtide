@@ -116,8 +116,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                                 return;
                             }
                             var dateTime = reader.GetDateTime(index);
-                            var ms = dateTime.Subtract(DateTime.UnixEpoch).Ticks;
-                            column.Add(new Int64Value(ms));
+                            column.Add(new TimestampTzValue(dateTime));
                         });
                         break;
                     case "time":

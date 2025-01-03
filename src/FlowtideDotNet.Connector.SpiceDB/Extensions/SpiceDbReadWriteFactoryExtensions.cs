@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Extensions
                     return null;
                 }
                 transform?.Invoke(writeRel);
-                return new SpiceDbSink(spiceDbSinkOptions, writeRel, spiceDbSinkOptions.ExecutionMode, opt);
+                return new ColumnSpiceDbSink(spiceDbSinkOptions, spiceDbSinkOptions.ExecutionMode, writeRel, opt);
             });
             return factory;
         }
@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Extensions
                 }
                 indices.Add(objectIdIndex);
 
-                return new ReadOperatorInfo(new SpiceDbSource(options, readRelation, opt), new NormalizationRelation()
+                return new ReadOperatorInfo(new ColumnSpiceDbSource(options, readRelation, opt), new NormalizationRelation()
                 {
                     Input = readRelation,
                     Filter = readRelation.Filter,

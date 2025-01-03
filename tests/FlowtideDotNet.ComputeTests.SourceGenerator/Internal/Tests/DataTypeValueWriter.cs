@@ -50,6 +50,14 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
                     return $"new StringValue(\"{value}\")";
                 case "dec":
                     return $"new DecimalValue({value}m)";
+                case "ts":
+                    value = value.Trim('\'');
+                    if (DateTimeOffset.TryParse(value, out var result))
+                    {
+                        return $"new TimestampTzValue({result.Ticks}, {(short)result.Offset.TotalMinutes})";
+                    }
+                    throw new Exception($"Could not parse timestamp {value}");
+                    
             }
             throw new NotImplementedException(dataType);
         }

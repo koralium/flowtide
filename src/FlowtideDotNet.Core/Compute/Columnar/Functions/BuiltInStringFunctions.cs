@@ -483,7 +483,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         private static IDataValue ToStringImplementation<T>(T value, DataValueContainer result)
             where T : IDataValue
         {
-            return ColumnCastImplementations.CastToString(value, result);
+            return ColumnCastImplementations.CastToString(value, result, new ColumnCastImplementations.CastToStringContainer());
         }
 
         private static IDataValue StartsWithImplementation<T1, T2>(T1 value, T2 prefix, DataValueContainer result)
