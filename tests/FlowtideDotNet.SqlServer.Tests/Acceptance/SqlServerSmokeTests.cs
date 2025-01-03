@@ -127,7 +127,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                                             new Int64Type(),
                                             new StringType(),
                                             new Fp64Type(),
-                                            new Int64Type(),
+                                            new TimestampType(),
                                             new StringType(),
                                             new StringType(),
                                             new Int64Type(),

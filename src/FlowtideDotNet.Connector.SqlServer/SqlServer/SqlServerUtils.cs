@@ -119,6 +119,18 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             column.Add(new TimestampTzValue(dateTime));
                         });
                         break;
+                    case "datetimeoffset":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            var dateTimeOffset = reader.GetDateTimeOffset(index);
+                            column.Add(new TimestampTzValue(dateTimeOffset));
+                        });
+                        break;
                     case "time":
                         output.Add((reader, column) =>
                         {
@@ -249,7 +261,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 case "datetime":
                 case "smalldatetime":
                 case "datetime2":
-                    return new Int64Type();
+                    return new TimestampType();
                 case "time":
                     return new Int64Type();
                 case "bit":
@@ -1054,7 +1066,35 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     {
                         return null;
                     }
-                    return DateTimeOffset.UnixEpoch.AddTicks(dataValueContainer.AsLong).DateTime;
+                    if (dataValueContainer.Type == ArrowTypeId.Int64)
+                    {
+                        return DateTimeOffset.UnixEpoch.AddTicks(dataValueContainer.AsLong).DateTime;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Timestamp)
+                    {
+                        return dataValueContainer.AsTimestamp.ToDateTimeOffset().DateTime;
+                    }
+                    throw new NotSupportedException($"The data type {dataValueContainer.Type} cant be used as datetime");
+                };
+            }
+            if (t.Equals(typeof(DateTimeOffset)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Int64)
+                    {
+                        return DateTimeOffset.UnixEpoch.AddTicks(dataValueContainer.AsLong);
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Timestamp)
+                    {
+                        return dataValueContainer.AsTimestamp.ToDateTimeOffset();
+                    }
+                    throw new NotSupportedException($"The data type {dataValueContainer.Type} cant be used as datetime");
                 };
             }
             if (t.Equals(typeof(double))) // float
