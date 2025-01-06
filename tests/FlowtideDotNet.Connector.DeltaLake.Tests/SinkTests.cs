@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 .Field(new Field("name", StringType.Default, true))
                 .Build();
             var table = await engine.CreateTableAsync(new TableCreateOptions("memory://test", schema), default);
-            var stream = new DeltaLakeTestStream(nameof(TestInsertInitialData), new List<string>() { "id" }, "memory://test", table);
+            var stream = new DeltaLakeTestStream(nameof(TestInsertInitialDataRemovesPrevious), new List<string>() { "id" }, "memory://test", table);
             stream.Generate(2000);
 
             var existingIds = new Int64Array.Builder()
@@ -109,6 +109,81 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
             }
             Assert.Equal(2000, countNumber);
+        }
+
+        [Fact]
+        public async Task TestInsertWithUpdate()
+        {
+            var engine = new DeltaEngine(EngineOptions.Default);
+            var schema = new Schema.Builder()
+                .Field(new Field("id", Int64Type.Default, true))
+                .Field(new Field("name", StringType.Default, true))
+                .Build();
+            var table = await engine.CreateTableAsync(new TableCreateOptions("D:/tmp/delta1", schema), default);
+            var stream = new DeltaLakeTestStream(nameof(TestInsertWithUpdate), new List<string>() { "id" }, "D:/tmp/delta1", table);
+            stream.Generate();
+            await stream.StartStream(@"
+            INSERT INTO test
+            SELECT
+                userkey as id,
+                FirstName as name
+            FROM users
+            ");
+
+            long? countNumber = 0;
+            while (true)
+            {
+                await stream.SchedulerTick();
+                await table.UpdateIncrementalAsync(default, default);
+                var countQueryEnumerable = table.QueryAsync(new SelectQuery("SELECT count(*) FROM deltatable"), default);
+                countNumber = ((await countQueryEnumerable.FirstAsync()).Column(0) as Int64Array)!.GetValue(0);
+                if (countNumber > 0)
+                {
+                    break;
+                }
+            }
+            Assert.Equal(1000, countNumber);
+
+            var firstUser = stream.Users[0];
+            firstUser.FirstName = "updated";
+            stream.AddOrUpdateUser(firstUser);
+            //stream.Generate(1000);
+
+            while (true)
+            {
+                await stream.SchedulerTick();
+                await table.UpdateIncrementalAsync(default, default);
+                var countQueryEnumerable = table.QueryAsync(new SelectQuery("SELECT count(*) FROM deltatable"), default);
+                countNumber = ((await countQueryEnumerable.FirstAsync()).Column(0) as Int64Array)!.GetValue(0);
+                if (countNumber < 1000)
+                {
+                    break;
+                }
+            }
+
+            var rowQueryEnumerable = table.QueryAsync(new SelectQuery("SELECT * FROM deltatable"), default);
+
+            await foreach(var batch in rowQueryEnumerable)
+            {
+
+            }
+            Assert.Equal(2000, countNumber);
+
+            //var firstUser = stream.Users[0];
+            //stream.DeleteUser(firstUser);
+
+            //while (true)
+            //{
+            //    await stream.SchedulerTick();
+            //    await table.UpdateIncrementalAsync(default, default);
+            //    var countQueryEnumerable = table.QueryAsync(new SelectQuery("SELECT count(*) FROM deltatable"), default);
+            //    countNumber = ((await countQueryEnumerable.FirstAsync()).Column(0) as Int64Array)!.GetValue(0);
+            //    if (countNumber < 1000)
+            //    {
+            //        break;
+            //    }
+            //}
+            //Assert.Equal(999, countNumber);
         }
     }
 }

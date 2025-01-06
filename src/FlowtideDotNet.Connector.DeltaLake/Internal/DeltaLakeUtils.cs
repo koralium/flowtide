@@ -81,15 +81,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             stringBuilder.AppendLine();
 
             stringBuilder.AppendLine("WHEN MATCHED THEN");
-            stringBuilder.AppendLine("  UPDATE SET");
-            stringBuilder.AppendLine(
-                string.Join(",\n", writeRelation.TableSchema.Names.Select(x => $"  {x} = newdata.{x}")));
+            stringBuilder.AppendLine("  DELETE");
+            //stringBuilder.AppendLine("WHEN NOT MATCHED BY SOURCE AND newdata._flowtide_deleted = false THEN DELETE");
             stringBuilder.AppendLine("WHEN NOT MATCHED BY TARGET");
             stringBuilder.AppendLine("THEN INSERT (");
             stringBuilder.AppendLine(string.Join(",\n", writeRelation.TableSchema.Names.Select(x => $"  {x}")));
             stringBuilder.AppendLine(") VALUES (");
             stringBuilder.AppendLine(string.Join(",\n", writeRelation.TableSchema.Names.Select(x => $"  newdata.{x}")));
             stringBuilder.AppendLine(")");
+
+            stringBuilder.AppendLine("WHEN MATCHED AND newdata._flowtide_deleted = true THEN");
+            stringBuilder.AppendLine("  UPDATE SET");
+            stringBuilder.AppendLine(
+                string.Join(",\n", writeRelation.TableSchema.Names.Select(x => $"  {x} = newdata.{x}")));
 
             return stringBuilder.ToString();
         }

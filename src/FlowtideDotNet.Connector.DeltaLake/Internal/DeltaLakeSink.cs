@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using Apache.Arrow.Memory;
+using Apache.Arrow.Types;
 using DeltaLake.Errors;
 using DeltaLake.Interfaces;
 using DeltaLake.Table;
@@ -34,10 +36,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private readonly DeltaLakeSinkOptions m_deltaLakeSinkOptions;
         private readonly WriteRelation m_writeRelation;
         private readonly string m_fullLoadMergeStatement;
+        private readonly string m_upsertMergeStatement;
         private readonly IReadOnlyList<int> m_primaryKeys;
         private DeltaEngine? m_engine;
         private ITable? m_table;
         private Schema? m_schema;
+        private Schema? m_upsertSchema;
         private RecordBatchEncoder? m_encoder;
 
         public DeltaLakeSink(
@@ -49,11 +53,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             this.m_deltaLakeSinkOptions = deltaLakeSinkOptions;
             this.m_writeRelation = writeRelation;
             m_fullLoadMergeStatement = DeltaLakeUtils.CreateFullLoadMergeIntoStatement(writeRelation, deltaLakeSinkOptions.PrimaryKeyColumns);
+            m_upsertMergeStatement = DeltaLakeUtils.CreateUpsertMergeIntoStatement(writeRelation, deltaLakeSinkOptions.PrimaryKeyColumns);
             if (deltaLakeSinkOptions.Table != null)
             {
                 m_table = deltaLakeSinkOptions.Table;
-                m_schema = m_table.Schema();
-                m_encoder = RecordBatchEncoder.Create(m_schema);
+                SetSchema(m_table.Schema());
             }
             else if (deltaLakeSinkOptions.TableLocation == null)
             {
@@ -70,6 +74,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 pkIndices.Add(pkIndex);
             }
             m_primaryKeys = pkIndices;
+        }
+
+        private void SetSchema(Schema schema)
+        {
+            m_schema = schema;
+            var upsertSchemaBuilder = new Schema.Builder();
+            for (int i = 0; i < schema.FieldsList.Count; i++)
+            {
+                upsertSchemaBuilder.Field(schema.GetFieldByIndex(i));
+            }
+            upsertSchemaBuilder.Field(new Field("_flowtide_deleted", BooleanType.Default, true));
+            m_upsertSchema = upsertSchemaBuilder.Build();
+            m_encoder = RecordBatchEncoder.Create(m_schema);
         }
 
         public override string DisplayName => "DeltaLake";
@@ -99,8 +116,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     {
                         TableLocation = m_deltaLakeSinkOptions.TableLocation,
                     }, CancellationToken);
-                    m_schema = m_table.Schema();
-                    m_encoder = RecordBatchEncoder.Create(m_schema);
+                    SetSchema(m_table.Schema());
                 }   
             }
             catch (DeltaRuntimeException e)
@@ -130,21 +146,34 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 if (m_table == null)
                 {
                     Debug.Assert(m_deltaLakeSinkOptions.TableLocation != null);
-                    m_schema = SchemaFromBatchUtil.GetSchema(m_writeRelation.TableSchema.Names, enumerator.Current.EventBatchData);
-                    m_table = await m_engine.CreateTableAsync(new TableCreateOptions(m_deltaLakeSinkOptions.TableLocation, m_schema)
+                    var schema = SchemaFromBatchUtil.GetSchema(m_writeRelation.TableSchema.Names, enumerator.Current.EventBatchData);
+                    SetSchema(schema);
+                    m_table = await m_engine.CreateTableAsync(new TableCreateOptions(m_deltaLakeSinkOptions.TableLocation, schema)
                     {
                         SaveMode = SaveMode.Append
                     }, CancellationToken);
-                    m_encoder = RecordBatchEncoder.Create(m_schema);
+                }
+            
+                if (!HasSentInitialData)
+                {
+                    if (m_table != null)
+                    {
+                        Debug.Assert(m_schema != null);
+                        Debug.Assert(m_encoder != null);
+                        await m_table.MergeAsync(m_fullLoadMergeStatement, new BatchCollection(enumerator.Current, enumerator, m_encoder, NativeMemoryAllocator.Default.Value, false), m_schema, default);
+                    }
+                }
+                else
+                {
+                    if (m_table != null)
+                    {
+                        Debug.Assert(m_upsertSchema != null);
+                        Debug.Assert(m_encoder != null);
+                        await m_table.MergeAsync(m_upsertMergeStatement, new BatchCollection(enumerator.Current, enumerator, m_encoder, NativeMemoryAllocator.Default.Value, true), m_upsertSchema, default);
+                    }
                 }
             }
 
-            if (m_table != null)
-            {
-                Debug.Assert(m_schema != null);
-                Debug.Assert(m_encoder != null);
-                await m_table.MergeAsync(m_fullLoadMergeStatement, new BatchCollection(enumerator.Current, enumerator, m_encoder, new FlowtideArrowMemoryAllocator(MemoryAllocator)), m_schema, default);
-            }
         }
     }
 }

@@ -29,6 +29,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private readonly IAsyncEnumerator<ColumnWriteOperation> enumerator;
         private readonly RecordBatchEncoder encoder;
         private readonly MemoryAllocator memoryAllocator;
+        private readonly bool includeDeletedColumn;
         private RecordBatch? recordBatch;
 
         public RecordBatch Current => recordBatch ?? throw new InvalidOperationException();
@@ -39,12 +40,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             ColumnWriteOperation firstOperation, 
             IAsyncEnumerator<ColumnWriteOperation> enumerator,
             RecordBatchEncoder encoder,
-            MemoryAllocator memoryAllocator)
+            MemoryAllocator memoryAllocator,
+            bool includeDeletedColumn)
         {
             this.firstOperation = firstOperation;
             this.enumerator = enumerator;
             this.encoder = encoder;
             this.memoryAllocator = memoryAllocator;
+            this.includeDeletedColumn = includeDeletedColumn;
         }
 
         public void Dispose()
@@ -85,7 +88,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
             if (count > 0)
             {
-                recordBatch = encoder.RecordBatch(memoryAllocator);
+                recordBatch = encoder.RecordBatch(memoryAllocator, includeDeletedColumn);
                 encoder.NewBatch();
                 return true;
             }

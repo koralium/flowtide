@@ -64,6 +64,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
         protected virtual bool FetchExistingData => false;
 
+        protected bool HasSentInitialData => m_hasSentInitialData;
+
         public IReadOnlyList<int> PrimaryKeyColumns => m_primaryKeyColumns ?? throw new InvalidOperationException("Must be called after initialize and restore");
 
         public override Task Compact()

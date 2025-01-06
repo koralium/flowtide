@@ -29,28 +29,31 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private readonly IAsyncEnumerator<ColumnWriteOperation> enumerable;
         private readonly RecordBatchEncoder recordBatchEncoder;
         private readonly MemoryAllocator memoryAllocator;
+        private readonly bool includeDeletedColumn;
 
         public BatchCollection(
             ColumnWriteOperation columnWriteOperation, 
             IAsyncEnumerator<ColumnWriteOperation> enumerable,
             RecordBatchEncoder recordBatchEncoder,
-            MemoryAllocator memoryAllocator)
+            MemoryAllocator memoryAllocator, 
+            bool includeDeletedColumn)
         {
             this.columnWriteOperation = columnWriteOperation;
             this.enumerable = enumerable;
             this.recordBatchEncoder = recordBatchEncoder;
             this.memoryAllocator = memoryAllocator;
+            this.includeDeletedColumn = includeDeletedColumn;
         }
         public int Count => 1;
 
         public IEnumerator<RecordBatch> GetEnumerator()
         {
-            return new BatchEnumerator(columnWriteOperation, enumerable, recordBatchEncoder, memoryAllocator);
+            return new BatchEnumerator(columnWriteOperation, enumerable, recordBatchEncoder, memoryAllocator, includeDeletedColumn);
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return new BatchEnumerator(columnWriteOperation, enumerable, recordBatchEncoder, memoryAllocator);
+            return new BatchEnumerator(columnWriteOperation, enumerable, recordBatchEncoder, memoryAllocator, includeDeletedColumn);
         }
     }
 }
