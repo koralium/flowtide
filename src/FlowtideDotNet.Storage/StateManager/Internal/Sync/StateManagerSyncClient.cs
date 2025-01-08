@@ -34,29 +34,38 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return new StateManagerSyncClient($"{m_name}_{name}", stateManager, tagList);
         }
 
-        public async ValueTask<IBPlusTree<K, V>> GetOrCreateTree<K, V>(string name, BPlusTreeOptions<K, V> options)
+        public async ValueTask<IBPlusTree<K, V, TKeyContainer, TValueContainer>> GetOrCreateTree<K, V, TKeyContainer, TValueContainer>(string name, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
+            where TKeyContainer : IKeyContainer<K>
+            where TValueContainer : IValueContainer<V>
         {
-            var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, new BPlusTreeSerializer<K, V>(options.KeySerializer, options.ValueSerializer));
+            var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, new BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer>(options.KeySerializer, options.ValueSerializer, options.MemoryAllocator));
 
             if (options.BucketSize == null)
             {
                 options.BucketSize = stateClient.BPlusTreePageSize;
             }
+            if (options.PageSizeBytes == null)
+            {
+                options.PageSizeBytes = stateClient.BPlusTreePageSizeBytes;
+            }
 
-            var tree = new BPlusTree<K, V>(stateClient, options);
+            var tree = new BPlusTree<K, V, TKeyContainer, TValueContainer>(stateClient, options);
             await tree.InitializeAsync();
             return tree;
         }
 
-        private ValueTask<IStateClient<V, TMetadata>> CreateStateClient<V, TMetadata>(string name, IStateSerializer<V> serializer)
+        private async ValueTask<IStateClient<V, TMetadata>> CreateStateClient<V, TMetadata>(string name, IStateSerializer<V> serializer)
             where V : ICacheObject
+            where TMetadata : class, IStorageMetadata
         {
             var combinedName = $"{m_name}_{name}";
-            return stateManager.CreateClientAsync<V, TMetadata>(combinedName, new StateClientOptions<V>()
+            var stateClient = await stateManager.CreateClientAsync<V, TMetadata>(combinedName, new StateClientOptions<V>()
             {
                 ValueSerializer = serializer,
                 TagList = tagList
             });
+            await stateClient.InitializeSerializerAsync();
+            return stateClient;
         }
     }
 }

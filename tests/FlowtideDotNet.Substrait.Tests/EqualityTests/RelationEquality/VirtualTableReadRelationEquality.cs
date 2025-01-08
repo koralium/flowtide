@@ -10,12 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
 {
@@ -36,7 +32,19 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
                 Emit = new List<int> { 1, 2, 3 },
                 Values = new Type.VirtualTable()
                 {
-                    JsonValues = new List<string>() { "1" }
+                    Expressions = new List<Expressions.StructExpression>()
+                    {
+                        new Expressions.StructExpression()
+                        {
+                            Fields = new List<Expressions.Expression>()
+                            {
+                                new StringLiteral()
+                                {
+                                    Value = "1"
+                                }
+                            }
+                        }
+                    }
                 }
             };
             clone = new VirtualTableReadRelation()
@@ -48,7 +56,19 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
                 Emit = new List<int> { 1, 2, 3 },
                 Values = new Type.VirtualTable()
                 {
-                    JsonValues = new List<string>() { "1" }
+                    Expressions = new List<Expressions.StructExpression>()
+                    {
+                        new Expressions.StructExpression()
+                        {
+                            Fields = new List<Expressions.Expression>()
+                            {
+                                new StringLiteral()
+                                {
+                                    Value = "1"
+                                }
+                            }
+                        }
+                    }
                 }
             };
             notEqual = new VirtualTableReadRelation()
@@ -60,7 +80,19 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
                 Emit = new List<int> { 1, 2, 3, 4 },
                 Values = new Type.VirtualTable()
                 {
-                    JsonValues = new List<string>() { "2" }
+                    Expressions = new List<Expressions.StructExpression>()
+                    {
+                        new Expressions.StructExpression()
+                        {
+                            Fields = new List<Expressions.Expression>()
+                            {
+                                new StringLiteral()
+                                {
+                                    Value = "2"
+                                }
+                            }
+                        }
+                    }
                 }
             };
         }
@@ -107,7 +139,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
         [Fact]
         public void JsonValuesChangedNotEqual()
         {
-            clone.Values.JsonValues = notEqual.Values.JsonValues;
+            clone.Values.Expressions = notEqual.Values.Expressions;
             Assert.NotEqual(root, clone);
         }
 

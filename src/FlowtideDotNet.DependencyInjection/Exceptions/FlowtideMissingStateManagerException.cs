@@ -33,9 +33,5 @@ namespace FlowtideDotNet.DependencyInjection.Exceptions
         public FlowtideMissingStateManagerException(string? message, Exception? innerException) : base(message, innerException)
         {
         }
-
-        protected FlowtideMissingStateManagerException(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
-        }
     }
 }

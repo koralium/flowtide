@@ -14,58 +14,84 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal partial class BPlusTree<K, V>
+    internal partial class BPlusTree<K, V, TKeyContainer, TValueContainer>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
-        public ValueTask<LeafNode<K, V>> LeftLeaf()
+        public ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> LeftLeaf()
         {
+            Debug.Assert(m_stateClient.Metadata != null);
+
             var getFirstTask = m_stateClient.GetValue(m_stateClient.Metadata.Left, "Leftleaf");
 
             if (!getFirstTask.IsCompleted)
             {
                 return LeftLeaf_Slow(getFirstTask);
             }
-            return ValueTask.FromResult((getFirstTask.Result as LeafNode<K, V>)!);
+            return ValueTask.FromResult((getFirstTask.Result as LeafNode<K, V, TKeyContainer, TValueContainer>)!);
         }
 
-        private async ValueTask<LeafNode<K, V>> LeftLeaf_Slow(ValueTask<IBPlusTreeNode?> getNodeTask)
+        private async ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> LeftLeaf_Slow(ValueTask<IBPlusTreeNode?> getNodeTask)
         {
             var node = await getNodeTask;
-            return (node as LeafNode<K, V>)!;
+            return (node as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
         }
 
 
-        public async ValueTask<LeafNode<K, V>> SearchRoot(K key, IComparer<K> searchComparer)
+        public ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchRoot(in K key, in IBplusTreeComparer<K, TKeyContainer> searchComparer)
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
-            var root = await m_stateClient.GetValue(m_stateClient.Metadata.Root, "SearchRoot");
+            var rootTask = m_stateClient.GetValue(m_stateClient.Metadata.Root, "SearchRoot");
 
-            return await SearchLeafNodeForRead_AfterTask(key, root, searchComparer);
+            if (!rootTask.IsCompletedSuccessfully)
+            {
+                return SearchRoot_Slow(key, rootTask, searchComparer);
+            }
+            return  SearchLeafNodeForRead_AfterTask(key, rootTask.Result!, searchComparer);
         }
 
-        private ValueTask<LeafNode<K, V>> SearchLeafNodeForRead_AfterTask(in K key, in IBPlusTreeNode node, in IComparer<K> searchComparer)
+        private async ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchRoot_Slow(K key, ValueTask<IBPlusTreeNode?> task, IBplusTreeComparer<K, TKeyContainer> searchComparer)
         {
-            if (node is LeafNode<K, V> leaf)
+            var root = await task;
+            return await SearchLeafNodeForRead_AfterTask(key, root!, searchComparer);
+        }
+
+        private ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchLeafNodeForRead_AfterTask(in K key, in IBPlusTreeNode node, in IBplusTreeComparer<K, TKeyContainer> searchComparer)
+        {
+            if (node is LeafNode<K, V, TKeyContainer, TValueContainer> leaf)
             {
-                return new ValueTask<LeafNode<K, V>>(leaf);
+                return new ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>>(leaf);
             }
-            else if (node is InternalNode<K, V> parentNode)
+            else if (node is InternalNode<K, V, TKeyContainer> parentNode)
             {
                 return SearchLeafNodeForReadInternal(key, parentNode, searchComparer);
             }
             throw new NotImplementedException();
         }
 
-        private async ValueTask<LeafNode<K, V>> SearchLeafNodeForReadInternal(K key, InternalNode<K, V> node, IComparer<K> searchComparer)
+        private ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchLeafNodeForReadInternal(K key, InternalNode<K, V, TKeyContainer> node, IBplusTreeComparer<K, TKeyContainer> searchComparer)
         {
-            var index = node.keys.BinarySearch(key, searchComparer);
+            var index = searchComparer.FindIndex(key, node.keys);
             if (index < 0)
             {
                 index = ~index;
             }
             var child = node.children[index];
-            var childNode = await m_stateClient.GetValue(child, "SearchLeafNodeForReadInternal");
-            return await SearchLeafNodeForRead_AfterTask(key, childNode, searchComparer);
+            node.Return();
+            var childNodeTask = m_stateClient.GetValue(child, "SearchLeafNodeForReadInternal");
+
+            if (!childNodeTask.IsCompletedSuccessfully)
+            {
+                return SearchLeafNodeForReadInternal_Slow(key, childNodeTask, searchComparer);
+            }
+            return SearchLeafNodeForRead_AfterTask(key, childNodeTask.Result!, searchComparer);
+        }
+
+        private async ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchLeafNodeForReadInternal_Slow(K key, ValueTask<IBPlusTreeNode?> task, IBplusTreeComparer<K, TKeyContainer> searchComparer)
+        {
+            var childNode = await task;
+            return await SearchLeafNodeForRead_AfterTask(key, childNode!, searchComparer);
         }
     }
 }

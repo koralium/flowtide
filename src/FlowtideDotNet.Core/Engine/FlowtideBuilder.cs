@@ -30,12 +30,12 @@ namespace FlowtideDotNet.Core.Engine
         private IConnectorManager? _connectorManager;
         private IReadWriteFactory? _readWriteFactory;
         private IStateHandler? _stateHandler;
-        private StateManagerOptions? _stateManagerOptions;
         private int _queueSize = 100;
         private FunctionsRegister _functionsRegister;
         private int _parallelism = 1;
         private TimeSpan _getTimestampInterval = TimeSpan.FromHours(1);
         private TaskScheduler? _taskScheduler;
+        private bool _useColumnStore = true;
 
         public FlowtideBuilder(string streamName)
         {
@@ -132,6 +132,12 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder ColumnStore(bool use)
+        {
+            _useColumnStore = use;
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
@@ -180,6 +186,7 @@ namespace FlowtideDotNet.Core.Engine
                 _functionsRegister, 
                 _parallelism, 
                 _getTimestampInterval,
+                _useColumnStore,
                 _taskScheduler);
 
             visitor.BuildPlan();

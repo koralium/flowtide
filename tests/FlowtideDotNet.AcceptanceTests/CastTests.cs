@@ -344,5 +344,69 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(Users.Select(u => new { val = u.Active ? (double)1 : (double)0 }));
         }
+
+        [Fact]
+        public async Task ConvertStringToTimestamp()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CAST('2021-01-01T00:00:00.000Z' AS TIMESTAMP)
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(u => new { val = new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.FromMinutes(0)) }));
+        }
+
+        [Fact]
+        public async Task ConvertIntegerInUnixDotnetTicksToTimestamp()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CAST(16094592000000000 AS TIMESTAMP)
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(u => new { val = new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.FromMinutes(0)) }));
+        }
+
+        [Fact]
+        public async Task CastTimestampToString()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CAST(CAST(16094592000000000 AS TIMESTAMP) AS STRING)
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(u => new { val = "2021-01-01T00:00:00.000Z" }));
+        }
+
+        [Fact]
+        public async Task CastTimestampToInteger()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CAST(CAST(16094592000000000 AS TIMESTAMP) AS INT)
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(u => new { val = 1609459200000000 }));
+        }
     }
 }

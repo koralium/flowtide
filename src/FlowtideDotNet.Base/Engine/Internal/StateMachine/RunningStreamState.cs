@@ -23,6 +23,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private readonly object _lock = new object();
         private HashSet<string>? nonCheckpointedEgresses;
         private Checkpoint? _currentCheckpoint;
+        private bool _doingCheckpoint = false;
 
         public override void EgressCheckpointDone(string name)
         {
@@ -75,6 +76,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 await run._context._stateManager.CheckpointAsync(false);
                 _context._logger.StateManagerCheckpointDone(_context.streamName);
 
+                if (_context._notificationReciever != null)
+                {
+                    _context._notificationReciever.OnCheckpointComplete();
+                }
+
                 await run._context.stateHandler.WriteLatestState(run._context.streamName, run._context._lastState);
 
                 await _context.ForEachIngressBlockAsync((key, block) =>
@@ -125,7 +131,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private void CheckpointCompleted()
         {
             Debug.Assert(_context != null, nameof(_context));
-
             lock (_context._checkpointLock)
             {
                 _context._initialCheckpointTaken = true;
@@ -136,6 +141,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context.checkpointTask = null;
                     _currentCheckpoint = null;
 
+                    if (_context._wantedState == StreamStateValue.NotStarted && _doingCheckpoint)
+                    {
+                        _doingCheckpoint = false;
+                        TransitionTo(StreamStateValue.Stopping);
+                        return;
+                    }
+
+                    _doingCheckpoint = false;
                     if (_context.inQueueCheckpoint.HasValue)
                     {
                         var span = _context.inQueueCheckpoint.Value.Subtract(DateTimeOffset.UtcNow);
@@ -219,6 +232,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             Checkpoint? checkpoint = null;
             lock (_context._checkpointLock)
             {
+                // If we are stopping, we should not do a checkpoint
+                if (_context._wantedState == StreamStateValue.NotStarted)
+                {
+                    return Task.CompletedTask;
+                }
+                _doingCheckpoint = true;
                 // Only support a single concurrent checkpoint for now for simplicity
                 if (_context.checkpointTask != null)
                 {
@@ -276,6 +295,25 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override Task DeleteAsync()
         {
             return TransitionTo(StreamStateValue.Deleting);
+        }
+
+        public override Task StopAsync()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            _context._wantedState = StreamStateValue.NotStarted;
+            lock (_context._checkpointLock)
+            {
+                if (_doingCheckpoint)
+                {
+                    return Task.CompletedTask;
+                }
+                else
+                {
+                    TransitionTo(StreamStateValue.Stopping);
+                }
+            }
+            
+            return Task.CompletedTask;
         }
     }
 }

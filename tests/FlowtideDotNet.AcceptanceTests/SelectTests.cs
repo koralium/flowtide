@@ -28,6 +28,30 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task SelectOneColumnsWithTableAliasAndBrackets()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT u.[firstName] FROM users u");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { x.FirstName }));
+        }
+
+        [Fact]
+        public async Task SelectOneColumnsWithoutIdAndUpdate()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT firstName FROM users");
+            await WaitForUpdate();
+            var firstUser = Users[0];
+            firstUser.FirstName = "Updated";
+            AddOrUpdateUser(firstUser);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { x.FirstName }));
+        }
+
+        [Fact]
         public async Task SelectWithCase()
         {
             GenerateData();
@@ -115,6 +139,114 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             // Expect an array where all columns are null since the field was not found in the map
             AssertCurrentDataEqual(Orders.Select(x => new { UserKey = default(int?) }));
+        }
+
+        [Fact]
+        public async Task SelectWithEqual()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT userkey = 23 FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.UserKey == 23 }));
+        }
+
+        [Fact]
+        public async Task SelectWithNotEqual()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT userkey != 23 FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.UserKey != 23 }));
+        }
+
+        [Fact]
+        public async Task SelectWithoutFrom()
+        {
+            await StartStream("INSERT INTO output SELECT 1 as number, 'abc' as str");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { number = 1, str = "abc" } });
+        }
+
+        [Fact]
+        public async Task SelectFromValuesList()
+        {
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT * FROM 
+                (
+                    VALUES 
+                    (1, 'a'),
+                    (2, 'b'),
+                    (3, 'c')
+                )");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { val = 1, str = "a" }, new { val = 2, str = "b" }, new { val = 3, str = "c" } });
+        }
+
+        [Fact]
+        public async Task SelectFromValuesListWithAliases()
+        {
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT number, str FROM 
+                (
+                    VALUES 
+                    (1, 'a'),
+                    (2, 'b'),
+                    (3, 'c')
+                ) t(number, str)");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { val = 1, str = "a" }, new { val = 2, str = "b" }, new { val = 3, str = "c" } });
+        }
+
+        [Fact]
+        public async Task SelectFromValuesListMakeSureCrashDoesNotResend()
+        {
+            GenerateData();
+            var firstUser = Users.First();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT u.userkey FROM 
+                (
+                    VALUES 
+                    (" + firstUser.UserKey + @", 'a')
+                ) t(number, str)
+                INNER JOIN users u ON t.number = u.userkey");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { userkey = firstUser.UserKey } });
+
+            await Crash();
+
+            GenerateData();
+
+            await WaitForUpdate();
+
+            // The test fails here if the virtual table operator resends data
+            AssertCurrentDataEqual(new[] { new { userkey = firstUser.UserKey } });
+        }
+
+        [Fact]
+        public async Task SelectFromValuesListEmitOnlySecondColumn()
+        {
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT str FROM 
+                (
+                    VALUES 
+                    (1, 'a'),
+                    (2, 'b'),
+                    (3, 'c')
+                ) t(number, str)");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { str = "a" }, new { str = "b" }, new { str = "c" } });
         }
     }
 }

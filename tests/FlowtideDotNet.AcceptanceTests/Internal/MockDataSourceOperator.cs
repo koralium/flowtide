@@ -61,7 +61,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 if (o.Count > 100)
                 {
                     sentData = true;
-                    await output.SendAsync(new StreamEventBatch(o));
+                    await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
                     o = new List<RowEvent>();
                 }
             }
@@ -69,14 +69,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (o.Count > 0)
             {
                 sentData = true;
-                await output.SendAsync(new StreamEventBatch(o));
+                await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
             }
             _lastestOffset = fetchedOffset;
 
             if (sentData)
             {
                 await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));
-                this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+                this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(200));
             }
             
             output.ExitCheckpointLock();
@@ -90,7 +90,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             else if (triggerName == "crash")
             {
-                RunTask((output, state) => throw new Exception("crash"));
+                RunTask((output, state) => throw new CrashException("crash"));
             }
             return Task.CompletedTask;
         }
@@ -128,14 +128,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
                 if (o.Count > 100)
                 {
-                    await output.SendAsync(new StreamEventBatch(o));
+                    await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
                     o = new List<RowEvent>();
                 }
             }
 
             if (o.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(o));
+                await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
             }
             _lastestOffset = fetchedOffset;
             await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));

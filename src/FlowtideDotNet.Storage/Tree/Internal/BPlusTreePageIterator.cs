@@ -11,19 +11,26 @@
 // limitations under the License.
 
 using System.Collections;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal struct BPlusTreePageIterator<K, V> : IBPlusTreePageIterator<K, V>
+    internal class BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> : IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>
+        where TKeyContainer: IKeyContainer<K>
+        where TValueContainer: IValueContainer<V>
     {
-        internal struct Enumerator : IEnumerator<KeyValuePair<K, V>>
+        internal class Enumerator : IEnumerator<KeyValuePair<K, V>>
         {
-            private readonly int _startIndex;
+            private int _startIndex;
             private int index;
-            private LeafNode<K, V> leafNode;
+            private LeafNode<K, V, TKeyContainer, TValueContainer>? leafNode;
             private KeyValuePair<K, V> _current;
 
-            public Enumerator(in LeafNode<K, V> leafNode, in int index)
+            public Enumerator()
+            {
+            }
+
+            public void Reset(in LeafNode<K, V, TKeyContainer, TValueContainer> leafNode, in int index)
             {
                 _startIndex = index;
                 this.index = index;
@@ -40,9 +47,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             public bool MoveNext()
             {
+                Debug.Assert(leafNode != null);
                 if (index < leafNode.keys.Count)
                 {
-                    _current = new KeyValuePair<K, V>(leafNode.keys[index], leafNode.values[index]);
+                    _current = new KeyValuePair<K, V>(leafNode.keys.Get(index), leafNode.values.Get(index));
                     index++;
                     return true;
                 }
@@ -55,29 +63,58 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
         }
 
-        private readonly LeafNode<K, V> leaf;
-        private readonly int index;
-        private readonly BPlusTree<K, V> tree;
+        private LeafNode<K, V, TKeyContainer, TValueContainer>? leaf;
+        private int index;
+        private BPlusTree<K, V, TKeyContainer, TValueContainer> tree;
+        private Enumerator enumerator;
 
-        public BPlusTreePageIterator(in LeafNode<K, V> leaf, in int index, in BPlusTree<K, V> tree)
+        public BPlusTreePageIterator(in BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
+        {
+            this.tree = tree;
+            enumerator = new Enumerator();
+        }
+
+        public void Reset(in LeafNode<K, V, TKeyContainer, TValueContainer>? leaf, in int index)
         {
             this.leaf = leaf;
             this.index = index;
-            this.tree = tree;
         }
 
-        public List<K> Keys => leaf.keys;
+        public TKeyContainer Keys => leaf != null ? leaf.keys : throw new InvalidOperationException("Tried getting keys on an inactive iterator");
 
-        public List<V> Values => leaf.values;
+        public TValueContainer Values => leaf != null ? leaf.values : throw new InvalidOperationException("Tried getting keys on an inactive iterator");
 
-        public ValueTask SavePage()
+        public ValueTask SavePage(bool checkForResize)
         {
-            var isFull = tree.m_stateClient.AddOrUpdate(leaf.Id, leaf);
-            if (isFull)
+            Debug.Assert(leaf != null);
+            var byteSize = leaf.GetByteSize();
+            if (leaf.keys.Count > 0 && checkForResize && tree.m_stateClient.Metadata!.PageSizeBytes < byteSize)
             {
-                return WaitForNotFull();
+                // Force a traversion of the tree to ensure that size is looked at for splits.
+                var traverseTask = tree.RMWNoResult(leaf.keys.Get(0), default, (input, current, found) =>
+                {
+                    return (default, GenericWriteOperation.None);
+                });
+                if (!traverseTask.IsCompletedSuccessfully)
+                {
+                    return WaitForTraverseTask(traverseTask);
+                }
             }
+            else
+            {
+                var isFull = tree.m_stateClient.AddOrUpdate(leaf.Id, leaf);
+                if (isFull)
+                {
+                    return WaitForNotFull();
+                }
+            }
+           
             return ValueTask.CompletedTask;
+        }
+
+        private async ValueTask WaitForTraverseTask(ValueTask<GenericWriteOperation> traverseTask)
+        {
+            await traverseTask;
         }
 
         private async ValueTask WaitForNotFull()
@@ -87,12 +124,28 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public IEnumerator<KeyValuePair<K, V>> GetEnumerator()
         {
-            return new Enumerator(leaf, index);
+            Debug.Assert(leaf != null);
+            enumerator.Reset(leaf, index);
+            return enumerator;
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return new Enumerator(leaf, index);
+            Debug.Assert(leaf != null);
+            enumerator.Reset(leaf, index);
+            return enumerator;
+        }
+
+        public void EnterWriteLock()
+        {
+            Debug.Assert(leaf != null);
+            leaf.EnterWriteLock();
+        }
+
+        public void ExitWriteLock()
+        {
+            Debug.Assert(leaf != null);
+            leaf.ExitWriteLock();
         }
 
         public void EnterLock()

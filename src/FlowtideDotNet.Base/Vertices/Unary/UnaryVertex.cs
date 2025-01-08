@@ -23,6 +23,8 @@ using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Base.Metrics;
 using System.Text;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Base.Vertices.Unary
 {
@@ -51,6 +53,8 @@ namespace FlowtideDotNet.Base.Vertices.Unary
 
         private ILogger? _logger;
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
+
+        protected IMemoryAllocator MemoryAllocator => _vertexHandler?.MemoryManager ?? throw new NotSupportedException("Initialize must be called before accessing memory allocator");
 
         protected UnaryVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
@@ -89,12 +93,39 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 {
                     var enumerator = OnTrigger(triggerEvent.Name, triggerEvent.State);
                     // Inject data into the stream from the trigger
-                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => new StreamMessage<T>(source, _currentTime));
+                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => 
+                    {
+                        if (source is IRentable rentable)
+                        {
+                            rentable.Rent(_links.Count);
+                        }
+                        return new StreamMessage<T>(source, _currentTime);
+                    });
                 }
                 if (streamEvent is StreamMessage<T> streamMessage)
                 {
                     var enumerator = OnRecieve(streamMessage.Data, streamMessage.Time);
-                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => new StreamMessage<T>(source, streamMessage.Time));
+
+                    if (streamMessage.Data is IRentable inputRentable)
+                    {
+                        return new AsyncEnumerableReturnRentable<T, IStreamEvent>(inputRentable, enumerator, (source) => {
+                            if (source is IRentable rentable)
+                            {
+                                rentable.Rent(_links.Count);
+                            }
+                            return new StreamMessage<T>(source, streamMessage.Time);
+                        });
+                    }
+                    else
+                    {
+                        return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
+                            if (source is IRentable rentable)
+                            {
+                                rentable.Rent(_links.Count);
+                            }
+                            return new StreamMessage<T>(source, streamMessage.Time);
+                        });
+                    }
                 }
                 if (streamEvent is Watermark watermark)
                 {
@@ -139,14 +170,18 @@ namespace FlowtideDotNet.Base.Vertices.Unary
         {
             await foreach (var e in OnWatermark(watermark))
             {
+                if (e is IRentable rentable)
+                {
+                    rentable.Rent(_links.Count);
+                }
                 yield return new StreamMessage<T>(e, _currentTime);
             }
             yield return watermark;
         }
 
-        protected virtual async IAsyncEnumerable<T> OnWatermark(Watermark watermark)
+        protected virtual IAsyncEnumerable<T> OnWatermark(Watermark watermark)
         {
-            yield break;
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         public async Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
@@ -327,7 +362,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
         public IDisposable LinkTo(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
         {
             _links.Add((target, linkOptions));
-            return null;
+            return default!;
         }
 
         private IDisposable LinkTo_Internal(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)

@@ -41,17 +41,17 @@ namespace FlowtideDotNet.Core.Operators.Read
         /// <summary>
         /// Temporary tree used to store the full load data
         /// </summary>
-        private IBPlusTree<string, RowEvent>? _fullLoadTempTree;
+        private IBPlusTree<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>? _fullLoadTempTree;
 
         /// <summary>
         /// Persistent tree used to store the data
         /// </summary>
-        private IBPlusTree<string, RowEvent>? _persistentTree;
+        private IBPlusTree<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>? _persistentTree;
 
         /// <summary>
         /// Tree used to store the deletions for the data in full load
         /// </summary>
-        private IBPlusTree<string, int>? _deletionsTree;
+        private IBPlusTree<string, int, ListKeyContainer<string>, ListValueContainer<int>>? _deletionsTree;
         private BatchableReadOperatorState? _state;
         private readonly string _watermarkName;
         private readonly ReadRelation readRelation;
@@ -121,31 +121,37 @@ namespace FlowtideDotNet.Core.Operators.Read
                 };
             }
 
-            _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp", new BPlusTreeOptions<string, RowEvent>()
+            _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp", 
+                new BPlusTreeOptions<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>()
             {
-                Comparer = StringComparer.Ordinal,
-                KeySerializer = new StringSerializer(),
-                ValueSerializer = new StreamEventBPlusTreeSerializer()
+                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
             await _fullLoadTempTree.Clear();
 
-            _persistentTree = await stateManagerClient.GetOrCreateTree("persistent", new BPlusTreeOptions<string, RowEvent>()
+            _persistentTree = await stateManagerClient.GetOrCreateTree("persistent", 
+                new BPlusTreeOptions<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>()
             {
-                Comparer = StringComparer.Ordinal,
-                KeySerializer = new StringSerializer(),
-                ValueSerializer = new StreamEventBPlusTreeSerializer()
+                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
 
-            _deletionsTree = await stateManagerClient.GetOrCreateTree("deletions", new BPlusTreeOptions<string, int>()
+            _deletionsTree = await stateManagerClient.GetOrCreateTree("deletions", 
+                new BPlusTreeOptions<string, int, ListKeyContainer<string>, ListValueContainer<int>>()
             {
-                Comparer = StringComparer.Ordinal,
-                KeySerializer = new StringSerializer(),
-                ValueSerializer = new IntSerializer()
+                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
             await _deletionsTree.Clear();
         }
 
-        private static async IAsyncEnumerable<KeyValuePair<string, RowEvent>> IteratePerRow(IBPlusTreeIterator<string, RowEvent> iterator)
+        private static async IAsyncEnumerable<KeyValuePair<string, RowEvent>> IteratePerRow(IBPlusTreeIterator<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>> iterator)
         {
             await foreach (var page in iterator)
             {
@@ -224,14 +230,14 @@ namespace FlowtideDotNet.Core.Operators.Read
 
                 if (outputList.Count > 100)
                 {
-                    await output.SendAsync(new StreamEventBatch(outputList));
+                    await output.SendAsync(new StreamEventBatch(outputList, readRelation.OutputLength));
                     outputList = new List<RowEvent>();
                     sentUpdates = true;
                 }
             }
             if (outputList.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(outputList));
+                await output.SendAsync(new StreamEventBatch(outputList, readRelation.OutputLength));
                 outputList = new List<RowEvent>();
                 sentUpdates = true;
             }
@@ -315,14 +321,14 @@ namespace FlowtideDotNet.Core.Operators.Read
 
                 if (outputList.Count > 100)
                 {
-                    await output.SendAsync(new StreamEventBatch(outputList));
+                    await output.SendAsync(new StreamEventBatch(outputList, readRelation.OutputLength));
                     outputList = new List<RowEvent>();
                 }
             }
 
             if (outputList.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(outputList));
+                await output.SendAsync(new StreamEventBatch(outputList, readRelation.OutputLength));
                 outputList = new List<RowEvent>();
             }
 
@@ -388,7 +394,7 @@ namespace FlowtideDotNet.Core.Operators.Read
 
                     if (outputList.Count > 100)
                     {
-                        await output.SendAsync(new StreamEventBatch(outputList));
+                        await output.SendAsync(new StreamEventBatch(outputList, readRelation.OutputLength));
                         outputList = new List<RowEvent>();
                     }
                 }
@@ -398,7 +404,7 @@ namespace FlowtideDotNet.Core.Operators.Read
 
             if (outputList.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(outputList));
+                await output.SendAsync(new StreamEventBatch(outputList, readRelation.OutputLength));
                 outputList = new List<RowEvent>();
             }
             // Send the new max watermark

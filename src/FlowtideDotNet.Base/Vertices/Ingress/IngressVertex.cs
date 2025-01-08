@@ -20,6 +20,7 @@ using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
 using System.Text;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Base.Vertices.Ingress
 {
@@ -31,10 +32,12 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public long _restoreTime;
         public IVertexHandler? _vertexHandler;
         public SemaphoreSlim? _checkpointLock;
+        public bool _inCheckpointLock;
         public IngressOutput<TData>? _output;
         public CancellationTokenSource? _tokenSource;
         public IMeter? _metrics;
         public bool _taskEnabled = false;
+        public int _linkCount;
     }
 
     public abstract class IngressVertex<TData, TState> : ISourceBlock<IStreamEvent>, IStreamIngressVertex
@@ -44,6 +47,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         private readonly List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)> _links = new List<(ITargetBlock<IStreamEvent>, DataflowLinkOptions)>();
         private IngressState<TData>? _ingressState;
         private readonly Dictionary<int, Task> _runningTasks;
+        private int _taskIdCounter;
         private ILogger? _logger;
         private bool _isHealthy = true;
 
@@ -56,6 +60,8 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         protected IMeter Metrics => _ingressState?._metrics ?? throw new NotSupportedException("Initialize must be called before accessing metrics");
 
         public ILogger Logger => _logger ?? throw new NotSupportedException("Logging must be done after Initialize");
+
+        protected IMemoryAllocator MemoryAllocator => _ingressState?._vertexHandler?.MemoryManager ?? throw new NotSupportedException("Initialize must be called before accessing memory allocator");
 
         protected IngressVertex(DataflowBlockOptions options)
         {
@@ -77,6 +83,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 _ingressState = new IngressState<TData>();
                 _ingressState._checkpointLock = new SemaphoreSlim(1, 1);
                 _ingressState._block = new BufferBlock<IStreamEvent>(options);
+                _ingressState._linkCount = _links.Count;
 
                 ISourceBlock<IStreamEvent> source = _ingressState._block;
                 
@@ -94,7 +101,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 _ingressState._sourceBlock = source;
                 _ingressState._output = new IngressOutput<TData>(_ingressState, _ingressState._block);
                 _ingressState._tokenSource = new CancellationTokenSource();
-                _ingressState._block.Completion.ContinueWith(t =>
+                _ingressState._block.Completion.ContinueWith(t =>   
                 {
                     Logger.LogDebug(t.Exception, "Block failure");
                     lock (_stateLock)
@@ -133,6 +140,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public void Complete()
         {
             Debug.Assert(_ingressState?._block != null, nameof(_ingressState._block));
+            Debug.Assert(_ingressState?._tokenSource != null, nameof(_ingressState._tokenSource));
 
             lock (_stateLock)
             {
@@ -152,6 +160,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public void Fault(Exception exception)
         {
             Debug.Assert(_ingressState?._block != null, nameof(_ingressState._block));
+            Debug.Assert(_ingressState?._tokenSource != null, nameof(_ingressState._tokenSource));
             lock (_stateLock)
             {
                 _ingressState._taskEnabled = false;
@@ -163,7 +172,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public IDisposable LinkTo(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
         {
             _links.Add((target, linkOptions));
-            return null;
+            return default!;
         }
 
         private void LinkTo_Internal(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
@@ -191,12 +200,19 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         private async Task RunLockingEvent(IngressOutput<TData> output, object? state)
         {
             Debug.Assert(_ingressState?._checkpointLock != null, nameof(_ingressState._checkpointLock));
+            Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
 
             var lockingEvent = (ILockingEvent)state!;
             await _ingressState._checkpointLock.WaitAsync(_ingressState._output.CancellationToken);
-
+            _ingressState._inCheckpointLock = true;
+            bool isStopStreamEvent = false;
             if (lockingEvent is ICheckpointEvent checkpoint)
             {
+                if (checkpoint is StopStreamCheckpoint)
+                {
+                    isStopStreamEvent = true;
+                    output.Stop();
+                }
                 var savedState = await OnCheckpoint(checkpoint.CheckpointTime);
                 checkpoint.AddState(Name, savedState);
                 await output.SendLockingEvent(lockingEvent);
@@ -207,7 +223,11 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 await output.SendLockingEvent(initWatermark.AddWatermarkNames(names));
             }
 
-            _ingressState._checkpointLock.Release();
+            if (!isStopStreamEvent)
+            {
+                _ingressState._inCheckpointLock = false;
+                _ingressState._checkpointLock.Release();
+            }   
         }
 
         protected abstract Task<IReadOnlySet<string>> GetWatermarkNames();
@@ -228,7 +248,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             _ingressState._vertexHandler.ScheduleCheckpoint(inTime);
         }
 
-        private sealed record TaskState(Func<IngressOutput<TData>, object?, Task> func, IngressOutput<TData> ingressOutput, object? state);
+        private sealed record TaskState(Func<IngressOutput<TData>, object?, Task> func, IngressOutput<TData> ingressOutput, object? state, int taskId);
 
         /// <summary>
         /// Start a task that can output data to the stream.
@@ -248,14 +268,17 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                     return Task.CompletedTask;
                 }
 
-                tState = new TaskState(task, _ingressState._output, state);
+                var taskId = _taskIdCounter++;
+                tState = new TaskState(task, _ingressState._output, state, taskId);
                 var t = Task.Factory.StartNew((state) =>
                 {
                     var taskState = (TaskState)state!;
                     return taskState.func(taskState.ingressOutput, taskState.state);
                 }, tState, _ingressState._output.CancellationToken, taskCreationOptions, TaskScheduler.Default)
                 .Unwrap();
-                _runningTasks.Add(t.Id, t);
+
+                
+                _runningTasks.Add(taskId, t);
                 t.ContinueWith((task, state) =>
                 {
                     var taskState = (TaskState)state!;
@@ -265,7 +288,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                     }
                     lock (_stateLock)
                     {
-                        _runningTasks.Remove(task.Id);
+                        _runningTasks.Remove(taskState.taskId);
                     }
                 }, tState, default, TaskContinuationOptions.None, TaskScheduler.Default);
                 
@@ -420,6 +443,19 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         public virtual ValueTask DisposeAsync()
         {
+            if (_ingressState != null)
+            {
+                if (_ingressState._output != null)
+                {
+                    _ingressState._output.Dispose();
+                }
+                if (_ingressState._inCheckpointLock && _ingressState._checkpointLock != null)
+                {
+                    _ingressState._inCheckpointLock = false;
+                    _ingressState._checkpointLock.Release();   
+                }
+            }
+            
             return ValueTask.CompletedTask;
         }
 

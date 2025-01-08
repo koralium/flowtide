@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress.Internal
     {
         private TransformManyBlock<IStreamEvent, IStreamEvent>? _transformBlock;
         private ParallelUnaryTarget<IStreamEvent>? _target;
-        private ParallelEgressSource<IStreamEvent> _source;
+        private ParallelEgressSource<IStreamEvent>? _source;
         private readonly ExecutionDataflowBlockOptions executionDataflowBlockOptions;
         private readonly Func<T, long, Task> _recieveFunc;
         private readonly Func<ILockingEvent, Task> _doCheckpoint;

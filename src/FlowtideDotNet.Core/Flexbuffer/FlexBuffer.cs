@@ -12,6 +12,7 @@
 
 using System.Buffers;
 using System.Collections;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -276,7 +277,7 @@ namespace FlexBuffers
             {
                 FinishBuffer();
             }
-
+            Debug.Assert(_bytes != null);
             var result = new byte[_offset];
             Buffer.BlockCopy(_bytes, 0, result, 0, (int)_offset);
             pool.Return(_bytes);
@@ -402,6 +403,7 @@ namespace FlexBuffers
             Write(length, byteWidth);
             var stringOffset = _offset;
             var newOffset = NewOffset(length + 1);
+            Debug.Assert(_bytes != null);
             Buffer.BlockCopy(bytes, 0, _bytes, (int)_offset, (int)length);
             _bytes[(int)newOffset - 1] = 0;
             _offset = newOffset;
@@ -432,8 +434,8 @@ namespace FlexBuffers
             Align(bitWidth);
             var stringOffset = _offset;
             var newOffset = NewOffset((ulong)copyLength + 1);
-            
-            
+
+            Debug.Assert(_bytes != null);
             span.Slice(offsetStart, copyLength).CopyTo(_bytes.AsSpan().Slice((int)_offset));
             _bytes[(int)newOffset - 1] = 0;
             _offset = newOffset;
@@ -559,6 +561,7 @@ namespace FlexBuffers
             
             var newOffset = NewOffset(length);
             var blobOffset = _offset;
+            Debug.Assert(_bytes != null);
             Buffer.BlockCopy(value, 0, _bytes, (int)_offset, value.Length);
             _offset = newOffset;
             _stack.Add(StackValue.Value(blobOffset, bitWidth, Type.Blob));
@@ -627,7 +630,7 @@ namespace FlexBuffers
             foreach (var key in keyStrings)
             {
                 AddKey(key);
-                AddDynamic(values[key]);
+                AddDynamic(values[key]!);
             }
 
             SortAndEndMap(start);
@@ -717,6 +720,7 @@ namespace FlexBuffers
             {
                 throw new Exception($"Stack values are not keys {v1} | {v2}");
             }
+            Debug.Assert(_bytes != null);
 
             byte c1, c2;
             var index = 0;
@@ -790,6 +794,7 @@ namespace FlexBuffers
             var length = (ulong)bytes.Length;
             var keyOffset = _offset;
             var newOffset = NewOffset(length + 1);
+            Debug.Assert(_bytes != null);
             Buffer.BlockCopy(bytes, 0, _bytes, (int)_offset, (int)length);
             _offset = newOffset;
             _stack.Add(StackValue.Value(keyOffset, BitWidth.Width8, Type.Key));
@@ -824,7 +829,8 @@ namespace FlexBuffers
             else
             {
                 var bytes = value.IsFloat32 && width == 4 ? BitConverter.GetBytes((float)value.AsDouble) : BitConverter.GetBytes(value.AsULong);
-                var count = Math.Min((ulong)bytes.Length, width); 
+                var count = Math.Min((ulong)bytes.Length, width);
+                Debug.Assert(_bytes != null);
                 Buffer.BlockCopy(bytes, 0, _bytes, (int)_offset, (int)count);
             }
             _offset = newOffset;
@@ -833,6 +839,7 @@ namespace FlexBuffers
         private void Write(byte value)
         {
             var newOffset = NewOffset(1);
+            Debug.Assert(_bytes != null);
             _bytes[_offset] = value;
             _offset = newOffset;
         }
@@ -842,6 +849,7 @@ namespace FlexBuffers
             var newOffset = NewOffset(width);
             var bytes = BitConverter.GetBytes(value);
             var count = Math.Min((ulong)bytes.Length, width); 
+            Debug.Assert(_bytes != null);
             Buffer.BlockCopy(bytes, 0, _bytes, (int)_offset, (int)count);
             _offset = newOffset;
         }
@@ -850,7 +858,8 @@ namespace FlexBuffers
         {
             var newOffset = NewOffset(width);
             var bytes = BitConverter.GetBytes(value);
-            var count = Math.Min((ulong)bytes.Length, width); 
+            var count = Math.Min((ulong)bytes.Length, width);
+            Debug.Assert(_bytes != null);
             Buffer.BlockCopy(bytes, 0, _bytes, (int)_offset, (int)count);
             _offset = newOffset;
         }
@@ -859,7 +868,8 @@ namespace FlexBuffers
         {
             var newOffset = NewOffset(width);
             var bytes = BitConverter.GetBytes(value);
-            var count = Math.Min((ulong)bytes.Length, width); 
+            var count = Math.Min((ulong)bytes.Length, width);
+            Debug.Assert(_bytes != null);
             Buffer.BlockCopy(bytes, 0, _bytes, (int)_offset, (int)count);
             _offset = newOffset;
         }
@@ -878,7 +888,7 @@ namespace FlexBuffers
                 var prevBytes = _bytes;
                 _bytes = pool.Rent((int)_size); // new byte[_size];
                 Array.Clear(_bytes);
-
+                Debug.Assert(prevBytes != null);
                 Buffer.BlockCopy(prevBytes, 0, _bytes, 0, (int)_offset);
                 pool.Return(prevBytes);
             }
@@ -991,8 +1001,9 @@ namespace FlexBuffers
 
     internal class OffsetArrayComparer : IEqualityComparer<long[]>
     {
-        public bool Equals(long[] x, long[] y)
+        public bool Equals(long[]? x, long[]? y)
         {
+            Debug.Assert(x != null && y != null);
             if (x.Length != y.Length)
             {
                 return false;

@@ -14,6 +14,7 @@ using FlexBuffers;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.Kafka
@@ -24,8 +25,11 @@ namespace FlowtideDotNet.Connector.Kafka
 
         public RowEvent Deserialize(IFlowtideKafkaKeyDeserializer keyDeserializer, byte[]? valueBytes, byte[]? keyBytes)
         {
+            Debug.Assert(_names != null);
+
             if (valueBytes == null)
             {
+                Debug.Assert(keyBytes != null);
                 return RowEvent.Create(-1, 0, b =>
                 {
                     for (int i = 0; i < _names.Count; i++)
@@ -50,6 +54,7 @@ namespace FlowtideDotNet.Connector.Kafka
                     {
                         if (_names[i] == "_key")
                         {
+                            Debug.Assert(keyBytes != null);
                             b.Add(keyDeserializer.Deserialize(keyBytes));
                         }
                         else if (jsonDocument.TryGetProperty(_names[i], out var property))

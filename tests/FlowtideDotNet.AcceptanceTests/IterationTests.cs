@@ -75,7 +75,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task TreeIterationWithUpdate()
         {
-            GenerateData();
+            GenerateData(1000);
             await this.StartStream(@"
             with user_manager_cte AS (
                 SELECT 
@@ -105,7 +105,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             var user = Users[20];
 
-            user.ManagerKey = Users[42].UserKey;
+            user.ManagerKey = Users[10].UserKey;
             AddOrUpdateUser(user);
             await WaitForUpdate();
 

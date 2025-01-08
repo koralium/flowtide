@@ -19,78 +19,269 @@ using System.Data;
 using System.Data.Common;
 using System.Text;
 using Microsoft.Extensions.Primitives;
+using FlowtideDotNet.Core.ColumnStore;
+using System.Collections.Generic;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Substrait.Type;
+using FlowtideDotNet.Core.Exceptions;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
     internal static class SqlServerUtils
     {
-        public static Func<SqlDataReader, RowEvent> GetStreamEventCreator(ReadRelation readRelation)
+        public static List<Action<SqlDataReader, IColumn>> GetColumnEventCreator(ReadOnlyCollection<DbColumn> dbColumns)
         {
-            List<Action<SqlDataReader, IFlexBufferVectorBuilder>> columns = new List<Action<SqlDataReader, IFlexBufferVectorBuilder>>();
-            for (int i = 0; i < readRelation.BaseSchema.Struct.Types.Count; i++)
+            List<Action<SqlDataReader, IColumn>> output = new List<Action<SqlDataReader, IColumn>>();
+            for (int i = 0; i < dbColumns.Count; i++)
             {
-                var type = readRelation.BaseSchema.Struct.Types[i];
-
+                var column = dbColumns[i];
                 int index = i;
-                switch (type.Type)
+                switch (column.DataTypeName)
                 {
-                    case Type.SubstraitType.String:
-                        columns.Add((reader, builder) =>
-                        {
-                            builder.Add(reader.GetString(index));
-                        });
-                        break;
-                    case Type.SubstraitType.Int32:
-                        columns.Add((reader, builder) =>
+                    case "nchar":
+                    case "char":
+                    case "varchar":
+                    case "nvarchar":
+                    case "ntext":
+                    case "text":
+                    case "xml":
+                        output.Add((reader, column) =>
                         {
                             if (reader.IsDBNull(index))
                             {
-                                builder.AddNull();
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            column.Add(new StringValue(reader.GetString(index)));
+                        });
+                        break;
+                    case "tinyint":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            column.Add(new Int64Value(reader.GetByte(index)));
+                        });
+                        break;
+                    case "smallint":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
                                 return;
                             }
 
-                            builder.Add(reader.GetInt32(index));
+                            column.Add(new Int64Value(reader.GetInt16(index)));
                         });
                         break;
-                    case Type.SubstraitType.Int64:
-                        columns.Add((reader, builder) =>
+                    case "int":
+                        output.Add((reader, column) =>
                         {
                             if (reader.IsDBNull(index))
                             {
-                                builder.AddNull();
+                                column.Add(NullValue.Instance);
                                 return;
                             }
 
-                            builder.Add(reader.GetInt64(index));
+                            column.Add(new Int64Value(reader.GetInt32(index)));
                         });
                         break;
-                    case Type.SubstraitType.Date:
-                        columns.Add((reader, builder) =>
+                    case "money":
+                    case "decimal":
+                        output.Add((reader, column) =>
                         {
                             if (reader.IsDBNull(index))
                             {
-                                builder.AddNull();
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new DecimalValue(reader.GetDecimal(index)));
+                        });
+                        break;
+                    case "date":
+                    case "datetime":
+                    case "smalldatetime":
+                    case "datetime2":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
                                 return;
                             }
                             var dateTime = reader.GetDateTime(index);
-                            var unixTime = ((DateTimeOffset)dateTime).ToUnixTimeMilliseconds() * 1000;
-                            builder.Add(unixTime);
+                            column.Add(new TimestampTzValue(dateTime));
+                        });
+                        break;
+                    case "datetimeoffset":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            var dateTimeOffset = reader.GetDateTimeOffset(index);
+                            column.Add(new TimestampTzValue(dateTimeOffset));
+                        });
+                        break;
+                    case "time":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            var time = reader.GetTimeSpan(index);
+                            column.Add(new Int64Value(time.Ticks));
+                        });
+                        break;
+                    case "bit":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            var boolean = reader.GetBoolean(index);
+                            column.Add(new BoolValue(boolean));
+                        });
+                        break;
+                    case "bigint":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new Int64Value(reader.GetInt64(index)));
+                        });
+                        break;
+                    case "real":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new DoubleValue(reader.GetFloat(index)));
+                        });
+                        break;
+                    case "float":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new DoubleValue(reader.GetDouble(index)));
+                        });
+                        break;
+                    case "uniqueidentifier":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            var guid = reader.GetGuid(index);
+                            column.Add(new StringValue(guid.ToString()));
+                        });
+                        break;
+                    case "binary":
+                    case "varbinary":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            var binary = reader.GetSqlBinary(index);
+                            column.Add(new BinaryValue(binary.Value));
+                        });
+                        break;
+                    case "image":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            var binary = reader.GetSqlBinary(index);
+                            column.Add(new BinaryValue(binary.Value));
                         });
                         break;
                     default:
-                        throw new NotImplementedException($"{type.Type}");
+                        throw new NotImplementedException(column.DataTypeName);
                 }
             }
-            return (reader) =>
+            return output;
+        }
+
+        public static SubstraitBaseType GetSubstraitType(string dataTypeName)
+        {
+            switch (dataTypeName.ToLower())
             {
-                return RowEvent.Create(1, 0, builder =>
-                {
-                    for (int i = 0; i < columns.Count; i++)
-                    {
-                        columns[i](reader, builder);
-                    }
-                });
-            };
+                case "nchar":
+                case "char":
+                case "varchar":
+                case "nvarchar":
+                case "ntext":
+                case "text":
+                case "xml":
+                    return new StringType();
+                case "tinyint":
+                case "smallint":
+                case "int":
+                    return new Int64Type();
+                case "money":
+                case "decimal":
+                    return new DecimalType();
+                case "date":
+                case "datetime":
+                case "smalldatetime":
+                case "datetime2":
+                    return new TimestampType();
+                case "time":
+                    return new Int64Type();
+                case "bit":
+                    return new BoolType();
+                case "bigint":
+                    return new Int64Type();
+                case "real":
+                    return new Fp64Type();
+                case "float":
+                    return new Fp64Type();
+                case "uniqueidentifier":
+                    return new StringType();
+                case "binary":
+                case "varbinary":
+                    return new BinaryType();
+                case "image":
+                    return new BinaryType();
+                default:
+                    return new AnyType();
+            }
         }
 
         public static Func<SqlDataReader, RowEvent> GetStreamEventCreator(ReadOnlyCollection<DbColumn> dbColumns)
@@ -391,6 +582,10 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
             List<string> primaryKeyEquals = new List<string>();
             List<string> columnSelects = new List<string>();
+            if (readRelation.BaseSchema.Struct == null) 
+            {
+                throw new FlowtideException("Struct must be defined in the base schema for SQL Server.");
+            }
             for (int i = 0; i < readRelation.BaseSchema.Struct.Types.Count; i++)
             {
                 if (primaryKeys.Contains(readRelation.BaseSchema.Names[i], StringComparer.OrdinalIgnoreCase))
@@ -659,6 +854,54 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return output;
         }
 
+        public static Action<DataTable, bool, EventBatchData, int> GetDataRowFromColumnsFunc(
+            IReadOnlyCollection<DbColumn> columns, 
+            IReadOnlyList<int> primaryKeys,
+            DataValueContainer dataValueContainer)
+        {
+            var columnList = columns.ToList();
+            var mapFuncs = GetColumnsToDataTableValueMaps(columnList, dataValueContainer);
+            var columnNames = columnList.Select(x => x.ColumnName).ToList();
+            return (table, isDeleted, batch, index) =>
+            {
+                var row = table.NewRow();
+
+                if (isDeleted)
+                {
+                    row["md_operation"] = "D";
+                    // Set only primaryKeys
+                    for (int i = 0; i < columnNames.Count; i++)
+                    {
+                        if (primaryKeys.Contains(i))
+                        {
+                            row[columnNames[i]] = mapFuncs[i](batch, index);
+                        }
+                        else
+                        {
+                            row[columnNames[i]] = DBNull.Value;
+                        }
+                    }
+                    table.Rows.Add(row);
+                    return;
+                }
+
+                row["md_operation"] = "I";
+                for (int i = 0; i < columnNames.Count; i++)
+                {
+                    var val = mapFuncs[i](batch, index);
+                    if (val == null)
+                    {
+                        val = DBNull.Value;
+                    }
+                    else
+                    {
+                        row[columnNames[i]] = val;
+                    }
+                }
+                table.Rows.Add(row);
+            };
+        }
+
         public static Action<DataTable, bool, RowEvent> GetDataRowMapFunc(IReadOnlyCollection<DbColumn> columns, IReadOnlyList<int> primaryKeys)
         {
             var columnList = columns.ToList();
@@ -751,9 +994,20 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return (outdata, pkValues);
         }
 
-        public static List<Func<RowEvent, object>> GetDataTableValueMaps(List<DbColumn> columns)
+        public static List<Func<EventBatchData, int, object?>> GetColumnsToDataTableValueMaps(List<DbColumn> columns, DataValueContainer dataValueContainer)
         {
-            List<Func<RowEvent, object>> output = new List<Func<RowEvent, object>>();
+            List<Func<EventBatchData, int, object?>> output = new List<Func<EventBatchData, int, object?>>();
+            for (int i = 0; i < columns.Count; i++)
+            {
+                output.Add(GetColumnToDataTableValueMap(columns[i], dataValueContainer, i));
+            }
+            return output;
+
+        }
+
+        public static List<Func<RowEvent, object?>> GetDataTableValueMaps(List<DbColumn> columns)
+        {
+            List<Func<RowEvent, object?>> output = new List<Func<RowEvent, object?>>();
 
             for (int i = 0; i < columns.Count; i++)
             {
@@ -762,9 +1016,257 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return output;
         }
 
+        public static Func<EventBatchData, int, object?> GetColumnToDataTableValueMap(DbColumn dbColumn, DataValueContainer dataValueContainer, int columnIndex)
+        {
+            var t = dbColumn.DataType;
+
+            if (t == null)
+            {
+                throw new FlowtideException("Could not get data type from SQL Server");
+            }
+
+            if (t.Equals(typeof(string)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.String)
+                    {
+                        return dataValueContainer.AsString.ToString();
+                    }
+                    // Json as fallback
+                    using MemoryStream stream = new();
+                    using Utf8JsonWriter utf8JsonWriter = new Utf8JsonWriter(stream);
+                    batch.Columns[columnIndex].WriteToJson(in utf8JsonWriter, index);
+                    return Encoding.UTF8.GetString(stream.ToArray());
+                };
+            }
+            if (t.Equals(typeof(int)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsLong;
+                };
+            }
+            if (t.Equals(typeof(DateTime)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Int64)
+                    {
+                        return DateTimeOffset.UnixEpoch.AddTicks(dataValueContainer.AsLong).DateTime;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Timestamp)
+                    {
+                        return dataValueContainer.AsTimestamp.ToDateTimeOffset().DateTime;
+                    }
+                    throw new NotSupportedException($"The data type {dataValueContainer.Type} cant be used as datetime");
+                };
+            }
+            if (t.Equals(typeof(DateTimeOffset)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Int64)
+                    {
+                        return DateTimeOffset.UnixEpoch.AddTicks(dataValueContainer.AsLong);
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Timestamp)
+                    {
+                        return dataValueContainer.AsTimestamp.ToDateTimeOffset();
+                    }
+                    throw new NotSupportedException($"The data type {dataValueContainer.Type} cant be used as datetime");
+                };
+            }
+            if (t.Equals(typeof(double))) // float
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsDouble;
+                };
+            }
+            if (t.Equals(typeof(float))) // real
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsDouble;
+                };
+            }
+            if (t.Equals(typeof(decimal)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Double)
+                    {
+                        return (decimal)dataValueContainer.AsDouble;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Int64)
+                    {
+                        return (decimal)dataValueContainer.AsLong;
+                    }
+                    return dataValueContainer.AsDecimal;
+                };
+            }
+            if (t.Equals(typeof(bool)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Boolean)
+                    {
+                        return dataValueContainer.AsBool;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Int64)
+                    {
+                        return dataValueContainer.AsLong > 0;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.String)
+                    {
+                        var stringVal = dataValueContainer.AsString.ToString();
+                        if (stringVal.Equals("true", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+                        if (stringVal.Equals("false", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return false;
+                        }
+                    }
+                    throw new NotSupportedException("Bool can only support bool or int values");
+                };
+            }
+            if (t.Equals(typeof(short)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsLong;
+                };
+            }
+            if (t.Equals(typeof(long)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsLong;
+                };
+            }
+            if (t.Equals(typeof(Guid)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.String)
+                    {
+                        return new Guid(dataValueContainer.AsString.ToString());
+                    }
+                    else
+                    {
+                        var blob = dataValueContainer.AsBinary;
+                        return new Guid(blob);
+                    }
+                };
+            }
+            if (t.Equals(typeof(byte))) // tiny int
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+
+                    return dataValueContainer.AsLong;
+                };
+            }
+            if (t.Equals(typeof(byte[]))) // binary
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsBinary.ToArray();
+                };
+            }
+            if (t.Equals(typeof(TimeSpan))) // time(7)
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+
+                    return TimeSpan.FromTicks(dataValueContainer.AsLong);
+                };
+            }
+
+            throw new NotImplementedException();
+        }
+
         public static Func<RowEvent, object?> GetDataTableValueMap(DbColumn dbColumn, int index)
         {
             var t = dbColumn.DataType;
+
+            if (t == null)
+            {
+                throw new FlowtideException("Could not get data type from SQL Server");
+            }
 
             if (t.Equals(typeof(string)))
             {
@@ -775,7 +1277,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     {
                         return null;
                     }
-                    return c.AsString;
+                    if (c.ValueType == FlexBuffers.Type.String)
+                    {
+                        return c.AsString;
+                    }
+                    return c.ToJson;
                 };
             }
             if (t.Equals(typeof(int)))

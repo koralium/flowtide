@@ -17,8 +17,10 @@ namespace FlowtideDotNet.Substrait.Relations
         Unspecified = 0,
         MinusPrimary = 1,
         MinusMultiset = 2,
+        MinusPrimaryAll = 7,
         IntersectionPrimary = 3,
         IntersectionMultiset = 4,
+        IntersectionMultisetAll = 8,
         UnionDistinct = 5,
         UnionAll = 6,
     }

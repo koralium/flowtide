@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.SqlServer;
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
 using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
@@ -36,7 +37,7 @@ namespace FlowtideDotNet.Core.Engine
                 }
                 transform?.Invoke(relation);
 
-                var source = new SqlServerDataSource(connectionStringFunc, relation.NamedTable.DotSeperated, relation, dataflowopt);
+                var source = new ColumnSqlServerDataSource(connectionStringFunc, relation.NamedTable.DotSeperated, relation, dataflowopt);
                 var primaryKeys = source.GetPrimaryKeys();
 
                 if (!source.IsChangeTrackingEnabled())
@@ -51,7 +52,10 @@ namespace FlowtideDotNet.Core.Engine
                     if (pkIndex == -1)
                     {
                         relation.BaseSchema.Names.Add(pk);
-                        relation.BaseSchema.Struct.Types.Add(new AnyType() { Nullable = false });
+                        if (relation.BaseSchema.Struct != null)
+                        {
+                            relation.BaseSchema.Struct.Types.Add(new AnyType() { Nullable = false });
+                        }
                         pkIndices.Add(relation.BaseSchema.Names.Count - 1);
                     }
                     else
@@ -86,7 +90,7 @@ namespace FlowtideDotNet.Core.Engine
                     return null;
                 }
                 transform?.Invoke(relation);
-                return new SqlServerSink(new Connector.SqlServer.SqlServerSinkOptions()
+                return new ColumnSqlServerSink(new Connector.SqlServer.SqlServerSinkOptions()
                 {
                     ConnectionStringFunc = connectionStringFunc
                 }, relation, dataflowopts);
@@ -109,7 +113,7 @@ namespace FlowtideDotNet.Core.Engine
                     return null;
                 }
                 transform?.Invoke(relation);
-                return new SqlServerSink(sqlServerSinkOptions, relation, dataflowopts);
+                return new ColumnSqlServerSink(sqlServerSinkOptions, relation, dataflowopts);
             });
             return readWriteFactory;
         }

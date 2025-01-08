@@ -13,6 +13,7 @@
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Sql.Internal.TableFunctions;
+using FlowtideDotNet.Substrait.Type;
 using SqlParser.Ast;
 using System.Diagnostics;
 
@@ -31,12 +32,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = FunctionsRounding.Uri,
-                        ExtensionName = FunctionsRounding.Ceil,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
-                    };
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsRounding.Uri,
+                            ExtensionName = FunctionsRounding.Ceil,
+                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        },
+                        expr.Type
+                        );
                 }
                 else
                 {
@@ -52,12 +56,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = FunctionsRounding.Uri,
-                        ExtensionName = FunctionsRounding.Round,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
-                    };
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsRounding.Uri,
+                            ExtensionName = FunctionsRounding.Round,
+                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        },
+                        expr.Type
+                        );
                 }
                 else
                 {
@@ -66,7 +73,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             });
             sqlFunctionRegister.RegisterScalarFunction("coalesce", (f, visitor, emitData) =>
             {
-                return VisitCoalesce(f, visitor, emitData).Expr;
+                var exprData = VisitCoalesce(f, visitor, emitData);
+                return new ScalarResponse(exprData.Expr, exprData.Type);
+            });
+
+            sqlFunctionRegister.RegisterScalarFunction("concat", (f, visitor, emitData) =>
+            {
+                var exprData = VisitConcat(f, visitor, emitData);
+                return new ScalarResponse(exprData.Expr, exprData.Type);
             });
 
             sqlFunctionRegister.RegisterScalarFunction("is_infinite", (f, visitor, emitData) =>
@@ -78,12 +92,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = FunctionsComparison.Uri,
-                        ExtensionName = FunctionsComparison.isInfinite,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
-                    };
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.isInfinite,
+                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        },
+                        new BoolType() { Nullable = true }
+                        );
                 }
                 else
                 {
@@ -100,12 +117,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = FunctionsComparison.Uri,
-                        ExtensionName = FunctionsComparison.IsFinite,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
-                    };
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.IsFinite,
+                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        },
+                        new BoolType() { Nullable = true }
+                        );
                 }
                 else
                 {
@@ -122,12 +142,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = FunctionsComparison.Uri,
-                        ExtensionName = FunctionsComparison.IsNan,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
-                    };
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.IsNan,
+                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        },
+                        new BoolType() { Nullable = true }
+                        );
                 }
                 else
                 {
@@ -141,11 +164,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("nullif must have exactly two arguments");
                 }
+                SubstraitBaseType returnType = new AnyType();
                 var arguments = new List<Expressions.Expression>();
                 if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
                     arguments.Add(expr.Expr);
+                    returnType = expr.Type;
+                    returnType.Nullable = true;
                 }
                 else
                 {
@@ -161,12 +187,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     throw new NotImplementedException("nullif does not support the input parameter");
                 }
 
-                return new ScalarFunction()
-                {
-                    ExtensionUri = FunctionsComparison.Uri,
-                    ExtensionName = FunctionsComparison.NullIf,
-                    Arguments = arguments
-                };
+                return new ScalarResponse(
+                    new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsComparison.Uri,
+                        ExtensionName = FunctionsComparison.NullIf,
+                        Arguments = arguments
+                    },
+                    returnType
+                    );
             });
 
             sqlFunctionRegister.RegisterScalarFunction("lower", (f, visitor, emitData) =>
@@ -178,12 +207,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = FunctionsString.Uri,
-                        ExtensionName = FunctionsString.Lower,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
-                    };
+
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionName = FunctionsString.Lower,
+                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        },
+                        expr.Type
+                        );
                 }
                 else
                 {
@@ -200,12 +233,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = FunctionsString.Uri,
-                        ExtensionName = FunctionsString.Upper,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
-                    };
+
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionName = FunctionsString.Upper,
+                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        },
+                        expr.Type
+                        );
                 }
                 else
                 {
@@ -222,12 +259,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = FunctionsString.Uri,
-                        ExtensionName = FunctionsString.LTrim,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
-                    };
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionName = FunctionsString.LTrim,
+                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        },
+                        new StringType() { Nullable = true }
+                        );
                 }
                 else
                 {
@@ -244,12 +284,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = FunctionsString.Uri,
-                        ExtensionName = FunctionsString.RTrim,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
-                    };
+
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionName = FunctionsString.RTrim,
+                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        },
+                        new StringType() { Nullable = true }
+                        );
                 }
                 else
                 {
@@ -266,12 +310,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = FunctionsString.Uri,
-                        ExtensionName = FunctionsString.To_String,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
-                    };
+
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionName = FunctionsString.To_String,
+                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        },
+                        new StringType() { Nullable = true }
+                        );
                 }
                 else
                 {
@@ -288,12 +336,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = FunctionsGuid.Uri,
-                        ExtensionName = FunctionsGuid.ParseGuid,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
-                    };
+
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsGuid.Uri,
+                            ExtensionName = FunctionsGuid.ParseGuid,
+                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        },
+                        new StringType() { Nullable = true }
+                        );
                 }
                 else
                 {
@@ -312,12 +364,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     var expr1 = visitor.Visit(funcExpr1.Expression, emitData);
                     var expr2 = visitor.Visit(funcExpr2.Expression, emitData);
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = FunctionsDatetime.Uri,
-                        ExtensionName = FunctionsDatetime.Strftime,
-                        Arguments = new List<Expressions.Expression>() { expr1.Expr, expr2.Expr }
-                    };
+
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsDatetime.Uri,
+                            ExtensionName = FunctionsDatetime.Strftime,
+                            Arguments = new List<Expressions.Expression>() { expr1.Expr, expr2.Expr }
+                        },
+                        new StringType() { Nullable = true }
+                        );
                 }
                 else
                 {
@@ -327,12 +383,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             
             sqlFunctionRegister.RegisterScalarFunction("gettimestamp", (f, visitor, emitData) =>
             {
-                return new ScalarFunction()
-                {
-                    ExtensionUri = FunctionsDatetime.Uri,
-                    ExtensionName = FunctionsDatetime.GetTimestamp,
-                    Arguments = new List<Expressions.Expression>()
-                };
+                return new ScalarResponse(
+                    new ScalarFunction()
+                    {
+                        ExtensionUri = FunctionsDatetime.Uri,
+                        ExtensionName = FunctionsDatetime.GetTimestamp,
+                        Arguments = new List<Expressions.Expression>()
+                    },
+                    new Int64Type()
+                    );
             });
 
             sqlFunctionRegister.RegisterScalarFunction("map", (f, visitor, emitData) =>
@@ -345,6 +404,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     KeyValues = new List<KeyValuePair<Expressions.Expression, Expressions.Expression>>()
                 };
+                SubstraitBaseType? keyType = new AnyType();
+                SubstraitBaseType? valueType = new AnyType();
                 for (int i = 0; i < f.Args.Count; i += 2)
                 {
                     var keyArg = f.Args[i];
@@ -371,7 +432,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         throw new InvalidOperationException("map does not support the input parameter");
                     }
                 }
-                return mapNestedExpression;
+                return new ScalarResponse(mapNestedExpression, new MapType(keyType, valueType));
             });
 
             sqlFunctionRegister.RegisterScalarFunction("list", (f, visitor, emitData) =>
@@ -380,6 +441,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("List must have an argument list.");
                 }
+                SubstraitBaseType? valueType = default;
                 ListNestedExpression mapNestedExpression = new ListNestedExpression
                 {
                     Values = new List<Expressions.Expression>()
@@ -390,6 +452,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     if (arg is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExprUnnamed)
                     {
                         var expr = visitor.Visit(funcExprUnnamed.Expression, emitData);
+
+                        if (valueType == null)
+                        {
+                            valueType = expr.Type;
+                        }
+                        else if (valueType != expr.Type)
+                        {
+                            valueType = new AnyType();
+                        }
+
                         mapNestedExpression.Values.Add(expr.Expr);
                     }
                     else
@@ -397,7 +469,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         throw new InvalidOperationException("list does not support the input parameter");
                     }
                 }
-                return mapNestedExpression;
+                if (valueType == null)
+                {
+                    valueType = new AnyType();
+                }
+                return new ScalarResponse(mapNestedExpression, new ListType(valueType));
             });
 
 
@@ -411,12 +487,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("count must have exactly one argument, and be '*'");
                 }
-                return new AggregateFunction()
-                {
-                    ExtensionUri = FunctionsAggregateGeneric.Uri,
-                    ExtensionName = FunctionsAggregateGeneric.Count,
-                    Arguments = new List<Expressions.Expression>()
-                };
+                return new AggregateResponse(
+                    new AggregateFunction()
+                    {
+                        ExtensionUri = FunctionsAggregateGeneric.Uri,
+                        ExtensionName = FunctionsAggregateGeneric.Count,
+                        Arguments = new List<Expressions.Expression>()
+                    },
+                    new Int64Type()
+                    );
             });
 
             sqlFunctionRegister.RegisterAggregateFunction("sum", (f, visitor, emitData) =>
@@ -431,13 +510,35 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
-                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
-                    return new AggregateFunction()
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData);
+
+                    SubstraitBaseType returnType = new AnyType();
+                    if (argExpr.Type.Type == SubstraitType.Fp64)
                     {
-                        ExtensionUri = FunctionsArithmetic.Uri,
-                        ExtensionName = FunctionsArithmetic.Sum,
-                        Arguments = new List<Expressions.Expression>() { argExpr }
-                    };
+                        returnType = new Fp64Type();
+                    }
+                    else if (argExpr.Type.Type == SubstraitType.Int64)
+                    {
+                        returnType = new Int64Type();
+                    }
+                    else if (argExpr.Type.Type == SubstraitType.Int32)
+                    {
+                        returnType = new Int64Type();
+                    }
+                    else if (argExpr.Type.Type == SubstraitType.Fp32)
+                    {
+                        returnType = new Fp64Type();
+                    }
+
+                    return new AggregateResponse(
+                        new AggregateFunction()
+                        {
+                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionName = FunctionsArithmetic.Sum,
+                            Arguments = new List<Expressions.Expression>() { argExpr.Expr }
+                        },
+                        returnType
+                        );
                 }
                 throw new InvalidOperationException("sum must have exactly one argument, and not be '*'");
             });
@@ -454,19 +555,41 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
-                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
-                    return new AggregateFunction()
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData);
+
+                    SubstraitBaseType returnType = new AnyType();
+                    if (argExpr.Type.Type == SubstraitType.Fp64)
                     {
-                        ExtensionUri = FunctionsArithmetic.Uri,
-                        ExtensionName = FunctionsArithmetic.Sum0,
-                        Arguments = new List<Expressions.Expression>() { argExpr }
-                    };
+                        returnType = new Fp64Type();
+                    }
+                    else if (argExpr.Type.Type == SubstraitType.Int64)
+                    {
+                        returnType = new Int64Type();
+                    }
+                    else if (argExpr.Type.Type == SubstraitType.Int32)
+                    {
+                        returnType = new Int64Type();
+                    }
+                    else if (argExpr.Type.Type == SubstraitType.Fp32)
+                    {
+                        returnType = new Fp64Type();
+                    }
+
+                    return new AggregateResponse(
+                        new AggregateFunction()
+                        {
+                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionName = FunctionsArithmetic.Sum0,
+                            Arguments = new List<Expressions.Expression>() { argExpr.Expr }
+                        },
+                        returnType
+                        );
                 }
                 throw new InvalidOperationException("sum0 must have exactly one argument, and not be '*'");
             });
 
-            RegisterSingleVariableFunction(sqlFunctionRegister, "min", FunctionsArithmetic.Uri, FunctionsArithmetic.Min);
-            RegisterSingleVariableFunction(sqlFunctionRegister, "max", FunctionsArithmetic.Uri, FunctionsArithmetic.Max);
+            RegisterSingleVariableFunction(sqlFunctionRegister, "min", FunctionsArithmetic.Uri, FunctionsArithmetic.Min, new AnyType());
+            RegisterSingleVariableFunction(sqlFunctionRegister, "max", FunctionsArithmetic.Uri, FunctionsArithmetic.Max, new AnyType());
 
             sqlFunctionRegister.RegisterAggregateFunction("list_agg", (f, visitor, emitData) =>
             {
@@ -480,13 +603,17 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
-                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
-                    return new AggregateFunction()
-                    {
-                        ExtensionUri = FunctionsList.Uri,
-                        ExtensionName = FunctionsList.ListAgg,
-                        Arguments = new List<Expressions.Expression>() { argExpr }
-                    };
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData);
+
+                    return new AggregateResponse(
+                        new AggregateFunction()
+                        {
+                            ExtensionUri = FunctionsList.Uri,
+                            ExtensionName = FunctionsList.ListAgg,
+                            Arguments = new List<Expressions.Expression>() { argExpr.Expr }
+                        },
+                        new ListType(argExpr.Type)
+                        );
                 }
                 throw new InvalidOperationException("list_agg must have exactly one argument, and not be '*'");
             });
@@ -510,12 +637,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
                     var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData).Expr;
-                    return new AggregateFunction()
-                    {
-                        ExtensionUri = FunctionsString.Uri,
-                        ExtensionName = FunctionsString.StringAgg,
-                        Arguments = new List<Expressions.Expression>() { argExpr, argExpr2 }
-                    };
+
+                    return new AggregateResponse(
+                        new AggregateFunction()
+                        {
+                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionName = FunctionsString.StringAgg,
+                            Arguments = new List<Expressions.Expression>() { argExpr, argExpr2 }
+                        },
+                        new StringType() { Nullable = true }
+                        );
                 }
                 throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
             });
@@ -550,6 +681,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "string_base64_decode", FunctionsString.Uri, FunctionsString.StringBase64Decode);
 
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "len", FunctionsString.Uri, FunctionsString.CharLength);
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "strpos", FunctionsString.Uri, FunctionsString.StrPos);
 
             // Table functions
             UnnestSqlFunction.AddUnnest(sqlFunctionRegister);
@@ -559,7 +691,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             SqlFunctionRegister sqlFunctionRegister, 
             string functionName,
             string extensionUri,
-            string extensionName)
+            string extensionName,
+            SubstraitBaseType returnType)
         {
             sqlFunctionRegister.RegisterAggregateFunction(functionName, (f, visitor, emitData) =>
             {
@@ -574,12 +707,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
-                    return new AggregateFunction()
-                    {
-                        ExtensionUri = extensionUri,
-                        ExtensionName = extensionName,
-                        Arguments = new List<Expressions.Expression>() { argExpr }
-                    };
+
+                    return new AggregateResponse(
+                        new AggregateFunction()
+                        {
+                            ExtensionUri = extensionUri,
+                            ExtensionName = extensionName,
+                            Arguments = new List<Expressions.Expression>() { argExpr }
+                        },
+                        returnType
+                        );
                 }
                 throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
             });
@@ -604,12 +741,17 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = extensionUri,
-                        ExtensionName = extensionName,
-                        Arguments = new List<Expressions.Expression>() { argExpr }
-                    };
+
+                    // For now, anytype is returned
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = extensionUri,
+                            ExtensionName = extensionName,
+                            Arguments = new List<Expressions.Expression>() { argExpr }
+                        },
+                        new AnyType()
+                        );
                 }
                 throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
             });
@@ -640,12 +782,17 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
                     var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData).Expr;
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = extensionUri,
-                        ExtensionName = extensionName,
-                        Arguments = new List<Expressions.Expression>() { argExpr, argExpr2 }
-                    };
+
+                    // For now, anytype is returned
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = extensionUri,
+                            ExtensionName = extensionName,
+                            Arguments = new List<Expressions.Expression>() { argExpr, argExpr2 }
+                        },
+                        new AnyType()
+                        );
                 }
                 throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
             });
@@ -682,12 +829,17 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
                     var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData).Expr;
                     var argExpr3 = visitor.Visit(funcExpr3.Expression, emitData).Expr;
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = extensionUri,
-                        ExtensionName = extensionName,
-                        Arguments = new List<Expressions.Expression>() { argExpr, argExpr2, argExpr3 }
-                    };
+
+                    // For now, anytype is returned
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = extensionUri,
+                            ExtensionName = extensionName,
+                            Arguments = new List<Expressions.Expression>() { argExpr, argExpr2, argExpr3 }
+                        },
+                        new AnyType()
+                        );
                 }
                 throw new InvalidOperationException($"{functionName} must have exactly three arguments, and not be '*'");
             });
@@ -702,6 +854,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 Arguments = new List<Expressions.Expression>()
             };
 
+            SubstraitBaseType? returnType = default;
+
             {
                 Debug.Assert(function.Args != null);
                 for (int i = 0; i < function.Args.Count; i++)
@@ -712,6 +866,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         if (unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                         {
                             var expr = visitor.Visit(funcExpr.Expression, state);
+                            
+                            if (returnType == null)
+                            {
+                                returnType = expr.Type;
+                            }
+                            else if (returnType != expr.Type)
+                            {
+                                returnType = new AnyType();
+                            }
+
                             coalesceFunction.Arguments.Add(expr.Expr);
                         }
                         else
@@ -725,7 +889,66 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     }
                 }
             }
-            return new ExpressionData(coalesceFunction, "$coalesce");
+
+            if (returnType == null)
+            {
+                throw new InvalidOperationException("Coalesce must have at least one argument");
+            }
+
+            return new ExpressionData(coalesceFunction, "$coalesce", returnType);
+        }
+
+        private static ExpressionData VisitConcat(SqlParser.Ast.Expression.Function function, SqlExpressionVisitor visitor, EmitData state)
+        {
+            var coalesceFunction = new ScalarFunction()
+            {
+                ExtensionUri = FunctionsString.Uri,
+                ExtensionName = FunctionsString.Concat,
+                Arguments = new List<Expressions.Expression>()
+            };
+
+            SubstraitBaseType? returnType = default;
+
+            {
+                Debug.Assert(function.Args != null);
+                for (int i = 0; i < function.Args.Count; i++)
+                {
+                    var arg = function.Args[i];
+                    if (arg is FunctionArg.Unnamed unnamed)
+                    {
+                        if (unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                        {
+                            var expr = visitor.Visit(funcExpr.Expression, state);
+
+                            if (returnType == null)
+                            {
+                                returnType = expr.Type;
+                            }
+                            else if (returnType != expr.Type)
+                            {
+                                returnType = new AnyType();
+                            }
+
+                            coalesceFunction.Arguments.Add(expr.Expr);
+                        }
+                        else
+                        {
+                            throw new NotImplementedException("Coalesce does not support the input parameter");
+                        }
+                    }
+                    else
+                    {
+                        throw new NotImplementedException("Coalesce does not support the input parameter");
+                    }
+                }
+            }
+
+            if (returnType == null)
+            {
+                throw new InvalidOperationException("Coalesce must have at least one argument");
+            }
+
+            return new ExpressionData(coalesceFunction, "$concat", returnType);
         }
     }
 }

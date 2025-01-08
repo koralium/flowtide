@@ -53,6 +53,41 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task ListAggWithUpdate()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_agg(firstName)
+                FROM users
+                ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.Select(x => x.FirstName).OrderBy(x => x).ToList() } });
+
+            GenerateUsers(1);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.Select(x => x.FirstName).OrderBy(x => x).ToList() } });
+
+            var firstUser = Users[0];
+            firstUser.FirstName = "Aaa";
+            AddOrUpdateUser(firstUser);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.Select(x => x.FirstName).OrderBy(x => x).ToList() } });
+
+            DeleteUser(firstUser);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.Select(x => x.FirstName).OrderBy(x => x).ToList() } });
+        }
+
+        [Fact]
         public async Task ListAggWithObject()
         {
             GenerateData();

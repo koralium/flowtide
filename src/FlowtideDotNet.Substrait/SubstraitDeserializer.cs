@@ -412,8 +412,10 @@ namespace FlowtideDotNet.Substrait
                 Struct? schema = default;
                 if (readRel.BaseSchema.Struct != null)
                 {
-                    var st = new Type.Struct();
-                    st.Types = new List<Type.SubstraitBaseType>();
+                    var st = new Type.Struct()
+                    {
+                        Types = new List<SubstraitBaseType>()
+                    };
                     foreach (var type in readRel.BaseSchema.Struct.Types_)
                     {
                         switch (type.KindCase)

@@ -11,10 +11,12 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Connector.CosmosDB.Tests;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Substrait.Relations;
 using Nest;
 
 namespace FlowtideDotNet.Connector.ElasticSearch.Tests
@@ -23,11 +25,21 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
     {
         private readonly ElasticSearchFixture elasticSearchFixture;
         private readonly Action<IProperties>? customMapping;
+        private readonly Func<IElasticClient, WriteRelation, string, Task>? onInitialDataSent;
+        private readonly Func<IElasticClient, WriteRelation, string, Watermark, Task>? onDataSent;
 
-        public ElasticsearchTestStream(ElasticSearchFixture elasticSearchFixture, string testName, Action<IProperties>? customMapping = null) : base(testName)
+        public ElasticsearchTestStream(
+            ElasticSearchFixture elasticSearchFixture, 
+            string testName, 
+            Action<IProperties>? customMapping = null,
+            Func<IElasticClient, WriteRelation, string, Task>? onInitialDataSent = null,
+            Func<IElasticClient, WriteRelation, string, Watermark, Task>? onDataSent = null) 
+            : base(testName)
         {
             this.elasticSearchFixture = elasticSearchFixture;
             this.customMapping = customMapping;
+            this.onInitialDataSent = onInitialDataSent;
+            this.onDataSent = onDataSent;
         }
 
         protected override void AddWriteResolvers(IConnectorManager connectorManager)
@@ -35,7 +47,9 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             connectorManager.AddElasticsearchSink("*", new FlowtideElasticsearchOptions()
             {
                 ConnectionSettings = elasticSearchFixture.GetConnectionSettings(),
-                CustomMappings = customMapping
+                CustomMappings = customMapping,
+                OnDataSent = onDataSent,
+                OnInitialDataSent = onInitialDataSent
             });
         }
     }

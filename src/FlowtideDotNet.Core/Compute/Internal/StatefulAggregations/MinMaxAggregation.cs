@@ -12,6 +12,7 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -89,14 +90,14 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
     {
         private readonly int keyLength;
 
-        public MinMaxAggregationSingleton(IBPlusTree<RowEvent, int> tree, int keyLength)
+        public MinMaxAggregationSingleton(IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>> tree, int keyLength)
         {
             Tree = tree;
             this.keyLength = keyLength;
         }
 
         public int KeyLength => keyLength;
-        public IBPlusTree<RowEvent, int> Tree { get; }
+        public IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>> Tree { get; }
         public bool AreKeyEqual(RowEvent x, RowEvent y)
         {
             for (int i = 0; i < keyLength; i++)
@@ -130,22 +131,24 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             {
                 searchPrimaryKeys.Add(i);
             }
-            var tree = await stateManagerClient.GetOrCreateTree(treeName, new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
+            var tree = await stateManagerClient.GetOrCreateTree(treeName, 
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
             {
-                Comparer = comparer,
-                KeySerializer = new StreamEventBPlusTreeSerializer(),
-                ValueSerializer = new IntSerializer()
+                Comparer = new BPlusTreeListComparer<RowEvent>(comparer),
+                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             });
 
             return new MinMaxAggregationSingleton(tree, groupingLength);
         }
 
-        private static Task<MinMaxAggregationSingleton> InitializeMin(int groupingLength, IStateManagerClient stateManagerClient)
+        private static Task<MinMaxAggregationSingleton> InitializeMin(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
             return InitializeMinMax(groupingLength, stateManagerClient, new MinAggregationInsertComparer(groupingLength + 1), "mintree");
         }
 
-        private static Task<MinMaxAggregationSingleton> InitializeMax(int groupingLength, IStateManagerClient stateManagerClient)
+        private static Task<MinMaxAggregationSingleton> InitializeMax(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
             return InitializeMinMax(groupingLength, stateManagerClient, new MaxAggregationInsertComparer(groupingLength + 1), "maxtree");
         }

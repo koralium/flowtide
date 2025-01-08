@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Operators.Write;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,5 +28,12 @@ namespace FlowtideDotNet.Connector.SqlServer
         /// If not set, the primary keys are collected from the database.
         /// </summary>
         public List<string>? CustomPrimaryKeys { get; set; }
+
+        /// <summary>
+        /// If set to false, the sink will look at any database on the server that the connection string points to.
+        /// </summary>
+        public bool UseDatabaseDefinedInConnectionStringOnly { get; set; }
+
+        public ExecutionMode ExecutionMode { get; set; } = ExecutionMode.Hybrid;
     }
 }

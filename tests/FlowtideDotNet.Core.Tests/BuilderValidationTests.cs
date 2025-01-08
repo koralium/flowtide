@@ -17,6 +17,7 @@ using FlowtideDotNet.Core.Sinks;
 using FlowtideDotNet.Core.Tests.Failure;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Substrait.Sql;
+using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Core.Tests
 {
@@ -37,7 +38,14 @@ namespace FlowtideDotNet.Core.Tests
         public void TestNoReadWriteFactory()
         {
             SqlPlanBuilder builder = new SqlPlanBuilder();
-            builder.AddTableDefinition("a", new List<string>() { "c1" });
+            builder.AddTableDefinition("a", new NamedStruct()
+            {
+                Names = new List<string>() { "c1" },
+                Struct = new Struct()
+                {
+                    Types = new List<SubstraitBaseType>() { new AnyType() }
+                }
+            });
             builder.Sql("INSERT INTO test SELECT c1 FROM a");
             var plan = builder.GetPlan();
 
@@ -54,49 +62,70 @@ namespace FlowtideDotNet.Core.Tests
         public void TestNoSuitableReadResolver()
         {
             SqlPlanBuilder builder = new SqlPlanBuilder();
-            builder.AddTableDefinition("a", new List<string>() { "c1" });
+            builder.AddTableDefinition("a", new NamedStruct()
+            {
+                Names = new List<string>() { "c1" },
+                Struct = new Struct()
+                {
+                    Types = new List<SubstraitBaseType>() { new AnyType() }
+                }
+            });
             builder.Sql("INSERT INTO test SELECT c1 FROM a");
             var plan = builder.GetPlan();
 
             var factory = new ConnectorManager();
             factory.AddConsoleSink(".*");
 
-            var e = Assert.Throws<FlowtideException>(() =>
+            var e = Assert.Throws<FlowtideNoConnectorFoundException>(() =>
             {
                 var stream = new FlowtideBuilder("test")
                     .AddPlan(plan)
                     .AddConnectorManager(factory)
                     .Build();
             });
-            Assert.Equal("No source could be found for table: a", e.Message);
+            Assert.Equal("No connector can handle the read relation 'a'.", e.Message);
         }
 
         [Fact]
         public void TestNoSuitableWriteResolver()
         {
             SqlPlanBuilder builder = new SqlPlanBuilder();
-            builder.AddTableDefinition("a", new List<string>() { "c1" });
+            builder.AddTableDefinition("a", new NamedStruct()
+            {
+                Names = new List<string>() { "c1" },
+                Struct = new Struct()
+                {
+                    Types = new List<SubstraitBaseType>() { new AnyType() }
+                }
+            });
             builder.Sql("INSERT INTO test SELECT c1 FROM a");
             var plan = builder.GetPlan();
 
             var factory = new ConnectorManager();
             factory.AddSource(new FailureIngressFactory("*"));
 
-            var e = Assert.Throws<FlowtideException>(() =>
+            var e = Assert.Throws<FlowtideNoConnectorFoundException>(() =>
             {
                 var stream = new FlowtideBuilder("test")
                     .AddPlan(plan)
                     .AddConnectorManager(factory)
                     .Build();
             });
-            Assert.Equal("No sink could be found for table: test", e.Message);
+            Assert.Equal("No connector can handle the write relation 'test'.", e.Message);
         }
 
         [Fact]
         public async Task ValidateSamePlan()
         {
             SqlPlanBuilder builder = new SqlPlanBuilder();
-            builder.AddTableDefinition("a", new List<string>() { "c1" });
+            builder.AddTableDefinition("a", new NamedStruct()
+            {
+                Names = new List<string>() { "c1" },
+                Struct = new Struct()
+                {
+                    Types = new List<SubstraitBaseType>() { new AnyType() }
+                }
+            });
             builder.Sql("INSERT INTO test SELECT c1 FROM a");
             var plan = builder.GetPlan();
 
@@ -111,7 +140,10 @@ namespace FlowtideDotNet.Core.Tests
             }));
             factory.AddSource(new TestIngressFactory("*"));
 
-            var cache = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions());
+            var cache = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
+            {
+                DirectoryPath = "./data/tempFiles/validateSamePlan"
+            });
             var stream = new FlowtideBuilder("test")
                     .AddPlan(plan)
                     .AddConnectorManager(factory)
@@ -127,7 +159,14 @@ namespace FlowtideDotNet.Core.Tests
             }
 
             SqlPlanBuilder builder2 = new SqlPlanBuilder();
-            builder2.AddTableDefinition("a", new List<string>() { "c1" });
+            builder2.AddTableDefinition("a", new NamedStruct()
+            {
+                Names = new List<string>() { "c1" },
+                Struct = new Struct()
+                {
+                    Types = new List<SubstraitBaseType>() { new AnyType() }
+                }
+            });
             builder2.Sql("INSERT INTO test2 SELECT c1 FROM a");
             var plan2 = builder2.GetPlan();
 

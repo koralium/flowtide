@@ -36,10 +36,10 @@ namespace FlowtideDotNet.Core.Optimizer
                 var relation = plan.Relations[i];
 
                 var filterBeforeJoinOptimize = new JoinFilterPushdownVisitor();
-                relation = filterBeforeJoinOptimize.Visit(relation, null);
+                relation = filterBeforeJoinOptimize.Visit(relation, null!);
 
                 var filterIntoRead = new FilterIntoReadOptimizer();
-                relation = filterIntoRead.Visit(relation, null);
+                relation = filterIntoRead.Visit(relation, null!);
 
                 plan.Relations[i] = relation;
             }
@@ -53,9 +53,15 @@ namespace FlowtideDotNet.Core.Optimizer
                 if (!settings.NoMergeJoin)
                 {
                     var mergeJoinOptimize = new MergeJoinFindVisitor();
-                    relation = mergeJoinOptimize.Visit(relation, null);
+                    relation = mergeJoinOptimize.Visit(relation, null!);
                 }
                 plan.Relations[i] = relation;
+            }
+
+            // Try and remove any direct field references if possible
+            if (settings.SimplifyProjection)
+            {
+                plan = DirectFieldSimplification.DirectFieldSimplification.Optimize(plan);
             }
 
             EmitPushdown.EmitPushdown.Optimize(plan);

@@ -23,6 +23,7 @@ using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core.Utils;
+using FlowtideDotNet.Storage.Serializers;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -31,8 +32,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private readonly JoinComparerLeft leftComparer;
         private readonly JoinComparerRight rightComparer;
         protected readonly MergeJoinRelation mergeJoinRelation;
-        protected IBPlusTree<JoinStreamEvent, JoinStorageValue>? _leftTree;
-        protected IBPlusTree<JoinStreamEvent, JoinStorageValue>? _rightTree;
+        protected IBPlusTree<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>? _leftTree;
+        protected IBPlusTree<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>? _rightTree;
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
 
@@ -44,10 +45,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
 #if DEBUG_WRITE
         // TODO: Tmp remove
-        private StreamWriter allInput;
-        private StreamWriter leftInput;
-        private StreamWriter rightInput;
-        private StreamWriter outputWriter;
+        private StreamWriter? allInput;
+        private StreamWriter? leftInput;
+        private StreamWriter? rightInput;
+        private StreamWriter? outputWriter;
 #endif
 
         public MergeJoinOperatorBase(MergeJoinRelation mergeJoinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
@@ -93,8 +94,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         public override async Task<JoinState?> OnCheckpoint()
         {
 #if DEBUG_WRITE
-            allInput.WriteLine("Checkpoint");
-            await allInput.FlushAsync();
+            allInput!.WriteLine("Checkpoint");
+            await allInput!.FlushAsync();
 #endif
             Debug.Assert(_leftTree != null, nameof(_leftTree));
             Debug.Assert(_rightTree != null, nameof(_rightTree));
@@ -126,7 +127,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             foreach (var e in msg.Events)
             {
 #if DEBUG_WRITE
-                leftInput.WriteLine($"{e.Weight} {e.ToJson()}");
+                leftInput!.WriteLine($"{e.Weight} {e.ToJson()}");
 #endif
 
                 var joinEventCheck = new JoinStreamEvent(0, 1, e.RowData);
@@ -152,7 +153,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 if (output.Count > 100)
                                 {
                                     _eventsCounter.Add(output.Count);
-                                    yield return new StreamEventBatch(output);
+                                    yield return new StreamEventBatch(output, mergeJoinRelation.OutputLength);
                                     output = new List<RowEvent>();
                                 }
                                 
@@ -178,7 +179,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     if (output.Count > 100)
                     {
                         _eventsCounter.Add(output.Count);
-                        yield return new StreamEventBatch(output);
+                        yield return new StreamEventBatch(output, mergeJoinRelation.OutputLength);
                         output = new List<RowEvent>();
                     }
                     
@@ -222,14 +223,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #if DEBUG_WRITE
                 foreach(var o in output)
                 {
-                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
+                    outputWriter!.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
 #endif
-                yield return new StreamEventBatch(output);
+                yield return new StreamEventBatch(output, mergeJoinRelation.OutputLength);
             }
 #if DEBUG_WRITE
-            await leftInput.FlushAsync();
-            await outputWriter.FlushAsync();
+            await leftInput!.FlushAsync();
+            await outputWriter!.FlushAsync();
 #endif
         }
 
@@ -246,7 +247,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             foreach (var e in msg.Events)
             {
 #if DEBUG_WRITE
-                rightInput.WriteLine($"{e.Weight} {e.ToJson()}");
+                rightInput!.WriteLine($"{e.Weight} {e.ToJson()}");
 #endif
                 var joinEventCheck = new JoinStreamEvent(0, 1, e.RowData);
 
@@ -287,7 +288,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 if (output.Count > 100)
                                 {
                                     _eventsCounter.Add(output.Count);
-                                    yield return new StreamEventBatch(output);
+                                    yield return new StreamEventBatch(output, mergeJoinRelation.OutputLength);
                                     output = new List<RowEvent>();
                                 }
                                 
@@ -301,7 +302,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                     if (pageUpdated)
                     {
-                        await page.SavePage();
+                        await page.SavePage(false);
                     }
                     if (shouldBreak)
                     {
@@ -331,14 +332,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #if DEBUG_WRITE
                 foreach (var o in output)
                 {
-                    outputWriter.WriteLine($"{o.Weight} {o.ToJson()}");
+                    outputWriter!.WriteLine($"{o.Weight} {o.ToJson()}");
                 }
 #endif
-                yield return new StreamEventBatch(output);
+                yield return new StreamEventBatch(output, mergeJoinRelation.OutputLength);
             }
 #if DEBUG_WRITE
-            await rightInput.FlushAsync();
-            await outputWriter.FlushAsync();
+            await rightInput!.FlushAsync();
+            await outputWriter!.FlushAsync();
 #endif
         }
 
@@ -347,12 +348,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             Debug.Assert(_eventsProcessed != null, nameof(_eventsProcessed));
             _eventsProcessed.Add(msg.Events.Count);
 #if DEBUG_WRITE
-            allInput.WriteLine("New batch");
+            allInput!.WriteLine("New batch");
             foreach (var e in msg.Events)
             {
-                allInput.WriteLine($"{targetId}, {e.Weight} {e.ToJson()}");
+                allInput!.WriteLine($"{targetId}, {e.Weight} {e.ToJson()}");
             }
-            allInput.Flush();
+            allInput!.Flush();
 #endif
             if (targetId == 0)
             {
@@ -395,17 +396,21 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 state = new JoinState();
             }
-            _leftTree = await stateManagerClient.GetOrCreateTree("left", new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue>()
+            _leftTree = await stateManagerClient.GetOrCreateTree("left", 
+                new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>()
             {
-                Comparer = leftComparer,
-                KeySerializer = new JoinStreamEvenBPlusTreeSerializer(),
-                ValueSerializer = new JoinStorageValueBPlusTreeSerializer()
+                Comparer = new BPlusTreeListComparer<JoinStreamEvent>(leftComparer),
+                KeySerializer = new KeyListSerializer<JoinStreamEvent>(new JoinStreamEvenBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
-            _rightTree = await stateManagerClient.GetOrCreateTree("right", new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue>()
+            _rightTree = await stateManagerClient.GetOrCreateTree("right", 
+                new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>()
             {
-                Comparer = rightComparer,
-                KeySerializer = new JoinStreamEvenBPlusTreeSerializer(),
-                ValueSerializer = new JoinStorageValueBPlusTreeSerializer()
+                Comparer = new BPlusTreeListComparer<JoinStreamEvent>(rightComparer),
+                KeySerializer = new KeyListSerializer<JoinStreamEvent>(new JoinStreamEvenBPlusTreeSerializer()),
+                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer()),
+                MemoryAllocator = MemoryAllocator
             });
         }
     }

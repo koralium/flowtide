@@ -29,12 +29,14 @@ namespace FlowtideDotNet.DependencyInjection.Internal
     internal class FlowtideDIBuilder : IFlowtideDIBuilder
     {
         private readonly string streamName;
-        private readonly IServiceCollection services; 
+        private readonly IServiceCollection services;
+        private readonly List<Action<FlowtideBuilder>> _customOptions;
 
         public FlowtideDIBuilder(string streamName, IServiceCollection services)
         {
             this.streamName = streamName;
             this.services = services;
+            _customOptions = new List<Action<FlowtideBuilder>>();
         }
 
         public IServiceCollection Services => services;
@@ -109,9 +111,20 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 streamBuilder.WithLoggerFactory(loggerFactory);
             }
 
+            foreach(var customOption in _customOptions)
+            {
+                customOption(streamBuilder);
+            }
+
             var stream = streamBuilder.Build();
 
             return stream;
+        }
+
+        public IFlowtideDIBuilder AddCustomOptions(Action<FlowtideBuilder> options)
+        {
+            _customOptions.Add(options);
+            return this;
         }
     }
 }

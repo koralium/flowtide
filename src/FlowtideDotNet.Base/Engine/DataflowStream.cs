@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Metrics;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Base.Engine
 {
@@ -25,6 +26,8 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         public StreamStateValue State => streamContext.currentState;
+
+        public StreamStateValue WantedState => streamContext._wantedState;
 
         public StreamStatus Status => streamContext.GetStatus();
 
@@ -50,7 +53,7 @@ namespace FlowtideDotNet.Base.Engine
                 await StartAsync();
                 PeriodicTimer periodicTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));
                 int count = 0;
-                while (await periodicTimer.WaitForNextTickAsync())
+                while (await periodicTimer.WaitForNextTickAsync() && State != StreamStateValue.NotStarted)
                 {
                     await streamScheduler.Tick();
                     count++;
@@ -110,6 +113,11 @@ namespace FlowtideDotNet.Base.Engine
         public StreamGraph GetDiagnosticsGraph()
         {
             return streamContext.GetGraph();
+        }
+
+        public Task StopAsync()
+        {
+            return streamContext.StopAsync();
         }
     }
 }

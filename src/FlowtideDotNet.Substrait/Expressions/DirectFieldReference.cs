@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Substrait.Expressions
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
-            return visitor.VisitDirectFieldReference(this, state);
+            return visitor.VisitDirectFieldReference(this, state)!;
         }
 
         public override bool Equals(object? obj)

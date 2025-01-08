@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Linq.Expressions;
@@ -20,7 +21,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
 {
     internal static class MeasureCompiler
     {
-        public static Task<IAggregateContainer> CompileMeasure(int groupingLength, IStateManagerClient stateManagerClient, AggregateFunction aggregateFunction, FunctionsRegister functionsRegister)
+        public static Task<IAggregateContainer> CompileMeasure(int groupingLength, IStateManagerClient stateManagerClient, AggregateFunction aggregateFunction, FunctionsRegister functionsRegister, IMemoryAllocator memoryAllocator)
         {
             if (functionsRegister.TryGetAggregateFunction(aggregateFunction.ExtensionUri, aggregateFunction.ExtensionName, out var definition))
             {
@@ -33,6 +34,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 var container =  definition.CreateContainer(
                     groupingLength,
                     stateManagerClient,
+                    memoryAllocator,
                     aggregateFunction,
                     parametersInfo,
                     expressionVisitor,

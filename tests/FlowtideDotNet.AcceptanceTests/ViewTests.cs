@@ -67,6 +67,12 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             AssertCurrentDataEqual(Users.Select(u => new { u.UserKey, u.FirstName }).ToList());
+
+            GenerateData();
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(u => new { u.UserKey, u.FirstName }).ToList());
         }
     }
 }

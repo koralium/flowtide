@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                     GetMetadata = () =>
                     {
                         var metadata = new Metadata();
-                        metadata.Add("Authorization", "Bearer somerandomkeyhere");
+                        metadata.Add("Authorization", $"Bearer {TestName}");
                         return metadata;
                     }
                 });
@@ -70,15 +70,22 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                 factory.AddSpiceDbSource("*", new SpiceDbSourceOptions()
                 {
                     Channel = grpcChannel,
+                    Consistency = new Consistency()
+                    {
+                        FullyConsistent = true
+                    },
                     GetMetadata = () =>
                     {
                         var metadata = new Metadata();
-                        metadata.Add("Authorization", "Bearer somerandomkeyhere");
+                        metadata.Add("Authorization", $"Bearer {TestName}");
                         return metadata;
                     }
                 });
             }
-            base.AddReadResolvers(factory);
+            else
+            {
+                base.AddReadResolvers(factory);
+            }
         }
     }
 }

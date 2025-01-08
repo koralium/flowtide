@@ -101,7 +101,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            return new SpiceDbSource(options, readRelation, dataflowBlockOptions);
+            return new ColumnSpiceDbSource(options, readRelation, dataflowBlockOptions);
         }
     }
 }

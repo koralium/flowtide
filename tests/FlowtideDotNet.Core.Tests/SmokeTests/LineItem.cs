@@ -30,9 +30,9 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
 
         public double Tax { get; set; }
 
-        public string Returnflag { get; set; }
+        public string? Returnflag { get; set; }
 
-        public string Linestatus { get; set; }
+        public string? Linestatus { get; set; }
 
         public DateTime Shipdate { get; set; }
 
@@ -40,13 +40,13 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
 
         public DateTime Receiptdate { get; set; }
 
-        public string Shipinstruct { get; set; }
+        public string? Shipinstruct { get; set; }
 
-        public string Shipmode { get; set; }
+        public string? Shipmode { get; set; }
 
-        public string Comment { get; set; }
+        public string? Comment { get; set; }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is LineItem l)
             {
