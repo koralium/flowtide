@@ -146,7 +146,7 @@ SQL Server storage support is still experimental.
 
 Store persistent data to sql server. 
 
-Before using this storage solution you must manually create required tables using this creation script: [Sql tables creation script](link_to_sql_create_script).
+Before using this storage solution you must manually create required tables using this creation script: [Sql tables creation script](https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Script/create_tables.sql).
 
 The sql user running the system requires the following specific permissions:
 * `SELECT`
