@@ -16,6 +16,7 @@ using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Substrait.Sql;
 using System.Diagnostics;
@@ -45,7 +46,8 @@ namespace FlowtideDotNet.AcceptanceTests
             int parallelism = 1, 
             StateSerializeOptions? stateSerializeOptions = default, 
             int pageSize = 1024,
-            bool ignoreSameDataCheck = false) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck);
+            bool ignoreSameDataCheck = false,
+            PlanOptimizerSettings? planOptimizerSettings = default) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck, planOptimizerSettings);
 
 
         protected Task StopStream() => flowtideTestStream.StopStream();

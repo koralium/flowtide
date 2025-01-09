@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Hashing;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
@@ -73,6 +74,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             container._type = ArrowTypeId.String;
             container._stringValue = this;
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            hashAlgorithm.Append(_utf8.Span);
         }
     }
 }

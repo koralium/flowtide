@@ -11,9 +11,11 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -61,6 +63,44 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public TimestampTzValue AsTimestamp => _timestampValue;
 
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            switch (Type)
+            {
+                case ArrowTypeId.Null:
+                    hashAlgorithm.Append(ByteArrayUtils.nullBytes);
+                    return;
+                case ArrowTypeId.Int64:
+                    _int64Value.AddToHash(hashAlgorithm);
+                    return;
+                case ArrowTypeId.String:
+                    _stringValue.AddToHash(hashAlgorithm);
+                    return;
+                case ArrowTypeId.Binary:
+                    _binaryValue.AddToHash(hashAlgorithm);
+                    return;
+                case ArrowTypeId.Double:
+                    _doubleValue.AddToHash(hashAlgorithm);
+                    return;
+                case ArrowTypeId.Boolean:
+                    _boolValue.AddToHash(hashAlgorithm);
+                    return;
+                case ArrowTypeId.Decimal128:
+                    _decimalValue.AddToHash(hashAlgorithm);
+                    return;
+                case ArrowTypeId.List:
+                    _listValue!.AddToHash(hashAlgorithm);
+                    return;
+                case ArrowTypeId.Map:
+                    _mapValue!.AddToHash(hashAlgorithm);
+                    return;
+                case ArrowTypeId.Timestamp:
+                    _timestampValue.AddToHash(hashAlgorithm);
+                    return;
+            }
+            throw new NotImplementedException($"{Type} is not supported for hashing.");
+        }
+
         public void CopyToContainer(DataValueContainer container)
         {
             container._type = _type;
@@ -72,6 +112,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             container._decimalValue = _decimalValue;
             container._listValue = _listValue;
             container._mapValue = _mapValue;
+            container._timestampValue = _timestampValue;
         }
     }
 }

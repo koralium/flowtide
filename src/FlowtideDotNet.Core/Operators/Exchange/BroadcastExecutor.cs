@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -28,18 +29,24 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// <summary>
         /// A single tree is enough in broadcast mode.
         /// </summary>
-        private IBPlusTree<long, IStreamEvent>? _events;
+        private IBPlusTree<long, IStreamEvent, PrimitiveListKeyContainer<long>, StreamEventValueContainer>? _events;
 
         private long _eventCounter;
         private bool hasStandardOutputTargets;
         private int standardOutputTargetNumber;
+        private readonly ExchangeRelation exchangeRelation;
+
+        public BroadcastExecutor(ExchangeRelation exchangeRelation)
+        {
+            this.exchangeRelation = exchangeRelation;
+        }
 
         private bool HasPullBucketTargets(ExchangeRelation exchangeRelation)
         {
             return exchangeRelation.Targets.Any(x => x.Type == ExchangeTargetType.PullBucket);
         }
 
-        public async Task Initialize(ExchangeRelation exchangeRelation, IStateManagerClient stateManagerClient, ExchangeOperatorState exchangeOperatorState)
+        public async Task Initialize(ExchangeRelation exchangeRelation, IStateManagerClient stateManagerClient, ExchangeOperatorState exchangeOperatorState, IMemoryAllocator memoryAllocator)
         {
             _eventCounter = exchangeOperatorState.EventCounter;
 
@@ -47,11 +54,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             standardOutputTargetNumber = exchangeRelation.Targets.Where(x => x.Type == ExchangeTargetType.StandardOutput).Count();
             if (HasPullBucketTargets(exchangeRelation))
             {
-                _events = await stateManagerClient.GetOrCreateTree<long, IStreamEvent>("events", new BPlusTreeOptions<long, IStreamEvent>()
+                _events = await stateManagerClient.GetOrCreateTree("events", new BPlusTreeOptions<long, IStreamEvent, PrimitiveListKeyContainer<long>, StreamEventValueContainer>()
                 {
-                    Comparer = new LongComparer(),
-                    KeySerializer = new LongSerializer(),
-                    ValueSerializer = new StreamEventSerializer()
+                    Comparer = new PrimitiveListComparer<long>(),
+                    MemoryAllocator = memoryAllocator,
+                    UseByteBasedPageSizes = true,
+                    KeySerializer = new PrimitiveListKeyContainerSerializer<long>(memoryAllocator),
+                    ValueSerializer = new StreamEventValueSerializer(memoryAllocator)
                 });
             }
         }

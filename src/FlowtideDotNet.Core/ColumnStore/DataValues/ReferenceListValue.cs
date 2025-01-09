@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -90,6 +91,14 @@ namespace FlowtideDotNet.Core.ColumnStore
         public override string ToString()
         {
             return $"[{String.Join(',', ListValues().Select(x => x.ToString()))}]";
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            for (int i = start; i < end; i++)
+            {
+                column.GetValueAt(i, default).AddToHash(hashAlgorithm);
+            }
         }
     }
 }

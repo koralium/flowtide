@@ -25,6 +25,7 @@ using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.Tests
 {
@@ -50,7 +51,7 @@ namespace FlowtideDotNet.Core.Tests
             var statemanagermeter = new Meter("statemanager");
             var statemanager = new StateManagerSync<StreamState>(new StateManagerOptions(), new DebugLoggerProvider().CreateLogger("state"), statemanagermeter, "stream");
             await statemanager.InitializeAsync();
-            var vertexHandler = new VertexHandler("stream", "1", (time) => { }, (p1, p2, t) => Task.CompletedTask, metrics.GetOrCreateVertexMeter("1", () => ""), statemanager.GetOrCreateClient("1"), new LoggerFactory());
+            var vertexHandler = new VertexHandler("stream", "1", (time) => { }, (p1, p2, t) => Task.CompletedTask, metrics.GetOrCreateVertexMeter("1", () => ""), statemanager.GetOrCreateClient("1"), new LoggerFactory(), new OperatorMemoryManager("sream", "op", new Meter("stream")));
             await @operator.Initialize("1", 0, 0, default, vertexHandler);
         }
     }

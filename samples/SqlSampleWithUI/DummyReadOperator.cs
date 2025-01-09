@@ -72,7 +72,7 @@ namespace SqlSampleWithUI
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
             
-            for (int i = 0; i < 1_0_000; i++)
+            for (int i = 0; i < 10_000_000; i++)
             {
                 await output.EnterCheckpointLock();
                 var memoryManager = MemoryAllocator;

@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             switch (exchangeRelation.ExchangeKind.Type)
             {
                 case ExchangeKindType.Broadcast:
-                    _executor = new BroadcastExecutor();
+                    _executor = new BroadcastExecutor(exchangeRelation);
                     break;
                 case ExchangeKindType.Scatter:
                     _executor = new ScatterExecutor(exchangeRelation, functionsRegister);
@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
             _state = state;
 
-            await _executor.Initialize(exchangeRelation, stateManagerClient, state);
+            await _executor.Initialize(exchangeRelation, stateManagerClient, state, MemoryAllocator);
 
             foreach(var pullTarget in exchangeRelation.Targets)
             {

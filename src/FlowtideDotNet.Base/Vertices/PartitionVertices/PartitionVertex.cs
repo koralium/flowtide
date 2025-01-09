@@ -153,7 +153,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
 
             for (int i = 0; i < targetNumber; i++)
             {
-                output[i] = new KeyValuePair<int, IStreamEvent>(i, streamEvent);
+                yield return new KeyValuePair<int, IStreamEvent>(i, streamEvent);
             }
         }
 

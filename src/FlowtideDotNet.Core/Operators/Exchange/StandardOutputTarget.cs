@@ -11,9 +11,13 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -22,20 +26,40 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     internal class StandardOutputTarget : IExchangeTarget
     {
-        private List<RowEvent>? _events;
+        private readonly DataValueContainer _dataValueContainer;
+        private readonly int _columnCount;
+        private IMemoryAllocator? _memoryAllocator;
+
+        private PrimitiveList<int>? _weights;
+        private PrimitiveList<uint>? _iterations;
+        private IColumn[]? _columns;
+
+        public StandardOutputTarget(int columnCount)
+        {
+            this._columnCount = columnCount;
+            _dataValueContainer = new DataValueContainer();
+        }
 
         public Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState)
         {
             return Task.CompletedTask;
         }
 
-        public ValueTask AddEvent(RowEvent rowEvent)
+        public ValueTask AddEvent(EventBatchWeighted weightedBatch, int index)
         {
-            if (_events == null)
+            Debug.Assert(_columns != null);
+            Debug.Assert(_weights != null);
+            Debug.Assert(_iterations != null);
+
+            _weights.Add(weightedBatch.Weights[index]);
+            _iterations.Add(weightedBatch.Iterations[index]);
+
+            for (int i = 0; i < _columnCount; i++)
             {
-                _events = new List<RowEvent>();
+                weightedBatch.EventBatchData.Columns[i].GetValueAt(index, _dataValueContainer, default);
+                _columns[i].Add(_dataValueContainer);
             }
-            _events.Add(rowEvent);
+
             return ValueTask.CompletedTask;
         }
 
@@ -44,15 +68,38 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return ValueTask.CompletedTask;
         }
 
-        public List<RowEvent>? GetEvents()
+        public EventBatchWeighted? GetEvents()
         {
-            var tmp = _events;
-            _events = null;
-            return tmp;
+            Debug.Assert(_columns != null);
+            Debug.Assert(_weights != null);
+            Debug.Assert(_iterations != null);
+
+            if (_weights.Count > 0)
+            {
+                var batch = new EventBatchWeighted(_weights, _iterations, new EventBatchData(_columns));
+                NewColumns();
+                return batch;
+            }
+            return null;
         }
 
-        public Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state)
+        private void NewColumns()
         {
+            Debug.Assert(_memoryAllocator != null);
+            _columns = new IColumn[_columnCount];
+            for (int i = 0; i < _columnCount; i++)
+            {
+                _columns[i] = Column.Create(_memoryAllocator);
+            }
+
+            _weights = new PrimitiveList<int>(_memoryAllocator);
+            _iterations = new PrimitiveList<uint>(_memoryAllocator);
+        }
+
+        public Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state, IMemoryAllocator memoryAllocator)
+        {
+            _memoryAllocator = memoryAllocator;
+            NewColumns();
             return Task.CompletedTask;
         }
 

@@ -22,12 +22,16 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Collections.Concurrent;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Core.ColumnStore;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
     internal class ScatterExecutor : IExchangeKindExecutor
     {
-        private readonly Func<RowEvent, uint> _hashFunction;
+        private readonly Func<EventBatchData, int, uint> _hashFunction;
         private readonly int _partitionCount;
         private readonly int[][] _partitionsToTargets;
         private readonly IExchangeTarget[] _targets;
@@ -62,14 +66,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 switch (exchangeRelation.Targets[i].Type)
                 {
                     case ExchangeTargetType.StandardOutput:
-                        var target = new StandardOutputTarget();
+                        var target = new StandardOutputTarget(exchangeRelation.OutputLength);
                         _targets[i] = target;
                         standardOutputTargetList.Add(target);
                         break;
                     case ExchangeTargetType.PullBucket:
                         if (exchangeRelation.Targets[i] is PullBucketExchangeTarget bucketExchangeTarget)
                         {
-                            var pullTarget = new PullBucketTarget();
+                            var pullTarget = new PullBucketTarget(exchangeRelation.OutputLength);
                             _targets[i] = pullTarget;
                             _exchangeTargetIdToPullBucket.AddOrUpdate(bucketExchangeTarget.ExchangeTargetId, pullTarget, (key, old) => pullTarget);
                         }
@@ -87,7 +91,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _partitionsToTargets = CreatePartitionToTargets(exchangeRelation);
 
             // Create the hash function based on the fields
-            _hashFunction = HashCompiler.CompileGetHashCode(new List<Substrait.Expressions.Expression>(scatterExchangeKind.Fields), functionsRegister);
+            _hashFunction = ColumnHashCompiler.CompileGetHashCode(new List<Substrait.Expressions.Expression>(scatterExchangeKind.Fields), functionsRegister);
         }
 
         private int[][] CreatePartitionToTargets(ExchangeRelation exchangeRelation)
@@ -127,11 +131,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public async Task Initialize(
             ExchangeRelation exchangeRelation, 
             IStateManagerClient stateManagerClient, 
-            ExchangeOperatorState exchangeOperatorState)
+            ExchangeOperatorState exchangeOperatorState,
+            IMemoryAllocator memoryAllocator)
         {
             for (int i = 0; i < _targets.Length; i++)
             {
-                await _targets[i].Initialize(i, stateManagerClient, exchangeOperatorState);
+                await _targets[i].Initialize(i, stateManagerClient, exchangeOperatorState, memoryAllocator);
             }
         }
 
@@ -162,14 +167,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
         {
             Debug.Assert(_hashFunction != null);
-            foreach(var e in data.Events)
+            for (int i = 0; i < data.Data.Count; i++)
             {
-                var hash = _hashFunction(e);
+                var hash = _hashFunction(data.Data.EventBatchData, i);
                 int partitionId = (int)(hash % _partitionCount);
 
-                foreach(var target in _partitionsToTargets[partitionId])
+                foreach (var target in _partitionsToTargets[partitionId])
                 {
-                    await _targets[target].AddEvent(e);
+                    await _targets[target].AddEvent(data.Data, i);
                 }
             }
             foreach(var target in _targets)
@@ -179,13 +184,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             for (int i = 0; i < standardOutputTargetList.Count; i++)
             {
-                var eventsList = standardOutputTargetList[i].GetEvents();
+                var weightedBatch = standardOutputTargetList[i].GetEvents();
 
-                if (eventsList != null)
+                if (weightedBatch != null)
                 {
                     yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(
                         i,
-                        new StreamMessage<StreamEventBatch>(new StreamEventBatch(eventsList), time));
+                        new StreamMessage<StreamEventBatch>(new StreamEventBatch(weightedBatch), time));
                 }
             }
         }

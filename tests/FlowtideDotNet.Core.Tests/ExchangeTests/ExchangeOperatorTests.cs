@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
                 })))
             ];
 
-            await op.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(events), 0));
+            await op.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(events, 1), 0));
 
             await outputBlock.OutputAvailableAsync();
             var initWatermarkMessage = await outputBlock.ReceiveAsync();
@@ -180,7 +180,7 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
                 })))
             ];
 
-            await op.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(events), 0));
+            await op.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(events, 1), 0));
 
             await outputBlock.OutputAvailableAsync();
             var initWatermarkMessage = await outputBlock.ReceiveAsync();

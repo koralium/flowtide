@@ -124,6 +124,59 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(expected);
         }
 
+        /// <summary>
+        /// Makes sure that iterations still work when joins inside the recursive cte are parallelized.
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task TreeIterationWithParallelMergeJoins()
+        {
+            GenerateData();
+            await this.StartStream(@"
+            with user_manager_cte AS (
+                SELECT 
+                    userKey, 
+                    firstName,
+                    lastName,
+                    managerKey,
+                    null as ManagerFirstName,
+                    1 as level
+                FROM users
+                WHERE managerKey is null
+                UNION ALL
+                SELECT 
+                    u.userKey, 
+                    u.firstName,
+                    u.lastName,
+                    u.managerKey,
+                    umc.firstName as ManagerFirstName,
+                    level + 1 as level 
+                FROM users u
+                INNER JOIN user_manager_cte umc ON umc.userKey = u.managerKey
+            )
+            INSERT INTO output
+            SELECT userKey, firstName, lastName, managerKey, ManagerFirstName, level
+            FROM user_manager_cte", planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings() 
+            {
+                MergeJoinParallelization = 2
+            });
+            await WaitForUpdate();
+
+            List<UserIteration> expected = new List<UserIteration>();
+            var firstUser = Users.First(x => x.ManagerKey == null);
+            expected.Add(new UserIteration()
+            {
+                UserKey = firstUser.UserKey,
+                FirstName = firstUser.FirstName,
+                LastName = firstUser.LastName,
+                ManagerKey = null,
+                ManagerFirstName = null,
+                Level = 1
+            });
+            CalculateIterationExpectedValue(firstUser, 2, expected);
+            AssertCurrentDataEqual(expected);
+        }
+
         private class UserIteration
         {
             public int UserKey { get; set; }

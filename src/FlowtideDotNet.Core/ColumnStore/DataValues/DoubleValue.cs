@@ -13,7 +13,9 @@
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -49,6 +51,13 @@ namespace FlowtideDotNet.Core.ColumnStore
         public bool IsNull => false;
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteDoubleLittleEndian(buffer, AsDouble);
+            hashAlgorithm.Append(buffer);
+        }
 
         public int CompareTo(in IDataValue other)
         {
