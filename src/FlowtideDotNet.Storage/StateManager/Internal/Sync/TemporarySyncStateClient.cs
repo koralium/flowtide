@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
     internal class TemporarySyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler
         where V : ICacheObject
-        where TMetadata : IStorageMetadata
+        where TMetadata : class, IStorageMetadata
     {
         private StateClientMetadata<TMetadata> metadata;
         private readonly SyncStateClient<V, TMetadata> baseClient;
@@ -95,6 +95,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public void Evict(List<(LinkedListNode<LruTableSync.LinkedListValue>, long)> valuesToEvict, bool isCleanup)
         {
             baseClient.Evict(valuesToEvict, isCleanup);
+        }
+
+        public Task InitializeSerializerAsync()
+        {
+            return baseClient.InitializeSerializerAsync();
         }
     }
 }

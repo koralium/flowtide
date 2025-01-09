@@ -79,6 +79,59 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
         }
 
         [Fact]
+        public async Task TestInsertPrimaryKeyNotAtPosition0()
+        {
+            var userCount = 1000;
+            MongoDBTestStream testStream = new MongoDBTestStream(
+                mongoDBFixture,
+                "test",
+                "test",
+                new List<string>() { "UserKey" }, nameof(TestInsertPrimaryKeyNotAtPosition0), addSink: true);
+
+            testStream.Generate(userCount);
+            await testStream.StartStream(@"
+            INSERT INTO testindex
+            SELECT 
+                FirstName,
+                UserKey,
+                LastName
+            FROM users
+            ");
+
+            var mongoClient = new MongoClient(mongoDBFixture.GetConnectionString());
+            var database = mongoClient.GetDatabase("test");
+            var collection = database.GetCollection<BsonDocument>("test");
+            collection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(Builders<BsonDocument>.IndexKeys.Ascending("UserKey")));
+
+
+            while (true)
+            {
+                var count = await collection.CountDocumentsAsync(new BsonDocument());
+                if (count == userCount)
+                {
+                    break;
+                }
+                await Task.Delay(100);
+            }
+
+            var user = testStream.Users.First();
+            user.FirstName = "updated";
+            testStream.AddOrUpdateUser(user);
+
+            while (true)
+            {
+                var doc = collection.Find(Builders<BsonDocument>.Filter.Eq("UserKey", new BsonInt64(user.UserKey))).FirstOrDefault();
+                if (doc?.GetElement("FirstName").Value.AsString == "updated")
+                {
+                    break;
+                }
+                await testStream.SchedulerTick();
+                await Task.Delay(100);
+            }
+            await testStream.DisposeAsync();
+        }
+
+        [Fact]
         public async Task TestClearOldDataAfterInsert()
         {
             var userCount = 1000;

@@ -29,6 +29,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             _memoryAllocator = memoryAllocator;
         }
 
+        public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
+        {
+            return Task.CompletedTask;
+        }
+
         public JoinWeightsValueContainer CreateEmpty()
         {
             return new JoinWeightsValueContainer(_memoryAllocator);
@@ -46,6 +51,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             memory.CopyTo(nativeMemory.Memory.Span);
 
             return new JoinWeightsValueContainer(nativeMemory, count, memoryAllocator);
+        }
+
+        public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
+        {
+            return Task.CompletedTask;
         }
 
         public void Serialize(in BinaryWriter writer, in JoinWeightsValueContainer values)

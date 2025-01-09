@@ -104,6 +104,8 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return FlxValue.FromBytes(FlexBuffer.SingleValue(dataValue.AsDouble));
                 case ArrowTypeId.Binary:
                     return FlxValue.FromBytes(FlexBuffer.SingleValue(dataValue.AsBinary.ToArray()));
+                case ArrowTypeId.Timestamp:
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(dataValue.AsTimestamp.ToDateTimeOffset().Subtract(DateTimeOffset.UnixEpoch).Ticks));
                 case ArrowTypeId.Map:
                     return MapToFlxValue(dataValue);
                 case ArrowTypeId.List:

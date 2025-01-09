@@ -43,14 +43,28 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         private WriteTreeSearchComparer? m_writeTreeSearchComparer;
         private bool m_hasSentInitialData;
         private ExistingRowComparer? m_existingRowComparer;
+        private IReadOnlyList<int>? m_primaryKeyColumns;
+        private readonly IColumn[] _deleteBatchColumns;
+        private readonly EventBatchData _deleteEventBatch;
 
         public ColumnGroupedWriteOperator(ExecutionMode executionMode, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this.m_executionMode = executionMode;
             this.m_writeRelation = writeRelation;
+
+            // Create the event batch used for delete, this is used to give the user the same amount of columns
+            // if it is an upsert or a delete
+            _deleteBatchColumns = new IColumn[writeRelation.OutputLength];
+            for (int i = 0; i < _deleteBatchColumns.Length; i++)
+            {
+                _deleteBatchColumns[i] = AlwaysNullColumn.Instance;
+            }
+            _deleteEventBatch = new EventBatchData(_deleteBatchColumns);
         }
 
         protected virtual bool FetchExistingData => false;
+
+        public IReadOnlyList<int> PrimaryKeyColumns => m_primaryKeyColumns ?? throw new InvalidOperationException("Must be called after initialize and restore");
 
         public override Task Compact()
         {
@@ -74,12 +88,12 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             {
                 m_hasSentInitialData = false;
             }
-            var primaryKeyColumns = await GetPrimaryKeyColumns();
+            m_primaryKeyColumns = await GetPrimaryKeyColumns();
 
             m_tree = await stateManagerClient.GetOrCreateTree("output",
                 new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, ListValueContainer<int>>()
                 {
-                    Comparer = new WriteTreeInsertComparer(primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList(), m_writeRelation.OutputLength),
+                    Comparer = new WriteTreeInsertComparer(m_primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList(), m_writeRelation.OutputLength),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
                     KeySerializer = new ColumnStoreSerializer(m_writeRelation.OutputLength, MemoryAllocator),
                     MemoryAllocator = MemoryAllocator,
@@ -89,26 +103,31 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             m_modified = await stateManagerClient.GetOrCreateTree("temporary",
                 new BPlusTreeOptions<ColumnRowReference, int, ModifiedKeyStorage, ListValueContainer<int>>()
                 {
-                    Comparer = new ModifiedTreeComparer(primaryKeyColumns.ToList()),
+                    Comparer = new ModifiedTreeComparer(m_primaryKeyColumns.ToList()),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                    KeySerializer = new ModifiedKeyStorageSerializer(primaryKeyColumns.ToList(), MemoryAllocator),
+                    KeySerializer = new ModifiedKeyStorageSerializer(m_primaryKeyColumns.ToList(), MemoryAllocator),
                     MemoryAllocator = MemoryAllocator,
                     UseByteBasedPageSizes = true
                 });
             await m_modified.Clear();
 
-            m_writeTreeSearchComparer = new WriteTreeSearchComparer(primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList(), primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList());
+            List<KeyValuePair<int, ReferenceSegment?>> referenceColumns = new List<KeyValuePair<int, ReferenceSegment?>>();
+            for (int i = 0; i < m_primaryKeyColumns.Count; i++)
+            {
+                referenceColumns.Add(new KeyValuePair<int, ReferenceSegment?>(i, default));
+            }
+            m_writeTreeSearchComparer = new WriteTreeSearchComparer(m_primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList(), referenceColumns);
 
             if (FetchExistingData && !m_hasSentInitialData)
             {
-                var primaryKeySelectorList = primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList();
+                var primaryKeySelectorList = m_primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList();
                 m_existingRowComparer = new ExistingRowComparer(primaryKeySelectorList, primaryKeySelectorList);
                 m_existingData = await stateManagerClient.GetOrCreateTree("existing",
                 new BPlusTreeOptions<ColumnRowReference, int, ModifiedKeyStorage, ListValueContainer<int>>()
                 {
-                    Comparer = new ModifiedTreeComparer(primaryKeyColumns.ToList()),
+                    Comparer = new ModifiedTreeComparer(m_primaryKeyColumns.ToList()),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                    KeySerializer = new ModifiedKeyStorageSerializer(primaryKeyColumns.ToList(), MemoryAllocator),
+                    KeySerializer = new ModifiedKeyStorageSerializer(m_primaryKeyColumns.ToList(), MemoryAllocator),
                     MemoryAllocator = MemoryAllocator,
                     UseByteBasedPageSizes = true
                 });
@@ -159,6 +178,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             Debug.Assert(m_modified != null);
             Debug.Assert(m_tree != null);
             Debug.Assert(m_writeTreeSearchComparer != null);
+            Debug.Assert(m_primaryKeyColumns != null);
 
             using var modifiedIterator = m_modified.CreateIterator();
             await modifiedIterator.SeekFirst();
@@ -188,9 +208,13 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                     }
                     else
                     {
+                        for (int k = 0; k < m_primaryKeyColumns.Count; k++)
+                        {
+                            _deleteBatchColumns[m_primaryKeyColumns[k]] = page.Keys._data.Columns[k];
+                        }
                         yield return new ColumnWriteOperation()
                         {
-                            EventBatchData = page.Keys._data,
+                            EventBatchData = _deleteEventBatch,
                             Index = i,
                             IsDeleted = true
                         };
@@ -224,6 +248,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             Debug.Assert(m_modified != null);
             Debug.Assert(m_existingData != null);
             Debug.Assert(m_existingRowComparer != null);
+            Debug.Assert(m_primaryKeyColumns != null);
 
             using var treeIterator = m_modified.CreateIterator();
             using var existingIterator = m_existingData.CreateIterator();
@@ -253,9 +278,13 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 }
                 else if (!hasNew || comparison > 0)
                 {
+                    for (int i = 0; i < m_primaryKeyColumns.Count; i++)
+                    {
+                        _deleteBatchColumns[m_primaryKeyColumns[i]] = persistentEnumerator.Current.referenceBatch.Columns[i];
+                    }
                     yield return new ColumnWriteOperation()
                     {
-                        EventBatchData = persistentEnumerator.Current.referenceBatch,
+                        EventBatchData = _deleteEventBatch,
                         Index = persistentEnumerator.Current.RowIndex,
                         IsDeleted = true
                     };

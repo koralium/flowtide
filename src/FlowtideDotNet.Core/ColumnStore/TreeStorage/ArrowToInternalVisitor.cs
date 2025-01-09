@@ -333,6 +333,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                         _dataColumn = new DecimalColumn(dataMemory, array.Length, preAllocatedMemoryManager);
                         _typeId = ArrowTypeId.Decimal128;
                         break;
+                    case TimestampTzType.ExtensionName:
+                        var timestampMemory = GetMemoryOwner(array.ValueBuffer);
+                        _dataColumn = new TimestampTzColumn(timestampMemory, array.Length, preAllocatedMemoryManager);
+                        _typeId = ArrowTypeId.Timestamp;
+                        break;
                     default:
                         throw new NotImplementedException();
                 }

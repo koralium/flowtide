@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             return new FasterKVPersistentSession(session);
         }
 
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(StorageInitializationMetadata metadata)
         {
             try
             {

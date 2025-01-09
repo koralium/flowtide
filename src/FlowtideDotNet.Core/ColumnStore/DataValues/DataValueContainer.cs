@@ -34,7 +34,9 @@ namespace FlowtideDotNet.Core.ColumnStore
         internal DecimalValue _decimalValue;
         internal IListValue? _listValue;
         internal IMapValue? _mapValue;
+        internal TimestampTzValue _timestampValue;
         internal ArrowTypeId _type;
+
 
 
         public ArrowTypeId Type => _type;
@@ -56,6 +58,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         public decimal AsDecimal => _decimalValue.AsDecimal;
 
         public bool IsNull => _type == ArrowTypeId.Null;
+
+        public TimestampTzValue AsTimestamp => _timestampValue;
 
         public void CopyToContainer(DataValueContainer container)
         {

@@ -26,5 +26,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         int BPlusTreePageSizeBytes { get; }
 
         long CacheMisses { get; }
+
+        Task InitializeSerializerAsync();
     }
 }

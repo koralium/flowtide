@@ -48,6 +48,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public bool IsNull => false;
 
+        public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
         public void CopyToContainer(DataValueContainer container)
         {
             container._type = ArrowTypeId.Binary;
