@@ -77,6 +77,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return new ScalarResponse(exprData.Expr, exprData.Type);
             });
 
+            sqlFunctionRegister.RegisterScalarFunction("concat", (f, visitor, emitData) =>
+            {
+                var exprData = VisitConcat(f, visitor, emitData);
+                return new ScalarResponse(exprData.Expr, exprData.Type);
+            });
+
             sqlFunctionRegister.RegisterScalarFunction("is_infinite", (f, visitor, emitData) =>
             {
                 if (f.Args == null || f.Args.Count != 1)
@@ -890,6 +896,59 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
 
             return new ExpressionData(coalesceFunction, "$coalesce", returnType);
+        }
+
+        private static ExpressionData VisitConcat(SqlParser.Ast.Expression.Function function, SqlExpressionVisitor visitor, EmitData state)
+        {
+            var coalesceFunction = new ScalarFunction()
+            {
+                ExtensionUri = FunctionsString.Uri,
+                ExtensionName = FunctionsString.Concat,
+                Arguments = new List<Expressions.Expression>()
+            };
+
+            SubstraitBaseType? returnType = default;
+
+            {
+                Debug.Assert(function.Args != null);
+                for (int i = 0; i < function.Args.Count; i++)
+                {
+                    var arg = function.Args[i];
+                    if (arg is FunctionArg.Unnamed unnamed)
+                    {
+                        if (unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                        {
+                            var expr = visitor.Visit(funcExpr.Expression, state);
+
+                            if (returnType == null)
+                            {
+                                returnType = expr.Type;
+                            }
+                            else if (returnType != expr.Type)
+                            {
+                                returnType = new AnyType();
+                            }
+
+                            coalesceFunction.Arguments.Add(expr.Expr);
+                        }
+                        else
+                        {
+                            throw new NotImplementedException("Coalesce does not support the input parameter");
+                        }
+                    }
+                    else
+                    {
+                        throw new NotImplementedException("Coalesce does not support the input parameter");
+                    }
+                }
+            }
+
+            if (returnType == null)
+            {
+                throw new InvalidOperationException("Coalesce must have at least one argument");
+            }
+
+            return new ExpressionData(coalesceFunction, "$concat", returnType);
         }
     }
 }

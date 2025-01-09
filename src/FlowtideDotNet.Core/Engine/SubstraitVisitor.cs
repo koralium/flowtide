@@ -558,7 +558,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitVirtualTableReadRelation(VirtualTableReadRelation virtualTableReadRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            VirtualTableOperator op = new VirtualTableOperator(virtualTableReadRelation, DefaultBlockOptions);
+            VirtualTableOperator op = new VirtualTableOperator(virtualTableReadRelation, functionsRegister, DefaultBlockOptions);
 
             if (state != null)
             {

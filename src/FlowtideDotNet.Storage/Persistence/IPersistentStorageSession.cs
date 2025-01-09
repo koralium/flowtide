@@ -19,5 +19,7 @@ namespace FlowtideDotNet.Storage.Persistence
         Task Write(long key, byte[] value);
 
         Task Delete(long key);
+
+        Task Commit();
     }
 }

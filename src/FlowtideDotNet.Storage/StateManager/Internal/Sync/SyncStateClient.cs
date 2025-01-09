@@ -19,9 +19,9 @@ using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
-    internal class SyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler
+    internal class SyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler, IStateSerializerInitializeReader, IStateSerializerCheckpointWriter
         where V : ICacheObject
-        where TMetadata : IStorageMetadata
+        where TMetadata : class, IStorageMetadata
     {
         private bool disposedValue;
         private readonly StateManagerSync stateManager;
@@ -134,7 +134,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             lock (m_lock)
             {
                 _addOrUpdateState.value = value;
-                 m_modified.AddOrUpdate(key, addorUpdate_newValue_container, addorUpdate_existingValue_container);
+                m_modified.AddOrUpdate(key, addorUpdate_newValue_container, addorUpdate_existingValue_container);
                 return _addOrUpdateState.isFull;
             }
         }
@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     await session.Write(kv.Key, bytes);
 
                     if (!useReadCache)
-                    {   
+                    {
                         m_fileCache.Free(kv.Key);
                     }
                     else
@@ -204,6 +204,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     }
                 }
             }
+
+            // Checkpoint the serializer
+            await options.ValueSerializer.CheckpointAsync(this, metadata);
+
             var modifiedPagesCount = m_modified.Count;
             Debug.Assert(stateManager.m_metadata != null);
             // Add modified page count to the page commits counter
@@ -218,8 +222,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_fileCache.FreeAll();
                 m_fileCacheVersion.Clear();
             }
-            
-            if (!metadata.CommitedOnce || (metadata.Metadata != null && metadata.Metadata.Updated)) 
+
+            await WriteMetadata();
+            await session.Commit();
+        }
+
+        private async Task WriteMetadata()
+        {
+            if (!metadata.CommitedOnce || (metadata.Metadata != null && metadata.Metadata.Updated))
             {
                 var previousCommitedOnce = metadata.CommitedOnce;
                 try
@@ -231,7 +241,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         metadata.Metadata.Updated = false;
                     }
-                    
                 }
                 catch (Exception)
                 {
@@ -284,7 +293,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
                     }
-                    
+
                     return ValueTask.FromResult<V?>(value);
                 }
                 // Read from persistent store
@@ -301,11 +310,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 bytes = await session.Read(key);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 throw new FlowtidePersistentStorageException($"Error reading persistent data in client '{name}' with key '{key}'", e);
             }
-            
+
             var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
             stateManager.AddOrUpdate(key, value, this);
             if (!value.TryRent())
@@ -343,7 +352,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             lock (m_lock)
             {
-                foreach(var kv in m_modified)
+                foreach (var kv in m_modified)
                 {
                     stateManager.DeleteFromCache(kv.Key);
                     m_fileCache.Free(kv.Key);
@@ -392,7 +401,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         val = -2;
                     }
                 }
-                
+
                 if (m_fileCacheVersion.TryGetValue(value.Item1.ValueRef.key, out var storedVersion) && storedVersion == val)
                 {
                     continue;
@@ -412,7 +421,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     m_temporaryWriteMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
                 }
-                
+
                 m_fileCacheVersion[value.Item1.ValueRef.key] = val;
             }
             m_fileCache.Flush();
@@ -421,6 +430,33 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 m_fileCache.ClearTemporaryAllocations();
             }
+        }
+
+        public async Task InitializeSerializerAsync()
+        {
+            Debug.Assert(options.ValueSerializer != null);
+            await options.ValueSerializer.InitializeAsync(this, metadata);
+        }
+
+        public async Task<Memory<byte>> ReadPage(long pageId)
+        {
+            return await session.Read(pageId);
+        }
+
+        Memory<byte> IStateSerializerCheckpointWriter.RequestPageMemory(int expectedSize)
+        {
+            // Can be changed later to request memory from persistent storage
+            return new byte[expectedSize];
+        }
+
+        Task IStateSerializerCheckpointWriter.WritePageMemory(long pageId, Memory<byte> memory)
+        {
+            return session.Write(pageId, memory.ToArray());
+        }
+
+        Task IStateSerializerCheckpointWriter.RemovePage(long pageId)
+        {
+            return session.Delete(pageId);
         }
     }
 }

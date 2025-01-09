@@ -76,7 +76,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (sentData)
             {
                 await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));
-                this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+                this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(200));
             }
             
             output.ExitCheckpointLock();

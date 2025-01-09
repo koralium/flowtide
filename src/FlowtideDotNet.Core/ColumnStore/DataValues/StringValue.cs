@@ -47,6 +47,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public bool IsNull => false;
 
+        public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
         public StringValue(byte[] utf8)
         {
             _utf8 = utf8;

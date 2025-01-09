@@ -55,17 +55,18 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
                 id,
                 UserKey,
                 FirstName,
-                LastName
+                LastName,
+                BirthDate
             );
 
             INSERT INTO output
-            SELECT UserKey, FirstName, LastName
+            SELECT UserKey, FirstName, LastName, BirthDate
             FROM test.test
             ");
 
             await stream.WaitForUpdate();
 
-            stream.AssertCurrentDataEqual(stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName }));
+            stream.AssertCurrentDataEqual(stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, birthDate = x.BirthDate!.Value.ToUniversalTime() }));
 
             stream.GenerateUsers(100);
 
@@ -73,7 +74,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
 
             await stream.WaitForUpdate();
 
-            stream.AssertCurrentDataEqual(stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName }));
+            stream.AssertCurrentDataEqual(stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, birthDate = x.BirthDate!.Value.ToUniversalTime() }));
 
             var firstuser = stream.Users.First();
             stream.DeleteUser(firstuser);
@@ -82,7 +83,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
 
             await stream.WaitForUpdate();
 
-            stream.AssertCurrentDataEqual(stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName }));
+            stream.AssertCurrentDataEqual(stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, birthDate = x.BirthDate!.Value.ToUniversalTime() }));
         }
 
         [Fact]

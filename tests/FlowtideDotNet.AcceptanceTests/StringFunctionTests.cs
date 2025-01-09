@@ -32,6 +32,15 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task SelectWithConcatFunctionName()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT concat(firstName, ' ', lastName) as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { Name = x.FirstName + " " + x.LastName }));
+        }
+
+        [Fact]
         public async Task SelectWithConcatWithNull()
         {
             GenerateData();

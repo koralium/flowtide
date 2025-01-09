@@ -55,6 +55,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private NotificationReciever? _notificationReciever;
         private Watermark? _lastWatermark;
 
+        public string TestName => testName;
+
         public IReadOnlyList<User> Users  => generator.Users;
 
         public IReadOnlyList<Order> Orders => generator.Orders;
@@ -320,6 +322,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
             await scheduler!.Tick();
+            CheckForErrors();
         }
 
         private void CheckForErrors()
