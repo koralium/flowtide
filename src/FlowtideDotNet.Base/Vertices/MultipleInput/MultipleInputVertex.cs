@@ -36,8 +36,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private ILockingEvent?[]? _targetInCheckpoint;
         private ILockingEvent[]? _lastSeenCheckpointEvents;
         private readonly object _targetCheckpointLock;
-        private Guid?[] _targetLockingPrepare;
-        private bool[] _expectsLockingPrepare;
+        private Guid?[]? _targetLockingPrepare;
+        private bool[]? _expectsLockingPrepare;
 
         private IReadOnlySet<string>[]? _targetWatermarkNames;
         private Watermark[]? _targetWatermarks;
@@ -230,6 +230,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private IAsyncEnumerable<IStreamEvent> HandleLockingEventPrepare(int targetId, LockingEventPrepare lockingEventPrepare)
         {
             Debug.Assert(_targetInCheckpoint != null);
+            Debug.Assert(_targetLockingPrepare != null);
+            Debug.Assert(_expectsLockingPrepare != null);
             // Set that this operator is in an iteration. This helps watermarks output.
             _isInIteration = true;
 
@@ -377,6 +379,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         private async Task<ILockingEvent> HandleCheckpoint(ILockingEvent lockingEvent)
         {
+            Debug.Assert(_targetLockingPrepare != null);
             // Reset all targets that was in the locking prepare state
             for (int i = 0; i < _targetLockingPrepare.Length; i++)
             {
