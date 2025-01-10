@@ -21,6 +21,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -258,6 +259,18 @@ namespace FlowtideDotNet.Core.ColumnStore
             var newMemory = memoryAllocator.Allocate(mem.Length, 64);
             mem.Span.CopyTo(newMemory.Memory.Span);
             return new BoolColumn(newMemory, Count, memoryAllocator);
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            if (_data.Get(index))
+            {
+                hashAlgorithm.Append(ByteArrayUtils.trueBytes);
+            }
+            else
+            {
+                hashAlgorithm.Append(ByteArrayUtils.nullBytes);
+            }
         }
     }
 }

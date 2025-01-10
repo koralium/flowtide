@@ -18,6 +18,7 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -149,6 +150,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new NullColumn(_count);
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            hashAlgorithm.Append(ByteArrayUtils.nullBytes);
         }
     }
 }
