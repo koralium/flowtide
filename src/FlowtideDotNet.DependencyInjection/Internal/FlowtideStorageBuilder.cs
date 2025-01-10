@@ -14,11 +14,6 @@ using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.DependencyInjection.Internal
 {
@@ -58,6 +53,10 @@ namespace FlowtideDotNet.DependencyInjection.Internal
 
         public int MinPageCount { get; set; } = 1000;
 
+        public IServiceCollection ServiceCollection => services;
+
+        public string Name => name;
+
         internal StateManagerOptions Build(IServiceProvider serviceProvider)
         {
             var persistentStorage = serviceProvider.GetKeyedService<IPersistentStorage>(name);
@@ -85,6 +84,16 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 MinCachePageCount = MinPageCount,
                 CachePageCount = 1000
             };
+        }
+
+        public IFlowtideStorageBuilder SetPersistentStorage(Func<IServiceProvider, IPersistentStorage> func)
+        {
+            services.AddKeyedSingleton(name, (provider, name) =>
+            {
+                return func(provider);
+            });
+
+            return this;
         }
     }
 }
