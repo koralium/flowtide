@@ -27,9 +27,5 @@ namespace FlowtideDotNet.Storage.Tree
         TKeyContainer Keys { get; }
 
         TValueContainer Values { get; }
-
-        void EnterLock();
-
-        void ExitLock();
     }
 }

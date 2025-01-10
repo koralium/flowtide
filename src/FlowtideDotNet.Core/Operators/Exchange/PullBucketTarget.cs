@@ -184,13 +184,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 List<IStreamEvent> outputData = new List<IStreamEvent>();
                 await foreach (var page in iterator)
                 {
-                    page.EnterLock();
+                    page.EnterWriteLock();
                     foreach (var kv in page)
                     {
                         message.LastEventId = kv.Key;
                         outputData.Add(kv.Value);
                     }
-                    page.ExitLock();
+                    page.ExitWriteLock();
                     if (outputData.Count > 100)
                     {
                         break;

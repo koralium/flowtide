@@ -147,15 +147,5 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             Debug.Assert(leaf != null);
             leaf.ExitWriteLock();
         }
-
-        public void EnterLock()
-        {
-            leaf.EnterWriteLock();
-        }
-
-        public void ExitLock()
-        {
-            leaf.ExitWriteLock();
-        }
     }
 }
