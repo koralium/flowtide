@@ -12,12 +12,7 @@
 
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Persistence;
-using FlowtideDotNet.Storage.StateManager;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FlowtideDotNet.DependencyInjection
 {
@@ -41,6 +36,12 @@ namespace FlowtideDotNet.DependencyInjection
 
         IFlowtideStorageBuilder SetPersistentStorage<TStorage>() where TStorage : class, IPersistentStorage;
 
+        IFlowtideStorageBuilder SetPersistentStorage(Func<IServiceProvider, IPersistentStorage> func);
+
         IFlowtideStorageBuilder SetCompressionFunction(StateSerializeOptions serializeOptions);
+
+        IServiceCollection ServiceCollection { get; }
+
+        string Name { get; }
     }
 }
