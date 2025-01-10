@@ -19,6 +19,7 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using System.Diagnostics;
+using System.IO.Hashing;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -222,6 +223,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new BinaryColumn(_data.Copy(memoryAllocator));
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            hashAlgorithm.Append(_data.GetMemory(index).Span);
         }
     }
 }

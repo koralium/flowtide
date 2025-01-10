@@ -46,17 +46,30 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             for (int i = 0; i < expressions.Count; i++)
             {
                 var expr = expressions[i];
-                var compiledExpr = visitor.Visit(expr, parametersInfo);
-                Debug.Assert(compiledExpr != null);
-                if (compiledExpr.Type.IsAssignableTo(typeof(IDataValue)))
+
+                if (expr is DirectFieldReference referenceExpression &&
+                    referenceExpression.ReferenceSegment is StructReferenceSegment structReference)
                 {
-                    var addToHashMethod = typeof(IDataValue).GetMethod("AddToHash");
-                    Debug.Assert(addToHashMethod != null);
-                    hashExpressions.Add(System.Linq.Expressions.Expression.Call(compiledExpr, addToHashMethod, hashConstant));
+                    
+                    // If it is a direct reference, use AddToHash on the column
+                    // This improves performance by not having to fetch the value and then calculate the hash
+                    // Mostly noticable on the complex data types.
+                    hashExpressions.Add(CallAddToHashOnColumn(batchParameter, indexParameter, structReference.Child, structReference.Field, hashConstant));
                 }
                 else
                 {
-                    throw new InvalidOperationException("Got unknown return data type in hash compiler");
+                    var compiledExpr = visitor.Visit(expr, parametersInfo);
+                    Debug.Assert(compiledExpr != null);
+                    if (compiledExpr.Type.IsAssignableTo(typeof(IDataValue)))
+                    {
+                        var addToHashMethod = typeof(IDataValue).GetMethod("AddToHash");
+                        Debug.Assert(addToHashMethod != null);
+                        hashExpressions.Add(System.Linq.Expressions.Expression.Call(compiledExpr, addToHashMethod, hashConstant));
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Got unknown return data type in hash compiler");
+                    }
                 }
             }
 
@@ -80,10 +93,37 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             Debug.Assert(readInt32BigEndianMethod != null);
             var getFinalResultExpr = System.Linq.Expressions.Expression.Call(readInt32BigEndianMethod, readOnlySpanExpr);
             hashExpressions.Add(getFinalResultExpr);
-            
+
             var blockExpr = System.Linq.Expressions.Expression.Block(typeof(uint), new List<ParameterExpression>() { spanVariable }, hashExpressions);
             var lambda = System.Linq.Expressions.Expression.Lambda<Func<EventBatchData, int, uint>>(blockExpr, batchParameter, indexParameter);
             return lambda.Compile();
+        }
+
+        private static System.Linq.Expressions.Expression CallAddToHashOnColumn(
+            ParameterExpression batchParameter, 
+            ParameterExpression indexParameter, 
+            ReferenceSegment? child, 
+            int columnIndex, 
+            ConstantExpression hashExpression)
+        {
+            var getColumnMethod = typeof(EventBatchData).GetMethod("GetColumn");
+            if (getColumnMethod == null)
+            {
+                throw new InvalidOperationException("Could not find GetColumn method");
+            }
+
+            var columnExpr = System.Linq.Expressions.Expression.Call(batchParameter, getColumnMethod, System.Linq.Expressions.Expression.Constant(columnIndex));
+
+            var addToHashMethod = typeof(IColumn).GetMethod("AddToHash");
+
+            if (addToHashMethod == null)
+            {
+                throw new InvalidOperationException("Could not find AddToHash method");
+            }
+
+            var childExpression = System.Linq.Expressions.Expression.Constant(child, typeof(ReferenceSegment));
+            var callAddToHash = System.Linq.Expressions.Expression.Call(columnExpr, addToHashMethod, indexParameter, childExpression, hashExpression);
+            return callAddToHash;
         }
     }
 }

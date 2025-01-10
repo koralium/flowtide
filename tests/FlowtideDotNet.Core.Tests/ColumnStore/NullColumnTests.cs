@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -83,6 +84,21 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.UpdateAt(0, NullValue.Instance);
 
             Assert.Single(column);
+        }
+
+        [Fact]
+        public void TestAddToHash()
+        {
+            NullColumn column = new NullColumn();
+
+            var hash = new XxHash32();
+            column.AddToHash(0, default, hash);
+            var columnHash = hash.GetHashAndReset();
+
+            column.GetValueAt(0, default).AddToHash(hash);
+            var valueHash = hash.GetHashAndReset();
+
+            Assert.Equal(columnHash, valueHash);
         }
     }
 }

@@ -20,12 +20,15 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using static SqlParser.Ast.DataType;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -235,6 +238,13 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new DoubleColumn(_data.Copy(memoryAllocator));
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteDoubleLittleEndian(buffer, _data[index]);
+            hashAlgorithm.Append(buffer);
         }
     }
 }

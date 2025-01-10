@@ -20,6 +20,7 @@ using System.Threading.Tasks;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Text.Json;
 using FlowtideDotNet.Storage.Memory;
+using System.IO.Hashing;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -73,5 +74,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         void WriteToJson(ref readonly Utf8JsonWriter writer, in int index);
 
         Column Copy(IMemoryAllocator memoryAllocator);
+
+        void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm);
     }
 }
