@@ -339,11 +339,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                         _typeId = ArrowTypeId.Timestamp;
                         break;
                     default:
-                        throw new NotImplementedException();
+                        throw new NotImplementedException(typeName);
                 }
                 return;
             }
-            throw new NotImplementedException();
+            throw new NotImplementedException("No metadata field");
         }
     }
 }
