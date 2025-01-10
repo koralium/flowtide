@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Memory;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
@@ -335,8 +336,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 if (_valueColumns[i] != null)
                 {
                     var (arrowArray, arrowType) = _valueColumns[i].ToArrowArray(nullBuffer, nullCount);
+                    var customMetadata = EventArrowSerializer.GetCustomMetadata(arrowType);
                     typeIds.Add((int)arrowType.TypeId);
-                    fields.Add(new Field("", arrowType, true));
+                    fields.Add(new Field("", arrowType, true, metadata: customMetadata));
                     childArrays.Add(arrowArray);
                 }
             }
