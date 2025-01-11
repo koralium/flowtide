@@ -117,7 +117,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     userkey, max(orderkey), max(orderkey)
                 FROM orders
                 GROUP BY userkey, orderkey
-                ");
+                ", ignoreSameDataCheck: true);
             await WaitForUpdate();
 
             for (int i = 0; i < 10; i++)

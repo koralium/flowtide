@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             _previousValueSent = previousValueSent;
         }
 
-        public int Count => _eventBatch.Count;
+        public int Count => _weights.Count;
 
         public void Add(ColumnAggregateStateReference key)
         {
