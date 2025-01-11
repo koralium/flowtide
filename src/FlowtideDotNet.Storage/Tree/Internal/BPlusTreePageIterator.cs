@@ -90,6 +90,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var byteSize = leaf.GetByteSize();
             if (leaf.keys.Count > 0 && checkForResize && tree.m_stateClient.Metadata!.PageSizeBytes < byteSize)
             {
+                tree.m_stateClient.AddOrUpdate(leaf.Id, leaf);
                 // Force a traversion of the tree to ensure that size is looked at for splits.
                 var traverseTask = tree.RMWNoResult(leaf.keys.Get(0), default, (input, current, found) =>
                 {
