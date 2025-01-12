@@ -12,21 +12,15 @@
 
 using Apache.Arrow.Types;
 using Apache.Arrow;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using static Substrait.Protobuf.Expression.Types.Literal.Types;
 using System.Collections;
-using static SqlParser.Ast.TableConstraint;
 using FlowtideDotNet.Storage.Memory;
 using System.Text.Json;
+using System.IO.Hashing;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -437,6 +431,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new ListColumn(_internalColumn.Copy(memoryAllocator), _offsets.Copy(memoryAllocator));
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            var listStart = _offsets.Get(index);
+            var listEnd = _offsets.Get(index + 1);
+
+            for (int i = listStart; i < listEnd; i++)
+            {
+                _internalColumn.AddToHash(i, default, hashAlgorithm);
+            }
         }
     }
 }

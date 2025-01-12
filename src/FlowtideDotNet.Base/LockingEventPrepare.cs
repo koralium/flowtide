@@ -19,13 +19,25 @@ namespace FlowtideDotNet.Base
     /// </summary>
     internal class LockingEventPrepare : IStreamEvent
     {
-        public LockingEventPrepare(ILockingEvent lockingEvent)
+        public LockingEventPrepare(ILockingEvent lockingEvent, bool isInitEvent)
         {
             LockingEvent = lockingEvent;
+            IsInitEvent = isInitEvent;
             OtherInputsNotInCheckpoint = false;
+            Id = Guid.NewGuid();
         }
 
         public ILockingEvent LockingEvent { get; }
+        
+        /// <summary>
+        /// Set only for init checkpoint, this is used so multiple input vertices can identify which inputs will send locking event prepares.
+        /// </summary>
+        public bool IsInitEvent { get; }
+
+        /// <summary>
+        /// Unique id of a locking event prepare message, this is used to allow operators to identify two different messages.
+        /// </summary>
+        public Guid Id { get; }
 
         /// <summary>
         /// Bool that is set if a multi target vertex has other inputs that are not in the checkpoint.
