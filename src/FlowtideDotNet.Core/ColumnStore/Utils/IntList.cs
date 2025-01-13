@@ -17,6 +17,7 @@ using System;
 using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -73,7 +74,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     newLength = 64;
                 }
                 
-                var allocLength = newLength * 2 * sizeof(int);
+                var allocLength = newLength * sizeof(int);
                 if (_memoryOwner == null)
                 {
                     _memoryOwner = memoryAllocator.Allocate(allocLength, 64);
@@ -89,6 +90,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        private void CheckSizeReduction()
+        {
+            var multipleid = (_length << 1) + (_length >> 1);
+            if (multipleid < _dataLength && _dataLength > 256)
+            {
+                Debug.Assert(_memoryOwner != null);
+                _memoryOwner = memoryAllocator.Realloc(_memoryOwner, _length * sizeof(int), 64);
+                _data = (int*)_memoryOwner.Memory.Pin().Pointer;
+                _dataLength = _length;
+            }
+        }
+
         public void Add(int item)
         {
             EnsureCapacity(_length + 1);
@@ -99,6 +112,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             AccessSpan.Slice(index + 1, _length - index - 1).CopyTo(AccessSpan.Slice(index));
             _length--;
+            CheckSizeReduction();
         }
 
         /// <summary>
@@ -111,30 +125,35 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             AvxUtils.InPlaceMemCopyWithAddition(AccessSpan, index + 1, index, _length - index - 1, additionOnMoved);
             _length--;
+            CheckSizeReduction();
         }
 
         public void RemoveRange(int index, int count, int additionOnMoved)
         {
             AvxUtils.InPlaceMemCopyWithAddition(AccessSpan, index + count, index, _length - index - count, additionOnMoved);
             _length -= count;
+            CheckSizeReduction();
         }
 
         public void RemoveRange(int index, int count)
         {
             AccessSpan.Slice(index + count, _length - index - count).CopyTo(AccessSpan.Slice(index));
             _length -= count;
+            CheckSizeReduction();
         }
 
         public void RemoveAtConditionalAddition(int index, Span<sbyte> conditionalValues, sbyte conditionalValue, int additionOnMoved)
         {
             AvxUtils.InPlaceMemCopyConditionalAddition(AccessSpan, conditionalValues, index + 1, index, _length - index - 1, additionOnMoved, conditionalValue);
             _length--;
+            CheckSizeReduction();
         }
 
         public void RemoveRangeTypeBasedAddition(int index, int count, Span<sbyte> typeIds, Span<int> toAdd, int typeCount)
         {
             AvxUtils.InPlaceMemCopyAdditionByType(AccessSpan, typeIds, index + count, index, _length - index - count, toAdd, typeCount);
             _length -= count;
+            CheckSizeReduction();
         }
 
         public void InsertAt(int index, int item)

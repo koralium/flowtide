@@ -118,9 +118,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         private void CheckSizeReduction()
         {
-            Debug.Assert(_memoryOwner != null);
-            if ((_length * 3) < _dataLength && _dataLength > 256)
+            var multipleid = (_length << 1) + (_length >> 1);
+            if (multipleid < _dataLength && _dataLength > 256)
             {
+                Debug.Assert(_memoryOwner != null);
                 _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, _length, 64);
                 _data = _memoryOwner.Memory.Pin().Pointer;
                 _dataLength = _memoryOwner.Memory.Length;

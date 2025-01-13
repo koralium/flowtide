@@ -20,6 +20,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Collections;
 using FlowtideDotNet.Storage.Memory;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.DataStructures
 {
@@ -88,6 +89,19 @@ namespace FlowtideDotNet.Storage.DataStructures
             }
         }
 
+        private void CheckSizeReduction()
+        {
+            var multipleid = (_length << 1) + (_length >> 1);
+            if (multipleid < _dataLength && _dataLength > 256)
+            {
+                Debug.Assert(_memoryAllocator != null);
+                Debug.Assert(_memoryOwner != null);
+                _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, _length * sizeof(T), 64);
+                _data = _memoryOwner.Memory.Pin().Pointer;
+                _dataLength = _length;
+            }
+        }
+
         private Span<T> AccessSpan => new Span<T>(_data, _dataLength);
 
         public void Add(T value)
@@ -147,6 +161,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             var span = AccessSpan;
             span.Slice(index + 1, _length - index - 1).CopyTo(span.Slice(index, _length - index - 1));
             _length--;
+            CheckSizeReduction();
         }
 
         public void RemoveRange(int index, int count)
@@ -155,6 +170,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             var length = _length - index - count;
             span.Slice(index + count, length).CopyTo(span.Slice(index));
             _length -= count;
+            CheckSizeReduction();
         }
 
         public T Get(in int index)

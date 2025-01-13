@@ -10,12 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow.Memory;
 using FlowtideDotNet.Storage.Memory;
 using Google.Protobuf.Reflection;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -140,6 +142,20 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        private void CheckSizeReduction()
+        {
+            var multipleid = (_length << 1) + (_length >> 1);
+            if (multipleid < _dataLength && _dataLength > 256)
+            {
+                Debug.Assert(_memoryAllocator != null);
+                Debug.Assert(_memoryOwner != null);
+                _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, _length * sizeof(long), 64);
+                _data = _memoryOwner.Memory.Pin().Pointer;
+                _longData = (long*)_data;
+                _dataLength = _length;
+            }
+        }
+
         private Span<long> AccessSpan => new Span<long>(_data, _dataLength);
 
         public void Add(long value)
@@ -204,6 +220,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var span = AccessSpan;
             span.Slice(index + 1, _length - index - 1).CopyTo(span.Slice(index, _length - index - 1));
             _length--;
+            CheckSizeReduction();
         }
 
         public void RemoveRange(int index, int count)
@@ -212,6 +229,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var length = _length - index - count;
             span.Slice(index + count, length).CopyTo(span.Slice(index));
             _length -= count;
+            CheckSizeReduction();
         }
 
         public long Get(in int index)
