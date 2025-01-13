@@ -38,6 +38,27 @@ namespace FlowtideDotNet.Base.Engine
             return streamContext.StartAsync();
         }
 
+        public async ValueTask<long> WaitForCheckpointTime(long waitUntil, CancellationToken cancellationToken = default)
+        {
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                Task? waitTask = default;
+                lock (streamContext._checkpointLock)
+                {
+                    if (streamContext.producingTime >= waitUntil)
+                        return streamContext.producingTime;
+
+                    waitTask = streamContext.checkpointTask?.Task;
+                }
+                if (waitTask != null)
+                {
+                    await waitTask;
+                }
+                await Task.Delay(10);
+            }
+        }
+
         public void Complete()
         {
             throw new NotImplementedException();
