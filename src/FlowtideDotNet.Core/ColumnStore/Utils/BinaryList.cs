@@ -116,6 +116,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        private void CheckSizeReduction()
+        {
+            Debug.Assert(_memoryOwner != null);
+            if ((_length * 3) < _dataLength && _dataLength > 256)
+            {
+                _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, _length, 64);
+                _data = _memoryOwner.Memory.Pin().Pointer;
+                _dataLength = _memoryOwner.Memory.Length;
+            }
+        }
+
         /// <summary>
         /// Add binary data as an element to the list.
         /// </summary>
@@ -211,6 +222,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 var length = _length - offset;
                 _offsets.RemoveAt(index);
                 _length -= length;
+                CheckSizeReduction();
                 return;
             }
             else
@@ -225,6 +237,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 // Move all elements after the index
                 span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset));
                 _length -= length;
+                CheckSizeReduction();
             }
         }
 
@@ -240,6 +253,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             // Move all elements after the index
             span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset));
             _length -= length;
+            CheckSizeReduction();
         }
 
         public Span<byte> Get(in int index)
