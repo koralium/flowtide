@@ -13,6 +13,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -27,9 +28,35 @@ namespace FlowtideDotNet.Storage.Memory
     public unsafe class GlobalMemoryManager : IMemoryAllocator
     {
         public static readonly GlobalMemoryManager Instance = new GlobalMemoryManager();
+        private long _allocatedMemory;
+        private long _freedMemory;
+        private long _allocationCount;
+        private long _freeCount;
+
+        private GlobalMemoryManager()
+        {
+            var meter = new Meter("flowtide.GlobalMemoryManager");
+            meter.CreateObservableGauge("flowtide.global.memory.allocated_bytes", () =>
+            {
+                return new Measurement<long>(_allocatedMemory);
+            }, "bytes");
+            meter.CreateObservableGauge("flowtide.global.memory.allocation_count", () =>
+            {
+                return new Measurement<long>(_allocationCount);
+            });
+            meter.CreateObservableGauge("flowtide.global.memory.freed_bytes", () =>
+            {
+                return new Measurement<long>(_freedMemory);
+            }, "bytes");
+            meter.CreateObservableGauge("flowtide.global.memory.free_count", () =>
+            {
+                return new Measurement<long>(_freeCount);
+            });
+        }
         public IMemoryOwner<byte> Allocate(int size, int alignment)
         {
             var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
+            RegisterAllocationToMetrics(size);
             return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
         }
 
@@ -37,7 +64,18 @@ namespace FlowtideDotNet.Storage.Memory
         {
             if (memory is NativeCreatedMemoryOwner native)
             {
+                var previousLength = native.length;
                 var newPtr = NativeMemory.AlignedRealloc(native.ptr, (nuint)size, (nuint)alignment);
+                if (newPtr == native.ptr)
+                {
+                    var diff = size - previousLength;
+                    RegisterAllocationToMetrics(diff);
+                }
+                else
+                {
+                    RegisterAllocationToMetrics(size);
+                    RegisterFreeToMetrics(previousLength);
+                }
                 native.ptr = newPtr;
                 native.length = size;
                 return native;
@@ -45,9 +83,11 @@ namespace FlowtideDotNet.Storage.Memory
             else
             {
                 var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
+                RegisterAllocationToMetrics(size);
+                RegisterFreeToMetrics(memory.Memory.Length);
                 // Copy the memory
                 var existingMemory = memory.Memory;
-                NativeMemory.Copy(existingMemory.Pin().Pointer, ptr, (nuint)existingMemory.Length);
+                NativeMemory.Copy(existingMemory.Pin().Pointer, ptr, (nuint)Math.Min(existingMemory.Length, size));
                 memory.Dispose();
                 return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
             }
@@ -55,10 +95,14 @@ namespace FlowtideDotNet.Storage.Memory
 
         public void RegisterAllocationToMetrics(int size)
         {
+            Interlocked.Add(ref _allocatedMemory, size);
+            Interlocked.Increment(ref _allocationCount);
         }
 
         public void RegisterFreeToMetrics(int size)
         {
+            Interlocked.Add(ref _freedMemory, size);
+            Interlocked.Increment(ref _freeCount);
         }
     }
 }

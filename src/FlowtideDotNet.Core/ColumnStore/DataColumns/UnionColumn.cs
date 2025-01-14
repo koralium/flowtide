@@ -343,7 +343,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 }
             }
             var unionType = new UnionType(fields, typeIds, UnionMode.Dense);
-            var typeIdsBuffer = new ArrowBuffer(_typeList.Memory);
+            var typeIdsBuffer = new ArrowBuffer(_typeList.SlicedMemory);
             var offsetBuffer = new ArrowBuffer(_offsets.Memory);
             return (new DenseUnionArray(unionType, Count, childArrays, typeIdsBuffer, offsetBuffer), unionType);
         }

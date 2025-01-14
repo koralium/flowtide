@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 #endif
         }
 
-        public Memory<byte> Memory => _memoryOwner?.Memory ?? new Memory<byte>();
+        public Memory<byte> Memory => _memoryOwner?.Memory.Slice(0, _length * sizeof(long)) ?? new Memory<byte>();
 
         internal long* Pointer => _longData;
 
