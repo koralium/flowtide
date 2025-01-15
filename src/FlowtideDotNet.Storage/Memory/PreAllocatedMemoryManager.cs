@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Storage.Memory
                 RegisterAllocationToMetrics(size);
                 // Copy the memory
                 var existingMemory = memory.Memory;
-                NativeMemory.Copy(existingMemory.Pin().Pointer, ptr, (nuint)existingMemory.Length);
+                NativeMemory.Copy(existingMemory.Pin().Pointer, ptr, (nuint)Math.Min(existingMemory.Length, size));
                 memory.Dispose();
                 return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
             }
