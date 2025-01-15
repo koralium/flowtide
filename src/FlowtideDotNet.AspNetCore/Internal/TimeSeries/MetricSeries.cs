@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.AppendTree.Internal;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
@@ -25,7 +26,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
     {
         private readonly Dictionary<string, Dictionary<string, MetricSerie>> _series;
         private readonly MetricOptions metricOptions;
-        private IStateClient<IBPlusTreeNode, BPlusTreeMetadata>? _client;
+        private IStateClient<IBPlusTreeNode, AppendTreeMetadata>? _client;
         private TimestampKeySerializer? _keySerializer;
         private DoubleValueSerializer? _valueSerializer;
         private StateManagerSync<object>? _stateManager;
@@ -56,7 +57,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             _stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
                 MinCachePageCount = 0,
-                CachePageCount = 1000,
+                CachePageCount = 0,
             }, NullLogger.Instance, new System.Diagnostics.Metrics.Meter(string.Empty), string.Empty);
 
             await _stateManager.InitializeAsync();
@@ -64,10 +65,18 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
             _keySerializer = new TimestampKeySerializer(GlobalMemoryManager.Instance);
             _valueSerializer = new DoubleValueSerializer(GlobalMemoryManager.Instance);
-            _client = await _stateManager.CreateClientAsync<IBPlusTreeNode, BPlusTreeMetadata>(string.Empty, new FlowtideDotNet.Storage.StateManager.Internal.StateClientOptions<IBPlusTreeNode>()
+            _client = await _stateManager.CreateClientAsync<IBPlusTreeNode, AppendTreeMetadata>(string.Empty, new FlowtideDotNet.Storage.StateManager.Internal.StateClientOptions<IBPlusTreeNode>()
             {
                 ValueSerializer = new BPlusTreeSerializer<long, double, TimestampKeyContainer, DoubleValueContainer>(_keySerializer, _valueSerializer, GlobalMemoryManager.Instance),
             });
+        }
+
+        public async Task Prune(long timestamp)
+        {
+            foreach(var serie in GetAllSeries())
+            {
+                await serie.Prune(timestamp);
+            }
         }
 
         public async ValueTask SetValueToSerie(string name, IReadOnlyDictionary<string, string> tags, long timestamp, double value)
@@ -82,13 +91,13 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             }
             if (!series.TryGetValue(key, out var serie))
             {
-                var tmp = new TemporarySyncStateClient<IBPlusTreeNode, BPlusTreeMetadata>(new StateClientMetadata<BPlusTreeMetadata>(), _client!);
-                var tree = new BPlusTree<long, double, TimestampKeyContainer, DoubleValueContainer>(tmp, new BPlusTreeOptions<long, double, TimestampKeyContainer, DoubleValueContainer>()
+                var tmp = new TemporarySyncStateClient<IBPlusTreeNode, AppendTreeMetadata>(new StateClientMetadata<AppendTreeMetadata>(), _client!);
+                var tree = new AppendTree<long, double, TimestampKeyContainer, DoubleValueContainer>(tmp, new BPlusTreeOptions<long, double, TimestampKeyContainer, DoubleValueContainer>()
                 {
                     Comparer = new TimestampComparer(),
                     KeySerializer = _keySerializer!,
                     ValueSerializer = _valueSerializer!,
-                    BucketSize = 1024,
+                    BucketSize = 4,
                     UseByteBasedPageSizes = false,
                     PageSizeBytes = 32 * 1024,
                     MemoryAllocator = GlobalMemoryManager.Instance

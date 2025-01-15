@@ -284,11 +284,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     var sw = ValueStopwatch.StartNew();
                     var bytes = m_fileCache.Read(key);
                     var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
-                    stateManager.AddOrUpdate(key, value, this);
                     if (!value.TryRent())
                     {
                         throw new InvalidOperationException("Could not rent value when fetched from storage.");
                     }
+                    stateManager.AddOrUpdate(key, value, this);
+                    
                     if (m_temporaryReadMsHistogram != null)
                     {
                         m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);

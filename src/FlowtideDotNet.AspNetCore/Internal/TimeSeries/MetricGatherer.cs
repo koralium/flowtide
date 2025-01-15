@@ -110,6 +110,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                     _meterListener.RecordObservableInstruments();
                     await series.Lock();
                     await StoreMeasurements(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), series);
+                    await series.Prune(DateTimeOffset.UtcNow.Subtract(TimeSpan.FromMinutes(5)).ToUnixTimeMilliseconds());
                 }
                 catch (Exception)
                 {
