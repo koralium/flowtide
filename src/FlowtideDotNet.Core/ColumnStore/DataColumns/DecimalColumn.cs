@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             var buffers = new ArrowBuffer[2]
             {
                 nullBuffer,
-                new ArrowBuffer(_values.Memory)
+                new ArrowBuffer(_values.SlicedMemory)
             };
             var array = new FixedSizeBinaryArray(new ArrayData(FloatingPointDecimalType.Default, Count, nullCount, 0, buffers));
             return (array, FloatingPointDecimalType.Default);

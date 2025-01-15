@@ -205,7 +205,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             var buffers = new ArrowBuffer[2]
             {
                 nullBuffer,
-                new ArrowBuffer(_values.Memory)
+                new ArrowBuffer(_values.SlicedMemory)
             };
             var array = new FixedSizeBinaryArray(new ArrayData(TimestampTzType.Default, Count, nullCount, 0, buffers));
             return (array, TimestampTzType.Default);

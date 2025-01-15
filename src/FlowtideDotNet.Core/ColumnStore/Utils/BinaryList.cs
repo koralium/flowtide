@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> OffsetMemory => _offsets.Memory;
 
-        public Memory<byte> DataMemory => _memoryOwner?.Memory ?? new Memory<byte>();
+        public Memory<byte> DataMemory => _memoryOwner?.Memory.Slice(0, _length) ?? new Memory<byte>();
 
         public int Count => _offsets.Count - 1;
 
@@ -113,6 +113,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _data = _memoryOwner.Memory.Pin().Pointer;
                 }
                 _dataLength = allocLength;
+            }
+        }
+
+        private void CheckSizeReduction()
+        {
+            var multipleid = (_length << 1) + (_length >> 1);
+            if (multipleid < _dataLength && _dataLength > 256)
+            {
+                Debug.Assert(_memoryOwner != null);
+                _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, _length, 64);
+                _data = _memoryOwner.Memory.Pin().Pointer;
+                _dataLength = _memoryOwner.Memory.Length;
             }
         }
 
@@ -211,6 +223,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 var length = _length - offset;
                 _offsets.RemoveAt(index);
                 _length -= length;
+                CheckSizeReduction();
                 return;
             }
             else
@@ -225,6 +238,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 // Move all elements after the index
                 span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset));
                 _length -= length;
+                CheckSizeReduction();
             }
         }
 
@@ -240,6 +254,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             // Move all elements after the index
             span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset));
             _length -= length;
+            CheckSizeReduction();
         }
 
         public Span<byte> Get(in int index)
