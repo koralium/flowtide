@@ -57,7 +57,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             _stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
                 MinCachePageCount = 0,
-                CachePageCount = 0,
+                CachePageCount = 1000,
             }, NullLogger.Instance, new System.Diagnostics.Metrics.Meter(string.Empty), string.Empty);
 
             await _stateManager.InitializeAsync();
@@ -97,7 +97,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                     Comparer = new TimestampComparer(),
                     KeySerializer = _keySerializer!,
                     ValueSerializer = _valueSerializer!,
-                    BucketSize = 4,
+                    BucketSize = 1024,
                     UseByteBasedPageSizes = false,
                     PageSizeBytes = 32 * 1024,
                     MemoryAllocator = GlobalMemoryManager.Instance
