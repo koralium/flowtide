@@ -101,12 +101,16 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
             catch(Exception e)
             {
-                Logger.LogError(e, "Error fetching delta");
                 if (e is TaskCanceledException || e is OperationCanceledException)
                 {
-                    throw new InvalidOperationException("Error fetching delta, task was cancelled.", e);
+                    Logger.LogWarning(e, "Error fetching delta, task was cancelled. Waiting 120 seconds before retrying.");
+                    await Task.Delay(TimeSpan.FromSeconds(120));
                 }
-                throw;
+                else
+                {
+                    Logger.LogError(e, "Error fetching delta");
+                    throw;
+                }
             }
             finally
             {
