@@ -378,15 +378,14 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
+            var currentOffset = _offsets.Get(index);
             if (value.Type == ArrowTypeId.Null)
             {
-                _offsets.InsertAt(index, _valueColumn.Count);
+                _offsets.InsertAt(index, currentOffset);
                 return;
             }
             var map = value.AsMap;
             var mapLength = map.GetLength();
-
-            var currentOffset = _offsets.Get(index);
 
             if (map is ReferenceMapValue referenceMapValue)
             {
