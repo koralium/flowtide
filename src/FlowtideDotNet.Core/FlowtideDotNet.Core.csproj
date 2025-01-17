@@ -19,5 +19,9 @@
     <ProjectReference Include="..\FlowtideDotNet.Base\FlowtideDotNet.Base.csproj" />
     <ProjectReference Include="..\FlowtideDotNet.Substrait\FlowtideDotNet.Substrait.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="ColumnStore\ObjectConverter\Internal\" />
+  </ItemGroup>
   
 </Project>
