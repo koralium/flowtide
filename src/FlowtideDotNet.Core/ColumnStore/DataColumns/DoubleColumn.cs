@@ -152,7 +152,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            var dataBuffer = new ArrowBuffer(_data.Memory);
+            var dataBuffer = new ArrowBuffer(_data.SlicedMemory);
             var array = new DoubleArray(dataBuffer, nullBuffer, Count, nullCount, 0);
             return (array, new DoubleType());
         }

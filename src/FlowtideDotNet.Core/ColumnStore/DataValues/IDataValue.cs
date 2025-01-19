@@ -42,6 +42,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         bool IsNull { get; }
 
+        TimestampTzValue AsTimestamp { get; }
+
         void CopyToContainer(DataValueContainer container);
     }
 }

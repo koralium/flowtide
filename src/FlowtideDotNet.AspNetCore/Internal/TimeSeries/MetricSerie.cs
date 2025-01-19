@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.AppendTree.Internal;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Tree.Internal;
 
@@ -17,11 +18,11 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 {
     internal class MetricSerie : IMetricExecutor
     {
-        private readonly BPlusTree<long, double, TimestampKeyContainer, DoubleValueContainer> tree;
+        private readonly AppendTree<long, double, TimestampKeyContainer, DoubleValueContainer> tree;
         public MetricSerie(
             string name,
             IReadOnlyDictionary<string, string> tags,
-            BPlusTree<long, double, TimestampKeyContainer, DoubleValueContainer> tree)
+            AppendTree<long, double, TimestampKeyContainer, DoubleValueContainer> tree)
         {
             Name = name;
             this.tree = tree;
@@ -36,7 +37,12 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         public ValueTask SetValue(long timestamp, double value)
         {
-            return tree.Upsert(timestamp, value);
+            return tree.Append(timestamp, value);
+        }
+
+        public ValueTask Prune(long timestamp)
+        {
+            return tree.Prune(timestamp);
         }
 
         public async IAsyncEnumerable<MetricResult> GetValues(long startTimestamp, long endTimestamp, int stepWidth)
@@ -44,16 +50,16 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             using var iterator = tree.CreateIterator();
             await iterator.Seek(startTimestamp);
 
-            bool ended = false;
+            //bool ended = false;
             long lastTimestamp = 0;
-            await foreach (var page in iterator)
+            await foreach (var kv in iterator)
             {
-                if (ended)
-                {
-                    yield break;
-                }
-                foreach (var kv in page)
-                {
+                //if (ended)
+                //{
+                //    yield break;
+                //}
+                //foreach (var kv in page)
+                //{
                     // Skip values that do not follow the step width
                     if (kv.Key < (lastTimestamp + stepWidth))
                     {
@@ -61,7 +67,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                     }
                     if (kv.Key > endTimestamp)
                     {
-                        ended = true;
+                        //ended = true;
                         yield break;
                     }
                     
@@ -69,7 +75,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                     var timestamp = (kv.Key / stepWidth) * stepWidth;
                     lastTimestamp = timestamp;
                     yield return new MetricResult(kv.Value, timestamp);
-                }
+                //}
             }
         }
     }

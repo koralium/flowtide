@@ -105,7 +105,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             var user = Users[20];
 
-            user.ManagerKey = Users[42].UserKey;
+            user.ManagerKey = Users[10].UserKey;
             AddOrUpdateUser(user);
             await WaitForUpdate();
 

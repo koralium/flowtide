@@ -142,7 +142,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 })
                 .RuleFor(x => x.TrimmableNullableString, (f, u) => u.NullableString != null ? $" {u.NullableString} " : null)
                 .RuleFor(x => x.DoubleValue, (f, u) => f.Random.Double(0, 1000))
-                .RuleFor(x => x.Active, (f, u) => f.Random.Bool());
+                .RuleFor(x => x.Active, (f, u) => f.Random.Bool())
+                .RuleFor(x => x.BirthDate, (f, u) => f.Date.BetweenDateOnly(DateOnly.Parse("1980-01-01"), DateOnly.Parse("2000-01-01")).ToDateTime(new TimeOnly(0)));
 
 
             var newUsers = testUsers.Generate(count);

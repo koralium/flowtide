@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,8 +19,9 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.AppendTree
 {
-    public interface IAppendTreeIterator<K, V> : IAsyncEnumerable<KeyValuePair<K, V>>
+    public interface IAppendTreeIterator<K, V, TKeyContainer> : IAsyncEnumerable<KeyValuePair<K, V>>, IDisposable
+        where TKeyContainer: IKeyContainer<K>
     {
-        ValueTask Seek(in K key, in IComparer<K>? searchComparer = null);
+        ValueTask Seek(in K key, in IBplusTreeComparer<K, TKeyContainer>? searchComparer = null);
     }
 }

@@ -712,5 +712,31 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(2.0m, map);
 
         }
+
+        [Fact]
+        public void TimestampInUnionSerializeDeserialize()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+            column.Add(new TimestampTzValue(1, 0));
+            column.Add(NullValue.Instance);
+            column.Add(new Int64Value(2));
+
+            var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
+            [
+                column
+            ]), column.Count);
+
+            MemoryStream memoryStream = new MemoryStream();
+
+            var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            writer.WriteRecordBatch(recordBatch);
+            writer.Dispose();
+            memoryStream.Position = 0;
+            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var deserializedRecordBatch = reader.ReadNextRecordBatch();
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
+
+            Assert.Equal(1, column.GetValueAt(0, default).AsTimestamp.ticks);
+        }
     }
 }

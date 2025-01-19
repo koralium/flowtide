@@ -31,6 +31,7 @@ namespace FlowtideDotNet.Core.ColumnStore
     /// </summary>
     internal class AlwaysNullColumn : IColumn
     {
+        public static AlwaysNullColumn Instance = new AlwaysNullColumn();
         public int Count => 0;
 
         IDataColumn IColumn.DataColumn => throw new NotSupportedException();

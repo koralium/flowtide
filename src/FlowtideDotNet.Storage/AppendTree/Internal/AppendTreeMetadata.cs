@@ -10,25 +10,29 @@
 //// See the License for the specific language governing permissions and
 //// limitations under the License.
 
-//using System;
-//using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-//using System.Threading.Tasks;
+using FlowtideDotNet.Storage.StateManager;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-//namespace FlowtideDotNet.Storage.AppendTree.Internal
-//{
-//    internal class AppendTreeMetadata
-//    {
-//        public int BucketLength { get; set; }
-//        public long Root { get; set; }
+namespace FlowtideDotNet.Storage.AppendTree.Internal
+{
+    internal class AppendTreeMetadata : IStorageMetadata
+    {
+        public int BucketLength { get; set; }
+        public long Root { get; set; }
 
-//        /// <summary>
-//        /// Contains the id of the most left page.
-//        /// This is used to start an iterator.
-//        /// </summary>
-//        public long Left { get; set; }
+        /// <summary>
+        /// Contains the id of the most left page.
+        /// This is used to start an iterator.
+        /// </summary>
+        public long Left { get; set; }
 
-//        public long Right { get; set; }
-//    }
-//}
+        public long Right { get; set; }
+
+        public int Depth { get; set; }
+        public bool Updated { get; set; }
+    }
+}

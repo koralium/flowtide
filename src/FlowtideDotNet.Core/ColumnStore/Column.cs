@@ -164,6 +164,8 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return new DecimalColumn(_memoryAllocator);
                 case ArrowTypeId.Union:
                     return new UnionColumn(_memoryAllocator);
+                case ArrowTypeId.Timestamp:
+                    return new TimestampTzColumn(_memoryAllocator);
                 default:
                     throw new NotImplementedException();
             }

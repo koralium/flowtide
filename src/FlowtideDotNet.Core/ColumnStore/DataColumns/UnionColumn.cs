@@ -128,6 +128,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     case ArrowTypeId.Decimal128:
                         valueColumns.Add(new DecimalColumn(_memoryAllocator));
                         break;
+                    case ArrowTypeId.Timestamp:
+                        valueColumns.Add(new TimestampTzColumn(_memoryAllocator));
+                        break;
                     default:
                         throw new NotImplementedException();
                 }
@@ -328,13 +331,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 if (_valueColumns[i] != null)
                 {
                     var (arrowArray, arrowType) = _valueColumns[i].ToArrowArray(nullBuffer, nullCount);
+                    var customMetadata = EventArrowSerializer.GetCustomMetadata(arrowType);
                     typeIds.Add((int)arrowType.TypeId);
-                    fields.Add(new Field("", arrowType, true));
+                    fields.Add(new Field("", arrowType, true, metadata: customMetadata));
                     childArrays.Add(arrowArray);
                 }
             }
             var unionType = new UnionType(fields, typeIds, UnionMode.Dense);
-            var typeIdsBuffer = new ArrowBuffer(_typeList.Memory);
+            var typeIdsBuffer = new ArrowBuffer(_typeList.SlicedMemory);
             var offsetBuffer = new ArrowBuffer(_offsets.Memory);
             return (new DenseUnionArray(unionType, Count, childArrays, typeIdsBuffer, offsetBuffer), unionType);
         }
