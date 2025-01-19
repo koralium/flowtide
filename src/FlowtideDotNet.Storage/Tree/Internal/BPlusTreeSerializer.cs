@@ -65,7 +65,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 return;
             }
-            throw new NotSupportedException();
         }
 
         public async Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
@@ -96,7 +95,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 return;
             }
-            throw new NotSupportedException();
         }
 
         public IBPlusTreeNode Deserialize(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
