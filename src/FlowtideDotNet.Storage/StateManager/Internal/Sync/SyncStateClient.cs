@@ -11,8 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Exceptions;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Utils;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -33,6 +35,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly bool useReadCache;
         private readonly int m_bplusTreePageSize;
         private readonly int m_bplusTreePageSizeBytes;
+        private readonly IMemoryAllocator memoryAllocator;
         private readonly ConcurrentDictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
@@ -67,7 +70,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             Meter meter,
             bool useReadCache,
             int bplusTreePageSize,
-            int bplusTreePageSizeBytes)
+            int bplusTreePageSizeBytes,
+            IMemoryAllocator memoryAllocator)
         {
             this.stateManager = stateManager;
             this.name = name;
@@ -78,7 +82,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.useReadCache = useReadCache;
             this.m_bplusTreePageSize = bplusTreePageSize;
             this.m_bplusTreePageSizeBytes = bplusTreePageSizeBytes;
-            m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name);
+            this.memoryAllocator = memoryAllocator;
+            m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name, memoryAllocator);
             m_modified = new ConcurrentDictionary<long, int>();
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
             if (!string.IsNullOrEmpty(name))
@@ -163,7 +168,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 if (stateManager.TryGetValueFromCache<V>(kv.Key, out var val))
                 {
-                    var bytes = options.ValueSerializer.Serialize(val, stateManager.SerializeOptions);
+                    var bufferWriter = new ArrayBufferWriter<byte>();
+
+                    options.ValueSerializer.Serialize(bufferWriter, val, stateManager.SerializeOptions);
+                    var bytes = bufferWriter.WrittenSpan.ToArray();
                     // Write to persistence
                     await session.Write(kv.Key, bytes);
 
@@ -411,8 +419,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 var sw = ValueStopwatch.StartNew();
                 try
                 {
-                    var bytes = options.ValueSerializer.Serialize(value.Item1.ValueRef.value, stateManager.SerializeOptions);
-                    m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);
+                    var bufferWriter = m_fileCache.BeginWrite(value.Item1.ValueRef.key, 16_000);
+                    options.ValueSerializer.Serialize(bufferWriter, value.Item1.ValueRef.value, stateManager.SerializeOptions);
+                    m_fileCache.EndWrite(value.Item1.ValueRef.key, bufferWriter);
+                    //m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);
                 }
                 finally
                 {

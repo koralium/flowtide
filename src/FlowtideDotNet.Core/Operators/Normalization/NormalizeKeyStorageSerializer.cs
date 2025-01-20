@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -59,7 +60,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in NormalizeKeyStorage values)
+        public void Serialize(in IBufferWriter<byte> writer, in NormalizeKeyStorage values)
         {
             var recordBatch = EventArrowSerializer.BatchToArrow(values._data, values.Count);
             var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);

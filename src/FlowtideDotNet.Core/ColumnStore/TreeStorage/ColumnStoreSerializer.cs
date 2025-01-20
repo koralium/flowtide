@@ -58,9 +58,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             return new ColumnKeyStorageContainer(recordBatch.ColumnCount, eventBatch, recordBatch.Length);
         }
 
-        public void Serialize(in BinaryWriter writer, in ColumnKeyStorageContainer values)
+        public void Serialize(in IBufferWriter<byte> writer, in ColumnKeyStorageContainer values)
         {
             var recordBatch = EventArrowSerializer.BatchToArrow(values._data, values.Count);
+            
             var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
             batchWriter.WriteRecordBatch(recordBatch);
         }

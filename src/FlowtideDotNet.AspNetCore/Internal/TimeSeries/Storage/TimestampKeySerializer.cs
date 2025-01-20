@@ -14,6 +14,8 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
+using System.Buffers;
+using System.Buffers.Binary;
 
 namespace FlowtideDotNet.AspNetCore.TimeSeries
 {
@@ -52,10 +54,13 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in TimestampKeyContainer values)
+        public void Serialize(in IBufferWriter<byte> writer, in TimestampKeyContainer values)
         {
             var mem = values._list.SlicedMemory;
-            writer.Write(mem.Length);
+            var headerSpan = writer.GetSpan(4);
+            BinaryPrimitives.WriteInt32LittleEndian(headerSpan, mem.Length);
+            writer.Advance(4);
+            //writer.Write(mem.Length);
             writer.Write(mem.Span);
         }
     }

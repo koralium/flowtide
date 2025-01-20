@@ -43,22 +43,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             return Task.CompletedTask;
         }
 
-        public byte[] Serialize(in StateManagerMetadata value, in StateSerializeOptions stateSerializeOptions)
+        public void Serialize(in IBufferWriter<byte> bufferWriter, in StateManagerMetadata value, in StateSerializeOptions stateSerializeOptions)
         {
             if (value is StateManagerMetadata<T> metadata)
             {
-                using MemoryStream memoryStream = new MemoryStream();
-                JsonSerializer.Serialize(memoryStream, metadata);
-                return memoryStream.ToArray();
+                var jsonWriter = new Utf8JsonWriter(bufferWriter);
+                //using MemoryStream memoryStream = new MemoryStream();
+                JsonSerializer.Serialize(jsonWriter, metadata);
+                //return memoryStream.ToArray();
             }
             throw new NotSupportedException();
         }
 
-        public byte[] Serialize(in ICacheObject value, in StateSerializeOptions stateSerializeOptions)
+        public void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value, in StateSerializeOptions stateSerializeOptions)
         {
             if (value is StateManagerMetadata<T> metadata)
             {
-                return Serialize(metadata, stateSerializeOptions);
+                Serialize(bufferWriter, metadata, stateSerializeOptions);
             }
             throw new NotSupportedException();
         }

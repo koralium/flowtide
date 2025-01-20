@@ -13,6 +13,7 @@
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -51,7 +52,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in ColumnValueStorageContainer values)
+        public void Serialize(in IBufferWriter<byte> writer, in ColumnValueStorageContainer values)
         {
             throw new NotImplementedException();
         }

@@ -43,7 +43,11 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public virtual Task Write(long key, byte[] value)
         {
-            fileCache.WriteAsync(key, value);
+            var byteWriter = fileCache.BeginWrite(key, value.Length);
+            var span = byteWriter.GetSpan(value.Length);
+            value.CopyTo(span);
+            byteWriter.Advance(value.Length);
+            fileCache.EndWrite(key, byteWriter);
             fileCache.Flush();
             return Task.CompletedTask;
         }

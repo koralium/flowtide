@@ -18,6 +18,8 @@ using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -74,13 +76,19 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in ColumnAggregateValueContainer values)
+        public void Serialize(in IBufferWriter<byte> writer, in ColumnAggregateValueContainer values)
         {
             var previousValueMemory = values._previousValueSent.SlicedMemory;
-            writer.Write(previousValueMemory.Length);
+            var lengthSpan = writer.GetSpan(4);
+            BinaryPrimitives.WriteInt32LittleEndian(lengthSpan, previousValueMemory.Length);
+            writer.Advance(4);
+            //writer.Write(previousValueMemory.Length);
             writer.Write(previousValueMemory.Span);
             var weightMemory = values._weights.SlicedMemory;
-            writer.Write(weightMemory.Length);
+            lengthSpan = writer.GetSpan(4);
+            BinaryPrimitives.WriteInt32LittleEndian(lengthSpan, weightMemory.Length);
+            writer.Advance(4);
+            //writer.Write(weightMemory.Length);
             writer.Write(weightMemory.Span);
 
             var recordBatch = EventArrowSerializer.BatchToArrow(values._eventBatch, values._weights.Count);

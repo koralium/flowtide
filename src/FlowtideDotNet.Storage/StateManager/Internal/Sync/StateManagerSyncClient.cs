@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.AppendTree.Internal;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Tree.Internal;
 using System.Diagnostics;
@@ -39,7 +40,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             where TKeyContainer : IKeyContainer<K>
             where TValueContainer : IValueContainer<V>
         {
-            var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, new BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer>(options.KeySerializer, options.ValueSerializer, options.MemoryAllocator));
+            var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, new BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer>(options.KeySerializer, options.ValueSerializer, options.MemoryAllocator), options.MemoryAllocator);
 
             if (options.BucketSize == null)
             {
@@ -59,7 +60,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             where TKeyContainer : IKeyContainer<K>
             where TValueContainer : IValueContainer<V>
         {
-            var stateClient = await CreateStateClient<IBPlusTreeNode, AppendTreeMetadata>(name, new BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer>(options.KeySerializer, options.ValueSerializer, options.MemoryAllocator));
+            var stateClient = await CreateStateClient<IBPlusTreeNode, AppendTreeMetadata>(name, new BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer>(options.KeySerializer, options.ValueSerializer, options.MemoryAllocator), options.MemoryAllocator);
 
             if (options.BucketSize == null)
             {
@@ -72,7 +73,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
 
-        private async ValueTask<IStateClient<V, TMetadata>> CreateStateClient<V, TMetadata>(string name, IStateSerializer<V> serializer)
+        private async ValueTask<IStateClient<V, TMetadata>> CreateStateClient<V, TMetadata>(string name, IStateSerializer<V> serializer, IMemoryAllocator memoryAllocator)
             where V : ICacheObject
             where TMetadata : class, IStorageMetadata
         {
@@ -81,7 +82,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 ValueSerializer = serializer,
                 TagList = tagList
-            });
+            }, memoryAllocator);
             await stateClient.InitializeSerializerAsync();
             return stateClient;
         }

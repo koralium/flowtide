@@ -22,6 +22,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using FlowtideDotNet.Storage.Memory;
+using System.Buffers;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 {
@@ -57,7 +58,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             return new AggregateKeyStorageContainer(recordBatch.ColumnCount, eventBatch, recordBatch.Length);
         }
 
-        public void Serialize(in BinaryWriter writer, in AggregateKeyStorageContainer values)
+        public void Serialize(in IBufferWriter<byte> writer, in AggregateKeyStorageContainer values)
         {
             var recordBatch = EventArrowSerializer.BatchToArrow(values._data, values.Count);
             var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);

@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Tree;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -50,9 +51,14 @@ namespace FlowtideDotNet.Storage.Serializers
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in ListValueContainer<V> values)
+        public void Serialize(in IBufferWriter<byte> writer, in ListValueContainer<V> values)
         {
-            serializer.Serialize(writer, values._values);
+            using MemoryStream memoryStream = new MemoryStream();
+            using BinaryWriter binaryWriter = new BinaryWriter(memoryStream);
+            serializer.Serialize(binaryWriter, values._values);
+            writer.Write(memoryStream.ToArray());
+
+            //serializer.Serialize(writer, values._values);
         }
     }
 }

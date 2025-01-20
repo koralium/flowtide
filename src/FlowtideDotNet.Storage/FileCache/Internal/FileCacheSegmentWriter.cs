@@ -48,13 +48,13 @@ namespace FlowtideDotNet.Storage.FileCache
             fileStream = new FileStream(fileName, FileMode.Create, FileAccess.ReadWrite, fileCacheOptions.FileShare, 512, FileOptions.DeleteOnClose | FileOptions.RandomAccess);
         }
 
-        public void Write(long position, byte[] data)
+        public void Write(long position, Memory<byte> data)
         {
             semaphoreSlim.Wait();
             try
             {
                 fileStream.Position = position;
-                fileStream.Write(data);
+                fileStream.Write(data.Span);
             }
             finally
             {

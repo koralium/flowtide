@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Tree;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -50,7 +51,7 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in ListKeyContainerWithSize values)
+        public void Serialize(in IBufferWriter<byte> writer, in ListKeyContainerWithSize values)
         {
             throw new NotImplementedException();
         }

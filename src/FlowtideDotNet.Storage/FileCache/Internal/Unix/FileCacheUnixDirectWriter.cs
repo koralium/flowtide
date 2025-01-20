@@ -81,29 +81,30 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             }
         }
 
-        public void Write(long position, byte[] data)
+        public unsafe void Write(long position, Memory<byte> data)
         {
             lock (_lock)
             {
-                var alignedLength = (data.Length + alignment - 1) / alignment * alignment;
+                //var alignedLength = (data.Length + alignment - 1) / alignment * alignment;
 
-                if (alignedBuffer == null)
-                {
-                    alignedBuffer = new AlignedBuffer(alignedLength, alignment);
-                }
+                //if (alignedBuffer == null)
+                //{
+                //    alignedBuffer = new AlignedBuffer(alignedLength, alignment);
+                //}
 
-                if (alignedLength > alignedBuffer.Size)
-                {
-                    alignedBuffer.Dispose();
-                    alignedBuffer = new AlignedBuffer(alignedLength, alignment);
-                }
+                //if (alignedLength > alignedBuffer.Size)
+                //{
+                //    alignedBuffer.Dispose();
+                //    alignedBuffer = new AlignedBuffer(alignedLength, alignment);
+                //}
 
-                if (position % alignment != 0)
-                {
-                    throw new ArgumentException("Position must be aligned to block size.");
-                }
-                Marshal.Copy(data, 0, alignedBuffer.Buffer, data.Length);
-                IntPtr bytesWritten = pwrite(fileDescriptor, alignedBuffer.Buffer, (IntPtr)alignedLength, (IntPtr)position);
+                //if (position % alignment != 0)
+                //{
+                //    throw new ArgumentException("Position must be aligned to block size.");
+                //}
+                //Marshal.Copy(data, 0, alignedBuffer.Buffer, data.Length);
+                
+                IntPtr bytesWritten = pwrite(fileDescriptor, (nint)data.Pin().Pointer, (IntPtr)data.Length, (IntPtr)position);
                 if (bytesWritten.ToInt64() <= 0)
                 {
                     int errorCode = Marshal.GetLastWin32Error();

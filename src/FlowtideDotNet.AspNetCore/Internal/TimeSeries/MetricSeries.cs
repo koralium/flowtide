@@ -68,7 +68,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             _client = await _stateManager.CreateClientAsync<IBPlusTreeNode, AppendTreeMetadata>(string.Empty, new FlowtideDotNet.Storage.StateManager.Internal.StateClientOptions<IBPlusTreeNode>()
             {
                 ValueSerializer = new BPlusTreeSerializer<long, double, TimestampKeyContainer, DoubleValueContainer>(_keySerializer, _valueSerializer, GlobalMemoryManager.Instance),
-            });
+            }, GlobalMemoryManager.Instance);
         }
 
         public async Task Prune(long timestamp)

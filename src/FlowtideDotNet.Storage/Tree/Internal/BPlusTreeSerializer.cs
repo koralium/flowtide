@@ -15,6 +15,7 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Immutable;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
@@ -150,52 +151,67 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return Deserialize(bytes, length, stateSerializeOptions);
         }
 
-        public byte[] Serialize(in IBPlusTreeNode value, in StateSerializeOptions stateSerializeOptions)
+        public void Serialize(in IBufferWriter<byte> bufferWriter,in IBPlusTreeNode value, in StateSerializeOptions stateSerializeOptions)
         {
-            using var memoryStream = new MemoryStream();
-            Stream writeMemStream = memoryStream;
-            if (stateSerializeOptions.CompressFunc != null)
-            {
-                writeMemStream = stateSerializeOptions.CompressFunc(memoryStream);
-            }
-            using var writer = new BinaryWriter(writeMemStream);
+            //using var memoryStream = new MemoryStream();
+            //Stream writeMemStream = memoryStream;
+            //if (stateSerializeOptions.CompressFunc != null)
+            //{
+            //    writeMemStream = stateSerializeOptions.CompressFunc(memoryStream);
+            //}
+            //using var writer = new BinaryWriter(writeMemStream);
             if (value is LeafNode<K, V, TKeyContainer, TValueContainer> leaf)
             {
+                var headerSpan = bufferWriter.GetSpan(17);
+                headerSpan[0] = 2;
+                BinaryPrimitives.WriteInt64LittleEndian(headerSpan.Slice(1), leaf.Id);
+                BinaryPrimitives.WriteInt64LittleEndian(headerSpan.Slice(9), leaf.next);
+                bufferWriter.Advance(17);
                 // Write type id
-                writer.Write((byte)2);
+                //writer.Write((byte)2);
 
-                writer.Write(leaf.Id);
-                writer.Write(leaf.next);
+                //writer.Write(leaf.Id);
+                //writer.Write(leaf.next);
 
-                _keySerializer.Serialize(writer, leaf.keys);
-                _valueSerializer.Serialize(writer, leaf.values);
+                _keySerializer.Serialize(bufferWriter, leaf.keys);
+                _valueSerializer.Serialize(bufferWriter, leaf.values);
 
-                writer.Flush();
-                writeMemStream.Close();
-                return memoryStream.ToArray();
+                //writer.Flush();
+                //writeMemStream.Close();
+                //return memoryStream.ToArray();
             }
             if (value is InternalNode<K, V, TKeyContainer> parent)
             {
-                writer.Write((byte)3);
-                writer.Write(parent.Id);
+                var headerSpan = bufferWriter.GetSpan(9);
+                headerSpan[0] = 3;
+                BinaryPrimitives.WriteInt64LittleEndian(headerSpan.Slice(1), parent.Id);
+                bufferWriter.Advance(9);
+                //writer.Write((byte)3);
+                //writer.Write(parent.Id);
 
-                _keySerializer.Serialize(writer, parent.keys);
+                _keySerializer.Serialize(bufferWriter, parent.keys);
 
+
+                var childrenLengthSpan = bufferWriter.GetSpan(4);
                 var childrenSpan = parent.children.SlicedMemory.Span;
-                writer.Write(childrenSpan.Length);
-                writer.Write(childrenSpan);
-                writer.Flush();
-                writeMemStream.Close();
-                return memoryStream.ToArray();
+                BinaryPrimitives.WriteInt32LittleEndian(childrenLengthSpan, childrenSpan.Length);
+                bufferWriter.Advance(4);
+                bufferWriter.Write(childrenSpan);
+
+                //writer.Write(childrenSpan.Length);
+                //writer.Write(childrenSpan);
+                //writer.Flush();
+                //writeMemStream.Close();
+                //return memoryStream.ToArray();
             }
             throw new NotImplementedException();
         }
 
-        public byte[] Serialize(in ICacheObject value, in StateSerializeOptions stateSerializeOptions)
+        public void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value, in StateSerializeOptions stateSerializeOptions)
         {
             if (value is IBPlusTreeNode node)
             {
-                return Serialize(node, stateSerializeOptions);
+                Serialize(bufferWriter, node, stateSerializeOptions);
             }
             throw new NotImplementedException();
         }

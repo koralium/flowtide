@@ -13,6 +13,8 @@
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -58,12 +60,17 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in JoinWeightsValueContainer values)
+        public void Serialize(in IBufferWriter<byte> writer, in JoinWeightsValueContainer values)
         {
             var memory = values.Memory;
 
-            writer.Write(values.Count);
-            writer.Write(memory.Length);
+            var headerSpan = writer.GetSpan(8);
+            BinaryPrimitives.WriteInt32LittleEndian(headerSpan, values.Count);
+            BinaryPrimitives.WriteInt32LittleEndian(headerSpan.Slice(4), memory.Length);
+            writer.Advance(8);
+
+            //writer.Write(values.Count);
+            //writer.Write(memory.Length);
             writer.Write(memory.Span);
         }
     }

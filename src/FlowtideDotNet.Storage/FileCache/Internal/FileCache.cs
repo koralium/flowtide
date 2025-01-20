@@ -12,7 +12,9 @@
 
 using FlowtideDotNet.Storage.FileCache.Internal;
 using FlowtideDotNet.Storage.FileCache.Internal.Unix;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Utils;
+using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
@@ -105,6 +107,7 @@ namespace FlowtideDotNet.Storage.FileCache
         private readonly object m_lock = new object();
         private readonly FileCacheOptions fileCacheOptions;
         private readonly string fileName;
+        private readonly IMemoryAllocator m_memoryAllocator;
         private readonly int m_sectorSize;
         private readonly Dictionary<long, LinkedListNode<Allocation>> allocatedPages = new Dictionary<long, LinkedListNode<Allocation>>();
         private readonly LinkedList<Allocation> memoryNodes = new LinkedList<Allocation>();
@@ -114,13 +117,16 @@ namespace FlowtideDotNet.Storage.FileCache
         private readonly Func<int, IFileCacheWriter> createWriterFunc;
         private bool disposedValue;
 
-        public FileCache(FileCacheOptions fileCacheOptions, string fileName)
+        private FileCacheBufferWriter _bufferWriter;
+
+        public FileCache(FileCacheOptions fileCacheOptions, string fileName, IMemoryAllocator memoryAllocator)
         {
             cacheSegmentSize = fileCacheOptions.SegmentSize;
             this.fileCacheOptions = fileCacheOptions;
             this.fileName = fileName;
-
+            this.m_memoryAllocator = memoryAllocator;
             m_sectorSize = GetSectorSize();
+            _bufferWriter = new FileCacheBufferWriter(memoryAllocator, m_sectorSize);
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && fileCacheOptions.UseDirectIOOnLinux)
             {
@@ -338,13 +344,27 @@ namespace FlowtideDotNet.Storage.FileCache
             _freePages.Add(new FreePage(newNode.ValueRef.allocatedSize, newNode));
         }
 
+        public IBufferWriter<byte> BeginWrite(long id, int estimatedSize)
+        {
+            _bufferWriter.Reset(estimatedSize);
+            return _bufferWriter;
+        }
+
+        public void EndWrite(long id, IBufferWriter<byte> bufferWriter)
+        {
+            if (bufferWriter is FileCacheBufferWriter fileCacheBufferWriter)
+            {
+                WriteAsync(id, fileCacheBufferWriter.Memory);
+            }
+        }
+
         /// <summary>
         /// Write data for a page key to storage
         /// </summary>
         /// <param name="pageKey"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        public void WriteAsync(long pageKey, byte[] data)
+        private void WriteAsync(long pageKey, Memory<byte> data)
         {
             long position = 0;
             IFileCacheWriter? segmentWriter = null;

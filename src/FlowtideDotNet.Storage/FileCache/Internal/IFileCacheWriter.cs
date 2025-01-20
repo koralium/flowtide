@@ -14,7 +14,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
 {
     public interface IFileCacheWriter : IDisposable
     {
-        void Write(long position, byte[] data);
+        void Write(long position, Memory<byte> data);
         byte[] Read(long position, int length);
         void Flush();
         void ClearTemporaryAllocations();

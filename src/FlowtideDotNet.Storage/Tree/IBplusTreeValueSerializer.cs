@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,7 +26,7 @@ namespace FlowtideDotNet.Storage.Tree
 
         TValueContainer Deserialize(in BinaryReader reader);
 
-        void Serialize(in BinaryWriter writer, in TValueContainer values);
+        void Serialize(in IBufferWriter<byte> writer, in TValueContainer values);
 
         Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context);
 
