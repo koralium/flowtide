@@ -248,25 +248,19 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.CreateBuffer(1, 1);
-            arrowSerializer.CreateBuffer(1, 1);
+            arrowSerializer.AddBuffer(_data.OffsetMemory.Length);
+            arrowSerializer.AddBuffer(_data.DataMemory.Length);
         }
 
-        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        void IDataColumn.WriteDataToBuffer(ref Stream bufferWriter)
         {
             // Write offset data
-            var (offset, length) = arrowSerializer.WriteBufferData(_data.OffsetMemory.Span);
-            var buffer = recordBatchStruct.Buffers(bufferIndex);
-            buffer.SetOffset(offset);
-            buffer.SetLength(length);
-            bufferIndex++;
+            bufferWriter.Write(_data.OffsetMemory.Span);
+            arrowSerializer.WriteBufferData(_data.OffsetMemory.Span);
 
+            bufferWriter.Write(_data.DataMemory.Span);
             // Write binary data
-            (offset, length) = arrowSerializer.WriteBufferData(_data.DataMemory.Span);
-            buffer = recordBatchStruct.Buffers(bufferIndex);
-            buffer.SetOffset(offset);
-            buffer.SetLength(length);
-            bufferIndex++;
+            arrowSerializer.WriteBufferData(_data.DataMemory.Span);
         }
     }
 }

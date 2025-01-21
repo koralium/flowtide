@@ -284,16 +284,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.CreateBuffer(1, 1);
+            arrowSerializer.AddBuffer(_data.MemorySlice.Length);
         }
 
-        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer)
         {
-            var (offset, length) = arrowSerializer.WriteBufferData(_data.MemorySlice.Span);
-            var buffer = recordBatchStruct.Buffers(bufferIndex);
-            buffer.SetOffset(offset);
-            buffer.SetLength(length);
-            bufferIndex++;
+            arrowSerializer.WriteBufferData(_data.MemorySlice.Span);
         }
     }
 }

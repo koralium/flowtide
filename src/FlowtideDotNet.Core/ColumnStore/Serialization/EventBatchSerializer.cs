@@ -94,7 +94,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             for (int i = 0; i < serializationEstimation.bufferCount; i++)
             {
-                arrowSerializer.CreateBuffer(0, 0);
+                eventBatchData.Columns[i].AddBuffers(ref arrowSerializer);
+                //arrowSerializer.CreateBuffer(0, 0);
             }
             var buffersPointer = arrowSerializer.EndVector();
 

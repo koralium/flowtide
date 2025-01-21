@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         internal void AddBuffers(ref ArrowSerializer arrowSerializer);
 
-        internal void WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex);
+        internal void WriteDataToBuffer(ref ArrowSerializer arrowSerializer);
 
         SerializationEstimation GetSerializationEstimate();
     }
