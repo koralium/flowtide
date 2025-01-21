@@ -15,7 +15,6 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
-using FluentAssertions;
 
 namespace FlowtideDotNet.Substrait.Tests
 {
@@ -147,9 +146,7 @@ namespace FlowtideDotNet.Substrait.Tests
                 }
             };
 
-            AssertionOptions.FormattingOptions.MaxDepth = 100;
-            AssertionOptions.FormattingOptions.MaxLines = 1000;
-            plan.Should().BeEquivalentTo(expectedPlan);
+            Assert.Equal(expectedPlan, plan);
         }
 
 
@@ -276,9 +273,7 @@ namespace FlowtideDotNet.Substrait.Tests
                 }
             };
 
-            AssertionOptions.FormattingOptions.MaxDepth = 100;
-            AssertionOptions.FormattingOptions.MaxLines = 1000;
-            plan.Should().BeEquivalentTo(expectedPlan);
+            Assert.Equal(expectedPlan, plan);
         }
 
         [Fact]
@@ -449,9 +444,7 @@ namespace FlowtideDotNet.Substrait.Tests
                 }
             };
 
-            AssertionOptions.FormattingOptions.MaxDepth = 100;
-            AssertionOptions.FormattingOptions.MaxLines = 1000;
-            plan.Should().BeEquivalentTo(expectedPlan);
+            Assert.Equal(expectedPlan, plan);
         }
 
         [Fact]
@@ -640,9 +633,7 @@ namespace FlowtideDotNet.Substrait.Tests
                 }
             };
 
-            AssertionOptions.FormattingOptions.MaxDepth = 100;
-            AssertionOptions.FormattingOptions.MaxLines = 1000;
-            plan.Should().BeEquivalentTo(expectedPlan);
+            Assert.Equal(expectedPlan, plan);
         }
 
         [Fact]
@@ -1038,9 +1029,7 @@ namespace FlowtideDotNet.Substrait.Tests
                 }
             };
 
-            AssertionOptions.FormattingOptions.MaxDepth = 100;
-            AssertionOptions.FormattingOptions.MaxLines = 1000;
-            plan.Should().BeEquivalentTo(expectedPlan);
+            Assert.Equal(expectedPlan, plan);
         }
     }
 }
