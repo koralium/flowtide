@@ -27,6 +27,7 @@ using System.Collections;
 using static SqlParser.Ast.TableConstraint;
 using FlowtideDotNet.Storage.Memory;
 using System.Text.Json;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -462,25 +463,20 @@ namespace FlowtideDotNet.Core.ColumnStore
         void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
         {
             _internalColumn.AddFieldNodes(ref arrowSerializer);
-            arrowSerializer.CreateFieldNode(_offsets.Count, nullCount);
+            arrowSerializer.CreateFieldNode(Count, nullCount);
         }
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
+            arrowSerializer.AddBufferForward(_offsets.Memory.Length);
             _internalColumn.AddBuffers(ref arrowSerializer);
-
-            arrowSerializer.CreateBuffer(1, 1);
         }
 
-        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            var (offset, length) = arrowSerializer.WriteBufferData(_offsets.Memory.Span);
-            var buffer = recordBatchStruct.Buffers(bufferIndex);
-            buffer.SetOffset(offset);
-            buffer.SetLength(length);
-            bufferIndex++;
+            dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
 
-            _internalColumn.WriteDataToBuffer(ref arrowSerializer, in recordBatchStruct, ref bufferIndex);
+            _internalColumn.WriteDataToBuffer(ref dataWriter);
         }
     }
 }

@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
@@ -92,7 +93,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         internal void AddBuffers(ref ArrowSerializer arrowSerializer);
 
-        internal void WriteDataToBuffer(ref ArrowSerializer arrowSerializer);
+        internal void WriteDataToBuffer(ref ArrowDataWriter dataWriter);
 
         SerializationEstimation GetSerializationEstimate();
     }

@@ -38,9 +38,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
         private int m_position;
 
-        public ArrowSerializer(Memory<byte> memory, Span<int> vtable, Span<int> vtables)
+        public ArrowSerializer(Span<byte> memory, Span<int> vtable, Span<int> vtables)
         {
-            m_destination = memory.Span;
+            m_destination = memory;
             m_vtable = vtable;
             m_vtables = vtables;
             m_maxSize = m_destination.Length;
@@ -52,9 +52,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             m_space = space;
         }
 
-        public void Reset(Memory<byte> memory, Span<int> vtable, Span<int> vtables, int space)
+        public void Reset(Span<byte> memory, Span<int> vtable, Span<int> vtables, int space)
         {
-            m_destination = memory.Span;
+            m_destination = memory;
             m_vtable = vtable;
             m_vtables = vtables;
             m_maxSize = m_destination.Length;

@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
@@ -284,12 +285,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBuffer(_data.MemorySlice.Length);
+            arrowSerializer.AddBufferForward(_data.MemorySlice.Length);
         }
 
-        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer)
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            arrowSerializer.WriteBufferData(_data.MemorySlice.Span);
+            dataWriter.WriteArrowBuffer(_data.MemorySlice.Span);
         }
     }
 }

@@ -1,9 +1,11 @@
 ﻿using Apache.Arrow.Ipc;
 using BenchmarkDotNet.Attributes;
+using FASTER.core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -19,6 +21,7 @@ namespace FlowtideDotNet.Benchmarks
         EventBatchSerializer eventBatchSerializer = new EventBatchSerializer();
         Apache.Arrow.RecordBatch? _recordBatch;
         MemoryStream _memoryStream = new MemoryStream();
+        private ArrayBufferWriter<byte> _bufferWriter = new ArrayBufferWriter<byte>();
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -40,13 +43,11 @@ namespace FlowtideDotNet.Benchmarks
         }
 
         [Benchmark]
-        public int FlowtideSerializer()
+        public void FlowtideSerializer()
         {
             Debug.Assert(_eventBatchData != null);
-            var serializationEstimation = eventBatchSerializer.GetSerializationEstimation(_eventBatchData);
-            eventBatchSerializer.SerializeSchema(_eventBatchData, serializationEstimation);
-            var buffer = eventBatchSerializer.SerializeRecordBatch(_eventBatchData, _eventBatchData.Count, serializationEstimation);
-            return buffer.Length;
+            _bufferWriter.ResetWrittenCount();
+            eventBatchSerializer.SerializeEventBatch(_bufferWriter, _eventBatchData, _eventBatchData.Count);
         }
 
         [Benchmark]
@@ -56,6 +57,7 @@ namespace FlowtideDotNet.Benchmarks
             _memoryStream.SetLength(0);
             var batchWriter = new ArrowStreamWriter(_memoryStream, _recordBatch.Schema, true);
             batchWriter.WriteRecordBatch(_recordBatch);
+            _memoryStream.ToArray();
         }
 
         [Benchmark]
@@ -66,6 +68,7 @@ namespace FlowtideDotNet.Benchmarks
             var recordBatch = EventArrowSerializer.BatchToArrow(_eventBatchData, _eventBatchData.Count);
             var batchWriter = new ArrowStreamWriter(_memoryStream, recordBatch.Schema, true);
             batchWriter.WriteRecordBatch(recordBatch);
+            _memoryStream.ToArray();
         }
     }
 }

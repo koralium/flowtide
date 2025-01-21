@@ -15,6 +15,7 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
@@ -1037,31 +1038,34 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 return;
             }
-            _dataColumn!.AddBuffers(ref arrowSerializer);
-            if (_nullCounter > 0)
+            if (_type != ArrowTypeId.Union)
             {
-                arrowSerializer.CreateBuffer(1, 1);
+                // Union does not have a validity bitmap in apache arrow
+                arrowSerializer.AddBufferForward(_validityList!.MemorySlice.Length);
             }
+            
+            _dataColumn!.AddBuffers(ref arrowSerializer);
         }
 
-        void IColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        void IColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            this.WriteDataToBuffer(ref arrowSerializer, in recordBatchStruct, ref bufferIndex);
+            this.WriteDataToBuffer(ref dataWriter);
         }
 
-        internal void WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        internal void WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             if (_type == ArrowTypeId.Null)
             {
                 return;
             }
-            var (offset, length) = arrowSerializer.WriteBufferData(_validityList!.MemorySlice.Span);
-            var validityBuffer = recordBatchStruct.Buffers(bufferIndex);
-            validityBuffer.SetOffset(offset);
-            validityBuffer.SetLength(length);
-            bufferIndex++;
 
-            _dataColumn!.WriteDataToBuffer(ref arrowSerializer, in recordBatchStruct, ref bufferIndex);
+            if (_type != ArrowTypeId.Union)
+            {
+                // Union does not have a validity bitmap in apache arrow
+                dataWriter.WriteArrowBuffer(_validityList!.MemorySlice.Span);
+            }
+
+            _dataColumn!.WriteDataToBuffer(ref dataWriter);
         }
     }
 }

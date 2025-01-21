@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
@@ -160,7 +161,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotSupportedException();
         }
 
-        void IColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        void IColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             throw new NotSupportedException();
         }

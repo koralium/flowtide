@@ -173,6 +173,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return EndTable();
         }
 
+        public int AddStructType()
+        {
+            StartTable(0);
+            return EndTable();
+        }
+
         void MapTypeAddKeysSorted(bool keysSorted) 
         { 
             AddBool(0, keysSorted, false); 

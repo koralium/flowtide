@@ -21,6 +21,7 @@ using FlowtideDotNet.Substrait.Expressions;
 using System.Text.Json;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -69,7 +70,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         internal void AddBuffers(ref ArrowSerializer arrowSerializer);
 
-        internal void WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex);
+        internal void WriteDataToBuffer(ref ArrowDataWriter dataWriter);
 
         void Rent(int count);
 

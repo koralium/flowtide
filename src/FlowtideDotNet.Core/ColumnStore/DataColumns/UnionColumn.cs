@@ -15,6 +15,7 @@ using Apache.Arrow.Memory;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
@@ -825,6 +826,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 fieldCount += estimate.fieldNodeCount;
                 bufferCount += estimate.bufferCount;
             }
+            bufferCount += _valueColumns.Count - 1; // Add validity buffers, except for the null array in the start
             return new SerializationEstimation(fieldCount, bufferCount, bodyLength);
         }
 
@@ -842,37 +844,29 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            for (int i = _valueColumns.Count - 1; i >= 0; i--)
+            arrowSerializer.AddBufferForward(_typeList.SlicedMemory.Length);
+            arrowSerializer.AddBufferForward(_offsets.Memory.Length);
+            for (int i = 1; i < _valueColumns.Count; i++) // We start at 1 since the first array is a null array which does not have any buffers
             {
                 if (_valueColumns[i] != null)
                 {
+                    arrowSerializer.AddBufferForward(0); // Empty validity buffer
                     _valueColumns[i].AddBuffers(ref arrowSerializer);
                 }
             }
-
-            arrowSerializer.CreateBuffer(1, 1);
-            arrowSerializer.CreateBuffer(1, 1);
         }
 
-        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            var (offset, length) = arrowSerializer.WriteBufferData(_typeList.SlicedMemory.Span);
-            var buffer = recordBatchStruct.Buffers(bufferIndex);
-            buffer.SetOffset(offset);
-            buffer.SetLength(length);
-            bufferIndex++;
+            dataWriter.WriteArrowBuffer(_typeList.SlicedMemory.Span);
+            dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
 
-            (offset, length) = arrowSerializer.WriteBufferData(_offsets.Memory.Span);
-            buffer = recordBatchStruct.Buffers(bufferIndex);
-            buffer.SetOffset(offset);
-            buffer.SetLength(length);
-            bufferIndex++;
-
-            for (int i = 0; i < _valueColumns.Count; i++)
+            for (int i = 1; i < _valueColumns.Count; i++) // We start at 1 since the first array is a null array which does not have any buffers
             {
                 if (_valueColumns[i] != null)
                 {
-                    _valueColumns[i].WriteDataToBuffer(ref arrowSerializer, in recordBatchStruct, ref bufferIndex);
+                    dataWriter.WriteArrowBuffer(Span<byte>.Empty); // Empty validity buffer
+                    _valueColumns[i].WriteDataToBuffer(ref dataWriter);
                 }
             }
         }

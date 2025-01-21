@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
@@ -248,19 +249,19 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBuffer(_data.OffsetMemory.Length);
-            arrowSerializer.AddBuffer(_data.DataMemory.Length);
+            arrowSerializer.AddBufferForward(_data.OffsetMemory.Length);
+            arrowSerializer.AddBufferForward(_data.DataMemory.Length);
         }
 
-        void IDataColumn.WriteDataToBuffer(ref Stream bufferWriter)
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             // Write offset data
-            bufferWriter.Write(_data.OffsetMemory.Span);
-            arrowSerializer.WriteBufferData(_data.OffsetMemory.Span);
+            //bufferWriter.Write(_data.OffsetMemory.Span);
+            dataWriter.WriteArrowBuffer(_data.OffsetMemory.Span);
 
-            bufferWriter.Write(_data.DataMemory.Span);
+
             // Write binary data
-            arrowSerializer.WriteBufferData(_data.DataMemory.Span);
+            dataWriter.WriteArrowBuffer(_data.DataMemory.Span);
         }
     }
 }

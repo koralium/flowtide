@@ -27,6 +27,7 @@ using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
 using System.Collections;
 using System.Text.Json;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -597,10 +598,14 @@ namespace FlowtideDotNet.Core.ColumnStore
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             var typePointer = arrowSerializer.AddMapType(true);
+            var structPointer = arrowSerializer.AddStructType();
             var childStack = pointerStack.Slice(2);
             pointerStack[0] = _keyColumn.CreateSchemaField(ref arrowSerializer, emptyStringPointer, childStack);
             pointerStack[1] = _valueColumn.CreateSchemaField(ref arrowSerializer, emptyStringPointer, childStack);
-            var childrenPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, 2));
+            var structChildrenPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, 2));
+            pointerStack[0] = arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Struct_, structPointer, childrenOffset: structChildrenPointer);
+            
+            var childrenPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, 1));
             return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Map, typePointer, childrenOffset: childrenPointer);
         }
 
@@ -609,8 +614,8 @@ namespace FlowtideDotNet.Core.ColumnStore
             var keyEstimate = _keyColumn.GetSerializationEstimate();
             var valueEstimate = _valueColumn.GetSerializationEstimate();
             return new SerializationEstimation(
-                1 + keyEstimate.fieldNodeCount + valueEstimate.fieldNodeCount,
-                1 + keyEstimate.bufferCount + valueEstimate.bufferCount,
+                2 + keyEstimate.fieldNodeCount + valueEstimate.fieldNodeCount,
+                2 + keyEstimate.bufferCount + valueEstimate.bufferCount,
                 keyEstimate.bodyLength + valueEstimate.bodyLength + (_offsets.Count * sizeof(int)));
         }
 
@@ -618,27 +623,31 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _valueColumn.AddFieldNodes(ref arrowSerializer);
             _keyColumn.AddFieldNodes(ref arrowSerializer);
+            arrowSerializer.CreateFieldNode(_keyColumn.Count, 0);
             arrowSerializer.CreateFieldNode(Count, nullCount);
         }
 
+        /// <summary>
+        /// Adds buffers in the same way Apache Arrow adds the buffers
+        /// The map column is treated as a List<Struct<KeyType, ValueType>>
+        /// First the offset is saved same as list, then the validity buffer for the struct, it is not used so it is set to 0.
+        /// Finally the two key and value buffers are added
+        /// </summary>
+        /// <param name="arrowSerializer"></param>
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            _valueColumn.AddBuffers(ref arrowSerializer);
+            arrowSerializer.AddBufferForward(_offsets.Memory.Length);
+            arrowSerializer.AddBufferForward(0); // Struct validity, it is not used so we set it to 0
             _keyColumn.AddBuffers(ref arrowSerializer);
-
-            arrowSerializer.CreateBuffer(1, 1);
+            _valueColumn.AddBuffers(ref arrowSerializer);
         }
 
-        void IDataColumn.WriteDataToBuffer(ref ArrowSerializer arrowSerializer, ref readonly RecordBatchStruct recordBatchStruct, ref int bufferIndex)
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            var (offset, length) = arrowSerializer.WriteBufferData(_offsets.Memory.Span);
-            var buffer = recordBatchStruct.Buffers(bufferIndex);
-            buffer.SetOffset(offset);
-            buffer.SetLength(length);
-            bufferIndex++;
-
-            _keyColumn.WriteDataToBuffer(ref arrowSerializer, in recordBatchStruct, ref bufferIndex);
-            _valueColumn.WriteDataToBuffer(ref arrowSerializer, in recordBatchStruct, ref bufferIndex);
+            dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
+            dataWriter.WriteArrowBuffer(Span<byte>.Empty); // Empty validity buffer
+            _keyColumn.WriteDataToBuffer(ref dataWriter);
+            _valueColumn.WriteDataToBuffer(ref dataWriter);
         }
     }
 }

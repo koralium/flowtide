@@ -15,7 +15,9 @@ using Apache.Arrow.Arrays;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
@@ -245,6 +247,36 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public int SchemaFieldCountEstimate()
+        {
+            throw new NotImplementedException();
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            throw new NotImplementedException();
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            throw new NotImplementedException();
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            throw new NotImplementedException();
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            throw new NotImplementedException();
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            throw new NotImplementedException();
         }
     }
 }
