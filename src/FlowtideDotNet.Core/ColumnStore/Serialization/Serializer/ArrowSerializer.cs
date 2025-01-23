@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         public Span<byte> CopyToStart(int padding)
         {
             m_destination.Slice(m_space).CopyTo(m_destination);
-            var outputSpan = m_destination.Slice(0, m_maxSize - m_space);
+            var outputSpan = m_destination.Slice(0, m_maxSize - m_space + padding);
             m_position += outputSpan.Length + padding;
             m_destination = m_destination.Slice(Offset + padding);
             m_maxSize = m_destination.Length;

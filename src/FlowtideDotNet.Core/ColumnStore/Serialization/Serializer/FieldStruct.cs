@@ -6,15 +6,16 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using static Substrait.Protobuf.Expression.Types.Literal.Types.Map.Types;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
     internal ref struct FieldStruct
     {
-        private readonly Span<byte> span;
+        private readonly ReadOnlySpan<byte> span;
         private readonly int position;
 
-        public FieldStruct(Span<byte> span, int position)
+        public FieldStruct(ReadOnlySpan<byte> span, int position)
         {
             this.span = span;
             this.position = position;
@@ -24,8 +25,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         { 
             get 
             {
-                int o = __offset(6); 
-                return o != 0 ? 0 != Get(o + position) : (bool)false; 
+                int o = ReadUtils.__offset(in span, in position, 6); 
+                return o != 0 ? 0 != ReadUtils.Get(in span, o + position) : (bool)false; 
             } 
         }
 
@@ -33,8 +34,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         { 
             get 
             { 
-                int o = __offset(8); 
-                return o != 0 ? (ArrowType)Get(o + position) : (ArrowType)0; 
+                int o = ReadUtils.__offset(in span, in position, 8); 
+                return o != 0 ? (ArrowType)ReadUtils.Get(in span, o + position) : 0; 
             } 
         }
 
@@ -42,87 +43,48 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         { 
             get 
             { 
-                int o = __offset(16); 
-                return o != 0 ? __vector_len(in span, in position, o) : 0; 
+                int o = ReadUtils.__offset(in span, in position, 16); 
+                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0; 
             } 
         }
 
-        public Span<byte> GetNameBytes() 
+        public KeyValueStruct CustomMetadata(int j)
+        {
+            int o = ReadUtils.__offset(in span, in position, 16);
+            var pos = ReadUtils.__indirect(in span, ReadUtils.__vector(in span, in position, o) + j * 4);
+            return new KeyValueStruct(span, pos);
+        }
+
+        public int ChildrenLength 
         { 
-            return __vector_as_span<byte>(4, 1);
+            get 
+            { 
+                int o = ReadUtils.__offset(in span, in position, 14); 
+                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0; 
+            }
+        }
+
+        public FieldStruct Children(int j)
+        {
+            int o = ReadUtils.__offset(in span, in position, 14);
+            return new FieldStruct(span, ReadUtils.__indirect(in span, ReadUtils.__vector(in span, in position, o) + j * 4));
+        }
+
+        public ReadOnlySpan<byte> GetNameBytes() 
+        { 
+            return ReadUtils.__vector_as_span<byte>(in span, in position, 4, 1);
         }
 
         public TypeUtf8Struct TypeAsUtf8() 
         { 
-            int o = __offset(10);
-            return new TypeUtf8Struct(span, __indirect(position + o)); 
+            int o = ReadUtils.__offset(in span, in position, 10);
+            return new TypeUtf8Struct(span, ReadUtils.__indirect(in span, position + o)); 
         }
 
         public TypeIntStruct TypeAsInt()
         {
-            int o = __offset(10);
-            return new TypeIntStruct(span, __indirect(position + o));
-        }
-
-        private int __indirect(int offset)
-        {
-            return offset + GetInt(in span, in offset);
-        }
-
-
-        public static int GetInt(ref readonly Span<byte> span, ref readonly int offset)
-        {
-            ReadOnlySpan<byte> readSpan = span.Slice(offset);
-            return BinaryPrimitives.ReadInt32LittleEndian(readSpan);
-        }
-
-        private int __offset(int vtableOffset)
-        {
-            int vtable = position - GetInt(in span, in position);
-            return vtableOffset < GetShort(in span, vtable) ? (int)GetShort(in span, vtable + vtableOffset) : 0;
-        }
-
-        private static short GetShort(ref readonly Span<byte> data, int position)
-        {
-            ReadOnlySpan<byte> span = data.Slice(position);
-            return BinaryPrimitives.ReadInt16LittleEndian(span);
-        }
-
-        public Span<T> __vector_as_span<T>(int offset, int elementSize) where T : struct
-        {
-            if (!BitConverter.IsLittleEndian)
-            {
-                throw new NotSupportedException("Getting typed span on a Big Endian " +
-                                                "system is not support");
-            }
-
-            var o = __offset(offset);
-            if (0 == o)
-            {
-                return new Span<T>();
-            }
-
-            var pos = __vector(o);
-            var len = __vector_len(in span, in position, o);
-            return MemoryMarshal.Cast<byte, T>(span.Slice(pos, len * elementSize));
-        }
-
-        private int __vector(int offset)
-        {
-            offset += position;
-            return offset + GetInt(in span, in offset) + sizeof(int);  // data starts after the length
-        }
-
-        private static int __vector_len(ref readonly Span<byte> span, ref readonly int position, int offset)
-        {
-            offset += position;
-            offset += GetInt(in span, in offset);
-            return GetInt(in span, in offset);
-        }
-
-        public byte Get(int index)
-        {
-            return span[index];
+            int o = ReadUtils.__offset(in span, in position, 10);
+            return new TypeIntStruct(span, ReadUtils.__indirect(in span, position + o));
         }
     }
 }

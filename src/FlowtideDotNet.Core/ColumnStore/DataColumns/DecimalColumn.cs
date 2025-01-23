@@ -237,11 +237,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             return new DecimalColumn(_values.Copy(memoryAllocator));
         }
 
-        public int SchemaFieldCountEstimate()
-        {
-            return 1;
-        }
-
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             var extensionKeyPointer = arrowSerializer.CreateStringUtf8("ARROW:extension:name"u8);

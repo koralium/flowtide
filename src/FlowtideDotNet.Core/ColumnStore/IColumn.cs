@@ -60,8 +60,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         (IArrowArray, IArrowType) ToArrowArray();
 
-        int GetSchemaFieldCountEstimate();
-
         SerializationEstimation GetSerializationEstimate();
 
         internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack);

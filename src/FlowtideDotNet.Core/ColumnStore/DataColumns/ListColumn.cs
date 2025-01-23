@@ -440,11 +440,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             return new ListColumn(_internalColumn.Copy(memoryAllocator), _offsets.Copy(memoryAllocator));
         }
 
-        public int SchemaFieldCountEstimate()
-        {
-            return 1 + _internalColumn.GetSchemaFieldCountEstimate();
-        }
-
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             var typePointer = arrowSerializer.AddListType();

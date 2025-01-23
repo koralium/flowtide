@@ -13,6 +13,7 @@
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
@@ -178,7 +179,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         }
 
         [Fact]
-        public void SerializeMapColumn()
+        public void TestSerializeMapColumn()
         {
             Column column = Column.Create(GlobalMemoryManager.Instance);
             column.Add(new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("a"), new Int64Value(2)), new KeyValuePair<IDataValue, IDataValue>(new StringValue("b"), new Int64Value(4))));
@@ -291,6 +292,266 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("a", stringArray.GetString(0));
             Assert.Equal(17, intArray.GetValue(0));
             Assert.Equal("b", stringArray.GetString(1));
+        }
+
+        [Fact]
+        public void TestSerializeTimestampTzColumn()
+        {
+            var date = DateTime.UtcNow;
+            var secondDate = date.AddSeconds(1);
+            Column column = Column.Create(GlobalMemoryManager.Instance);
+            column.Add(new TimestampTzValue(date));
+            column.Add(new TimestampTzValue(secondDate));
+
+            var batch = new EventBatchData([column]);
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+
+            serializer.SerializeEventBatch(bufferWriter, batch, 2);
+
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+
+            var recordBatch = reader.ReadNextRecordBatch();
+
+            Assert.True(recordBatch.Schema.FieldsList[0].Metadata.TryGetValue("ARROW:extension:name", out var customExtensionName));
+            Assert.Equal("flowtide.timestamptz", customExtensionName);
+
+            Assert.True(recordBatch.Schema.FieldsList[0].DataType is FixedSizeBinaryType);
+            var fixedSizeType = (FixedSizeBinaryType)recordBatch.Schema.FieldsList[0].DataType;
+            Assert.Equal(16, fixedSizeType.ByteWidth);
+
+            var deserializedColumn = (Apache.Arrow.Arrays.FixedSizeBinaryArray)recordBatch.Column(0);
+            Assert.Equal(date, MemoryMarshal.Cast<byte, TimestampTzValue>(deserializedColumn.GetBytes(0))[0].ToDateTimeOffset());
+            Assert.Equal(secondDate, MemoryMarshal.Cast<byte, TimestampTzValue>(deserializedColumn.GetBytes(1))[0].ToDateTimeOffset());
+        }
+
+        [Fact]
+        public void TestSerializeColumnWithNull()
+        {
+            Column column = Column.Create(GlobalMemoryManager.Instance);
+            column.Add(new StringValue("a"));
+            column.Add(NullValue.Instance);
+            column.Add(new StringValue("b"));
+
+            var batch = new EventBatchData([column]);
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+
+            serializer.SerializeEventBatch(bufferWriter, batch, 2);
+
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+
+            var recordBatch = reader.ReadNextRecordBatch();
+            Assert.NotNull(recordBatch);
+
+            Assert.True(recordBatch.Schema.FieldsList[0].DataType is StringType);
+
+            var deserializedColumn = (Apache.Arrow.StringArray)recordBatch.Column(0);
+
+            Assert.Equal("a", deserializedColumn.GetString(0));
+            Assert.True(deserializedColumn.IsNull(1));
+            Assert.Equal("b", deserializedColumn.GetString(2));
+        }
+
+        [Fact]
+        public void TestSerializeTwoColumnsIntAndString()
+        {
+            Column intColumn = Column.Create(GlobalMemoryManager.Instance);
+            intColumn.Add(new Int64Value(1));
+            intColumn.Add(new Int64Value(2));
+
+            Column stringColumn = Column.Create(GlobalMemoryManager.Instance);
+            stringColumn.Add(new StringValue("a"));
+            stringColumn.Add(new StringValue("b"));
+
+            var batch = new EventBatchData([intColumn, stringColumn]);
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+
+            serializer.SerializeEventBatch(bufferWriter, batch, 2);
+
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+
+            var recordBatch = reader.ReadNextRecordBatch();
+            Assert.NotNull(recordBatch);
+
+            Assert.True(recordBatch.Schema.FieldsList[0].DataType is Int64Type);
+            Assert.True(recordBatch.Schema.FieldsList[1].DataType is StringType);
+
+            var deserializedIntColumn = (Apache.Arrow.Int64Array)recordBatch.Column(0);
+            var deserializedStringColumn = (Apache.Arrow.StringArray)recordBatch.Column(1);
+
+            Assert.Equal(1, deserializedIntColumn.GetValue(0));
+            Assert.Equal(2, deserializedIntColumn.GetValue(1));
+
+            Assert.Equal("a", deserializedStringColumn.GetString(0));
+            Assert.Equal("b", deserializedStringColumn.GetString(1));
+        }
+
+        private void SerializeDeserializeTest(params IDataValue[] values)
+        {
+            Column column = Column.Create(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < values.Length; i++)
+            {
+                column.Add(values[i]);
+            }
+
+            var batch = new EventBatchData([column]);
+
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+            serializer.SerializeEventBatch(bufferWriter, batch, values.Length);
+
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
+
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader);
+            var deserializedBatch = batchDeserializer.DeserializeBatch();
+
+            Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeIntegerColumn()
+        {
+            SerializeDeserializeTest(
+                new Int64Value(1), 
+                new Int64Value(2));
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeBoolColumn()
+        {
+            SerializeDeserializeTest(
+                new BoolValue(true), 
+                new BoolValue(false), 
+                new BoolValue(true));
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeStringColumn()
+        {
+            SerializeDeserializeTest(
+                new StringValue("a"),
+                new StringValue("b"));
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeStringColumnWithNull()
+        {
+            SerializeDeserializeTest(
+                new StringValue("a"),
+                new StringValue("b"),
+                NullValue.Instance);
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeBinaryColumn()
+        {
+            SerializeDeserializeTest(
+                new BinaryValue(Encoding.UTF8.GetBytes("a")),
+                new BinaryValue(Encoding.UTF8.GetBytes("abc")));
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeDecimalColumn()
+        {
+            SerializeDeserializeTest(
+                new DecimalValue(1.23m),
+                new DecimalValue(3.17m));
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeTimestampTzColumn()
+        {
+            var date = DateTime.UtcNow;
+            var secondDate = date.AddSeconds(1);
+
+            SerializeDeserializeTest(
+                new TimestampTzValue(date),
+                new TimestampTzValue(secondDate));
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeDoubleColumn()
+        {
+            SerializeDeserializeTest(
+                new DoubleValue(1.23),
+                new DoubleValue(3.17));
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeListColumn()
+        {
+            SerializeDeserializeTest(
+                new ListValue(new Int64Value(1), new Int64Value(2)),
+                new ListValue(new Int64Value(3), new Int64Value(4), new Int64Value(5)));
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeEmptyListColumn()
+        {
+            Column column = Column.Create(GlobalMemoryManager.Instance);
+
+            column.Add(new ListValue(new Int64Value(1), new Int64Value(2)));
+
+            column.RemoveAt(0);
+
+            var batch = new EventBatchData([column]);
+
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+            serializer.SerializeEventBatch(bufferWriter, batch, 0);
+
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
+
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader);
+            var deserializedBatch = batchDeserializer.DeserializeBatch();
+
+            Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeMapColumn()
+        {
+            SerializeDeserializeTest(
+                new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("a"), new Int64Value(2)), new KeyValuePair<IDataValue, IDataValue>(new StringValue("b"), new Int64Value(4))),
+                new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("a"), new Int64Value(5))));
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeUnionColumn()
+        {
+            SerializeDeserializeTest(
+                new StringValue("a"),
+                new Int64Value(17),
+                new StringValue("b"),
+                NullValue.Instance);
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeUnionColumnWithDecimalAndTimestamp()
+        {
+            SerializeDeserializeTest(
+                new StringValue("a"),
+                new Int64Value(17),
+                new StringValue("b"),
+                NullValue.Instance,
+                new DecimalValue(3.17m),
+                new TimestampTzValue(DateTime.Now));
         }
     }
 }

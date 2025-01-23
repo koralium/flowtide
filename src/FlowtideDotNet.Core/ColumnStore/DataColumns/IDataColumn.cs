@@ -85,8 +85,6 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         IDataColumn Copy(IMemoryAllocator memoryAllocator);
 
-        int SchemaFieldCountEstimate();
-
         internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack);
 
         internal void AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount);

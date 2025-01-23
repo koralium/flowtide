@@ -20,10 +20,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
 {
     internal ref struct TypeUtf8Struct
     {
-        private readonly Span<byte> span;
+        private readonly ReadOnlySpan<byte> span;
         private readonly int position;
 
-        public TypeUtf8Struct(Span<byte> span, int position)
+        public TypeUtf8Struct(ReadOnlySpan<byte> span, int position)
         {
             this.span = span;
             this.position = position;

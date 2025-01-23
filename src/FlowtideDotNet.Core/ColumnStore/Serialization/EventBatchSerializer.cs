@@ -58,73 +58,73 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return serializationEstimation.bodyLength + overhead + (serializationEstimation.bufferCount * 8);
         }
 
-        public Span<byte> SerializeRecordBatch(EventBatchData eventBatchData, int count, SerializationEstimation serializationEstimation)
-        {
-            ArrowSerializer arrowSerializer = new ArrowSerializer(memory, vtable, vtables);
-            if (_schemaWritten)
-            {
-                arrowSerializer.SetSpacePosition(_space);
-                var schemaPadding = arrowSerializer.WriteMessageLengthAndPadding();
-                arrowSerializer.CopyToStart(schemaPadding);
-            }
+        //public Span<byte> SerializeRecordBatch(EventBatchData eventBatchData, int count, SerializationEstimation serializationEstimation)
+        //{
+        //    ArrowSerializer arrowSerializer = new ArrowSerializer(memory, vtable, vtables);
+        //    if (_schemaWritten)
+        //    {
+        //        arrowSerializer.SetSpacePosition(_space);
+        //        var schemaPadding = arrowSerializer.WriteMessageLengthAndPadding();
+        //        arrowSerializer.CopyToStart(schemaPadding);
+        //    }
 
-            var estimateBufferSize = GetEstimatedBufferSize(serializationEstimation);
+        //    var estimateBufferSize = GetEstimatedBufferSize(serializationEstimation);
 
-            if (memory.Length < estimateBufferSize)
-            {
-                if (_schemaWritten)
-                {
-                    throw new InvalidOperationException("Schema has been written, but buffer is too small to write record batch");
-                }
-                memory = new byte[estimateBufferSize];
-            }
+        //    if (memory.Length < estimateBufferSize)
+        //    {
+        //        if (_schemaWritten)
+        //        {
+        //            throw new InvalidOperationException("Schema has been written, but buffer is too small to write record batch");
+        //        }
+        //        memory = new byte[estimateBufferSize];
+        //    }
 
-            if ((serializationEstimation.fieldNodeCount * 2) > vtable.Length)
-            {
-                vtable = new int[serializationEstimation.fieldNodeCount * 2];
-                vtables = new int[serializationEstimation.fieldNodeCount * 2];
-                stackPointers = new int[serializationEstimation.fieldNodeCount * 2];
-            }
+        //    if ((serializationEstimation.fieldNodeCount * 2) > vtable.Length)
+        //    {
+        //        vtable = new int[serializationEstimation.fieldNodeCount * 2];
+        //        vtables = new int[serializationEstimation.fieldNodeCount * 2];
+        //        stackPointers = new int[serializationEstimation.fieldNodeCount * 2];
+        //    }
 
-            arrowSerializer.RecordBatchStartNodesVector(serializationEstimation.fieldNodeCount);
-            for (int i = eventBatchData.Columns.Count - 1; i >= 0; i--)
-            {
-                eventBatchData.Columns[i].AddFieldNodes(ref arrowSerializer);
-            }
-            var nodesPointer = arrowSerializer.EndVector();
+        //    arrowSerializer.RecordBatchStartNodesVector(serializationEstimation.fieldNodeCount);
+        //    for (int i = eventBatchData.Columns.Count - 1; i >= 0; i--)
+        //    {
+        //        eventBatchData.Columns[i].AddFieldNodes(ref arrowSerializer);
+        //    }
+        //    var nodesPointer = arrowSerializer.EndVector();
 
-            arrowSerializer.RecordBatchStartBuffersVector(serializationEstimation.bufferCount);
+        //    arrowSerializer.RecordBatchStartBuffersVector(serializationEstimation.bufferCount);
 
-            for (int i = 0; i < serializationEstimation.bufferCount; i++)
-            {
-                eventBatchData.Columns[i].AddBuffers(ref arrowSerializer);
-                //arrowSerializer.CreateBuffer(0, 0);
-            }
-            var buffersPointer = arrowSerializer.EndVector();
+        //    for (int i = 0; i < serializationEstimation.bufferCount; i++)
+        //    {
+        //        eventBatchData.Columns[i].AddBuffers(ref arrowSerializer);
+        //        //arrowSerializer.CreateBuffer(0, 0);
+        //    }
+        //    var buffersPointer = arrowSerializer.EndVector();
 
-            var recordBatchPointer = arrowSerializer.CreateRecordBatch(count, nodesPointer, buffersPointer);
+        //    var recordBatchPointer = arrowSerializer.CreateRecordBatch(count, nodesPointer, buffersPointer);
 
-            var messagePointer = arrowSerializer.CreateMessage(4, MessageHeader.RecordBatch, recordBatchPointer, 1);
+        //    var messagePointer = arrowSerializer.CreateMessage(4, MessageHeader.RecordBatch, recordBatchPointer, 1);
 
-            arrowSerializer.Finish(messagePointer);
-            var padding = arrowSerializer.WriteMessageLengthAndPadding();
-            var recordBatchSpan = arrowSerializer.CopyToStart(padding);
-            var message = MessageStruct.ReadMessage(ref recordBatchSpan);
-            var recordBatchPosition = message.HeaderPosition();
+        //    arrowSerializer.Finish(messagePointer);
+        //    var padding = arrowSerializer.WriteMessageLengthAndPadding();
+        //    var recordBatchSpan = arrowSerializer.CopyToStart(padding);
+        //    var message = MessageStruct.ReadMessage(ref recordBatchSpan);
+        //    var recordBatchPosition = message.HeaderPosition();
 
-            var recordBatchStruct = new RecordBatchStruct(recordBatchSpan, recordBatchPosition);
-            int bufferIndex = 0;
-            for (int i = 0; i < eventBatchData.Columns.Count; i++)
-            {
-                //eventBatchData.Columns[i].WriteDataToBuffer(ref arrowSerializer, ref recordBatchStruct, ref bufferIndex);
-            }
+        //    var recordBatchStruct = new RecordBatchStruct(recordBatchSpan, recordBatchPosition);
+        //    int bufferIndex = 0;
+        //    for (int i = 0; i < eventBatchData.Columns.Count; i++)
+        //    {
+        //        //eventBatchData.Columns[i].WriteDataToBuffer(ref arrowSerializer, ref recordBatchStruct, ref bufferIndex);
+        //    }
 
-            var totalBodyLength = arrowSerializer.FinishWritingBufferData();
-            message.SetBodyLength(totalBodyLength);
+        //    var totalBodyLength = arrowSerializer.FinishWritingBufferData();
+        //    message.SetBodyLength(totalBodyLength);
 
-            return memory.AsSpan().Slice(0, arrowSerializer.Position);
-            //return new byte[0];
-        }
+        //    return memory.AsSpan().Slice(0, arrowSerializer.Position);
+        //    //return new byte[0];
+        //}
 
         /// <summary>
         /// Serializes an event batch data to an IBufferWriter

@@ -21,10 +21,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
 {
     internal ref struct TypeIntStruct
     {
-        private readonly Span<byte> span;
+        private readonly ReadOnlySpan<byte> span;
         private readonly int position;
 
-        public TypeIntStruct(Span<byte> span, int position)
+        public TypeIntStruct(ReadOnlySpan<byte> span, int position)
         {
             this.span = span;
             this.position = position;
@@ -34,8 +34,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
         { 
             get 
             { 
-                int o = __offset(4); 
-                return o != 0 ? GetInt(in span, o + position) : (int)0; 
+                int o = ReadUtils.__offset(in span, in position, 4); 
+                return o != 0 ? ReadUtils.GetInt(in span, o + position) : (int)0; 
             } 
         }
 
@@ -43,34 +43,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
         { 
             get 
             { 
-                int o = __offset(6); 
-                return o != 0 ? 0 != Get(o + position) : (bool)false; 
+                int o = ReadUtils.__offset(in span, in position, 6); 
+                return o != 0 ? 0 != ReadUtils.Get(in span, o + position) : (bool)false; 
             } 
         }
-
-
-        public static int GetInt(ref readonly Span<byte> span, in int offset)
-        {
-            ReadOnlySpan<byte> readSpan = span.Slice(offset);
-            return BinaryPrimitives.ReadInt32LittleEndian(readSpan);
-        }
-
-        private int __offset(int vtableOffset)
-        {
-            int vtable = position - GetInt(in span, in position);
-            return vtableOffset < GetShort(in span, vtable) ? (int)GetShort(in span, vtable + vtableOffset) : 0;
-        }
-
-        private static short GetShort(ref readonly Span<byte> data, int position)
-        {
-            ReadOnlySpan<byte> span = data.Slice(position);
-            return BinaryPrimitives.ReadInt16LittleEndian(span);
-        }
-
-        public byte Get(int index)
-        {
-            return span[index];
-        }
-
     }
 }

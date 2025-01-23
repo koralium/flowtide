@@ -239,11 +239,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             return new DoubleColumn(_data.Copy(memoryAllocator));
         }
 
-        public int SchemaFieldCountEstimate()
-        {
-            return 1;
-        }
-
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             var typePointer = arrowSerializer.AddDoubleType();

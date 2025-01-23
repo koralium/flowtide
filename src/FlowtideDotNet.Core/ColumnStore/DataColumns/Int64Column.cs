@@ -302,11 +302,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             return new Int64Column(newMem, Count, memoryAllocator);
         }
 
-        public int SchemaFieldCountEstimate()
-        {
-            return 1;
-        }
-
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             var typePointer = arrowSerializer.AddInt64Type();

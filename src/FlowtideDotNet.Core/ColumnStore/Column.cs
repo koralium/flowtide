@@ -974,16 +974,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             return new Column(_nullCounter, _dataColumn?.Copy(memoryAllocator), _validityList!.Copy(memoryAllocator), _type, memoryAllocator);
         }
 
-        public int GetSchemaFieldCountEstimate()
-        {
-            if (_type == ArrowTypeId.Null)
-            {
-                return 1;
-            }
-
-            return 1 + _dataColumn!.SchemaFieldCountEstimate();
-        }
-
         internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             if (_type == ArrowTypeId.Null)

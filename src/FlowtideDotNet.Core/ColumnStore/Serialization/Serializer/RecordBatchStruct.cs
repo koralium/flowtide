@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,10 +10,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
     internal readonly ref struct RecordBatchStruct
     {
-        private readonly Span<byte> span;
+        private readonly ReadOnlySpan<byte> span;
         private readonly int position;
 
-        public RecordBatchStruct(Span<byte> span, int position)
+        public RecordBatchStruct(ReadOnlySpan<byte> span, int position)
         {
             this.span = span;
             this.position = position;
@@ -22,8 +23,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         { 
             get 
             { 
-                int o = __offset(4); 
-                return o != 0 ? GetLong(o + position) : (long)0; 
+                int o = ReadUtils.__offset(in span, in position, 4); 
+                return o != 0 ? ReadUtils.GetLong(in span, o + position) : (long)0; 
             } 
         }
 
@@ -31,15 +32,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         { 
             get 
             { 
-                int o = __offset(6); 
-                return o != 0 ? __vector_len(in span, in position, o) : 0; 
+                int o = ReadUtils.__offset(in span, in position, 6); 
+                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0; 
             } 
         }
 
         public FieldNodeStruct Nodes(int j) 
         { 
-            int o = __offset(6);
-            var location = __vector(o) + j * 16;
+            int o = ReadUtils.__offset(in span, in position, 6);
+            var location = ReadUtils.__vector(in span, in position, o) + j * 16;
             return new FieldNodeStruct(span, location); 
         }
 
@@ -47,53 +48,26 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         { 
             get 
             { 
-                int o = __offset(8); 
-                return o != 0 ? __vector_len(in span, in position, o) : 0; 
+                int o = ReadUtils.__offset(in span, in position, 8); 
+                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0; 
             } 
+        }
+
+        public int BuffersStartIndex
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 8);
+                var location = ReadUtils.__vector(in span, in position, o);
+                return location;
+            }
         }
 
         public BufferStruct Buffers(int j) 
         { 
-            int o = __offset(8);
-            var location = __vector(o) + j * 16;
+            int o = ReadUtils.__offset(in span, in position, 8);
+            var location = ReadUtils.__vector(in span, in position, o) + j * 16;
             return new BufferStruct(span, location);
-        }
-
-        private int __offset(int vtableOffset)
-        {
-            int vtable = position - GetInt(in span, in position);
-            return vtableOffset < GetShort(in span, vtable) ? (int)GetShort(in span, vtable + vtableOffset) : 0;
-        }
-
-        private long GetLong(int offset)
-        {
-            ReadOnlySpan<byte> span = this.span.Slice(offset);
-            return BinaryPrimitives.ReadInt64LittleEndian(span);
-        }
-
-        private static short GetShort(ref readonly Span<byte> data, int position)
-        {
-            ReadOnlySpan<byte> span = data.Slice(position);
-            return BinaryPrimitives.ReadInt16LittleEndian(span);
-        }
-
-        private static int GetInt(ref readonly Span<byte> span, ref readonly int offset)
-        {
-            ReadOnlySpan<byte> readSpan = span.Slice(offset);
-            return BinaryPrimitives.ReadInt32LittleEndian(readSpan);
-        }
-
-        private static int __vector_len(ref readonly Span<byte> span, ref readonly int position, int offset)
-        {
-            offset += position;
-            offset += GetInt(in span, in offset);
-            return GetInt(in span, in offset);
-        }
-
-        private int __vector(int offset)
-        {
-            offset += position;
-            return offset + GetInt(in span, in offset) + sizeof(int);  // data starts after the length
         }
     }
 }

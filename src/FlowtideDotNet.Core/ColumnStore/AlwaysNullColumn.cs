@@ -136,11 +136,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotSupportedException();
         }
 
-        public int GetSchemaFieldCountEstimate()
-        {
-            return 1;
-        }
-
         int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             throw new NotSupportedException();

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,10 +10,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
     internal ref struct BufferStruct
     {
-        private readonly Span<byte> span;
+        private readonly ReadOnlySpan<byte> span;
         private readonly int position;
 
-        public BufferStruct(Span<byte> span, int position)
+        public BufferStruct(ReadOnlySpan<byte> span, int position)
         {
             this.span = span;
             this.position = position;
@@ -22,7 +23,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         {
             get
             {
-                return GetLong(position + 8);
+                return ReadUtils.GetLong(in span, position + 8);
             }
         }
 
@@ -30,24 +31,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         {
             get
             {
-                return GetLong(position + 0);
+                return ReadUtils.GetLong(in span, position + 0);
             }
-        }
-
-        public void SetLength(long value)
-        {
-            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(position + 8), value);
-        }
-
-        public void SetOffset(long value)
-        {
-            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(position + 0), value);
-        }
-
-        private long GetLong(int offset)
-        {
-            ReadOnlySpan<byte> span = this.span.Slice(offset);
-            return BitConverter.ToInt64(span);
         }
     }
 }

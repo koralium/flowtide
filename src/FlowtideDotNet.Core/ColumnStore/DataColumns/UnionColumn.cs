@@ -775,16 +775,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return new UnionColumn(columns, _typeList.Copy(memoryAllocator), _offsets.Copy(memoryAllocator), _typeIds.ToArray(), memoryAllocator);
         }
 
-        public int SchemaFieldCountEstimate()
-        {
-            int size = 1;
-            for (int i = 0; i < _valueColumns.Count; i++)
-            {
-                size += _valueColumns[i].SchemaFieldCountEstimate();
-            }
-            return size;
-        }
-
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             int count = 0;

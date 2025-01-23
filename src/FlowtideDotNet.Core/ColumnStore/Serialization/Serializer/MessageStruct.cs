@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,10 +20,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
     internal ref struct MessageStruct
     {
-        private readonly Span<byte> span;
+        private readonly ReadOnlySpan<byte> span;
         private readonly int position;
 
-        public MessageStruct(Span<byte> span, int offset)
+        public MessageStruct(ReadOnlySpan<byte> span, int offset)
         {
             this.span = span;
             this.position = offset;
@@ -32,29 +33,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         { 
             get 
             { 
-                int o = __offset(10); 
-                return o != 0 ? GetLong(o + position) : (long)0; 
+                int o = ReadUtils.__offset(in span, in position, 10); 
+                return o != 0 ? ReadUtils.GetLong(in span, o + position) : (long)0; 
             } 
         }
 
-        public void SetBodyLength(long value)
-        {
-            int o = __offset(10);
-            SetLong(o + position, value);
-        }
-
-        private void SetLong(int offset, long value)
-        {
-            BinaryPrimitives.WriteInt64LittleEndian(span.Slice(offset), value);
-        }
-
-        private long GetLong(int offset)
-        {
-            ReadOnlySpan<byte> span = this.span.Slice(offset);
-            return BitConverter.ToInt64(span);
-        }
-
-        public static MessageStruct ReadMessage(ref readonly Span<byte> span)
+        public static MessageStruct ReadMessage(ref readonly ReadOnlySpan<byte> span)
         {
             var ipcMessage = BinaryPrimitives.ReadInt32LittleEndian(span);
             if (ipcMessage != -1)
@@ -65,63 +49,40 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return GetRootAsMessage(in span, 8);
         }
 
-        public static MessageStruct GetRootAsMessage(ref readonly Span<byte> span, int position)
+        public static MessageStruct GetRootAsMessage(ref readonly ReadOnlySpan<byte> span, int position)
         {
-            var offset = GetInt(in span, in position) + position;
+            var offset = ReadUtils.GetInt(in span, position) + position;
             return new MessageStruct(span, offset);
-        }
-
-        public static int GetInt(ref readonly Span<byte> span, ref readonly int offset)
-        {
-            ReadOnlySpan<byte> readSpan = span.Slice(offset);
-            return BinaryPrimitives.ReadInt32LittleEndian(readSpan);
         }
 
         public SchemaStruct Schema => GetSchema();
 
         public SchemaStruct GetSchema()
         {
-            int o = __offset(8);
-            return new SchemaStruct(span, __indirect(position + o));
+            int o = ReadUtils.__offset(in span, in position, 8);
+            return new SchemaStruct(span, ReadUtils.__indirect(in span, position + o));
         }
 
         public RecordBatchStruct RecordBatch()
         {
-            int o = __offset(8);
-            return new RecordBatchStruct(span, __indirect(position + o));
+            int o = ReadUtils.__offset(in span, in position, 8);
+            return new RecordBatchStruct(span, ReadUtils.__indirect(in span, position + o));
         }
 
         public int HeaderPosition()
         {
-            int o = __offset(8);
-            return __indirect(position + o);
+            int o = ReadUtils.__offset(in span, in position, 8);
+            return ReadUtils.__indirect(in span, position + o);
         }
 
-        public Span<byte> Span => span;
+        public MessageHeader HeaderType => GetHeaderType();
 
-
-        private int __offset(int vtableOffset)
+        public MessageHeader GetHeaderType()
         {
-            int vtable = position - GetInt(in span, in position);
-            if (vtableOffset < GetShort(vtable))
-            {
-                return GetShort(vtable + vtableOffset);
-            }
-            else
-            {
-                return 0;
-            }
+            int o = ReadUtils.__offset(in span, in position, 6);
+            return (MessageHeader)ReadUtils.Get(in span, o + position);
         }
 
-        private short GetShort(int position)
-        {
-            ReadOnlySpan<byte> span = this.span.Slice(position);
-            return BinaryPrimitives.ReadInt16LittleEndian(span);
-        }
-
-        private int __indirect(int offset)
-        {
-            return offset + GetInt(in span, in offset);
-        }
+        public ReadOnlySpan<byte> Span => span;
     }
 }

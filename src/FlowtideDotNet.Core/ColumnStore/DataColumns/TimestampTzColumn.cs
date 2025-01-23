@@ -249,34 +249,34 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             GC.SuppressFinalize(this);
         }
 
-        public int SchemaFieldCountEstimate()
-        {
-            throw new NotImplementedException();
-        }
-
         public SerializationEstimation GetSerializationEstimate()
         {
-            throw new NotImplementedException();
+            return new SerializationEstimation(1, 1, GetByteSize());
         }
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
-            throw new NotImplementedException();
+            var extensionKeyPointer = arrowSerializer.CreateStringUtf8("ARROW:extension:name"u8);
+            var extensionValuePointer = arrowSerializer.CreateStringUtf8("flowtide.timestamptz"u8);
+            var typePointer = arrowSerializer.AddFixedSizeBinaryType(16);
+            pointerStack[0] = arrowSerializer.CreateKeyValue(extensionKeyPointer, extensionValuePointer);
+            var customMetadataPointer = arrowSerializer.CreateCustomMetadataVector(pointerStack.Slice(0, 1));
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.FixedSizeBinary, typePointer, custom_metadataOffset: customMetadataPointer);
         }
 
         void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
         {
-            throw new NotImplementedException();
+            arrowSerializer.CreateFieldNode(Count, nullCount);
         }
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            throw new NotImplementedException();
+            arrowSerializer.AddBufferForward(_values.SlicedMemory.Length);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            throw new NotImplementedException();
+            dataWriter.WriteArrowBuffer(_values.SlicedMemory.Span);
         }
     }
 }

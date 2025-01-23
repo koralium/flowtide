@@ -262,11 +262,6 @@ namespace FlowtideDotNet.Core.ColumnStore
             return new BoolColumn(newMemory, Count, memoryAllocator);
         }
 
-        public int SchemaFieldCountEstimate()
-        {
-            return 1;
-        }
-
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
             var boolTypePointer = arrowSerializer.AddBooleanType();

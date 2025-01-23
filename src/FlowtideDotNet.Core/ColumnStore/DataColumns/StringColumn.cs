@@ -45,12 +45,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             _binaryList = new BinaryList(memoryAllocator);
         }
 
-        public StringColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte> dataMemory, IMemoryAllocator memoryAllocator)
+        public StringColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
         {
             _binaryList = new BinaryList(offsetMemory, offsetLength, dataMemory, memoryAllocator);
         }
 
-        internal StringColumn(BinaryList binaryList)
+        private StringColumn(BinaryList binaryList)
         {
             _binaryList = binaryList;
         }
@@ -248,11 +248,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new StringColumn(_binaryList.Copy(memoryAllocator));
-        }
-
-        public int SchemaFieldCountEstimate()
-        {
-            return 1;
         }
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
