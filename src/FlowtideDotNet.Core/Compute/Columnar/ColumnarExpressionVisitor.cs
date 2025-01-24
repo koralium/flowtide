@@ -162,6 +162,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             return System.Linq.Expressions.Expression.Constant(new DoubleValue((double)numericLiteral.Value), typeof(IDataValue));
         }
 
+        public override System.Linq.Expressions.Expression? VisitBinaryLiteral(BinaryLiteral binaryLiteral, ColumnParameterInfo state)
+        {
+            return System.Linq.Expressions.Expression.Constant(new BinaryValue(binaryLiteral.Value), typeof(IDataValue));
+        }
+
         public override System.Linq.Expressions.Expression? VisitCastExpression(CastExpression castExpression, ColumnParameterInfo state)
         {
             var visitState = state.UpdateResultDataValue(System.Linq.Expressions.Expression.Constant(new DataValueContainer()));
