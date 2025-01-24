@@ -4,10 +4,37 @@
         <title>Flowtide Blog</title>
         <link>https://koralium.github.io/flowtide/blog</link>
         <description>Flowtide Blog</description>
-        <lastBuildDate>Thu, 14 Nov 2024 00:00:00 GMT</lastBuildDate>
+        <lastBuildDate>Fri, 24 Jan 2025 00:00:00 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>https://github.com/jpmonette/feed</generator>
         <language>en</language>
+        <item>
+            <title><![CDATA[Release 0.12.0]]></title>
+            <link>https://koralium.github.io/flowtide/blog/release-0-12-0</link>
+            <guid>https://koralium.github.io/flowtide/blog/release-0-12-0</guid>
+            <pubDate>Fri, 24 Jan 2025 00:00:00 GMT</pubDate>
+            <description><![CDATA[Major changes]]></description>
+            <content:encoded><![CDATA[<h2 class="anchor anchorWithStickyNavbar_LWe7" id="major-changes">Major changes<a href="https://koralium.github.io/flowtide/blog/release-0-12-0#major-changes" class="hash-link" aria-label="Direct link to Major changes" title="Direct link to Major changes">​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="all-processing-operators-updated-to-column-based-events">All Processing Operators Updated to Column-Based Events<a href="https://koralium.github.io/flowtide/blog/release-0-12-0#all-processing-operators-updated-to-column-based-events" class="hash-link" aria-label="Direct link to All Processing Operators Updated to Column-Based Events" title="Direct link to All Processing Operators Updated to Column-Based Events">​</a></h3>
+<p>All processing operators now use the column-based event format, leading to better performance.
+However, some sources and sinks for connectors still use the row-based event format.
+Additionally, a few functions continue to rely on the row-based event format.</p>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="mongodb-source-support">MongoDB Source Support<a href="https://koralium.github.io/flowtide/blog/release-0-12-0#mongodb-source-support" class="hash-link" aria-label="Direct link to MongoDB Source Support" title="Direct link to MongoDB Source Support">​</a></h3>
+<p>This release adds support to read data from MongoDB, this includes using
+MongoDBs change stream to directly react on data changes.</p>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="sql-server-support-for-stream-state-persistence">SQL Server Support for Stream State Persistence<a href="https://koralium.github.io/flowtide/blog/release-0-12-0#sql-server-support-for-stream-state-persistence" class="hash-link" aria-label="Direct link to SQL Server Support for Stream State Persistence" title="Direct link to SQL Server Support for Stream State Persistence">​</a></h3>
+<p>You can now store the stream state in SQL Server. For setup instructions, refer to the documentation:
+<a href="https://koralium.github.io/flowtide/docs/statepersistence#sql-server-storage" target="_blank" rel="noopener noreferrer">https://koralium.github.io/flowtide/docs/statepersistence#sql-server-storage</a></p>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="timestamp-with-time-zone-data-type">Timestamp with Time Zone Data Type<a href="https://koralium.github.io/flowtide/blog/release-0-12-0#timestamp-with-time-zone-data-type" class="hash-link" aria-label="Direct link to Timestamp with Time Zone Data Type" title="Direct link to Timestamp with Time Zone Data Type">​</a></h3>
+<p>A new data type for timestamps has been added.
+This ensures that connectors can correctly use the appropriate data type, especially when writing.
+For example, writing to MongoDB now uses the BSON Date type.</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="minor-changes">Minor Changes<a href="https://koralium.github.io/flowtide/blog/release-0-12-0#minor-changes" class="hash-link" aria-label="Direct link to Minor Changes" title="Direct link to Minor Changes">​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="virtual-table-support">Virtual Table Support<a href="https://koralium.github.io/flowtide/blog/release-0-12-0#virtual-table-support" class="hash-link" aria-label="Direct link to Virtual Table Support" title="Direct link to Virtual Table Support">​</a></h3>
+<p>Static data selection is now supported. Example usage:</p>
+<div class="codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_biex"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">INSERT INTO output </span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">SELECT * FROM </span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">(</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  VALUES </span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  (1, 'a'),</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  (2, 'b'),</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  (3, 'c')</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">)</span><br></span></code></pre><div class="buttonGroup__atx"><button type="button" aria-label="Copy code to clipboard" title="Copy" class="clean-btn"><span class="copyButtonIcons_eSgA" aria-hidden="true"><svg viewBox="0 0 24 24" class="copyButtonIcon_y97N"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"></path></svg><svg viewBox="0 0 24 24" class="copyButtonSuccessIcon_LjdS"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"></path></svg></span></button></div></div></div>]]></content:encoded>
+            <category>release</category>
+        </item>
         <item>
             <title><![CDATA[Release 0.11.0]]></title>
             <link>https://koralium.github.io/flowtide/blog/release-0-11-0</link>

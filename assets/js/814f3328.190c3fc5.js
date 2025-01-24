@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkflowtide=self.webpackChunkflowtide||[]).push([[7472],{5513:e=>{e.exports=JSON.parse('{"title":"Recent posts","items":[{"title":"Release 0.11.0","permalink":"/flowtide/blog/release-0-11-0","unlisted":false,"date":"2024-11-14T00:00:00.000Z"}]}')}}]);
