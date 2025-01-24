@@ -2068,5 +2068,54 @@ namespace FlowtideDotNet.Substrait.Tests
             Assert.Equal(expected, plan);
         }
 
+        [Fact]
+        public void SelectBinaryData()
+        {
+            builder.Sql(@"
+                SELECT 0x544F2041 as hex
+            ");
+
+            var plan = builder.GetPlan();
+
+            var expected = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new VirtualTableReadRelation()
+                    {
+                        BaseSchema = new NamedStruct()
+                        {
+                            Names = new List<string>() { "hex" },
+                            Struct = new Struct()
+                            {
+                                Types = new List<SubstraitBaseType>()
+                                {
+                                    new BinaryType()
+                                }
+                            }
+                        },
+                        Values = new VirtualTable()
+                        {
+                            Expressions = new List<StructExpression>()
+                            {
+                                new StructExpression()
+                                {
+                                    Fields = new List<Expression>()
+                                    {
+                                        new BinaryLiteral()
+                                        {
+                                            Value = new byte[]{84, 79, 32, 65}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            Assert.Equal(expected, plan);
+        }
+
     }
 }

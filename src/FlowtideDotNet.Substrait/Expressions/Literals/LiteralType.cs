@@ -18,6 +18,7 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
         String,
         Array,
         Numeric,
-        Null
+        Null,
+        Binary
     }
 }
