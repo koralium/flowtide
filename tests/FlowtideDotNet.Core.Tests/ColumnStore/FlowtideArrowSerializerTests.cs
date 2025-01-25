@@ -295,6 +295,36 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         }
 
         [Fact]
+        public void TestSerializeDeserializeEmptyUnionColumn()
+        {
+            Column column = Column.Create(GlobalMemoryManager.Instance);
+            column.Add(new StringValue("a"));
+            column.Add(new Int64Value(17));
+
+            column.RemoveAt(1);
+            column.RemoveAt(0);
+
+            var batch = new EventBatchData([column]);
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+
+            serializer.SerializeEventBatch(bufferWriter, batch, 2);
+
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
+
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader);
+            var deserializedBatch = batchDeserializer.DeserializeBatch();
+            Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
+
+            column.Add(new Int64Value(3));
+            deserializedBatch.Columns[0].Add(new Int64Value(3));
+
+            Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
+        }
+
+        [Fact]
         public void TestSerializeTimestampTzColumn()
         {
             var date = DateTime.UtcNow;

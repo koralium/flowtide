@@ -1,4 +1,16 @@
-﻿using Apache.Arrow.Ipc;
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using Apache.Arrow.Ipc;
 using BenchmarkDotNet.Attributes;
 using FASTER.core;
 using FlowtideDotNet.Core.ColumnStore;
@@ -49,13 +61,13 @@ namespace FlowtideDotNet.Benchmarks
             _bufferWriter.ResetWrittenCount();
         }
 
-        //[Benchmark]
-        //public void FlowtideSerializer()
-        //{
-        //    Debug.Assert(_eventBatchData != null);
-        //    _bufferWriter.ResetWrittenCount();
-        //    eventBatchSerializer.SerializeEventBatch(_bufferWriter, _eventBatchData, _eventBatchData.Count);
-        //}
+        [Benchmark]
+        public void FlowtideSerializer()
+        {
+            Debug.Assert(_eventBatchData != null);
+            _bufferWriter.ResetWrittenCount();
+            eventBatchSerializer.SerializeEventBatch(_bufferWriter, _eventBatchData, _eventBatchData.Count);
+        }
 
         [Benchmark]
         public void FlowtideDeserialize()
@@ -66,18 +78,27 @@ namespace FlowtideDotNet.Benchmarks
             batch.Dispose();
         }
 
-        //[Benchmark]
-        //public void ArrowSerializer()
-        //{
-        //    Debug.Assert(_recordBatch != null);
-        //    _memoryStream.SetLength(0);
-        //    var batchWriter = new ArrowStreamWriter(_memoryStream, _recordBatch.Schema, true);
-        //    batchWriter.WriteRecordBatch(_recordBatch);
-        //    _memoryStream.ToArray();
-        //}
+        [Benchmark]
+        public void ArrowSerializer()
+        {
+            Debug.Assert(_recordBatch != null);
+            _memoryStream.SetLength(0);
+            var batchWriter = new ArrowStreamWriter(_memoryStream, _recordBatch.Schema, true);
+            batchWriter.WriteRecordBatch(_recordBatch);
+        }
 
         [Benchmark]
         public void ArrowDeserialize()
+        {
+            Debug.Assert(_toDeserialize != null);
+            var stream = new MemoryStream(_toDeserialize);
+            var reader = new ArrowStreamReader(stream);
+            var batch = reader.ReadNextRecordBatch();
+            batch.Dispose();
+        }
+
+        [Benchmark]
+        public void ArrowDeserializeConvertToFlowtide()
         {
             Debug.Assert(_toDeserialize != null);
             var stream = new MemoryStream(_toDeserialize);
@@ -87,15 +108,14 @@ namespace FlowtideDotNet.Benchmarks
             batch.Dispose();
         }
 
-        //[Benchmark]
-        //public void ConvertToArrowSerialize()
-        //{
-        //    Debug.Assert(_eventBatchData != null);
-        //    _memoryStream.SetLength(0);
-        //    var recordBatch = EventArrowSerializer.BatchToArrow(_eventBatchData, _eventBatchData.Count);
-        //    var batchWriter = new ArrowStreamWriter(_memoryStream, recordBatch.Schema, true);
-        //    batchWriter.WriteRecordBatch(recordBatch);
-        //    _memoryStream.ToArray();
-        //}
+        [Benchmark]
+        public void ConvertFlowtideToArrowSerialize()
+        {
+            Debug.Assert(_eventBatchData != null);
+            _memoryStream.SetLength(0);
+            var recordBatch = EventArrowSerializer.BatchToArrow(_eventBatchData, _eventBatchData.Count);
+            var batchWriter = new ArrowStreamWriter(_memoryStream, recordBatch.Schema, true);
+            batchWriter.WriteRecordBatch(recordBatch);
+        }
     }
 }

@@ -222,8 +222,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
-            TryReadNextBuffer(out var typeMemory);
-            TryReadNextBuffer(out var offsetMemory);
+            bool hasTypeMemory = TryReadNextBuffer(out var typeMemory);
+            bool hasOffsetMemory = TryReadNextBuffer(out var offsetMemory);
 
             var childrenCount = fieldStruct.ChildrenLength;
 
@@ -240,7 +240,23 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 children.Add(DeserializeDataColumn(in child, in recordBatchStruct, (int)fieldNode.Length).dataColumn);
             }
 
-            return new UnionColumn(children, typeMemory, offsetMemory, length, memoryAllocator);
+            if (hasTypeMemory && hasOffsetMemory)
+            {
+                return new UnionColumn(children, typeMemory!, offsetMemory!, length, memoryAllocator);
+            }
+            else
+            {
+                if (hasTypeMemory || hasOffsetMemory)
+                {
+                    throw new InvalidOperationException("Union column must have both type and offset memory");
+                }
+                // Dispose the children
+                for (int i = 0; i < children.Count; i++)
+                {
+                    children[i].Dispose();
+                }
+                return new UnionColumn(memoryAllocator);
+            }
         }
 
         private MapColumn DeserializeMapColumn(
