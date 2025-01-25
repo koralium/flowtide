@@ -248,7 +248,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             arrowSerializer.AddBufferForward(_data.DataMemory.Length);
         }
 
-        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        void IDataColumn.WriteDataToBuffer<TBufferWriter>(ref ArrowDataWriter<TBufferWriter> dataWriter)
         {
             // Write offset data
             //bufferWriter.Write(_data.OffsetMemory.Span);

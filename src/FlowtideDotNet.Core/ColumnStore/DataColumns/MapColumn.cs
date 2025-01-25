@@ -637,7 +637,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _valueColumn.AddBuffers(ref arrowSerializer);
         }
 
-        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        void IDataColumn.WriteDataToBuffer<TBufferWriter>(ref ArrowDataWriter<TBufferWriter> dataWriter)
         {
             dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
             dataWriter.WriteArrowBuffer(Span<byte>.Empty); // Empty validity buffer

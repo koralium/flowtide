@@ -1037,12 +1037,13 @@ namespace FlowtideDotNet.Core.ColumnStore
             _dataColumn!.AddBuffers(ref arrowSerializer);
         }
 
-        void IColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        void IColumn.WriteDataToBuffer<TBufferWriter>(ref ArrowDataWriter<TBufferWriter> dataWriter)
         {
             this.WriteDataToBuffer(ref dataWriter);
         }
 
-        internal void WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        internal void WriteDataToBuffer<TBufferWriter>(ref ArrowDataWriter<TBufferWriter> dataWriter)
+            where TBufferWriter : IFlowtideBufferWriter
         {
             if (_type == ArrowTypeId.Null)
             {

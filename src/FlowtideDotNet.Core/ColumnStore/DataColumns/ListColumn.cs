@@ -467,7 +467,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _internalColumn.AddBuffers(ref arrowSerializer);
         }
 
-        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        void IDataColumn.WriteDataToBuffer<TBufferWriter>(ref ArrowDataWriter<TBufferWriter> dataWriter)
         {
             dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
 

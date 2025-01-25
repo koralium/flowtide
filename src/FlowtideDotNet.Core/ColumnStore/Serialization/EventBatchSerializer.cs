@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -61,15 +62,26 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         /// <param name="eventBatchData">The data to serialize</param>
         public void SerializeEventBatch(IBufferWriter<byte> bufferWriter, EventBatchData eventBatchData, int count)
         {
+            var flowtideBufferWriter = new InternalBufferWriter(bufferWriter);
+            var estimation = GetSerializationEstimation(eventBatchData);
+            SerializeSchemaHeader(bufferWriter, eventBatchData, estimation);
+            SerializeRecordBatchHeader(bufferWriter, eventBatchData, count, estimation);
+            SerializeBufferData(flowtideBufferWriter, eventBatchData);
+        }
+
+        public void SerializeEventBatch<TBufferWriter>(TBufferWriter bufferWriter, EventBatchData eventBatchData, int count)
+            where TBufferWriter : IFlowtideBufferWriter
+        {
             var estimation = GetSerializationEstimation(eventBatchData);
             SerializeSchemaHeader(bufferWriter, eventBatchData, estimation);
             SerializeRecordBatchHeader(bufferWriter, eventBatchData, count, estimation);
             SerializeBufferData(bufferWriter, eventBatchData);
         }
 
-        public void SerializeBufferData(IBufferWriter<byte> bufferWriter, EventBatchData eventBatchData)
+        public void SerializeBufferData<TBufferWriter>(TBufferWriter bufferWriter, EventBatchData eventBatchData)
+            where TBufferWriter : IFlowtideBufferWriter
         {
-            var arrowDataWriter = new ArrowDataWriter(bufferWriter);
+            var arrowDataWriter = new ArrowDataWriter<TBufferWriter>(bufferWriter);
             for (int i = 0; i < eventBatchData.Columns.Count; i++)
             {
                 eventBatchData.Columns[i].WriteDataToBuffer(ref arrowDataWriter);

@@ -173,7 +173,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
         }
 
-        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        void IDataColumn.WriteDataToBuffer<TBufferWriter>(ref ArrowDataWriter<TBufferWriter> dataWriter)
         {
         }
     }

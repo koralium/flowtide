@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
@@ -19,12 +20,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
     /// Writer that ensures that the data is padded to 8 bytes.
     /// 
     /// </summary>
-    internal struct ArrowDataWriter
+    internal struct ArrowDataWriter<TBufferWriter>
+        where TBufferWriter : IFlowtideBufferWriter
     {
-        private readonly IBufferWriter<byte> bufferWriter;
+        private readonly TBufferWriter bufferWriter;
         private int m_bodyLength;
 
-        public ArrowDataWriter(IBufferWriter<byte> bufferWriter)
+        public ArrowDataWriter(TBufferWriter bufferWriter)
         {
             this.bufferWriter = bufferWriter;
         }
@@ -32,47 +34,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
         public void WriteArrowBuffer(ReadOnlySpan<byte> buffer)
         {
             int paddedLength = checked((int)BitUtility.RoundUpToMultipleOf8(buffer.Length));
+            bufferWriter.Write(buffer);
 
-            var destination = bufferWriter.GetSpan(paddedLength);
-
-            if (paddedLength <= destination.Length)
+            if (paddedLength > buffer.Length)
             {
-                buffer.CopyTo(destination);
-                bufferWriter.Advance(paddedLength);
-            }
-            else
-            {
-                WriteArrowBufferMultiSegment(buffer, destination);
-                int padding = paddedLength - buffer.Length;
-                bufferWriter.GetSpan(padding).Fill(0);
+                var padding = paddedLength - buffer.Length;
                 bufferWriter.Advance(padding);
             }
 
             m_bodyLength += paddedLength;
-        }
-
-        private void WriteArrowBufferMultiSegment(ReadOnlySpan<byte> buffer, Span<byte> destination)
-        {
-            ReadOnlySpan<byte> input = buffer;
-            while (true)
-            {
-                int writeSize = Math.Min(destination.Length, input.Length);
-                input.Slice(0, writeSize).CopyTo(destination);
-                bufferWriter.Advance(writeSize);
-                input = input.Slice(writeSize);
-                if (input.Length > 0)
-                {
-                    destination = bufferWriter.GetSpan(input.Length);
-
-                    if (destination.IsEmpty)
-                    {
-                        throw new InvalidOperationException("Buffer writer returned an empty buffer");
-                    }
-
-                    continue;
-                }
-                return;
-            }
         }
     }
 }
