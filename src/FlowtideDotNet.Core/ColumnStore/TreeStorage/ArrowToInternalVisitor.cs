@@ -200,6 +200,8 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 }
                 
                 columns.Add(_dataColumn ?? throw new InvalidOperationException("Internal column is null"));
+                // Reset null counter
+                _nullCount = 0;
             }
 
             _dataColumn = new UnionColumn(columns, typeMemory, offsetMemory, array.Length, preAllocatedMemoryManager);
