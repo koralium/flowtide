@@ -16,13 +16,4 @@ using FlowtideDotNet.Benchmarks;
 using FlowtideDotNet.Benchmarks.ColumnStore.Utils;
 using FlowtideDotNet.Benchmarks.Stream;
 
-//var serializer = new ArrowSerializeBenchmark();
-//serializer.GlobalSetup();
-
-//for (int i = 0; i < 1_000_000; i++)
-//{
-//    serializer.FlowtideDeserialize();
-//}
-
-
 var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

@@ -155,10 +155,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             var stack = stackPointers.AsSpan();
             var childrenStack = stack.Slice(eventBatchData.Columns.Count);
+
+            var emptyStringPos = arrowSerializer.CreateEmptyString();
             for (int i = 0; i < eventBatchData.Columns.Count; i++)
             {
-                var strPos = arrowSerializer.CreateString(i.ToString());
-                stack[i] = eventBatchData.Columns[i].CreateSchemaField(ref arrowSerializer, strPos, childrenStack);
+                stack[i] = eventBatchData.Columns[i].CreateSchemaField(ref arrowSerializer, emptyStringPos, childrenStack);
             }
 
             var fieldsPointer = arrowSerializer.SchemaCreateFieldsVector(stack.Slice(0, eventBatchData.Columns.Count));
