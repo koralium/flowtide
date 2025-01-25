@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
     /// Writer that ensures that the data is padded to 8 bytes.
     /// 
     /// </summary>
-    internal struct ArrowDataWriter<TBufferWriter>
+    internal ref struct ArrowDataWriter<TBufferWriter>
         where TBufferWriter : IFlowtideBufferWriter
     {
         private readonly TBufferWriter bufferWriter;
