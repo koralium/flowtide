@@ -78,10 +78,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
         private void ReadRecordBatchHeaderFromSequence()
         {
-            //var schema = message.Schema;
-
-            //var fieldsLength = schema.FieldsLength;
-
             if (!data.TryReadLittleEndian(out int magicNumber))
             {
                 throw new Exception("Failed to read magic number");
