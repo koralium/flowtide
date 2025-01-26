@@ -555,6 +555,74 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         }
 
         [Fact]
+        public void TestSerializeDeserializeColumnWithNullOnly()
+        {
+            Column column = Column.Create(GlobalMemoryManager.Instance);
+
+            column.Add(NullValue.Instance);
+
+
+            var batch = new EventBatchData([column]);
+
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+            serializer.SerializeEventBatch(bufferWriter, batch, 0);
+
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
+
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader);
+            var deserializedBatch = batchDeserializer.DeserializeBatch();
+
+            Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
+
+            deserializedBatch.Columns[0].Add(NullValue.Instance);
+            deserializedBatch.Columns[0].Add(new StringValue("a"));
+
+            column.Add(NullValue.Instance);
+            column.Add(new StringValue("a"));
+
+            Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
+
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeStringColumnWithNullOnly()
+        {
+            Column column = Column.Create(GlobalMemoryManager.Instance);
+
+            column.Add(new StringValue("a"));
+            column.Add(NullValue.Instance);
+
+            column.RemoveAt(0);
+
+            var batch = new EventBatchData([column]);
+
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+            serializer.SerializeEventBatch(bufferWriter, batch, 0);
+
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
+
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader);
+            var deserializedBatch = batchDeserializer.DeserializeBatch();
+
+            Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
+
+            deserializedBatch.Columns[0].Add(NullValue.Instance);
+            deserializedBatch.Columns[0].Add(new StringValue("a"));
+
+            column.Add(NullValue.Instance);
+            column.Add(new StringValue("a"));
+
+            Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
+
+        }
+
+        [Fact]
         public void TestSerializeDeserializeMapColumn()
         {
             SerializeDeserializeTest(

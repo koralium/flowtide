@@ -979,7 +979,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (_type == ArrowTypeId.Null)
             {
                 var nullTypePointer = arrowSerializer.AddNullType();
-                return arrowSerializer.CreateField(emptyStringPointer, true, (byte)ArrowTypeId.Null, nullTypePointer);
+                return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Null, nullTypePointer);
             }
             
             return _dataColumn!.CreateSchemaField(ref arrowSerializer, emptyStringPointer, pointerStack);
