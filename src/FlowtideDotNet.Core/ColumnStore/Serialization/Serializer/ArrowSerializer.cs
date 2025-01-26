@@ -429,7 +429,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 AddInt(m_maxSize - m_space);
             }
-            //m_position = m_space;
             return m_space;
         }
 
