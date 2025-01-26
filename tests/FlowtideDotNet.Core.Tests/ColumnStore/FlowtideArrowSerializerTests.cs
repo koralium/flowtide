@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow.Compression;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore;
@@ -24,6 +25,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using ZstdSharp;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
 {
@@ -650,6 +652,100 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 NullValue.Instance,
                 new DecimalValue(3.17m),
                 new TimestampTzValue(DateTime.Now));
+        }
+
+        class BatchCompressor : IBatchCompressor
+        {
+            Compressor compressor;
+            public BatchCompressor(Compressor compressor)
+            {
+                this.compressor = compressor;
+            }
+            public void ColumnChange(int columnIndex)
+            {
+            }
+
+            public int Wrap(ReadOnlySpan<byte> input, Span<byte> output)
+            {
+                return compressor.Wrap(input, output);
+            }
+        }
+
+        class TrainingBatchCompressor : IBatchCompressor
+        {
+            
+            private List<byte[]> dictList = new List<byte[]>();
+            public TrainingBatchCompressor()
+            {
+            }
+            public void ColumnChange(int columnIndex)
+            {
+            }
+
+            public int Wrap(ReadOnlySpan<byte> input, Span<byte> output)
+            {
+                if (input.Length == 0)
+                {
+                    return 0;
+                }
+                dictList.Add(input.ToArray());
+                return 0;
+            }
+
+            public byte[] GetDictionary()
+            {
+                return DictBuilder.TrainFromBuffer(dictList);
+            }
+        }
+
+        [Fact]
+        public void TestSerializeStringColumnCompressed()
+        {
+            Column column = Column.Create(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 1000; i++)
+            {
+                column.Add(new StringValue("a"));
+                column.Add(new StringValue("b"));
+            }
+
+            var batch = new EventBatchData([column]);
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+
+            serializer.SerializeEventBatch(bufferWriter, batch, column.Count, new BatchCompressor(new Compressor()));
+
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            ArrowStreamReader reader = new ArrowStreamReader(memoryStream, new CompressionCodecFactory());
+            var recordBatch = reader.ReadNextRecordBatch();
+
+            Assert.Equal(2000, recordBatch.Length);
+            //bufferWriter.ResetWrittenCount();
+            //serializer.SerializeEventBatch(bufferWriter, batch, column.Count);
+
+            //var uncompressedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            //var compressor = new Compressor();
+            //var fullCompressed = compressor.Wrap(uncompressedBytes);
+
+            //var trainingCompressor = new TrainingBatchCompressor();
+
+            //for (int i = 0; i < 100; i++)
+            //{
+            //    serializer.SerializeEventBatch(bufferWriter, batch, column.Count, trainingCompressor);
+            //}
+
+
+            //var dictionary = trainingCompressor.GetDictionary();
+
+            //var dictCompressor = new Compressor();
+            //dictCompressor.LoadDictionary(dictionary);
+            //bufferWriter.ResetWrittenCount();
+
+            //serializer.SerializeEventBatch(bufferWriter, batch, column.Count, new BatchCompressor(dictCompressor));
+            //var dictionaryCompressedBytes = bufferWriter.WrittenSpan.ToArray();
         }
     }
 }

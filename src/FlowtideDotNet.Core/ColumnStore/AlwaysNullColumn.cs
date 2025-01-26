@@ -156,7 +156,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotSupportedException();
         }
 
-        void IColumn.WriteDataToBuffer<TBufferWriter>(ref ArrowDataWriter<TBufferWriter> dataWriter)
+        void IColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             throw new NotSupportedException();
         }

@@ -91,8 +91,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         internal void AddBuffers(ref ArrowSerializer arrowSerializer);
 
-        internal void WriteDataToBuffer<TBufferWriter>(ref ArrowDataWriter<TBufferWriter> dataWriter)
-            where TBufferWriter : IFlowtideBufferWriter;
+        internal void WriteDataToBuffer(ref ArrowDataWriter dataWriter);
 
         SerializationEstimation GetSerializationEstimate();
     }

@@ -994,7 +994,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (_type == ArrowTypeId.Null)
             {
-                return new SerializationEstimation(1, 1, sizeof(int));
+                return new SerializationEstimation(1, 0, sizeof(int));
             }
 
             var estimate = _dataColumn!.GetSerializationEstimate();
@@ -1037,13 +1037,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             _dataColumn!.AddBuffers(ref arrowSerializer);
         }
 
-        void IColumn.WriteDataToBuffer<TBufferWriter>(ref ArrowDataWriter<TBufferWriter> dataWriter)
+        void IColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             this.WriteDataToBuffer(ref dataWriter);
         }
 
-        internal void WriteDataToBuffer<TBufferWriter>(ref ArrowDataWriter<TBufferWriter> dataWriter)
-            where TBufferWriter : IFlowtideBufferWriter
+        internal void WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             if (_type == ArrowTypeId.Null)
             {

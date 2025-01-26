@@ -273,7 +273,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             
         }
 
-        void IDataColumn.WriteDataToBuffer<TBufferWriter>(ref ArrowDataWriter<TBufferWriter> dataWriter)
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             dataWriter.WriteArrowBuffer(_binaryList.OffsetMemory.Span);
             dataWriter.WriteArrowBuffer(_binaryList.DataMemory.Span);

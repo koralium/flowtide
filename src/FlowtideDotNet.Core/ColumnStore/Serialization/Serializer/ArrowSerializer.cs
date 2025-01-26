@@ -128,6 +128,28 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         }
 
         public void AddByte(byte x) { Prep(sizeof(byte), 0); PutByte(x); }
+        public void AddSbyte(sbyte x) { Prep(sizeof(sbyte), 0); PutSbyte(x); }
+
+        public void PutSbyte(sbyte x)
+        {
+            PutSbyte(m_space -= sizeof(sbyte), x);
+        }
+
+        public void PutSbyte(int offset, sbyte value)
+        {
+            m_destination[offset] = (byte)value;
+        }
+
+        public void AddSbyte(int o, sbyte x, sbyte d) 
+        { 
+            if (x != d) 
+            { 
+                AddSbyte(x); 
+                Slot(o); 
+            } 
+        }
+
+
 
         private void Prep(int size, int additionalBytes)
         {

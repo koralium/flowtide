@@ -145,6 +145,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             var fieldNode = ReadNextFieldNode(in recordBatchStruct);
 
             BitmapList? validityList;
+
+            if (fieldStruct.TypeType == ArrowType.Null)
+            {
+                return new Column((int)fieldNode.NullCount, default, new BitmapList(memoryAllocator), ArrowTypeId.Null, memoryAllocator);
+            }
+
             if (fieldStruct.TypeType != ArrowType.Union)
             {
                 if (TryReadNextBuffer(out var validityMemory))

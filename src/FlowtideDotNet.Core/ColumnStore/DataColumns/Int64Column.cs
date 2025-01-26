@@ -324,7 +324,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             arrowSerializer.AddBufferForward(_data.SlicedMemory.Length);
         }
 
-        void IDataColumn.WriteDataToBuffer<TBufferWriter>(ref ArrowDataWriter<TBufferWriter> dataWriter)
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             Debug.Assert(_data != null);
             dataWriter.WriteArrowBuffer(_data.SlicedMemory.Span);
