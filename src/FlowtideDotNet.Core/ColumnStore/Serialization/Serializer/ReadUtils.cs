@@ -29,6 +29,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
             return vtableOffset < GetShort(in span, vtable) ? (int)GetShort(in span, vtable + vtableOffset) : 0;
         }
 
+        public static sbyte GetSbyte(scoped ref readonly ReadOnlySpan<byte> span, int index)
+        {
+            return (sbyte)span[index];
+        }
+
         public static int GetInt(scoped ref readonly ReadOnlySpan<byte> span, int offset)
         {
             ReadOnlySpan<byte> readSpan = span.Slice(offset);

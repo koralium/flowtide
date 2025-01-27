@@ -38,6 +38,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             } 
         }
 
+        public long BodyLengthIndex
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 10);
+                return o + position;
+            }
+        }
+
         public static MessageStruct ReadMessage(ref readonly ReadOnlySpan<byte> span)
         {
             var ipcMessage = BinaryPrimitives.ReadInt32LittleEndian(span);

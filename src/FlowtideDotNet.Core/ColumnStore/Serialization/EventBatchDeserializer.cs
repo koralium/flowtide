@@ -38,15 +38,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
         private readonly IMemoryAllocator memoryAllocator;
         private SequenceReader<byte> data;
+        private readonly IBatchDecompressor? decompressor;
         private int bufferIndex;
         private int fieldNodeIndex;
         private int readDataIndex;
         private int bufferStart;
+        private bool isCompressed;
 
-        public EventBatchDeserializer(IMemoryAllocator memoryAllocator, SequenceReader<byte> sequenceReader)
+        public EventBatchDeserializer(IMemoryAllocator memoryAllocator, SequenceReader<byte> sequenceReader, IBatchDecompressor? decompressor = default)
         {
             this.memoryAllocator = memoryAllocator;
             this.data = sequenceReader;
+            this.decompressor = decompressor;
         }
 
         private void ReadSchemaFromSequence()
@@ -120,11 +123,29 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             var recordBatchMessage = MessageStruct.GetRootAsMessage(ref _recordBatchHeaderBytes, 0);
             var recordBatchHeader = new RecordBatchStruct(_recordBatchHeaderBytes, recordBatchMessage.HeaderPosition());
 
+            if (recordBatchHeader.HasCompression)
+            {
+                var compressionInfo = recordBatchHeader.Compression;
+                if (compressionInfo.Codec != CompressionType.ZSTD)
+                {
+                    throw new NotSupportedException("Only zstd compression is supported at this time");
+                }
+                if (compressionInfo.Method != BodyCompressionMethod.BUFFER)
+                {
+                    throw new NotSupportedException("Only buffer compression method is supported at this time");
+                }
+                isCompressed = true;
+            }
+
             bufferStart = recordBatchHeader.BuffersStartIndex;
             IColumn[] columns = new IColumn[fieldsLength];
             for (int i = 0; i < fieldsLength; i++)
             {
                 var field = new FieldStruct(_schemaBytes, schema.FieldPosition(i));
+                if (decompressor != null)
+                {
+                    decompressor.ColumnChange(i);
+                }
                 columns[i] = DeserializeColumn(in field, in recordBatchHeader);
             }
 
@@ -495,10 +516,41 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 return false;
             }
 
-            memory = memoryAllocator.Allocate(bufferLength, 64);
-            data.TryCopyTo(memory.Memory.Span.Slice(0, bufferLength));
-            readDataIndex += bufferLength;
-            data.Advance(bufferLength);
+            if (isCompressed)
+            {
+                if (!data.TryReadLittleEndian(out long uncompressedLength))
+                {
+                    throw new InvalidOperationException("Failed to read uncompressed length");
+                }
+                if (uncompressedLength == -1)
+                {
+                    memory = memoryAllocator.Allocate(bufferLength - 8, 64);
+                    data.TryCopyTo(memory.Memory.Span.Slice(0, bufferLength - 8));
+                    readDataIndex += bufferLength;
+                    data.Advance(bufferLength - 8);
+                }
+                else
+                {
+                    memory = memoryAllocator.Allocate((int)uncompressedLength, 64);
+                    if (data.UnreadSpan.Length < (bufferLength - 8))
+                    {
+                        throw new InvalidOperationException("Not enough data to read compressed buffer");
+                    }
+                    var compressedData = data.UnreadSpan.Slice(0, bufferLength - 8);
+                    decompressor!.Unwrap(compressedData, memory.Memory.Span);
+                    readDataIndex += bufferLength;
+                    data.Advance(bufferLength - 8);
+                }
+            }
+            else
+            {
+                memory = memoryAllocator.Allocate(bufferLength, 64);
+                data.TryCopyTo(memory.Memory.Span.Slice(0, bufferLength));
+                readDataIndex += bufferLength;
+                data.Advance(bufferLength);
+            }
+
+            
             return true;
         }
     }

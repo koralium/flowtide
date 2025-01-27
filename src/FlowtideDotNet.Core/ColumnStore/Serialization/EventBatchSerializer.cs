@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
+using System.Buffers.Binary;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
@@ -59,8 +60,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             var estimation = GetSerializationEstimation(eventBatchData);
             var size = GetEstimatedBufferSize(estimation);
             var buffer = bufferWriter.GetSpan(size);
-
-            //var flowtideBufferWriter = new InternalBufferWriter(bufferWriter);
             var writtenData = SerializeEventBatch(buffer, estimation, eventBatchData, count, compressor);
             bufferWriter.Advance(writtenData);
         }
@@ -93,6 +92,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             var buffStruct = recordBatch.Buffers(0);
 
             var writtenDataLength = SerializeBufferData(destination.Slice(schemaSpan.Length + recordBatchHeader.Length), bufferSpan, eventBatchData, compressor);
+
+            // Write new body length since compression can have reduced it
+            BinaryPrimitives.WriteInt64LittleEndian(recordBatchHeader.Slice((int)message.BodyLengthIndex), writtenDataLength);
             return schemaSpan.Length + recordBatchHeader.Length + writtenDataLength;
         }
 

@@ -69,5 +69,27 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             var location = ReadUtils.__vector(in span, in position, o) + j * 16;
             return new BufferStruct(span, location);
         }
+
+        public bool HasCompression
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 10);
+                return o != 0;
+            }
+        }
+
+        public BodyCompressionStruct Compression 
+        { 
+            get 
+            { 
+                int o = ReadUtils.__offset(in span, in position, 10); 
+                if (o != 0)
+                {
+                    return new BodyCompressionStruct(span, ReadUtils.__indirect(in span, position + o));
+                }
+                return default;
+            } 
+        }
     }
 }

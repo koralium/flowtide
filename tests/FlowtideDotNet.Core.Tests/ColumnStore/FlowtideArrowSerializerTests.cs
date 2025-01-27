@@ -671,6 +671,23 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             }
         }
 
+        class BatchDecompressor : IBatchDecompressor
+        {
+            Decompressor decompressor;
+            public BatchDecompressor(Decompressor decompressor)
+            {
+                this.decompressor = decompressor;
+            }
+            public void ColumnChange(int columnIndex)
+            {
+            }
+
+            public int Unwrap(ReadOnlySpan<byte> input, Span<byte> output)
+            {
+                return decompressor.Unwrap(input, output);
+            }
+        }
+
         class TrainingBatchCompressor : IBatchCompressor
         {
             
@@ -717,35 +734,40 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
+            File.WriteAllBytes("compressed.arrow", serializedBytes);
+
             MemoryStream memoryStream = new MemoryStream(serializedBytes);
             ArrowStreamReader reader = new ArrowStreamReader(memoryStream, new CompressionCodecFactory());
             var recordBatch = reader.ReadNextRecordBatch();
 
             Assert.Equal(2000, recordBatch.Length);
-            //bufferWriter.ResetWrittenCount();
-            //serializer.SerializeEventBatch(bufferWriter, batch, column.Count);
+        }
 
-            //var uncompressedBytes = bufferWriter.WrittenSpan.ToArray();
+        [Fact]
+        public void TestSerializeDeserializeStringColumnCompressed()
+        {
+            Column column = Column.Create(GlobalMemoryManager.Instance);
 
-            //var compressor = new Compressor();
-            //var fullCompressed = compressor.Wrap(uncompressedBytes);
+            for (int i = 0; i < 1000; i++)
+            {
+                column.Add(new StringValue("a"));
+                column.Add(new StringValue("b"));
+            }
 
-            //var trainingCompressor = new TrainingBatchCompressor();
+            var batch = new EventBatchData([column]);
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
 
-            //for (int i = 0; i < 100; i++)
-            //{
-            //    serializer.SerializeEventBatch(bufferWriter, batch, column.Count, trainingCompressor);
-            //}
+            serializer.SerializeEventBatch(bufferWriter, batch, column.Count, new BatchCompressor(new Compressor()));
 
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            //var dictionary = trainingCompressor.GetDictionary();
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
 
-            //var dictCompressor = new Compressor();
-            //dictCompressor.LoadDictionary(dictionary);
-            //bufferWriter.ResetWrittenCount();
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader, new BatchDecompressor(new Decompressor()));
+            var deserializedBatch = batchDeserializer.DeserializeBatch();
 
-            //serializer.SerializeEventBatch(bufferWriter, batch, column.Count, new BatchCompressor(dictCompressor));
-            //var dictionaryCompressedBytes = bufferWriter.WrittenSpan.ToArray();
+            Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
         }
     }
 }
