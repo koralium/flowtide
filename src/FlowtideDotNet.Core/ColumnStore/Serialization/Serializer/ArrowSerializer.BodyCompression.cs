@@ -40,7 +40,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         BUFFER = 0,
     };
 
+#pragma warning disable CS0282 // There is no defined ordering between fields in multiple declarations of partial struct
     internal ref partial struct ArrowSerializer
+#pragma warning restore CS0282 // There is no defined ordering between fields in multiple declarations of partial struct
     {
         public int CreateBodyCompression(CompressionType codec,
       BodyCompressionMethod method = BodyCompressionMethod.BUFFER)
