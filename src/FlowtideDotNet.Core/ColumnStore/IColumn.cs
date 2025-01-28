@@ -20,6 +20,8 @@ using System.Threading.Tasks;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Text.Json;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -57,6 +59,16 @@ namespace FlowtideDotNet.Core.ColumnStore
             where T : IDataValue;
 
         (IArrowArray, IArrowType) ToArrowArray();
+
+        SerializationEstimation GetSerializationEstimate();
+
+        internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack);
+
+        internal void AddFieldNodes(ref ArrowSerializer arrowSerializer);
+
+        internal void AddBuffers(ref ArrowSerializer arrowSerializer);
+
+        internal void WriteDataToBuffer(ref ArrowDataWriter dataWriter);
 
         void Rent(int count);
 

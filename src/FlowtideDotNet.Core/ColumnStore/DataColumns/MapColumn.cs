@@ -26,8 +26,8 @@ using System.Buffers;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
 using System.Collections;
-using static SqlParser.Ast.TableConstraint;
 using System.Text.Json;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -588,6 +588,61 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new MapColumn(_keyColumn.Copy(memoryAllocator), _valueColumn.Copy(memoryAllocator), _offsets.Copy(memoryAllocator));
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var typePointer = arrowSerializer.AddMapType(true);
+            var structPointer = arrowSerializer.AddStructType();
+            var childStack = pointerStack.Slice(2);
+            pointerStack[0] = _keyColumn.CreateSchemaField(ref arrowSerializer, emptyStringPointer, childStack);
+            pointerStack[1] = _valueColumn.CreateSchemaField(ref arrowSerializer, emptyStringPointer, childStack);
+            var structChildrenPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, 2));
+            pointerStack[0] = arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Struct_, structPointer, childrenOffset: structChildrenPointer);
+            
+            var childrenPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, 1));
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Map, typePointer, childrenOffset: childrenPointer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            var keyEstimate = _keyColumn.GetSerializationEstimate();
+            var valueEstimate = _valueColumn.GetSerializationEstimate();
+            return new SerializationEstimation(
+                2 + keyEstimate.fieldNodeCount + valueEstimate.fieldNodeCount,
+                2 + keyEstimate.bufferCount + valueEstimate.bufferCount,
+                keyEstimate.bodyLength + valueEstimate.bodyLength + (_offsets.Count * sizeof(int)));
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            _valueColumn.AddFieldNodes(ref arrowSerializer);
+            _keyColumn.AddFieldNodes(ref arrowSerializer);
+            arrowSerializer.CreateFieldNode(_keyColumn.Count, 0);
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        /// <summary>
+        /// Adds buffers in the same way Apache Arrow adds the buffers
+        /// The map column is treated as a List<Struct<KeyType, ValueType>>
+        /// First the offset is saved same as list, then the validity buffer for the struct, it is not used so it is set to 0.
+        /// Finally the two key and value buffers are added
+        /// </summary>
+        /// <param name="arrowSerializer"></param>
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.AddBufferForward(_offsets.Memory.Length);
+            arrowSerializer.AddBufferForward(0); // Struct validity, it is not used so we set it to 0
+            _keyColumn.AddBuffers(ref arrowSerializer);
+            _valueColumn.AddBuffers(ref arrowSerializer);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
+            dataWriter.WriteArrowBuffer(Span<byte>.Empty); // Empty validity buffer
+            _keyColumn.WriteDataToBuffer(ref dataWriter);
+            _valueColumn.WriteDataToBuffer(ref dataWriter);
         }
     }
 }
