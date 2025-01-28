@@ -85,17 +85,27 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             var recordBatchHeader = SerializeRecordBatchHeader(destination.Slice(schemaSpan.Length), eventBatchData, count, serializationEstimation, compressor != null);
 
             // Get the buffer span from the record batch to update lengths and offsets
+            var writtenDataLength = SerializeRecordBatchData(destination.Slice(schemaSpan.Length + recordBatchHeader.Length), recordBatchHeader, eventBatchData, compressor);
+
+            return schemaSpan.Length + recordBatchHeader.Length + writtenDataLength;
+        }
+
+        public int SerializeRecordBatchData(Span<byte> destination, Span<byte> recordBatchHeader, EventBatchData eventBatchData, IBatchCompressor? compressor = default)
+        {
             ReadOnlySpan<byte> readOnlyHeaderSpan = recordBatchHeader;
             var message = MessageStruct.ReadMessage(in readOnlyHeaderSpan);
             var recordBatch = message.RecordBatch();
             var bufferSpan = recordBatchHeader.Slice(recordBatch.BuffersStartIndex, recordBatch.BuffersLength * 16);
-            var buffStruct = recordBatch.Buffers(0);
 
-            var writtenDataLength = SerializeBufferData(destination.Slice(schemaSpan.Length + recordBatchHeader.Length), bufferSpan, eventBatchData, compressor);
+            var writtenDataLength = SerializeBufferData(destination, bufferSpan, eventBatchData, compressor);
 
-            // Write new body length since compression can have reduced it
-            BinaryPrimitives.WriteInt64LittleEndian(recordBatchHeader.Slice((int)message.BodyLengthIndex), writtenDataLength);
-            return schemaSpan.Length + recordBatchHeader.Length + writtenDataLength;
+            // Write new body length since compression can have reduced it, but only if there is data, otherwise this value will not be written in the flatbuffer table
+            if (writtenDataLength != 0)
+            {
+                BinaryPrimitives.WriteInt64LittleEndian(recordBatchHeader.Slice((int)message.BodyLengthIndex), writtenDataLength);
+            }
+                
+            return writtenDataLength;
         }
 
         private int SerializeBufferData(Span<byte> destinationSpan, Span<byte> bufferSpan, EventBatchData eventBatchData, IBatchCompressor? compressor = default)

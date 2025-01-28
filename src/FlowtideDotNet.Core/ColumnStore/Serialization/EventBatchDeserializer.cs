@@ -44,6 +44,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         private int readDataIndex;
         private int bufferStart;
         private bool isCompressed;
+        private bool _schemaRead;
 
         public EventBatchDeserializer(IMemoryAllocator memoryAllocator, SequenceReader<byte> sequenceReader, IBatchDecompressor? decompressor = default)
         {
@@ -103,9 +104,25 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             data.Advance(messageLength);
         }
 
+        public void SetSchema(ReadOnlySpan<byte> schemaBytes)
+        {
+            if (BinaryPrimitives.ReadInt32LittleEndian(schemaBytes) == -1)
+            {
+                // Skip the first 8 bytes to remove the IPC header
+                schemaBytes = schemaBytes.Slice(8);
+            }
+            _schemaBytes = schemaBytes;
+            _schemaRead = true;
+        }
+
         public EventBatchData DeserializeBatch()
         {
-            ReadSchemaFromSequence();
+            if (!_schemaRead)
+            {
+                ReadSchemaFromSequence();
+                _schemaRead = true;
+            }
+            
             ReadRecordBatchHeaderFromSequence();
 
             var message = MessageStruct.GetRootAsMessage(ref _schemaBytes, 0);

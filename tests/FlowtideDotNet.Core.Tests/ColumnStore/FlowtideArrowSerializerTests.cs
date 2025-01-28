@@ -769,5 +769,49 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
         }
+
+        [Fact]
+        public void TestSerializeDeserializeWithoutSchemaWritten()
+        {
+            // Test that tests the scenario where the schema is not saved on disk but stored elsewhere
+
+            Column column = Column.Create(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 10; i++)
+            {
+                column.Add(new StringValue("a"));
+                column.Add(new StringValue("b"));
+            }
+
+            var batch = new EventBatchData([column]);
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+
+            var estimation = serializer.GetSerializationEstimation(batch);
+            var bufferSize = serializer.GetEstimatedBufferSize(estimation);
+
+            var span = bufferWriter.GetSpan(bufferSize);
+
+            // Save the schema to an byte array
+            var savedSchema = serializer.SerializeSchemaHeader(span, batch, estimation).ToArray();
+
+            // Overwrite the schema with the recordbatch
+            var recordBatchHeader = serializer.SerializeRecordBatchHeader(span, batch, batch.Count, estimation, false);
+
+            var writtenDataLength = serializer.SerializeRecordBatchData(span.Slice(recordBatchHeader.Length), recordBatchHeader, batch);
+
+            bufferWriter.Advance(recordBatchHeader.Length + writtenDataLength);
+
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
+
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader);
+            // Set the schema for the deserializer
+            batchDeserializer.SetSchema(savedSchema);
+            var deserializedBatch = batchDeserializer.DeserializeBatch();
+
+            Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
+        }
     }
 }

@@ -43,12 +43,14 @@ namespace FlowtideDotNet.Benchmarks
         private byte[]? _toDeserializeCompressed;
         private BatchDecompressor _batchDecompressor = new BatchDecompressor();
         private byte[] _diskDestinationBuffer = new byte[16 * 1024 * 1024];
-        private BatchDictionaryCompressor _batchDictionaryCompressor;
+        private BatchDictionaryCompressor? _batchDictionaryCompressor;
         private Compressor _compressor = new Compressor(CompressionLevel);
         private byte[]? _compressedByteArray;
         private Decompressor _decompressor = new Decompressor();
         private byte[]? _dictionaryCompressedByteArray;
         private BatchDictionaryDecompressor? _batchDictionaryDecompressor;
+        private byte[]? _version12CompressedBytes;
+        private byte[]? _version12Bytes;
 
         private const int CompressionLevel = 3;
 
@@ -105,6 +107,28 @@ namespace FlowtideDotNet.Benchmarks
             eventBatchSerializer.SerializeEventBatch(_bufferWriter, _eventBatchData, _eventBatchData.Count, _batchDictionaryCompressor);
             _dictionaryCompressedByteArray = _bufferWriter.WrittenSpan.ToArray();
             _bufferWriter.ResetWrittenCount();
+
+            // Create the result from version 12 serialization to use for deserialize benchmark
+            using var version12compressedStream = new MemoryStream();
+            // Compression added to the stream
+            var zlibStream = new ZLibStream(version12compressedStream, CompressionMode.Compress);
+            var recordBatch = EventArrowSerializer.BatchToArrow(_eventBatchData, _eventBatchData.Count);
+            var batchWriter = new ArrowStreamWriter(zlibStream, recordBatch.Schema, true);
+            batchWriter.WriteRecordBatch(recordBatch);
+            batchWriter.Dispose();
+            zlibStream.Dispose();
+
+            _version12CompressedBytes = version12compressedStream.ToArray();
+
+            using var version12Stream = new MemoryStream();
+            // Compression added to the stream
+            recordBatch = EventArrowSerializer.BatchToArrow(_eventBatchData, _eventBatchData.Count);
+            batchWriter = new ArrowStreamWriter(version12Stream, recordBatch.Schema, true);
+            batchWriter.WriteRecordBatch(recordBatch);
+            batchWriter.Dispose();
+
+            _version12Bytes = version12Stream.ToArray();
+
         }
 
         private byte[][] GenerateDictionaries()
@@ -137,7 +161,7 @@ namespace FlowtideDotNet.Benchmarks
             return training.GetDictionaries();
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Flowtide Serialize (Ratio = 1.0)")]
         public void FlowtideSerializer()
         {
             Debug.Assert(_eventBatchData != null);
@@ -145,7 +169,7 @@ namespace FlowtideDotNet.Benchmarks
             eventBatchSerializer.SerializeEventBatch(_bufferWriter, _eventBatchData, _eventBatchData.Count);
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Flowtide Deserialize")]
         public void FlowtideDeserialize()
         {
             Debug.Assert(_toDeserialize != null);
@@ -154,7 +178,7 @@ namespace FlowtideDotNet.Benchmarks
             batch.Dispose();
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Arrow Serialize (Ratio = 1.0)")]
         public void ArrowSerializer()
         {
             Debug.Assert(_recordBatch != null);
@@ -163,7 +187,7 @@ namespace FlowtideDotNet.Benchmarks
             batchWriter.WriteRecordBatch(_recordBatch);
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Arrow Deserialize")]
         public void ArrowDeserialize()
         {
             Debug.Assert(_toDeserialize != null);
@@ -173,7 +197,7 @@ namespace FlowtideDotNet.Benchmarks
             batch.Dispose();
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Arrow Deserialize Convert To Flowtide")]
         public void ArrowDeserializeConvertToFlowtide()
         {
             Debug.Assert(_toDeserialize != null);
@@ -184,7 +208,7 @@ namespace FlowtideDotNet.Benchmarks
             batch.Dispose();
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Convert Flowtide To Arrow Serialize")]
         public void ConvertFlowtideToArrowSerialize()
         {
             Debug.Assert(_eventBatchData != null);
@@ -316,7 +340,7 @@ namespace FlowtideDotNet.Benchmarks
             }
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Flowtide Serialize Compressed Buffers (Ratio = 1.82)")]
         public void FlowtideSerializeCompressed()
         {
             Debug.Assert(_eventBatchData != null);
@@ -324,7 +348,7 @@ namespace FlowtideDotNet.Benchmarks
             eventBatchSerializer.SerializeEventBatch(_bufferWriter, _eventBatchData, _eventBatchData.Count, _batchCompressor);
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Flowtide Serialize Compressed Buffers With Dictionary (Ratio 2.14)")]
         public void FlowtideSerializeCompressedWithDictionary()
         {
             Debug.Assert(_eventBatchData != null);
@@ -332,7 +356,7 @@ namespace FlowtideDotNet.Benchmarks
             eventBatchSerializer.SerializeEventBatch(_bufferWriter, _eventBatchData, _eventBatchData.Count, _batchDictionaryCompressor);
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Arrow Serialize Compressed Buffers (Ratio = 1.82)")]
         public void ArrowSerializeCompressed()
         {
             Debug.Assert(_recordBatch != null);
@@ -346,7 +370,7 @@ namespace FlowtideDotNet.Benchmarks
             batchWriter.WriteRecordBatch(_recordBatch);
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Flowtide Deserialize Compressed Buffers")]
         public void FlowtideDeserializeCompressed()
         {
             Debug.Assert(_toDeserializeCompressed != null);
@@ -355,7 +379,8 @@ namespace FlowtideDotNet.Benchmarks
             batch.Dispose();
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Flowtide Deserialize Compressed Buffers With Dictionary")]
+        [BenchmarkCategory("Deserialize"), BenchmarkCategory("Compressed")]
         public void FlowtideDeserializeCompressedWithDictionary()
         {
             Debug.Assert(_toDeserializeCompressed != null);
@@ -364,7 +389,7 @@ namespace FlowtideDotNet.Benchmarks
             batch.Dispose();
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Arrow Deserialize Compressed Buffers")]
         public void ArrowDeserializeCompressed()
         {
             Debug.Assert(_toDeserializeCompressed != null);
@@ -377,14 +402,14 @@ namespace FlowtideDotNet.Benchmarks
         /// <summary>
         /// Benchmark that simulates the actions done in version 12
         /// </summary>
-        [Benchmark]
-        public void SerializeInVersion12()
+        [Benchmark(Description = "Serialize in version 12 Compressed (Ratio = 2.26)")]
+        public void SerializeInVersion12Compressed()
         {
             Debug.Assert(_eventBatchData != null);
             // A new memory stream was created for each batch
-            var stream = new MemoryStream();
+            using var stream = new MemoryStream();
             // Compression added to the stream
-            var zlibStream = new ZLibStream(stream, CompressionMode.Compress);
+            using var zlibStream = new ZLibStream(stream, CompressionMode.Compress);
             var recordBatch = EventArrowSerializer.BatchToArrow(_eventBatchData, _eventBatchData.Count);
             var batchWriter = new ArrowStreamWriter(zlibStream, recordBatch.Schema, true);
             batchWriter.WriteRecordBatch(recordBatch);
@@ -395,7 +420,63 @@ namespace FlowtideDotNet.Benchmarks
             bytes.AsSpan().CopyTo(_diskDestinationBuffer.AsSpan());
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Serialize in version 12 (Ratio = 1.0)")]
+        public void SerializeInVersion12()
+        {
+            Debug.Assert(_eventBatchData != null);
+            // A new memory stream was created for each batch
+            using var stream = new MemoryStream();
+            var recordBatch = EventArrowSerializer.BatchToArrow(_eventBatchData, _eventBatchData.Count);
+            var batchWriter = new ArrowStreamWriter(stream, recordBatch.Schema, true);
+            batchWriter.WriteRecordBatch(recordBatch);
+
+            // Bytes from the memory stream to return from the serialize method
+            var bytes = stream.ToArray();
+            // Copy the bytes into a buffer that was then written to disk
+            bytes.AsSpan().CopyTo(_diskDestinationBuffer.AsSpan());
+        }
+
+        [Benchmark(Description = "Deserialize in version 12 compressed")]
+        public void DeserializeInVersion12Compressed()
+        {
+            Debug.Assert(_version12CompressedBytes != null);
+            // The incoming data is first copied into its own byte array
+            var arr = _version12CompressedBytes.ToArray();
+            using var memoryStream = new MemoryStream(arr);
+
+            // The stream is then passed to the decompression function
+            var stream = new ZLibStream(memoryStream, CompressionMode.Decompress);
+            // The stream is then passed to the binary reader
+            var reader = new BinaryReader(stream);
+
+            var arrowReader = new ArrowStreamReader(reader.BaseStream);
+
+            var nextBatch = arrowReader.ReadNextRecordBatch();
+            var flowtideBatch = EventArrowSerializer.ArrowToBatch(nextBatch, GlobalMemoryManager.Instance);
+            nextBatch.Dispose();
+            flowtideBatch.Dispose();
+        }
+
+        [Benchmark(Description = "Deserialize in version 12")]
+        public void DeserializeInVersion12()
+        {
+            Debug.Assert(_version12Bytes != null);
+            // The incoming data is first copied into its own byte array
+            var arr = _version12Bytes.ToArray();
+            using var memoryStream = new MemoryStream(arr);
+
+            // The stream is then passed to the binary reader
+            using var reader = new BinaryReader(memoryStream);
+
+            var arrowReader = new ArrowStreamReader(reader.BaseStream);
+
+            var nextBatch = arrowReader.ReadNextRecordBatch();
+            var flowtideBatch = EventArrowSerializer.ArrowToBatch(nextBatch, GlobalMemoryManager.Instance);
+            nextBatch.Dispose();
+            flowtideBatch.Dispose();
+        }
+
+        [Benchmark(Description = "Serialize then compress entire body (Ratio = 1.72)")]
         public void SerializeThenCompress()
         {
             Debug.Assert(_eventBatchData != null);
@@ -410,7 +491,7 @@ namespace FlowtideDotNet.Benchmarks
             _bufferWriter.Advance(compressedSize);
         }
 
-        [Benchmark]
+        [Benchmark(Description = "Deserialize compressed entire body")]
         public void DeserializeFullCompressedBatch()
         {
             _decompressor.Unwrap(_compressedByteArray.AsSpan(), _diskDestinationBuffer.AsSpan());
