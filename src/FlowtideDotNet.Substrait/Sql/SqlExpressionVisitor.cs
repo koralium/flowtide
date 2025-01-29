@@ -420,6 +420,14 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return new ExpressionData(new NullLiteral(), "$null", new AnyType());
             }
+            if (literalValue.Value is Value.HexStringLiteral hexStringLiteral)
+            {
+                var hexBytes = Convert.FromHexString(hexStringLiteral.Value);
+                return new ExpressionData(new BinaryLiteral()
+                {
+                    Value = hexBytes
+                }, "$binary", new BinaryType());
+            }
             throw new NotImplementedException($"The literal type: '{literalValue.Value.GetType().Name}' is not yet implemented");
         }
 

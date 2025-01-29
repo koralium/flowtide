@@ -84,6 +84,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> Memory => _memoryOwner?.Memory.Slice(0, _length * sizeof(long)) ?? new Memory<byte>();
 
+        public Memory<byte> SlicedMemory => _memoryOwner?.Memory.Slice(0, _length * sizeof(long)) ?? new Memory<byte>();
+
         internal long* Pointer => _longData;
 
         public NativeLongList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)

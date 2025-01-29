@@ -17,7 +17,6 @@ using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
-using FluentAssertions;
 
 namespace FlowtideDotNet.Core.Tests.OptimizerTests
 {
@@ -61,39 +60,38 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
             var optimizedPlan = EmitPushdown.Optimize(plan);
 
-            optimizedPlan.Should()
-                .BeEquivalentTo(
-                    new Plan()
+            var expected = new Plan()
+            {
+                Relations = new List<Substrait.Relations.Relation>()
+                {
+                    new ProjectRelation()
                     {
-                        Relations = new List<Substrait.Relations.Relation>()
-                    {
-                        new ProjectRelation()
+                        Expressions = new List<Expression>(),
+                        Emit = new List<int>(){0, 1, 2, 3},
+                        Input = new ReadRelation()
                         {
-                            Expressions = new List<Expression>(),
-                            Emit = new List<int>(){0, 1, 2, 3},
-                            Input = new ReadRelation()
+                            Emit = new List<int>(){ 0, 1, 2, 3},
+                            NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                            BaseSchema = new Substrait.Type.NamedStruct()
                             {
-                                Emit = new List<int>(){ 0, 1, 2, 3},
-                                NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
-                                BaseSchema = new Substrait.Type.NamedStruct()
+                                Names = new List<string>() { "Col1", "Col2", "Col4", "Col6" },
+                                Struct = new Substrait.Type.Struct()
                                 {
-                                    Names = new List<string>() { "Col1", "Col2", "Col4", "Col6" },
-                                    Struct = new Substrait.Type.Struct()
+                                    Types = new List<Substrait.Type.SubstraitBaseType>()
                                     {
-                                        Types = new List<Substrait.Type.SubstraitBaseType>()
-                                        {
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType()
-                                        }
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType()
                                     }
                                 }
                             }
                         }
                     }
-                    }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
-                );
+                }
+            };
+
+            Assert.Equal(expected, optimizedPlan);
         }
 
         [Fact]
@@ -149,55 +147,54 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
             var optimizedPlan = EmitPushdown.Optimize(plan);
 
-            optimizedPlan.Should()
-                .BeEquivalentTo(
-                    new Plan()
+            var expected = new Plan()
+            {
+                Relations = new List<Substrait.Relations.Relation>()
+                {
+                    new ProjectRelation()
                     {
-                        Relations = new List<Substrait.Relations.Relation>()
-                    {
-                        new ProjectRelation()
+                        Expressions = new List<Expression>(),
+                        Emit = new List<int>(){0, 1, 2, 3},
+                        Input = new ReadRelation()
                         {
-                            Expressions = new List<Expression>(),
-                            Emit = new List<int>(){0, 1, 2, 3},
-                            Input = new ReadRelation()
+                            Filter = new ScalarFunction()
                             {
-                                Filter = new ScalarFunction()
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.Equal,
+                                Arguments = new List<Expression>()
                                 {
-                                    ExtensionUri = FunctionsComparison.Uri,
-                                    ExtensionName = FunctionsComparison.Equal,
-                                    Arguments = new List<Expression>()
+                                    new DirectFieldReference()
                                     {
-                                        new DirectFieldReference()
+                                        ReferenceSegment = new StructReferenceSegment()
                                         {
-                                            ReferenceSegment = new StructReferenceSegment()
-                                            {
-                                                Field = 2
-                                            }
-                                        },
-                                        new StringLiteral() { Value = "test" }
-                                    }
-                                },
-                                Emit = new List<int>(){ 0, 1, 2, 3},
-                                NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
-                                BaseSchema = new Substrait.Type.NamedStruct()
-                                {
-                                    Names = new List<string>() { "Col1", "Col2", "Col4", "Col6" },
-                                    Struct = new Substrait.Type.Struct()
-                                    {
-                                        Types = new List<Substrait.Type.SubstraitBaseType>()
-                                        {
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType()
+                                            Field = 2
                                         }
+                                    },
+                                    new StringLiteral() { Value = "test" }
+                                }
+                            },
+                            Emit = new List<int>(){ 0, 1, 2, 3},
+                            NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                            BaseSchema = new Substrait.Type.NamedStruct()
+                            {
+                                Names = new List<string>() { "Col1", "Col2", "Col4", "Col6" },
+                                Struct = new Substrait.Type.Struct()
+                                {
+                                    Types = new List<Substrait.Type.SubstraitBaseType>()
+                                    {
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType()
                                     }
                                 }
                             }
                         }
                     }
-                    }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
-                );
+                }
+            };
+
+            Assert.Equal(expected, optimizedPlan);
         }
 
         [Fact]
@@ -253,56 +250,56 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
             var optimizedPlan = EmitPushdown.Optimize(plan);
 
-            optimizedPlan.Should()
-                .BeEquivalentTo(
-                    new Plan()
+            var expected = new Plan()
+            {
+                Relations = new List<Substrait.Relations.Relation>()
+                {
+                    new ProjectRelation()
                     {
-                        Relations = new List<Substrait.Relations.Relation>()
-                    {
-                        new ProjectRelation()
+                        Expressions = new List<Expression>(),
+                        Emit = new List<int>(){0, 1, 2, 3},
+                        Input = new ReadRelation()
                         {
-                            Expressions = new List<Expression>(),
-                            Emit = new List<int>(){0, 1, 2, 3},
-                            Input = new ReadRelation()
+                            Filter = new ScalarFunction()
                             {
-                                Filter = new ScalarFunction()
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.Equal,
+                                Arguments = new List<Expression>()
                                 {
-                                    ExtensionUri = FunctionsComparison.Uri,
-                                    ExtensionName = FunctionsComparison.Equal,
-                                    Arguments = new List<Expression>()
+                                    new DirectFieldReference()
                                     {
-                                        new DirectFieldReference()
+                                        ReferenceSegment = new StructReferenceSegment()
                                         {
-                                            ReferenceSegment = new StructReferenceSegment()
-                                            {
-                                                Field = 3
-                                            }
-                                        },
-                                        new StringLiteral() { Value = "test" }
-                                    }
-                                },
-                                Emit = new List<int>(){ 0, 1, 2, 4},
-                                NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
-                                BaseSchema = new Substrait.Type.NamedStruct()
-                                {
-                                    Names = new List<string>() { "Col1", "Col2", "Col4", "Col5", "Col6" },
-                                    Struct = new Substrait.Type.Struct()
-                                    {
-                                        Types = new List<Substrait.Type.SubstraitBaseType>()
-                                        {
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType()
+                                            Field = 3
                                         }
+                                    },
+                                    new StringLiteral() { Value = "test" }
+                                }
+                            },
+                            Emit = new List<int>(){ 0, 1, 2, 4},
+                            NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                            BaseSchema = new Substrait.Type.NamedStruct()
+                            {
+                                Names = new List<string>() { "Col1", "Col2", "Col4", "Col5", "Col6" },
+                                Struct = new Substrait.Type.Struct()
+                                {
+                                    Types = new List<Substrait.Type.SubstraitBaseType>()
+                                    {
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType()
                                     }
                                 }
                             }
                         }
                     }
-                    }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
-                );
+                }
+            };
+
+
+            Assert.Equal(expected, optimizedPlan);
         }
 
         [Fact]
@@ -362,60 +359,59 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
             var optimizedPlan = EmitPushdown.Optimize(plan);
 
-            optimizedPlan.Should()
-                .BeEquivalentTo(
-                    new Plan()
+            var expected = new Plan()
+            {
+                Relations = new List<Substrait.Relations.Relation>()
+                {
+                    new ProjectRelation()
                     {
-                        Relations = new List<Substrait.Relations.Relation>()
+                        Expressions = new List<Expression>(),
+                        Emit = new List<int>(){0, 1, 2, 3},
+                        Input = new FilterRelation()
                         {
-                            new ProjectRelation()
+                            Emit = new List<int>() {0, 1, 2, 4},
+                            Condition = new ScalarFunction()
                             {
-                                Expressions = new List<Expression>(),
-                                Emit = new List<int>(){0, 1, 2, 3},
-                                Input = new FilterRelation()
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.Equal,
+                                Arguments = new List<Expression>()
                                 {
-                                    Emit = new List<int>() {0, 1, 2, 4},
-                                    Condition = new ScalarFunction()
+                                    new DirectFieldReference()
                                     {
-                                        ExtensionUri = FunctionsComparison.Uri,
-                                        ExtensionName = FunctionsComparison.Equal,
-                                        Arguments = new List<Expression>()
+                                        ReferenceSegment = new StructReferenceSegment()
                                         {
-                                            new DirectFieldReference()
-                                            {
-                                                ReferenceSegment = new StructReferenceSegment()
-                                                {
-                                                    Field = 3
-                                                }
-                                            },
-                                            new StringLiteral() { Value = "test" }
+                                            Field = 3
                                         }
                                     },
-                                    Input = new ReadRelation()
+                                    new StringLiteral() { Value = "test" }
+                                }
+                            },
+                            Input = new ReadRelation()
+                            {
+                                Emit = new List<int>(){ 0, 1, 2, 3, 4 },
+                                NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                                BaseSchema = new Substrait.Type.NamedStruct()
+                                {
+                                    Names = new List<string>() { "Col1", "Col2", "Col4", "Col5", "Col6"},
+                                    Struct = new Substrait.Type.Struct()
                                     {
-                                        Emit = new List<int>(){ 0, 1, 2, 3, 4 },
-                                        NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
-                                        BaseSchema = new Substrait.Type.NamedStruct()
+                                        Types = new List<Substrait.Type.SubstraitBaseType>()
                                         {
-                                            Names = new List<string>() { "Col1", "Col2", "Col4", "Col5", "Col6"},
-                                            Struct = new Substrait.Type.Struct()
-                                            {
-                                                Types = new List<Substrait.Type.SubstraitBaseType>()
-                                                {
-                                                    new AnyType(),
-                                                    new AnyType(),
-                                                    new AnyType(),
-                                                    new AnyType(),
-                                                    new AnyType()
-                                                }
-                                            }
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType()
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                );
+                }
+            };
+
+            Assert.Equal(expected, optimizedPlan);
         }
     }
 }

@@ -14,6 +14,8 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
@@ -63,7 +65,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public Column()
         {
-            
+
         }
 
         internal void Assign(IMemoryAllocator memoryAllocator)
@@ -126,7 +128,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public ArrowTypeId Type => _type;
-        IDataColumn IColumn.DataColumn =>  _dataColumn!;
+        IDataColumn IColumn.DataColumn => _dataColumn!;
 
         public IDataValue this[int index] => GetValueAt(index, default);
 
@@ -267,7 +269,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public void InsertAt<T>(in int index, in T value)
-            where T: IDataValue
+            where T : IDataValue
         {
             Debug.Assert(_validityList != null);
             if (value.Type != _type)
@@ -421,7 +423,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 else
                 {
                     _nullCounter -= _validityList.CountFalseInRange(index, count);
-                    _validityList.RemoveRange(index, count);   
+                    _validityList.RemoveRange(index, count);
                 }
             }
             if (_dataColumn != null)
@@ -562,7 +564,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     {
                         return BoundarySearch.SearchBoundriesForDataColumnDesc(in _dataColumn!, in value, in start, end, child, _validityList);
                     }
-                    
+
                 }
                 return _dataColumn!.SearchBoundries(in value, in start, in end, child, desc);
             }
@@ -725,7 +727,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 _nullCounter = 0;
                 _dataColumn.AddToNewList(value);
             }
-            
+
         }
 
         public int EndNewList()
@@ -781,7 +783,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 return 0;
             }
-            
+
             return _dataColumn!.GetByteSize(start, end) + _validityList!.GetByteSize(start, end);
         }
 
@@ -827,7 +829,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         else if (_nullCounter > 0)
                         {
                             Debug.Assert(_validityList != null);
-                            
+
                             // Set entire range as not null, no need to update null counter since nothing is null in the copy
                             _validityList.InsertTrueInRange(index, count);
                         }
@@ -873,7 +875,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                             _validityList.Unset(Count - 1);
                         }
                         // Check if we need to copy over null values
-                        if (column._nullCounter > 0 || _nullCounter  > 0)
+                        if (column._nullCounter > 0 || _nullCounter > 0)
                         {
                             if (column._nullCounter > 0)
                             {
@@ -970,6 +972,90 @@ namespace FlowtideDotNet.Core.ColumnStore
         public Column Copy(IMemoryAllocator memoryAllocator)
         {
             return new Column(_nullCounter, _dataColumn?.Copy(memoryAllocator), _validityList!.Copy(memoryAllocator), _type, memoryAllocator);
+        }
+
+        internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                var nullTypePointer = arrowSerializer.AddNullType();
+                return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Null, nullTypePointer);
+            }
+            
+            return _dataColumn!.CreateSchemaField(ref arrowSerializer, emptyStringPointer, pointerStack);
+        }
+
+        int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            return CreateSchemaField(ref arrowSerializer, emptyStringPointer, pointerStack);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return new SerializationEstimation(1, 0, sizeof(int));
+            }
+
+            var estimate = _dataColumn!.GetSerializationEstimate();
+            return new SerializationEstimation(estimate.fieldNodeCount, 1 + estimate.bufferCount, estimate.bodyLength + _validityList!.GetByteSize(0, Count - 1));
+        }
+
+        void IColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer)
+        {
+            AddFieldNodes(ref arrowSerializer);
+        }
+
+        internal void AddFieldNodes(ref ArrowSerializer arrowSerializer)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                arrowSerializer.CreateFieldNode(_nullCounter, _nullCounter);
+                return;
+            }
+
+            _dataColumn!.AddFieldNodes(ref arrowSerializer, _nullCounter);
+        }
+
+        void IColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            AddBuffers(ref arrowSerializer);
+        }
+
+        internal void AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return;
+            }
+            if (_type != ArrowTypeId.Union)
+            {
+                // Union does not have a validity bitmap in apache arrow
+                arrowSerializer.AddBufferForward(_validityList!.MemorySlice.Length);
+            }
+            
+            _dataColumn!.AddBuffers(ref arrowSerializer);
+        }
+
+        void IColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            this.WriteDataToBuffer(ref dataWriter);
+        }
+
+        internal void WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return;
+            }
+
+            if (_type != ArrowTypeId.Union)
+            {
+                // Union does not have a validity bitmap in apache arrow
+                dataWriter.WriteArrowBuffer(_validityList!.MemorySlice.Span);
+            }
+
+            _dataColumn!.WriteDataToBuffer(ref dataWriter);
         }
     }
 }
