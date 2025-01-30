@@ -217,7 +217,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .WithLoggerFactory(loggerFactory)
 #endif
                 .AddConnectorManager(_connectorManager)
-                .WithNotificationReciever(_notificationReciever)
+                .WithCheckpointListesner(_notificationReciever)
+                .WithStateChangeListener(_notificationReciever)
+                .WithFailureListener(_notificationReciever)
                 .SetGetTimestampUpdateInterval(timestampInterval.Value)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {

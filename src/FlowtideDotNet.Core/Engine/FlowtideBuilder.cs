@@ -20,6 +20,7 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using System.Diagnostics;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -53,7 +54,7 @@ namespace FlowtideDotNet.Core.Engine
             {
                 plan = Optimizer.PlanOptimizer.Optimize(plan);
             }
-            
+
             _plan = plan;
             return this;
         }
@@ -90,9 +91,48 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
-        public FlowtideBuilder WithNotificationReciever(IStreamNotificationReciever notificationReciever)
+        public FlowtideBuilder WithCheckpointListesner(ICheckpointListener listener)
         {
-            dataflowStreamBuilder.WithNotificationReciever(notificationReciever);
+            dataflowStreamBuilder.AddCheckpointListener(listener);
+            return this;
+        }
+
+        public FlowtideBuilder WithStateChangeListener(IStreamStateChangeListener listener)
+        {
+            dataflowStreamBuilder.AddStateChangeListener(listener);
+            return this;
+        }
+
+        public FlowtideBuilder WithCheckpointListesner<T>()
+            where T : ICheckpointListener, new()
+        {
+            dataflowStreamBuilder.AddCheckpointListener(new T());
+            return this;
+        }
+
+        public FlowtideBuilder WithStateChangeListener<T>()
+            where T : IStreamStateChangeListener, new()
+        {
+            dataflowStreamBuilder.AddStateChangeListener(new T());
+            return this;
+        }
+
+        public FlowtideBuilder WithFailureListener(IFailureListener listener)
+        {
+            dataflowStreamBuilder.AddFailureListener(listener);
+            return this;
+        }
+
+        public FlowtideBuilder WithFailureListener<T>()
+            where T : IFailureListener, new()
+        {
+            dataflowStreamBuilder.AddFailureListener(new T());
+            return this;
+        }
+
+        public FlowtideBuilder WithFailureListener(Action<Exception?> exceptionAction)
+        {
+            dataflowStreamBuilder.AddFailureListener(new CustomExceptionStrategy(exceptionAction));
             return this;
         }
 
@@ -178,13 +218,13 @@ namespace FlowtideDotNet.Core.Engine
             }
 
             SubstraitVisitor visitor = new SubstraitVisitor(
-                _plan, 
-                dataflowStreamBuilder, 
-                _connectorManager, 
+                _plan,
+                dataflowStreamBuilder,
+                _connectorManager,
                 _readWriteFactory,
-                _queueSize, 
-                _functionsRegister, 
-                _parallelism, 
+                _queueSize,
+                _functionsRegister,
+                _parallelism,
                 _getTimestampInterval,
                 _useColumnStore,
                 _taskScheduler);
