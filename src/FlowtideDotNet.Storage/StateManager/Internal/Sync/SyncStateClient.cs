@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.Utils;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using static FlowtideDotNet.Storage.StateManager.Internal.Sync.LruTableSync;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
@@ -33,7 +34,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly bool useReadCache;
         private readonly int m_bplusTreePageSize;
         private readonly int m_bplusTreePageSizeBytes;
-        private readonly ConcurrentDictionary<long, int> m_modified;
+        private readonly Dictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
         private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
@@ -45,6 +46,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         // Method containers for addOrUpdate methods to skip casting to Func all the time
         private Func<long, int> addorUpdate_newValue_container;
         private Func<long, int, int> addorUpdate_existingValue_container;
+
+        private CacheValue[] _lookupTable;
 
         /// <summary>
         /// Value of how many pages have changed since last commit.
@@ -79,7 +82,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.m_bplusTreePageSize = bplusTreePageSize;
             this.m_bplusTreePageSizeBytes = bplusTreePageSizeBytes;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name);
-            m_modified = new ConcurrentDictionary<long, int>();
+            m_modified = new Dictionary<long, int>();
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
             if (!string.IsNullOrEmpty(name))
             {
@@ -91,6 +94,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             tagList.Add("state_client", name);
             addorUpdate_newValue_container = AddOrUpdate_NewValue;
             addorUpdate_existingValue_container = AddOrUpdate_ExistingValue;
+            _lookupTable = new CacheValue[1000];
         }
 
         public TMetadata? Metadata
@@ -133,9 +137,30 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             lock (m_lock)
             {
-                _addOrUpdateState.value = value;
-                m_modified.AddOrUpdate(key, addorUpdate_newValue_container, addorUpdate_existingValue_container);
-                return _addOrUpdateState.isFull;
+                //_addOrUpdateState.value = value;
+                if (m_modified.TryGetValue(key, out var old))
+                {
+                    m_modified[key] = old + 1;
+                }
+                else
+                {
+                    m_modified.Add(key, 0);
+                }
+
+                var modLookup = key % _lookupTable.Length;
+                if (_lookupTable[modLookup].Key == key)
+                {
+                    var node = _lookupTable[modLookup].Value!;
+                    lock (node)
+                    {
+                        node.ValueRef.version = node.ValueRef.version + 1;
+                        return false;
+                    }
+                }
+
+                return stateManager.AddOrUpdate(key, value, this);
+                //m_modified.AddOrUpdate(key, addorUpdate_newValue_container, addorUpdate_existingValue_container);
+               // return _addOrUpdateState.isFull;
             }
         }
 
@@ -273,10 +298,31 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             Debug.Assert(options.ValueSerializer != null);
             lock (m_lock)
             {
-                if (stateManager.TryGetValueFromCache<V>(key, out var val))
+                var modLookup = key % _lookupTable.Length;
+
+                if (_lookupTable[modLookup].Key == key)
                 {
-                    return ValueTask.FromResult<V?>(val);
+                    var node = _lookupTable[modLookup].Value;
+                    lock (node)
+                    {
+                        if (!node.ValueRef.value.TryRent())
+                        {
+                            throw new InvalidOperationException("Could not rent value from cache");
+                        }
+                        node.ValueRef.useCount = Math.Min(node.ValueRef.useCount + 1, 5);
+                        return ValueTask.FromResult<V?>((V)_lookupTable[modLookup].Value!.ValueRef.value);
+                    }
                 }
+
+                if (stateManager.TryGetCacheValueFromCache(key, out var cacheVal))
+                {
+                    _lookupTable[modLookup] = new CacheValue { Key = key, Value = cacheVal };
+                    return ValueTask.FromResult<V?>((V)cacheVal.ValueRef.value);
+                }
+                //if (stateManager.TryGetValueFromCache<V>(key, out var val))
+                //{
+                //    return ValueTask.FromResult<V?>(val);
+                //}
                 Interlocked.Increment(ref cacheMisses);
                 // Read from temporary file storage
                 if (m_fileCacheVersion.ContainsKey(key))
@@ -378,7 +424,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             Debug.Assert(options.ValueSerializer != null);
             foreach (var value in valuesToEvict)
             {
-                bool isModified = m_modified.TryGetValue(value.Item1.ValueRef.key, out var val);
+                var modLookup = value.Item1.ValueRef.key % _lookupTable.Length;
+                bool isModified;
+                int val;
+                lock (m_lock)
+                {
+                    isModified = m_modified.TryGetValue(value.Item1.ValueRef.key, out val);
+                    if (_lookupTable[modLookup].Key == value.Item1.ValueRef.key)
+                    {
+                        _lookupTable[modLookup] = new CacheValue { Key = -1, Value = null };
+                    }
+                }
                 if (!useReadCache)
                 {
                     // Skip writing data if we dont use read cache and its not modified or deleted
@@ -458,6 +514,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         Task IStateSerializerCheckpointWriter.RemovePage(long pageId)
         {
             return session.Delete(pageId);
+        }
+
+        private struct CacheValue
+        {
+            public long Key;
+            public LinkedListNode<LinkedListValue>? Value;
         }
     }
 }
