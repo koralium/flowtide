@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     pageIterator.Reset(null, index);
                     return ValueTask.FromResult(false);
                 }
-                var getNextPageTask = tree.m_stateClient.GetValue(leafNode.next, "MoveNextAsync2");
+                var getNextPageTask = tree.m_stateClient.GetValue(leafNode.next);
 
                 if (!getNextPageTask.IsCompleted)
                 {
@@ -151,7 +151,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 else if (searchComparer.SeekNextPageForValue)
                 {
-                    var nextPage = tree.m_stateClient.GetValue(leafNode.next, "AfterSeekTask");
+                    var nextPage = tree.m_stateClient.GetValue(leafNode.next);
                     leafNode.Return();
                     if (!nextPage.IsCompleted)
                     {

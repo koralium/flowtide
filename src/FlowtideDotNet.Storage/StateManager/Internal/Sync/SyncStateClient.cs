@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             tagList.Add("state_client", name);
             addorUpdate_newValue_container = AddOrUpdate_NewValue;
             addorUpdate_existingValue_container = AddOrUpdate_ExistingValue;
-            _lookupTable = new CacheValue[1000];
+            _lookupTable = new CacheValue[1009];
         }
 
         public TMetadata? Metadata
@@ -137,7 +137,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             lock (m_lock)
             {
-                //_addOrUpdateState.value = value;
                 if (m_modified.TryGetValue(key, out var old))
                 {
                     m_modified[key] = old + 1;
@@ -159,8 +158,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
 
                 return stateManager.AddOrUpdate(key, value, this);
-                //m_modified.AddOrUpdate(key, addorUpdate_newValue_container, addorUpdate_existingValue_container);
-               // return _addOrUpdateState.isFull;
             }
         }
 
@@ -293,7 +290,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return stateManager.GetNewPageId();
         }
 
-        public ValueTask<V?> GetValue(in long key, string from)
+        public ValueTask<V?> GetValue(in long key)
         {
             Debug.Assert(options.ValueSerializer != null);
             lock (m_lock)
@@ -302,15 +299,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                 if (_lookupTable[modLookup].Key == key)
                 {
-                    var node = _lookupTable[modLookup].Value;
+                    var node = _lookupTable[modLookup].Value!;
                     lock (node)
                     {
-                        if (!node.ValueRef.value.TryRent())
+                        if (!node.ValueRef.removed)
                         {
-                            throw new InvalidOperationException("Could not rent value from cache");
+                            if (!node.ValueRef.value.TryRent())
+                            {
+                                throw new InvalidOperationException("Could not rent value from cache");
+                            }
+                            node.ValueRef.useCount = Math.Min(node.ValueRef.useCount + 1, 5);
+                            return ValueTask.FromResult<V?>((V)_lookupTable[modLookup].Value!.ValueRef.value);
                         }
-                        node.ValueRef.useCount = Math.Min(node.ValueRef.useCount + 1, 5);
-                        return ValueTask.FromResult<V?>((V)_lookupTable[modLookup].Value!.ValueRef.value);
                     }
                 }
 
@@ -319,10 +319,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     _lookupTable[modLookup] = new CacheValue { Key = key, Value = cacheVal };
                     return ValueTask.FromResult<V?>((V)cacheVal.ValueRef.value);
                 }
-                //if (stateManager.TryGetValueFromCache<V>(key, out var val))
-                //{
-                //    return ValueTask.FromResult<V?>(val);
-                //}
                 Interlocked.Increment(ref cacheMisses);
                 // Read from temporary file storage
                 if (m_fileCacheVersion.ContainsKey(key))

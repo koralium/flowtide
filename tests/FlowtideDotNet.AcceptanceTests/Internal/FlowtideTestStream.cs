@@ -73,7 +73,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public SqlPlanBuilder SqlPlanBuilder => sqlPlanBuilder;
 
-        public int CachePageCount { get; set; } = 1000;
+        public int CachePageCount { get; set; } = 0;
 
         public Watermark? LastWatermark => _lastWatermark;
 
@@ -225,6 +225,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _persistentStorage,
                     DefaultBPlusTreePageSize = pageSize,
+                    DefaultBPlusTreePageSizeBytes = 1,
                     TemporaryStorageOptions = new Storage.FileCacheOptions()
                     {
                         DirectoryPath = $"./data/tempFiles/{testName}/tmp"
