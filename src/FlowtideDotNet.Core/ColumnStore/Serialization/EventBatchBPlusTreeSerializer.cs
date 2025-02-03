@@ -26,16 +26,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
     {
         private readonly EventBatchSerializer _batchSerializer;
         private readonly object _lock = new object();
-        private IBatchCompressor _batchCompressor;
-        private IBatchDecompressor _batchDecompressor;
 
         
 
         public EventBatchBPlusTreeSerializer()
         {
             _batchSerializer = new EventBatchSerializer();
-            _batchCompressor = new BatchCompressor();
-            _batchDecompressor = new BatchDecompressor();
         }
 
         public EventBatchDeserializeResult Deserialize(ref SequenceReader<byte> reader, IMemoryAllocator memoryAllocator)
