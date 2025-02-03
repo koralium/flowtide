@@ -201,7 +201,7 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 m_metadata.CheckpointVersion = m_persistentStorage.CurrentVersion;
                 var bufferWriter = new ArrayBufferWriter<byte>();
-                m_metadataSerializer.Serialize(bufferWriter, m_metadata, options.SerializeOptions);
+                m_metadataSerializer.Serialize(bufferWriter, m_metadata);
                 bytes = bufferWriter.WrittenSpan.ToArray();
             }
 
@@ -236,9 +236,10 @@ namespace FlowtideDotNet.Storage.StateManager
                 Monitor.Exit(m_lock);
                 if (m_persistentStorage.TryGetValue(location, out var bytes))
                 {
-                    var metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(new ByteMemoryOwner(bytes), bytes.Length);
+                    var metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes.Value, bytes.Value.Length);
                     var persistentSession = m_persistentStorage.CreateSession();
                     var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheOptions, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    
                     lock (m_lock)
                     {
                         _stateClients.Add(client, stateClient);
@@ -309,7 +310,7 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 lock (m_lock)
                 {
-                    m_metadata = m_metadataSerializer.Deserialize(new ByteMemoryOwner(metadataBytes), metadataBytes.Length, options.SerializeOptions);
+                    m_metadata = m_metadataSerializer.Deserialize(metadataBytes.Value, metadataBytes.Value.Length);
                 }
                 await m_persistentStorage.RecoverAsync(m_metadata.CheckpointVersion).ConfigureAwait(false);
             }

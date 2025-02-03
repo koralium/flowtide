@@ -13,8 +13,8 @@
 using FlowtideDotNet.Storage.FileCache.Internal;
 using FlowtideDotNet.Storage.FileCache.Internal.Unix;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager.Internal;
 using FlowtideDotNet.Storage.Utils;
-using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
@@ -344,17 +344,15 @@ namespace FlowtideDotNet.Storage.FileCache
             _freePages.Add(new FreePage(newNode.ValueRef.allocatedSize, newNode));
         }
 
-        public IBufferWriter<byte> BeginWrite(long id, int estimatedSize)
-        {
-            _bufferWriter.Reset(estimatedSize);
-            return _bufferWriter;
-        }
+        
 
-        public void EndWrite(long id, IBufferWriter<byte> bufferWriter)
+        public void Write(long id, SerializableObject serializableObject)
         {
-            if (bufferWriter is FileCacheBufferWriter fileCacheBufferWriter)
+            lock (m_lock)
             {
-                WriteAsync(id, fileCacheBufferWriter.Memory);
+                _bufferWriter.Reset(4096);
+                serializableObject.Serialize(_bufferWriter);
+                Write(id, _bufferWriter.Memory, _bufferWriter.Position);
             }
         }
 
@@ -364,61 +362,58 @@ namespace FlowtideDotNet.Storage.FileCache
         /// <param name="pageKey"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        private void WriteAsync(long pageKey, Memory<byte> data)
+        private void Write(long pageKey, Memory<byte> data, int size)
         {
             long position = 0;
             IFileCacheWriter? segmentWriter = null;
             var sw = ValueStopwatch.StartNew();
-            lock (m_lock)
+            var finalTime = sw.GetElapsedTime().TotalMilliseconds;
+            if (allocatedPages.TryGetValue(pageKey, out var node))
             {
-                var finalTime = sw.GetElapsedTime().TotalMilliseconds;
-                if (allocatedPages.TryGetValue(pageKey, out var node))
+                // Check if the current node has enough size
+                if (node.ValueRef.allocatedSize >= data.Length)
                 {
-                    // Check if the current node has enough size
-                    if (node.ValueRef.allocatedSize >= data.Length)
+                    if (segmentWriters.TryGetValue(node.ValueRef.fileNumber, out segmentWriter))
                     {
-                        if (segmentWriters.TryGetValue(node.ValueRef.fileNumber, out segmentWriter))
-                        {
-                            position = node.ValueRef.position;
-                            node.ValueRef.size = data.Length;
-                        }
-                    }
-                    else
-                    {
-                        // Free the previous page
-                        Free(pageKey);
-                        // Create a new allocation
-                        Allocate_NoLock(pageKey, data.Length);
-                        if (allocatedPages.TryGetValue(pageKey, out var newNode))
-                        {
-                            if (segmentWriters.TryGetValue(newNode.ValueRef.fileNumber, out segmentWriter))
-                            {
-                                position = newNode.ValueRef.position;
-                                newNode.ValueRef.size = data.Length;
-                            }
-                        }
+                        position = node.ValueRef.position;
+                        node.ValueRef.size = size;
                     }
                 }
                 else
                 {
+                    // Free the previous page
+                    Free(pageKey);
+                    // Create a new allocation
                     Allocate_NoLock(pageKey, data.Length);
                     if (allocatedPages.TryGetValue(pageKey, out var newNode))
                     {
                         if (segmentWriters.TryGetValue(newNode.ValueRef.fileNumber, out segmentWriter))
                         {
                             position = newNode.ValueRef.position;
-                            newNode.ValueRef.size = data.Length;
+                            newNode.ValueRef.size = size;
                         }
                     }
                 }
-
-                if (segmentWriter == null)
-                {
-                    throw new InvalidOperationException("Segment not found");
-                }
-
-                segmentWriter.Write(position, data);
             }
+            else
+            {
+                Allocate_NoLock(pageKey, data.Length);
+                if (allocatedPages.TryGetValue(pageKey, out var newNode))
+                {
+                    if (segmentWriters.TryGetValue(newNode.ValueRef.fileNumber, out segmentWriter))
+                    {
+                        position = newNode.ValueRef.position;
+                        newNode.ValueRef.size = size;
+                    }
+                }
+            }
+
+            if (segmentWriter == null)
+            {
+                throw new InvalidOperationException("Segment not found");
+            }
+
+            segmentWriter.Write(position, data);
         }
 
         public bool Exists(long pageKey)
@@ -429,7 +424,20 @@ namespace FlowtideDotNet.Storage.FileCache
             }
         }
 
-        public byte[] Read(long pageKey)
+        public T Read<T>(long pageKey, IStateSerializer<T> serializer)
+            where T : ICacheObject
+        {
+            var memory = Read(pageKey);
+            return serializer.Deserialize(memory, memory.Length);
+        }
+
+        /// <summary>
+        /// This memory only keeps the same value until the next call of Read.
+        /// </summary>
+        /// <param name="pageKey"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public ReadOnlyMemory<byte> Read(long pageKey)
         {
             IFileCacheWriter? segmentWriter = default;
             long position = 0;
@@ -508,6 +516,7 @@ namespace FlowtideDotNet.Storage.FileCache
                             segment.Value.Dispose();
                         }
                         segmentWriters.Clear();
+                        _bufferWriter.Dispose();
                     }
                 }
                 disposedValue = true;

@@ -29,11 +29,13 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
     {
         private readonly List<int> _columnsToStore;
         private readonly IMemoryAllocator _memoryAllocator;
+        private readonly EventBatchBPlusTreeSerializer _batchSerializer;
 
         public ModifiedKeyStorageSerializer(List<int> columnsToStore, IMemoryAllocator memoryAllocator)
         {
             _columnsToStore = columnsToStore;
             this._memoryAllocator = memoryAllocator;
+            _batchSerializer = new EventBatchBPlusTreeSerializer();
         }
 
         public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
@@ -46,14 +48,10 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             return new ModifiedKeyStorage(_columnsToStore, _memoryAllocator);
         }
 
-        public ModifiedKeyStorage Deserialize(in BinaryReader reader)
+        public ModifiedKeyStorage Deserialize(ref SequenceReader<byte> reader)
         {
-            using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
-            var recordBatch = arrowReader.ReadNextRecordBatch();
-
-            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, _memoryAllocator);
-
-            return new ModifiedKeyStorage(_columnsToStore, eventBatch);
+            var batchResult = _batchSerializer.Deserialize(ref reader, _memoryAllocator);
+            return new ModifiedKeyStorage(_columnsToStore, batchResult.EventBatch);
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
@@ -63,9 +61,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
         public void Serialize(in IBufferWriter<byte> writer, in ModifiedKeyStorage values)
         {
-            var recordBatch = EventArrowSerializer.BatchToArrow(values._data, values.Count);
-            var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
-            batchWriter.WriteRecordBatch(recordBatch);
+            _batchSerializer.Serialize(writer, values._data, values.Count);
         }
     }
 }

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow.Memory;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
@@ -41,18 +42,25 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             return new JoinWeightsValueContainer(_memoryAllocator);
         }
 
-        public JoinWeightsValueContainer Deserialize(in BinaryReader reader)
+        public JoinWeightsValueContainer Deserialize(ref SequenceReader<byte> reader)
         {
-            var count = reader.ReadInt32();
-            var length = reader.ReadInt32();
-            var memory = reader.ReadBytes(length);
+            if (!reader.TryReadLittleEndian(out int count))
+            {
+                throw new InvalidOperationException("Failed to read count");
+            }
+            if (!reader.TryReadLittleEndian(out int length))
+            {
+                throw new InvalidOperationException("Failed to read length");
+            }
+            var nativeMemory = _memoryAllocator.Allocate(length, 64);
 
-            var memoryAllocator = _memoryAllocator;
-            var nativeMemory = memoryAllocator.Allocate(length, 64);
+            if (!reader.TryCopyTo(nativeMemory.Memory.Span.Slice(0, length)))
+            {
+                throw new InvalidOperationException("Failed to read bytes");
+            }
+            reader.Advance(length);
 
-            memory.CopyTo(nativeMemory.Memory.Span);
-
-            return new JoinWeightsValueContainer(nativeMemory, count, memoryAllocator);
+            return new JoinWeightsValueContainer(nativeMemory, count, _memoryAllocator);
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
@@ -69,8 +77,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             BinaryPrimitives.WriteInt32LittleEndian(headerSpan.Slice(4), memory.Length);
             writer.Advance(8);
 
-            //writer.Write(values.Count);
-            //writer.Write(memory.Length);
             writer.Write(memory.Span);
         }
     }

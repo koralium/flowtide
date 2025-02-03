@@ -10,21 +10,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.StateManager.Internal;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Storage.Persistence
+namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
-    public interface IPersistentStorageSession : IDisposable
+    public struct EventBatchDeserializeResult
     {
-        ValueTask<T> Read<T>(long key, IStateSerializer<T> stateSerializer)
-            where T : ICacheObject;
+        public EventBatchDeserializeResult(EventBatchData eventBatch, int count)
+        {
+            EventBatch = eventBatch;
+            Count = count;
+        }
 
-        ValueTask<ReadOnlyMemory<byte>> Read(long key);
-
-        Task Write(long key, SerializableObject value);
-
-        Task Delete(long key);
-
-        Task Commit();
+        public EventBatchData EventBatch { get; }
+        public int Count { get; }
     }
 }

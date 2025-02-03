@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Storage.Tree
     {
         TKeyContainer CreateEmpty();
 
-        TKeyContainer Deserialize(in BinaryReader reader);
+        TKeyContainer Deserialize(ref SequenceReader<byte> reader);
 
         void Serialize(in IBufferWriter<byte> writer, in TKeyContainer values);
 

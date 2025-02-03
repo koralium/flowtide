@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Storage.Persistence.CacheStorage
@@ -77,7 +78,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             return ValueTask.CompletedTask;
         }
 
-        public bool TryGetValue(long key, [NotNullWhen(true)] out byte[]? value)
+        public bool TryGetValue(long key, [NotNullWhen(true)] out ReadOnlyMemory<byte>? value)
         {
             if (m_fileCache.Exists(key))
             {
@@ -90,11 +91,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public virtual ValueTask Write(long key, byte[] value)
         {
-            var byteWriter = m_fileCache.BeginWrite(key, value.Length);
-            var span = byteWriter.GetSpan(value.Length);
-            value.CopyTo(span);
-            byteWriter.Advance(value.Length);
-            m_fileCache.EndWrite(key, byteWriter);
+            m_fileCache.Write(key, new SerializableObject(value));
             m_fileCache.Flush();
             return ValueTask.CompletedTask;
         }

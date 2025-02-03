@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Storage.Persistence
         /// <param name="key"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        bool TryGetValue(long key, [NotNullWhen(true)] out byte[]? value);
+        bool TryGetValue(long key, [NotNullWhen(true)] out ReadOnlyMemory<byte>? value);
 
         /// <summary>
         /// Used by administrative operations to write metadata.

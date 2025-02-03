@@ -22,12 +22,10 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
 {
     internal class ListKeyWithSizeSerializer : IBPlusTreeKeySerializer<KeyValuePair<long, long>, ListKeyContainerWithSize>
     {
-       // private readonly IBplusTreeSerializer<KeyValuePair<long, long>> serializer;
         private readonly int sizePerElement;
 
-        public ListKeyWithSizeSerializer( int sizePerElement)
+        public ListKeyWithSizeSerializer(int sizePerElement)
         {
-            //this.serializer = serializer;
             this.sizePerElement = sizePerElement;
         }
 
@@ -41,7 +39,7 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
             return new ListKeyContainerWithSize(1);
         }
 
-        public ListKeyContainerWithSize Deserialize(in BinaryReader reader)
+        public ListKeyContainerWithSize Deserialize(ref SequenceReader<byte> reader)
         {
             throw new NotImplementedException();
         }

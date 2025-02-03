@@ -42,18 +42,27 @@ namespace FlowtideDotNet.Storage.Serializers
             return new PrimitiveListValueContainer<T>(_memoryAllocator);
         }
 
-        public PrimitiveListValueContainer<T> Deserialize(in BinaryReader reader)
+        public PrimitiveListValueContainer<T> Deserialize(ref SequenceReader<byte> reader)
         {
-            var count = reader.ReadInt32();
-            var length = reader.ReadInt32();
-            var memory = reader.ReadBytes(length);
+            if (!reader.TryReadLittleEndian(out int count))
+            {
+                throw new InvalidOperationException("Failed to read count");
+            }
+            if (!reader.TryReadLittleEndian(out int length))
+            {
+                throw new InvalidOperationException("Failed to read length");
+            }
+            var nativeMemory = _memoryAllocator.Allocate(length, 64);
 
-            var memoryAllocator = _memoryAllocator;
-            var nativeMemory = memoryAllocator.Allocate(length, 64);
+            if (!reader.TryCopyTo(nativeMemory.Memory.Span.Slice(0, length)))
+            {
+                throw new InvalidOperationException("Failed to read bytes");
+            }
+            reader.Advance(length);
 
-            memory.CopyTo(nativeMemory.Memory.Span);
 
-            return new PrimitiveListValueContainer<T>(nativeMemory, count, memoryAllocator);
+
+            return new PrimitiveListValueContainer<T>(nativeMemory, count, _memoryAllocator);
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
@@ -69,9 +78,6 @@ namespace FlowtideDotNet.Storage.Serializers
             BinaryPrimitives.WriteInt32LittleEndian(headerInfo, values.Count);
             BinaryPrimitives.WriteInt32LittleEndian(headerInfo.Slice(4), memory.Length);
             writer.Advance(8);
-
-            //writer.Write(values.Count);
-            //writer.Write(memory.Length);
             writer.Write(memory.Span);
         }
     }

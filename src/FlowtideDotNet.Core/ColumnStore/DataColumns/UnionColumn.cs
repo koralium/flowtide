@@ -806,7 +806,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public SerializationEstimation GetSerializationEstimate()
         {
-            int bodyLength = Count * sizeof(int);
+            int bodyLength = Count * 5;
             int fieldCount = 1;
             int bufferCount = 2;
             for (int i = 0; i < _valueColumns.Count; i++)

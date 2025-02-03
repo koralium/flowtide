@@ -168,12 +168,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 if (stateManager.TryGetValueFromCache<V>(kv.Key, out var val))
                 {
-                    var bufferWriter = new ArrayBufferWriter<byte>();
-
-                    options.ValueSerializer.Serialize(bufferWriter, val, stateManager.SerializeOptions);
-                    var bytes = bufferWriter.WrittenSpan.ToArray();
                     // Write to persistence
-                    await session.Write(kv.Key, bytes);
+                    await session.Write(kv.Key, new SerializableObject(val, options.ValueSerializer));
 
                     if (!useReadCache)
                     {
@@ -192,13 +188,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     var bytes = m_fileCache.Read(kv.Key);
 
-                    if (bytes == null)
-                    {
-                        throw new InvalidOperationException("Data could not be found in temporary cache.");
-                    }
-
                     // Write to persistence
-                    await session.Write(kv.Key, bytes);
+                    await session.Write(kv.Key, new SerializableObject(bytes));
 
                     if (!useReadCache)
                     {
@@ -244,7 +235,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     metadata.CommitedOnce = true;
                     var bytes = StateClientMetadataSerializer.Serialize(metadata);
-                    await session.Write(metadataId, bytes);
+                    await session.Write(metadataId, new SerializableObject(bytes));
                     if (metadata.Metadata != null)
                     {
                         metadata.Metadata.Updated = false;
@@ -290,8 +281,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 if (m_fileCacheVersion.ContainsKey(key))
                 {
                     var sw = ValueStopwatch.StartNew();
-                    var bytes = m_fileCache.Read(key);
-                    var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
+                    var value = m_fileCache.Read<V>(key, options.ValueSerializer);
                     if (!value.TryRent())
                     {
                         throw new InvalidOperationException("Could not rent value when fetched from storage.");
@@ -314,17 +304,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             Debug.Assert(options.ValueSerializer != null);
             var sw = ValueStopwatch.StartNew();
-            byte[]? bytes = default;
+            V? value = default;
             try
             {
-                bytes = await session.Read(key);
+                value = await session.Read<V>(key, options.ValueSerializer);
             }
             catch (Exception e)
             {
                 throw new FlowtidePersistentStorageException($"Error reading persistent data in client '{name}' with key '{key}'", e);
             }
 
-            var value = options.ValueSerializer.Deserialize(new ByteMemoryOwner(bytes), bytes.Length, stateManager.SerializeOptions);
             stateManager.AddOrUpdate(key, value, this);
             if (!value.TryRent())
             {
@@ -377,7 +366,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             else
             {
                 var bytes = await session.Read(metadataId);
-                metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(new ByteMemoryOwner(bytes), bytes.Length);
+                metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes, bytes.Length);
             }
         }
 
@@ -419,10 +408,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 var sw = ValueStopwatch.StartNew();
                 try
                 {
-                    var bufferWriter = m_fileCache.BeginWrite(value.Item1.ValueRef.key, 16_000);
-                    options.ValueSerializer.Serialize(bufferWriter, value.Item1.ValueRef.value, stateManager.SerializeOptions);
-                    m_fileCache.EndWrite(value.Item1.ValueRef.key, bufferWriter);
-                    //m_fileCache.WriteAsync(value.Item1.ValueRef.key, bytes);
+                    // Must lock the linked list value here since it can be deleted and disposed
+                    // So we check if it is already removed from the cache, then we skip serialization
+                    lock (value.Item1)
+                    {
+                        if (!value.Item1.ValueRef.removed)
+                        {
+                            m_fileCache.Write(value.Item1.ValueRef.key, new SerializableObject(value.Item1.ValueRef.value, options.ValueSerializer));
+                        }
+                    }
                 }
                 finally
                 {
@@ -449,7 +443,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             await options.ValueSerializer.InitializeAsync(this, metadata);
         }
 
-        public async Task<Memory<byte>> ReadPage(long pageId)
+        public async Task<ReadOnlyMemory<byte>> ReadPage(long pageId)
         {
             return await session.Read(pageId);
         }
@@ -462,7 +456,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         Task IStateSerializerCheckpointWriter.WritePageMemory(long pageId, Memory<byte> memory)
         {
-            return session.Write(pageId, memory.ToArray());
+            return session.Write(pageId, new SerializableObject(memory));
         }
 
         Task IStateSerializerCheckpointWriter.RemovePage(long pageId)

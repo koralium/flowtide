@@ -14,11 +14,11 @@ using System.Buffers;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
-    internal interface IStateSerializer
+    public interface IStateSerializer
     {
-        void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value, in StateSerializeOptions stateSerializeOptions);
+        void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value);
 
-        ICacheObject DeserializeCacheObject(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions);
+        ICacheObject DeserializeCacheObject(ReadOnlyMemory<byte> bytes, int length);
 
         Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata)
             where TMetadata : IStorageMetadata;
@@ -26,11 +26,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata)
             where TMetadata : IStorageMetadata;
     }
-    internal interface IStateSerializer<T> : IStateSerializer
+    public interface IStateSerializer<T> : IStateSerializer
         where T: ICacheObject
     {
-        void Serialize(in IBufferWriter<byte> bufferWriter, in T value, in StateSerializeOptions stateSerializeOptions);
+        void Serialize(in IBufferWriter<byte> bufferWriter, in T value);
 
-        T Deserialize(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions);
+        T Deserialize(ReadOnlyMemory<byte> bytes, int length);
     }
 }

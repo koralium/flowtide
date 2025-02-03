@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             return new ColumnValueStorageContainer(_columnCount, _memoryAllocator);
         }
 
-        public ColumnValueStorageContainer Deserialize(in BinaryReader reader)
+        public ColumnValueStorageContainer Deserialize(ref SequenceReader<byte> reader)
         {
             throw new NotImplementedException();
         }

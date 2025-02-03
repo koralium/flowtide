@@ -30,11 +30,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
     {
         private readonly int columnCount;
         private readonly IMemoryAllocator memoryAllocator;
+        private readonly EventBatchBPlusTreeSerializer _batchSerializer;
 
         public AggregateKeySerializer(int columnCount, IMemoryAllocator memoryAllocator)
         {
             this.columnCount = columnCount;
             this.memoryAllocator = memoryAllocator;
+            _batchSerializer = new EventBatchBPlusTreeSerializer();
         }
         public AggregateKeyStorageContainer CreateEmpty()
         {
@@ -48,21 +50,15 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             return fieldInfo!;
         }
 
-        public AggregateKeyStorageContainer Deserialize(in BinaryReader reader)
+        public AggregateKeyStorageContainer Deserialize(ref SequenceReader<byte> reader)
         {
-            using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
-            var recordBatch = arrowReader.ReadNextRecordBatch();
-
-            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, memoryAllocator);
-            
-            return new AggregateKeyStorageContainer(recordBatch.ColumnCount, eventBatch, recordBatch.Length);
+            var eventBatch = _batchSerializer.Deserialize(ref reader, memoryAllocator);
+            return new AggregateKeyStorageContainer(eventBatch.EventBatch.Columns.Count, eventBatch.EventBatch, eventBatch.Count);
         }
 
         public void Serialize(in IBufferWriter<byte> writer, in AggregateKeyStorageContainer values)
         {
-            var recordBatch = EventArrowSerializer.BatchToArrow(values._data, values.Count);
-            var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
-            batchWriter.WriteRecordBatch(recordBatch);
+            _batchSerializer.Serialize(writer, values._data, values.Count);
         }
 
         public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)

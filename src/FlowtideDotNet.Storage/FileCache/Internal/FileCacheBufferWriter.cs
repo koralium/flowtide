@@ -30,6 +30,8 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
 
         public Memory<byte> Memory => SliceMemory();
 
+        public int Position => _position;
+
         private Memory<byte> SliceMemory()
         {
             var alignedLength = (_position + sectorSize - 1) / sectorSize * sectorSize;
@@ -51,13 +53,11 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
             var alignedLength = (estimatedSize + sectorSize - 1) / sectorSize * sectorSize;
             if (_memory == null)
             {
-
                 _memory = memoryAllocator.Allocate(alignedLength, sectorSize);
             }
             else if (_memory.Memory.Length < alignedLength)
             {
-                _memory.Dispose();
-                _memory = memoryAllocator.Allocate(alignedLength, sectorSize);
+                _memory = memoryAllocator.Realloc(_memory, alignedLength, sectorSize);
             }
             _position = 0;
         }
@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
             var alignedLength = (newLength + sectorSize - 1) / sectorSize * sectorSize;
             if (_memory.Memory.Length < alignedLength)
             {
-                _memory = memoryAllocator.Allocate(alignedLength,  sectorSize);
+                _memory = memoryAllocator.Realloc(_memory, alignedLength,  sectorSize);
             }
             return _memory.Memory.Slice(_position);
         }
