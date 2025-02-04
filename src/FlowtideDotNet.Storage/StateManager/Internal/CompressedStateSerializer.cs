@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
 
         public void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value)
         {
-            if (value is IBPlusTreeNode node)
+            if (value is TValue node)
             {
                 Serialize(bufferWriter, node);
                 return;
