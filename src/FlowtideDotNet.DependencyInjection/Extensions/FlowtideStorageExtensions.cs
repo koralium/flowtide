@@ -98,7 +98,7 @@ namespace FlowtideDotNet.DependencyInjection
 
         public static IFlowtideStorageBuilder ZstdPageCompression(this IFlowtideStorageBuilder storageBuilder, int compressionLevel = 3)
         {
-            return storageBuilder.SetCompressionFunction(new StateSerializeOptions()
+            return storageBuilder.SetCompression(new StateSerializeOptions()
             {
                 CompressionMethod = CompressionMethod.Page,
                 CompressionType = CompressionType.Zstd,
@@ -108,7 +108,7 @@ namespace FlowtideDotNet.DependencyInjection
 
         public static IFlowtideStorageBuilder NoCompression(this IFlowtideStorageBuilder storageBuilder)
         {
-            return storageBuilder.SetCompressionFunction(new FlowtideDotNet.Storage.StateSerializeOptions());
+            return storageBuilder.SetCompression(new FlowtideDotNet.Storage.StateSerializeOptions());
         }
     }
 }
