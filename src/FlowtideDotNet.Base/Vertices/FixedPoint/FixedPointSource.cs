@@ -147,5 +147,13 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         {
             throw new NotImplementedException();
         }
+
+        public void Pause()
+        {
+        }
+
+        public void Resume()
+        {
+        }
     }
 }

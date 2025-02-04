@@ -40,6 +40,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
         private long _currentTime = 0;
         private IVertexHandler? _vertexHandler;
         private bool _isHealthy = true;
+        private TaskCompletionSource? _pauseSource;
 
         private string? _name;
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
@@ -105,6 +106,11 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 if (streamEvent is StreamMessage<T> streamMessage)
                 {
                     var enumerator = OnRecieve(streamMessage.Data, streamMessage.Time);
+
+                    if (_pauseSource != null)
+                    {
+                        enumerator = WaitForPause(enumerator);
+                    }
 
                     if (streamMessage.Data is IRentable inputRentable)
                     {
@@ -303,6 +309,20 @@ namespace FlowtideDotNet.Base.Vertices.Unary
             _parallelTarget!.ReleaseCheckpoint();
         }
 
+        private async IAsyncEnumerable<T> WaitForPause(IAsyncEnumerable<T> input)
+        {
+            var task = _pauseSource?.Task;
+            if (task != null)
+            {
+                await task;
+            }
+
+            await foreach (var element in input)
+            {
+                yield return element;
+            }
+        }
+
         internal protected virtual async Task<ILockingEvent> HandleCheckpoint(ILockingEvent lockingEvent)
         {
             if (lockingEvent is ICheckpointEvent checkpointEvent)
@@ -427,6 +447,23 @@ namespace FlowtideDotNet.Base.Vertices.Unary
         public IEnumerable<ITargetBlock<IStreamEvent>> GetLinks()
         {
             return _links.Select(x => x.Item1);
+        }
+
+        public void Pause()
+        {
+            if (_pauseSource == null)
+            {
+                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
+        public void Resume()
+        {
+            if (_pauseSource != null)
+            {
+                _pauseSource.SetResult();
+                _pauseSource = null;
+            }
         }
     }
 }
