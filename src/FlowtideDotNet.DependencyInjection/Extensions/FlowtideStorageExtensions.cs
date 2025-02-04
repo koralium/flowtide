@@ -34,7 +34,7 @@ namespace FlowtideDotNet.DependencyInjection
             FileCacheOptions fileCacheOptions = new FileCacheOptions();
             options?.Invoke(fileCacheOptions);
             storageBuilder.SetPersistentStorage(new FileCachePersistentStorage(fileCacheOptions));
-            storageBuilder.ZLibCompression();
+            storageBuilder.ZstdPageCompression();
             return storageBuilder;
         }
 
@@ -51,7 +51,7 @@ namespace FlowtideDotNet.DependencyInjection
                 MemorySize = 1024 * 1024 * 32,
                 PageSize = 1024 * 1024 * 16
             }));
-            storageBuilder.ZLibCompression();
+            storageBuilder.ZstdPageCompression();
             return storageBuilder;
         }
         
@@ -91,23 +91,18 @@ namespace FlowtideDotNet.DependencyInjection
                     }
                 );
             });
-            storageBuilder.ZLibCompression();
+            storageBuilder.ZstdPageCompression();
 
             return storageBuilder;
         }
 
-        public static IFlowtideStorageBuilder ZLibCompression(this IFlowtideStorageBuilder storageBuilder)
+        public static IFlowtideStorageBuilder ZstdPageCompression(this IFlowtideStorageBuilder storageBuilder, int compressionLevel = 3)
         {
             return storageBuilder.SetCompressionFunction(new StateSerializeOptions()
             {
-                CompressFunc = (stream) =>
-                {
-                    return new ZLibStream(stream, CompressionMode.Compress);
-                },
-                DecompressFunc = (stream) =>
-                {
-                    return new ZLibStream(stream, CompressionMode.Decompress);
-                }
+                CompressionMethod = CompressionMethod.Page,
+                CompressionType = CompressionType.Zstd,
+                ComressionLevel = compressionLevel
             });
         }
 

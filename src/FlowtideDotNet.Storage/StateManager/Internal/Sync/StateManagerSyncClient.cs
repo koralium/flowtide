@@ -41,8 +41,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             where TValueContainer : IValueContainer<V>
         {
             var serializer = new BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer>(options.KeySerializer, options.ValueSerializer, options.MemoryAllocator);
-            var compressedSerializer = new BPlusTreeCompressedSerializer(serializer);
-            var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, compressedSerializer, options.MemoryAllocator);
+            var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, serializer, options.MemoryAllocator);
 
             if (options.BucketSize == null)
             {
@@ -80,6 +79,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             where TMetadata : class, IStorageMetadata
         {
             var combinedName = $"{m_name}_{name}";
+            
+            if (stateManager.SerializeOptions.CompressionType == CompressionType.Zstd && stateManager.SerializeOptions.CompressionMethod == CompressionMethod.Page)
+            {
+                serializer = new CompressedStateSerializer<V>(serializer, stateManager.SerializeOptions.ComressionLevel.HasValue ? stateManager.SerializeOptions.ComressionLevel.Value : 3 );
+            }
+
             var stateClient = await stateManager.CreateClientAsync<V, TMetadata>(combinedName, new StateClientOptions<V>()
             {
                 ValueSerializer = serializer,

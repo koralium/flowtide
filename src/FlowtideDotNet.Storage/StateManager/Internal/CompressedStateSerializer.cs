@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager;
-using FlowtideDotNet.Storage.StateManager.Internal;
+using FlowtideDotNet.Storage.Tree.Internal;
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
@@ -21,21 +21,22 @@ using System.Text;
 using System.Threading.Tasks;
 using ZstdSharp;
 
-namespace FlowtideDotNet.Storage.Tree.Internal
+namespace FlowtideDotNet.Storage.StateManager.Internal
 {
-    internal class BPlusTreeCompressedSerializer : IStateSerializer<IBPlusTreeNode>
+    internal class CompressedStateSerializer<TValue> : IStateSerializer<TValue>
+        where TValue : ICacheObject
     {
-        private readonly IStateSerializer<IBPlusTreeNode> _serializer;
+        private readonly IStateSerializer<TValue> _serializer;
         private readonly object _writeLock = new object();
         private readonly object _readLock = new object();
         private ArrayBufferWriter<byte> _bufferWriter = new ArrayBufferWriter<byte>();
         private Compressor _compressor;
         private Decompressor _decompressor;
 
-        public BPlusTreeCompressedSerializer(IStateSerializer<IBPlusTreeNode> serializer)
+        public CompressedStateSerializer(IStateSerializer<TValue> serializer, int compressionLevel)
         {
-            this._serializer = serializer;
-            _compressor = new Compressor();
+            _serializer = serializer;
+            _compressor = new Compressor(compressionLevel);
             _decompressor = new Decompressor();
         }
 
@@ -44,7 +45,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return _serializer.CheckpointAsync(checkpointWriter, metadata);
         }
 
-        public IBPlusTreeNode Deserialize(ReadOnlyMemory<byte> bytes, int length)
+        public TValue Deserialize(ReadOnlyMemory<byte> bytes, int length)
         {
             lock (_readLock)
             {
@@ -64,7 +65,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public ICacheObject DeserializeCacheObject(ReadOnlyMemory<byte> bytes, int length)
         {
-            return this.Deserialize(bytes, length);
+            return Deserialize(bytes, length);
         }
 
         public Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
@@ -72,7 +73,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return _serializer.InitializeAsync(reader, metadata);
         }
 
-        public void Serialize(in IBufferWriter<byte> bufferWriter, in IBPlusTreeNode value)
+        public void Serialize(in IBufferWriter<byte> bufferWriter, in TValue value)
         {
             lock (_writeLock)
             {
