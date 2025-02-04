@@ -29,9 +29,11 @@ namespace FlowtideDotNet.Base.Engine
 
         public StreamStateValue WantedState => streamContext._wantedState;
 
-        public StreamStatus Status => streamContext.GetStatus();
+        public StreamStatus Status => streamContext.Status;
 
         public IStreamScheduler Scheduler => streamContext._streamScheduler;
+
+        public FlowtideHealth Health => streamContext.Health;
 
         public Task StartAsync()
         {
@@ -118,6 +120,16 @@ namespace FlowtideDotNet.Base.Engine
         public Task StopAsync()
         {
             return streamContext.StopAsync();
+        }
+
+        public void Pause()
+        {
+            streamContext.Pause();
+        }
+
+        public void Resume()
+        {
+            streamContext.Resume();
         }
     }
 }

@@ -492,5 +492,17 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         {
             return Task.CompletedTask;
         }
+
+        public void Pause()
+        {
+            Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
+            _ingressState._output.Stop();
+        }
+
+        public void Resume()
+        {
+            Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
+            _ingressState._output.Resume();
+        }
     }
 }

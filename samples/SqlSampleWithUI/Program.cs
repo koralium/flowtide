@@ -22,8 +22,13 @@ using FlowtideDotNet.DependencyInjection;
 using FlowtideDotNet.Core.Sources.Generic;
 using OpenTelemetry.Metrics;
 using FlowtideDotNet.Core.Sinks;
+using FlowtideDotNet.Base;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Map flowtide pause options to enable pausing and resuming from configuration
+builder.Services.AddOptions<FlowtidePauseOptions>()
+    .Bind(builder.Configuration.GetSection("flowtide"));
 
 var sqlText = @"
 CREATE TABLE testtable (
@@ -68,6 +73,5 @@ app.UseCors(b =>
 
 app.UseHealthChecks("/health");
 app.UseFlowtideUI("/");
-
 
 app.Run();

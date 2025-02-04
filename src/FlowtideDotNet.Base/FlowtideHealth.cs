@@ -10,18 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Base.Engine
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Base
 {
-    public enum StreamStatus
+    public enum FlowtideHealth
     {
-        Stopped,
-        Starting,
-        Running,
+        Healthy,
         Degraded,
-        Failing,
-        Stopping,
-        Deleting,
-        Deleted,
-        Paused
+        Unhealthy
     }
 }
