@@ -45,5 +45,9 @@ namespace FlowtideDotNet.Base.Vertices
         Task DeleteAsync();
 
         IEnumerable<ITargetBlock<IStreamEvent>> GetLinks();
+
+        void Pause();
+
+        void Resume();
     }
 }

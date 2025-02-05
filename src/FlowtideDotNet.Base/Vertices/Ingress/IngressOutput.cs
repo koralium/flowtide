@@ -72,7 +72,19 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         internal void Stop()
         {
-            _stopEvents = new TaskCompletionSource();
+            if (_stopEvents == null)
+            {
+                _stopEvents = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
+        internal void Resume()
+        {
+            if (_stopEvents != null)
+            {
+                _stopEvents.SetResult();
+                _stopEvents = null;
+            }
         }
 
         internal void Fault(Exception exception)
