@@ -18,6 +18,7 @@ using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.Metrics;
 using System.Diagnostics.CodeAnalysis;
+using FlowtideDotNet.Storage.StateManager.Internal.ObjectState;
 
 namespace FlowtideDotNet.Storage.StateManager
 {
@@ -211,6 +212,84 @@ namespace FlowtideDotNet.Storage.StateManager
 
             await m_persistentStorage.CompactAsync();
             m_metadata.PageCommitsAtLastCompaction = m_metadata.PageCommits;
+        }
+
+        /// <summary>
+        /// Creates a state for a single object
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="client"></param>
+        /// <returns></returns>
+        internal ValueTask<IObjectState<T>> CreateObjectStateAsync<T>(string client)
+        {
+            Debug.Assert(m_metadata != null);
+            Debug.Assert(m_persistentStorage != null);
+            Debug.Assert(m_fileCacheOptions != null);
+            
+            bool foundStateClient = false;
+            StateClient? cachedClient;
+            lock (m_lock)
+            {
+                foundStateClient = _stateClients.TryGetValue(client, out cachedClient);
+            }
+            
+            if (foundStateClient)
+            {
+                return ValueTask.FromResult((cachedClient as IObjectState<T>)!);
+            }
+
+            long location;
+            lock (m_lock)
+            {
+                foundStateClient = m_metadata.ClientMetadataLocations.TryGetValue(client, out location);
+            }
+
+            if (foundStateClient)
+            {
+                if (m_persistentStorage.TryGetValue(location, out var bytes))
+                {
+                    var metadata = StateClientMetadataSerializer.Deserialize<T>(new ByteMemoryOwner(bytes), bytes.Length);
+                    var persistentSession = m_persistentStorage.CreateSession();
+                    var stateClient = new ObjectStateClient<T>(location, metadata, persistentSession);
+                    lock (m_lock)
+                    {
+                        _stateClients.Add(client, stateClient);
+                    }
+                    return ValueTask.FromResult<IObjectState<T>>(stateClient);
+                }
+                else
+                {
+                    // Temporary tree or similar, return an empty metadata with the same id
+                    var clientMetadata = new StateClientMetadata<T>();
+                    var persistentSession = m_persistentStorage.CreateSession();
+                    var stateClient = new ObjectStateClient<T>(location, clientMetadata, persistentSession);
+                    lock (m_lock)
+                    {
+                        _stateClients.Add(client, stateClient);
+                    }
+                    return ValueTask.FromResult<IObjectState<T>>(stateClient);
+                }
+            }
+            else
+            {
+                // Allocate a new page id for the client metadata.
+                long clientMetadataPageId;
+                lock (m_lock)
+                {
+                    clientMetadataPageId = GetNewPageId_Internal();
+                    m_metadata.ClientMetadataLocations.Add(client, clientMetadataPageId);
+                }
+                
+                var clientMetadata = new StateClientMetadata<T>();
+
+                lock (m_lock)
+                {
+                    var session = m_persistentStorage.CreateSession();
+                    var stateClient = new ObjectStateClient<T>(clientMetadataPageId, clientMetadata, session);
+                    _stateClients.Add(client, stateClient);
+                    return ValueTask.FromResult<IObjectState<T>>(stateClient);
+                }
+            }
         }
 
         internal ValueTask<IStateClient<TValue, TMetadata>> CreateClientAsync<TValue, TMetadata>(string client, StateClientOptions<TValue> options)
