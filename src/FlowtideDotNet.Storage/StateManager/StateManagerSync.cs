@@ -230,7 +230,7 @@ namespace FlowtideDotNet.Storage.StateManager
             StateClient? cachedClient;
             lock (m_lock)
             {
-                _stateClients.TryGetValue(client, out cachedClient);
+                foundStateClient = _stateClients.TryGetValue(client, out cachedClient);
             }
             
             if (foundStateClient)

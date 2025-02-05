@@ -61,13 +61,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.ObjectState
 
         public async ValueTask Commit()
         {
-            var newState = GetSerializedState();
-
-            if (!newState.SequenceEqual(_previousState))
+            if (!_metadata.CommitedOnce)
             {
+                _metadata.CommitedOnce = true;
+                var newState = GetSerializedState();
                 await _session.Write(MetadataId, newState);
                 _previousState = newState;
                 await _session.Commit();
+            }
+            else
+            {
+                var newState = GetSerializedState();
+                if (!newState.SequenceEqual(_previousState))
+                {
+                    await _session.Write(MetadataId, newState);
+                    _previousState = newState;
+                    await _session.Commit();
+                }
             }
         }
 
@@ -83,17 +93,24 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.ObjectState
             }
             else
             {
-                var bytes = await _session.Read(MetadataId);
-                if (bytes != null)
+                if (_metadata.CommitedOnce)
                 {
-                    var result = StateClientMetadataSerializer.Deserialize<T>(new ByteMemoryOwner(bytes), bytes.Length);
-                    if (result != null)
+                    var bytes = await _session.Read(MetadataId);
+                    if (bytes != null)
                     {
-                        _metadata = result;
+                        var result = StateClientMetadataSerializer.Deserialize<T>(new ByteMemoryOwner(bytes), bytes.Length);
+                        if (result != null)
+                        {
+                            _metadata = result;
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Could not deserialize object from persistent storage");
+                        }
                     }
                     else
                     {
-                        throw new InvalidOperationException("Could not deserialize object from persistent storage");
+                        _metadata.Metadata = default;
                     }
                 }
                 else
