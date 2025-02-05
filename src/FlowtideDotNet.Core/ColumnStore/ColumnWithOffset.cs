@@ -12,6 +12,8 @@
 
 using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
@@ -199,6 +201,31 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return;
             }
             innerColumn.AddToHash(offset, child, hashAlgorithm);
+        }
+
+        int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            throw new NotImplementedException();
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            throw new NotSupportedException();
+        }
+
+        void IColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer)
+        {
+            throw new NotSupportedException();
+        }
+
+        void IColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            throw new NotSupportedException();
+        }
+
+        void IColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            throw new NotSupportedException();
         }
     }
 }

@@ -101,6 +101,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         private async Task GatheringLoop()
         {
+            int iterationsSinceLastPrune = 0;
             while (true)
             {
                 _cancellationTokenSource.Token.ThrowIfCancellationRequested();
@@ -110,6 +111,20 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                     _meterListener.RecordObservableInstruments();
                     await series.Lock();
                     await StoreMeasurements(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), series);
+
+                    if (options.MaxLifetime != null)
+                    {
+                        if (iterationsSinceLastPrune > 60)
+                        {
+                            await series.Prune(DateTimeOffset.UtcNow.Subtract(options.MaxLifetime.Value).ToUnixTimeMilliseconds());
+                            iterationsSinceLastPrune = 0;
+                        }
+                        else
+                        {
+                            iterationsSinceLastPrune++;
+                        }
+                    }
+                    
                 }
                 catch (Exception)
                 {

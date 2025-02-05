@@ -260,5 +260,21 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(new[] { new { str = "a" }, new { str = "b" }, new { str = "c" } });
         }
+
+        [Fact]
+        public async Task SelectFromValuesListBinaryData()
+        {
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT hex FROM 
+                (
+                    VALUES 
+                    (0x544F2041)
+                ) t(hex)");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { hex = new byte[] { 84, 79, 32, 65 } } });
+        }
     }
 }

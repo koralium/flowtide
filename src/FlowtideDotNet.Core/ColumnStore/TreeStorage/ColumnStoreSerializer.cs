@@ -30,11 +30,13 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
     {
         private readonly int columnCount;
         private readonly IMemoryAllocator memoryAllocator;
+        private readonly EventBatchSerializer _batchSerializer;
 
         public ColumnStoreSerializer(int columnCount, IMemoryAllocator memoryAllocator)
         {
             this.columnCount = columnCount;
             this.memoryAllocator = memoryAllocator;
+            _batchSerializer = new EventBatchSerializer();
         }
         public ColumnKeyStorageContainer CreateEmpty()
         {

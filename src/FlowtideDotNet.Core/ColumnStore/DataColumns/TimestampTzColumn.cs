@@ -15,7 +15,9 @@ using Apache.Arrow.Arrays;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
@@ -207,7 +209,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             var buffers = new ArrowBuffer[2]
             {
                 nullBuffer,
-                new ArrowBuffer(_values.Memory)
+                new ArrowBuffer(_values.SlicedMemory)
             };
             var array = new FixedSizeBinaryArray(new ArrayData(TimestampTzType.Default, Count, nullCount, 0, buffers));
             return (array, TimestampTzType.Default);
@@ -254,6 +256,36 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             Span<byte> buffer = stackalloc byte[8];
             BinaryPrimitives.WriteInt64LittleEndian(buffer, _values.Get(index).ticks);
             hashAlgorithm.Append(buffer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 1, GetByteSize());
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var extensionKeyPointer = arrowSerializer.CreateStringUtf8("ARROW:extension:name"u8);
+            var extensionValuePointer = arrowSerializer.CreateStringUtf8("flowtide.timestamptz"u8);
+            var typePointer = arrowSerializer.AddFixedSizeBinaryType(16);
+            pointerStack[0] = arrowSerializer.CreateKeyValue(extensionKeyPointer, extensionValuePointer);
+            var customMetadataPointer = arrowSerializer.CreateCustomMetadataVector(pointerStack.Slice(0, 1));
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.FixedSizeBinary, typePointer, custom_metadataOffset: customMetadataPointer);
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.AddBufferForward(_values.SlicedMemory.Length);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            dataWriter.WriteArrowBuffer(_values.SlicedMemory.Span);
         }
     }
 }

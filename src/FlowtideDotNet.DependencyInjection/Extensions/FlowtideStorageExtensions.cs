@@ -15,12 +15,9 @@ using FASTER.devices;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
-using System;
-using System.Collections.Generic;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.IO.Compression;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.DependencyInjection
 {
@@ -72,22 +69,28 @@ namespace FlowtideDotNet.DependencyInjection
             string containerName,
             string directoryName)
         {
-            var log = new AzureStorageDevice(azureStorageString, containerName, directoryName, "hlog.log");
+            storageBuilder.SetPersistentStorage((provider) =>
+            {
+                var azureStorageLogger = provider.GetRequiredService<ILogger<AzureStorageDevice>>();
+                var log = new AzureStorageDevice(azureStorageString, containerName, directoryName, "hlog.log", logger: azureStorageLogger);
 
-            // Create azure storage backed checkpoint manager
-            var checkpointManager = new DeviceLogCommitCheckpointManager(
-                            new AzureStorageNamedDeviceFactory(azureStorageString),
-                            new DefaultCheckpointNamingScheme($"{containerName}/{directoryName}/checkpoints/"));
+                var checkpointManagerLogger = provider.GetRequiredService<ILogger<DeviceLogCommitCheckpointManager>>();
+                // Create azure storage backed checkpoint manager
+                var checkpointManager = new DeviceLogCommitCheckpointManager(
+                                new AzureStorageNamedDeviceFactory(azureStorageString),
+                                new DefaultCheckpointNamingScheme($"{containerName}/{directoryName}/checkpoints/"), logger: checkpointManagerLogger);
 
-            storageBuilder.SetPersistentStorage(new FasterKvPersistentStorage(
-                new FasterKVSettings<long, SpanByte>()
-                {
-                    MemorySize = 1024 * 1024 * 32,
-                    PageSize = 1024 * 1024 * 16,
-                    CheckpointManager = checkpointManager,
-                    LogDevice = log
-                }
-            ));
+                var fasterKvLogger = provider.GetRequiredService<ILogger<FasterKvPersistentStorage>>();
+                return new FasterKvPersistentStorage(
+                    new FasterKVSettings<long, SpanByte>(null, logger: fasterKvLogger)
+                    {
+                        MemorySize = 1024 * 1024 * 32,
+                        PageSize = 1024 * 1024 * 16,
+                        CheckpointManager = checkpointManager,
+                        LogDevice = log
+                    }
+                );
+            });
             storageBuilder.ZLibCompression();
 
             return storageBuilder;

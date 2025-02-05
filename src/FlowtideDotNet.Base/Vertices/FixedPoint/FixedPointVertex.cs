@@ -55,6 +55,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         private bool _sentLockingEvent;
         private int _targetPrepareCount = 0;
         private bool singleReadSource;
+        private TaskCompletionSource? _pauseSource;
         private IMemoryAllocator? _memoryAllocator;
         protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
@@ -228,6 +229,10 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                     if (r.Key == 0)
                     {
                         var enumerator = OnIngressRecieve(streamMessage.Data, streamMessage.Time);
+                        if (_pauseSource != null)
+                        {
+                            enumerator = WaitForPause(enumerator);
+                        }
                         if (streamMessage.Data is IRentable rentable)
                         {
                             return new AsyncEnumerableReturnRentable<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(rentable, enumerator, (source) =>
@@ -270,7 +275,10 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                     {
                         _messageCountSinceLockingEventPrepare++;
                         var enumerator = OnFeedbackRecieve(streamMessage.Data, streamMessage.Time);
-
+                        if (_pauseSource != null)
+                        {
+                            enumerator = WaitForPause(enumerator);
+                        }
                         if (streamMessage.Data is IRentable rentable)
                         {
                             return new AsyncEnumerableReturnRentable<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(rentable, enumerator, (source) =>
@@ -348,6 +356,20 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         public virtual IAsyncEnumerable<KeyValuePair<int, T>> OnTrigger(string name, object? state)
         {
             return EmptyAsyncEnumerable<KeyValuePair<int, T>>.Instance;
+        }
+
+        private async IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> WaitForPause(IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> input)
+        {
+            var task = _pauseSource?.Task;
+            if (task != null)
+            {
+                await task;
+            }
+
+            await foreach(var element in input)
+            {
+                yield return element;
+            }
         }
 
         public virtual Task DeleteAsync()
@@ -477,6 +499,23 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _egressSource.Setup(streamName, operatorName);
             _loopSource.Setup(streamName, operatorName);
             _feedbackTarget.Setup(operatorName);
+        }
+
+        public void Pause()
+        {
+            if (_pauseSource == null)
+            {
+                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
+        public void Resume()
+        {
+            if (_pauseSource != null)
+            {
+                _pauseSource.SetResult();
+                _pauseSource = null;
+            }
         }
     }
 }

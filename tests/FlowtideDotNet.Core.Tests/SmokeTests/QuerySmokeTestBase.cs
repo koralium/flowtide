@@ -18,11 +18,8 @@ using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Core.Tests.SmokeTests.LineItemLeftJoinOrders;
 using FlowtideDotNet.Core.Tests.SmokeTests.StringJoin;
 using FASTER.core;
-using FluentAssertions;
 using System.Diagnostics;
 using FlowtideDotNet.Core.Tests.SmokeTests.Count;
-using FlowtideDotNet.Core.Connectors;
-using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Logging;
 using Serilog;
 
@@ -132,7 +129,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             Assert.Equal(lineItemsExpected.Count, actualData!.Count);
             for (int i = 0; i < lineItemsExpected.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(lineItemsExpected[i]);
+                Assert.Equivalent(lineItemsExpected[i], actualData[i]);
             }
         }
 
@@ -165,7 +162,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             Assert.Equal(lineItemsExpected.Count, actualData!.Count);
             for (int i = 0; i < lineItemsExpected.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(lineItemsExpected[i]);
+                Assert.Equivalent(lineItemsExpected[i], actualData[i]);
             }
         }
 
@@ -192,7 +189,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             Assert.Equal(lineItemsExpected.Count, actualData!.Count);
             for (int i = 0; i < lineItemsExpected.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(lineItemsExpected[i]);
+                Assert.Equivalent(lineItemsExpected[i], actualData[i]);
             }
         }
 
@@ -233,7 +230,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(expectedData[i]);
+                Assert.Equivalent(expectedData[i], actualData[i]);
             }
         }
 
@@ -276,7 +273,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(expectedData[i]);
+                Assert.Equivalent(expectedData[i], actualData[i]);
             }
         }
 
@@ -331,7 +328,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(expectedData[i]);
+                Assert.Equivalent(expectedData[i], actualData[i]);
             }
         }
 
@@ -372,7 +369,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(expectedData[i]);
+                Assert.Equivalent(expectedData[i], actualData[i]);
             }
         }
 
@@ -411,7 +408,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(expectedData[i]);
+                Assert.Equivalent(expectedData[i], actualData[i]);
             }
         }
 
@@ -440,8 +437,9 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Linenumber = 1,
                 Orderkey = 14977
             };
-            Assert.Single(actualData!);
-            actualData![0].Should().BeEquivalentTo(expectedData);
+            Assert.NotNull(actualData);
+            Assert.Single(actualData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await AddShipmodes(new List<Shipmode>() { truck });
 
@@ -458,7 +456,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await UpdateShipmodes(new List<Shipmode>(){ new Shipmode()
             {
@@ -480,7 +478,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await UpdateShipmodes(new List<Shipmode>() { truck });
 
@@ -497,7 +495,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
         }
 
         [Fact]
@@ -525,8 +523,9 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Linenumber = 1,
                 Orderkey = 14977
             };
-            Assert.Single(actualData!);
-            actualData![0].Should().BeEquivalentTo(expectedData);
+            Assert.NotNull(actualData);
+            Assert.Single(actualData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await AddShipmodes(new List<Shipmode>() { truck });
 
@@ -543,7 +542,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await UpdateShipmodes(new List<Shipmode>(){ new Shipmode()
             {
@@ -565,7 +564,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await UpdateShipmodes(new List<Shipmode>() { truck });
 
@@ -582,7 +581,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
         }
 
         [Fact]
@@ -620,8 +619,9 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Linenumber = 1,
                 Orderkey = 14977
             };
-            Assert.Single(actualData!);
-            actualData![0].Should().BeEquivalentTo(expectedData);
+            Assert.NotNull(actualData);
+            Assert.Single(actualData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await UpdateShipmodes(new List<Shipmode>(){ new Shipmode()
             {
@@ -653,7 +653,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
         }
 
         [Fact]

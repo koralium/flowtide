@@ -13,6 +13,8 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
@@ -139,6 +141,31 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
         {
             hashAlgorithm.Append(ByteArrayUtils.nullBytes);
+        }
+
+        int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            throw new NotSupportedException();
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            throw new NotSupportedException();
+        }
+
+        void IColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer)
+        {
+            throw new NotSupportedException();
+        }
+
+        void IColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            throw new NotSupportedException();
+        }
+
+        void IColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            throw new NotSupportedException();
         }
     }
 }

@@ -41,6 +41,8 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private IMeter? _metrics;
         private ILogger? _logger;
 
+        private TaskCompletionSource? _pauseSource;
+
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
 
         protected string StreamName => _streamName ?? throw new InvalidOperationException("StreamName can only be fetched after initialize or setup method calls");
@@ -257,6 +259,32 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         public IEnumerable<ITargetBlock<IStreamEvent>> GetLinks()
         {
             return Enumerable.Empty<ITargetBlock<IStreamEvent>>();
+        }
+
+        protected ValueTask CheckForPause()
+        {
+            if (_pauseSource != null)
+            {
+                return new ValueTask(_pauseSource.Task);
+            }
+            return ValueTask.CompletedTask;
+        }
+
+        public void Pause()
+        {
+            if (_pauseSource == null)
+            {
+                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
+        public void Resume()
+        {
+            if (_pauseSource != null)
+            {
+                _pauseSource.SetResult();
+                _pauseSource = null;
+            }
         }
     }
 }

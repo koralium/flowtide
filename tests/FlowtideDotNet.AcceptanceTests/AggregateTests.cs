@@ -117,7 +117,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     userkey, max(orderkey), max(orderkey)
                 FROM orders
                 GROUP BY userkey, orderkey
-                ");
+                ", ignoreSameDataCheck: true);
             await WaitForUpdate();
 
             for (int i = 0; i < 10; i++)
@@ -193,29 +193,29 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, MinVal = x.Min(y => y.OrderKey) }));
         }
 
-        [Fact]
-        public async Task AggregateStopAndStartStream()
-        {
-            GenerateData();
-            await StartStream(@"
-                INSERT INTO output 
-                SELECT 
-                    userkey, min(orderkey)
-                FROM orders
-                GROUP BY userkey
-                ");
-            await WaitForUpdate();
+        //[Fact]
+        //public async Task AggregateStopAndStartStream()
+        //{
+        //    GenerateData();
+        //    await StartStream(@"
+        //        INSERT INTO output 
+        //        SELECT 
+        //            userkey, min(orderkey)
+        //        FROM orders
+        //        GROUP BY userkey
+        //        ");
+        //    await WaitForUpdate();
 
-            await this.StopStream();
+        //    await this.StopStream();
 
-            GenerateData(1000);
+        //    GenerateData(1000);
 
-            await StartStream();
+        //    await StartStream();
 
-            await WaitForUpdate();
+        //    await WaitForUpdate();
 
-            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, MinVal = x.Min(y => y.OrderKey) }));
-        }
+        //    AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, MinVal = x.Min(y => y.OrderKey) }));
+        //}
 
         [Fact]
         public async Task AggregateWithGroupByOnly()

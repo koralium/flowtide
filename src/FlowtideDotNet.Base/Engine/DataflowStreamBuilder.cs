@@ -18,6 +18,7 @@ using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace FlowtideDotNet.Base.Engine
 {
@@ -35,6 +36,7 @@ namespace FlowtideDotNet.Base.Engine
         private ILoggerFactory? _loggerFactory;
         private StreamVersionInformation? _streamVersionInformation;
         private readonly DataflowStreamOptions _dataflowStreamOptions;
+        private IOptionsMonitor<FlowtidePauseOptions>? _pauseMonitor;
 
         public DataflowStreamBuilder(string streamName)
         {
@@ -117,6 +119,12 @@ namespace FlowtideDotNet.Base.Engine
             return this;
         }
 
+        public DataflowStreamBuilder WithPauseMonitor(IOptionsMonitor<FlowtidePauseOptions> pauseMonitor)
+        {
+            _pauseMonitor = pauseMonitor;
+            return this;
+        }
+
         public DataflowStream Build()
         {
             if (_stateManagerOptions == null)
@@ -145,8 +153,9 @@ namespace FlowtideDotNet.Base.Engine
                 _loggerFactory,
                 _streamVersionInformation,
                 _dataflowStreamOptions,
-                new StreamMemoryManager(_streamName));
-
+                new StreamMemoryManager(_streamName),
+                _pauseMonitor);
+            
             return new DataflowStream(streamContext);
         }
     }

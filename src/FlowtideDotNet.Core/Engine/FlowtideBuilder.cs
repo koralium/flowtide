@@ -20,6 +20,8 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using System.Diagnostics;
 using FlowtideDotNet.Core.Connectors;
+using Microsoft.Extensions.Options;
+using FlowtideDotNet.Base;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -99,6 +101,12 @@ namespace FlowtideDotNet.Core.Engine
         public FlowtideBuilder WithLoggerFactory(ILoggerFactory loggerFactory)
         {
             dataflowStreamBuilder.WithLoggerFactory(loggerFactory);
+            return this;
+        }
+
+        public FlowtideBuilder WithPauseMonitor(IOptionsMonitor<FlowtidePauseOptions> pauseMonitor)
+        {
+            dataflowStreamBuilder.WithPauseMonitor(pauseMonitor);
             return this;
         }
 

@@ -14,6 +14,8 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
@@ -308,6 +310,34 @@ namespace FlowtideDotNet.Core.ColumnStore
             Span<byte> buffer = stackalloc byte[8];
             BinaryPrimitives.WriteInt64LittleEndian(buffer, _data.GetRef(index));
             hashAlgorithm.Append(buffer);
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var typePointer = arrowSerializer.AddInt64Type();
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Int, typePointer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 1, GetByteSize());
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            Debug.Assert(_data != null);
+            arrowSerializer.AddBufferForward(_data.SlicedMemory.Length);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            Debug.Assert(_data != null);
+            dataWriter.WriteArrowBuffer(_data.SlicedMemory.Span);
         }
     }
 }

@@ -75,6 +75,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             Debug.Assert(_context != null, nameof(_context));
             _context._logger.StartingStream(_context.streamName);
 
+            if (_context.Status != StreamStatus.Failing)
+            {
+                // We only set starting if we are not failing.
+                // Failure goes directly to running if everything is ok.
+                _context.SetStatus(StreamStatus.Starting);
+            }
+
             if (previousState == StreamStateValue.NotStarted)
             {
                 StartStream().GetAwaiter().GetResult();

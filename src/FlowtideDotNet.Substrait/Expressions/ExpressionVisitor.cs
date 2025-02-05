@@ -173,5 +173,10 @@ namespace FlowtideDotNet.Substrait.Expressions
             }
             return default;
         }
+
+        public virtual TOutput? VisitBinaryLiteral(BinaryLiteral binaryLiteral, TState state)
+        {
+            return default;
+        }
     }
 }

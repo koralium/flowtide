@@ -12,6 +12,8 @@
 
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
@@ -85,5 +87,15 @@ namespace FlowtideDotNet.Core.ColumnStore
         IDataColumn Copy(IMemoryAllocator memoryAllocator);
 
         void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm);
+
+        internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack);
+
+        internal void AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount);
+
+        internal void AddBuffers(ref ArrowSerializer arrowSerializer);
+
+        internal void WriteDataToBuffer(ref ArrowDataWriter dataWriter);
+
+        SerializationEstimation GetSerializationEstimate();
     }
 }

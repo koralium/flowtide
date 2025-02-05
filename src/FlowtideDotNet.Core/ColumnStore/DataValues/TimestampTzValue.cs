@@ -45,9 +45,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         const long UnixEpochTicks = DaysTo1970 * TicksPerDay;
 
         public long ticks;
-        public short offset;
+        public long offset;
 
-        public TimestampTzValue(long ticks, short offset)
+        public TimestampTzValue(long ticks, long offset)
         {
             this.ticks = ticks;
             this.offset = offset;

@@ -21,6 +21,7 @@ using System.Collections;
 using FlowtideDotNet.Storage.Memory;
 using System.Text.Json;
 using System.IO.Hashing;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -442,6 +443,40 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 _internalColumn.AddToHash(i, default, hashAlgorithm);
             }
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var typePointer = arrowSerializer.AddListType();
+            var childStack = pointerStack.Slice(1);
+            pointerStack[0] = _internalColumn.CreateSchemaField(ref arrowSerializer, emptyStringPointer, childStack);
+            var childVectorPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, 1));
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.List, typePointer, childrenOffset: childVectorPointer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            var innerEstimate = _internalColumn.GetSerializationEstimate();
+            return new SerializationEstimation(innerEstimate.fieldNodeCount + 1, innerEstimate.bufferCount + 1, innerEstimate.bodyLength + (_offsets.Count * sizeof(int)));
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            _internalColumn.AddFieldNodes(ref arrowSerializer);
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.AddBufferForward(_offsets.Memory.Length);
+            _internalColumn.AddBuffers(ref arrowSerializer);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
+
+            _internalColumn.WriteDataToBuffer(ref dataWriter);
         }
     }
 }

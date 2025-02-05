@@ -14,7 +14,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Sql
 {
-    public class TableMetadata
+    public class TableMetadata : IEquatable<TableMetadata>
     {
         public TableMetadata(string name, NamedStruct schema)
         {
@@ -25,5 +25,41 @@ namespace FlowtideDotNet.Substrait.Sql
         public string Name { get; }
 
         public NamedStruct Schema { get; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is TableMetadata other &&
+                Equals(other);
+        }
+
+        public bool Equals(TableMetadata? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+
+            return Name == other.Name && Equals(Schema, other.Schema);
+        }
+
+        public override int GetHashCode()
+        {
+            var code = new HashCode();
+
+            code.Add(Name);
+            code.Add(Schema);
+
+            return code.ToHashCode();
+        }
+
+        public static bool operator ==(TableMetadata? left, TableMetadata? right)
+        {
+            return EqualityComparer<TableMetadata>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(TableMetadata? left, TableMetadata? right)
+        {
+            return !(left == right);
+        }
     }
 }

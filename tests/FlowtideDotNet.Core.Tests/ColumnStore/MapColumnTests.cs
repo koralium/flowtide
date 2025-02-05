@@ -448,5 +448,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(columnHash, valueHash);
         }
+
+        [Fact]
+        public void TestInsertNullAtStart()
+        {
+            MapColumn column = new MapColumn(GlobalMemoryManager.Instance);
+
+            column.InsertAt(0, new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("a"), new StringValue("b"))));
+            column.InsertAt(0, NullValue.Instance);
+            var val = column.GetValueAt(0, default);
+            Assert.Equal(0, val.AsMap.GetLength());
+        }
     }
 }

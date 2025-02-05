@@ -41,6 +41,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         private bool _isHealthy = true;
         private IVertexHandler? _vertexHandler;
         private IMemoryAllocator? _memoryAllocator;
+        private TaskCompletionSource? _pauseSource;
 
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
 
@@ -95,6 +96,11 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 if (x is StreamMessage<T> message)
                 {
                     var enumerator = PartitionData(message.Data, message.Time);
+
+                    if (_pauseSource != null)
+                    {
+                        enumerator = WaitForPause(enumerator);
+                    }
 
                     if (message.Data is IRentable rentable)
                     {
@@ -174,6 +180,20 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         protected virtual Task OnWatermark(Watermark watermark)
         {
             return Task.CompletedTask;
+        }
+
+        private async IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> WaitForPause(IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> input)
+        {
+            var task = _pauseSource?.Task;
+            if (task != null)
+            {
+                await task;
+            }
+
+            await foreach (var element in input)
+            {
+                yield return element;
+            }
         }
 
         private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> HandleWatermark(Watermark watermark)
@@ -340,6 +360,23 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 output.AddRange(source.GetLinks());
             }
             return output;
+        }
+
+        public void Pause()
+        {
+            if (_pauseSource == null)
+            {
+                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
+        public void Resume()
+        {
+            if (_pauseSource != null)
+            {
+                _pauseSource.SetResult();
+                _pauseSource = null;
+            }
         }
     }
 }

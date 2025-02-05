@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Memory<byte> OffsetMemory => _offsets.Memory;
 
-        public Memory<byte> DataMemory => _memoryOwner?.Memory ?? new Memory<byte>();
+        public Memory<byte> DataMemory => _memoryOwner?.Memory.Slice(0, _length) ?? new Memory<byte>();
 
         public int Count => _offsets.Count - 1;
 
@@ -82,15 +82,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="offsetLength"></param>
         /// <param name="dataMemory"></param>
         /// <param name="memoryAllocator"></param>
-        public BinaryList(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte> dataMemory, IMemoryAllocator memoryAllocator)
+        public BinaryList(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
         {
             _offsets = new IntList(offsetMemory, offsetLength, memoryAllocator);
-            _data = dataMemory.Memory.Pin().Pointer;
+            if (dataMemory != null)
+            {
+                _data = dataMemory.Memory.Pin().Pointer;
+                _dataLength = dataMemory.Memory.Length;
+            }
+            else
+            {
+                _data = null;
+                _dataLength = 0;
+            }
             _memoryAllocator = memoryAllocator;
             _memoryOwner = dataMemory;
             var lastoffset = _offsets.Get(offsetLength - 1);
             _length = lastoffset;
-            _dataLength = dataMemory.Memory.Length;
+            
         }
 
         private void EnsureCapacity(int length)
@@ -113,6 +122,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _data = _memoryOwner.Memory.Pin().Pointer;
                 }
                 _dataLength = allocLength;
+            }
+        }
+
+        private void CheckSizeReduction()
+        {
+            var multipleid = (_length << 1) + (_length >> 1);
+            if (multipleid < _dataLength && _dataLength > 256)
+            {
+                Debug.Assert(_memoryOwner != null);
+                _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, _length, 64);
+                _data = _memoryOwner.Memory.Pin().Pointer;
+                _dataLength = _memoryOwner.Memory.Length;
             }
         }
 
@@ -211,6 +232,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 var length = _length - offset;
                 _offsets.RemoveAt(index);
                 _length -= length;
+                CheckSizeReduction();
                 return;
             }
             else
@@ -225,6 +247,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 // Move all elements after the index
                 span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset));
                 _length -= length;
+                CheckSizeReduction();
             }
         }
 
@@ -240,6 +263,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             // Move all elements after the index
             span.Slice(offset + length, _length - offset - length).CopyTo(span.Slice(offset));
             _length -= length;
+            CheckSizeReduction();
         }
 
         public Span<byte> Get(in int index)

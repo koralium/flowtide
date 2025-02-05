@@ -13,6 +13,8 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
@@ -154,7 +156,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            var dataBuffer = new ArrowBuffer(_data.Memory);
+            var dataBuffer = new ArrowBuffer(_data.SlicedMemory);
             var array = new DoubleArray(dataBuffer, nullBuffer, Count, nullCount, 0);
             return (array, new DoubleType());
         }
@@ -245,6 +247,32 @@ namespace FlowtideDotNet.Core.ColumnStore
             Span<byte> buffer = stackalloc byte[8];
             BinaryPrimitives.WriteDoubleLittleEndian(buffer, _data[index]);
             hashAlgorithm.Append(buffer);
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var typePointer = arrowSerializer.AddDoubleType();
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.FloatingPoint, typePointer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 1, GetByteSize());
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.AddBufferForward(_data.SlicedMemory.Length);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            dataWriter.WriteArrowBuffer(_data.SlicedMemory.Span);
         }
     }
 }

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Engine;
@@ -17,6 +18,7 @@ using FlowtideDotNet.DependencyInjection.Exceptions;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.IO.Compression;
@@ -84,6 +86,8 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
             var stateManager = serviceProvider.GetKeyedService<StateManagerOptions>(streamName);
 
+            var pauseMonitor = serviceProvider.GetService<IOptionsMonitor<FlowtidePauseOptions>>();
+            
             if (connectorManager == null)
             {
                 throw new FlowtideMissingConnectorManagerException("IConnectorManager must be registered in the service collection, please do so manually or use the \"AddConnectors\" method.");
@@ -105,6 +109,11 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 .AddConnectorManager(connectorManager)
                 .AddPlan(plan)
                 .WithStateOptions(stateManager);
+
+            if (pauseMonitor != null)
+            {
+                streamBuilder.WithPauseMonitor(pauseMonitor);
+            }
 
             if (loggerFactory != null)
             {
