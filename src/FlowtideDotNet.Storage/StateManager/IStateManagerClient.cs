@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Storage.StateManager
             where TKeyContainer : IKeyContainer<K>
             where TValueContainer : IValueContainer<V>;
 
-        ValueTask<IObjectState<T>> GetOrCreateObjectState<T>(string name);
+        ValueTask<IObjectState<T>> GetOrCreateObjectStateAsync<T>(string name);
 
 
         IStateManagerClient GetChildManager(string name);
