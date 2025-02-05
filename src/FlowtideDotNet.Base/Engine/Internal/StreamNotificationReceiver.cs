@@ -54,7 +54,14 @@ namespace FlowtideDotNet.Base.Engine.Internal
         {
             foreach (var listener in _failureListeners)
             {
-                listener.OnFailure(exception);
+                try
+                {
+                    listener.OnFailure(exception);
+                }
+                catch 
+                {
+                    // All errors are catched so failure listeners cant break the stream
+                }
             }
         }
 
