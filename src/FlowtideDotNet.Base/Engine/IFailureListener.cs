@@ -10,16 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Engine.Internal.StateMachine;
-
 namespace FlowtideDotNet.Base.Engine
 {
-    public interface IStreamNotificationReciever
+    public interface IFailureListener
     {
-        void OnStreamStateChange(StreamStateValue newState);
-
-        void OnCheckpointComplete();
-
         void OnFailure(Exception? exception);
     }
 }
