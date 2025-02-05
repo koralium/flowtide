@@ -90,12 +90,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.ObjectState
             if (clearMetadata)
             {
                 _metadata.Metadata = default;
+                _previousState = Array.Empty<byte>();
             }
             else
             {
                 if (_metadata.CommitedOnce)
                 {
                     var bytes = await _session.Read(MetadataId);
+                    _previousState = bytes;
                     if (bytes != null)
                     {
                         var result = StateClientMetadataSerializer.Deserialize<T>(new ByteMemoryOwner(bytes), bytes.Length);
@@ -111,11 +113,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.ObjectState
                     else
                     {
                         _metadata.Metadata = default;
+                        _previousState = Array.Empty<byte>();
                     }
                 }
                 else
                 {
                     _metadata.Metadata = default;
+                    _previousState = Array.Empty<byte>();
                 }
             }
         }
