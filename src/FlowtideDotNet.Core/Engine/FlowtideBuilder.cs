@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
-        public FlowtideBuilder WithCheckpointListesner(ICheckpointListener listener)
+        public FlowtideBuilder WithCheckpointListener(ICheckpointListener listener)
         {
             dataflowStreamBuilder.AddCheckpointListener(listener);
             return this;
@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
-        public FlowtideBuilder WithCheckpointListesner<T>()
+        public FlowtideBuilder WithCheckpointListener<T>()
             where T : ICheckpointListener, new()
         {
             dataflowStreamBuilder.AddCheckpointListener(new T());
