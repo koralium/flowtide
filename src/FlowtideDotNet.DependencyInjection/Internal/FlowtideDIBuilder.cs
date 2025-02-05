@@ -102,7 +102,6 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             }
 
             var plan = planProvider.GetPlan();
-            var provider = services.BuildServiceProvider();
 
             var streamBuilder = new FlowtideBuilder(streamName)
                 .AddConnectorManager(connectorManager)
@@ -116,7 +115,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
 
             foreach (var customOption in _customOptions)
             {
-                customOption(provider, streamBuilder);
+                customOption(serviceProvider, streamBuilder);
             }
 
             var stream = streamBuilder.Build();
