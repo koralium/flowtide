@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly Dictionary<string, IStreamVertex> _blockLookup;
         internal readonly IStateHandler stateHandler;
         internal readonly StreamMetrics _streamMetrics;
-        internal readonly IStreamNotificationReciever? _notificationReciever;
+        internal readonly StreamNotificationReceiver? _notificationReciever;
         private readonly StateManagerOptions stateManagerOptions;
         private readonly ILoggerFactory? loggerFactory1;
         internal readonly ILoggerFactory loggerFactory;
@@ -139,7 +139,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             IStateHandler stateHandler,
             StreamState? fromState,
             IStreamScheduler streamScheduler,
-            IStreamNotificationReciever? notificationReciever,
+            StreamNotificationReceiver? notificationReciever,
             StateManagerOptions stateManagerOptions,
             ILoggerFactory? loggerFactory,
             StreamVersionInformation? streamVersionInformation,
@@ -207,7 +207,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _checkpointLock = new object();
 
             _stateManager = new FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState>(stateManagerOptions, this.loggerFactory.CreateLogger("StateManager"), new Meter($"flowtide.{streamName}.storage"), streamName);
-            
+
 
             _streamScheduler.Initialize(this);
             // Trigger init
@@ -255,7 +255,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         private Task TransitionTo(StreamStateMachineState current, StreamStateMachineState state, StreamStateValue previous)
         {
-            lock(_contextLock)
+            lock (_contextLock)
             {
                 if (current != _state)
                 {
@@ -277,7 +277,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     //The notification reciever exceptions should not interupt the transitions
                     _notificationReciever.OnStreamStateChange(newState);
                 }
-                catch 
+                catch
                 {
                     // All errors are catched so notification reciever cant break the stream
                 }
@@ -306,7 +306,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public Task CallTrigger(string triggerName, object? state)
         {
-            lock(_contextLock)
+            lock (_contextLock)
             {
                 Debug.Assert(_state != null, "CallTrigger while not in a state");
                 return _state.CallTrigger(triggerName, state);
@@ -374,7 +374,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal void ForEachBlock(Action<string, IStreamVertex> action)
         {
-            foreach(var block in _blockLookup)
+            foreach (var block in _blockLookup)
             {
                 action(block.Key, block.Value);
             }
@@ -476,7 +476,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task AddTrigger(string operatorName, string triggerName, TimeSpan? schedule = null)
         {
-            lock(_contextLock)
+            lock (_contextLock)
             {
                 Debug.Assert(_state != null, nameof(_state));
 
@@ -531,9 +531,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             List<Task> removeTriggerTasks = new List<Task>();
             lock (_triggerLock)
             {
-                foreach(var trigger in _triggers)
+                foreach (var trigger in _triggers)
                 {
-                    foreach(var val in trigger.Value)
+                    foreach (var val in trigger.Value)
                     {
                         if (val.Interval.HasValue)
                         {
@@ -567,12 +567,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal Task OnFailure(Exception? e)
         {
             _logger.StreamError(e, streamName);
-            lock(_contextLock)
+            lock (_contextLock)
             {
                 if (_notificationReciever != null)
                 {
                     _notificationReciever.OnFailure(e);
                 }
+
                 return _state!.OnFailure();
             }
         }
@@ -584,7 +585,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task DeleteAsync()
         {
-            lock(_contextLock)
+            lock (_contextLock)
             {
                 return _state!.DeleteAsync();
             }
@@ -658,7 +659,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                 var links = block.Value.GetLinks();
 
-                foreach(var link in links)
+                foreach (var link in links)
                 {
                     if (link is IStreamVertex streamVertex)
                     {
