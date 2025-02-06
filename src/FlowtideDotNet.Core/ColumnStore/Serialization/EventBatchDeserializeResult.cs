@@ -10,28 +10,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Storage
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
-    public enum CompressionType
+    public struct EventBatchDeserializeResult
     {
-        None = 0,
-        Zstd = 1
-    };
+        public EventBatchDeserializeResult(EventBatchData eventBatch, int count)
+        {
+            EventBatch = eventBatch;
+            Count = count;
+        }
 
-    public enum CompressionMethod
-    {
-        /// <summary>
-        /// Compresses the entire page
-        /// </summary>
-        Page = 0,
-    }
-
-    public class StateSerializeOptions
-    {
-        public CompressionType CompressionType { get; set; }
-
-        public CompressionMethod CompressionMethod { get; set; }
-
-        public int? ComressionLevel { get; set; }
+        public EventBatchData EventBatch { get; }
+        public int Count { get; }
     }
 }

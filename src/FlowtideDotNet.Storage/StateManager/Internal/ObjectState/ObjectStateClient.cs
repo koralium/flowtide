@@ -65,7 +65,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.ObjectState
             {
                 _metadata.CommitedOnce = true;
                 var newState = GetSerializedState();
-                await _session.Write(MetadataId, newState);
+                await _session.Write(MetadataId, new SerializableObject(newState));
                 _previousState = newState;
                 await _session.Commit();
             }
@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.ObjectState
                 var newState = GetSerializedState();
                 if (!newState.SequenceEqual(_previousState))
                 {
-                    await _session.Write(MetadataId, newState);
+                    await _session.Write(MetadataId, new SerializableObject(newState));
                     _previousState = newState;
                     await _session.Commit();
                 }
@@ -96,11 +96,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.ObjectState
             {
                 if (_metadata.CommitedOnce)
                 {
-                    var bytes = await _session.Read(MetadataId);
+                    var bytes = (await _session.Read(MetadataId)).ToArray();
                     _previousState = bytes;
                     if (bytes != null)
                     {
-                        var result = StateClientMetadataSerializer.Deserialize<T>(new ByteMemoryOwner(bytes), bytes.Length);
+                        var result = StateClientMetadataSerializer.Deserialize<T>(bytes, bytes.Length);
                         if (result != null)
                         {
                             _metadata = result;

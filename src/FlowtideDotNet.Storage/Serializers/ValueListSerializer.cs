@@ -12,6 +12,8 @@
 
 using FlowtideDotNet.Storage.Tree;
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -38,10 +40,26 @@ namespace FlowtideDotNet.Storage.Serializers
             return new ListValueContainer<V>();
         }
 
-        public ListValueContainer<V> Deserialize(in BinaryReader reader)
+        public ListValueContainer<V> Deserialize(ref SequenceReader<byte> reader)
         {
+            if (!reader.TryReadLittleEndian(out int length))
+            {
+                throw new InvalidOperationException("Failed to read length");
+            }
+
+            var bytes = new byte[length];
+
+            if (!reader.TryCopyTo(bytes))
+            {
+                throw new InvalidOperationException("Failed to read bytes");
+            }
+            reader.Advance(length);
+
+            using var memoryStream = new System.IO.MemoryStream(bytes);
+            using var binaryReader = new System.IO.BinaryReader(memoryStream);
+
             var container = new ListValueContainer<V>();
-            serializer.Deserialize(reader, container._values);
+            serializer.Deserialize(binaryReader, container._values);
             return container;
         }
 
@@ -50,9 +68,18 @@ namespace FlowtideDotNet.Storage.Serializers
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in ListValueContainer<V> values)
+        public void Serialize(in IBufferWriter<byte> writer, in ListValueContainer<V> values)
         {
-            serializer.Serialize(writer, values._values);
+            using MemoryStream memoryStream = new MemoryStream();
+            using BinaryWriter binaryWriter = new BinaryWriter(memoryStream);
+            serializer.Serialize(binaryWriter, values._values);
+            var bytes = memoryStream.ToArray();
+
+            var lengthSpan = writer.GetSpan(4);
+            BinaryPrimitives.WriteInt32LittleEndian(lengthSpan, bytes.Length);
+            writer.Advance(4);
+
+            writer.Write(bytes);
         }
     }
 }

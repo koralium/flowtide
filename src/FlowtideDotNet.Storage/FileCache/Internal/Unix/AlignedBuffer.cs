@@ -10,11 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Buffers;
 using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
 {
-    internal class AlignedBuffer : IDisposable
+    internal class AlignedBuffer : MemoryManager<byte>, IDisposable
     {
         private IntPtr buffer;
         private int bufferSize;
@@ -34,7 +35,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             buffer = new IntPtr(alignedPtr);
         }
 
-        public void Dispose()
+        protected override void Dispose(bool disposing)
         {
             if (allocated != IntPtr.Zero)
             {
@@ -42,6 +43,20 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
                 buffer = IntPtr.Zero;
                 allocated = IntPtr.Zero;
             }
+        }
+
+        public unsafe override Span<byte> GetSpan()
+        {
+            return new Span<byte>(buffer.ToPointer(), bufferSize);
+        }
+
+        public unsafe override MemoryHandle Pin(int elementIndex = 0)
+        {
+            return new MemoryHandle(((byte*)buffer.ToPointer()) + elementIndex, default, default);
+        }
+
+        public override void Unpin()
+        {
         }
     }
 }

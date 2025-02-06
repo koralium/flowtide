@@ -38,7 +38,7 @@ namespace FlowtideDotNet.DependencyInjection
 
         IFlowtideStorageBuilder SetPersistentStorage(Func<IServiceProvider, IPersistentStorage> func);
 
-        IFlowtideStorageBuilder SetCompressionFunction(StateSerializeOptions serializeOptions);
+        IFlowtideStorageBuilder SetCompression(StateSerializeOptions serializeOptions);
 
         IServiceCollection ServiceCollection { get; }
 

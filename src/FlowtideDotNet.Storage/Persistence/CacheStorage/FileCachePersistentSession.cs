@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.StateManager.Internal;
+
 namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 {
     internal class FileCachePersistentSession : IPersistentStorageSession
@@ -36,14 +38,20 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
         {
         }
 
-        public ValueTask<byte[]> Read(long key)
+        public ValueTask<ReadOnlyMemory<byte>> Read(long key)
         {
             return ValueTask.FromResult(fileCache.Read(key));
         }
 
-        public virtual Task Write(long key, byte[] value)
+        public ValueTask<T> Read<T>(long key, IStateSerializer<T> serializer)
+            where T : ICacheObject
         {
-            fileCache.WriteAsync(key, value);
+            return ValueTask.FromResult(fileCache.Read(key, serializer));
+        }
+
+        public virtual Task Write(long key, SerializableObject value)
+        {
+            fileCache.Write(key, value);
             fileCache.Flush();
             return Task.CompletedTask;
         }

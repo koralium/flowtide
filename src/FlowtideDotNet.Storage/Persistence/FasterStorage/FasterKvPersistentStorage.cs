@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             await m_persistentStorage.RecoverAsync(recoverTo: checkpointVersion);
         }
 
-        public bool TryGetValue(long key, [NotNullWhen(true)] out byte[]? value)
+        public bool TryGetValue(long key, [NotNullWhen(true)] out ReadOnlyMemory<byte>? value)
         {
             var result = m_adminSession.Read(key);
             if (result.status.Found || result.status.IsPending)
