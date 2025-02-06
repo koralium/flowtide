@@ -26,7 +26,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.Egress
 {
-    public abstract class EgressVertex<T, TState> : ITargetBlock<IStreamEvent>, IStreamEgressVertex
+    public abstract class EgressVertex<T> : ITargetBlock<IStreamEvent>, IStreamEgressVertex
     {
         private Action<string>? _checkpointDone;
         private readonly ExecutionDataflowBlockOptions _executionDataflowBlockOptions;
@@ -121,8 +121,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         private async Task HandleCheckpoint(ICheckpointEvent checkpointEvent)
         {
-            var newState = await OnCheckpoint(checkpointEvent.CheckpointTime);
-            checkpointEvent.AddState(Name, newState);
+            await OnCheckpoint(checkpointEvent.CheckpointTime);
         }
 
         public virtual Task OnTrigger(string name, object? state)
@@ -130,7 +129,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             return Task.CompletedTask;
         }
 
-        protected abstract Task<TState> OnCheckpoint(long checkpointTime);
+        protected abstract Task OnCheckpoint(long checkpointTime);
 
         private async Task HandleRecieve(T msg, long time)
         {
@@ -158,18 +157,13 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             _targetBlock.Fault(exception);
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
             _cancellationTokenSource = new CancellationTokenSource();
             _name = name;
             _streamName = vertexHandler.StreamName;
             _metrics = vertexHandler.Metrics;
-            TState? dState = default;
-            if (state.HasValue)
-            {
-                dState = JsonSerializer.Deserialize<TState>(state.Value);
-            }
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
 
             Metrics.CreateObservableGauge("busy", () =>
@@ -199,7 +193,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             });
             _latencyHistogram = Metrics.CreateHistogram<float>("latency");
 
-            return InitializeOrRestore(restoreTime, dState, vertexHandler.StateClient);
+            return InitializeOrRestore(restoreTime, vertexHandler.StateClient);
         }
 
         protected void SetHealth(bool healthy)
@@ -207,7 +201,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             _isHealthy = healthy;
         }
 
-        protected abstract Task InitializeOrRestore(long restoreTime, TState? state, IStateManagerClient stateManagerClient);
+        protected abstract Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient);
 
         public DataflowMessageStatus OfferMessage(DataflowMessageHeader messageHeader, IStreamEvent messageValue, ISourceBlock<IStreamEvent>? source, bool consumeToAccept)
         {

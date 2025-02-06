@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Base.Vertices
 
         string DisplayName { get; }
 
-        Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler);
+        Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler);
 
         void CreateBlock();
 

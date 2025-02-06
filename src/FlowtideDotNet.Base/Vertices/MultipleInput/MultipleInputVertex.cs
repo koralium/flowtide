@@ -27,7 +27,7 @@ using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Base.Vertices.MultipleInput
 {
-    public abstract class MultipleInputVertex<T, TState> : ISourceBlock<IStreamEvent>, IStreamVertex
+    public abstract class MultipleInputVertex<T> : ISourceBlock<IStreamEvent>, IStreamVertex
     {
         private readonly MultipleInputTargetHolder[] _targetHolders;
         private TransformManyBlock<KeyValuePair<int, IStreamEvent>, IStreamEvent>? _transformBlock;
@@ -220,7 +220,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
             Task.WhenAny(_targetHolders.Select(x => x.Completion)).ContinueWith((completed, state) =>
             {
-                var block = (MultipleInputVertex<T, TState>)state!;
+                var block = (MultipleInputVertex<T>)state!;
                 foreach (var target in block._targetHolders)
                 {
                     if (target.Completion.IsFaulted)
@@ -360,8 +360,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             if (lockingEvent is ICheckpointEvent checkpointEvent)
             {
                 _currentTime = checkpointEvent.NewTime;
-                var state = await OnCheckpoint();
-                checkpointEvent.AddState(Name, state);
+                await OnCheckpoint();
                 _lastSeenCheckpointEvents = null;
                 return checkpointEvent;
             }
@@ -471,7 +470,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }
         }
 
-        public abstract Task<TState?> OnCheckpoint();
+        public abstract Task OnCheckpoint();
 
         public abstract IAsyncEnumerable<T> OnRecieve(int targetId, T msg, long time);
 
@@ -543,17 +542,12 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             return (_sourceBlock as ISourceBlock<IStreamEvent>).ReserveMessage(messageHeader, target);
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
             _name = name;
             _streamName = vertexHandler.StreamName;
             _metrics = vertexHandler.Metrics;
-            TState? parsedState = default;
-            if (state.HasValue)
-            {
-                parsedState = JsonSerializer.Deserialize<TState>(state.Value);
-            }
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
 
             Metrics.CreateObservableGauge("busy", () =>
@@ -625,7 +619,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             });
 
             _currentTime = newTime;
-            return InitializeOrRestore(parsedState, vertexHandler.StateClient);
+            return InitializeOrRestore(vertexHandler.StateClient);
         }
 
         protected void SetHealth(bool healthy)
@@ -633,7 +627,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             _isHealthy = healthy;
         }
 
-        protected abstract Task InitializeOrRestore(TState? state, IStateManagerClient stateManagerClient);
+        protected abstract Task InitializeOrRestore(IStateManagerClient stateManagerClient);
 
         public abstract Task Compact();
 

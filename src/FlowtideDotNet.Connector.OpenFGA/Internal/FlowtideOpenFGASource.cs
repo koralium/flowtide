@@ -29,12 +29,12 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         public string? ContinuationToken { get; set; }
         public long LastTimestamp { get; set; }
     }
-    internal class FlowtideOpenFgaSource : ReadBaseOperator<FlowtideOpenFgaSourceState>
+    internal class FlowtideOpenFgaSource : ReadBaseOperator
     {
         private readonly OpenFgaSourceOptions m_options;
         private readonly ReadRelation m_readRelation;
         private OpenFgaClient? m_client;
-        private FlowtideOpenFgaSourceState? m_state;
+        private IObjectState<FlowtideOpenFgaSourceState>? m_state;
 
         private readonly OpenFgaRowEncoder m_encoder;
         private Task? _changesTask;
@@ -84,7 +84,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         private async Task FetchChanges(IngressOutput<StreamEventBatch> output, object? state)
         {
             Debug.Assert(m_client != null);
-            Debug.Assert(m_state != null);
+            Debug.Assert(m_state?.Value != null);
             ClientReadChangesRequest? request = default;
 
             if (m_objectTypeFilter != null)
@@ -97,14 +97,14 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
             var changes = await m_client.ReadChanges(request, options: new OpenFga.Sdk.Client.Model.ClientReadChangesOptions()
             {
-                ContinuationToken = m_state.ContinuationToken,
+                ContinuationToken = m_state.Value.ContinuationToken,
             });
 
             if (changes.Changes.Count > 0)
             {
                 await output.EnterCheckpointLock();
                 await SendChanges(request, changes, output);
-                await output.SendWatermark(new Watermark(m_watermarkName, m_state.LastTimestamp));
+                await output.SendWatermark(new Watermark(m_watermarkName, m_state.Value.LastTimestamp));
                 output.ExitCheckpointLock();
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }
@@ -115,30 +115,26 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { m_watermarkName });
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, FlowtideOpenFgaSourceState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            if (state != null)
+            m_state = await stateManagerClient.GetOrCreateObjectStateAsync<FlowtideOpenFgaSourceState>("openfga_state");
+            if (m_state.Value == null)
             {
-                m_state = state;
-            }
-            else
-            {
-                m_state = new FlowtideOpenFgaSourceState();
+                m_state.Value = new FlowtideOpenFgaSourceState();
             }
             m_client = new OpenFgaClient(m_options.ClientConfiguration);
-            return Task.CompletedTask;
         }
 
-        protected override Task<FlowtideOpenFgaSourceState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(m_state != null);
-            return Task.FromResult(m_state);
+            await m_state.Commit();
         }
 
         private async Task SendChanges(ClientReadChangesRequest? request, ReadChangesResponse changes, IngressOutput<StreamEventBatch> output)
         {
             Debug.Assert(m_client != null);
-            Debug.Assert(m_state != null);
+            Debug.Assert(m_state?.Value != null);
 
             do
             {
@@ -154,17 +150,17 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                         outputData.Add(m_encoder.Encode(change.TupleKey, -1));
                     }
                     var timestamp = new DateTimeOffset(change.Timestamp).ToUnixTimeMilliseconds();
-                    if (timestamp > m_state.LastTimestamp)
+                    if (timestamp > m_state.Value.LastTimestamp)
                     {
-                        m_state.LastTimestamp = timestamp;
+                        m_state.Value.LastTimestamp = timestamp;
                     }
                 }
                 await output.SendAsync(new StreamEventBatch(outputData, m_readRelation.OutputLength));
-                m_state.ContinuationToken = changes.ContinuationToken;
+                m_state.Value.ContinuationToken = changes.ContinuationToken;
 
                 changes = await m_client.ReadChanges(request, options: new OpenFga.Sdk.Client.Model.ClientReadChangesOptions()
                 {
-                    ContinuationToken = m_state.ContinuationToken,
+                    ContinuationToken = m_state.Value.ContinuationToken,
                 });
             } while (changes.Changes.Count > 0);
         }
@@ -172,7 +168,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
             Debug.Assert(m_client != null);
-            Debug.Assert(m_state != null);
+            Debug.Assert(m_state?.Value != null);
 
             ClientReadChangesRequest? request = default;
 
@@ -187,12 +183,12 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             await output.EnterCheckpointLock();
             var changes = await m_client.ReadChanges(request, options: new OpenFga.Sdk.Client.Model.ClientReadChangesOptions()
             {
-                ContinuationToken = m_state.ContinuationToken,
+                ContinuationToken = m_state.Value.ContinuationToken,
             });
 
             await SendChanges(request, changes, output);
 
-            await output.SendWatermark(new Watermark(m_watermarkName, m_state.LastTimestamp));
+            await output.SendWatermark(new Watermark(m_watermarkName, m_state.Value.LastTimestamp));
             output.ExitCheckpointLock();
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             await RegisterTrigger("load_changes", TimeSpan.FromSeconds(1));

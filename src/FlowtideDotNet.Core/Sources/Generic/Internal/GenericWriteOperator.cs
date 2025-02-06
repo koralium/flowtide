@@ -57,10 +57,10 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             return new MetadataResult(primaryKeyIndices);
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, SimpleWriteState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             await genericDataSink.Initialize(writeRelation);
-            await base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+            await base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
         private async IAsyncEnumerable<FlowtideGenericWriteObject<T>> ChangesToGeneric(IAsyncEnumerable<SimpleChangeEvent> rows)

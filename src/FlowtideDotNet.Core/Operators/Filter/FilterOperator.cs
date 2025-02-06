@@ -23,7 +23,7 @@ using FlowtideDotNet.Core.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Filter
 {
-    internal class FilterOperator : UnaryVertex<StreamEventBatch, object?>
+    internal class FilterOperator : UnaryVertex<StreamEventBatch>
     {
         public override string DisplayName => "Filter";
 
@@ -57,14 +57,14 @@ namespace FlowtideDotNet.Core.Operators.Filter
             return _filterImplementation.OnRecieve(msg, time);
         }
 
-        protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             Logger.InitializingFilterOperator(StreamName, Name);
             if (_eventsProcessed == null)
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            return _filterImplementation.InitializeOrRestore(StreamName, Name, RegisterTrigger, state);
+            return _filterImplementation.InitializeOrRestore(StreamName, Name, RegisterTrigger);
         }
 
         public override Task DeleteAsync()

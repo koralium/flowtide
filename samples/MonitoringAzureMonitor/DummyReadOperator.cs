@@ -33,7 +33,7 @@ namespace MonitoringAzureMonitor
         }
     }
 
-    public class DummyReadOperator : ReadBaseOperator<object>
+    public class DummyReadOperator : ReadBaseOperator
     {
         public DummyReadOperator(DataflowBlockOptions options) : base(options)
         {
@@ -56,14 +56,14 @@ namespace MonitoringAzureMonitor
             return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { "dummy" });
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }
 
-        protected override Task<object> OnCheckpoint(long checkpointTime)
+        protected override Task OnCheckpoint(long checkpointTime)
         {
-            return Task.FromResult(new object());
+            return Task.CompletedTask;
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)

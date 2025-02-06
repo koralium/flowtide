@@ -39,7 +39,7 @@ using FlowtideDotNet.Storage.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
-    internal class ColumnStoreMergeJoin : MultipleInputVertex<StreamEventBatch, JoinState>
+    internal class ColumnStoreMergeJoin : MultipleInputVertex<StreamEventBatch>
     {
         protected IBPlusTree<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _leftTree;
         protected IBPlusTree<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _rightTree;
@@ -164,7 +164,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             return Task.CompletedTask;
         }
 
-        public override async Task<JoinState?> OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
 #if DEBUG_WRITE
             allInput!.WriteLine("Checkpoint");
@@ -176,7 +176,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             await _leftTree!.Commit();
             await _rightTree!.Commit();
-            return new JoinState();
         }
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)
@@ -751,7 +750,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
         }
 
-        protected override async Task InitializeOrRestore(JoinState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))

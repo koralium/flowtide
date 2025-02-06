@@ -28,7 +28,7 @@ using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Base.Vertices.Unary
 {
-    public abstract class UnaryVertex<T, TState> : IPropagatorBlock<IStreamEvent, IStreamEvent>, IStreamVertex
+    public abstract class UnaryVertex<T> : IPropagatorBlock<IStreamEvent, IStreamEvent>, IStreamVertex
     {
         private TransformManyBlock<IStreamEvent, IStreamEvent>? _transformBlock;
         private ParallelSource<IStreamEvent>? _parallelSource;
@@ -190,19 +190,14 @@ namespace FlowtideDotNet.Base.Vertices.Unary
             return EmptyAsyncEnumerable<T>.Instance;
         }
 
-        public async Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
+        public async Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
         {
             _name = name;
             _streamName = vertexHandler.StreamName;
             _vertexHandler = vertexHandler;
 
-            TState? parsedState = default;
-            if (state.HasValue)
-            {
-                parsedState = JsonSerializer.Deserialize<TState>(state.Value);
-            }
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
-            await InitializeOrRestore(parsedState, vertexHandler.StateClient);
+            await InitializeOrRestore(vertexHandler.StateClient);
 
             Metrics.CreateObservableGauge("busy", () =>
             {
@@ -291,7 +286,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
 
         public abstract Task Compact();
 
-        protected abstract Task InitializeOrRestore(TState? state, IStateManagerClient stateManagerClient);
+        protected abstract Task InitializeOrRestore(IStateManagerClient stateManagerClient);
 
         private async IAsyncEnumerable<IStreamEvent> HandleCheckpointEnumerable(ILockingEvent checkpointEvent)
         {
@@ -329,8 +324,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
             {
                 Logger.CheckpointInOperator(StreamName, Name);
                 _currentTime = checkpointEvent.NewTime;
-                var checkpointState = await OnCheckpoint();
-                checkpointEvent.AddState(Name, checkpointState);
+                await OnCheckpoint();
                 return checkpointEvent;
             }
             return lockingEvent;
@@ -338,7 +332,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
 
         public abstract IAsyncEnumerable<T> OnRecieve(T msg, long time);
 
-        public abstract Task<TState> OnCheckpoint();
+        public abstract Task OnCheckpoint();
 
         public virtual IAsyncEnumerable<T> OnTrigger(string name, object? state)
         {

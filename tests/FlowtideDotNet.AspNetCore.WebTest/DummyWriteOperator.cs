@@ -33,7 +33,7 @@ namespace FlowtideDotNet.AspNetCore.WebTest
         }
     }
 
-    public class DummyWriteOperator : WriteBaseOperator<object>
+    public class DummyWriteOperator : WriteBaseOperator
     {
         public DummyWriteOperator(ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -51,14 +51,14 @@ namespace FlowtideDotNet.AspNetCore.WebTest
             return Task.CompletedTask;
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }
 
-        protected override Task<object> OnCheckpoint(long checkpointTime)
+        protected override Task OnCheckpoint(long checkpointTime)
         {
-            return Task.FromResult(new object());
+            return Task.CompletedTask;
         }
 
         protected override Task OnRecieve(StreamEventBatch msg, long time)
