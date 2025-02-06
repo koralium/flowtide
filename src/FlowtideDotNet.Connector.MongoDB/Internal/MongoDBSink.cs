@@ -11,10 +11,6 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.MongoDB.Internal
 {
-    //internal class MongoDbSinkState : ColumnWriteState
-    //{
-
-    //}
     class MongoDBSink : ColumnGroupedWriteOperator
     {
         private readonly FlowtideMongoDBSinkOptions m_options;

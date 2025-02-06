@@ -18,10 +18,6 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
-    //internal class SqlServerSinkState : ColumnWriteState
-    //{
-    //}
-
     class ColumnSqlServerSink : ColumnGroupedWriteOperator
     {
         private readonly SqlServerSinkOptions m_sqlServerSinkOptions;

@@ -24,10 +24,6 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.CosmosDB.Internal
 {
-    //internal class CosmosDbSinkState : IStatefulWriteState
-    //{
-    //    public long StorageSegmentId { get; set; }
-    //}
     internal class CosmosDbSink : GroupedWriteBaseOperator
     {
         private readonly FlowtideCosmosOptions cosmosOptions;
