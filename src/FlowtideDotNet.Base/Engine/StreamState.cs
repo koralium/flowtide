@@ -20,12 +20,6 @@ namespace FlowtideDotNet.Base.Engine
         public static readonly StreamState NullState = new StreamState(-1, 0, string.Empty);
 
         /// <summary>
-        /// Contains all of the operator states.
-        /// This should only contain metadata.
-        /// </summary>
-        //public ImmutableDictionary<string, JsonElement> OperatorStates { get; }
-
-        /// <summary>
         /// The stream time this checkpoint refers to.
         /// </summary>
         public long Time { get; }

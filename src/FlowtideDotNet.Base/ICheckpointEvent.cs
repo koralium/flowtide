@@ -17,7 +17,5 @@ namespace FlowtideDotNet.Base
         long CheckpointTime { get; }
 
         long NewTime { get; }
-
-        //void AddState<T>(string name, T state);
     }
 }

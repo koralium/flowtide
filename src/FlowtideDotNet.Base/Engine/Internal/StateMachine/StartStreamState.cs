@@ -197,11 +197,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _context._logger.InitializingPropagatorBLocks(_context.streamName);
                 foreach (var block in _context.propagatorBlocks)
                 {
-                    //JsonElement? blockState = null;
-                    //if (_context._lastState != null && _context._lastState.OperatorStates.TryGetValue(block.Key, out var state))
-                    //{
-                    //    blockState = state;
-                    //}
                     TagList tags = new TagList()
                     {
                         { "stream", _context.streamName },
