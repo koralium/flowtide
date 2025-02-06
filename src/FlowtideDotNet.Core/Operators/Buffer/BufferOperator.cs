@@ -30,7 +30,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Buffer
 {
-    internal class BufferOperator : UnaryVertex<StreamEventBatch, object?>
+    internal class BufferOperator : UnaryVertex<StreamEventBatch>
     {
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
@@ -137,7 +137,7 @@ namespace FlowtideDotNet.Core.Operators.Buffer
             yield break;
         }
 
-        protected override async Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             if (_eventsCounter == null)
             {

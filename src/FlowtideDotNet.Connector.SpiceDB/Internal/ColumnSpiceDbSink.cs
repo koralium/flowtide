@@ -32,11 +32,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Internal
 {
-    internal class SpiceDbSinkState : ColumnWriteState
-    {
-
-    }
-    internal class ColumnSpiceDbSink : ColumnGroupedWriteOperator<SpiceDbSinkState>
+    internal class ColumnSpiceDbSink : ColumnGroupedWriteOperator
     {
         private readonly int m_resourceObjectTypeIndex;
         private readonly int m_resourceObjectIdIndex;
@@ -100,19 +96,18 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
 
         public override string DisplayName => m_displayName;
 
-        protected override Task InitializeOrRestore(long restoreTime, SpiceDbSinkState? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             m_client = new PermissionsService.PermissionsServiceClient(m_spiceDbSinkOptions.Channel);
             if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
             }
-            return base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+            return base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
-        protected override SpiceDbSinkState Checkpoint(long checkpointTime)
+        protected override void Checkpoint(long checkpointTime)
         {
-            return new SpiceDbSinkState();
         }
 
         protected override ValueTask<IReadOnlyList<int>> GetPrimaryKeyColumns()

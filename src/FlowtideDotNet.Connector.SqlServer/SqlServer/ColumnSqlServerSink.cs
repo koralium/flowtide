@@ -18,11 +18,11 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
-    internal class SqlServerSinkState : ColumnWriteState
-    {
-    }
+    //internal class SqlServerSinkState : ColumnWriteState
+    //{
+    //}
 
-    class ColumnSqlServerSink : ColumnGroupedWriteOperator<SqlServerSinkState>
+    class ColumnSqlServerSink : ColumnGroupedWriteOperator
     {
         private readonly SqlServerSinkOptions m_sqlServerSinkOptions;
         private readonly WriteRelation m_writeRelation;
@@ -56,9 +56,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override string DisplayName => "SQL Server Sink";
 
-        protected override SqlServerSinkState Checkpoint(long checkpointTime)
+        protected override void Checkpoint(long checkpointTime)
         {
-            return new SqlServerSinkState();
         }
 
         protected override ValueTask<IReadOnlyList<int>> GetPrimaryKeyColumns()
@@ -151,10 +150,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             await m_mergeIntoCommand.PrepareAsync();
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, SqlServerSinkState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             await LoadMetadata();
-            await base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+            await base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
         protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken)

@@ -18,6 +18,6 @@ namespace FlowtideDotNet.Base
 
         long NewTime { get; }
 
-        void AddState<T>(string name, T state);
+        //void AddState<T>(string name, T state);
     }
 }

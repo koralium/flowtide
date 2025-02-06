@@ -28,7 +28,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Filter
 {
-    internal class ColumnFilterOperator : UnaryVertex<StreamEventBatch, object?>
+    internal class ColumnFilterOperator : UnaryVertex<StreamEventBatch>
     {
         private readonly FilterRelation _filterRelation;
         private readonly Func<EventBatchData, int, bool> _filter;
@@ -106,7 +106,7 @@ namespace FlowtideDotNet.Core.Operators.Filter
             }
         }
 
-        protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }

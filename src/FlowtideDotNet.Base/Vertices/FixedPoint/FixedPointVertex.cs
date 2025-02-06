@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <typeparam name="TState"></typeparam>
-    public abstract class FixedPointVertex<T, TState> : IStreamVertex
+    public abstract class FixedPointVertex<T> : IStreamVertex
     {
         private readonly MultipleInputTargetHolder _ingressTarget;
         private readonly MultipleInputTargetHolder _feedbackTarget;
@@ -387,19 +387,13 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             return _loopSource.Links.Union(_egressSource.Links);
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
             _name = name;
             _currentTime = newTime;
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
             _metrics = vertexHandler.Metrics;
-
-            TState? parsedState = default;
-            if (state.HasValue)
-            {
-                parsedState = JsonSerializer.Deserialize<TState>(state.Value);
-            }
 
             Metrics.CreateObservableGauge("busy", () =>
             {
@@ -469,10 +463,10 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 return measurements;
             });
 
-            return InitializeOrRestore(parsedState, vertexHandler.StateClient);
+            return InitializeOrRestore(vertexHandler.StateClient);
         }
 
-        protected abstract Task InitializeOrRestore(TState? state, IStateManagerClient stateManagerClient);
+        protected abstract Task InitializeOrRestore( IStateManagerClient stateManagerClient);
 
         public void Link()
         {

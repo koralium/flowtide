@@ -12,10 +12,10 @@
 
 namespace FlowtideDotNet.Core.Operators.Join
 {
-    public class JoinState
-    {
-        public long LeftSegmentId { get; set; }
+    //public class JoinState
+    //{
+    //    public long LeftSegmentId { get; set; }
 
-        public long RightSegmentId { get; set; }
-    }
+    //    public long RightSegmentId { get; set; }
+    //}
 }

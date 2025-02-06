@@ -12,8 +12,8 @@
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
-    internal class NormalizationState
-    {
-        public long StorageSegmentId { get; set; }
-    }
+    //internal class NormalizationState
+    //{
+    //    public long StorageSegmentId { get; set; }
+    //}
 }
