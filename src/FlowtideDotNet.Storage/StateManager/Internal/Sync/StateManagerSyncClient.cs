@@ -93,5 +93,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             await stateClient.InitializeSerializerAsync();
             return stateClient;
         }
+
+        public ValueTask<IObjectState<T>> GetOrCreateObjectStateAsync<T>(string name)
+        {
+            var combinedName = $"{m_name}_{name}";
+
+            return stateManager.CreateObjectStateAsync<T>(combinedName);
+        }
     }
 }

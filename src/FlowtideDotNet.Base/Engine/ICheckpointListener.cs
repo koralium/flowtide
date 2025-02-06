@@ -12,16 +12,8 @@
 
 namespace FlowtideDotNet.Base.Engine
 {
-    public enum StreamStatus
+    public interface ICheckpointListener
     {
-        Stopped,
-        Starting,
-        Running,
-        Degraded,
-        Failing,
-        Stopping,
-        Deleting,
-        Deleted,
-        Paused
+        void OnCheckpointComplete();
     }
 }

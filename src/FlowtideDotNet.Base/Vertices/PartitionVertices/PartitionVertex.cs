@@ -39,6 +39,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         private IMeter? _metrics;
         private bool _isHealthy = true;
         private IMemoryAllocator? _memoryAllocator;
+        private TaskCompletionSource? _pauseSource;
 
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
 
@@ -94,6 +95,11 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 {
                     var enumerator = PartitionData(message.Data, message.Time);
 
+                    if (_pauseSource != null)
+                    {
+                        enumerator = WaitForPause(enumerator);
+                    }
+
                     if (message.Data is IRentable rentable)
                     {
                         return new AsyncEnumerableReturnRentable<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(rentable, enumerator, (source) =>
@@ -138,6 +144,20 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 _inputBlock.LinkTo(_sources[i].Target, new DataflowLinkOptions { PropagateCompletion = true }, x => x.Key == index);
             }
             
+        }
+
+        private async IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> WaitForPause(IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> input)
+        {
+            var task = _pauseSource?.Task;
+            if (task != null)
+            {
+                await task;
+            }
+
+            await foreach (var element in input)
+            {
+                yield return element;
+            }
         }
 
         private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> Broadcast(IStreamEvent streamEvent)
@@ -286,6 +306,23 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 output.AddRange(source.GetLinks());
             }
             return output;
+        }
+
+        public void Pause()
+        {
+            if (_pauseSource == null)
+            {
+                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
+        public void Resume()
+        {
+            if (_pauseSource != null)
+            {
+                _pauseSource.SetResult();
+                _pauseSource = null;
+            }
         }
     }
 }

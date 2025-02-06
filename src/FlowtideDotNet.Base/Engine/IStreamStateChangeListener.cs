@@ -10,18 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Engine.Internal.StateMachine;
+
 namespace FlowtideDotNet.Base.Engine
 {
-    public enum StreamStatus
+    public interface IStreamStateChangeListener
     {
-        Stopped,
-        Starting,
-        Running,
-        Degraded,
-        Failing,
-        Stopping,
-        Deleting,
-        Deleted,
-        Paused
+        void OnStreamStateChange(StreamStateValue newState);
     }
 }

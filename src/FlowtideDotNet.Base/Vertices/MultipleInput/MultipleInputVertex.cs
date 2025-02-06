@@ -53,6 +53,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private bool _isHealthy = true;
         private CancellationTokenSource? tokenSource;
         private IMemoryAllocator? _memoryAllocator;
+        private TaskCompletionSource? _pauseSource;
 
         private string? _name;
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
@@ -113,6 +114,10 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 if (r.Value is TriggerEvent triggerEvent)
                 {
                     var enumerator = OnTrigger(triggerEvent.Name, triggerEvent.State);
+                    if (_pauseSource != null)
+                    {
+                        enumerator = WaitForPause(enumerator);
+                    }
                     return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
                         if (source is IRentable rentable)
                         {
@@ -126,6 +131,10 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     Debug.Assert(_targetSentDataSinceLastWatermark != null);
                     _targetSentDataSinceLastWatermark[r.Key] = true;
                     var enumerator = OnRecieve(r.Key, streamMessage.Data, streamMessage.Time);
+                    if (_pauseSource != null)
+                    {
+                        enumerator = WaitForPause(enumerator);
+                    }
 
                     if (streamMessage.Data is IRentable rentable)
                     {
@@ -410,6 +419,20 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             return EmptyAsyncEnumerable<T>.Instance;
         }
 
+        private async IAsyncEnumerable<T> WaitForPause(IAsyncEnumerable<T> input)
+        {
+            var task = _pauseSource?.Task;
+            if (task != null)
+            {
+                await task;
+            }
+
+            await foreach (var element in input)
+            {
+                yield return element;
+            }
+        }
+
         private bool TargetInCheckpoint(int targetId, ILockingEvent checkpointEvent, out ILockingEvent[]? checkpoints)
         {
             lock (_targetCheckpointLock)
@@ -663,6 +686,23 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         public IEnumerable<ITargetBlock<IStreamEvent>> GetLinks()
         {
             return _links.Select(x => x.Item1);
+        }
+
+        public void Pause()
+        {
+            if (_pauseSource == null)
+            {
+                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
+        public void Resume()
+        {
+            if (_pauseSource != null)
+            {
+                _pauseSource.SetResult();
+                _pauseSource = null;
+            }
         }
     }
 }

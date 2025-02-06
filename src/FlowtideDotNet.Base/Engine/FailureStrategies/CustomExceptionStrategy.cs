@@ -10,18 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Base.Engine
+using FlowtideDotNet.Base.Engine;
+
+namespace FlowtideDotNet.Engine.FailureStrategies
 {
-    public enum StreamStatus
+
+    /// <summary>
+    /// Calls the provided action when a failure occurs
+    /// </summary>
+    public class CustomExceptionStrategy : IFailureListener
     {
-        Stopped,
-        Starting,
-        Running,
-        Degraded,
-        Failing,
-        Stopping,
-        Deleting,
-        Deleted,
-        Paused
+        private readonly Action<Exception?> _handler;
+
+        public CustomExceptionStrategy(Action<Exception?> handler)
+        {
+            _handler = handler;
+        }
+
+        public void OnFailure(Exception? exception)
+        {
+            _handler(exception);
+        }
     }
 }

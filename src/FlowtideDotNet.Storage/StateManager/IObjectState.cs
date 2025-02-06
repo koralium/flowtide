@@ -10,18 +10,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Base.Engine
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Storage.StateManager
 {
-    public enum StreamStatus
+    /// <summary>
+    /// Represent a state that stores an object.
+    /// </summary>
+    public interface IObjectState<T>
     {
-        Stopped,
-        Starting,
-        Running,
-        Degraded,
-        Failing,
-        Stopping,
-        Deleting,
-        Deleted,
-        Paused
+        T? Value { get; set; }
+
+        /// <summary>
+        /// Commits the value to persistent storage.
+        /// </summary>
+        /// <returns></returns>
+        ValueTask Commit();
     }
 }

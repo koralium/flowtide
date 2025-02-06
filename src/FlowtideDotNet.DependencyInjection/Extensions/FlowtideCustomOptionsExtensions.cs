@@ -10,18 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Base.Engine
+using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Engine.FailureStrategies;
+
+namespace FlowtideDotNet.DependencyInjection
 {
-    public enum StreamStatus
+    public static class FlowtideCustomOptionsExtensions
     {
-        Stopped,
-        Starting,
-        Running,
-        Degraded,
-        Failing,
-        Stopping,
-        Deleting,
-        Deleted,
-        Paused
+        /// <summary>
+        /// When a failure occurs call exit on the current process.
+        /// </summary>
+        /// <param name="builder"></param>
+        public static void WithExitProcessOnFailure(this FlowtideBuilder builder)
+        {
+            builder.WithFailureListener<ExitProcessStrategy>();
+        }
     }
 }

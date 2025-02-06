@@ -10,18 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Base.Engine
+using FlowtideDotNet.Base.Engine;
+
+namespace FlowtideDotNet.Engine.FailureStrategies
 {
-    public enum StreamStatus
+    /// <summary>
+    /// Exits the current process when a failure occurs
+    /// </summary>
+    public class ExitProcessStrategy : IFailureListener
     {
-        Stopped,
-        Starting,
-        Running,
-        Degraded,
-        Failing,
-        Stopping,
-        Deleting,
-        Deleted,
-        Paused
+        public void OnFailure(Exception? exception)
+        {
+            Environment.Exit(Environment.ExitCode);
+        }
     }
 }

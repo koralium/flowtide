@@ -13,7 +13,9 @@
 using FlowtideDotNet.AspNetCore.Internal.TimeSeries.Middleware;
 using FlowtideDotNet.AspNetCore.TimeSeries;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text.Json;
 
 namespace FlowtideDotNet.AspNetCore.Extensions
 {
@@ -48,5 +50,34 @@ namespace FlowtideDotNet.AspNetCore.Extensions
             return app.UseMiddleware<UiMiddleware>(new UiMiddlewareState(new DiagnosticsEndpoint(dataflowStream), new ReactEndpoint(path), path));
         }
 
+        public static IApplicationBuilder UseFlowtidePauseResumeEndpoints(this IApplicationBuilder app, string basePath = "/ui/stream")
+        {
+            if (basePath == "/")
+            {
+                basePath = string.Empty;
+            }
+            app.Map($"{basePath}/pause", appBuilder =>
+            {
+                appBuilder.Use((HttpContext context,Func<Task> next) =>
+                {
+                    context.RequestServices.GetRequiredService<FlowtideDotNet.Base.Engine.DataflowStream>().Pause();
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    return context.Response.BodyWriter.WriteAsync(JsonSerializer.SerializeToUtf8Bytes(new { message = "Stream paused" })).AsTask();
+                });
+            });
+
+            app.Map($"{basePath}/resume", appBuilder =>
+            {
+                appBuilder.Use((HttpContext context, Func<Task> next) =>
+                {
+                    context.RequestServices.GetRequiredService<FlowtideDotNet.Base.Engine.DataflowStream>().Resume();
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    return context.Response.BodyWriter.WriteAsync(JsonSerializer.SerializeToUtf8Bytes(new { message = "Stream resumed" })).AsTask();
+                });
+            });
+            return app;
+        }
     }
 }
