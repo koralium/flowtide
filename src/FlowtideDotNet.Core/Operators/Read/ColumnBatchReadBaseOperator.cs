@@ -190,9 +190,9 @@ namespace FlowtideDotNet.Core.Operators.Read
         {
             Debug.Assert(_persistentTree != null);
             Debug.Assert(_initialSent != null);
-            await _initialSent.Commit();
             await _persistentTree.Commit();
             await Checkpoint(checkpointTime).ConfigureAwait(false);
+            await _initialSent.Commit();
         }
 
         protected abstract Task Checkpoint(long checkpointTime);

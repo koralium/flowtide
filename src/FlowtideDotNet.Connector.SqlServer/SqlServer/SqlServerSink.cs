@@ -28,10 +28,6 @@ using FlowtideDotNet.Connector.SqlServer;
 
 namespace FlowtideDotNet.SqlServer.SqlServer
 {
-    //public class SqlServerSinkState : IStatefulWriteState
-    //{
-    //    public long StorageSegmentId { get; set; }
-    //}
     public class SqlServerSink : GroupedWriteBaseOperator
     {
         private readonly string tmpTableName;
