@@ -107,7 +107,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             m_state = await stateManagerClient.GetOrCreateObjectStateAsync<FlowtideSpiceDbSourceState>("spicedb_state");
             if (m_state.Value == null)
             {
-                m_state.Value = new FlowtideSpiceDbSourceState();
+                m_state.Value = new FlowtideSpiceDbSourceState()
+                {
+                    TypeTimestamps = new Dictionary<string, long>()
+                };
             }
             Metadata? metadata = default;
             if (m_spiceDbSourceOptions.GetMetadata != null)
