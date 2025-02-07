@@ -10,10 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Engine.Internal.StateMachine;
+
 namespace FlowtideDotNet.Base.Engine
 {
-    public interface IStreamStateChangeListener
-    {
-        void OnStreamStateChange(StreamStateChangeNotification notification);
-    }
+    public record class StreamNotification(string StreamName);
+    public record class StreamCheckpointNotification(string StreamName) : StreamNotification(StreamName);
+    public record class StreamFailureNotification(string StreamName, Exception? Exception) : StreamNotification(StreamName);
+    public record class StreamStateChangeNotification(string StreamName, StreamStateValue State) : StreamNotification(StreamName);
 }
