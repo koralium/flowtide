@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Base.Engine.Internal
         private readonly List<ICheckpointListener> _checkpointListeners = [];
         private readonly List<IStreamStateChangeListener> _streamStateListeners = [];
         private readonly List<IFailureListener> _failureListeners = [];
-        private readonly string _streamName;
+        private string _streamName;
 
         public StreamNotificationReceiver(string streamName)
         {
@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Base.Engine.Internal
 
         public void OnCheckpointComplete()
         {
-            var notification = new StreamCheckpointNotification(_streamName);
+            var notification = new StreamCheckpointNotification(ref _streamName);
             foreach (var listener in _checkpointListeners)
             {
                 try
@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Base.Engine.Internal
 
         public void OnStreamStateChange(StreamStateValue newState)
         {
-            var notification = new StreamStateChangeNotification(_streamName, newState);
+            var notification = new StreamStateChangeNotification(ref _streamName, ref newState);
             foreach (var listener in _streamStateListeners)
             {
                 try
@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Base.Engine.Internal
 
         public void OnFailure(Exception? exception)
         {
-            var notification = new StreamFailureNotification(_streamName, exception);
+            var notification = new StreamFailureNotification(ref _streamName, exception);
             foreach (var listener in _failureListeners)
             {
                 try

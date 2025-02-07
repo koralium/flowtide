@@ -14,7 +14,34 @@ using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 
 namespace FlowtideDotNet.Base.Engine
 {
-    public record struct StreamCheckpointNotification(string StreamName);
-    public record struct StreamFailureNotification(string StreamName, Exception? Exception);
-    public record struct StreamStateChangeNotification(string StreamName, StreamStateValue State);
+    public ref struct StreamStateChangeNotification
+    {
+        public readonly ref string StreamName;
+        public readonly ref StreamStateValue State;
+        public StreamStateChangeNotification(ref string streamName, ref StreamStateValue state)
+        {
+            StreamName = ref streamName;
+            State = ref state;
+        }
+    }
+
+    public ref struct StreamCheckpointNotification
+    {
+        public readonly ref string StreamName;
+        public StreamCheckpointNotification(ref string streamName)
+        {
+            StreamName = ref streamName;
+        }
+    }
+
+    public ref struct StreamFailureNotification
+    {
+        public readonly ref string StreamName;
+        public readonly Exception? Exception;
+        public StreamFailureNotification(ref string streamName, Exception? exception)
+        {
+            StreamName = ref streamName;
+            Exception = exception;
+        }
+    }
 }
