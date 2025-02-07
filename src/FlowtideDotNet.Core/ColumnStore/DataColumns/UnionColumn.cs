@@ -819,7 +819,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public SerializationEstimation GetSerializationEstimate()
         {
-            int bodyLength = Count * sizeof(int);
+            // Start with the size of the type list and the offsets type list is 1 byte per element and offsets is 4 bytes per element
+            int bodyLength = Count * 5;
             int fieldCount = 1;
             int bufferCount = 2;
             for (int i = 0; i < _valueColumns.Count; i++)

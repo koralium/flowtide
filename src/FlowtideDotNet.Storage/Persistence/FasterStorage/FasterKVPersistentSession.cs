@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.StateManager.Internal;
 using FASTER.core;
+using System.Buffers;
 
 namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 {
@@ -41,7 +42,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             session.Dispose();
         }
 
-        public async ValueTask<byte[]> Read(long key)
+        public async ValueTask<ReadOnlyMemory<byte>> Read(long key)
         {
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var result = await session.ReadAsync(ref key, token: tokenSource.Token);
@@ -53,15 +54,40 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             return bytes;
         }
 
-        public async Task Write(long key, byte[] value)
+        public async ValueTask<T> Read<T>(long key, IStateSerializer<T> serializer)
+            where T: ICacheObject
         {
-            var mem = new Memory<byte>(value);
-            var handle = mem.Pin();
-            var spanByte = SpanByte.FromPinnedMemory(value);
+            var memory = await Read(key);
+            return serializer.Deserialize(memory, memory.Length);
+        }
+
+        private unsafe SpanByte CreateSpanByteFromHandle(MemoryHandle handle, int length)
+        {
+            var spanByte = SpanByte.FromPointer((byte*)handle.Pointer, length);
+            return spanByte;
+        }
+
+        public async Task Write(long key, SerializableObject value)
+        {
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            var result = await session.UpsertAsync(key, spanByte, token: tokenSource.Token);
-            var status = result.Complete();
-            handle.Dispose();
+            if (value.PreSerializedData.HasValue)
+            {
+                var handle = value.PreSerializedData.Value.Pin();
+                var spanByte = CreateSpanByteFromHandle(handle, value.PreSerializedData.Value.Length);
+                var result = await session.UpsertAsync(key, spanByte, token: tokenSource.Token);
+                var status = result.Complete();
+                handle.Dispose();
+            }
+            else
+            {
+                var writer = new ArrayBufferWriter<byte>();
+                value.Serialize(writer);
+                var handle = writer.WrittenMemory.Pin();
+                var spanByte = CreateSpanByteFromHandle(handle, writer.WrittenMemory.Length);
+                var result = await session.UpsertAsync(key, spanByte, token: tokenSource.Token);
+                var status = result.Complete();
+                handle.Dispose();
+            }
         }
     }
 }

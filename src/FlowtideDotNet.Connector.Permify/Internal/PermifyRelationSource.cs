@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Connector.Permify.Internal
         public bool SentInitial { get; set; }
     }
 
-    internal class PermifyRelationSource : ReadBaseOperator<FlowtidePermifySourceState>
+    internal class PermifyRelationSource : ReadBaseOperator
     {
         private readonly PermifyRowEncoder _rowEncoder;
         private readonly HashSet<string> _watermarkNames;
@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Connector.Permify.Internal
         private readonly ReadRelation _readRelation;
         private readonly PermifySourceOptions _permifySourceOptions;
         private AsyncServerStreamingCall<PermifyProto.WatchResponse>? _watchStream;
-        private FlowtidePermifySourceState? _state;
+        private IObjectState<FlowtidePermifySourceState>? _state;
 
         public PermifyRelationSource(ReadRelation readRelation, PermifySourceOptions permifySourceOptions, DataflowBlockOptions options) : base(options)
         {
@@ -72,24 +72,19 @@ namespace FlowtideDotNet.Connector.Permify.Internal
             return Task.FromResult<IReadOnlySet<string>>(_watermarkNames);
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, FlowtidePermifySourceState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            if (state != null)
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<FlowtidePermifySourceState>("permify_state");
+            if (_state.Value == null)
             {
-                _state = state;
+                _state.Value = new FlowtidePermifySourceState();
             }
-            else
-            {
-                _state = new FlowtidePermifySourceState();
-            }
-            return Task.CompletedTask;
         }
 
-        protected override Task<FlowtidePermifySourceState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(_state != null);
-
-            return Task.FromResult(_state);
+            await _state.Commit();
         }
 
         private Metadata GetMetadata()
@@ -111,7 +106,7 @@ namespace FlowtideDotNet.Connector.Permify.Internal
 
         private async Task LoadChangesTask(IngressOutput<StreamEventBatch> output, object? state)
         {
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
             Debug.Assert(_watchStream != null);
 
             bool initWatch = false;
@@ -131,9 +126,9 @@ namespace FlowtideDotNet.Connector.Permify.Internal
                         {
                             TenantId = _permifySourceOptions.TenantId
                         };
-                        if (_state.WatchSnapToken != null)
+                        if (_state.Value.WatchSnapToken != null)
                         {
-                            watchRequest.SnapToken = _state.WatchSnapToken;
+                            watchRequest.SnapToken = _state.Value.WatchSnapToken;
                         }
                         _watchStream = _watchClient.Watch(watchRequest, metadata);
                         initWatch = false;
@@ -156,18 +151,18 @@ namespace FlowtideDotNet.Connector.Permify.Internal
                                 outData.Add(rowEvent);
                             }
                         }
-                        _state.WatchSnapToken = _watchStream.ResponseStream.Current.Changes.SnapToken;
+                        _state.Value.WatchSnapToken = _watchStream.ResponseStream.Current.Changes.SnapToken;
                         if (outData.Count > 0)
                         {
                             await output.SendAsync(new StreamEventBatch(outData, _readRelation.OutputLength));
-                            await output.SendWatermark(GetWatermark(_state.WatchSnapToken));
+                            await output.SendWatermark(GetWatermark(_state.Value.WatchSnapToken));
                             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                         }
                         output.ExitCheckpointLock();
                     }
                     else
                     {
-                        if (string.IsNullOrEmpty(_state.WatchSnapToken))
+                        if (string.IsNullOrEmpty(_state.Value.WatchSnapToken))
                         {
                             Logger.WatchApiNotWorking(StreamName, Name);
                         }
@@ -194,21 +189,21 @@ namespace FlowtideDotNet.Connector.Permify.Internal
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
 
             var watchRequest = new PermifyProto.WatchRequest
             {
                 TenantId = _permifySourceOptions.TenantId,
             };
 
-            if (_state.WatchSnapToken != null)
+            if (_state.Value.WatchSnapToken != null)
             {
-                watchRequest.SnapToken = _state.WatchSnapToken;
+                watchRequest.SnapToken = _state.Value.WatchSnapToken;
             }
             // Start watch stream before reading data to catch any changes
             _watchStream = _watchClient.Watch(watchRequest, GetMetadata());
 
-            if (!_state.SentInitial)
+            if (!_state.Value.SentInitial)
             {
                 // Enter lock so no checkpoint can be done before all data has been sent.
                 await output.EnterCheckpointLock();
@@ -246,7 +241,7 @@ namespace FlowtideDotNet.Connector.Permify.Internal
                         ContinuousToken = readResponse.ContinuousToken
                     });
                 }
-                _state.SentInitial = true;
+                _state.Value.SentInitial = true;
                 // Since we cant get the current snap token at this stage, just write a 1.
                 await output.SendWatermark(new Base.Watermark(_readRelation.NamedTable.DotSeperated, 1));
                 output.ExitCheckpointLock();

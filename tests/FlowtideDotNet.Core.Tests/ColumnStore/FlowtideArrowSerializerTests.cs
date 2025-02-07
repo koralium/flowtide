@@ -316,8 +316,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
 
-            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader);
-            var deserializedBatch = batchDeserializer.DeserializeBatch();
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance);
+            var deserializedBatch = batchDeserializer.DeserializeBatch(ref reader).EventBatch;
             Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
 
             column.Add(new Int64Value(3));
@@ -448,8 +448,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
 
-            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader);
-            var deserializedBatch = batchDeserializer.DeserializeBatch();
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance);
+            var deserializedBatch = batchDeserializer.DeserializeBatch(ref reader).EventBatch;
 
             Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
         }
@@ -550,8 +550,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
 
-            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader);
-            var deserializedBatch = batchDeserializer.DeserializeBatch();
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance);
+            var deserializedBatch = batchDeserializer.DeserializeBatch(ref reader).EventBatch;
 
             Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
         }
@@ -574,8 +574,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
 
-            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader);
-            var deserializedBatch = batchDeserializer.DeserializeBatch();
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance);
+            var deserializedBatch = batchDeserializer.DeserializeBatch(ref reader).EventBatch;
 
             Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
 
@@ -609,8 +609,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
 
-            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader);
-            var deserializedBatch = batchDeserializer.DeserializeBatch();
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance);
+            var deserializedBatch = batchDeserializer.DeserializeBatch(ref reader).EventBatch;
 
             Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
 
@@ -764,8 +764,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
 
-            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader, new BatchDecompressor(new Decompressor()));
-            var deserializedBatch = batchDeserializer.DeserializeBatch();
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, new BatchDecompressor(new Decompressor()));
+            var deserializedBatch = batchDeserializer.DeserializeBatch(ref reader).EventBatch;
 
             Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
         }
@@ -806,10 +806,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
 
-            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, reader);
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance);
             // Set the schema for the deserializer
             batchDeserializer.SetSchema(savedSchema);
-            var deserializedBatch = batchDeserializer.DeserializeBatch();
+            var deserializedBatch = batchDeserializer.DeserializeBatch(ref reader).EventBatch;
 
             Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
         }

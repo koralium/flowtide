@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
     /// <summary>
     /// Takes input based on a key and keeps the latest value and sends deletes on the previous value.
     /// </summary>
-    internal class NormalizationOperator : UnaryVertex<StreamEventBatch, NormalizationState>
+    internal class NormalizationOperator : UnaryVertex<StreamEventBatch>
     {
 #if DEBUG_WRITE
         private StreamWriter? allOutput;
@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             return Task.CompletedTask;
         }
 
-        public override async Task<NormalizationState> OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
 #if DEBUG_WRITE
             allOutput!.WriteLine("Checkpoint");
@@ -70,7 +70,6 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             Debug.Assert(_tree != null, nameof(_tree));
             // Commit changes in the tree
             await _tree.Commit();
-            return new NormalizationState();
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
@@ -234,7 +233,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             }
         }
 
-        protected override async Task InitializeOrRestore(NormalizationState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))

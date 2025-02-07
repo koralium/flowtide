@@ -37,7 +37,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         private ReadOnlySpan<byte> _recordBatchHeaderBytes;
 
         private readonly IMemoryAllocator memoryAllocator;
-        private SequenceReader<byte> data;
         private readonly IBatchDecompressor? decompressor;
         private int bufferIndex;
         private int fieldNodeIndex;
@@ -46,14 +45,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         private bool isCompressed;
         private bool _schemaRead;
 
-        public EventBatchDeserializer(IMemoryAllocator memoryAllocator, SequenceReader<byte> sequenceReader, IBatchDecompressor? decompressor = default)
+        public EventBatchDeserializer(IMemoryAllocator memoryAllocator, IBatchDecompressor? decompressor = default)
         {
             this.memoryAllocator = memoryAllocator;
-            this.data = sequenceReader;
             this.decompressor = decompressor;
         }
 
-        private void ReadSchemaFromSequence()
+        private void ReadSchemaFromSequence(ref SequenceReader<byte> data)
         {
             if (data.TryReadLittleEndian(out int magicNumber))
             {
@@ -80,7 +78,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             data.Advance(messageLength);
         }
 
-        private void ReadRecordBatchHeaderFromSequence()
+        private void ReadRecordBatchHeaderFromSequence(ref SequenceReader<byte> data)
         {
             if (!data.TryReadLittleEndian(out int magicNumber))
             {
@@ -115,15 +113,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             _schemaRead = true;
         }
 
-        public EventBatchData DeserializeBatch()
+        public EventBatchDeserializeResult DeserializeBatch(ref SequenceReader<byte> data)
         {
             if (!_schemaRead)
             {
-                ReadSchemaFromSequence();
+                ReadSchemaFromSequence(ref data);
                 _schemaRead = true;
             }
             
-            ReadRecordBatchHeaderFromSequence();
+            ReadRecordBatchHeaderFromSequence(ref data);
 
             var message = MessageStruct.GetRootAsMessage(ref _schemaBytes, 0);
 
@@ -139,7 +137,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             var recordBatchMessage = MessageStruct.GetRootAsMessage(ref _recordBatchHeaderBytes, 0);
             var recordBatchHeader = new RecordBatchStruct(_recordBatchHeaderBytes, recordBatchMessage.HeaderPosition());
-
+            
             if (recordBatchHeader.HasCompression)
             {
                 var compressionInfo = recordBatchHeader.Compression;
@@ -163,10 +161,26 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 {
                     decompressor.ColumnChange(i);
                 }
-                columns[i] = DeserializeColumn(in field, in recordBatchHeader);
+                columns[i] = DeserializeColumn(ref data, in field, in recordBatchHeader);
             }
 
-            return new EventBatchData(columns);
+            if (readDataIndex < recordBatchMessage.BodyLength)
+            {
+                // Padding at the end of the record batch, advance past the padding
+                var padding = recordBatchMessage.BodyLength - readDataIndex;
+                data.Advance(padding);
+                readDataIndex += (int)padding;
+            }
+            if (readDataIndex > recordBatchMessage.BodyLength)
+            {
+                throw new Exception("Read past the end of the record batch");
+            }
+            if (fieldNodeIndex < recordBatchHeader.NodesLength)
+            {
+                throw new Exception("Not all field nodes were read");
+            }
+
+            return new EventBatchDeserializeResult(new EventBatchData(columns), (int)recordBatchHeader.Length);
         }
 
         private FieldNodeStruct ReadNextFieldNode(ref readonly RecordBatchStruct recordBatchStruct)
@@ -177,6 +191,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         }
 
         private Column DeserializeColumn(
+            ref SequenceReader<byte> data,
             ref readonly FieldStruct fieldStruct, 
             ref readonly RecordBatchStruct recordBatchStruct)
         {
@@ -191,7 +206,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             if (fieldStruct.TypeType != ArrowType.Union)
             {
-                if (TryReadNextBuffer(out var validityMemory))
+                if (TryReadNextBuffer(ref data, out var validityMemory))
                 {
                     validityList = new BitmapList(validityMemory, (int)fieldNode.Length, memoryAllocator);
                 }
@@ -205,7 +220,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 validityList = new BitmapList(memoryAllocator);
             }
 
-            var dataColumnResult = DeserializeDataColumn(in fieldStruct, in recordBatchStruct, (int)fieldNode.Length);
+            var dataColumnResult = DeserializeDataColumn(ref data, in fieldStruct, in recordBatchStruct, (int)fieldNode.Length);
             var finalColumn = new Column((int)fieldNode.NullCount, dataColumnResult.dataColumn, validityList, dataColumnResult.arrowTypeId, memoryAllocator);
 
             return finalColumn;
@@ -223,30 +238,34 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
         }
 
-        private DataColumnResult DeserializeDataColumn(ref readonly FieldStruct fieldStruct, ref readonly RecordBatchStruct recordBatchStruct, int length)
+        private DataColumnResult DeserializeDataColumn(
+            ref SequenceReader<byte> data,
+            ref readonly FieldStruct fieldStruct, 
+            ref readonly RecordBatchStruct recordBatchStruct, 
+            int length)
         {
             switch (fieldStruct.TypeType)
             {
                 case ArrowType.Null:
                     return new DataColumnResult(DeserializeNullColumn(in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Null);
                 case ArrowType.Int:
-                    return new DataColumnResult(DeserializeInt64Column(in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Int64);
+                    return new DataColumnResult(DeserializeInt64Column(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Int64);
                 case ArrowType.Bool:
-                    return new DataColumnResult(DeserializeBoolColumn(in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Boolean);
+                    return new DataColumnResult(DeserializeBoolColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Boolean);
                 case ArrowType.Utf8:
-                    return new DataColumnResult(DeserializeStringColumn(in fieldStruct, in recordBatchStruct, length), ArrowTypeId.String);
+                    return new DataColumnResult(DeserializeStringColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.String);
                 case ArrowType.Binary:
-                    return new DataColumnResult(DeserializeBinaryColumn(in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Binary);
+                    return new DataColumnResult(DeserializeBinaryColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Binary);
                 case ArrowType.FixedSizeBinary:
-                    return DeserializeFixedSizeBinaryColumn(in fieldStruct, in recordBatchStruct, length);
+                    return DeserializeFixedSizeBinaryColumn(ref data, in fieldStruct, in recordBatchStruct, length);
                 case ArrowType.FloatingPoint:
-                    return new DataColumnResult(DeserializeDoubleColumn(in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Double);
+                    return new DataColumnResult(DeserializeDoubleColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Double);
                 case ArrowType.List:
-                    return new DataColumnResult(DeserializeListColumn(in fieldStruct, in recordBatchStruct, length), ArrowTypeId.List);
+                    return new DataColumnResult(DeserializeListColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.List);
                 case ArrowType.Map:
-                    return new DataColumnResult(DeserializeMapColumn(in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Map);
+                    return new DataColumnResult(DeserializeMapColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Map);
                 case ArrowType.Union:
-                    return new DataColumnResult(DeserializeUnionColumn(in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Union);
+                    return new DataColumnResult(DeserializeUnionColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Union);
                 default:
                     throw new NotImplementedException(fieldStruct.TypeType.ToString());
             }
@@ -258,12 +277,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         }
 
         private UnionColumn DeserializeUnionColumn(
+            ref SequenceReader<byte> data,
             ref readonly FieldStruct fieldStruct,
             ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
-            bool hasTypeMemory = TryReadNextBuffer(out var typeMemory);
-            bool hasOffsetMemory = TryReadNextBuffer(out var offsetMemory);
+            bool hasTypeMemory = TryReadNextBuffer(ref data, out var typeMemory);
+            bool hasOffsetMemory = TryReadNextBuffer(ref data, out var offsetMemory);
 
             var childrenCount = fieldStruct.ChildrenLength;
 
@@ -276,8 +296,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 var child = fieldStruct.Children(i);
                 var fieldNode = ReadNextFieldNode(in recordBatchStruct);
-                ExceptEmptyBuffer();
-                children.Add(DeserializeDataColumn(in child, in recordBatchStruct, (int)fieldNode.Length).dataColumn);
+                ExceptEmptyBuffer(ref data);
+                children.Add(DeserializeDataColumn(ref data, in child, in recordBatchStruct, (int)fieldNode.Length).dataColumn);
             }
 
             if (hasTypeMemory && hasOffsetMemory)
@@ -300,6 +320,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         }
 
         private MapColumn DeserializeMapColumn(
+            ref SequenceReader<byte> data,
             ref readonly FieldStruct fieldStruct, 
             ref readonly RecordBatchStruct recordBatchStruct, 
             int length)
@@ -316,16 +337,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 throw new InvalidOperationException("Map column struct must have exactly two children");
             }
 
+            var listFieldNode = ReadNextFieldNode(in recordBatchStruct);
+
             var keyField = structField.Children(0);
             var valueField = structField.Children(1);
 
-            bool readOffsets = TryReadNextBuffer(out var offsetMemory);
+            bool readOffsets = TryReadNextBuffer(ref data, out var offsetMemory);
 
             // Read validity buffer, skipped here
-            ExceptEmptyBuffer();
+            ExceptEmptyBuffer(ref data);
 
-            var keyColumn = DeserializeColumn(in keyField, in recordBatchStruct);
-            var valueColumn = DeserializeColumn(in valueField, in recordBatchStruct);
+            var keyColumn = DeserializeColumn(ref data, in keyField, in recordBatchStruct);
+            var valueColumn = DeserializeColumn(ref data, in valueField, in recordBatchStruct);
 
             if (readOffsets)
             {
@@ -340,6 +363,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         }
 
         private ListColumn DeserializeListColumn(
+            ref SequenceReader<byte> data,
             scoped ref readonly FieldStruct fieldStruct,
             scoped ref readonly RecordBatchStruct recordBatchStruct, 
             int length)
@@ -351,9 +375,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             var child = fieldStruct.Children(0);
 
-            bool readOffsets = TryReadNextBuffer(out var offsetMemory);
+            bool readOffsets = TryReadNextBuffer(ref data, out var offsetMemory);
 
-            var internalColumn = DeserializeColumn(in child, in recordBatchStruct);
+            var internalColumn = DeserializeColumn(ref data, in child, in recordBatchStruct);
 
             if (readOffsets)
             {
@@ -365,18 +389,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return new ListColumn(memoryAllocator);
         }
 
-        private DoubleColumn DeserializeDoubleColumn(ref readonly FieldStruct fieldStruct,
+        private DoubleColumn DeserializeDoubleColumn(
+            ref SequenceReader<byte> data,
+            ref readonly FieldStruct fieldStruct,
             ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
-            if (TryReadNextBuffer(out var memory))
+            if (TryReadNextBuffer(ref data, out var memory))
             {
                 return new DoubleColumn(memory, length, memoryAllocator);
             }
             return new DoubleColumn(memoryAllocator);
         }
 
-        private DataColumnResult DeserializeFixedSizeBinaryColumn(ref readonly FieldStruct fieldStruct,
+        private DataColumnResult DeserializeFixedSizeBinaryColumn(
+            ref SequenceReader<byte> data,
+            ref readonly FieldStruct fieldStruct,
             ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
@@ -405,44 +433,50 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             if (valueBytes.SequenceEqual("flowtide.floatingdecimaltype"u8))
             {
-                return new DataColumnResult(DeserializeDecimalColumn(in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Decimal128);
+                return new DataColumnResult(DeserializeDecimalColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Decimal128);
             }
             if (valueBytes.SequenceEqual("flowtide.timestamptz"u8))
             {
-                return new DataColumnResult(DeserializeTimestampTzColumn(in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Timestamp);
+                return new DataColumnResult(DeserializeTimestampTzColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Timestamp);
             }
 
             throw new NotImplementedException(Encoding.UTF8.GetString(valueBytes));
         }
 
-        private TimestampTzColumn DeserializeTimestampTzColumn(ref readonly FieldStruct fieldStruct,
+        private TimestampTzColumn DeserializeTimestampTzColumn(
+            ref SequenceReader<byte> data,
+            ref readonly FieldStruct fieldStruct,
             ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
-            if (TryReadNextBuffer(out var memory))
+            if (TryReadNextBuffer(ref data, out var memory))
             {
                 return new TimestampTzColumn(memory, length, memoryAllocator);
             }
             return new TimestampTzColumn(memoryAllocator);
         }
 
-        private DecimalColumn DeserializeDecimalColumn(ref readonly FieldStruct fieldStruct,
+        private DecimalColumn DeserializeDecimalColumn(
+            ref SequenceReader<byte> data,
+            ref readonly FieldStruct fieldStruct,
             ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
-            if (TryReadNextBuffer(out var memory))
+            if (TryReadNextBuffer(ref data, out var memory))
             {
                 return new DecimalColumn(memory, length, memoryAllocator);
             }
             return new DecimalColumn(memoryAllocator);
         }
 
-        private BinaryColumn DeserializeBinaryColumn(ref readonly FieldStruct fieldStruct,
+        private BinaryColumn DeserializeBinaryColumn(
+            ref SequenceReader<byte> data,
+            ref readonly FieldStruct fieldStruct,
             ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
-            bool haveOffsetBuffer = TryReadNextBuffer(out var offsetMemory);
-            bool haveDataBuffer = TryReadNextBuffer(out var dataMemory);
+            bool haveOffsetBuffer = TryReadNextBuffer(ref data, out var offsetMemory);
+            bool haveDataBuffer = TryReadNextBuffer(ref data, out var dataMemory);
             if (haveDataBuffer && !haveOffsetBuffer)
             {
                 throw new InvalidOperationException("Data buffer found without offset buffer");
@@ -454,34 +488,40 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return new BinaryColumn(offsetMemory!, length + 1, dataMemory, memoryAllocator);
         }
 
-        private Int64Column DeserializeInt64Column(ref readonly FieldStruct fieldStruct,
+        private Int64Column DeserializeInt64Column(
+            ref SequenceReader<byte> data,
+            ref readonly FieldStruct fieldStruct,
             ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
-            if (TryReadNextBuffer(out var memory))
+            if (TryReadNextBuffer(ref data, out var memory))
             {
                 return new Int64Column(memory, length, memoryAllocator);
             }
             return new Int64Column(memoryAllocator);
         }
 
-        private BoolColumn DeserializeBoolColumn(ref readonly FieldStruct fieldStruct,
+        private BoolColumn DeserializeBoolColumn(
+            ref SequenceReader<byte> data,
+            ref readonly FieldStruct fieldStruct,
             ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
-            if (TryReadNextBuffer(out var memory))
+            if (TryReadNextBuffer(ref data, out var memory))
             {
                 return new BoolColumn(memory, length, memoryAllocator);
             }
             return new BoolColumn(memoryAllocator);
         }
 
-        private StringColumn DeserializeStringColumn(ref readonly FieldStruct fieldStruct,
+        private StringColumn DeserializeStringColumn(
+            ref SequenceReader<byte> data,
+            ref readonly FieldStruct fieldStruct,
             ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
-            bool haveOffsetBuffer = TryReadNextBuffer(out var offsetMemory);
-            bool haveDataBuffer = TryReadNextBuffer(out var dataMemory);
+            bool haveOffsetBuffer = TryReadNextBuffer(ref data, out var offsetMemory);
+            bool haveDataBuffer = TryReadNextBuffer(ref data, out var dataMemory);
             if (haveDataBuffer && !haveOffsetBuffer)
             {
                 throw new InvalidOperationException("Data buffer found without offset buffer");
@@ -493,7 +533,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return new StringColumn(offsetMemory!, length + 1, dataMemory, memoryAllocator);
         }
 
-        private void ExceptEmptyBuffer()
+        private void ExceptEmptyBuffer(ref SequenceReader<byte> data)
         {
             var bufferInfoSpan = _recordBatchHeaderBytes.Slice(bufferStart + (bufferIndex * 16));
             var bufferOffset = (int)BinaryPrimitives.ReadInt64LittleEndian(bufferInfoSpan);
@@ -513,7 +553,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
         }
 
-        private bool TryReadNextBuffer([NotNullWhen(true)] out IMemoryOwner<byte>? memory)
+        private bool TryReadNextBuffer(ref SequenceReader<byte> data, [NotNullWhen(true)] out IMemoryOwner<byte>? memory)
         {
             var bufferInfoSpan = _recordBatchHeaderBytes.Slice(bufferStart + (bufferIndex * 16));
             var bufferOffset = (int)BinaryPrimitives.ReadInt64LittleEndian(bufferInfoSpan);

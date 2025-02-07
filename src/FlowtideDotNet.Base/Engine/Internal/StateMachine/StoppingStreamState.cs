@@ -77,7 +77,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // Write the latest state
                 run._context._lastState = new StreamState(
                     run._currentCheckpoint.CheckpointTime,
-                    run._currentCheckpoint.GetOperatorStates(),
                     _context._streamVersionInformation?.Version ?? 0,
                     _context._streamVersionInformation?.Hash ?? string.Empty);
 

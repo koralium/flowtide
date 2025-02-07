@@ -1067,7 +1067,15 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (_type != ArrowTypeId.Union)
             {
                 // Union does not have a validity bitmap in apache arrow
-                dataWriter.WriteArrowBuffer(_validityList!.MemorySlice.Span);
+                if (_nullCounter == 0)
+                {
+                    // write an empty buffer if there is no null values
+                    dataWriter.WriteArrowBuffer(Span<byte>.Empty);
+                }
+                else
+                {
+                    dataWriter.WriteArrowBuffer(_validityList!.MemorySlice.Span);
+                }
             }
 
             _dataColumn!.WriteDataToBuffer(ref dataWriter);

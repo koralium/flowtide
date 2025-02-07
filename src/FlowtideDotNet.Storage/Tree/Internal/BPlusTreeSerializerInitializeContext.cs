@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return stateSerializerInitializeReader.GetNewPageId();
         }
 
-        public Task<Memory<byte>> ReadPage(long pageId)
+        public Task<ReadOnlyMemory<byte>> ReadPage(long pageId)
         {
             return stateSerializerInitializeReader.ReadPage(pageId);
         }

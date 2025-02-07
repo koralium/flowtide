@@ -22,6 +22,7 @@ using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Base.Metrics;
 using System.Diagnostics;
 using FlowtideDotNet.Connector.SqlServer.SqlServer;
+using Substrait.Protobuf;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
@@ -29,7 +30,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
     {
         public long ChangeTrackingVersion { get; set; }
     }
-    internal class SqlServerDataSource : ReadBaseOperator<SqlServerState>
+    internal class SqlServerDataSource : ReadBaseOperator
     {
 #if DEBUG_WRITE
         private StreamWriter? allInput;
@@ -39,7 +40,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         private readonly ReadRelation readRelation;
         private readonly HashSet<string> _watermarks;
         private SqlConnection? sqlConnection;
-        private SqlServerState? _state;
+        private IObjectState<SqlServerState>? _state;
         private Func<SqlDataReader, RowEvent>? _streamEventCreator;
         private Task? _changesTask;
         private string _displayName;
@@ -97,7 +98,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
         private async Task FetchChanges(IngressOutput<StreamEventBatch> output, object? state)
         {
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
             Debug.Assert(sqlConnection != null);
             Debug.Assert(_streamEventCreator != null);
             Debug.Assert(primaryKeys != null);
@@ -107,17 +108,17 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             await output.EnterCheckpointLock();
 
             List<RowEvent> result = new List<RowEvent>();
-            var previousChangeVersion = _state.ChangeTrackingVersion;
+            var previousChangeVersion = _state.Value.ChangeTrackingVersion;
             try
             {
                 using var command = sqlConnection.CreateCommand();
                 command.CommandText = SqlServerUtils.CreateChangesSelectStatement(readRelation, primaryKeys);
-                command.Parameters.Add(new SqlParameter("ChangeVersion", _state.ChangeTrackingVersion));
+                command.Parameters.Add(new SqlParameter("ChangeVersion", _state.Value.ChangeTrackingVersion));
                 using var reader = await command.ExecuteReaderAsync();
 
                 var changeVersionOrdinal = reader.GetOrdinal("SYS_CHANGE_VERSION");
                 var changeOpOrdinal = reader.GetOrdinal("SYS_CHANGE_OPERATION");
-                long changeVersion = _state.ChangeTrackingVersion;
+                long changeVersion = _state.Value.ChangeTrackingVersion;
 
                 while (await reader.ReadAsync())
                 {
@@ -144,7 +145,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 #if DEBUG_WRITE
                 await allInput!.FlushAsync();
 #endif
-                _state.ChangeTrackingVersion = changeVersion;
+                _state.Value.ChangeTrackingVersion = changeVersion;
                 SetHealth(true);
             }
             catch(Exception ex)
@@ -156,7 +157,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 // Recreate the connection
                 sqlConnection = new SqlConnection(connectionStringFunc());
                 await sqlConnection.OpenAsync();
-                _state.ChangeTrackingVersion = previousChangeVersion;
+                _state.Value.ChangeTrackingVersion = previousChangeVersion;
                 result.Clear();
             }
             
@@ -167,7 +168,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 _eventsProcessed.Add(result.Count);
                 Logger.ChangesFoundInTable(result.Count, _tableName, StreamName, Name);
                 await output.SendAsync(new StreamEventBatch(result, readRelation.OutputLength));
-                await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.ChangeTrackingVersion));
+                await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.Value.ChangeTrackingVersion));
                 this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }
             
@@ -179,7 +180,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return Task.FromResult<IReadOnlySet<string>>(_watermarks);
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, SqlServerState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))
@@ -198,14 +199,15 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             }
 
             Logger.InitializingSqlServerSource(_tableName, StreamName, Name);
-            if (state == null)
+
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<SqlServerState>("sqlserver_state");
+            if (_state.Value == null)
             {
-                state = new SqlServerState()
+                _state.Value = new SqlServerState()
                 {
                     ChangeTrackingVersion = -1
                 };
             }
-            _state = state;
             sqlConnection = new SqlConnection(connectionStringFunc());
             await sqlConnection.OpenAsync();
             await GetColumnTypes();
@@ -248,14 +250,14 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return ValueTask.CompletedTask;
         }
 
-        protected override Task<SqlServerState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
 #if DEBUG_WRITE
             allInput!.WriteLine("Checkpoint");
             allInput!.Flush();
 #endif
             Debug.Assert(_state != null);
-            return Task.FromResult(_state);
+            await _state.Commit();
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
@@ -263,7 +265,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 #if DEBUG_WRITE
             allInput!.WriteLine($"Initial");
 #endif
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
             Debug.Assert(sqlConnection != null);
             Debug.Assert(_streamEventCreator != null);
             Debug.Assert(primaryKeys != null);
@@ -271,13 +273,13 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             Debug.Assert(_eventsProcessed != null);
             
             // Check if we have never read the initial data before
-            if (_state.ChangeTrackingVersion < 0)
+            if (_state.Value.ChangeTrackingVersion < 0)
             {
                 Logger.SelectingAllData(_tableName, StreamName, Name);
                 await output.EnterCheckpointLock();
 
                 // Get current change tracking version
-                _state.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(sqlConnection);
+                _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(sqlConnection);
 
                 Dictionary<string, object> primaryKeyValues = new Dictionary<string, object>();
 
@@ -347,7 +349,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 await allInput!.FlushAsync();
 #endif
                 // Send watermark information after all initial data has been loaded
-                await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.ChangeTrackingVersion));
+                await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.Value.ChangeTrackingVersion));
 
                 output.ExitCheckpointLock();
                 // Schedule a checkpoint after all the data has been sent

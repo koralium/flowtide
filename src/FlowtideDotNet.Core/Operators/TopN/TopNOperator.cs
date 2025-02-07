@@ -26,7 +26,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.TopN
 {
-    internal class TopNOperator : UnaryVertex<StreamEventBatch, object?>
+    internal class TopNOperator : UnaryVertex<StreamEventBatch>
     {
         private readonly TopNRelation _relation;
         private readonly TopNComparer _sortComparer;
@@ -330,7 +330,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
         }
 
 
-        protected override async Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             if (_eventsOutCounter == null)
             {

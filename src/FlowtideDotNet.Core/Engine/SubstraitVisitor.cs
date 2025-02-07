@@ -166,7 +166,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitFilterRelation(FilterRelation filterRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            UnaryVertex<StreamEventBatch, object?>? op;
+            UnaryVertex<StreamEventBatch>? op;
             
             if (_useColumnStore)
             {
@@ -191,7 +191,7 @@ namespace FlowtideDotNet.Core.Engine
         {
             var id = _operatorId++;
 
-            UnaryVertex<StreamEventBatch, object?>? op;
+            UnaryVertex<StreamEventBatch>? op;
 
             if (_useColumnStore)
             {
@@ -222,7 +222,7 @@ namespace FlowtideDotNet.Core.Engine
                 dataflowStreamBuilder.AddPropagatorBlock(partitionOperatorId.ToString(), partitionOperator);
 
                 var partitionCombinerId = _operatorId++;
-                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch, object>(parallelism, DefaultBlockOptions);
+                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch>(parallelism, DefaultBlockOptions);
                 dataflowStreamBuilder.AddPropagatorBlock(partitionCombinerId.ToString(), partitionCombiner);
 
                 for (int i = 0; i < parallelism; i++)
@@ -247,7 +247,7 @@ namespace FlowtideDotNet.Core.Engine
             {
                 var id = _operatorId++;
 
-                UnaryVertex<StreamEventBatch, AggregateOperatorState>? op;
+                UnaryVertex<StreamEventBatch>? op;
                 if (_useColumnStore)
                 {
                     op = new ColumnAggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
@@ -293,13 +293,13 @@ namespace FlowtideDotNet.Core.Engine
                 dataflowStreamBuilder.AddPropagatorBlock(rightPartitionOperatorId.ToString(), rightPartitionOperator);
 
                 var partitionCombinerId = _operatorId++;
-                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch, object>(parallelism, DefaultBlockOptions);
+                var partitionCombiner = new PartitionedOutputVertex<StreamEventBatch>(parallelism, DefaultBlockOptions);
                 dataflowStreamBuilder.AddPropagatorBlock(partitionCombinerId.ToString(), partitionCombiner);
 
                 for (int i = 0; i < parallelism; i++)
                 {
                     var id = _operatorId++;
-                    MultipleInputVertex<StreamEventBatch, JoinState> op;
+                    MultipleInputVertex<StreamEventBatch> op;
                     if (_useColumnStore)
                     {
                         op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
@@ -327,7 +327,7 @@ namespace FlowtideDotNet.Core.Engine
             {
                 var id = _operatorId++;
 
-                MultipleInputVertex<StreamEventBatch, JoinState> op;
+                MultipleInputVertex<StreamEventBatch> op;
                 if (_useColumnStore)
                 {
                     op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
@@ -440,7 +440,7 @@ namespace FlowtideDotNet.Core.Engine
                 if (info.NormalizationRelation != null)
                 {
                     var normId = _operatorId++;
-                    UnaryVertex<StreamEventBatch, NormalizationState> normOp;
+                    UnaryVertex<StreamEventBatch> normOp;
                     if (_useColumnStore)
                     {
                         normOp = new ColumnNormalizationOperator(info.NormalizationRelation, functionsRegister, DefaultBlockOptions);
@@ -536,7 +536,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitNormalizationRelation(NormalizationRelation normalizationRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            UnaryVertex<StreamEventBatch, NormalizationState> op;
+            UnaryVertex<StreamEventBatch> op;
             if (_useColumnStore)
             {
                 op = new ColumnNormalizationOperator(normalizationRelation, functionsRegister, DefaultBlockOptions);

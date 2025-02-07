@@ -28,7 +28,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             this.services = services;
         }
 
-        public IFlowtideStorageBuilder SetCompressionFunction(StateSerializeOptions serializeOptions)
+        public IFlowtideStorageBuilder SetCompression(StateSerializeOptions serializeOptions)
         {
             services.AddKeyedSingleton(name, serializeOptions);
             return this;

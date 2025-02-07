@@ -23,7 +23,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task TestZLipCompression()
+        public async Task TestZstdCompression()
         {
             GenerateData();
             await StartStream(@"
@@ -35,14 +35,8 @@ namespace FlowtideDotNet.AcceptanceTests
                 ON o.userkey = u.userkey",
                 stateSerializeOptions: new Storage.StateSerializeOptions()
                 {
-                    CompressFunc = (stream) =>
-                    {
-                        return new System.IO.Compression.ZLibStream(stream, CompressionMode.Compress);
-                    },
-                    DecompressFunc = (stream) =>
-                    {
-                        return new System.IO.Compression.ZLibStream(stream, CompressionMode.Decompress);
-                    }
+                    CompressionMethod = Storage.CompressionMethod.Page,
+                    CompressionType = Storage.CompressionType.Zstd
                 });
             await WaitForUpdate();
             await Crash();
