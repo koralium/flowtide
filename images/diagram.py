@@ -23,15 +23,15 @@ node_attr = {
 }
 
 
-with Diagram("Flowtide near real-time streaming integration", show=False, direction="TB", graph_attr=graph_attr, node_attr=node_attr):
+with Diagram("Flowtide streaming integration", show=False, direction="TB", graph_attr=graph_attr, node_attr=node_attr):
 
-    with Cluster("Join data from different sources"):
+    with Cluster("Join data from different sources and react on changes"):
         flowtide = Custom("Flowtide", "../logo/flowtidelogo_256x256.png", labelloc="b")
         MongoDB("MongoDB", labelloc="t") >> flowtide
         MSSQL("SQL Server", labelloc="t") >> flowtide >> Elasticsearch("Elasticsearch")
         Csharp("Custom source", labelloc="t") >> flowtide
 
-    with Cluster("send data to one or multiple destinations"):
+    with Cluster("send data and changes to one or multiple destinations"):
         flowtide = Custom("Flowtide", "../logo/flowtidelogo_256x256.png", labelloc="b")
         MSSQL("SQL Server", labelloc="t") >> flowtide >> MSSQL("SQL Server", labelloc="b")
         flowtide >> Elasticsearch("Elasticsearch")
