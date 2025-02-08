@@ -11,27 +11,23 @@ from diagrams.azure.database import CosmosDb
 from diagrams.programming.language import Csharp
 
 graph_attr = {
-    "fontsize": "12",
-    "labeldistance": "10",
-    "labelfloat": "true",
-    # "compund": "True"
+    "fontsize": "20",
 }
 
 node_attr = {
-    "height": "10.6",
-    "fontsize": "12"
+    "fontsize": "20"
 }
 
 
 with Diagram("Flowtide streaming integration", show=False, direction="TB", graph_attr=graph_attr, node_attr=node_attr):
 
-    with Cluster("Join data from different sources and react on changes"):
+    with Cluster("Join data from different sources and react on changes", graph_attr=graph_attr):
         flowtide = Custom("Flowtide", "../logo/flowtidelogo_256x256.png", labelloc="b")
         MongoDB("MongoDB", labelloc="t") >> flowtide
         MSSQL("SQL Server", labelloc="t") >> flowtide >> Elasticsearch("Elasticsearch")
         Csharp("Custom source", labelloc="t") >> flowtide
 
-    with Cluster("send data and changes to one or multiple destinations"):
+    with Cluster("send data and changes to one or multiple destinations", graph_attr=graph_attr):
         flowtide = Custom("Flowtide", "../logo/flowtidelogo_256x256.png", labelloc="b")
         MSSQL("SQL Server", labelloc="t") >> flowtide >> MSSQL("SQL Server", labelloc="b")
         flowtide >> Elasticsearch("Elasticsearch")
