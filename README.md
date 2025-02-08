@@ -1,4 +1,3 @@
-
 <br />
 <p align="center">
   <img src="./logo/flowtidelogo.svg" width="200" height="200">
@@ -10,6 +9,10 @@
     <a href="https://koralium.github.io/flowtide/docs/intro"><strong>Explore the docs »</strong></a>
   </p>
 </p>
+
+![NuGet Version](https://img.shields.io/nuget/v/FlowtideDotNet.AspNetCore?label=FlowtideDotNet.AspNetCore&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FFlowtideDotNet.AspNetCore)
+![NuGet Version](https://img.shields.io/nuget/v/FlowtideDotNet.DependencyInjection?label=FlowtideDotNet.DependencyInjection&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FFlowtideDotNet.DependencyInjection)
+
 
 **Flowtide** is a data streaming and integration engine designed for efficient real-time data processing and data materialization/denormalization. It stands out by focusing on correctness at time points (ensuring no missing values in joins for instance), versatile connector support, SQL language support for data streams and integrations, iteration/recursion support, and high-performance operations among other features. Flowtide is tailored for developers and companies looking to efficiently handle complex data transformations and integrations.
 
