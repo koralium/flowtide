@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Core.Operators.Project
     /// <summary>
     /// Project operator takes in events and applies a list of expressions to add new columns based on the expressions.
     /// </summary>
-    internal class ProjectOperator : UnaryVertex<StreamEventBatch, object?>
+    internal class ProjectOperator : UnaryVertex<StreamEventBatch>
     {
 #if DEBUG_WRITE
         private StreamWriter? allInput;
@@ -63,9 +63,9 @@ namespace FlowtideDotNet.Core.Operators.Project
             return Task.CompletedTask;
         }
 
-        public override Task<object?> OnCheckpoint()
+        public override Task OnCheckpoint()
         {
-            return Task.FromResult<object?>(null);
+            return Task.CompletedTask;
         }
 
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
@@ -130,7 +130,7 @@ namespace FlowtideDotNet.Core.Operators.Project
             return EmptyAsyncEnumerable<StreamEventBatch>.Instance;
         }
 
-        protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))

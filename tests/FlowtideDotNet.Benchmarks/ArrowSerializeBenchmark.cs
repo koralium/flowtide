@@ -173,8 +173,9 @@ namespace FlowtideDotNet.Benchmarks
         public void FlowtideDeserialize()
         {
             Debug.Assert(_toDeserialize != null);
-            var deserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, new SequenceReader<byte>(new ReadOnlySequence<byte>(_toDeserialize)));
-            var batch = deserializer.DeserializeBatch();
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(_toDeserialize));
+            var deserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance);
+            var batch = deserializer.DeserializeBatch(ref reader).EventBatch;
             batch.Dispose();
         }
 
@@ -374,8 +375,9 @@ namespace FlowtideDotNet.Benchmarks
         public void FlowtideDeserializeCompressed()
         {
             Debug.Assert(_toDeserializeCompressed != null);
-            var deserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, new SequenceReader<byte>(new ReadOnlySequence<byte>(_toDeserializeCompressed)), _batchDecompressor);
-            var batch = deserializer.DeserializeBatch();
+            var deserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, _batchDecompressor);
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(_toDeserializeCompressed));
+            var batch = deserializer.DeserializeBatch(ref reader).EventBatch;
             batch.Dispose();
         }
 
@@ -384,8 +386,9 @@ namespace FlowtideDotNet.Benchmarks
         public void FlowtideDeserializeCompressedWithDictionary()
         {
             Debug.Assert(_toDeserializeCompressed != null);
-            var deserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, new SequenceReader<byte>(new ReadOnlySequence<byte>(_toDeserializeCompressed)), _batchDictionaryDecompressor);
-            var batch = deserializer.DeserializeBatch();
+            var deserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, _batchDictionaryDecompressor);
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(_toDeserializeCompressed));
+            var batch = deserializer.DeserializeBatch(ref reader).EventBatch;
             batch.Dispose();
         }
 
@@ -495,8 +498,9 @@ namespace FlowtideDotNet.Benchmarks
         public void DeserializeFullCompressedBatch()
         {
             _decompressor.Unwrap(_compressedByteArray.AsSpan(), _diskDestinationBuffer.AsSpan());
-            var deserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance, new SequenceReader<byte>(new ReadOnlySequence<byte>(_diskDestinationBuffer)));
-            var batch = deserializer.DeserializeBatch();
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(_diskDestinationBuffer));
+            var deserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance);
+            var batch = deserializer.DeserializeBatch(ref reader).EventBatch;
             batch.Dispose();
         }
     }

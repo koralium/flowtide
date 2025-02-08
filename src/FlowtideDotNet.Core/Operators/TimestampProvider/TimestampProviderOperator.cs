@@ -26,12 +26,12 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
         public long? LastSentTimestamp { get; set; }
     }
 
-    internal class TimestampProviderOperator : ReadBaseOperator<TimestampProviderState>
+    internal class TimestampProviderOperator : ReadBaseOperator
     {
         private readonly TimeProvider _timeProvider;
         private readonly TimeSpan _interval;
         private IReadOnlySet<string> _watermarks;
-        private TimestampProviderState? _state;
+        private IObjectState<TimestampProviderState>? _state;
         private ICounter<long>? _eventsProcessed;
         private ICounter<long>? _eventsCounter;
 
@@ -63,15 +63,12 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
             return Task.FromResult(_watermarks);
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, TimestampProviderState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            if (state != null)
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<TimestampProviderState>("timestamp_state");
+            if (_state.Value == null)
             {
-                _state = state;
-            }
-            else
-            {
-                _state = new TimestampProviderState();
+                _state.Value = new TimestampProviderState();
             }
             if (_eventsProcessed == null)
             {
@@ -84,15 +81,15 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
             await RegisterTrigger("update", _interval);
         }
 
-        protected override Task<TimestampProviderState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(_state != null);
-            return Task.FromResult(_state);
+            await _state.Commit();
         }
 
         private async Task UpdateTimestamp(IngressOutput<StreamEventBatch> output, object? state)
         {
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
             Debug.Assert(_eventsProcessed != null);
             Debug.Assert(_eventsCounter != null);
 
@@ -103,7 +100,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
             var currentTimestamp = _timeProvider.GetUtcNow().Subtract(DateTime.UnixEpoch).Ticks;
-            if (!_state.LastSentTimestamp.HasValue)
+            if (!_state.Value.LastSentTimestamp.HasValue)
             {
                 weights.Add(1);
                 iterations.Add(0);
@@ -121,14 +118,14 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
 
                 weights.Add(-1);
                 iterations.Add(0);
-                columns[0].Add(new Int64Value(_state.LastSentTimestamp.Value));
+                columns[0].Add(new Int64Value(_state.Value.LastSentTimestamp.Value));
 
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 _eventsProcessed.Add(2);
                 _eventsCounter.Add(2);
             }
 
-            _state.LastSentTimestamp = currentTimestamp;
+            _state.Value.LastSentTimestamp = currentTimestamp;
 
             // Set the watermark to the current timetamp
             await output.SendWatermark(new Base.Watermark("__timestamp", currentTimestamp));

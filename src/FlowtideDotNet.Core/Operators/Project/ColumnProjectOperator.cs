@@ -31,7 +31,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Project
 {
-    internal class ColumnProjectOperator : UnaryVertex<StreamEventBatch, object?>
+    internal class ColumnProjectOperator : UnaryVertex<StreamEventBatch>
     {
         private readonly ProjectRelation projectRelation;
         private readonly Action<EventBatchData, int, Column>[] _expressions;
@@ -60,9 +60,9 @@ namespace FlowtideDotNet.Core.Operators.Project
             return Task.CompletedTask;
         }
 
-        public override Task<object?> OnCheckpoint()
+        public override Task OnCheckpoint()
         {
-            return Task.FromResult<object?>(default);
+            return Task.CompletedTask;
         }
 
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Core.Operators.Project
             }
         }
 
-        protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             Logger.InitializingProjectOperator(StreamName, Name);
             if (_eventsCounter == null)

@@ -25,8 +25,7 @@ namespace FlowtideDotNet.Core.Operators.Write
     /// 
     /// </summary>
     /// <typeparam name="TState"></typeparam>
-    public abstract class GroupedWriteBaseOperator<TState> : EgressVertex<StreamEventBatch, TState>
-        where TState: IStatefulWriteState
+    public abstract class GroupedWriteBaseOperator : EgressVertex<StreamEventBatch>
     {
         private IBPlusTree<GroupedStreamEvent, int, ListKeyContainer<GroupedStreamEvent>, ListValueContainer<int>>? _tree;
         private Func<GroupedStreamEvent, GroupedStreamEvent, int>? _comparer;
@@ -115,7 +114,7 @@ namespace FlowtideDotNet.Core.Operators.Write
             return await GetGroup(streamEvent);
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, TState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             var primaryKeyColumns = await GetPrimaryKeyColumns();
 
@@ -131,20 +130,19 @@ namespace FlowtideDotNet.Core.Operators.Write
                 MemoryAllocator = MemoryAllocator
             });
 
-            await Initialize(restoreTime, state, stateManagerClient);
+            await Initialize(restoreTime, stateManagerClient);
         }
 
-        protected abstract Task Initialize(long restoreTime, TState? state, IStateManagerClient stateManagerClient);
+        protected abstract Task Initialize(long restoreTime, IStateManagerClient stateManagerClient);
 
-        protected override async Task<TState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(_tree != null, nameof(_tree));
             await _tree.Commit();
-            var newState = await Checkpoint(checkpointTime);
-            return newState;
+            await Checkpoint(checkpointTime);
         }
 
-        protected abstract Task<TState> Checkpoint(long checkpointTime);
+        protected abstract Task Checkpoint(long checkpointTime);
 
         public override ValueTask DisposeAsync()
         {

@@ -15,6 +15,7 @@ using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
@@ -23,13 +24,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     {
         public int LatestOffset { get; set; }
     }
-    internal class MockDataSourceOperator : ReadBaseOperator<MockDataSourceState>
+    internal class MockDataSourceOperator : ReadBaseOperator
     {
         private readonly ReadRelation readRelation;
         private readonly MockDatabase mockDatabase;
         private HashSet<string> _watermarkNames;
         private MockTable _table;
-        private int _lastestOffset;
+        private IObjectState<MockDataSourceState>? _state;
 
         public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options) : base(options)
         {
@@ -50,8 +51,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         private async Task FetchChanges(IngressOutput<StreamEventBatch> output, object? state)
         {
+            Debug.Assert(_state?.Value != null);
             await output.EnterCheckpointLock();
-            var (operations, fetchedOffset) = _table.GetOperations(_lastestOffset);
+            var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
             bool sentData = false;
             List<RowEvent> o = new List<RowEvent>();
             foreach (var operation in operations)
@@ -71,7 +73,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 sentData = true;
                 await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
             }
-            _lastestOffset = fetchedOffset;
+            _state.Value.LatestOffset = fetchedOffset;
 
             if (sentData)
             {
@@ -100,25 +102,27 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return Task.FromResult<IReadOnlySet<string>>(_watermarkNames);
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, MockDataSourceState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            if (state != null)
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<MockDataSourceState>("mock_data_source_state");
+            if (_state.Value == null)
             {
-                _lastestOffset = state.LatestOffset;
+                _state.Value = new MockDataSourceState();
             }
-            RegisterTrigger("crash");
-            return Task.CompletedTask;
+            await RegisterTrigger("crash");
         }
 
-        protected override Task<MockDataSourceState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
-            return Task.FromResult(new MockDataSourceState() { LatestOffset = _lastestOffset });
+            Debug.Assert(_state?.Value != null);
+            await _state.Commit();
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
+            Debug.Assert(_state?.Value != null);
             await output.EnterCheckpointLock();
-            var (operations, fetchedOffset) = _table.GetOperations(_lastestOffset);
+            var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
 
             List<RowEvent> o = new List<RowEvent>();
             foreach(var operation in operations)
@@ -137,7 +141,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
             }
-            _lastestOffset = fetchedOffset;
+            _state.Value.LatestOffset = fetchedOffset;
             await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));
             output.ExitCheckpointLock();
             await this.RegisterTrigger("changes", TimeSpan.FromMilliseconds(50));

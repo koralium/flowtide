@@ -12,7 +12,7 @@
 
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
-    internal class StateClientMetadata<T>
+    public class StateClientMetadata<T>
     {
         public T? Metadata { get; set; }
 

@@ -49,6 +49,10 @@ namespace FlowtideDotNet.AspNetCore
                 {
                     return uiMiddlewareState.DiagnosticsEndpoint.Invoke(httpContext);
                 }
+                if (remaining == "/pause" || remaining == "/resume")
+                {
+                    return _next(httpContext);
+                }
                 return uiMiddlewareState.ReactEndpoint.Invoke(httpContext);
             }
             else if (requestPath.StartsWith(_nextComparePath))

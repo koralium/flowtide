@@ -28,11 +28,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate
 {
-    internal class AggregateOperatorState
-    {
-
-    }
-    internal class AggregateOperator : UnaryVertex<StreamEventBatch, AggregateOperatorState>
+    internal class AggregateOperator : UnaryVertex<StreamEventBatch>
     {
         private static byte[] EmptyVector = FlexBufferBuilder.Vector(b => { });
         private readonly AggregateRelation aggregateRelation;
@@ -87,7 +83,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             return Task.CompletedTask;
         }
 
-        public override async Task<AggregateOperatorState> OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
             Debug.Assert(_tree != null, "Tree should not be null");
 
@@ -103,7 +99,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             {
                 await measure.Commit();
             }
-            return new AggregateOperatorState();
         }
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
@@ -394,7 +389,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             yield break;
         }
 
-        protected override async Task InitializeOrRestore(AggregateOperatorState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))

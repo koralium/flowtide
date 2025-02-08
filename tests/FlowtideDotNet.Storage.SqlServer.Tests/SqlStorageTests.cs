@@ -25,11 +25,11 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var pageId = 1;
 
             var session = storage.CreateSession();
-            await session.Write(pageId, Encoding.UTF8.GetBytes(pageId.ToString()));
+            await session.Write(pageId, new SerializableObject(Encoding.UTF8.GetBytes(pageId.ToString())));
             await session.Commit();
             var persitedPage = await session.Read(pageId);
 
-            Assert.NotEmpty(persitedPage);
+            Assert.NotEmpty(persitedPage.ToArray());
 
             await session.Delete(pageId);
             await storage.CheckpointAsync([], false);
@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
 
             for (int i = 1; i <= numberOfPages; i++)
             {
-                await session.Write(i, Encoding.UTF8.GetBytes(i.ToString()));
+                await session.Write(i, new SerializableObject(Encoding.UTF8.GetBytes(i.ToString())));
             }
 
             await session.Commit();
@@ -74,8 +74,8 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             for (int i = 1; i <= numberOfPages; i++)
             {
                 var page = await session.Read(i);
-                Assert.NotEmpty(page);
-                Assert.Equal(Encoding.UTF8.GetBytes(i.ToString()), page);
+                Assert.NotEmpty(page.ToArray());
+                Assert.Equal(Encoding.UTF8.GetBytes(i.ToString()), page.ToArray());
             }
 
             var numberOfPersistedPages = await _fixture.ExecuteReader<int>($"SELECT COUNT(*) FROM {schema}.[StreamPages] WHERE streamKey = {streamKey}", reader =>
@@ -103,7 +103,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var hasPage = storage.TryGetValue(pageId, out var page);
             Assert.True(hasPage);
             Assert.NotNull(page);
-            Assert.NotEmpty(page);
+            Assert.NotEmpty(page.Value.ToArray());
         }
 
         [Theory]
@@ -180,12 +180,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var pageId = 2;
             var session = storage.CreateSession();
 
-            await session.Write(pageId, Encoding.UTF8.GetBytes("1"));
+            await session.Write(pageId, new SerializableObject(Encoding.UTF8.GetBytes("1")));
             await session.Commit();
 
             await storage.CheckpointAsync([], false); // new version
 
-            await session.Write(pageId, Encoding.UTF8.GetBytes("2"));
+            await session.Write(pageId, new SerializableObject(Encoding.UTF8.GetBytes("2")));
             await session.Commit();
 
             // new version was not checkpointed so it should be removed from the database
@@ -208,7 +208,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var newSession = storage.CreateSession();
             var page = await newSession.Read(pageId);
             Assert.All(pages, p => Assert.Equal(1, p.version));
-            Assert.Equal(Encoding.UTF8.GetBytes("1"), page);
+            Assert.Equal(Encoding.UTF8.GetBytes("1"), page.ToArray());
         }
 
         [Theory]
@@ -240,7 +240,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
 
             Assert.True(hasPage);
             Assert.NotNull(page);
-            Assert.NotEmpty(page);
+            Assert.NotEmpty(page.Value.ToArray());
             Assert.Equal(1, numberOfPages);
         }
 
@@ -258,12 +258,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var pageId = 2;
             var data = Guid.NewGuid().ToByteArray();
 
-            await session.Write(pageId, data);
+            await session.Write(pageId, new SerializableObject(data));
             await session.Commit();
 
             var readData = await session.Read(pageId);
 
-            Assert.Equal(data, readData);
+            Assert.Equal(data, readData.ToArray());
         }
 
         [Theory]
@@ -285,7 +285,8 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var hasPage = storage.TryGetValue(pageId, out var readData);
 
             Assert.True(hasPage);
-            Assert.Equal(data, readData);
+            Assert.NotNull(readData);
+            Assert.Equal(data, readData.Value.ToArray());
         }
 
         [Theory]
@@ -306,15 +307,15 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var pageId = 2;
 
             // even though a crash will occur, the pages should be persisted and then removed due to incomplete version
-            await session.Write(pageId, Encoding.UTF8.GetBytes("a"));
-            await session.Write(pageId + 1, Encoding.UTF8.GetBytes("b"));
+            await session.Write(pageId, new SerializableObject(Encoding.UTF8.GetBytes("a")));
+            await session.Write(pageId + 1, new SerializableObject(Encoding.UTF8.GetBytes("b")));
             await session.Commit();
 
             // a crash occured, init is called again
             await storage.InitializeAsync(initMetadata);
 
             var expectedPageBytes = Encoding.UTF8.GetBytes("c");
-            await session.Write(pageId, expectedPageBytes);
+            await session.Write(pageId, new SerializableObject(expectedPageBytes));
 
             await session.Commit();
             await storage.CheckpointAsync([], false);
@@ -327,7 +328,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
 
             var page = await session.Read(pageId);
 
-            Assert.Equal(expectedPageBytes, page);
+            Assert.Equal(expectedPageBytes, page.ToArray());
             Assert.Equal(2, numberOfPages); // checkpoint should also add one page
         }
 
@@ -344,7 +345,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var session = storage.CreateSession();
 
             var pageId = 2;
-            await session.Write(pageId, Encoding.UTF8.GetBytes("a"));
+            await session.Write(pageId, new SerializableObject(Encoding.UTF8.GetBytes("a")));
             await session.Commit();
             await session.Delete(pageId);
 
@@ -367,14 +368,14 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var session = storage.CreateSession();
 
             var pageId = 2;
-            await session.Write(pageId, Encoding.UTF8.GetBytes("a"));
+            await session.Write(pageId, new SerializableObject(Encoding.UTF8.GetBytes("a")));
             await session.Commit();
             await session.Delete(pageId);
             await storage.RecoverAsync(1);
 
             var restoredPageData = await session.Read(pageId);
 
-            Assert.NotEmpty(restoredPageData);
+            Assert.NotEmpty(restoredPageData.ToArray());
         }
 
         private Task<int> GetStreamKey(string streamName, string schema)

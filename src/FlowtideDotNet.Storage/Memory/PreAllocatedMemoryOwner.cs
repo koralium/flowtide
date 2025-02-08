@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Storage.Memory
 
         public override MemoryHandle Pin(int elementIndex = 0)
         {
-            return new MemoryHandle(ptr, default, default);
+            return new MemoryHandle(((byte*)ptr) + elementIndex, default, default);
         }
 
         public override void Unpin()

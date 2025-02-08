@@ -21,13 +21,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
-    internal class MockDataSinkState : IStatefulWriteState
-    {
-        public bool InitialCheckpointDone { get; set; }
-        public long StorageSegmentId { get; set; }
-    }
-
-    internal class MockDataSink : WriteBaseOperator<MockDataSinkState>
+    internal class MockDataSink : WriteBaseOperator
     {
         private readonly Action<List<byte[]>> onDataChange;
         private int crashOnCheckpointCount;
@@ -58,7 +52,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return Task.CompletedTask;
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, MockDataSinkState? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             
             return Task.CompletedTask;
@@ -74,11 +68,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return base.OnWatermark(watermark);
         }
 
-        protected override Task<MockDataSinkState> OnCheckpoint(long checkpointTime)
+        protected override Task OnCheckpoint(long checkpointTime)
         {
             if (crashOnCheckpointCount > 0)
             {
                 crashOnCheckpointCount--;
+                currentData.Clear();
                 throw new CrashException("Crash on checkpoint");
             }
             if (currentData.Any(x => x.Value < 0))
@@ -97,14 +92,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 }
             }
 
-            //var actualData = currentData.Where(x => x.Value > 0).Select(x => x.Key.Memory.ToArray()).ToList();
             if (watermarkRecieved)
             {
                 onDataChange(output);
                 watermarkRecieved = false;
             }
             
-            return Task.FromResult(new MockDataSinkState());
+            return Task.CompletedTask;
         }
 
         protected override Task OnRecieve(StreamEventBatch msg, long time)

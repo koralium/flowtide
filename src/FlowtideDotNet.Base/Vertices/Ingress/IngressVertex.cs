@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public int _linkCount;
     }
 
-    public abstract class IngressVertex<TData, TState> : ISourceBlock<IStreamEvent>, IStreamIngressVertex
+    public abstract class IngressVertex<TData> : ISourceBlock<IStreamEvent>, IStreamIngressVertex
     {
         private readonly object _stateLock;
         private readonly DataflowBlockOptions options;
@@ -135,7 +135,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             }
         }
 
-        protected abstract Task<TState> OnCheckpoint(long checkpointTime);
+        protected abstract Task OnCheckpoint(long checkpointTime);
 
         public void Complete()
         {
@@ -213,8 +213,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                     isStopStreamEvent = true;
                     output.Stop();
                 }
-                var savedState = await OnCheckpoint(checkpoint.CheckpointTime);
-                checkpoint.AddState(Name, savedState);
+                await OnCheckpoint(checkpoint.CheckpointTime);
                 await output.SendLockingEvent(lockingEvent);
             }
             if (lockingEvent is InitWatermarksEvent initWatermark)
@@ -306,7 +305,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             }, taskCreationOptions: TaskCreationOptions.LongRunning);
         }
 
-        public async Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
+        public async Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
         {
             Debug.Assert(_ingressState != null, nameof(_ingressState));
 
@@ -316,12 +315,6 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             if (_runningTasks.Count > 0)
             {
                 throw new InvalidOperationException("Initialize while there are running tasks");
-            }
-            
-            TState? dState = default;
-            if (state.HasValue)
-            {
-                dState = JsonSerializer.Deserialize<TState>(state.Value);
             }
 
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
@@ -408,7 +401,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 return measurements;
             });
 
-            await InitializeOrRestore(restoreTime, dState, vertexHandler.StateClient);
+            await InitializeOrRestore(restoreTime, vertexHandler.StateClient);
 
             lock(_stateLock)
             {
@@ -421,7 +414,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             _isHealthy = healthy;
         }
 
-        protected abstract Task InitializeOrRestore(long restoreTime, TState? state, IStateManagerClient stateManagerClient);
+        protected abstract Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient);
 
         public Task QueueTrigger(TriggerEvent triggerEvent)
         {
@@ -491,6 +484,18 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public virtual Task CheckpointDone(long checkpointVersion)
         {
             return Task.CompletedTask;
+        }
+
+        public void Pause()
+        {
+            Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
+            _ingressState._output.Stop();
+        }
+
+        public void Resume()
+        {
+            Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
+            _ingressState._output.Resume();
         }
     }
 }
