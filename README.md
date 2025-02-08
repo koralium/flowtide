@@ -1,6 +1,7 @@
 
 <br />
 <p align="center">
+  <img src="./logo/flowtidelogo.svg" width="200" height="200">
   <h1 align="center">Flowtide.NET</h1>
 
   <p align="center">
@@ -10,7 +11,9 @@
   </p>
 </p>
 
-**Flowtide** is a data streaming and integration engine designed for seamless and efficient real-time data processing. It stands out by offering differential data computation, versatile connector support, SQL language support for data streams and integrations, and high-performance operations among other features. Flowtide is tailored for developers and companies looking to efficiently handle complex data transformations and integrations.
+**Flowtide** is a data streaming and integration engine designed for efficient real-time data processing and data materialization/denormalization. It stands out by focusing on correctness at time points (ensuring no missing values in joins for instance), versatile connector support, SQL language support for data streams and integrations, iteration/recursion support, and high-performance operations among other features. Flowtide is tailored for developers and companies looking to efficiently handle complex data transformations and integrations.
+
+![Flowtide](./images/flowtide_streaming_integration.png)
 
 ## Key Features
 
@@ -22,6 +25,13 @@
 - **Larger than RAM Support**: Writes data to temporary storage on disk to manage data streams larger than the system's memory.
 - **Materialize Data**: Easily materialize data from one or multiple sources into a destination, enabling architectures such as CQRS.
 - **Vector Clock Watermark System**: Notifies when rows from the source system have been processed by the stream, informing users when the data has been transferred.
+
+## UI for easy monitoring
+
+Flowtide exposes all its metrics using .NET [Meter](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.metrics.meter?view=net-9.0).
+So it is possible to build grafana dashboards or use the built-in UI to visualize your stream.
+
+![Flowtide](./images/flowtideui.png)
 
 ## Getting started
 
