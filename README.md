@@ -1,6 +1,7 @@
 
 <br />
 <p align="center">
+  <img src="./logo/flowtidelogo.svg" width="200" height="200">
   <h1 align="center">Flowtide.NET</h1>
 
   <p align="center">
@@ -10,7 +11,9 @@
   </p>
 </p>
 
-**Flowtide** is a data streaming and integration engine designed for seamless and efficient real-time data processing. It stands out by offering differential data computation, versatile connector support, SQL language support for data streams and integrations, and high-performance operations among other features. Flowtide is tailored for developers and companies looking to efficiently handle complex data transformations and integrations.
+**Flowtide** is a data streaming and integration engine designed for efficient real-time data processing and data materialization/denormalization. It stands out by offering differential data computation, versatile connector support, SQL language support for data streams and integrations, and high-performance operations among other features. Flowtide is tailored for developers and companies looking to efficiently handle complex data transformations and integrations.
+
+![Flowtide](./diagrams/flowtide_near_real-time_streaming_integration.png)
 
 ## Key Features
 
