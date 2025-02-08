@@ -50,11 +50,11 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
             var recordBatch = reader.ReadNextRecordBatch();
 
-            Assert.True(recordBatch.Schema.FieldsList[0].DataType is Int64Type);
+            Assert.True(recordBatch.Schema.FieldsList[0].DataType is Int8Type);
 
-            var deserializedColumn = (Apache.Arrow.Int64Array)recordBatch.Column(0);
-            Assert.Equal(1, deserializedColumn.GetValue(0));
-            Assert.Equal(2, deserializedColumn.GetValue(1));
+            var deserializedColumn = (Apache.Arrow.Int8Array)recordBatch.Column(0);
+            Assert.Equal((sbyte)1, deserializedColumn.GetValue(0));
+            Assert.Equal((sbyte)2, deserializedColumn.GetValue(1));
         }
 
         [Fact]
@@ -169,15 +169,15 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var valueOffset = deserializedColumn.ValueOffsets[0];
 
-            var valuesArray = (Apache.Arrow.Int64Array)deserializedColumn.Values;
-            Assert.Equal(1, valuesArray.GetValue(valueOffset));
-            Assert.Equal(2, valuesArray.GetValue(valueOffset + 1));
+            var valuesArray = (Apache.Arrow.Int8Array)deserializedColumn.Values;
+            Assert.Equal((sbyte)1, valuesArray.GetValue(valueOffset));
+            Assert.Equal((sbyte)2, valuesArray.GetValue(valueOffset + 1));
 
             valueOffset = deserializedColumn.ValueOffsets[1];
 
-            Assert.Equal(3, valuesArray.GetValue(valueOffset));
-            Assert.Equal(4, valuesArray.GetValue(valueOffset + 1));
-            Assert.Equal(5, valuesArray.GetValue(valueOffset + 2));
+            Assert.Equal((sbyte)3, valuesArray.GetValue(valueOffset));
+            Assert.Equal((sbyte)4, valuesArray.GetValue(valueOffset + 1));
+            Assert.Equal((sbyte)5, valuesArray.GetValue(valueOffset + 2));
         }
 
         [Fact]
@@ -205,20 +205,20 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var deserializedColumn = (Apache.Arrow.MapArray)recordBatch.Column(0);
             var offset = deserializedColumn.ValueOffsets[0];
             var keys = (Apache.Arrow.StringArray)deserializedColumn.Keys;
-            var values = (Apache.Arrow.Int64Array)deserializedColumn.Values;
+            var values = (Apache.Arrow.Int8Array)deserializedColumn.Values;
 
             Assert.Equal(2, deserializedColumn.GetValueLength(0));
             Assert.Equal(1, deserializedColumn.GetValueLength(1));
 
             Assert.Equal("a", keys.GetString(offset));
-            Assert.Equal(2, values.GetValue(offset));
+            Assert.Equal((sbyte)2, values.GetValue(offset));
             Assert.Equal("b", keys.GetString(offset + 1));
-            Assert.Equal(4, values.GetValue(offset + 1));
+            Assert.Equal((sbyte)4, values.GetValue(offset + 1));
 
             offset = deserializedColumn.ValueOffsets[1];
 
             Assert.Equal("a", keys.GetString(offset));
-            Assert.Equal(5, values.GetValue(offset));
+            Assert.Equal((sbyte)5, values.GetValue(offset));
         }
 
         [Fact]
@@ -416,14 +416,14 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var recordBatch = reader.ReadNextRecordBatch();
             Assert.NotNull(recordBatch);
 
-            Assert.True(recordBatch.Schema.FieldsList[0].DataType is Int64Type);
+            Assert.True(recordBatch.Schema.FieldsList[0].DataType is Int8Type);
             Assert.True(recordBatch.Schema.FieldsList[1].DataType is StringType);
 
-            var deserializedIntColumn = (Apache.Arrow.Int64Array)recordBatch.Column(0);
+            var deserializedIntColumn = (Apache.Arrow.Int8Array)recordBatch.Column(0);
             var deserializedStringColumn = (Apache.Arrow.StringArray)recordBatch.Column(1);
 
-            Assert.Equal(1, deserializedIntColumn.GetValue(0));
-            Assert.Equal(2, deserializedIntColumn.GetValue(1));
+            Assert.Equal((sbyte)1, deserializedIntColumn.GetValue(0));
+            Assert.Equal((sbyte)2, deserializedIntColumn.GetValue(1));
 
             Assert.Equal("a", deserializedStringColumn.GetString(0));
             Assert.Equal("b", deserializedStringColumn.GetString(1));

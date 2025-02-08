@@ -87,10 +87,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new Int64Value(2));
 
             var result = column.ToArrowArray();
-            var arrowArray = (Apache.Arrow.Int64Array)result.Item1;
-            Assert.Equal(1, arrowArray.GetValue(0));
+            var arrowArray = (Apache.Arrow.Int8Array)result.Item1;
+            Assert.Equal((sbyte)1, arrowArray.GetValue(0));
             Assert.Null(arrowArray.GetValue(1));
-            Assert.Equal(2, arrowArray.GetValue(2));
+            Assert.Equal((sbyte)2, arrowArray.GetValue(2));
         }
 
         [Fact]
@@ -102,10 +102,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new Int64Value(2));
 
             var result = column.ToArrowArray();
-            var arrowArray = (Apache.Arrow.Int64Array)result.Item1;
+            var arrowArray = (Apache.Arrow.Int8Array)result.Item1;
             Assert.Null(arrowArray.GetValue(0));
-            Assert.Equal(1, arrowArray.GetValue(1));
-            Assert.Equal(2, arrowArray.GetValue(2));
+            Assert.Equal((sbyte)1, arrowArray.GetValue(1));
+            Assert.Equal((sbyte)2, arrowArray.GetValue(2));
         }
 
         [Fact]

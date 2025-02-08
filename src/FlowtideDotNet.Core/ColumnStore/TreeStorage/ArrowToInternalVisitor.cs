@@ -47,7 +47,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         IArrowArrayVisitor<BooleanArray>,
         IArrowArrayVisitor<DoubleArray>,
         IArrowArrayVisitor<BinaryArray>,
-        IArrowArrayVisitor<FixedSizeBinaryArray>
+        IArrowArrayVisitor<FixedSizeBinaryArray>,
+        IArrowArrayVisitor<Int8Array>,
+        IArrowArrayVisitor<Int16Array>,
+        IArrowArrayVisitor<Int32Array>
     {
         private readonly IMemoryOwner<byte> recordBatchMemoryOwner;
         private readonly PreAllocatedMemoryManager preAllocatedMemoryManager;
@@ -109,8 +112,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 _bitmapList = null;
             }
 
-            Int64Column int64Column = Int64ColumnFactory.Get(GetMemoryOwner(array.ValueBuffer), array.Length, preAllocatedMemoryManager);
-            _dataColumn = int64Column;
+            _dataColumn = new IntegerColumn(preAllocatedMemoryManager, GetMemoryOwner(array.ValueBuffer), array.Length, 64);
             _typeId = ArrowTypeId.Int64;
         }
 
@@ -346,6 +348,57 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 return;
             }
             throw new NotImplementedException("No metadata field");
+        }
+
+        public void Visit(Int8Array array)
+        {
+            _nullCount = array.NullCount;
+            if (array.NullCount > 0)
+            {
+                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
+                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+            }
+            else
+            {
+                _bitmapList = null;
+            }
+
+            _dataColumn = new IntegerColumn(preAllocatedMemoryManager, GetMemoryOwner(array.ValueBuffer), array.Length, 8);
+            _typeId = ArrowTypeId.Int64;
+        }
+
+        public void Visit(Int16Array array)
+        {
+            _nullCount = array.NullCount;
+            if (array.NullCount > 0)
+            {
+                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
+                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+            }
+            else
+            {
+                _bitmapList = null;
+            }
+
+            _dataColumn = new IntegerColumn(preAllocatedMemoryManager, GetMemoryOwner(array.ValueBuffer), array.Length, 16);
+            _typeId = ArrowTypeId.Int64;
+        }
+
+        public void Visit(Int32Array array)
+        {
+            _nullCount = array.NullCount;
+            if (array.NullCount > 0)
+            {
+                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
+                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+            }
+            else
+            {
+                _bitmapList = null;
+            }
+
+            _dataColumn = new IntegerColumn(preAllocatedMemoryManager, GetMemoryOwner(array.ValueBuffer), array.Length, 32);
+            _typeId = ArrowTypeId.Int64;
         }
     }
 }
