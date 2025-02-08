@@ -12,6 +12,8 @@
 
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.SqlServer.Data;
+using FlowtideDotNet.Storage.StateManager.Internal;
+using System.Buffers;
 
 namespace FlowtideDotNet.Storage.SqlServer
 {
@@ -19,6 +21,8 @@ namespace FlowtideDotNet.Storage.SqlServer
     {
         private readonly SessionRepository _repo;
         private bool _disposedValue;
+        ArrayBufferWriter<byte> _bufferWriter = new ArrayBufferWriter<byte>();
+        private object _lock = new object();
 
         internal SqlServerPersistentSession(SessionRepository repo)
         {
@@ -35,14 +39,26 @@ namespace FlowtideDotNet.Storage.SqlServer
             return _repo.DeleteAsync(key);
         }
 
-        public ValueTask<byte[]> Read(long key)
+        public async ValueTask<ReadOnlyMemory<byte>> Read(long key)
         {
-            return new ValueTask<byte[]>(_repo.ReadAsync(key));
+            return await _repo.ReadAsync(key);
         }
 
-        public Task Write(long key, byte[] value)
+        public async ValueTask<T> Read<T>(long key, IStateSerializer<T> serializer)
+            where T : ICacheObject
         {
-            _repo.AddStreamPage(key, value);
+            var bytes = await _repo.ReadAsync(key);
+            return serializer.Deserialize(bytes, bytes.Length);
+        }
+
+        public Task Write(long key, SerializableObject value)
+        {
+            lock (_lock)
+            {
+                _bufferWriter.ResetWrittenCount();
+                value.Serialize(_bufferWriter);
+                _repo.AddStreamPage(key, _bufferWriter.WrittenSpan.ToArray());
+            }
             return Task.CompletedTask;
         }
 

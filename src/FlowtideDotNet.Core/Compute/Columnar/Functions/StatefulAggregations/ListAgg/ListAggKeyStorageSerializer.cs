@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.Operators.Normalization;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -29,11 +30,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
     {
         private readonly int _groupingKeyLength;
         private readonly IMemoryAllocator _memoryAllocator;
+        private readonly EventBatchBPlusTreeSerializer _batchSerializer;
 
         public ListAggKeyStorageSerializer(int groupingKeyLength, IMemoryAllocator memoryAllocator)
         {
             _groupingKeyLength = groupingKeyLength;
             _memoryAllocator = memoryAllocator;
+            _batchSerializer = new EventBatchBPlusTreeSerializer();
         }
 
         public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
@@ -46,14 +49,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             return new ListAggKeyStorageContainer(_groupingKeyLength, _memoryAllocator);
         }
 
-        public ListAggKeyStorageContainer Deserialize(in BinaryReader reader)
+        public ListAggKeyStorageContainer Deserialize(ref SequenceReader<byte> reader)
         {
-            using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
-            var recordBatch = arrowReader.ReadNextRecordBatch();
-
-            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, _memoryAllocator);
-
-            return new ListAggKeyStorageContainer(_groupingKeyLength, eventBatch);
+            var batchResult = _batchSerializer.Deserialize(ref reader, _memoryAllocator);
+            return new ListAggKeyStorageContainer(_groupingKeyLength, batchResult.EventBatch);
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
@@ -61,11 +60,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in ListAggKeyStorageContainer values)
+        public void Serialize(in IBufferWriter<byte> writer, in ListAggKeyStorageContainer values)
         {
-            var recordBatch = EventArrowSerializer.BatchToArrow(values._data, values.Count);
-            var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
-            batchWriter.WriteRecordBatch(recordBatch);
+            _batchSerializer.Serialize(writer, values._data, values.Count);
         }
     }
 }

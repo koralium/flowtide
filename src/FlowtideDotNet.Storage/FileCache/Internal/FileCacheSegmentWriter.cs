@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.FileCache.Internal;
+using FlowtideDotNet.Storage.StateManager.Internal;
 
 namespace FlowtideDotNet.Storage.FileCache
 {
@@ -48,13 +49,13 @@ namespace FlowtideDotNet.Storage.FileCache
             fileStream = new FileStream(fileName, FileMode.Create, FileAccess.ReadWrite, fileCacheOptions.FileShare, 512, FileOptions.DeleteOnClose | FileOptions.RandomAccess);
         }
 
-        public void Write(long position, byte[] data)
+        public void Write(long position, Memory<byte> data)
         {
             semaphoreSlim.Wait();
             try
             {
                 fileStream.Position = position;
-                fileStream.Write(data);
+                fileStream.Write(data.Span);
             }
             finally
             {
@@ -62,7 +63,24 @@ namespace FlowtideDotNet.Storage.FileCache
             }
         }
 
-        public byte[] Read(long position, int length)
+        public T Read<T>(long position, int length, IStateSerializer<T> serializer)
+            where T : ICacheObject
+        {
+            semaphoreSlim.Wait();
+            try
+            {
+                var bytes = new byte[length];
+                fileStream.Position = position;
+                fileStream.Read(bytes);
+                return serializer.Deserialize(bytes, bytes.Length);
+            }
+            finally
+            {
+                semaphoreSlim.Release();
+            }
+        }
+
+        public ReadOnlyMemory<byte> Read(long position, int length)
         {
             semaphoreSlim.Wait();
             try

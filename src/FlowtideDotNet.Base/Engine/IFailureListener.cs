@@ -10,10 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Core.Operators.Normalization
+namespace FlowtideDotNet.Base.Engine
 {
-    internal class NormalizationState
+    public interface IFailureListener
     {
-        public long StorageSegmentId { get; set; }
+        void OnFailure(Exception? exception);
     }
 }

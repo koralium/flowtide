@@ -14,6 +14,8 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
+using System.Buffers;
+using System.Buffers.Binary;
 
 namespace FlowtideDotNet.AspNetCore.TimeSeries
 {
@@ -36,14 +38,19 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             return new TimestampKeyContainer(memoryAllocator);
         }
 
-        public TimestampKeyContainer Deserialize(in BinaryReader reader)
+        public TimestampKeyContainer Deserialize(ref SequenceReader<byte> reader)
         {
-            var count = reader.ReadInt32();
-            var memory = reader.ReadBytes(count);
-
+            if (!reader.TryReadLittleEndian(out int count))
+            {
+                throw new InvalidOperationException("Failed to read count");
+            }
             var nativeMemory = memoryAllocator.Allocate(count, 64);
 
-            memory.CopyTo(nativeMemory.Memory.Span);
+            if (!reader.TryCopyTo(nativeMemory.Memory.Span.Slice(0, count)))
+            {
+                throw new InvalidOperationException("Failed to read bytes");
+            }
+            reader.Advance(count);
             return new TimestampKeyContainer(new PrimitiveList<long>(nativeMemory, count / 8, memoryAllocator));
         }
 
@@ -52,10 +59,13 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in TimestampKeyContainer values)
+        public void Serialize(in IBufferWriter<byte> writer, in TimestampKeyContainer values)
         {
             var mem = values._list.SlicedMemory;
-            writer.Write(mem.Length);
+            var headerSpan = writer.GetSpan(4);
+            BinaryPrimitives.WriteInt32LittleEndian(headerSpan, mem.Length);
+            writer.Advance(4);
+            //writer.Write(mem.Length);
             writer.Write(mem.Span);
         }
     }

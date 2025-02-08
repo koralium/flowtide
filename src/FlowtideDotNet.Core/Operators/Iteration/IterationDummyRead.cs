@@ -21,9 +21,8 @@ namespace FlowtideDotNet.Core.Operators.Iteration
     /// Dummy read operator that will only be used if there is no input on ingress point on the iteration operator.
     /// This will send out checkpoint events to the iteration operator.
     /// </summary>
-    internal class IterationDummyRead : ReadBaseOperator<object>
+    internal class IterationDummyRead : ReadBaseOperator
     {
-        private static readonly object emptyState = new object();
         private readonly HashSet<string> watermarkNames = new HashSet<string>();
         public IterationDummyRead(DataflowBlockOptions options) : base(options)
         {
@@ -46,14 +45,14 @@ namespace FlowtideDotNet.Core.Operators.Iteration
             return Task.FromResult<IReadOnlySet<string>>(watermarkNames);
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }
 
-        protected override Task<object> OnCheckpoint(long checkpointTime)
+        protected override Task OnCheckpoint(long checkpointTime)
         {
-            return Task.FromResult<object>(emptyState);
+            return Task.CompletedTask;
         }
         
         protected override Task SendInitial(IngressOutput<StreamEventBatch> output)

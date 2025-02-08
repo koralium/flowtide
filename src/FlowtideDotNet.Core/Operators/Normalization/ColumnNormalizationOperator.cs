@@ -36,7 +36,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
-    internal class ColumnNormalizationOperator : UnaryVertex<StreamEventBatch, NormalizationState>
+    internal class ColumnNormalizationOperator : UnaryVertex<StreamEventBatch>
     {
 #if DEBUG_WRITE
         private StreamWriter? allOutput;
@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             return Task.CompletedTask;
         }
 
-        public override async Task<NormalizationState> OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
 #if DEBUG_WRITE
             allOutput!.WriteLine("Checkpoint");
@@ -112,7 +112,6 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 #endif
 
             await _tree!.Commit();
-            return new NormalizationState();
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
@@ -298,7 +297,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             }
         }
 
-        protected override async Task InitializeOrRestore(NormalizationState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))

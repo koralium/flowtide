@@ -39,14 +39,14 @@ using static SqlParser.Ast.SequenceOptions;
 
 namespace FlowtideDotNet.Connector.MongoDB.Internal
 {
-    internal class MongoDbSourceState : ColumnBatchReadState
+    internal class MongoDbSourceState
     {
         public string? ResumeToken { get; set; }
 
         public string? OperationTime { get; set; }
     }
 
-    internal class MongoDbSource : ColumnBatchReadBaseOperator<MongoDbSourceState>
+    internal class MongoDbSource : ColumnBatchReadBaseOperator
     {
         private readonly FlowtideMongoDbSourceOptions _options;
         private readonly string _databaseName;
@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         private int _idFieldIndex;
         private readonly BsonDocToColumn[] _bsonDocToColumns;
         private IChangeStreamCursor<ChangeStreamDocument<BsonDocument>>? _cursor;
-        private MongoDbSourceState? _state;
+        private IObjectState<MongoDbSourceState>? _state;
         private bool _watchDisabled = false;
         private DateTimeOffset? _lastFullLoad;
 
@@ -94,16 +94,15 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         public override string DisplayName => _displayName;
 
-        protected override Task InitializeOrRestore(long restoreTime, MongoDbSourceState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            if (state != null)
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<MongoDbSourceState>("state");
+
+            if (_state.Value == null)
             {
-                _state = state;
+                _state.Value = new MongoDbSourceState();
             }
-            else
-            {
-                _state = new MongoDbSourceState();
-            }
+
             if (_cursor != null)
             {
                 _cursor.Dispose();
@@ -114,18 +113,18 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             var client = new MongoClient(connection);
             var database = client.GetDatabase(_databaseName);
             collection = database.GetCollection<BsonDocument>(_collectionName);
-            return base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+            await base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
-        protected override Task<MongoDbSourceState> Checkpoint(long checkpointTime)
+        protected override async Task Checkpoint(long checkpointTime)
         {
             Debug.Assert(_state != null);
-            return Task.FromResult(_state);
+            await _state.Commit();
         }
 
         protected override async Task DeltaLoadTrigger(IngressOutput<StreamEventBatch> output, object? state)
         {
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
             if (_watchDisabled && _options.EnableFullReloadForNonReplicaSets)
             {
                 if (_lastFullLoad == null || (DateTimeOffset.UtcNow - _lastFullLoad) > _options.FullReloadIntervalForNonReplicaSets)
@@ -142,19 +141,19 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             {
                 try
                 {
-                    if (_state.ResumeToken != null)
+                    if (_state.Value.ResumeToken != null)
                     {
                         // If there is a resume token that can be used to continue listening
                         _cursor = await collection.WatchAsync(new ChangeStreamOptions()
                         {
-                            ResumeAfter = BsonDocument.Parse(_state.ResumeToken)
+                            ResumeAfter = BsonDocument.Parse(_state.Value.ResumeToken)
                         });
                         await DoDeltaLoad(output);
                     }
-                    else if (_state.OperationTime != null && !_options.DisableOperationTime)
+                    else if (_state.Value.OperationTime != null && !_options.DisableOperationTime)
                     {
                         // If there is an operation time that can be used to continue listening
-                        using JsonReader jsonReader = new JsonReader(_state.OperationTime);
+                        using JsonReader jsonReader = new JsonReader(_state.Value.OperationTime);
                         var context = BsonDeserializationContext.CreateRoot(jsonReader);
                         var parsedTimestamp = BsonTimestampSerializer.Instance.Deserialize(context);
                         _cursor = await collection.WatchAsync(new ChangeStreamOptions()
@@ -183,7 +182,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         protected override async IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken)
         {
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
             Debug.Assert(_cursor != null);
 
             PrimitiveList<int>? weights = null;
@@ -278,11 +277,11 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                     }
                     else if (doc.OperationType == ChangeStreamOperationType.Drop)
                     {
-                        _state.ResumeToken = null;
-                        _state.OperationTime = null;
+                        _state.Value.ResumeToken = null;
+                        _state.Value.OperationTime = null;
                         break;
                     }
-                    _state.ResumeToken = doc.ResumeToken.ToJson();
+                    _state.Value.ResumeToken = doc.ResumeToken.ToJson();
                 }
 
                 if (weights.Count > 0)
@@ -308,7 +307,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         protected override async IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
         {
             Debug.Assert(collection != null);
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
 
             _lastFullLoad = DateTimeOffset.UtcNow;
 
@@ -322,17 +321,17 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             {
                 try
                 {
-                    if (_state.ResumeToken != null)
+                    if (_state.Value.ResumeToken != null)
                     {
                         _cursor = await collection.WatchAsync(new ChangeStreamOptions()
                         {
-                            ResumeAfter = BsonDocument.Parse(_state.ResumeToken)
+                            ResumeAfter = BsonDocument.Parse(_state.Value.ResumeToken)
                         });
                     }
                     else if (res.TryGetValue("operationTime", out var operationTime) && operationTime is BsonTimestamp operationTimestamp && !_options.DisableOperationTime)
                     {
                         var startOperationTime = new BsonTimestamp(operationTimestamp.Timestamp, operationTimestamp.Increment + 1);
-                        _state.OperationTime = startOperationTime.ToJson();
+                        _state.Value.OperationTime = startOperationTime.ToJson();
                         _cursor = await collection.WatchAsync(new ChangeStreamOptions()
                         {
                             // Add 1 to increment since otherwise it will look at the last operation which is already handled when loading the full data

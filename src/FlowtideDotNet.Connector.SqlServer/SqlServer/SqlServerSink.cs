@@ -28,11 +28,7 @@ using FlowtideDotNet.Connector.SqlServer;
 
 namespace FlowtideDotNet.SqlServer.SqlServer
 {
-    public class SqlServerSinkState : IStatefulWriteState
-    {
-        public long StorageSegmentId { get; set; }
-    }
-    public class SqlServerSink : GroupedWriteBaseOperator<SqlServerSinkState>
+    public class SqlServerSink : GroupedWriteBaseOperator
     {
         private readonly string tmpTableName;
         private readonly Func<string> connectionStringFunc;
@@ -62,7 +58,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
 
         public override string DisplayName => "SQL Server Sink";
 
-        protected override async Task<SqlServerSinkState> Checkpoint(long checkpointTime)
+        protected override async Task Checkpoint(long checkpointTime)
         {
             Debug.Assert(m_modified != null);
             Debug.Assert(m_dataTable != null);
@@ -121,7 +117,6 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 m_hasModified = false;
                 Logger.DatabaseUpdateComplete(StreamName, Name);
             }
-            return new SqlServerSinkState();
         }
 
         private async Task LoadPrimaryKeys()
@@ -252,7 +247,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return m_primaryKeys!;
         }
 
-        protected override async Task Initialize(long restoreTime, SqlServerSinkState? state, IStateManagerClient stateManagerClient)
+        protected override async Task Initialize(long restoreTime, IStateManagerClient stateManagerClient)
         {
             await LoadMetadata();
             Debug.Assert(PrimaryKeyComparer != null);

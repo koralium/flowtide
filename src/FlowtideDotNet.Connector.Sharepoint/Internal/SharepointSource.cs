@@ -40,14 +40,14 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         public bool FetchedInitial { get; set; }
     }
 
-    internal class SharepointSource : ReadBaseOperator<SharepointSourceState>
+    internal class SharepointSource : ReadBaseOperator
     {
         private readonly SharepointSourceOptions sharepointSourceOptions;
         private readonly ReadRelation readRelation;
         private SharepointGraphListClient? sharepointGraphListClient;
         private readonly string listId;
         private Dictionary<string, IColumnDecoder>? _decoders;
-        private SharepointSourceState? _state;
+        private IObjectState<SharepointSourceState>? _state;
         private Task? _changesTask;
 
         public SharepointSource(SharepointSourceOptions sharepointSourceOptions, string listId, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
@@ -75,16 +75,16 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
         private async Task FetchDelta(IngressOutput<StreamEventBatch> output, object? state)
         {
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
             Debug.Assert(sharepointGraphListClient != null);
             Debug.Assert(listId != null);
 
-            if (_state.ODataNextUrl == null)
+            if (_state.Value.ODataNextUrl == null)
             {
                 throw new InvalidOperationException("No next url to fetch");
             }
 
-            var iterator = sharepointGraphListClient.GetDeltaFromUrl(listId, _state.ODataNextUrl);
+            var iterator = sharepointGraphListClient.GetDeltaFromUrl(listId, _state.Value.ODataNextUrl);
 
             Logger.BeforeCheckpointInDelta(StreamName, Name);
             await output.EnterCheckpointLock();
@@ -93,8 +93,8 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 Logger.FetchingDelta(StreamName, Name);
                 if (await HandleDataRows(iterator, output))
                 {
-                    _state.WatermarkVersion++;
-                    await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, _state.WatermarkVersion));
+                    _state.Value.WatermarkVersion++;
+                    await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, _state.Value.WatermarkVersion));
 
                     ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                 }
@@ -123,20 +123,24 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { readRelation.NamedTable.DotSeperated });
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, SharepointSourceState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             sharepointGraphListClient = new SharepointGraphListClient(sharepointSourceOptions, StreamName, Name, Logger);
             await sharepointGraphListClient.Initialize();
-            _state = state == null ? new SharepointSourceState() : state;
+
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<SharepointSourceState>("sharepoint_state");
+            if (_state.Value == null)
+            {
+                _state.Value = new SharepointSourceState();
+            }
 
             _decoders = await sharepointGraphListClient.GetColumnDecoders(listId, readRelation.BaseSchema.Names, stateManagerClient);
         }
 
-        protected override Task<SharepointSourceState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(_state != null);
-
-            return Task.FromResult(_state);
+            await _state.Commit();
         }
 
         private async Task DecodersNewBatch()
@@ -152,7 +156,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         private async Task<bool> HandleDataRows(IAsyncEnumerable<Microsoft.Graph.Sites.Item.Lists.Item.Items.Delta.DeltaGetResponse> iterator, IngressOutput<StreamEventBatch> output)
         {
             Debug.Assert(_decoders != null);
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
             Debug.Assert(iterator != null);
             Debug.Assert(output != null);
 
@@ -194,7 +198,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
                     outputData.Add(new RowEvent(weight, 0, new ArrayRowData(data)));
                 }
-                _state.ODataNextUrl = page.OdataDeltaLink;
+                _state.Value.ODataNextUrl = page.OdataDeltaLink;
                 await output.SendAsync(new StreamEventBatch(outputData, readRelation.OutputLength));
             }
             return calledDecodersNewBatch;
@@ -205,16 +209,16 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             Debug.Assert(sharepointGraphListClient != null);
             Debug.Assert(listId != null);
             Debug.Assert(_decoders != null);
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
 
-            if (!_state.FetchedInitial)
+            if (!_state.Value.FetchedInitial)
             {
                 var iterator = sharepointGraphListClient.GetDeltaFromList(listId);
 
                 await HandleDataRows(iterator, output);
-                _state.WatermarkVersion++;
-                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, _state.WatermarkVersion));
-                _state.FetchedInitial = true;
+                _state.Value.WatermarkVersion++;
+                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, _state.Value.WatermarkVersion));
+                _state.Value.FetchedInitial = true;
             }
             
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));

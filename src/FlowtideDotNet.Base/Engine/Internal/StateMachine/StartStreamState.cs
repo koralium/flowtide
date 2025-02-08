@@ -75,6 +75,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             Debug.Assert(_context != null, nameof(_context));
             _context._logger.StartingStream(_context.streamName);
 
+            if (_context.Status != StreamStatus.Failing)
+            {
+                // We only set starting if we are not failing.
+                // Failure goes directly to running if everything is ok.
+                _context.SetStatus(StreamStatus.Starting);
+            }
+
             if (previousState == StreamStateValue.NotStarted)
             {
                 StartStream().GetAwaiter().GetResult();
@@ -190,11 +197,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _context._logger.InitializingPropagatorBLocks(_context.streamName);
                 foreach (var block in _context.propagatorBlocks)
                 {
-                    JsonElement? blockState = null;
-                    if (_context._lastState != null && _context._lastState.OperatorStates.TryGetValue(block.Key, out var state))
-                    {
-                        blockState = state;
-                    }
                     TagList tags = new TagList()
                     {
                         { "stream", _context.streamName },
@@ -210,17 +212,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         blockStateClient, 
                         _context.loggerFactory,
                         _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
-                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, blockState, vertexHandler);
+                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler);
                 }
 
                 _context._logger.InitializingEgressBlocks(_context.streamName);
                 foreach (var block in _context.egressBlocks)
                 {
-                    JsonElement? blockState = null;
-                    if (_context._lastState != null && _context._lastState.OperatorStates.TryGetValue(block.Key, out var state))
-                    {
-                        blockState = state;
-                    }
                     TagList tags = new TagList()
                     {
                         { "stream", _context.streamName },
@@ -236,18 +233,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         blockStateClient, 
                         _context.loggerFactory,
                         _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
-                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, blockState, vertexHandler);
+                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler);
                     block.Value.SetCheckpointDoneFunction(_context.EgressCheckpointDone);
                 }
 
                 _context._logger.InitializingIngressBlocks(_context.streamName);
                 foreach (var block in _context.ingressBlocks)
                 {
-                    JsonElement? blockState = null;
-                    if (_context._lastState != null && _context._lastState.OperatorStates.TryGetValue(block.Key, out var state))
-                    {
-                        blockState = state;
-                    }
                     TagList tags = new TagList()
                     {
                         { "stream", _context.streamName },
@@ -263,7 +255,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         blockStateClient, 
                         _context.loggerFactory,
                         _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
-                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, blockState, vertexHandler);
+                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler);
                 }
             }
             catch(Exception e)

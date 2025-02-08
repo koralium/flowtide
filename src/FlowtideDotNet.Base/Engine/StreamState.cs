@@ -17,13 +17,7 @@ namespace FlowtideDotNet.Base.Engine
 {
     public class StreamState
     {
-        public static readonly StreamState NullState = new StreamState(-1, ImmutableDictionary<string, JsonElement>.Empty, 0, string.Empty);
-
-        /// <summary>
-        /// Contains all of the operator states.
-        /// This should only contain metadata.
-        /// </summary>
-        public ImmutableDictionary<string, JsonElement> OperatorStates { get; }
+        public static readonly StreamState NullState = new StreamState(-1, 0, string.Empty);
 
         /// <summary>
         /// The stream time this checkpoint refers to.
@@ -34,10 +28,9 @@ namespace FlowtideDotNet.Base.Engine
 
         public string StreamHash { get; }
 
-        public StreamState(long time, ImmutableDictionary<string, JsonElement> operatorStates, long strreamVersion, string streamHash)
+        public StreamState(long time, long strreamVersion, string streamHash)
         {
             Time = time;
-            OperatorStates = operatorStates;
             StrreamVersion = strreamVersion;
             StreamHash = streamHash;
         }

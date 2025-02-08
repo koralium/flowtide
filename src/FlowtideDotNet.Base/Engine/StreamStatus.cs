@@ -18,6 +18,10 @@ namespace FlowtideDotNet.Base.Engine
         Starting,
         Running,
         Degraded,
-        Failing
+        Failing,
+        Stopping,
+        Deleting,
+        Deleted,
+        Paused
     }
 }

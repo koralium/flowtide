@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
         }
     }
 
-    internal class FailureEgress : GroupedWriteBaseOperator<TestWriteState>
+    internal class FailureEgress : GroupedWriteBaseOperator
     {
         private readonly FailureEgressOptions failureEgressOptions;
         List<int> primaryKeyIds;
@@ -63,10 +63,10 @@ namespace FlowtideDotNet.Core.Tests.Failure
 
         public override string DisplayName => "FailureEgress";
 
-        protected override Task<TestWriteState> Checkpoint(long checkpointTime)
+        protected override Task Checkpoint(long checkpointTime)
         {
             failureEgressOptions.OnCheckpoint?.Invoke();
-            return Task.FromResult(new TestWriteState());
+            return Task.CompletedTask;
         }
 
         protected override ValueTask<IReadOnlyList<int>> GetPrimaryKeyColumns()
@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
             return ValueTask.FromResult<IReadOnlyList<int>>(primaryKeyIds);
         }
 
-        protected override Task Initialize(long restoreTime, TestWriteState? state, IStateManagerClient stateManagerClient)
+        protected override Task Initialize(long restoreTime, IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }

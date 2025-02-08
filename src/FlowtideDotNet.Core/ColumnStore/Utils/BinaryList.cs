@@ -268,9 +268,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Span<byte> Get(in int index)
         {
-            var offset = _offsets.Get(index);
-            return AccessSpan.Slice(offset, _offsets.Get(index + 1) - offset);
-            
+                var offset = _offsets.Get(index);
+                return AccessSpan.Slice(offset, _offsets.Get(index + 1) - offset);
         }
 
         public Memory<byte> GetMemory(in int index)
