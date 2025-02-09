@@ -69,6 +69,41 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task TestAggregateInt8ConvertsToInt16()
+        {
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 0, UserKey = sbyte.MaxValue - 9 });
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = sbyte.MaxValue + 10 });
+
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    '1' as c, count(*)
+                FROM orders
+                GROUP BY userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { c = "1", Count = x.Count() }));
+        }
+
+        [Fact]
+        public async Task TestAggregateInt16ConvertsToInt32()
+        {
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 0, UserKey = short.MaxValue - 9 });
+            AddOrUpdateOrder(new Entities.Order() { OrderKey = 1, UserKey = short.MaxValue + 10 });
+
+
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    '1' as c, count(*)
+                FROM orders
+                GROUP BY userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { c = "1", Count = x.Count() }));
+        }
+
+        [Fact]
         public async Task AggregateOnJoinedData()
         {
             GenerateData();

@@ -488,19 +488,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return new BinaryColumn(offsetMemory!, length + 1, dataMemory, memoryAllocator);
         }
 
-        private Int64Column DeserializeInt64Column(
-            ref SequenceReader<byte> data,
-            ref readonly FieldStruct fieldStruct,
-            ref readonly RecordBatchStruct recordBatchStruct,
-            int length)
-        {
-            if (TryReadNextBuffer(ref data, out var memory))
-            {
-                return new Int64Column(memory, length, memoryAllocator);
-            }
-            return new Int64Column(memoryAllocator);
-        }
-
         private IntegerColumn DeserializeIntegerColumn(
             ref SequenceReader<byte> data,
             ref readonly FieldStruct fieldStruct,

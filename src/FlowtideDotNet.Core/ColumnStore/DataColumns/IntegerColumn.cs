@@ -171,7 +171,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 {
                     if (dataValue < sbyte.MinValue)
                     {
-                        return (~end, ~end);
+                        var index = ~(end + 1);
+                        return (index, index);
                     }
                     if (dataValue > sbyte.MaxValue)
                     {
@@ -187,7 +188,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     }
                     if (dataValue > sbyte.MaxValue)
                     {
-                        return (~end, ~end);
+                        var index = ~(end + 1);
+                        return (index, index);
                     }
                     return BoundarySearch.SearchBoundries(_list, (sbyte)dataValue, start, end, Int8Comparer.Instance);
                 }
@@ -284,7 +286,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 {
                     if (dataValue < short.MinValue)
                     {
-                        return (~end, ~end);
+                        var index = ~(end + 1);
+                        return (index, index);
                     }
                     if (dataValue > short.MaxValue)
                     {
@@ -300,7 +303,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     }
                     if (dataValue > short.MaxValue)
                     {
-                        return (~end, ~end);
+                        var index = ~(end + 1);
+                        return (index, index);
                     }
                     return BoundarySearch.SearchBoundries(_list, (short)dataValue, start, end, Int16Comparer.Instance);
                 }
@@ -417,7 +421,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 {
                     if (dataValue < int.MinValue)
                     {
-                        return (~end, ~end);
+                        var index = ~(end + 1);
+                        return (index, index);
                     }
                     if (dataValue > int.MaxValue)
                     {
@@ -433,7 +438,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     }
                     if (dataValue > int.MaxValue)
                     {
-                        return (~end, ~end);
+                        var index = ~(end + 1);
+                        return (index, index);
                     }
                     return BoundarySearch.SearchBoundries(_list, (int)dataValue, start, end, Int32Comparer.Instance);
                 }
@@ -549,7 +555,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 {
                     if (dataValue < long.MinValue)
                     {
-                        return (~end, ~end);
+                        var index = ~(end + 1);
+                        return (index, index);
                     }
                     if (dataValue > long.MaxValue)
                     {
@@ -565,7 +572,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     }
                     if (dataValue > long.MaxValue)
                     {
-                        return (~end, ~end);
+                        var index = ~(end + 1);
+                        return (index, index);
                     }
                     return BoundarySearch.SearchBoundries(_list, dataValue, start, end, Int64Comparer.Instance);
                 }
@@ -877,7 +885,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 }
                 else
                 {
-                    return (~end, ~end);
+                    var index = ~(end + 1);
+                    return (index, index);
                 }
             }
             return _data.SearchBoundries(dataValue.AsLong, start, end, child, desc);
