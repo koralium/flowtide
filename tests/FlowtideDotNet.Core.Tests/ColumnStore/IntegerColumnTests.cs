@@ -24,6 +24,18 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
     public class IntegerColumnTests
     {
         [Fact]
+        public void TestInt8ToInt16()
+        {
+            IntegerColumn integerColumn = new IntegerColumn(GlobalMemoryManager.Instance);
+
+            integerColumn.Add(new Int64Value(100));
+            integerColumn.Add(new Int64Value(200));
+
+            Assert.Equal(100, integerColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal(200, integerColumn.GetValueAt(1, default).AsLong);
+        }
+
+        [Fact]
         public void TestAddInt16ThenInt32()
         {
             IntegerColumn integerColumn = new IntegerColumn(GlobalMemoryManager.Instance);
@@ -33,6 +45,18 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(300, integerColumn.GetValueAt(0, default).AsLong);
             Assert.Equal(100_000, integerColumn.GetValueAt(1, default).AsLong);
+        }
+
+        [Fact]
+        public void TestAddInt32ThenInt64()
+        {
+            IntegerColumn integerColumn = new IntegerColumn(GlobalMemoryManager.Instance);
+
+            integerColumn.Add(new Int64Value(100_000));
+            integerColumn.Add(new Int64Value(100_000_000));
+
+            Assert.Equal(100_000, integerColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal(100_000_000, integerColumn.GetValueAt(1, default).AsLong);
         }
     }
 }
