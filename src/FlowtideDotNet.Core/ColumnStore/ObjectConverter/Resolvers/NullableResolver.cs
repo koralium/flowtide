@@ -20,45 +20,29 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers
 {
-    internal class Int64Resolver : IObjectColumnResolver
+    internal class NullableResolver : IObjectColumnResolver
     {
-        public bool CanHandle(ObjectConverterTypeInfo typeInfo)
+        public bool CanHandle(ObjectConverterTypeInfo type)
         {
-            var type = typeInfo.Type;
-            if (type == typeof(long))
-            {
-                return true;
-            }
-            if (type == typeof(byte))
-            {
-                return true;
-            }
-            if (type == typeof(sbyte))
-            {
-                return true;
-            }
-            if (type == typeof(short))
-            {
-                return true;
-            }
-            if (type == typeof(ushort))
-            {
-                return true;
-            }
-            if (type == typeof(int))
-            {
-                return true;
-            }
-            if (type == typeof(uint))
-            {
-                return true;
-            }
-            return false;
+            return IsNullable(type.Type);
         }
 
         public IObjectColumnConverter GetConverter(ObjectConverterTypeInfo type, ObjectConverterResolver resolver)
         {
-            return new Int64Converter(type.Type);
+            var innerNullableType = Nullable.GetUnderlyingType(type.Type);
+            var innerConverter = resolver.GetConverter(ObjectConverterTypeInfoLookup.GetTypeInfo(innerNullableType!));
+
+            return new NullableConverter(innerConverter);
+        }
+
+        public static bool IsNullable(Type type)
+        {
+            if (type.IsPrimitive)
+            {
+                return false;
+            }
+            var innerNullableType = Nullable.GetUnderlyingType(type);
+            return innerNullableType != null;
         }
     }
 }

@@ -10,19 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
 
-namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders
+namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers
 {
-    public interface IObjectColumnConverter
+    internal class MemoryByteResolver : IObjectColumnResolver
     {
-        void Serialize(object obj, ref AddToColumnFunc addFunc);
+        public bool CanHandle(ObjectConverterTypeInfo type)
+        {
+            return type.Type == typeof(Memory<byte>);
+        }
 
-        object Deserialize<T>(T value)
-            where T : IDataValue;
+        public IObjectColumnConverter GetConverter(ObjectConverterTypeInfo type, ObjectConverterResolver resolver)
+        {
+            return new MemoryByteConverter();
+        }
     }
 }

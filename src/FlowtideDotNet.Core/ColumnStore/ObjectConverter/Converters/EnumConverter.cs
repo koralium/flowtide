@@ -19,42 +19,27 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 {
-    internal class Int64Converter : IObjectColumnConverter
+    internal class EnumConverter : IObjectColumnConverter
     {
-        private readonly Type type;
+        private readonly Type enumType;
 
-        public Int64Converter(Type type)
+        public EnumConverter(Type enumType)
         {
-            this.type = type;
-        }
-
-        public object Deserialize(IColumn column, int index)
-        {
-            var value = column.GetValueAt(index, default);
-            return Convert.ChangeType(value.AsLong, type);
+            this.enumType = enumType;
         }
 
         public object Deserialize<T>(T value) where T : IDataValue
         {
-            if (value.IsNull)
-            {
-                return null!;
-            }
             if (value.Type == ArrowTypeId.Int64)
             {
-                return Convert.ChangeType(value.AsLong, type);
+                return Enum.ToObject(enumType, value.AsLong);
             }
-            else
-            {
-                throw new NotImplementedException();
-            }
-            
+            throw new NotImplementedException();
         }
 
         public void Serialize(object obj, ref AddToColumnFunc addFunc)
         {
-            var data = Convert.ToInt64(obj);
-            addFunc.AddValue(new Int64Value(data));
+            addFunc.AddValue(new Int64Value(Convert.ToInt64(obj)));
         }
     }
 }

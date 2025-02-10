@@ -16,13 +16,24 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders
+namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
 {
-    public interface IObjectColumnConverter
+    public class ObjectConverterPropertyInfo
     {
-        void Serialize(object obj, ref AddToColumnFunc addFunc);
+        public string Name { get; }
 
-        object Deserialize<T>(T value)
-            where T : IDataValue;
+        public Func<object, object?>? GetFunc { get; }
+
+        public Action<object, object>? SetFunc { get; }
+
+        public ObjectConverterTypeInfo TypeInfo { get; }
+
+        public ObjectConverterPropertyInfo(string name, Func<object, object?>? getFunc, Action<object, object>? setFunc, ObjectConverterTypeInfo typeInfo)
+        {
+            Name = name;
+            GetFunc = getFunc;
+            SetFunc = setFunc;
+            TypeInfo = typeInfo;
+        }
     }
 }

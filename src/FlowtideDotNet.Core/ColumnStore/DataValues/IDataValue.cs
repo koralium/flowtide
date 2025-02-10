@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         IListValue AsList { get; }
 
-        Span<byte> AsBinary { get; }
+        ReadOnlySpan<byte> AsBinary { get; }
 
         IMapValue AsMap { get; }
 

@@ -21,8 +21,8 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers
 {
     public interface IObjectColumnResolver
     {
-        bool CanHandle(ObjectConverterColumnInfo columnInfo);
+        bool CanHandle(ObjectConverterTypeInfo type);
 
-        IObjectColumnConverter GetConverter(ObjectConverterColumnInfo columnInfo);
+        IObjectColumnConverter GetConverter(ObjectConverterTypeInfo type, ObjectConverterResolver resolver);
     }
 }

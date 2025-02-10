@@ -18,27 +18,19 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
 {
-    public class ObjectConverterColumnInfo
+    public class ObjectConverterTypeInfo
     {
-        public string? Name { get; }
-
-        public Func<object, object> GetFunc { get; }
-
-        public Action<object, object>? SetFunc { get; }
-
         public Type Type { get; }
+        public ObjectTypeInfoKind TypeInfo { get; }
+        public IReadOnlyList<ObjectConverterPropertyInfo> Properties { get; }
+        public Func<object>? CreateObject { get; }
 
-        public ObjectTypeInfoKind Kind { get; }
-
-        public IReadOnlyList<ObjectConverterColumnInfo> Properties { get; }
-
-        public ObjectConverterColumnInfo(string? name, Func<object, object> getFunc, Type type, ObjectTypeInfoKind kind, IReadOnlyList<ObjectConverterColumnInfo> properties)
+        public ObjectConverterTypeInfo(Type type, ObjectTypeInfoKind typeInfo, IReadOnlyList<ObjectConverterPropertyInfo> properties, Func<object>? createObject)
         {
-            Name = name;
-            GetFunc = getFunc;
             Type = type;
-            Kind = kind;
+            TypeInfo = typeInfo;
             Properties = properties;
+            CreateObject = createObject;
         }
     }
 }

@@ -17,21 +17,32 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers
+namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 {
-    internal class MapResolver : IObjectColumnResolver
+    internal class FloatConverter : IObjectColumnConverter
     {
-        public bool CanHandle(ObjectConverterColumnInfo columnInfo)
+        public object Deserialize<T>(T value) where T : IDataValue
         {
-            if (columnInfo.Kind == ObjectTypeInfoKind.Object)
+            if (value.IsNull)
             {
-                return true;
+                return null!;
             }
-            return false;
+
+            if (value.Type == ArrowTypeId.Double)
+            {
+                return (float)value.AsDouble;
+            }
+
+            throw new NotImplementedException();
         }
 
-        public IObjectColumnConverter GetConverter(ObjectConverterColumnInfo columnInfo)
+        public void Serialize(object obj, ref AddToColumnFunc addFunc)
         {
+            if (obj is float val)
+            {
+                addFunc.AddValue(new DoubleValue(val));
+                return;
+            }
             throw new NotImplementedException();
         }
     }

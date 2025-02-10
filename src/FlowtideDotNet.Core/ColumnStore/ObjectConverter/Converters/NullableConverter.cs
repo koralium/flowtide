@@ -10,51 +10,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 {
-    internal class Int64Converter : IObjectColumnConverter
+    internal class NullableConverter : IObjectColumnConverter
     {
-        private readonly Type type;
+        private readonly IObjectColumnConverter inner;
 
-        public Int64Converter(Type type)
+        public NullableConverter(IObjectColumnConverter inner)
         {
-            this.type = type;
+            this.inner = inner;
         }
-
-        public object Deserialize(IColumn column, int index)
-        {
-            var value = column.GetValueAt(index, default);
-            return Convert.ChangeType(value.AsLong, type);
-        }
-
         public object Deserialize<T>(T value) where T : IDataValue
         {
             if (value.IsNull)
             {
                 return null!;
             }
-            if (value.Type == ArrowTypeId.Int64)
-            {
-                return Convert.ChangeType(value.AsLong, type);
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-            
+            return inner.Deserialize(value);
         }
 
         public void Serialize(object obj, ref AddToColumnFunc addFunc)
         {
-            var data = Convert.ToInt64(obj);
-            addFunc.AddValue(new Int64Value(data));
+            if (obj == null)
+            {
+                addFunc.AddValue(NullValue.Instance);
+                return;
+            }
+
+            inner.Serialize(obj, ref addFunc);
         }
     }
 }

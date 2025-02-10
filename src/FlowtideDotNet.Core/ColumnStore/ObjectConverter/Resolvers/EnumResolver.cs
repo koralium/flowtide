@@ -10,38 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
+namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers
 {
-    internal class MapConverter : IObjectColumnConverter
+    internal class EnumResolver : IObjectColumnResolver
     {
-        private readonly ObjectConverterColumnInfo columnInfo;
-
-        public MapConverter(ObjectConverterColumnInfo columnInfo)
+        public bool CanHandle(ObjectConverterTypeInfo type)
         {
-            this.columnInfo = columnInfo;
-        }
-        public object Deserialize(IColumn column, int index)
-        {
-            throw new NotImplementedException();
+            return type.Type.IsEnum;
         }
 
-        public void Serialize(object obj, IColumn destination)
+        public IObjectColumnConverter GetConverter(ObjectConverterTypeInfo type, ObjectConverterResolver resolver)
         {
-            
-            throw new NotImplementedException();
-        }
-
-        public IDataValue SerializeDataValue(object obj)
-        {
-            throw new NotImplementedException();
+            return new EnumConverter(type.Type);
         }
     }
 }

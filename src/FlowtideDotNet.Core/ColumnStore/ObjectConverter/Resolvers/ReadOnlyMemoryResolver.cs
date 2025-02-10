@@ -10,22 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
 
-namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
+namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers
 {
-    /// <summary>
-    /// Converter class for converting objects to Apache Arrow format.
-    /// </summary>
-    internal class ObjectToColumnConverter<T>
+    internal class ReadOnlyMemoryResolver : IObjectColumnResolver
     {
-        public ObjectToColumnConverter()
+        public bool CanHandle(ObjectConverterTypeInfo type)
         {
-            
+            return type.Type == typeof(ReadOnlyMemory<byte>);
+        }
+
+        public IObjectColumnConverter GetConverter(ObjectConverterTypeInfo type, ObjectConverterResolver resolver)
+        {
+            return new ReadOnlyMemoryConverter();
         }
     }
 }

@@ -132,7 +132,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// Add binary data as an element to the list.
         /// </summary>
         /// <param name="data"></param>
-        public void Add(Span<byte> data)
+        public void Add(ReadOnlySpan<byte> data)
         {
             //var currentOffset = _length;
             EnsureCapacity(_length + data.Length);
@@ -147,7 +147,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _offsets.Add(currentOffset);
         }
 
-        public void UpdateAt(int index, Span<byte> data)
+        public void UpdateAt(int index, ReadOnlySpan<byte> data)
         {
             var offset = _offsets.Get(index);
             var endOffset = _offsets.Get(index + 1);
@@ -174,7 +174,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// </summary>
         /// <param name="index"></param>
         /// <param name="data"></param>
-        public void Insert(int index, Span<byte> data)
+        public void Insert(int index, ReadOnlySpan<byte> data)
         {
             if (index == _offsets.Count)
             {
