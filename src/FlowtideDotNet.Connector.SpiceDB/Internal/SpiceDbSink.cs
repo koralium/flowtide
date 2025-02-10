@@ -101,13 +101,13 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             return Task.FromResult(new MetadataResult(m_primaryKeys));
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, SimpleWriteState? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
             }
-            return base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+            return base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
         protected override async IAsyncEnumerable<RowEvent> GetExistingData()

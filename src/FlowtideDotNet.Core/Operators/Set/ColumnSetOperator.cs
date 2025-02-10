@@ -31,12 +31,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Set
 {
-    internal class SetOperatorState
-    {
-
-    }
-
-    internal class ColumnSetOperator<TStruct> : MultipleInputVertex<StreamEventBatch, SetOperatorState>
+    internal class ColumnSetOperator<TStruct> : MultipleInputVertex<StreamEventBatch>
         where TStruct: unmanaged, IInputWeight
     {
         private readonly SetRelation _setRelation;
@@ -191,12 +186,11 @@ namespace FlowtideDotNet.Core.Operators.Set
             return Task.CompletedTask;
         }
 
-        public override async Task<SetOperatorState?> OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
             Debug.Assert(_tree != null);
 
             await _tree.Commit().ConfigureAwait(false);
-            return new SetOperatorState();
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
@@ -282,7 +276,7 @@ namespace FlowtideDotNet.Core.Operators.Set
 #endif
         }
 
-        protected override async Task InitializeOrRestore(SetOperatorState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))

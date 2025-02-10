@@ -68,9 +68,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             return Task.FromResult(new MetadataResult(primaryKeyIndices));
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, SimpleWriteState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            await base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+            await base.InitializeOrRestore(restoreTime, stateManagerClient);
             Debug.Assert(primaryKeyIndices != null);
 
             if (_eventsCounter == null)

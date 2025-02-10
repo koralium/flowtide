@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _operatorName = operatorName;
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
         {
             throw new NotImplementedException();
         }
@@ -146,6 +146,14 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         public ValueTask DisposeAsync()
         {
             throw new NotImplementedException();
+        }
+
+        public void Pause()
+        {
+        }
+
+        public void Resume()
+        {
         }
     }
 }

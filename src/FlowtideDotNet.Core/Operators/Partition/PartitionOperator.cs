@@ -22,7 +22,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Partition
 {
-    internal class PartitionOperator : PartitionVertex<StreamEventBatch, object>
+    internal class PartitionOperator : PartitionVertex<StreamEventBatch>
     {
         private readonly int targetNumber;
         private readonly Func<RowEvent, uint> _partitionFunction;
@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core.Operators.Partition
 
         public override string DisplayName => "Partition";
 
-        protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             if (_eventsProcessed == null) 
             {                 

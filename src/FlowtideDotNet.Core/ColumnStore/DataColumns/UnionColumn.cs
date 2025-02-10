@@ -15,6 +15,7 @@ using Apache.Arrow.Memory;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
@@ -26,12 +27,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics.X86;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
-using static SqlParser.Ast.Expression;
-using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -777,6 +773,93 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
 
             return new UnionColumn(columns, _typeList.Copy(memoryAllocator), _offsets.Copy(memoryAllocator), _typeIds.ToArray(), memoryAllocator);
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            int count = 0;
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                if (_valueColumns[i] != null)
+                {
+                    pointerStack[count] = (int)_valueColumns[i].Type;
+                    count++;
+                }
+            }
+            var typeIdsPointer = arrowSerializer.UnionCreateTypeIdsVector(pointerStack.Slice(0, count));
+            var typePointer = arrowSerializer.AddUnionType(typeIdsPointer, ArrowUnionMode.Dense);
+
+            var childrenStack = pointerStack.Slice(_valueColumns.Count);
+            count = 0;
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                if (_valueColumns[i] != null)
+                {
+                    pointerStack[count] = _valueColumns[i].CreateSchemaField(ref arrowSerializer, emptyStringPointer, childrenStack);
+                    count++;
+                }
+            }
+            var childrenPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, count));
+
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Union, typePointer, childrenOffset: childrenPointer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            // Start with the size of the type list and the offsets type list is 1 byte per element and offsets is 4 bytes per element
+            int bodyLength = Count * 5;
+            int fieldCount = 1;
+            int bufferCount = 2;
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                var estimate = _valueColumns[i].GetSerializationEstimate();
+                bodyLength += estimate.bodyLength;
+                fieldCount += estimate.fieldNodeCount;
+                bufferCount += estimate.bufferCount;
+            }
+            bufferCount += _valueColumns.Count - 1; // Add validity buffers, except for the null array in the start
+            return new SerializationEstimation(fieldCount, bufferCount, bodyLength);
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            for (int i = _valueColumns.Count - 1; i >= 0; i--)
+            {
+                if (_valueColumns[i] != null)
+                {
+                    _valueColumns[i].AddFieldNodes(ref arrowSerializer, 0);
+                }
+            }
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.AddBufferForward(_typeList.SlicedMemory.Length);
+            arrowSerializer.AddBufferForward(_offsets.Memory.Length);
+            for (int i = 1; i < _valueColumns.Count; i++) // We start at 1 since the first array is a null array which does not have any buffers
+            {
+                if (_valueColumns[i] != null)
+                {
+                    arrowSerializer.AddBufferForward(0); // Empty validity buffer
+                    _valueColumns[i].AddBuffers(ref arrowSerializer);
+                }
+            }
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            dataWriter.WriteArrowBuffer(_typeList.SlicedMemory.Span);
+            dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
+
+            for (int i = 1; i < _valueColumns.Count; i++) // We start at 1 since the first array is a null array which does not have any buffers
+            {
+                if (_valueColumns[i] != null)
+                {
+                    dataWriter.WriteArrowBuffer(Span<byte>.Empty); // Empty validity buffer
+                    _valueColumns[i].WriteDataToBuffer(ref dataWriter);
+                }
+            }
         }
     }
 }

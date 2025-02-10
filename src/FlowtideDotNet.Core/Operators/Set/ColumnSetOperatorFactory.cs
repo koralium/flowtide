@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Core.Operators.Set
 {
     internal class ColumnSetOperatorFactory
     {
-        public static MultipleInputVertex<StreamEventBatch, SetOperatorState> CreateColumnSetOperator(SetRelation setRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
+        public static MultipleInputVertex<StreamEventBatch> CreateColumnSetOperator(SetRelation setRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
             if (setRelation.Operation == SetOperation.UnionAll)
             {

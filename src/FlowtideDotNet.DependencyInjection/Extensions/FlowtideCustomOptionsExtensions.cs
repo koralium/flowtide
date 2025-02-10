@@ -10,16 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Engine.Internal.StateMachine;
+using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Engine.FailureStrategies;
 
-namespace FlowtideDotNet.Base.Engine
+namespace FlowtideDotNet.DependencyInjection
 {
-    public interface IStreamNotificationReciever
+    public static class FlowtideCustomOptionsExtensions
     {
-        void OnStreamStateChange(StreamStateValue newState);
-
-        void OnCheckpointComplete();
-
-        void OnFailure(Exception? exception);
+        /// <summary>
+        /// When a failure occurs call exit on the current process.
+        /// </summary>
+        /// <param name="builder"></param>
+        public static void WithExitProcessOnFailure(this FlowtideBuilder builder)
+        {
+            builder.WithFailureListener<ExitProcessStrategy>();
+        }
     }
 }

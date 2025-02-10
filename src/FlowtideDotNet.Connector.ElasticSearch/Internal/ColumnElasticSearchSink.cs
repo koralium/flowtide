@@ -30,12 +30,8 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 {
-    internal class ElasticState : ColumnWriteState
-    {
 
-    }
-
-    internal class ColumnElasticSearchSink : ColumnGroupedWriteOperator<ElasticState>
+    internal class ColumnElasticSearchSink : ColumnGroupedWriteOperator
     {
         private static byte NewlineChar = Encoding.UTF8.GetBytes("\n")[0];
         private readonly WriteRelation m_writeRelation;
@@ -83,9 +79,8 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
         public override string DisplayName => m_displayName;
 
-        protected override ElasticState Checkpoint(long checkpointTime)
+        protected override void Checkpoint(long checkpointTime)
         {
-            return new ElasticState();
         }
 
         protected override ValueTask<IReadOnlyList<int>> GetPrimaryKeyColumns()
@@ -143,14 +138,14 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             }
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, ElasticState? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             if (m_eventsCounter == null)
             {
                 m_eventsCounter = Metrics.CreateCounter<long>("events");
             }
             m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
-            return base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+            return base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
         protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken)

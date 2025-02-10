@@ -13,6 +13,8 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
@@ -33,7 +35,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data = new BinaryList(memoryAllocator);
         }
 
-        public BinaryColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte> dataMemory, IMemoryAllocator memoryAllocator)
+        public BinaryColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
         {
             _data = new BinaryList(offsetMemory, offsetLength, dataMemory, memoryAllocator);
         }
@@ -222,6 +224,38 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new BinaryColumn(_data.Copy(memoryAllocator));
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var binaryTypeOffset = arrowSerializer.AddBinaryType();
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Binary, binaryTypeOffset);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 2, GetByteSize());
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.AddBufferForward(_data.OffsetMemory.Length);
+            arrowSerializer.AddBufferForward(_data.DataMemory.Length);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            // Write offset data
+            dataWriter.WriteArrowBuffer(_data.OffsetMemory.Span);
+
+
+            // Write binary data
+            dataWriter.WriteArrowBuffer(_data.DataMemory.Span);
         }
     }
 }

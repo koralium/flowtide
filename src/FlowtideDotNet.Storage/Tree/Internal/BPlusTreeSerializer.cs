@@ -15,7 +15,9 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Immutable;
+using ZstdSharp;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
@@ -65,7 +67,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 return;
             }
-            throw new NotSupportedException();
         }
 
         public async Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
@@ -96,46 +97,66 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 return;
             }
-            throw new NotSupportedException();
         }
 
-        public IBPlusTreeNode Deserialize(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
+        public IBPlusTreeNode Deserialize(ReadOnlyMemory<byte> bytes, int length)
         {
-            var arr = bytes.Memory.ToArray();
-            using var memoryStream = new MemoryStream(arr);
-            Stream readStream = memoryStream;
-            if (stateSerializeOptions.DecompressFunc != null)
+            var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(bytes));
+            if (!sequenceReader.TryRead(out byte typeId))
             {
-                readStream = stateSerializeOptions.DecompressFunc(memoryStream);
+                throw new Exception("Could not read typeId");
             }
-            bytes.Dispose();
-            using var reader = new BinaryReader(readStream);
-
-            var typeId = reader.ReadByte();
 
             if (typeId == 2)
             {
-                var id = reader.ReadInt64();
-                
-                
-                var leafNext = reader.ReadInt64();
+                if (!sequenceReader.TryReadLittleEndian(out long id))
+                {
+                    throw new Exception("Could not read id");
+                }
 
-                var keyContainer = _keySerializer.Deserialize(reader);
-                var valueContainer = _valueSerializer.Deserialize(reader);
+                if (!sequenceReader.TryReadLittleEndian(out long leafNext))
+                {
+                    throw new Exception("Could not read leafNext");
+                }
+
+                var keyContainer = _keySerializer.Deserialize(ref sequenceReader);
+                var valueContainer = _valueSerializer.Deserialize(ref sequenceReader);
+
+                if (sequenceReader.UnreadSpan.Length > 0)
+                {
+                    throw new Exception("Did not read all bytes");
+                }
+
                 var leaf = new LeafNode<K, V, TKeyContainer, TValueContainer>(id, keyContainer, valueContainer);
                 leaf.next = leafNext;
                 return leaf;
             }
             if (typeId == 3)
             {
-                var id = reader.ReadInt64();
+                if (!sequenceReader.TryReadLittleEndian(out long id))
+                {
+                    throw new Exception("Could not read id");
+                }
 
-                var keyContainer = _keySerializer.Deserialize(reader);
+                var keyContainer = _keySerializer.Deserialize(ref sequenceReader);
 
-                var childrenByteLength = reader.ReadInt32();
-                var childrenBytes = reader.ReadBytes(childrenByteLength);
+                if (!sequenceReader.TryReadLittleEndian(out int childrenByteLength))
+                {
+                    throw new Exception("Could not read childrenByteLength");
+                }
+
                 var childrenMemory = _memoryAllocator.Allocate(childrenByteLength, 64);
-                childrenBytes.CopyTo(childrenMemory.Memory.Span);
+                if (!sequenceReader.TryCopyTo(childrenMemory.Memory.Span.Slice(0, childrenByteLength)))
+                {
+                    throw new Exception("Could not read children data");
+                }
+                sequenceReader.Advance(childrenByteLength);
+
+                if (sequenceReader.UnreadSpan.Length > 0)
+                {
+                    throw new Exception("Did not read all bytes");
+                }
+
                 var childrenList = new PrimitiveList<long>(childrenMemory, childrenByteLength / sizeof(long), _memoryAllocator);
 
                 var parent = new InternalNode<K, V, TKeyContainer>(id, keyContainer, childrenList);
@@ -145,57 +166,50 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             throw new NotImplementedException();
         }
 
-        public ICacheObject DeserializeCacheObject(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
+        public ICacheObject DeserializeCacheObject(ReadOnlyMemory<byte> bytes, int length)
         {
-            return Deserialize(bytes, length, stateSerializeOptions);
+            return Deserialize(bytes, length);
         }
 
-        public byte[] Serialize(in IBPlusTreeNode value, in StateSerializeOptions stateSerializeOptions)
+        public void Serialize(in IBufferWriter<byte> bufferWriter,in IBPlusTreeNode value)
         {
-            using var memoryStream = new MemoryStream();
-            Stream writeMemStream = memoryStream;
-            if (stateSerializeOptions.CompressFunc != null)
-            {
-                writeMemStream = stateSerializeOptions.CompressFunc(memoryStream);
-            }
-            using var writer = new BinaryWriter(writeMemStream);
             if (value is LeafNode<K, V, TKeyContainer, TValueContainer> leaf)
             {
-                // Write type id
-                writer.Write((byte)2);
+                var headerSpan = bufferWriter.GetSpan(17);
+                headerSpan[0] = 2;
+                BinaryPrimitives.WriteInt64LittleEndian(headerSpan.Slice(1), leaf.Id);
+                BinaryPrimitives.WriteInt64LittleEndian(headerSpan.Slice(9), leaf.next);
+                bufferWriter.Advance(17);
 
-                writer.Write(leaf.Id);
-                writer.Write(leaf.next);
-
-                _keySerializer.Serialize(writer, leaf.keys);
-                _valueSerializer.Serialize(writer, leaf.values);
-
-                writer.Flush();
-                writeMemStream.Close();
-                return memoryStream.ToArray();
+                _keySerializer.Serialize(bufferWriter, leaf.keys);
+                _valueSerializer.Serialize(bufferWriter, leaf.values);
+                return;
             }
             if (value is InternalNode<K, V, TKeyContainer> parent)
             {
-                writer.Write((byte)3);
-                writer.Write(parent.Id);
+                var headerSpan = bufferWriter.GetSpan(9);
+                headerSpan[0] = 3;
+                BinaryPrimitives.WriteInt64LittleEndian(headerSpan.Slice(1), parent.Id);
+                bufferWriter.Advance(9);
 
-                _keySerializer.Serialize(writer, parent.keys);
+                _keySerializer.Serialize(bufferWriter, parent.keys);
 
+                var childrenLengthSpan = bufferWriter.GetSpan(4);
                 var childrenSpan = parent.children.SlicedMemory.Span;
-                writer.Write(childrenSpan.Length);
-                writer.Write(childrenSpan);
-                writer.Flush();
-                writeMemStream.Close();
-                return memoryStream.ToArray();
+                BinaryPrimitives.WriteInt32LittleEndian(childrenLengthSpan, childrenSpan.Length);
+                bufferWriter.Advance(4);
+                bufferWriter.Write(childrenSpan);
+                return;
             }
             throw new NotImplementedException();
         }
 
-        public byte[] Serialize(in ICacheObject value, in StateSerializeOptions stateSerializeOptions)
+        public void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value)
         {
             if (value is IBPlusTreeNode node)
             {
-                return Serialize(node, stateSerializeOptions);
+                Serialize(bufferWriter, node);
+                return;
             }
             throw new NotImplementedException();
         }

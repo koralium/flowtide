@@ -10,12 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Core.Operators.Join
-{
-    public class JoinState
-    {
-        public long LeftSegmentId { get; set; }
+using FlowtideDotNet.Base.Engine;
 
-        public long RightSegmentId { get; set; }
+namespace FlowtideDotNet.Engine.FailureStrategies
+{
+
+    /// <summary>
+    /// Calls the provided action when a failure occurs
+    /// </summary>
+    public class CustomExceptionStrategy : IFailureListener
+    {
+        private readonly Action<Exception?> _handler;
+
+        public CustomExceptionStrategy(Action<Exception?> handler)
+        {
+            _handler = handler;
+        }
+
+        public void OnFailure(Exception? exception)
+        {
+            _handler(exception);
+        }
     }
 }

@@ -268,6 +268,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     {
                         b.Add(dateTimeOffset.Subtract(DateTimeOffset.UnixEpoch).Ticks);
                     }
+                    else if (column is byte[] bytes)
+                    {
+                        b.Add(bytes);
+                    }
                     else
                     {
                         throw new NotImplementedException($"{column.GetType().Name}");

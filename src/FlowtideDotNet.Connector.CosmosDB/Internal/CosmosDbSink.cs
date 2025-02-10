@@ -24,11 +24,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.CosmosDB.Internal
 {
-    internal class CosmosDbSinkState : IStatefulWriteState
-    {
-        public long StorageSegmentId { get; set; }
-    }
-    internal class CosmosDbSink : GroupedWriteBaseOperator<CosmosDbSinkState>
+    internal class CosmosDbSink : GroupedWriteBaseOperator
     {
         private readonly FlowtideCosmosOptions cosmosOptions;
         private readonly WriteRelation writeRelation;
@@ -50,10 +46,9 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
 
         public override string DisplayName => "CosmosDB Sink";
 
-        protected override async Task<CosmosDbSinkState> Checkpoint(long checkpointTime)
+        protected override async Task Checkpoint(long checkpointTime)
         {
             await FlushAsync();
-            return new CosmosDbSinkState();
         }
 
         private async Task CompleteTasks(List<Task<ResponseMessage>> tasks, List<MemoryStream> activeStreams)
@@ -276,7 +271,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             };
         }
 
-        protected override async Task Initialize(long restoreTime, CosmosDbSinkState? state, FlowtideDotNet.Storage.StateManager.IStateManagerClient stateManagerClient)
+        protected override async Task Initialize(long restoreTime, FlowtideDotNet.Storage.StateManager.IStateManagerClient stateManagerClient)
         {
             if (m_cosmosClient == null)
             {

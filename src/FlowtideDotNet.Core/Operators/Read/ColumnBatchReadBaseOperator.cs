@@ -43,18 +43,12 @@ namespace FlowtideDotNet.Core.Operators.Read
 
     public record struct DeltaReadEvent(EventBatchWeighted? BatchData, Watermark? Watermark);
 
-    public class ColumnBatchReadState
-    {
-        public bool InitialSent { get; set; }
-    }
-
-    public abstract class ColumnBatchReadBaseOperator<TState> : ReadBaseOperator<TState>
-        where TState: ColumnBatchReadState
+    public abstract class ColumnBatchReadBaseOperator : ReadBaseOperator
     {
         public const string DeltaLoadTriggerName = "delta_load";
         public const string FullLoadTriggerName = "full_load";
 
-        private bool _initialSent;
+        private IObjectState<bool>? _initialSent;
         private readonly ReadRelation _readRelation;
         private readonly Func<EventBatchData, int, bool>? _filter;
         private List<int>? _primaryKeyColumns;
@@ -116,16 +110,9 @@ namespace FlowtideDotNet.Core.Operators.Read
         }
 
 
-        protected override async Task InitializeOrRestore(long restoreTime, TState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            if (state != null)
-            {
-                _initialSent = state.InitialSent;
-            }
-            else
-            {
-                _initialSent = false;
-            }
+            _initialSent = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initial_sent");
 
             if (_eventsCounter == null)
             {
@@ -199,16 +186,16 @@ namespace FlowtideDotNet.Core.Operators.Read
                 });
         }
 
-        protected override async Task<TState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(_persistentTree != null);
+            Debug.Assert(_initialSent != null);
             await _persistentTree.Commit();
-            var state = await Checkpoint(checkpointTime).ConfigureAwait(false);
-            state.InitialSent = _initialSent;
-            return state;
+            await Checkpoint(checkpointTime).ConfigureAwait(false);
+            await _initialSent.Commit();
         }
 
-        protected abstract Task<TState> Checkpoint(long checkpointTime);
+        protected abstract Task Checkpoint(long checkpointTime);
 
         protected abstract IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, CancellationToken enumeratorCancellationToken = default);
 
@@ -735,11 +722,12 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            if (!_initialSent)
+            Debug.Assert(_initialSent != null);
+            if (!_initialSent.Value)
             {
                 // Only do full load if we have not done it before
                 await DoFullLoad(output);
-                _initialSent = true;
+                _initialSent.Value = true;
             }
 
             await RegisterTrigger(DeltaLoadTriggerName, TimeSpan.FromMilliseconds(1));

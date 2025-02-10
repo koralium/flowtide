@@ -23,19 +23,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             return Task.CompletedTask;
         }
 
-        public StateManagerMetadata Deserialize(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
+        public StateManagerMetadata Deserialize(ReadOnlyMemory<byte> bytes, int length)
         {
-            var slice = bytes.Memory.Span.Slice(0, length);
+            var slice = bytes.Span.Slice(0, length);
             var reader = new Utf8JsonReader(slice);
             var deserializedValue = JsonSerializer.Deserialize<StateManagerMetadata<T>>(ref reader);
-            bytes.Dispose();
             Debug.Assert(deserializedValue != null);
             return deserializedValue;
         }
 
-        public ICacheObject DeserializeCacheObject(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
+        public ICacheObject DeserializeCacheObject(ReadOnlyMemory<byte> bytes, int length)
         {
-            return Deserialize(bytes, length, stateSerializeOptions);
+            return Deserialize(bytes, length);
         }
 
         public Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
@@ -43,22 +42,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             return Task.CompletedTask;
         }
 
-        public byte[] Serialize(in StateManagerMetadata value, in StateSerializeOptions stateSerializeOptions)
+        public void Serialize(in IBufferWriter<byte> bufferWriter, in StateManagerMetadata value)
         {
             if (value is StateManagerMetadata<T> metadata)
             {
-                using MemoryStream memoryStream = new MemoryStream();
-                JsonSerializer.Serialize(memoryStream, metadata);
-                return memoryStream.ToArray();
+                var jsonWriter = new Utf8JsonWriter(bufferWriter);
+                JsonSerializer.Serialize(jsonWriter, metadata);
+                return;
             }
             throw new NotSupportedException();
         }
 
-        public byte[] Serialize(in ICacheObject value, in StateSerializeOptions stateSerializeOptions)
+        public void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value)
         {
             if (value is StateManagerMetadata<T> metadata)
             {
-                return Serialize(metadata, stateSerializeOptions);
+                Serialize(bufferWriter, metadata);
+                return;
             }
             throw new NotSupportedException();
         }

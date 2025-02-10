@@ -15,7 +15,6 @@ using FlowtideDotNet.Core.Tests.SmokeTests;
 using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
 using FlowtideDotNet.Substrait.Sql;
-using FluentAssertions;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Expressions;
@@ -89,10 +88,9 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             sqlPlanBuilder.Sql("SELECT orderKey FROM tpch.dbo.orders");
             var plan = sqlPlanBuilder.GetPlan();
 
-            plan.Should().BeEquivalentTo(
-                new Plan()
-                {
-                    Relations = new List<Relation>()
+            var expected = new Plan()
+            {
+                Relations = new List<Relation>()
                     {
                         new ProjectRelation()
                         {
@@ -138,8 +136,9 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                             }
                         }
                     },
-                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
-                );
+            };
+
+            Assert.Equal(expected, plan);
         }
 
         [Fact]
@@ -234,7 +233,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             sink.Link();
 
             
-            await sink.Initialize("1", 0, 0, null, vertexHandler);
+            await sink.Initialize("1", 0, 0, vertexHandler);
 
             await sink.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(new List<RowEvent>()
             {

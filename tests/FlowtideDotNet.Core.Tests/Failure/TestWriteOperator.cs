@@ -25,9 +25,9 @@ namespace FlowtideDotNet.Core.Tests.Failure
         public bool InitialCheckpointDone { get; set; }
         public long StorageSegmentId { get; set; }
     }
-    internal class TestWriteOperator : GroupedWriteBaseOperator<TestWriteState>
+    internal class TestWriteOperator : GroupedWriteBaseOperator
     {
-        private TestWriteState? currentState;
+        private IObjectState<TestWriteState>? currentState;
         private SortedSet<RowEvent>? modified;
         List<int> primaryKeyIds;
         private readonly Func<IReadOnlyList<DataChange>, Task> onValueChange;
@@ -54,17 +54,17 @@ namespace FlowtideDotNet.Core.Tests.Failure
 
         public override string DisplayName => "Write";
 
-        protected override async Task<TestWriteState> Checkpoint(long checkpointTime)
+        protected override async Task Checkpoint(long checkpointTime)
         {
-            Debug.Assert(currentState != null, nameof(currentState));
-            if (!currentState.InitialCheckpointDone)
+            Debug.Assert(currentState?.Value != null, nameof(currentState));
+            if (!currentState.Value.InitialCheckpointDone)
             {
                 // Send data
                 await SendData();
 
-                currentState.InitialCheckpointDone = true;
+                currentState.Value.InitialCheckpointDone = true;
             }
-            return currentState;
+            await currentState.Commit();
         }
 
         private async Task SendData()
@@ -96,21 +96,20 @@ namespace FlowtideDotNet.Core.Tests.Failure
             return ValueTask.FromResult<IReadOnlyList<int>>(primaryKeyIds);
         }
 
-        protected override Task Initialize(long restoreTime, TestWriteState? state, IStateManagerClient stateManagerClient)
+        protected override async Task Initialize(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            currentState = state;
-            if (state == null)
+            currentState = await stateManagerClient.GetOrCreateObjectStateAsync<TestWriteState>("test_state");
+            if (currentState.Value == null)
             {
-                currentState = new TestWriteState();
+                currentState.Value = new TestWriteState();
             }
             modified = new SortedSet<RowEvent>(PrimaryKeyComparer);
-            return Task.CompletedTask;
         }
 
         protected override async Task OnWatermark(Watermark watermark)
         {
-            Debug.Assert(currentState != null, nameof(currentState));
-            if (currentState.InitialCheckpointDone)
+            Debug.Assert(currentState?.Value != null, nameof(currentState));
+            if (currentState.Value.InitialCheckpointDone)
             {
                 // Send data
                 await SendData();

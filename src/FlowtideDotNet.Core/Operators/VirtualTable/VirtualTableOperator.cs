@@ -19,15 +19,16 @@ using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.DataStructures;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Operators.VirtualTable
 {
-    internal class VirtualTableOperator : IngressVertex<StreamEventBatch, VirtualTableState>
+    internal class VirtualTableOperator : IngressVertex<StreamEventBatch>
     {
         private readonly VirtualTableReadRelation virtualTableReadRelation;
         private readonly IFunctionsRegister functionsRegister;
         private IReadOnlySet<string>? watermarkNames;
-        private bool hasSentInitial = false;
+        private IObjectState<VirtualTableState>? _state;
         private int[] _emitList;
         public override string DisplayName => "Virtual Table";
 
@@ -74,29 +75,31 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
             throw new InvalidOperationException("Get watermarks called before initialize");
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, VirtualTableState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             watermarkNames = new HashSet<string>() { Name };
 
-            if (state != null)
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<VirtualTableState>("virtual_table_state");
+            if (_state.Value == null)
             {
-                hasSentInitial = state.HasSentInitial;
+                _state.Value = new VirtualTableState()
+                {
+                    HasSentInitial = false
+                };
             }
             
-            return Task.CompletedTask;
         }
 
-        protected override Task<VirtualTableState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
-            return Task.FromResult(new VirtualTableState()
-            {
-                HasSentInitial = hasSentInitial
-            });
+            Debug.Assert(_state != null);
+            await _state.Commit();
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            if (hasSentInitial)
+            Debug.Assert(_state?.Value != null);
+            if (_state.Value.HasSentInitial)
             {
                 return;
             }
@@ -125,7 +128,7 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
             var outputBatch = new EventBatchData(columns);
             await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, outputBatch)));
             await output.SendWatermark(new Base.Watermark(Name, 1));
-            hasSentInitial = true;
+            _state.Value.HasSentInitial = true;
             output.ExitCheckpointLock();
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
         }

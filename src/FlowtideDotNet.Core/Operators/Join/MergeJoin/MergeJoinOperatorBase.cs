@@ -27,7 +27,7 @@ using FlowtideDotNet.Storage.Serializers;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
-    internal class MergeJoinOperatorBase : MultipleInputVertex<StreamEventBatch, JoinState>
+    internal class MergeJoinOperatorBase : MultipleInputVertex<StreamEventBatch>
     {
         private readonly JoinComparerLeft leftComparer;
         private readonly JoinComparerRight rightComparer;
@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             return Task.CompletedTask;
         }
 
-        public override async Task<JoinState?> OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
 #if DEBUG_WRITE
             allInput!.WriteLine("Checkpoint");
@@ -102,7 +102,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             await _leftTree.Commit();
             await _rightTree.Commit();
-            return new JoinState();
         }
 
         protected RowEvent OnConditionSuccess(JoinStreamEvent left, JoinStreamEvent right, in int weight, in uint iteration)
@@ -366,7 +365,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             throw new NotSupportedException("Unknown targetId");
         }
 
-        protected override async Task InitializeOrRestore(JoinState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
             if (allInput != null)
@@ -392,10 +391,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
 
             _flexBuffer.Clear();
-            if (state == null)
-            {
-                state = new JoinState();
-            }
             _leftTree = await stateManagerClient.GetOrCreateTree("left", 
                 new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>()
             {

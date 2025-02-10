@@ -1,4 +1,16 @@
-﻿using FlowtideDotNet.Base;
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.FixedPoint;
@@ -18,12 +30,8 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Iteration
 {
-    internal class IterationState
-    {
 
-    }
-
-    internal class ColumnIterationOperator : FixedPointVertex<StreamEventBatch, IterationState>
+    internal class ColumnIterationOperator : FixedPointVertex<StreamEventBatch>
     {
         private readonly IterationRelation _iterationRelation;
         private ICounter<long>? _eventsProcessed;
@@ -47,7 +55,7 @@ namespace FlowtideDotNet.Core.Operators.Iteration
             return visitor.ReadExists;
         }
 
-        protected override Task InitializeOrRestore(IterationState? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             if (_eventsProcessed == null)
             {

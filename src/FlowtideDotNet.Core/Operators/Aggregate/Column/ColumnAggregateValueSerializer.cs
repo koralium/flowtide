@@ -18,6 +18,8 @@ using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -29,11 +31,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
     {
         private readonly int measureCount;
         private readonly IMemoryAllocator memoryAllocator;
+        private readonly EventBatchBPlusTreeSerializer _batchSerializer;
 
         public ColumnAggregateValueSerializer(int measureCount, IMemoryAllocator memoryAllocator)
         {
             this.measureCount = measureCount;
             this.memoryAllocator = memoryAllocator;
+            _batchSerializer = new EventBatchBPlusTreeSerializer();
         }
 
         public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
@@ -46,27 +50,36 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             return new ColumnAggregateValueContainer(measureCount, memoryAllocator);
         }
 
-        public ColumnAggregateValueContainer Deserialize(in BinaryReader reader)
+        public ColumnAggregateValueContainer Deserialize(ref SequenceReader<byte> reader)
         {
-            var previousValueLength = reader.ReadInt32();
-            var previousValueMemory = reader.ReadBytes(previousValueLength);
+            if (!reader.TryReadLittleEndian(out int previousValueLength))
+            {
+                throw new InvalidOperationException("Failed to read previous value length");
+            }
             var previousValueNativeMemory = memoryAllocator.Allocate(previousValueLength, 64);
+            var slice = previousValueNativeMemory.Memory.Span.Slice(0, previousValueLength);
+            if (!reader.TryCopyTo(slice))
+            {
+                throw new InvalidOperationException("Failed to read previous value");
+            }
+            reader.Advance(previousValueLength);
 
-            previousValueMemory.CopyTo(previousValueNativeMemory.Memory.Span);
-
-            var weightLength = reader.ReadInt32();
-            var weightMemory = reader.ReadBytes(weightLength);
+            if (!reader.TryReadLittleEndian(out int weightLength))
+            {
+                throw new InvalidOperationException("Failed to read weight length");
+            }
             var weightNativeMemory = memoryAllocator.Allocate(weightLength, 64);
-            weightMemory.CopyTo(weightNativeMemory.Memory.Span);
+            if (!reader.TryCopyTo(weightNativeMemory.Memory.Span.Slice(0, weightLength)))
+            {
+                throw new InvalidOperationException("Failed to read weight");
+            }
+            reader.Advance(weightLength);
 
-            using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
-            var recordBatch = arrowReader.ReadNextRecordBatch();
+            var eventBatchResult = _batchSerializer.Deserialize(ref reader, memoryAllocator);
+            var previousValueList = new PrimitiveList<bool>(previousValueNativeMemory, eventBatchResult.Count, memoryAllocator);
+            var weightsList = new PrimitiveList<int>(weightNativeMemory, eventBatchResult.Count, memoryAllocator);
 
-            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, memoryAllocator);
-            var previousValueList = new PrimitiveList<bool>(previousValueNativeMemory, recordBatch.Length, memoryAllocator);
-            var weightsList = new PrimitiveList<int>(weightNativeMemory, recordBatch.Length, memoryAllocator);
-
-            return new ColumnAggregateValueContainer(measureCount, eventBatch, weightsList, previousValueList);
+            return new ColumnAggregateValueContainer(measureCount, eventBatchResult.EventBatch, weightsList, previousValueList);
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
@@ -74,18 +87,22 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in ColumnAggregateValueContainer values)
+        public void Serialize(in IBufferWriter<byte> writer, in ColumnAggregateValueContainer values)
         {
             var previousValueMemory = values._previousValueSent.SlicedMemory;
-            writer.Write(previousValueMemory.Length);
+            var lengthSpan = writer.GetSpan(4);
+            BinaryPrimitives.WriteInt32LittleEndian(lengthSpan, previousValueMemory.Length);
+            writer.Advance(4);
+
             writer.Write(previousValueMemory.Span);
             var weightMemory = values._weights.SlicedMemory;
-            writer.Write(weightMemory.Length);
+            lengthSpan = writer.GetSpan(4);
+            BinaryPrimitives.WriteInt32LittleEndian(lengthSpan, weightMemory.Length);
+            writer.Advance(4);
+
             writer.Write(weightMemory.Span);
 
-            var recordBatch = EventArrowSerializer.BatchToArrow(values._eventBatch, values._weights.Count);
-            var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
-            batchWriter.WriteRecordBatch(recordBatch);
+            _batchSerializer.Serialize(writer, values._eventBatch, values._weights.Count);
         }
     }
 }

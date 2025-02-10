@@ -82,15 +82,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="offsetLength"></param>
         /// <param name="dataMemory"></param>
         /// <param name="memoryAllocator"></param>
-        public BinaryList(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte> dataMemory, IMemoryAllocator memoryAllocator)
+        public BinaryList(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
         {
             _offsets = new IntList(offsetMemory, offsetLength, memoryAllocator);
-            _data = dataMemory.Memory.Pin().Pointer;
+            if (dataMemory != null)
+            {
+                _data = dataMemory.Memory.Pin().Pointer;
+                _dataLength = dataMemory.Memory.Length;
+            }
+            else
+            {
+                _data = null;
+                _dataLength = 0;
+            }
             _memoryAllocator = memoryAllocator;
             _memoryOwner = dataMemory;
             var lastoffset = _offsets.Get(offsetLength - 1);
             _length = lastoffset;
-            _dataLength = dataMemory.Memory.Length;
+            
         }
 
         private void EnsureCapacity(int length)
@@ -259,9 +268,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Span<byte> Get(in int index)
         {
-            var offset = _offsets.Get(index);
-            return AccessSpan.Slice(offset, _offsets.Get(index + 1) - offset);
-            
+                var offset = _offsets.Get(index);
+                return AccessSpan.Slice(offset, _offsets.Get(index + 1) - offset);
         }
 
         public Memory<byte> GetMemory(in int index)
