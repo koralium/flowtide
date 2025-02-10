@@ -114,6 +114,32 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
             {
                 Assert.Equal(events[i].ToJson(), fetchDataRowEvents.Data.Events[i].ToJson());
             }
+
+            // Do a checkpoint to save the data to disk
+            await op.SendAsync(new Checkpoint(1, 2));
+
+            // wait for checkpoint to complete
+            var timedSource = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+            await outputBlock.OutputAvailableAsync();
+            var checkpointMessage = await outputBlock.ReceiveAsync(TimeSpan.FromSeconds(1));
+
+            // Clear cache to make sure the events are deserialized when reading them
+            ClearCache();
+
+            fetchData = new ExchangeFetchDataMessage()
+            {
+                FromEventId = 0
+            };
+            await op.QueueTrigger(new TriggerEvent("exchange_0", fetchData));
+
+            Assert.NotNull(fetchData.OutEvents);
+            // Compare events from outputs
+            fetchDataRowEvents = (fetchData.OutEvents[1] as StreamMessage<StreamEventBatch>)!;
+
+            for (int i = 0; i < events.Count; i++)
+            {
+                Assert.Equal(events[i].ToJson(), fetchDataRowEvents.Data.Events[i].ToJson());
+            }
         }
 
         /// <summary>

@@ -33,14 +33,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public Dictionary<int, long> TargetsEventCounter { get; set; } = new Dictionary<int, long>();
     }
 
-    internal class ExchangeOperator : PartitionVertex<StreamEventBatch, ExchangeOperatorState>, IStreamEgressVertex
+    internal class ExchangeOperator : PartitionVertex<StreamEventBatch>, IStreamEgressVertex
     {
         private const string PullBucketRequestTriggerPrefix = "exchange_";
 
         private readonly ExchangeRelation exchangeRelation;
         private readonly IExchangeKindExecutor _executor;
         private Action<string>? _checkpointDone;
-        private ExchangeOperatorState? _state;
+        private IObjectState<ExchangeOperatorState>? _state;
 
         public ExchangeOperator(ExchangeRelation exchangeRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(CalculateTargetNumber(exchangeRelation), executionDataflowBlockOptions)
         {
@@ -66,15 +66,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public override string DisplayName => "Exchange";
 
-        protected override async Task InitializeOrRestore(ExchangeOperatorState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
-            if (state == null)
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<ExchangeOperatorState>("state");
+            if (_state.Value == null)
             {
-                state = new ExchangeOperatorState();
+                _state.Value = new ExchangeOperatorState();
             }
-            _state = state;
 
-            await _executor.Initialize(exchangeRelation, stateManagerClient, state, MemoryAllocator);
+            await _executor.Initialize(exchangeRelation, stateManagerClient, _state.Value, MemoryAllocator);
 
             foreach(var pullTarget in exchangeRelation.Targets)
             {
@@ -115,12 +115,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         protected override async Task OnLockingEvent(ILockingEvent lockingEvent)
         {
+            Debug.Assert(_state != null);
             await _executor.OnLockingEvent(lockingEvent);
 
             if (lockingEvent is ICheckpointEvent checkpointEvent)
             {
-                var checkpointData = await OnCheckpoint();
-                checkpointEvent.AddState(Name, checkpointData);
+                await OnCheckpoint();
+                await _state.Commit();
             }
 
             if (_checkpointDone != null)
@@ -149,11 +150,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _checkpointDone = checkpointDone;
         }
 
-        private async Task<ExchangeOperatorState> OnCheckpoint()
+        private async Task OnCheckpoint()
         {
-            Debug.Assert(_state != null);
-            await _executor.AddCheckpointState(_state);
-            return _state;
+            Debug.Assert(_state?.Value != null);
+            await _executor.AddCheckpointState(_state.Value);
         }
     }
 }

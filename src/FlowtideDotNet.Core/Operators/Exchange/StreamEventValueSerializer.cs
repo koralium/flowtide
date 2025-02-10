@@ -13,12 +13,16 @@
 using Apache.Arrow.Ipc;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using Google.Protobuf.WellKnownTypes;
 using SqlParser.Ast;
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -34,10 +38,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private const byte CheckpointType = 4;
 
         private readonly IMemoryAllocator memoryAllocator;
+        private readonly EventBatchBPlusTreeSerializer _eventBatchBPlusTreeSerializer;
 
         public StreamEventValueSerializer(IMemoryAllocator memoryAllocator)
         {
             this.memoryAllocator = memoryAllocator;
+            _eventBatchBPlusTreeSerializer = new EventBatchBPlusTreeSerializer();
         }
 
         public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)
@@ -50,9 +56,203 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return new StreamEventValueContainer(memoryAllocator);
         }
 
-        public StreamEventValueContainer Deserialize(in BinaryReader reader)
+        private StreamMessage<StreamEventBatch> DeserializeBatch(ref SequenceReader<byte> reader)
         {
-            throw new NotImplementedException();
+            if (!reader.TryReadLittleEndian(out long time))
+            {
+                throw new InvalidOperationException("Failed to read time");
+            }
+
+            if (!reader.TryReadLittleEndian(out int weightsLength))
+            {
+                throw new InvalidOperationException("Failed to read weights length");
+            }
+
+            var weightsMemory = memoryAllocator.Allocate(weightsLength, 64);
+            if (!reader.TryCopyTo(weightsMemory.Memory.Span.Slice(0, weightsLength)))
+            {
+                throw new InvalidOperationException("Failed to read weights");
+            }
+            reader.Advance(weightsLength);
+
+            if (!reader.TryReadLittleEndian(out int iterationsLength))
+            {
+                throw new InvalidOperationException("Failed to read iterations length");
+            }
+            var iterationsMemory = memoryAllocator.Allocate(iterationsLength, 64);
+            if (!reader.TryCopyTo(iterationsMemory.Memory.Span.Slice(0, iterationsLength)))
+            {
+                throw new InvalidOperationException("Failed to read iterations");
+            }
+            reader.Advance(iterationsLength);
+
+            var eventBatchData = _eventBatchBPlusTreeSerializer.Deserialize(ref reader, memoryAllocator);
+
+            var weights = new PrimitiveList<int>(weightsMemory, eventBatchData.Count, memoryAllocator);
+            var iterations = new PrimitiveList<uint>(weightsMemory, eventBatchData.Count, memoryAllocator);
+
+            return new StreamMessage<StreamEventBatch>(new StreamEventBatch(new ColumnStore.EventBatchWeighted(weights, iterations, eventBatchData.EventBatch)), time);
+        }
+
+        private InitWatermarksEvent DeserializeInitWatermark(ref SequenceReader<byte> reader)
+        {
+            if (!reader.TryReadLittleEndian(out int watermarkCount))
+            {
+                throw new InvalidOperationException("Failed to read watermark count");
+            }
+
+            var watermarkNames = new HashSet<string>(watermarkCount);
+            for (int i = 0; i < watermarkCount; i++)
+            {
+                if (!reader.TryReadLittleEndian(out int keyLength))
+                {
+                    throw new InvalidOperationException("Failed to read key length");
+                }
+
+                var keyBytes = reader.Sequence.Slice(reader.Position, keyLength);
+                reader.Advance(keyLength);
+                watermarkNames.Add(Encoding.UTF8.GetString(keyBytes));
+            }
+
+            return new InitWatermarksEvent(watermarkNames);
+        }
+
+        private Checkpoint DeserializeCheckpoint(ref SequenceReader<byte> reader)
+        {
+            if (!reader.TryReadLittleEndian(out long checkpointTime))
+            {
+                throw new InvalidOperationException("Failed to read checkpoint time");
+            }
+
+            if (!reader.TryReadLittleEndian(out long newTime))
+            {
+                throw new InvalidOperationException("Failed to read new time");
+            }
+
+            return new Checkpoint(checkpointTime, newTime);
+        }
+
+        private Watermark DeserializeWatermark(ref SequenceReader<byte> reader)
+        {
+            if (!reader.TryReadLittleEndian(out long startTimeUnix))
+            {
+                throw new InvalidOperationException("Failed to read start time");
+            }
+            var startTime = DateTimeOffset.FromUnixTimeMilliseconds(startTimeUnix);
+
+            if (!reader.TryReadLittleEndian(out int sourceLength))
+            {
+                throw new InvalidOperationException("Failed to read source length");
+            }
+
+            var sourceBytes = reader.Sequence.Slice(reader.Position, sourceLength);
+            reader.Advance(sourceLength);
+            var sourceOperatorId = Encoding.UTF8.GetString(sourceBytes);
+
+            if (!reader.TryReadLittleEndian(out int watermarkCount))
+            {
+                throw new InvalidOperationException("Failed to read watermark count");
+            }
+
+            var watermarksBuilder = ImmutableDictionary.CreateBuilder<string, long>();
+            for (int i = 0; i < watermarkCount; i++)
+            {
+                if (!reader.TryReadLittleEndian(out int keyLength))
+                {
+                    throw new InvalidOperationException("Failed to read key length");
+                }
+
+                var keyBytes = reader.Sequence.Slice(reader.Position, keyLength);
+                reader.Advance(keyLength);
+                var key = Encoding.UTF8.GetString(keyBytes);
+
+                if (!reader.TryReadLittleEndian(out long value))
+                {
+                    throw new InvalidOperationException("Failed to read value");
+                }
+
+                watermarksBuilder.Add(new KeyValuePair<string, long>(key, value));
+            }
+
+            return new Watermark(watermarksBuilder.ToImmutableDictionary(), startTime, sourceOperatorId);
+        }
+
+        private unsafe LockingEventPrepare DeserializeLockingEventPrepare(ref SequenceReader<byte> reader)
+        {
+            if (!reader.TryRead(out byte otherInputsNotInCheckpoint))
+            {
+                throw new InvalidOperationException("Failed to read other inputs not in checkpoint");
+            }
+            if (!reader.TryRead(out byte isInitEvent))
+            {
+                throw new InvalidOperationException("Failed to read is init event");
+            }
+
+            var guidStack = stackalloc byte[16];
+            var idSpan = new Span<byte>(guidStack, 16);
+            if (!reader.TryCopyTo(idSpan))
+            {
+                throw new InvalidOperationException("Failed to read id");
+            }
+
+            var id = new Guid(idSpan);
+
+            reader.TryRead(out byte type);
+
+            ILockingEvent? lockingEvent;
+            switch (type)
+            {
+                case InitWatermarksEventType:
+                    lockingEvent = DeserializeInitWatermark(ref reader);
+                    break;
+                case CheckpointType:
+                    lockingEvent =  DeserializeCheckpoint(ref reader);
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
+
+            return new LockingEventPrepare(lockingEvent, isInitEvent != 0, otherInputsNotInCheckpoint != 0, id);
+        }
+
+        public StreamEventValueContainer Deserialize(ref SequenceReader<byte> reader)
+        {
+            if (!reader.TryReadLittleEndian(out int count))
+            {
+                throw new InvalidOperationException("Failed to read count");
+            }
+
+            var container = new StreamEventValueContainer(memoryAllocator);
+
+            for (int i = 0; i < count; i++)
+            {
+                if (!reader.TryRead(out byte type))
+                {
+                    throw new InvalidOperationException("Failed to read type");
+                }
+
+                switch (type)
+                {
+                    case StreamEventBatchType:
+                        container._streamEvents.Add(DeserializeBatch(ref reader));
+                        break;
+                    case WatermarkType:
+                        container._streamEvents.Add(DeserializeWatermark(ref reader));
+                        break;
+                    case LockingEventPrepareType:
+                        container._streamEvents.Add(DeserializeLockingEventPrepare(ref reader));
+                        break;
+                    case CheckpointType:
+                        container._streamEvents.Add(DeserializeCheckpoint(ref reader));
+                        break;
+                    case InitWatermarksEventType:
+                        container._streamEvents.Add(DeserializeInitWatermark(ref reader));
+                        break;
+                    default:
+                        throw new NotImplementedException();
+                }
+            }
+            return container;
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
@@ -60,65 +260,95 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return Task.CompletedTask;
         }
 
-        private void SerializeBatch(in BinaryWriter writer, in StreamMessage<StreamEventBatch> batch)
+        private void SerializeBatch(in IBufferWriter<byte> writer, in StreamMessage<StreamEventBatch> batch)
         {
-            writer.Write(StreamEventBatchType);
-            writer.Write(batch.Time);
+            var destinationSpan = writer.GetSpan(13);
+            destinationSpan[0] = StreamEventBatchType;
+            BinaryPrimitives.WriteInt64LittleEndian(destinationSpan.Slice(1), batch.Time);
 
             var weightsSpan = batch.Data.Data.Weights.SlicedMemory.Span;
-            writer.Write(weightsSpan.Length);
+
+            BinaryPrimitives.WriteInt32LittleEndian(destinationSpan.Slice(9), weightsSpan.Length);
+            writer.Advance(13);
             writer.Write(batch.Data.Data.Weights.SlicedMemory.Span);
 
+            destinationSpan = writer.GetSpan(4);
+
             var iterationsSpan = batch.Data.Data.Iterations.SlicedMemory.Span;
-            writer.Write(iterationsSpan.Length);
+            BinaryPrimitives.WriteInt32LittleEndian(destinationSpan, iterationsSpan.Length);
+            writer.Advance(4);
+
             writer.Write(batch.Data.Data.Iterations.SlicedMemory.Span);
 
-            var recordBatch = EventArrowSerializer.BatchToArrow(batch.Data.Data.EventBatchData, batch.Data.Data.Count);
-            var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
-            batchWriter.WriteRecordBatch(recordBatch);
+            _eventBatchBPlusTreeSerializer.Serialize(writer, batch.Data.Data.EventBatchData, batch.Data.Data.Count);
         }
 
-        private void SerializeWatermark(in BinaryWriter writer, Watermark watermark)
+        private void SerializeWatermark(in IBufferWriter<byte> writer, Watermark watermark)
         {
-            writer.Write(WatermarkType);
-            writer.Write(watermark.SourceOperatorId ?? "");
-            writer.Write(watermark.StartTime.ToUnixTimeMilliseconds());
+            var sourceOperatorSpan = (watermark.SourceOperatorId ?? "").AsSpan();
+            var sourceLength = Encoding.UTF8.GetByteCount(sourceOperatorSpan);
+            var destinationSpan = writer.GetSpan(17 + sourceLength);
 
-            writer.Write(watermark.Watermarks.Count);
+            destinationSpan[0] = WatermarkType;
+            BinaryPrimitives.WriteInt64LittleEndian(destinationSpan.Slice(1), watermark.StartTime.ToUnixTimeMilliseconds());
+            BinaryPrimitives.WriteInt32LittleEndian(destinationSpan.Slice(9), sourceLength);
+            Encoding.UTF8.GetBytes(sourceOperatorSpan, destinationSpan.Slice(13));
+
+            BinaryPrimitives.WriteInt32LittleEndian(destinationSpan.Slice(13 + sourceLength), watermark.Watermarks.Count);
+            writer.Advance(17 + sourceLength);
 
             foreach (var wm in watermark.Watermarks)
             {
-                writer.Write(wm.Key);
-                writer.Write(wm.Value);
+                var keyLength = Encoding.UTF8.GetByteCount(wm.Key);
+                var spanLength = keyLength + 12;
+                var span = writer.GetSpan(spanLength);
+                BinaryPrimitives.WriteInt32LittleEndian(span, keyLength);
+                Encoding.UTF8.GetBytes(wm.Key, span.Slice(4));
+                BinaryPrimitives.WriteInt64LittleEndian(span.Slice(4 + keyLength), wm.Value);
+                writer.Advance(spanLength);
             }
         }
 
-        private void SerializeLockingEventPrepare(in BinaryWriter writer, LockingEventPrepare lockingEventPrepare)
+        private void SerializeLockingEventPrepare(in IBufferWriter<byte> writer, LockingEventPrepare lockingEventPrepare)
         {
-            writer.Write(LockingEventPrepareType);
-            writer.Write(lockingEventPrepare.OtherInputsNotInCheckpoint);
+            var destinationSpan = writer.GetSpan(19);
+            destinationSpan[0] = LockingEventPrepareType;
+            destinationSpan[1] = (byte)(lockingEventPrepare.OtherInputsNotInCheckpoint ?  1 : 0);
+            destinationSpan[3] = (byte)(lockingEventPrepare.IsInitEvent ? 1 : 0);
+            lockingEventPrepare.Id.TryWriteBytes(destinationSpan.Slice(3));
+            writer.Advance(19);
+            
             SerializeLockingEvent(writer, lockingEventPrepare.LockingEvent);
         }
 
-        private void SerializeCheckpoint(in BinaryWriter writer, Checkpoint checkpoint)
+        private void SerializeCheckpoint(in IBufferWriter<byte> writer, Checkpoint checkpoint)
         {
-            writer.Write(CheckpointType);
-            writer.Write(checkpoint.CheckpointTime);
-            writer.Write(checkpoint.NewTime);
+            var destinationSpan = writer.GetSpan(17);
+            destinationSpan[0] = CheckpointType;
+            BinaryPrimitives.WriteInt64LittleEndian(destinationSpan.Slice(1), checkpoint.CheckpointTime);
+            BinaryPrimitives.WriteInt64LittleEndian(destinationSpan.Slice(9), checkpoint.NewTime);
+            writer.Advance(17);
         }
 
-        private void SerializeInitWatermarksEvent(in BinaryWriter writer, InitWatermarksEvent initWatermarksEvent)
+        private void SerializeInitWatermarksEvent(in IBufferWriter<byte> writer, InitWatermarksEvent initWatermarksEvent)
         {
-            writer.Write(InitWatermarksEventType);
-            writer.Write(initWatermarksEvent.WatermarkNames.Count);
+            var destinationSpan = writer.GetSpan(5);
+            destinationSpan[0] = InitWatermarksEventType;
+            BinaryPrimitives.WriteInt32LittleEndian(destinationSpan.Slice(1), initWatermarksEvent.WatermarkNames.Count);
+            writer.Advance(5);
 
             foreach (var wm in initWatermarksEvent.WatermarkNames)
             {
-                writer.Write(wm);
+                var keyLength = Encoding.UTF8.GetByteCount(wm);
+                var spanLength = keyLength + 4;
+                var span = writer.GetSpan(spanLength);
+                BinaryPrimitives.WriteInt32LittleEndian(span, keyLength);
+                Encoding.UTF8.GetBytes(wm, span.Slice(4));
+                writer.Advance(spanLength);
             }
         }
 
-        private void SerializeLockingEvent(in BinaryWriter writer, ILockingEvent lockingEvent)
+        private void SerializeLockingEvent(in IBufferWriter<byte> writer, ILockingEvent lockingEvent)
         {
             if (lockingEvent is InitWatermarksEvent initWatermarksEvent)
             {
@@ -133,8 +363,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             throw new NotImplementedException();
         }
 
-        public void Serialize(in BinaryWriter writer, in StreamEventValueContainer values)
+        public void Serialize(in IBufferWriter<byte> writer, in StreamEventValueContainer values)
         {
+            var destinationSpan = writer.GetSpan(4);
+            BinaryPrimitives.WriteInt32LittleEndian(destinationSpan, values._streamEvents.Count);
+            writer.Advance(4);
             for (int i = 0; i < values._streamEvents.Count; i++)
             {
                 var val = values._streamEvents[i];
@@ -160,7 +393,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     throw new NotImplementedException();
                 }
             }
-            throw new NotImplementedException();
         }
     }
 }

@@ -27,6 +27,14 @@ namespace FlowtideDotNet.Base
             Id = Guid.NewGuid();
         }
 
+        public LockingEventPrepare(ILockingEvent lockingEvent, bool isInitEvent, bool otherInputsNotInCheckpoint, Guid id)
+        {
+            LockingEvent = lockingEvent;
+            IsInitEvent = isInitEvent;
+            OtherInputsNotInCheckpoint = otherInputsNotInCheckpoint;
+            Id = id;
+        }
+
         public ILockingEvent LockingEvent { get; }
         
         /// <summary>

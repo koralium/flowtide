@@ -13,6 +13,8 @@
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -39,16 +41,23 @@ namespace FlowtideDotNet.Storage.Serializers
             return new PrimitiveListKeyContainer<T>(memoryAllocator);
         }
 
-        public PrimitiveListKeyContainer<T> Deserialize(in BinaryReader reader)
+        public PrimitiveListKeyContainer<T> Deserialize(ref SequenceReader<byte> reader)
         {
-            var count = reader.ReadInt32();
-            var length = reader.ReadInt32();
-            
-            var bytes = reader.ReadBytes(length);
-
+            if (!reader.TryReadLittleEndian(out int count))
+            {
+                throw new InvalidOperationException("Failed to read count");
+            }
+            if (!reader.TryReadLittleEndian(out int length))
+            {
+                throw new InvalidOperationException("Failed to read length");
+            }
             var memory = memoryAllocator.Allocate(length, 64);
-            bytes.CopyTo(memory.Memory.Span);
 
+            if (!reader.TryCopyTo(memory.Memory.Span.Slice(0, length)))
+            {
+                throw new InvalidOperationException("Failed to read bytes");
+            }
+            reader.Advance(length);
             return new PrimitiveListKeyContainer<T>(memory, count, memoryAllocator);
         }
 
@@ -57,12 +66,13 @@ namespace FlowtideDotNet.Storage.Serializers
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in PrimitiveListKeyContainer<T> values)
+        public void Serialize(in IBufferWriter<byte> writer, in PrimitiveListKeyContainer<T> values)
         {
-            writer.Write(values.Count);
-            var mem = values.Memory;
-            writer.Write(mem.Length);
-            writer.Write(mem.Span);
+            var span = writer.GetSpan(values.Memory.Length + 8);
+            BinaryPrimitives.WriteInt32LittleEndian(span, values.Count);
+            BinaryPrimitives.WriteInt32LittleEndian(span.Slice(4), values.Memory.Length);
+            values.Memory.Span.CopyTo(span.Slice(8));
+            writer.Advance(values.Memory.Length + 8);
         }
     }
 }
