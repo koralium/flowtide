@@ -40,8 +40,18 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers
                     var innerConverter = resolver.GetConverter(innerTypeInfo);
                     return new ListConverter(type, innerConverter);
                 }
+
+                var genericHashType = typeof(HashSet<>).MakeGenericType(innerType);
+
+                if (type.Type.IsAssignableFrom(genericHashType))
+                {
+                    var innerTypeInfo = ObjectConverterTypeInfoLookup.GetTypeInfo(innerType);
+                    var innerConverter = resolver.GetConverter(innerTypeInfo);
+
+                    return (IObjectColumnConverter)Activator.CreateInstance(typeof(HashSetConverter<>).MakeGenericType(innerType), type, innerConverter)!;
+                }
             }
-            throw new NotImplementedException();
+            throw new NotImplementedException($"Cannot handle type {type.Type}");
         }
 
         private static bool IsIEnumerableOfT(Type type, [NotNullWhen(true)] out Type? elementType)

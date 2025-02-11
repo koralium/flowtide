@@ -74,6 +74,14 @@ namespace FlowtideDotNet.Core.Tests
             public decimal DecimalValue { get; set; }
 
             public EnumTest EnumValue { get; set; }
+
+            public List<InnerObject>? ListOfObjects { get; set; }
+
+            public Guid GuidValue { get; set; }
+
+            public char CharValue { get; set; }
+
+            public HashSet<int>? IntHashSet { get; set; }
         }
 
         [Fact]
@@ -530,6 +538,79 @@ namespace FlowtideDotNet.Core.Tests
             var deserialized = (TestClass)converter.Deserialize(arr, 0);
 
             Assert.Equal(testObject.EnumValue, deserialized.EnumValue);
+        }
+
+        [Fact]
+        public void TestConvertListOfObjects()
+        {
+            var testObject = new TestClass()
+            {
+                ListOfObjects = new List<InnerObject>() { new InnerObject() { Name = "test" } }
+            };
+
+            var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "listOfObjects" });
+            IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
+
+            converter.Serialize(testObject, arr);
+
+            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+
+            Assert.Equal(testObject.ListOfObjects.Count, deserialized.ListOfObjects!.Count);
+            Assert.Equal(testObject.ListOfObjects[0].Name, deserialized.ListOfObjects[0].Name);
+        }
+
+        [Fact]
+        public void TestConvertGuid()
+        {
+            var testObject = new TestClass()
+            {
+                GuidValue = Guid.NewGuid()
+            };
+
+            var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "guidValue" });
+            IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
+
+            converter.Serialize(testObject, arr);
+
+            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+
+            Assert.Equal(testObject.GuidValue, deserialized.GuidValue);
+        }
+
+        [Fact]
+        public void TestConvertChar()
+        {
+            var testObject = new TestClass()
+            {
+                CharValue = 'a'
+            };
+
+            var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "charValue" });
+            IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
+
+            converter.Serialize(testObject, arr);
+
+            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+
+            Assert.Equal(testObject.CharValue, deserialized.CharValue);
+        }
+
+        [Fact]
+        public void TestConvertIntHashSet()
+        {
+            var testObject = new TestClass()
+            {
+                IntHashSet = new HashSet<int>() { 1, 2, 3 }
+            };
+
+            var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "intHashSet" });
+            IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
+
+            converter.Serialize(testObject, arr);
+
+            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+
+            Assert.Equal(testObject.IntHashSet, deserialized.IntHashSet);
         }
     }
 }
