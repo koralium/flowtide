@@ -156,6 +156,14 @@ namespace FlowtideDotNet.Storage.DataStructures
             _length += count;
         }
 
+        public void MoveAtIndex(int index, int count)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            span.Slice(index, _length - index).CopyTo(span.Slice(index + count, _length - index));
+            _length += count;
+        }
+
         public void RemoveAt(int index)
         {
             var span = AccessSpan;

@@ -114,6 +114,11 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.AddOrUpdateUser(user);
         }
 
+        public void AddOrUpdateOrder(Order order)
+        {
+            flowtideTestStream.AddOrUpdateOrder(order);
+        }
+
         public void DeleteUser(User user)
         {
             flowtideTestStream.DeleteUser(user);
