@@ -146,6 +146,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.AddOrUpdateCompany(company);
         }
 
+        public void AddOrUpdateOrder(Order order)
+        {
+            generator.AddOrUpdateOrder(order);
+        }
+
+
         [MemberNotNull(nameof(_connectorManager))]
         public void SetupConnectorManager()
         {

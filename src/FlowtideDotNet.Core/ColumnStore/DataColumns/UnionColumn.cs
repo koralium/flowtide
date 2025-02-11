@@ -106,7 +106,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 switch (type)
                 {
                     case ArrowTypeId.Int64:
-                        valueColumns.Add(Int64ColumnFactory.Get(_memoryAllocator));
+                        valueColumns.Add(new IntegerColumn(_memoryAllocator));
                         break;
                     case ArrowTypeId.String:
                         valueColumns.Add(new StringColumn(_memoryAllocator));

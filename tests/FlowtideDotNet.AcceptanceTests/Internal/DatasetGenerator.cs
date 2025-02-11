@@ -69,6 +69,22 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             mockTable.AddOrUpdate(new List<User>() { user });
         }
 
+        public void AddOrUpdateOrder(Order order)
+        {
+            var index = Orders.FindIndex(x => x.OrderKey == order.OrderKey);
+
+            if (index >= 0)
+            {
+                Orders[index] = order;
+            }
+            else
+            {
+                Orders.Add(order);
+            }
+            var mockTable = mockDatabase.GetOrCreateTable<Order>("orders");
+            mockTable.AddOrUpdate(new List<Order>() { order });
+        }
+
         public void AddOrUpdateCompany(Company company)
         {
             var index = Companies.FindIndex(x => x.CompanyId == company.CompanyId);

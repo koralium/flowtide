@@ -82,6 +82,8 @@ namespace FlowtideDotNet.Core.Tests
             public char CharValue { get; set; }
 
             public HashSet<int>? IntHashSet { get; set; }
+
+            public Func<object> Func { get; set; }
         }
 
         [Fact]
@@ -650,5 +652,13 @@ namespace FlowtideDotNet.Core.Tests
             Assert.Equal(obj.Name, (deserialized.First() as InnerObject)!.Name);
         }
 
+        [Fact]
+        public void TestConvertFuncThrowsException()
+        {
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "func" });
+            });
+        }
     }
 }
