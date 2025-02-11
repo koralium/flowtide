@@ -41,7 +41,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                         keyIndices.Add(i);
                     }
                 }
-                mockTable = new MockTable(tableMembers.Select(x => x.Name).ToList(), keyIndices, types);
+                mockTable = new MockTable(tableMembers.Select(x => x.Name).ToList(), keyIndices, types, typeof(T));
                 Tables.Add(tableName, mockTable);
             }
             return mockTable;

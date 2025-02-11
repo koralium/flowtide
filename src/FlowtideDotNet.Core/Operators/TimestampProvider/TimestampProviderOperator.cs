@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
@@ -23,7 +24,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
 {
     internal class TimestampProviderState
     {
-        public long? LastSentTimestamp { get; set; }
+        public DateTimeOffset? LastSentTimestamp { get; set; }
     }
 
     internal class TimestampProviderOperator : ReadBaseOperator
@@ -87,6 +88,11 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
             await _state.Commit();
         }
 
+        private long DateTimeToTicks(DateTimeOffset date)
+        {
+            return date.Subtract(DateTime.UnixEpoch).Ticks;
+        }
+
         private async Task UpdateTimestamp(IngressOutput<StreamEventBatch> output, object? state)
         {
             Debug.Assert(_state?.Value != null);
@@ -99,12 +105,12 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
-            var currentTimestamp = _timeProvider.GetUtcNow().Subtract(DateTime.UnixEpoch).Ticks;
+            var currentTimestamp = _timeProvider.GetUtcNow();//.Subtract(DateTime.UnixEpoch).Ticks;
             if (!_state.Value.LastSentTimestamp.HasValue)
             {
                 weights.Add(1);
                 iterations.Add(0);
-                columns[0].Add(new Int64Value(currentTimestamp));
+                columns[0].Add(new TimestampTzValue(currentTimestamp));
 
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 _eventsProcessed.Add(1);
@@ -114,11 +120,11 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
             {
                 weights.Add(1);
                 iterations.Add(0);
-                columns[0].Add(new Int64Value(currentTimestamp));
+                columns[0].Add(new TimestampTzValue(currentTimestamp));
 
                 weights.Add(-1);
                 iterations.Add(0);
-                columns[0].Add(new Int64Value(_state.Value.LastSentTimestamp.Value));
+                columns[0].Add(new TimestampTzValue(_state.Value.LastSentTimestamp.Value));
 
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 _eventsProcessed.Add(2);
@@ -128,7 +134,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
             _state.Value.LastSentTimestamp = currentTimestamp;
 
             // Set the watermark to the current timetamp
-            await output.SendWatermark(new Base.Watermark("__timestamp", currentTimestamp));
+            await output.SendWatermark(new Base.Watermark("__timestamp", DateTimeToTicks(currentTimestamp)));
 
             output.ExitCheckpointLock();
             // Schedule a checkpoint since data has changed
