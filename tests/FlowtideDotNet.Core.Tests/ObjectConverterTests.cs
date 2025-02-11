@@ -98,9 +98,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "innerObject" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.InnerObject.Name, deserialized.InnerObject!.Name);
         }
@@ -116,9 +116,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "int32Value" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.Int32Value, deserialized.Int32Value);
         }
@@ -134,9 +134,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "int64Value" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.Int64Value, deserialized.Int64Value);
         }
@@ -152,9 +152,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "int16Value" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.Int16Value, deserialized.Int16Value);
         }
@@ -170,9 +170,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "int8Value" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.Int8Value, deserialized.Int8Value);
         }
@@ -188,9 +188,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "intList" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.IntList, deserialized.IntList);
         }
@@ -206,9 +206,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "intArray" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.IntArray, deserialized.IntArray);
         }
@@ -224,9 +224,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "notNullDateTime" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.NotNullDateTime, deserialized.NotNullDateTime);
         }
@@ -242,9 +242,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "nullableDateTime" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.NullableDateTime, deserialized.NullableDateTime);
         }
@@ -260,9 +260,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "nullableDateTime" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.NullableDateTime, deserialized.NullableDateTime);
         }
@@ -278,9 +278,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "dictionary" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.Dictionary, deserialized.Dictionary);
         }
@@ -296,9 +296,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "nullableInteger" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.NullableInteger, deserialized.NullableInteger);
         }
@@ -314,9 +314,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "nullableInteger" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.NullableInteger, deserialized.NullableInteger);
         }
@@ -332,9 +332,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "dateTimeOffset" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.DateTimeOffset, deserialized.DateTimeOffset);
         }
@@ -350,9 +350,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "boolValue" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.BoolValue, deserialized.BoolValue);
         }
@@ -368,9 +368,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "boolValue" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.BoolValue, deserialized.BoolValue);
         }
@@ -389,9 +389,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "baseObject" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             if (deserialized.BaseObject is Dictionary<object, object> dict)
             {
@@ -407,9 +407,9 @@ namespace FlowtideDotNet.Core.Tests
                 BaseObject = "hello"
             };
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            deserialized = (TestClass)converter.Deserialize(arr, 1);
+            deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 1);
 
             Assert.Equal(testObject.BaseObject, deserialized.BaseObject);
         }
@@ -425,9 +425,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "doubleValue" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.DoubleValue, deserialized.DoubleValue);
         }
@@ -443,9 +443,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "floatValue" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.FloatValue, deserialized.FloatValue);
         }
@@ -461,9 +461,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "byteArray" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.ByteArray, deserialized.ByteArray);
         }
@@ -479,9 +479,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "readOnlyMemory" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.ReadOnlyMemory.Value, deserialized.ReadOnlyMemory!.Value);
         }
@@ -497,9 +497,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "memory" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.Memory, deserialized.Memory);
         }
@@ -515,9 +515,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "decimalValue" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.DecimalValue, deserialized.DecimalValue);
         }
@@ -533,9 +533,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "enumValue" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.EnumValue, deserialized.EnumValue);
         }
@@ -551,9 +551,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "listOfObjects" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.ListOfObjects.Count, deserialized.ListOfObjects!.Count);
             Assert.Equal(testObject.ListOfObjects[0].Name, deserialized.ListOfObjects[0].Name);
@@ -570,9 +570,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "guidValue" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.GuidValue, deserialized.GuidValue);
         }
@@ -588,9 +588,9 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "charValue" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.CharValue, deserialized.CharValue);
         }
@@ -606,11 +606,49 @@ namespace FlowtideDotNet.Core.Tests
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "intHashSet" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
-            converter.Serialize(testObject, arr);
+            converter.AppendToColumns(testObject, arr);
 
-            var deserialized = (TestClass)converter.Deserialize(arr, 0);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
             Assert.Equal(testObject.IntHashSet, deserialized.IntHashSet);
         }
+
+        [Fact]
+        public void TestConvertTwoColumns()
+        {
+            var testObject = new TestClass()
+            {
+                Int32Value = 42,
+                Int64Value = 43
+            };
+
+            var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "int32Value", "int64Value" });
+            IColumn[] arr = [new Column(GlobalMemoryManager.Instance), new Column(GlobalMemoryManager.Instance)];
+
+            converter.AppendToColumns(testObject, arr);
+
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
+
+            Assert.Equal(testObject.Int32Value, deserialized.Int32Value);
+            Assert.Equal(testObject.Int64Value, deserialized.Int64Value);
+        }
+
+        [Fact]
+        public void TestConvertWithNoColumnNames()
+        {
+            var obj = new InnerObject()
+            {
+                Name = "hello"
+            };
+
+            var converter = BatchConverter.GetBatchConverter(typeof(InnerObject));
+
+            var batch = converter.ConvertToEventBatch(GlobalMemoryManager.Instance, obj);
+
+            var deserialized = converter.ConvertToDotNetObjects(batch);
+
+            Assert.Equal(obj.Name, (deserialized.First() as InnerObject)!.Name);
+        }
+
     }
 }

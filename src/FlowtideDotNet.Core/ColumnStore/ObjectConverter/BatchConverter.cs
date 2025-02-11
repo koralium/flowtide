@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
 {
@@ -28,8 +29,33 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
             this.createObject = createObject;
         }
 
-        public void Serialize(object obj, IColumn[] columns)
+        public EventBatchData ConvertToEventBatch(IEnumerable<object> objects, IMemoryAllocator memoryAllocator)
         {
+            var columns = new IColumn[properties.Count];
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i] = new Column(memoryAllocator);
+            }
+
+            foreach (var obj in objects)
+            {
+                AppendToColumns(obj, columns);
+            }
+
+            return new EventBatchData(columns);
+        }
+
+        public EventBatchData ConvertToEventBatch(IMemoryAllocator memoryAllocator, params object[] objects)
+        {
+            return ConvertToEventBatch(objects, memoryAllocator);
+        }
+
+        public void AppendToColumns(object obj, IColumn[] columns)
+        {
+            if (columns.Length != properties.Count)
+            {
+                throw new InvalidOperationException($"Input column count '{columns.Length}' does not match property count '{properties.Count}'");
+            }
             for (int i = 0; i < properties.Count; i++)
             {
                 var property = properties[i];
@@ -53,7 +79,19 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
             }
         }
 
-        public object Deserialize(IColumn[] columns, int index)
+        public IEnumerable<object> ConvertToDotNetObjects(EventBatchData data)
+        {
+            if (createObject == null)
+            {
+                throw new InvalidOperationException("Cannot deserialize object without a create function");
+            }
+            for (int i = 0; i < data.Count; i++)
+            {
+                yield return ConvertToDotNetObject(data.Columns, i);
+            }
+        }
+
+        public object ConvertToDotNetObject(IReadOnlyList<IColumn> columns, int index)
         {
             if (createObject == null)
             {
@@ -75,7 +113,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
             return obj;
         }
 
-        public static BatchConverter GetBatchConverter(Type objectType, List<string> columnNames, ObjectConverterResolver? resolver = null)
+        public static BatchConverter GetBatchConverter(Type objectType, List<string>? columnNames = null, ObjectConverterResolver? resolver = null)
         {
             if (resolver == null)
             {
@@ -86,6 +124,14 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
             List<IObjectColumnConverter> converters = new List<IObjectColumnConverter>();
             List<ObjectConverterPropertyInfo> propertyInfos = new List<ObjectConverterPropertyInfo>();
 
+            if (columnNames == null)
+            {
+                columnNames = new List<string>();
+                foreach (var property in typeInfo.Properties)
+                {
+                    columnNames.Add(property.Name!);
+                }
+            }
 
             for (int i = 0; i < columnNames.Count; i++)
             {
