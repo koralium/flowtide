@@ -10,40 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.Flexbuffer;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore
+namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers
 {
-    public interface IDataValue
+    internal class CharResolver : IObjectColumnResolver
     {
-        ArrowTypeId Type { get; }
+        public bool CanHandle(ObjectConverterTypeInfo type)
+        {
+            return type.Type == typeof(char);
+        }
 
-        long AsLong { get; }
-
-        FlxString AsString { get; }
-
-        bool AsBool { get; }
-
-        double AsDouble { get; }
-
-        IListValue AsList { get; }
-
-        ReadOnlySpan<byte> AsBinary { get; }
-
-        IMapValue AsMap { get; }
-
-        decimal AsDecimal { get; }
-
-        bool IsNull { get; }
-
-        TimestampTzValue AsTimestamp { get; }
-
-        void CopyToContainer(DataValueContainer container);
+        public IObjectColumnConverter GetConverter(ObjectConverterTypeInfo type, ObjectConverterResolver resolver)
+        {
+            return new CharConverter();
+        }
     }
 }

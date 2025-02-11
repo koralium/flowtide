@@ -10,40 +10,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.ColumnStore
+namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
 {
-    public interface IDataValue
+    public enum ObjectTypeInfoKind
     {
-        ArrowTypeId Type { get; }
-
-        long AsLong { get; }
-
-        FlxString AsString { get; }
-
-        bool AsBool { get; }
-
-        double AsDouble { get; }
-
-        IListValue AsList { get; }
-
-        ReadOnlySpan<byte> AsBinary { get; }
-
-        IMapValue AsMap { get; }
-
-        decimal AsDecimal { get; }
-
-        bool IsNull { get; }
-
-        TimestampTzValue AsTimestamp { get; }
-
-        void CopyToContainer(DataValueContainer container);
+        None = 0,
+        List = 1,
+        Object = 2,
+        Dictionary = 3
     }
 }
