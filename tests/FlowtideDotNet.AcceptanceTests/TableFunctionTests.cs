@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -173,10 +174,8 @@ namespace FlowtideDotNet.AcceptanceTests
                     t
                 FROM unnest(list(1,2,3)) t;");
             await WaitForUpdate();
-            var act = GetActualRows();
-            Assert.Equal(1, act[0][0].AsLong);
-            Assert.Equal(2, act[1][0].AsLong);
-            Assert.Equal(3, act[2][0].AsLong);
+
+            AssertCurrentDataEqual(new[] { new { x = 1 }, new { x = 2 }, new { x = 3 } });
         }
 
         [Fact]
@@ -189,10 +188,18 @@ namespace FlowtideDotNet.AcceptanceTests
                 FROM unnest(map('key1', 1, 'key2', 2)) t;");
             await WaitForUpdate();
             var act = GetActualRows();
-            Assert.Equal("key1", act[0][0].AsMap["key"].AsString);
-            Assert.Equal(1, act[0][0].AsMap["value"].AsLong);
-            Assert.Equal("key2", act[1][0].AsMap["key"].AsString);
-            Assert.Equal(2, act[1][0].AsMap["value"].AsLong);
+
+            var key1 = act.Columns[0].GetValueAt(0, new MapKeyReferenceSegment() { Key = "key" });
+            var value1 = act.Columns[0].GetValueAt(0, new MapKeyReferenceSegment() { Key = "value" });
+
+            Assert.Equal("key1", key1.AsString.ToString());
+            Assert.Equal(1, value1.AsLong);
+
+            var key2 = act.Columns[0].GetValueAt(1, new MapKeyReferenceSegment() { Key = "key" });
+            var value2 = act.Columns[0].GetValueAt(1, new MapKeyReferenceSegment() { Key = "value" });
+
+            Assert.Equal("key2", key2.AsString.ToString());
+            Assert.Equal(2, value2.AsLong);
         }
     }
 }

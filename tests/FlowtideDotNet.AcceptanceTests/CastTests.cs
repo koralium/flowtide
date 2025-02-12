@@ -332,7 +332,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task ConvertBoolToDouble()
         {
-            GenerateData();
+            GenerateData(10);
             await StartStream(@"
             INSERT INTO output
             SELECT 
@@ -342,7 +342,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(Users.Select(u => new { val = u.Active ? (double)1 : (double)0 }));
+            AssertCurrentDataEqual(Users.Select(u => new { val = u.Active ? (decimal)1 : (decimal)0 }));
         }
 
         [Fact]

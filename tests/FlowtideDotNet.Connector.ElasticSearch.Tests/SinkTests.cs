@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
                 UserKey as _id,
                 FirstName as firstName,
                 LastName as lastName,
-                CAST(BirthDate as TIMESTAMP) as birthDate
+                BirthDate as birthDate
             FROM users
             ");
 
@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             var mappingInfo = elasticClient.Indices.GetMapping<User>(b => b.Index("testindex"));
             var birthDateField = mappingInfo.Indices["testindex"].Mappings.Properties["birthDate"];
             Assert.Equal("date", birthDateField.Type);
-            Assert.Equal(lastUser.BirthDate!.Value.ToUniversalTime(), resp.Body.BirthDate!.Value.ToUniversalTime(), TimeSpan.FromMilliseconds(1));
+            Assert.Equal(lastUser.BirthDate!.Value, resp.Body.BirthDate!.Value.ToUniversalTime(), TimeSpan.FromMilliseconds(1));
         }
 
         [Fact]

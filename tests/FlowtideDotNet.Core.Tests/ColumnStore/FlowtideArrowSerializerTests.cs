@@ -287,12 +287,12 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var nullArray = (Apache.Arrow.NullArray)deserializedColumn.Fields[0];
             var stringArray = (Apache.Arrow.StringArray)deserializedColumn.Fields[1];
-            var intArray = (Apache.Arrow.Int64Array)deserializedColumn.Fields[2];
+            var intArray = (Apache.Arrow.Int8Array)deserializedColumn.Fields[2];
 
             Assert.Equal(1, nullArray.NullCount);
             Assert.Equal(1, nullArray.Length);
             Assert.Equal("a", stringArray.GetString(0));
-            Assert.Equal(17, intArray.GetValue(0));
+            Assert.Equal(17, (long)intArray.GetValue(0)!);
             Assert.Equal("b", stringArray.GetString(1));
         }
 

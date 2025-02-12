@@ -18,11 +18,16 @@ using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
@@ -44,7 +49,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private Base.Engine.DataflowStream? _stream;
         private readonly object _lock = new object();
         private readonly string testName;
-        private List<byte[]>? _actualData;
+        private EventBatchData? _actualData;
         int updateCounter = 0;
         int waitCounter = 0;
         FlowtideBuilder flowtideBuilder;
@@ -252,7 +257,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }, ignoreSameDataCheck, true);
         }
 
-        private void OnDataUpdate(List<byte[]> actualData)
+        private void OnDataUpdate(EventBatchData actualData)
         {
             lock (_lock)
             {
@@ -381,84 +386,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public void AssertCurrentDataEqual<T>(IEnumerable<T> data)
         {
-            var membersInOrder = typeof(T).GetProperties().Select(x => x.Name).ToList();
-            var accessor = TypeAccessor.Create(typeof(T));
-
-            SortedDictionary<RowEvent, int> dict = new SortedDictionary<RowEvent, int>(new BPlusTreeStreamEventComparer());
-
-            foreach (var row in data)
-            {
-                Assert.NotNull(row);
-                var e = MockTable.ToStreamEvent(new RowOperation(row, false), membersInOrder);
-                if (dict.TryGetValue(e, out var weight))
-                {
-                    dict[e] = e.Weight + weight;
-                }
-                else
-                {
-                    dict.Add(e, 1);
-                }
-            }
-            var expectedData = dict.SelectMany(x =>
-            {
-                List<byte[]> output = new List<byte[]>();
-                for (int i = 0; i < x.Value; i++)
-                {
-                    var compactData = (CompactRowData)x.Key.Compact(new FlexBuffer(ArrayPool<byte>.Shared)).RowData;
-                    output.Add(compactData.Span.ToArray());
-                }
-                return output;
-            }).ToList();
-
-            Assert.Equal(expectedData.Count, _actualData!.Count);
-
-            bool fail = false;
-            for (int i = 0; i < expectedData.Count; i++)
-            {
-                var expectedRow = expectedData[i];
-                var actualRow = _actualData[i];
-
-                if (!expectedRow.SequenceEqual(actualRow))
-                {
-                    var expectedRowJson = FlxValue.FromMemory(expectedRow).ToJson;
-                    var actualRowJson = FlxValue.FromMemory(actualRow).ToJson;
-                    if (!expectedRowJson.Equals(actualRowJson))
-                    {
-                        fail = true;
-                    }
-                }
-            }
-
-            if (fail)
-            {
-                List<string> expected = new List<string>();
-                List<string> actual = new List<string>();
-
-                for (int i = 0; i < expectedData.Count; i++)
-                {
-                    var expectedRow = expectedData[i];
-                    var actualRow = _actualData[i];
-                    expected.Add(FlxValue.FromMemory(expectedRow).ToJson);
-                    actual.Add(FlxValue.FromMemory(actualRow).ToJson);
-                }
-                expected.Sort();
-                actual.Sort();
-                for (int i = 0; i < expected.Count; i++)
-                {
-                    Assert.Equal(expected[i], actual[i]);
-                }
-            }
+            var expectedBatch = BatchConverter.ConvertToBatchSorted(data, GlobalMemoryManager.Instance);
+            EventBatchAssertion.Equal(expectedBatch, _actualData!);
         }
 
-        public List<FlxVector> GetActualRowsAsVectors()
+        public EventBatchData GetActualRowsAsVectors()
         {
             Assert.NotNull(_actualData);
-            List<FlxVector> output = new List<FlxVector>();
-            for(int i = 0; i < _actualData.Count; i++)
-            {
-                output.Add(FlxValue.FromMemory(_actualData[i]).AsVector);
-            }
-            return output;
+            return _actualData;
         }
 
         public async ValueTask DisposeAsync()

@@ -192,7 +192,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             PrimitiveList<int> outputWeights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> outputIterations = new PrimitiveList<uint>(MemoryAllocator);
 
-            var outputColumnCount = m_outputCount; //(groupExpressions?.Count ?? 0) + m_measures.Count;
+            var outputColumnCount = m_outputCount;
             ColumnStore.Column[] outputColumns = new ColumnStore.Column[outputColumnCount];
 
             for (int i = 0; i < outputColumnCount; i++)
