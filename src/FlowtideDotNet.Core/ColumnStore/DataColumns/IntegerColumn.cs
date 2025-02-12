@@ -646,6 +646,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public ArrowTypeId Type => ArrowTypeId.Int64;
 
+        [MemberNotNull(nameof(_data))]
         private void IncreaseSize(in long value)
         {
             IIntData? newData;

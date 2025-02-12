@@ -28,7 +28,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task StrfTime()
         {
-            GenerateData(1);
+            GenerateData();
             await StartStream(@"
             INSERT INTO output
             SELECT

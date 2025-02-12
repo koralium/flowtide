@@ -83,7 +83,7 @@ namespace FlowtideDotNet.Core.Tests
 
             public HashSet<int>? IntHashSet { get; set; }
 
-            public Func<object> Func { get; set; }
+            public Func<object>? Func { get; set; }
         }
 
         [Fact]

@@ -271,7 +271,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task ListAggWithMapAndUpdates()
         {
-            GenerateData(1);
+            GenerateData(1000);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 

@@ -332,7 +332,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task ConvertBoolToDouble()
         {
-            GenerateData(10);
+            GenerateData();
             await StartStream(@"
             INSERT INTO output
             SELECT 

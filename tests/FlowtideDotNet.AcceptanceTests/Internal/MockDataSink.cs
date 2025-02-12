@@ -32,7 +32,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private readonly WriteRelation writeRelation;
         private readonly Action<EventBatchData> onDataChange;
         private int crashOnCheckpointCount;
-        private SortedDictionary<RowEvent, int> currentData;
         private bool watermarkRecieved = false;
         private Action<Watermark> onWatermark;
         private EventBatchData? _lastSentBatch;
@@ -46,7 +45,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             int crashOnCheckpointCount,
             Action<Watermark> onWatermark) : base(executionDataflowBlockOptions)
         {
-            currentData = new SortedDictionary<RowEvent, int>(new BPlusTreeStreamEventComparer());
             this.writeRelation = writeRelation;
             this.onDataChange = onDataChange;
             this.crashOnCheckpointCount = crashOnCheckpointCount;
@@ -92,15 +90,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (crashOnCheckpointCount > 0)
             {
                 crashOnCheckpointCount--;
-                currentData.Clear();
                 throw new CrashException("Crash on checkpoint");
             }
-            if (currentData.Any(x => x.Value < 0))
-            {
-                Assert.Fail("Row exist in sink with negaive weight");
-            }
-            var nonDeletedRows = currentData.Where(x => x.Value > 0);
-            List<byte[]> output = new List<byte[]>();
 
             Debug.Assert(_tree != null);
 
@@ -118,15 +109,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 foreach (var kv in page)
                 {
+                    if (kv.Value < 0)
+                    {
+                        Assert.Fail("Row exist in sink with negaive weight");
+                    }
                     for (int i = 0; i < kv.Key.referenceBatch.Columns.Count; i++)
                     {
                         var val = kv.Key.referenceBatch.Columns[i].GetValueAt(kv.Key.RowIndex, default);
-
-                        if (kv.Value < 0)
-                        {
-                            Assert.Fail("Row exist in sink with negaive weight");
-                        }
-
                         for (int x = 0; x < kv.Value; x++)
                         {
                             columns[i].Add(val);
@@ -139,19 +128,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             if (_lastSentBatch != null)
             {
-               // _lastSentBatch.Dispose();
+                _lastSentBatch.Dispose();
             }
 
             _lastSentBatch = newData;
-
-            foreach (var row in nonDeletedRows)
-            {
-                for (int i = 0; i < row.Value; i++)
-                {
-                    var compactData = (CompactRowData)row.Key.Compact(new FlexBuffer(ArrayPool<byte>.Shared)).RowData;
-                    output.Add(compactData.Span.ToArray());
-                }
-            }
 
             await _tree.Commit();
 
@@ -172,17 +152,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 var weight = msg.Data.Weights[i];
                 _tree.RMWNoResult(in rowRef, in weight, (input, current, exist) =>
                 {
-                    if (input < 0)
-                    {
-
-                    }
                     if (exist)
                     {
                         var newWeight = current + input;
-                        if (newWeight < 0)
-                        {
-
-                        }
                         if (newWeight == 0)
                         {
                             return (newWeight, GenericWriteOperation.Delete);
@@ -191,18 +163,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     }
                     return (input, GenericWriteOperation.Upsert);
                 });
-            }
-            foreach(var e in msg.Events)
-            {
-                
-                if (currentData.TryGetValue(e, out var weight))
-                {
-                    currentData[e] = weight + e.Weight;
-                }
-                else
-                {
-                    currentData.Add(e, e.Weight);
-                }
             }
             return Task.CompletedTask;
         }

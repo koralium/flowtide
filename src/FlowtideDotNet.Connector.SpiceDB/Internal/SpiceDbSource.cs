@@ -314,7 +314,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             Debug.Assert(m_client != null);
             Debug.Assert(m_watchClient != null);
             Debug.Assert(m_state != null);
-            Debug.Assert(m_state.Value.TypeTimestamps != null);
+            Debug.Assert(m_state.Value?.TypeTimestamps != null);
 
             Metadata? metadata = default;
             if (m_spiceDbSourceOptions.GetMetadata != null)
