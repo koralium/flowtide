@@ -36,7 +36,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT userkey + CAST(17 as float) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey + 17 }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey + (float)17 }));
         }
 
         [Fact]
@@ -45,7 +45,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT userkey + CAST(17 as decimal) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey + 17 }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey + (decimal)17 }));
         }
 
         [Fact]
@@ -132,7 +132,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT userkey - CAST(17 as float) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey - 17 }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey - (float)17 }));
         }
 
         [Fact]
@@ -141,7 +141,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT userkey - CAST(17 as decimal) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey - 17 }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey - (decimal)17 }));
         }
 
         [Fact]
@@ -225,7 +225,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT userkey * CAST(3 as float) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey * 3 }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey * (float)3 }));
         }
 
         [Fact]
@@ -234,7 +234,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT userkey * CAST(3 as decimal) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey * 3 }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey * (decimal)3 }));
         }
 
         [Fact]
@@ -447,7 +447,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT userkey % CAST(3 as float) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey % 3 }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey % (float)3 }));
         }
 
         [Fact]
@@ -456,7 +456,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT userkey % CAST(3 as decimal) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey % 3 }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey % (decimal)3 }));
         }
 
         [Fact]
@@ -540,7 +540,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT power(userkey, 2) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = Math.Pow(x.UserKey, 2) }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = (long)Math.Pow(x.UserKey, 2) }));
         }
 
         [Fact]
@@ -558,7 +558,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT power(userkey, CAST(2 as decimal)) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = Math.Pow(x.UserKey, 2) }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = (decimal)Math.Pow(x.UserKey, 2) }));
         }
 
         [Fact]
@@ -1344,7 +1344,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT sign(doublevalue) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { a = Math.Sign(x.DoubleValue) }));
+            AssertCurrentDataEqual(Users.Select(x => new { a = (double)Math.Sign(x.DoubleValue) }));
         }
 
         [Fact]
@@ -1362,7 +1362,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT sign(userkey / 0) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { a = Math.Sign(x.UserKey) }));
+            AssertCurrentDataEqual(Users.Select(x => new { a = (double)Math.Sign(x.UserKey) }));
         }
 
         [Fact]
@@ -1380,7 +1380,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT sum(userkey) FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] {new {Sum = (double)Users.Sum(x => x.UserKey)}} );
+            AssertCurrentDataEqual(new[] {new {Sum = (long)Users.Sum(x => x.UserKey)}} );
         }
 
         [Fact]
@@ -1398,7 +1398,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT sum0(userkey) FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Sum = (double)Users.Sum(x => x.UserKey) } });
+            AssertCurrentDataEqual(new[] { new { Sum = (long)Users.Sum(x => x.UserKey) } });
         }
 
         [Fact]
@@ -1416,7 +1416,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT min(userkey) FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Min = (double)Users.Min(x => x.UserKey) } });
+            AssertCurrentDataEqual(new[] { new { Min = (long)Users.Min(x => x.UserKey) } });
         }
 
         [Fact]
@@ -1429,7 +1429,7 @@ namespace FlowtideDotNet.AcceptanceTests
             SELECT userkey FROM users WHERE userkey > 200;
             INSERT INTO output SELECT min(userkey) FROM t");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Min = (double)Users.Where(x => x.UserKey > 200).Min(x => x.UserKey) } });
+            AssertCurrentDataEqual(new[] { new { Min = (long)Users.Where(x => x.UserKey > 200).Min(x => x.UserKey) } });
         }
 
         [Fact]
@@ -1452,11 +1452,12 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task SelectMinWithUpdate()
         {
             GenerateData();
-            await StartStream("INSERT INTO output SELECT min(userkey) FROM users");
+            await StartStream("INSERT INTO output SELECT min(userkey) FROM users", ignoreSameDataCheck: true);
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Min = (double)Users.Min(x => x.UserKey) } });
+            AssertCurrentDataEqual(new[] { new { Min = (long)Users.Min(x => x.UserKey) } });
             GenerateData();
             await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Min = (long)Users.Min(x => x.UserKey) } });
         }
 
         [Fact]
@@ -1465,7 +1466,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT min(visits) FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Min = (double)Users.Min(x => x.Visits)! } });
+            AssertCurrentDataEqual(new[] { new { Min = (long)Users.Min(x => x.Visits)! } });
         }
 
         [Fact]
@@ -1474,7 +1475,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT max(userkey) FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Min = (double)Users.Max(x => x.UserKey) } });
+            AssertCurrentDataEqual(new[] { new { Min = (long)Users.Max(x => x.UserKey) } });
         }
 
         [Fact]
@@ -1487,7 +1488,7 @@ namespace FlowtideDotNet.AcceptanceTests
             SELECT userkey FROM users WHERE userkey > 200;
             INSERT INTO output SELECT max(userkey) FROM t");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Min = (double)Users.Where(x => x.UserKey > 200).Max(x => x.UserKey) } });
+            AssertCurrentDataEqual(new[] { new { Min = (long)Users.Where(x => x.UserKey > 200).Max(x => x.UserKey) } });
         }
 
         [Fact]
@@ -1512,10 +1513,10 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT max(userkey) FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Max = (double)Users.Max(x => x.UserKey) } });
+            AssertCurrentDataEqual(new[] { new { Max = (long)Users.Max(x => x.UserKey) } });
             GenerateData();
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Max = (double)Users.Max(x => x.UserKey) } });
+            AssertCurrentDataEqual(new[] { new { Max = (long)Users.Max(x => x.UserKey) } });
         }
 
         [Fact]

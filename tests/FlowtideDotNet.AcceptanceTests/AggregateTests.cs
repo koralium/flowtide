@@ -135,7 +135,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(Orders
                 .GroupBy(x => x.UserKey)
-                .Select(x => new { Userkey = x.Key, Sum = (double)x.Sum(y => y.OrderKey), Count = x.Count() }));
+                .Select(x => new { Userkey = x.Key, Sum = (long)x.Sum(y => y.OrderKey), Count = x.Count() }));
         }
 
         /// <summary>
@@ -163,7 +163,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(Orders
                 .GroupBy(x => $"{x.UserKey}:{x.OrderKey}")
-                .Select(x => new { Userkey = int.Parse(x.Key.Substring(0, x.Key.IndexOf(':'))), Max1 = (double)x.Max(y => y.OrderKey), Max2 = x.Max(y => y.OrderKey) }));
+                .Select(x => new { Userkey = int.Parse(x.Key.Substring(0, x.Key.IndexOf(':'))), Max1 = (long)x.Max(y => y.OrderKey), Max2 = x.Max(y => y.OrderKey) }));
         }
 
         [Fact]
@@ -199,7 +199,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(Orders
                 .GroupBy(x => x.UserKey)
-                .Select(x => new { Userkey = x.Key, Count = x.Count(), Sum = (double)x.Sum(y => y.OrderKey) })
+                .Select(x => new { Userkey = x.Key, Count = x.Count(), Sum = (long)x.Sum(y => y.OrderKey) })
                 .Where(x => x.Count > 1)
                 .Select(x => new {x.Userkey, x.Sum}));
         }
@@ -280,18 +280,18 @@ namespace FlowtideDotNet.AcceptanceTests
                 ");
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).Select(x => new KeyValuePair<string, object>[]{
-                new KeyValuePair<string, object>("userkey", x.UserKey),
-                new KeyValuePair<string, object>("company", x.CompanyId!)
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).Select(x => new Dictionary<string, object>(){
+                { "userkey", x.UserKey },
+                { "company", x.CompanyId! }
             }).ToList() } });
 
             GenerateData(1000);
 
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new KeyValuePair<string, object>[]{
-                new KeyValuePair<string, object>("userkey", x.UserKey),
-                new KeyValuePair<string, object>("company", x.CompanyId!)
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new Dictionary<string, object> {
+                { "userkey", x.UserKey },
+                { "company", x.CompanyId! }
             }).ToList() } });
 
             Users[0].CompanyId = "newCompany";
@@ -299,18 +299,18 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new KeyValuePair<string, object>[]{
-                new KeyValuePair<string, object>("userkey", x.UserKey),
-                new KeyValuePair<string, object>("company", x.CompanyId!)
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new Dictionary<string, object> {
+                { "userkey", x.UserKey },
+                { "company", x.CompanyId! }
             }).ToList() } });
 
             DeleteUser(Users[10]);
 
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new KeyValuePair<string, object>[]{
-                new KeyValuePair<string, object>("userkey", x.UserKey),
-                new KeyValuePair<string, object>("company", x.CompanyId!)
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.CompanyId).ThenBy(x => x.UserKey).Select(x => new Dictionary<string, object> {
+                { "userkey", x.UserKey },
+                { "company", x.CompanyId! }
             }).ToList() } });
         }
     }

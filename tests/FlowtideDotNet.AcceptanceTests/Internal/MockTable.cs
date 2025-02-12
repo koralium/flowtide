@@ -34,15 +34,18 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         private readonly object _lock = new object();
         private List<RowOperation> _changes;
+        public Type _type;
 
-        public MockTable(List<string> columns, List<int> primaryKeyIndices, List<SubstraitBaseType> types)
+        public MockTable(List<string> columns, List<int> primaryKeyIndices, List<SubstraitBaseType> types, Type type)
         {
             Columns = columns;
             PrimaryKeyIndices = primaryKeyIndices;
             Types = types;
+            _type = type;
             _changes = new List<RowOperation>();
         }
 
+        public Type Type => _type;
         public List<string> Columns { get; }
         public List<int> PrimaryKeyIndices { get; }
         public List<SubstraitBaseType> Types { get; }
@@ -181,8 +184,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     }
                     else if (column is Guid guid)
                     {
-                        var bytes = guid.ToByteArray();
-                        b.Add(bytes);
+                        var guidString = guid.ToString();
+                        b.Add(guidString);
                     }
                     else if (column is List<int> listInt)
                     {

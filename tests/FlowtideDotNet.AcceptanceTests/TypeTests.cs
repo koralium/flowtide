@@ -32,7 +32,7 @@ namespace FlowtideDotNet.AcceptanceTests
             SELECT
             GuidVal
             FROM orders
-            WHERE guidval = guid('" + order.GuidVal.ToString() + @"')
+            WHERE guidval = '" + order.GuidVal.ToString() + @"'
             ");
             await WaitForUpdate();
 

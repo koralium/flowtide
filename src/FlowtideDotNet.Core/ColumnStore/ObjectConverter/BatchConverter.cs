@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
@@ -40,6 +41,68 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
             foreach (var obj in objects)
             {
                 AppendToColumns(obj, columns);
+            }
+
+            return new EventBatchData(columns);
+        }
+
+        /// <summary>
+        /// Special function used in unit tests that retuns the rows in sorted order to easily compare with expected results
+        /// 
+        /// This method is not optimized at all and reuses code and does alot of memory copy to reuse components, so dont use it for other things than unit tests.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="objects"></param>
+        /// <param name="memoryAllocator"></param>
+        /// <returns></returns>
+        public static EventBatchData ConvertToBatchSorted<T>(IEnumerable<T> objects, IMemoryAllocator memoryAllocator)
+        {
+            var converter = GetBatchConverter(typeof(T));
+
+            // Reuse column key storage contaienr and its comparer to find the insert indices
+            var container = new ColumnKeyStorageContainer(converter.properties.Count, memoryAllocator);
+            var columnComparer = new ColumnComparer(converter.properties.Count);
+            var data = converter.ConvertToEventBatch(objects, memoryAllocator);
+
+            for (int i = 0; i < data.Count; i++)
+            {
+                var rowRef = new ColumnRowReference() { referenceBatch = data, RowIndex = i };
+                var insertIndex = columnComparer.FindIndex(rowRef, container);
+
+                if (insertIndex < 0)
+                {
+                    insertIndex = ~insertIndex;
+                }
+
+                container.Insert(insertIndex, rowRef);
+            }
+
+            // Dispose the data
+            data.Dispose();
+
+            // Create a new data with the sorted rows and copy the data over to them
+            Column[] columns = new Column[container._data.Columns.Count];
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i] = container._data.Columns[i].Copy(memoryAllocator);
+            }
+            // Dispose the container
+            container.Dispose();
+
+            return new EventBatchData(columns);
+        }
+
+        public EventBatchData ConvertToEventBatch<T>(IEnumerable<T> objects, IMemoryAllocator memoryAllocator)
+        {
+            var columns = new IColumn[properties.Count];
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i] = new Column(memoryAllocator);
+            }
+
+            foreach (var obj in objects)
+            {
+                AppendToColumns(obj!, columns);
             }
 
             return new EventBatchData(columns);
