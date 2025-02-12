@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
 
             foreach (var obj in objects)
             {
-                AppendToColumns(obj, columns);
+                AppendToColumns(obj!, columns);
             }
 
             return new EventBatchData(columns);
