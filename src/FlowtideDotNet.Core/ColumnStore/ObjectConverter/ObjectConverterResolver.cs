@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
                 new ByteArrayResolver(),
                 new MemoryByteResolver(),
                 new ReadOnlyMemoryResolver(),
-                new EnumResolver(),
+                new EnumResolver(false),
                 new GuidResolver(),
                 new CharResolver(),
 

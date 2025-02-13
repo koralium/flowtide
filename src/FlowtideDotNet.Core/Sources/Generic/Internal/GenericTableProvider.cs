@@ -27,6 +27,8 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                 return x.Name;
             }).ToList();
 
+            columnNames.Add("__key");
+
             _tableMetadata = new TableMetadata(name, new Substrait.Type.NamedStruct()
             {
                 Names = columnNames

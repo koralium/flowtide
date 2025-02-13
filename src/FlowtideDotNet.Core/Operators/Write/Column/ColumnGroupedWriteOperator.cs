@@ -306,7 +306,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             if (m_hasModified)
             {
                 var changedRows = GetChangedRows();
-                await UploadChanges(changedRows, m_latestWatermark, CancellationToken);
+                await UploadChanges(changedRows, m_latestWatermark, !m_hasSentInitialData.Value, CancellationToken);
                 await m_modified.Clear();
                 m_hasModified = false;
             }
@@ -322,7 +322,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             return Task.CompletedTask;
         }
 
-        protected abstract Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken);
+        protected abstract Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, bool isInitialData, CancellationToken cancellationToken);
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {

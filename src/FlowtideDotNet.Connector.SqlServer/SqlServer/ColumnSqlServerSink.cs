@@ -152,7 +152,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             await base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken)
+        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
         {
             Debug.Assert(m_dataTable != null);
             Debug.Assert(m_mapRowFunc != null);
