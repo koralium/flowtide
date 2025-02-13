@@ -142,6 +142,54 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
             }
         }
 
+        /// <summary>
+        /// Special case method that allows passing in a list of column indices that will be skipped.
+        /// This is useful if those columns will not be filled by converting from a dotnet object, one such case is having an identifier from another place.
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <param name="columns"></param>
+        /// <param name="skipColumnIds"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        public void AppendToColumns(object obj, IColumn[] columns, IReadOnlyList<int> skipColumnIds)
+        {
+            if ((columns.Length - skipColumnIds.Count) != properties.Count)
+            {
+                throw new InvalidOperationException($"Input column count '{columns.Length}' does not match property count '{properties.Count}'");
+            }
+
+            int skipId = 0;
+            int currentColumn = 0;
+            for (int i = 0; i < properties.Count; i++)
+            {
+                var property = properties[i];
+
+                if (property.GetFunc == null)
+                {
+                    throw new InvalidOperationException("Cannot serialize object without a get function");
+                }
+
+                while (skipColumnIds[skipId] == currentColumn)
+                {
+                    skipId++;
+                    currentColumn++;
+                }
+
+                var value = property.GetFunc(obj);
+
+                if (value != null)
+                {
+                    var func = new AddToColumnFunc(columns[currentColumn]);
+                    converters[i].Serialize(value, ref func);
+                }
+                else
+                {
+                    columns[currentColumn].Add(NullValue.Instance);
+                }
+
+                currentColumn++;
+            }
+        }
+
         public IEnumerable<object> ConvertToDotNetObjects(EventBatchData data)
         {
             if (createObject == null)

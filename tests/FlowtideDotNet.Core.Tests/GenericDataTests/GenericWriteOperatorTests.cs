@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Sources.Generic;
 
 namespace FlowtideDotNet.Core.Tests.GenericDataTests
@@ -41,7 +42,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             return Task.FromResult(new List<string> { "UserKey" });
         }
 
-        public override async Task OnChanges(IAsyncEnumerable<FlowtideGenericWriteObject<User>> changes)
+        public override async Task OnChanges(IAsyncEnumerable<FlowtideGenericWriteObject<User>> changes, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
         {
             await foreach(var userChange in changes)
             {

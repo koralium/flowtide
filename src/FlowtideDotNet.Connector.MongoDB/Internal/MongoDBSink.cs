@@ -121,7 +121,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             }
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken)
+        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
         {
             Debug.Assert(collection != null);
             Debug.Assert(_eventsCounter != null);

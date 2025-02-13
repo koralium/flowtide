@@ -90,7 +90,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _db = new Internal.MockDatabase();
             generator = new DatasetGenerator(_db);
             sqlPlanBuilder = new SqlPlanBuilder();
-            sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
             flowtideBuilder = new FlowtideBuilder(streamName)
                 .WithLoggerFactory(new LoggerFactory(new List<ILoggerProvider>() { new DebugLoggerProvider() }));
             this.testName = testName;
@@ -187,10 +186,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
 
             SetupConnectorManager();
-            foreach(var tableProvider in _connectorManager.GetTableProviders())
+
+            foreach (var tableProvider in _connectorManager.GetTableProviders())
             {
                 sqlPlanBuilder.AddTableProvider(tableProvider);
             }
+            sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
 

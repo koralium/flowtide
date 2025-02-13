@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,6 +32,11 @@ namespace FlowtideDotNet.Core.Sources.Generic
         /// </summary>
         /// <returns></returns>
         public abstract IAsyncEnumerable<FlowtideGenericObject<T>> DeltaLoadAsync(long lastWatermark);
+
+        public virtual IEnumerable<IObjectColumnResolver> GetCustomConverters()
+        {
+            yield break;
+        }
 
         /// <summary> 
         /// Interval between delta loads, set to null to disable delta loads

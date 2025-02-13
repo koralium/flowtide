@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers;
 using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.Tests
@@ -536,6 +537,31 @@ namespace FlowtideDotNet.Core.Tests
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
 
             converter.AppendToColumns(testObject, arr);
+
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
+
+            Assert.Equal(testObject.EnumValue, deserialized.EnumValue);
+        }
+
+        [Fact]
+        public void TestConvertEnumAsString()
+        {
+            var testObject = new TestClass()
+            {
+                EnumValue = EnumTest.Value2
+            };
+
+            var resolver = new ObjectConverterResolver();
+            resolver.PrependResolver(new EnumResolver(true));
+
+            var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "enumValue" }, resolver);
+            IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
+
+            converter.AppendToColumns(testObject, arr);
+
+            var addedData = arr[0].GetValueAt(0, default).AsString.ToString();
+
+            Assert.Equal("Value2", addedData);
 
             var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 

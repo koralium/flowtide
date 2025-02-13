@@ -63,6 +63,7 @@ namespace FlowtideDotNet.Core.Operators.Read
         private IColumn[]? _deleteTreeToPersistentColumns;
         private EventBatchData? _deleteTreeTopersistentBatch;
         private ICounter<long>? _eventsCounter;
+        private bool _waitingForFullLoad;
 
         public ColumnBatchReadBaseOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(options)
         {
@@ -93,9 +94,39 @@ namespace FlowtideDotNet.Core.Operators.Read
                                 {
                                     lock (_taskLock)
                                     {
+                                        if (_waitingForFullLoad)
+                                        {
+                                            _deltaLoadTask = RunTask(FullLoadTrigger);
+                                            _waitingForFullLoad = false;
+                                        }
+                                        else
+                                        {
+                                            _deltaLoadTask = default;
+                                        }
+                                    }
+                                });
+                        }
+                        return Task.CompletedTask;
+                    }
+                case FullLoadTriggerName:
+                    lock (_taskLock)
+                    {
+                        if (_deltaLoadTask == null)
+                        {
+                            _deltaLoadTask = RunTask(FullLoadTrigger)
+                                .ContinueWith((task) =>
+                                {
+                                    lock (_taskLock)
+                                    {
+                                        // Full load just happened, so we reset the flag
+                                        _waitingForFullLoad = false;
                                         _deltaLoadTask = default;
                                     }
                                 });
+                        }
+                        else
+                        {
+                            _waitingForFullLoad = true;
                         }
                         return Task.CompletedTask;
                     }
@@ -107,6 +138,11 @@ namespace FlowtideDotNet.Core.Operators.Read
         protected virtual async Task DeltaLoadTrigger(IngressOutput<StreamEventBatch> output, object? state)
         {
             await DoDeltaLoad(output);
+        }
+
+        protected virtual async Task FullLoadTrigger(IngressOutput<StreamEventBatch> output, object? state)
+        {
+            await DoFullLoad(output);
         }
 
 
@@ -262,7 +298,6 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_emitList != null);
             Debug.Assert(_primaryKeyColumns != null);
             Debug.Assert(_eventsCounter != null);
-            
 
             await foreach (var e in DeltaLoad(output.EnterCheckpointLock, output.ExitCheckpointLock, output.CancellationToken))
             {
@@ -589,6 +624,12 @@ namespace FlowtideDotNet.Core.Operators.Read
             await _fullLoadTempTree.Clear();
 
             sentData |= await OutputDeletedRowsFromFullLoad(output);
+
+            if (sentData && lastWatermark == -1)
+            {
+                // This happens if all existing data was deleted, a watermark of 1 is added for now
+                lastWatermark = 1;
+            }
 
             if (lastWatermark >= 0 && sentData)
             {

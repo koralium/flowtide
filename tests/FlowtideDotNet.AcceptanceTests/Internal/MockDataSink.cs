@@ -126,7 +126,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             var newData = new EventBatchData(columns);
 
-            if (_lastSentBatch != null)
+            if (_lastSentBatch != null && watermarkRecieved)
             {
                 _lastSentBatch.Dispose();
             }

@@ -10,53 +10,202 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Text.Json;
-using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Read;
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Sources.Generic.Internal
 {
-    internal class GenericReadOperator<T> : BatchableReadBaseOperator
-        where T : class
+    internal class GenericReadOperator<T> : ColumnBatchReadBaseOperator
+        where T: class
     {
-        private readonly GenericDataSourceAsync<T> genericDataSource;
-        private readonly ObjectToRowEvent objectToRowEvent;
+        private readonly GenericDataSourceAsync<T> _genericDataSource;
+        private readonly ReadRelation _readRelation;
+        private BatchConverter _batchConverter;
+        private string _watermarkName;
+        private IObjectState<long>? _lastWatermark;
+        private List<int> _primaryKeyIndices;
+        private int _keyIndex;
 
-        public GenericReadOperator(ReadRelation readRelation, GenericDataSourceAsync<T> genericDataSource, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(readRelation, functionsRegister, options)
+        public GenericReadOperator(GenericDataSourceAsync<T> genericDataSource, ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(readRelation, functionsRegister, options)
         {
-            this.genericDataSource = genericDataSource;
-            objectToRowEvent = new ObjectToRowEvent(readRelation);
+            this._genericDataSource = genericDataSource;
+            this._readRelation = readRelation;
+            this.DeltaLoadInterval = _genericDataSource.DeltaLoadInterval;
+            this.FullLoadInterval = _genericDataSource.FullLoadInterval;
+
+            var resolver = new ObjectConverterResolver();
+
+            // Get any custom convert resolvers and add them first in the list
+            var converterResolvers = genericDataSource.GetCustomConverters().ToList();
+            for (int i = converterResolvers.Count - 1; i >= 0; i--)
+            {
+                resolver.PrependResolver(converterResolvers[i]);
+            }
+
+            _batchConverter = BatchConverter.GetBatchConverter(typeof(T), readRelation.BaseSchema.Names.Where(x => x != "__key").ToList(), resolver);
+            _watermarkName = readRelation.NamedTable.DotSeperated;
+
+            _primaryKeyIndices = new List<int>();
+
+            _keyIndex = readRelation.BaseSchema.Names.IndexOf("__key");
+            if (_keyIndex < 0)
+            {
+                throw new InvalidOperationException("__key must be included in the selected names");
+            }
+            _primaryKeyIndices.Add(_keyIndex);
+
         }
 
-        protected override async IAsyncEnumerable<BatchableReadEvent> DeltaLoad(long lastWatermark)
+        public override string DisplayName => "Generic";
+
+        protected override async Task Checkpoint(long checkpointTime)
         {
-            await foreach (var ev in genericDataSource.DeltaLoadAsync(lastWatermark))
+            Debug.Assert(_lastWatermark != null);
+            await _lastWatermark.Commit();
+        }
+
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
+        {
+            _lastWatermark = await stateManagerClient.GetOrCreateObjectStateAsync<long>("lastwatermark");
+            await base.InitializeOrRestore(restoreTime, stateManagerClient);
+        }
+
+        protected override async IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
+        {
+            Debug.Assert(_lastWatermark != null);
+            IColumn[] columns = new Column[_readRelation.BaseSchema.Names.Count];
+
+            for (int i = 0; i < columns.Length; i++)
             {
-                var rowEvent = objectToRowEvent.Convert(ev.Value, ev.isDelete);
-                yield return new BatchableReadEvent(ev.Key, rowEvent, ev.Watermark);
+                columns[i] = new Column(MemoryAllocator);
+            }
+
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+
+            await EnterCheckpointLock();
+
+            await foreach (var ev in _genericDataSource.DeltaLoadAsync(_lastWatermark.Value))
+            {
+                AppendToColumns(columns, weights, iterations, ev);
+                _lastWatermark.Value = ev.Watermark;
+
+                if (weights.Count >= 100)
+                {
+                    yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), new Base.Watermark(_watermarkName, _lastWatermark.Value));
+                    columns = new Column[_readRelation.BaseSchema.Names.Count + 1];
+                    for (int i = 0; i < columns.Length; i++)
+                    {
+                        columns[i] = new Column(MemoryAllocator);
+                    }
+                    weights = new PrimitiveList<int>(MemoryAllocator);
+                    iterations = new PrimitiveList<uint>(MemoryAllocator);
+                }
+            }
+
+            if (weights.Count > 0)
+            {
+                yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), new Base.Watermark(_watermarkName, _lastWatermark.Value));
+            }
+            else
+            {
+                weights.Dispose();
+                iterations.Dispose();
+                for (int i = 0; i < columns.Length; i++)
+                {
+                    columns[i].Dispose();
+                }
+            }
+
+            ExitCheckpointLock();
+        }
+
+        private void AppendToColumns(IColumn[] columnsWithKeyLast, PrimitiveList<int> weights, PrimitiveList<uint> iterations, FlowtideGenericObject<T> obj)
+        {
+            columnsWithKeyLast[_keyIndex].Add(new StringValue(obj.Key));
+            if (!obj.isDelete)
+            {
+                if (obj.Value == null)
+                {
+                    throw new InvalidOperationException("Could not convert input to column data is the input was null.");
+                }
+                _batchConverter.AppendToColumns(obj.Value, columnsWithKeyLast, _primaryKeyIndices);
+                weights.Add(1);
+            }
+            else
+            {
+                weights.Add(-1);
+            }
+            iterations.Add(0);
+        }
+
+        protected override async IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
+        {
+            Debug.Assert(_lastWatermark != null);
+            IColumn[] columns = new Column[_readRelation.BaseSchema.Names.Count];
+
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i] = new Column(MemoryAllocator);
+            }
+
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+
+            await foreach (var ev in _genericDataSource.FullLoadAsync())
+            {
+                AppendToColumns(columns, weights, iterations, ev);
+                _lastWatermark.Value = ev.Watermark;
+
+                if (weights.Count >= 100)
+                {
+                    yield return new ColumnReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), _lastWatermark.Value);
+                    columns = new Column[_readRelation.BaseSchema.Names.Count];
+                    for (int i = 0; i < columns.Length; i++)
+                    {
+                        columns[i] = new Column(MemoryAllocator);
+                    }
+                    weights = new PrimitiveList<int>(MemoryAllocator);
+                    iterations = new PrimitiveList<uint>(MemoryAllocator);
+                }
+            }
+
+            if (weights.Count > 0)
+            {
+                yield return new ColumnReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), _lastWatermark.Value);
+            }
+            else
+            {
+                weights.Dispose();
+                iterations.Dispose();
+                for (int i = 0; i < columns.Length; i++)
+                {
+                    columns[i].Dispose();
+                }
             }
         }
 
-        protected override async IAsyncEnumerable<BatchableReadEvent> FullLoad()
+        protected override ValueTask<List<int>> GetPrimaryKeyColumns()
         {
-            // Read data, convert to json, create row event from the json and then send.
-            await foreach (var ev in genericDataSource.FullLoadAsync())
-            {
-                var rowEvent = objectToRowEvent.Convert(ev.Value, ev.isDelete);
-                yield return new BatchableReadEvent(ev.Key, rowEvent, ev.Watermark);
-            }
+            return ValueTask.FromResult(_primaryKeyIndices);
         }
 
-        protected override TimeSpan? GetFullLoadSchedule()
+        protected override Task<IReadOnlySet<string>> GetWatermarkNames()
         {
-            return genericDataSource.FullLoadInterval;
-        }
-
-        protected override TimeSpan? GetDeltaLoadTimeSpan()
-        {
-            return genericDataSource.DeltaLoadInterval;
+            return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { _watermarkName });
         }
     }
 }

@@ -20,8 +20,15 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers
 {
-    internal class EnumResolver : IObjectColumnResolver
+    public class EnumResolver : IObjectColumnResolver
     {
+        private readonly bool enumAsStrings;
+
+        public EnumResolver(bool enumAsStrings)
+        {
+            this.enumAsStrings = enumAsStrings;
+        }
+
         public bool CanHandle(ObjectConverterTypeInfo type)
         {
             return type.Type.IsEnum;
@@ -29,6 +36,10 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers
 
         public IObjectColumnConverter GetConverter(ObjectConverterTypeInfo type, ObjectConverterResolver resolver)
         {
+            if (enumAsStrings)
+            {
+                return new EnumStringConverter(type.Type);
+            }
             return new EnumConverter(type.Type);
         }
     }
