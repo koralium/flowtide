@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Base.Engine
         {
             _streamName = streamName;
             _dataflowStreamOptions = new DataflowStreamOptions();
-            _streamNotificationReceiver = new StreamNotificationReceiver();
+            _streamNotificationReceiver = new StreamNotificationReceiver(streamName);
         }
 
         public DataflowStreamBuilder AddPropagatorBlock(string name, IStreamVertex block)

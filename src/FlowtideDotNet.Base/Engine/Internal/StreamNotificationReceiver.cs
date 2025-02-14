@@ -19,14 +19,21 @@ namespace FlowtideDotNet.Base.Engine.Internal
         private readonly List<ICheckpointListener> _checkpointListeners = [];
         private readonly List<IStreamStateChangeListener> _streamStateListeners = [];
         private readonly List<IFailureListener> _failureListeners = [];
+        private string _streamName;
+
+        public StreamNotificationReceiver(string streamName)
+        {
+            _streamName = streamName;
+        }
 
         public void OnCheckpointComplete()
         {
+            var notification = new StreamCheckpointNotification(ref _streamName);
             foreach (var listener in _checkpointListeners)
             {
                 try
                 {
-                    listener.OnCheckpointComplete();
+                    listener.OnCheckpointComplete(notification);
                 }
                 catch
                 {
@@ -37,11 +44,12 @@ namespace FlowtideDotNet.Base.Engine.Internal
 
         public void OnStreamStateChange(StreamStateValue newState)
         {
+            var notification = new StreamStateChangeNotification(ref _streamName, ref newState);
             foreach (var listener in _streamStateListeners)
             {
                 try
                 {
-                    listener.OnStreamStateChange(newState);
+                    listener.OnStreamStateChange(notification);
                 }
                 catch
                 {
@@ -52,13 +60,14 @@ namespace FlowtideDotNet.Base.Engine.Internal
 
         public void OnFailure(Exception? exception)
         {
+            var notification = new StreamFailureNotification(ref _streamName, exception);
             foreach (var listener in _failureListeners)
             {
                 try
                 {
-                    listener.OnFailure(exception);
+                    listener.OnFailure(notification);
                 }
-                catch 
+                catch
                 {
                     // All errors are catched so failure listeners cant break the stream
                 }

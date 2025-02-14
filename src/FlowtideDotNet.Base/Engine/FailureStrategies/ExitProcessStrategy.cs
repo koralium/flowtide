@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Engine;
+using FlowtideDotNet.Base.Engine.Internal;
 
 namespace FlowtideDotNet.Engine.FailureStrategies
 {
@@ -19,7 +20,7 @@ namespace FlowtideDotNet.Engine.FailureStrategies
     /// </summary>
     public class ExitProcessStrategy : IFailureListener
     {
-        public void OnFailure(Exception? exception)
+        public void OnFailure(StreamFailureNotification notification)
         {
             Environment.Exit(Environment.ExitCode);
         }

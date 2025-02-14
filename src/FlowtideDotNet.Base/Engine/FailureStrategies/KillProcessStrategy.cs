@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Engine;
+using FlowtideDotNet.Base.Engine.Internal;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Engine.FailureStrategies
@@ -20,7 +21,7 @@ namespace FlowtideDotNet.Engine.FailureStrategies
     /// </summary>
     public class KillProcessStrategy : IFailureListener
     {
-        public void OnFailure(Exception? exception)
+        public void OnFailure(StreamFailureNotification notification)
         {
             Process.GetCurrentProcess().Kill();
         }

@@ -14,6 +14,6 @@ namespace FlowtideDotNet.Base.Engine
 {
     public interface ICheckpointListener
     {
-        void OnCheckpointComplete();
+        void OnCheckpointComplete(StreamCheckpointNotification notification);
     }
 }
