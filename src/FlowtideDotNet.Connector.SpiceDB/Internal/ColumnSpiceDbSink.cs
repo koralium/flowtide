@@ -272,7 +272,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             };
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken)
+        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
         {
             Debug.Assert(m_client != null);
             Debug.Assert(_eventsCounter != null);

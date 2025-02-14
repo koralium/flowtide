@@ -12,7 +12,10 @@
 
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Core.Operators.Read;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
@@ -31,6 +34,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private HashSet<string> _watermarkNames;
         private MockTable _table;
         private IObjectState<MockDataSourceState>? _state;
+        private BatchConverter _batchConverter;
 
         public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options) : base(options)
         {
@@ -40,6 +44,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
 
             _watermarkNames = new HashSet<string>() { readRelation.NamedTable.DotSeperated };
+            _batchConverter = BatchConverter.GetBatchConverter(_table.Type, readRelation.BaseSchema.Names);
         }
 
         public override string DisplayName => "Mock data source";
@@ -55,23 +60,59 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await output.EnterCheckpointLock();
             var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
             bool sentData = false;
-            List<RowEvent> o = new List<RowEvent>();
+
+
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+            Column[] columns = new Column[readRelation.OutputLength];
+
+            for (int i = 0; i < readRelation.OutputLength; i++)
+            {
+                columns[i] = new Column(MemoryAllocator);
+            }
+
             foreach (var operation in operations)
             {
-                o.Add(MockTable.ToStreamEvent(operation, readRelation.BaseSchema.Names));
+                _batchConverter.AppendToColumns(operation.Object, columns);
 
-                if (o.Count > 100)
+                iterations.Add(1);
+                if (operation.IsDelete)
+                {
+                    weights.Add(-1);
+                }
+                else
+                {
+                    weights.Add(1);
+                }
+
+                if (weights.Count > 100)
                 {
                     sentData = true;
-                    await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
-                    o = new List<RowEvent>();
+                    await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                    
+                    columns = new Column[readRelation.OutputLength];
+                    for (int i = 0; i < readRelation.OutputLength; i++)
+                    {
+                        columns[i] = new Column(MemoryAllocator);
+                    }
+                    weights = new PrimitiveList<int>(MemoryAllocator);
+                    iterations = new PrimitiveList<uint>(MemoryAllocator);
                 }
             }
 
-            if (o.Count > 0)
+            if (weights.Count > 0)
             {
                 sentData = true;
-                await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+            }
+            else
+            {
+                weights.Dispose();
+                iterations.Dispose();
+                foreach (var column in columns)
+                {
+                    column.Dispose();
+                }
             }
             _state.Value.LatestOffset = fetchedOffset;
 
@@ -124,22 +165,55 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await output.EnterCheckpointLock();
             var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
 
-            List<RowEvent> o = new List<RowEvent>();
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+            Column[] columns = new Column[readRelation.OutputLength];
+
+            for (int i = 0; i < readRelation.OutputLength; i++)
+            {
+                columns[i] = new Column(MemoryAllocator);
+            }
+
             foreach(var operation in operations)
             {
-                o.Add(MockTable.ToStreamEvent(operation, readRelation.BaseSchema.Names));
-                //o.Add(new StreamEvent(1, 0, operation.Vector));
+                _batchConverter.AppendToColumns(operation.Object, columns);
 
-                if (o.Count > 100)
+                iterations.Add(1);
+                if (operation.IsDelete)
                 {
-                    await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
-                    o = new List<RowEvent>();
+                    weights.Add(-1);
+                }
+                else
+                {
+                    weights.Add(1);
+                }
+                
+                if (weights.Count > 100)
+                {
+                    await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+
+                    columns = new Column[readRelation.OutputLength];
+                    for (int i = 0; i < readRelation.OutputLength; i++)
+                    {
+                        columns[i] = new Column(MemoryAllocator);
+                    }
+                    weights = new PrimitiveList<int>(MemoryAllocator);
+                    iterations = new PrimitiveList<uint>(MemoryAllocator);
                 }
             }
 
-            if (o.Count > 0)
+            if (weights.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(o, readRelation.OutputLength));
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+            }
+            else
+            {
+                weights.Dispose();
+                iterations.Dispose();
+                foreach (var column in columns)
+                {
+                    column.Dispose();
+                }
             }
             _state.Value.LatestOffset = fetchedOffset;
             await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));

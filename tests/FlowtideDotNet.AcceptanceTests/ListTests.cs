@@ -99,7 +99,8 @@ namespace FlowtideDotNet.AcceptanceTests
                 ");
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(new[] { new { list = Orders.Select(x => new KeyValuePair<string, int>(x.OrderKey.ToString(), x.OrderKey)).ToList() } });
+            var expectedList = Orders.Select(x => new Dictionary<int, int>() { { x.OrderKey, x.OrderKey } }).ToList();
+            AssertCurrentDataEqual(new[] { new { list = expectedList } });
         }
 
         [Fact]

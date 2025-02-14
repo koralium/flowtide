@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Sources.Generic;
@@ -75,6 +76,11 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             {
                 yield return _changes[_index];
             }
+        }
+
+        public override IEnumerable<IObjectColumnResolver> GetCustomConverters()
+        {
+            yield return new EnumResolver(enumAsStrings: true);
         }
     }
 
@@ -202,6 +208,41 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             await stream.WaitForUpdate();
             stream.AssertCurrentDataEqual(new List<User>().Select(x => new { x.FirstName, x.LastName }));
 
+        }
+
+        [Fact]
+        public async Task TestSelectKey()
+        {
+            var source = new TestDataSource(default);
+            source.AddChange(new FlowtideGenericObject<User>("1", new User { UserKey = 1, FirstName = "Test", LastName = "last1" }, 1, false));
+            source.AddChange(new FlowtideGenericObject<User>("3", new User { UserKey = 3, FirstName = "Test3", LastName = "last3" }, 1, false));
+
+            var stream = new GenericDataTestStream(source, "TestSelectKey");
+            stream.RegisterTableProviders(builder =>
+            {
+                builder.AddGenericDataTable<User>("users");
+            });
+
+            await stream.StartStream(@"
+                CREATE VIEW v AS
+                SELECT 
+                    FirstName,
+                    __key,
+                    LastName
+                FROM users
+                WHERE UserKey = 1;
+
+                INSERT INTO output
+                SELECT
+                    FirstName,
+                    __key,
+                    LastName
+                FROM v
+            ");
+            await stream.WaitForUpdate();
+
+            var act = stream.GetActualRowsAsVectors();
+            stream.AssertCurrentDataEqual(new List<User>() { new User { UserKey = 1, FirstName = "Test", LastName = "last1" } }.Select(x => new { x.FirstName, key = x.UserKey.ToString(), x.LastName }));
         }
     }
 }

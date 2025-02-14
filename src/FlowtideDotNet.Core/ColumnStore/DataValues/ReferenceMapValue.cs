@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IListValue AsList => throw new NotImplementedException();
 
-        public Span<byte> AsBinary => throw new NotImplementedException();
+        public ReadOnlySpan<byte> AsBinary => throw new NotImplementedException();
 
         public IMapValue AsMap => this;
 
@@ -106,6 +106,26 @@ namespace FlowtideDotNet.Core.ColumnStore
         IEnumerator IEnumerable.GetEnumerator()
         {
             return mapColumn.GetKeyValuePairs(index).GetEnumerator();
+        }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.Append("{");
+            var first = true;
+            foreach (var kv in this)
+            {
+                if (!first)
+                {
+                    sb.Append(", ");
+                }
+                first = false;
+                sb.Append(kv.Key);
+                sb.Append(": ");
+                sb.Append(kv.Value);
+            }
+            sb.Append("}");
+            return sb.ToString();
         }
     }
 }

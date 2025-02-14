@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new GenericWriteOperator<T>(dataSinkFunc(writeRelation), writeRelation, executionMode, dataflowBlockOptions);
+            return new GenericWriteOperator<T>(dataSinkFunc(writeRelation), executionMode, writeRelation, dataflowBlockOptions);
         }
     }
 }

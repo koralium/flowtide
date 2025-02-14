@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int Count => end - start;
 
-        public Span<byte> AsBinary => throw new NotImplementedException();
+        public ReadOnlySpan<byte> AsBinary => throw new NotImplementedException();
 
         public IMapValue AsMap => throw new NotImplementedException();
 

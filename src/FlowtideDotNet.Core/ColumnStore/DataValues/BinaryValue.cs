@@ -23,9 +23,9 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public struct BinaryValue : IDataValue
     {
-        private readonly Memory<byte> _bytes;
+        private readonly ReadOnlyMemory<byte> _bytes;
 
-        public BinaryValue(Memory<byte> bytes)
+        public BinaryValue(ReadOnlyMemory<byte> bytes)
         {
             this._bytes = bytes;
         }
@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IListValue AsList => throw new NotImplementedException();
 
-        public Span<byte> AsBinary => _bytes.Span;
+        public ReadOnlySpan<byte> AsBinary => _bytes.Span;
 
         public IMapValue AsMap => throw new NotImplementedException();
 

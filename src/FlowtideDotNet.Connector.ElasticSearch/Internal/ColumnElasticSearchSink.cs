@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             return base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken)
+        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
         {
             Debug.Assert(m_client != null);
             Debug.Assert(m_serializer != null);

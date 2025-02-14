@@ -249,7 +249,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 case ArrowType.Null:
                     return new DataColumnResult(DeserializeNullColumn(in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Null);
                 case ArrowType.Int:
-                    return new DataColumnResult(DeserializeInt64Column(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Int64);
+                    return new DataColumnResult(DeserializeIntegerColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Int64);
                 case ArrowType.Bool:
                     return new DataColumnResult(DeserializeBoolColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Boolean);
                 case ArrowType.Utf8:
@@ -488,17 +488,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return new BinaryColumn(offsetMemory!, length + 1, dataMemory, memoryAllocator);
         }
 
-        private Int64Column DeserializeInt64Column(
+        private IntegerColumn DeserializeIntegerColumn(
             ref SequenceReader<byte> data,
             ref readonly FieldStruct fieldStruct,
             ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
+            var intType = fieldStruct.TypeAsInt();
             if (TryReadNextBuffer(ref data, out var memory))
             {
-                return new Int64Column(memory, length, memoryAllocator);
+                return new IntegerColumn(memoryAllocator, memory, length, intType.BitWidth);
             }
-            return new Int64Column(memoryAllocator);
+            return new IntegerColumn(memoryAllocator);
         }
 
         private BoolColumn DeserializeBoolColumn(

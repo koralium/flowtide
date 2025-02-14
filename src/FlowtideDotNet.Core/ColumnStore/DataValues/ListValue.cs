@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public IListValue AsList => this;
 
-        public Span<byte> AsBinary => throw new NotImplementedException();
+        public ReadOnlySpan<byte> AsBinary => throw new NotImplementedException();
 
         public IMapValue AsMap => throw new NotImplementedException();
 
