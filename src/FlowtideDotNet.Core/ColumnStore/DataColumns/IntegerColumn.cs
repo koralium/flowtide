@@ -22,9 +22,11 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -957,6 +959,16 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 dataWriter.WriteArrowBuffer(Span<byte>.Empty);
             }
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            Debug.Assert(_data != null);
+
+            // Always use 8 bytes for the hash to produce same hash for say value 3 even if it is 1,2,4 or 8 bytes.
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteInt64LittleEndian(buffer, _data.Get(index));
+            hashAlgorithm.Append(buffer);
         }
     }
 }

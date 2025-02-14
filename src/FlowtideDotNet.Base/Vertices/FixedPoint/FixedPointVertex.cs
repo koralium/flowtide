@@ -107,8 +107,9 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             // recieved from the loop until the prepare message is recieved.
             _waitingLockingEvent = ev;
             _messageCountSinceLockingEventPrepare = 0;
+            bool isInitEvent = ev is InitWatermarksEvent;
             // Return a CheckpointPrepare message to the loop
-            return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(ev)));
+            return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(ev, isInitEvent)));
         }
 
         private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> FeedbackInCheckpoint(ILockingEvent ev)
@@ -153,6 +154,11 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 // Send out the locking event
                 if (_waitingLockingEvent == null)
                 {
+                    if (lockingEventPrepare.IsInitEvent)
+                    {
+                        return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
+                    }
+                    
                     throw new InvalidOperationException("Prepare locking event without a waiting checkpoint.");
                 }
                 if (!_sentLockingEvent)
@@ -167,7 +173,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             else
             {
                 _messageCountSinceLockingEventPrepare = 0;
-                return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(lockingEventPrepare.LockingEvent)));
+                return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(lockingEventPrepare.LockingEvent, lockingEventPrepare.IsInitEvent)));
             }
         }
 

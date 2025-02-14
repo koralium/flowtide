@@ -10,10 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -45,6 +47,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public bool IsNull => true;
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            hashAlgorithm.Append(ByteArrayUtils.nullBytes);
+        }
 
         public void CopyToContainer(DataValueContainer container)
         {
