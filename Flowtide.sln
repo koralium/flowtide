@@ -91,11 +91,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MongoDbToConsoleSample", "s
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.ComputeTests", "tests\FlowtideDotNet.ComputeTests\FlowtideDotNet.ComputeTests.csproj", "{2267F932-F2FB-466A-9194-839EC7AB2F0D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.ComputeTests.SourceGenerator", "tests\FlowtideDotNet.ComputeTests.SourceGenerator\FlowtideDotNet.ComputeTests.SourceGenerator.csproj", "{3BA31042-53F5-4B82-B125-AF5090AC42CF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.ComputeTests.SourceGenerator", "tests\FlowtideDotNet.ComputeTests.SourceGenerator\FlowtideDotNet.ComputeTests.SourceGenerator.csproj", "{3BA31042-53F5-4B82-B125-AF5090AC42CF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Storage.SqlServer", "src\FlowtideDotNet.Storage.SqlServer\FlowtideDotNet.Storage.SqlServer.csproj", "{55E7BEDA-9B88-4162-9DFD-38351F4368D5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Storage.SqlServer", "src\FlowtideDotNet.Storage.SqlServer\FlowtideDotNet.Storage.SqlServer.csproj", "{55E7BEDA-9B88-4162-9DFD-38351F4368D5}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Storage.SqlServer.Tests", "tests\FlowtideDotNet.Storage.SqlServer.Tests\FlowtideDotNet.Storage.SqlServer.Tests.csproj", "{AD341C23-9081-4831-A3D1-45488A30C45F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.DeltaLake", "src\FlowtideDotNet.Connector.DeltaLake\FlowtideDotNet.Connector.DeltaLake.csproj", "{5065A7D7-CFED-4C8E-9404-2FC766D66B8F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.DeltaLake.Tests", "tests\FlowtideDotNet.Connector.DeltaLake.Tests\FlowtideDotNet.Connector.DeltaLake.Tests.csproj", "{CB4D6BB6-F6CA-4281-9E8C-2F1850A38AB7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -279,6 +283,14 @@ Global
 		{AD341C23-9081-4831-A3D1-45488A30C45F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AD341C23-9081-4831-A3D1-45488A30C45F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AD341C23-9081-4831-A3D1-45488A30C45F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5065A7D7-CFED-4C8E-9404-2FC766D66B8F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5065A7D7-CFED-4C8E-9404-2FC766D66B8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5065A7D7-CFED-4C8E-9404-2FC766D66B8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5065A7D7-CFED-4C8E-9404-2FC766D66B8F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CB4D6BB6-F6CA-4281-9E8C-2F1850A38AB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CB4D6BB6-F6CA-4281-9E8C-2F1850A38AB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CB4D6BB6-F6CA-4281-9E8C-2F1850A38AB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CB4D6BB6-F6CA-4281-9E8C-2F1850A38AB7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -321,13 +333,15 @@ Global
 		{703C3485-6824-44DA-8977-B66FF0BEE413} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
 		{3DF413F3-FD3B-43E0-A21C-ECB8DF46A902} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
 		{079CC855-A000-4E1C-9128-FE025A57FFCD} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
-		{55E7BEDA-9B88-4162-9DFD-38351F4368D5} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
-		{AD341C23-9081-4831-A3D1-45488A30C45F} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 		{1148EF8A-E121-4DDF-A4A8-4A9C42E4F225} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
 		{D1154C96-1B2B-40AC-B6ED-A556A7C24D28} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
 		{B45112E8-01AD-4EC8-A2F2-DC16D8672A2C} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
 		{2267F932-F2FB-466A-9194-839EC7AB2F0D} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 		{3BA31042-53F5-4B82-B125-AF5090AC42CF} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
+		{55E7BEDA-9B88-4162-9DFD-38351F4368D5} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
+		{AD341C23-9081-4831-A3D1-45488A30C45F} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
+		{5065A7D7-CFED-4C8E-9404-2FC766D66B8F} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
+		{CB4D6BB6-F6CA-4281-9E8C-2F1850A38AB7} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {314C9503-DE99-42AA-8FB0-E355C91986C4}
