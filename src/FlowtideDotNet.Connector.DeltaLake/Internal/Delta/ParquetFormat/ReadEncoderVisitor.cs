@@ -132,7 +132,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             var inner = type.ElementType.Accept(this);
             _path.RemoveAt(_path.Count - 1);
             _path.RemoveAt(_path.Count - 1);
-            var arrEncoder = new ArrayEncoder(inner, _repititionLevel);
+            var arrEncoder = new ArrayEncoder(inner, _repititionLevel, _definitionLevel);
             _repititionLevel--;
             return arrEncoder;
         }

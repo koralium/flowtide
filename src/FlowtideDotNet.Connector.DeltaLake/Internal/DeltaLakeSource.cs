@@ -322,7 +322,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             _table = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tableLoc, maxVersion);
 
-            var reader = new ParquetFormatReader();
+            var reader = new ParquetSharpReader();
             reader.Initialize(_table, _readRelation.BaseSchema.Names);
             _reader = reader;
 
