@@ -11,9 +11,12 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,15 +26,34 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
     internal class StructEncoder : IArrowEncoder
     {
         private readonly List<IArrowEncoder> _encoders;
+        private readonly List<IDataValue> _propertyNames;
         private StructArray? _array;
 
-        public StructEncoder(List<IArrowEncoder> encoders)
+        public StructEncoder(List<IArrowEncoder> encoders, List<IDataValue> propertyNames)
         {
             this._encoders = encoders;
+            this._propertyNames = propertyNames;
         }
         public void AddValue(int index, ref AddToColumnFunc func)
         {
-            throw new NotImplementedException();
+            Debug.Assert(_array != null);
+
+            if (_array.IsNull(index))
+            {
+                func.AddValue(NullValue.Instance);
+                return;
+            }
+
+            List<KeyValuePair<IDataValue, IDataValue>> result = new List<KeyValuePair<IDataValue, IDataValue>>();
+
+            for (int i = 0; i < _encoders.Count; i++)
+            {
+                AddToColumnFunc innerFunc = new AddToColumnFunc();
+                _encoders[i].AddValue(index, ref innerFunc);
+                result.Add(new KeyValuePair<IDataValue, IDataValue>(_propertyNames[i], innerFunc.BoxedValue!));
+            }
+
+            func.AddValue(new MapValue(result));
         }
 
         public void NewBatch(IArrowArray arrowArray)
@@ -39,6 +61,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
             if (arrowArray is StructArray structArray)
             {
                 _array = structArray;
+                for (int i = 0; i < _encoders.Count; i++)
+                {
+                    _encoders[i].NewBatch(structArray.Fields[i]);
+                }
             }
             else
             {

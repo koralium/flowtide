@@ -13,6 +13,7 @@
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowEncoders;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
+using FlowtideDotNet.Core.ColumnStore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -91,11 +92,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         public override IArrowEncoder VisitStructType(StructType type)
         {
             var encoders = new List<IArrowEncoder>();
+            List<IDataValue> propertyNames = new List<IDataValue>();
             foreach (var field in type.Fields)
             {
+                propertyNames.Add(new StringValue(field.Name));
                 encoders.Add(Visit(field.Type));
             }
-            return new StructEncoder(encoders);
+            return new StructEncoder(encoders, propertyNames);
         }
     }
 }
