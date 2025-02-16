@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.PartitionValueEncoders;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowPartitionEncoders;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
@@ -32,10 +32,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var encoder = new DatePartitionEncoder("date");
 
-            encoder.NewBatch(default!, new Dictionary<string, string> { { "date", date } });
+            encoder.NewFile(new Dictionary<string, string> { { "date", date } });
 
-            AddToColumnParquet func = new   ();
-            encoder.ReadNextData(ref func);
+            AddToColumnFunc func = new AddToColumnFunc();
+            encoder.AddValue(0, ref func);
 
             Assert.Equal(new TimestampTzValue(new DateTime(2021, 1, 1)), func.BoxedValue);
         }
@@ -47,10 +47,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var encoder = new IntegerPartitionEncoder("integer");
 
-            encoder.NewBatch(default!, new Dictionary<string, string> { { "integer", integer } });
+            encoder.NewFile(new Dictionary<string, string> { { "integer", integer } });
 
-            AddToColumnParquet func = new AddToColumnParquet();
-            encoder.ReadNextData(ref func);
+            AddToColumnFunc func = new AddToColumnFunc();
+            encoder.AddValue(0, ref func);
             Assert.Equal(new Int64Value(123), func.BoxedValue);
         }
 
@@ -61,10 +61,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var encoder = new FloatingPointPartitionEncoder("double");
 
-            encoder.NewBatch(default!, new Dictionary<string, string> { { "double", doubleValue } });
+            encoder.NewFile(new Dictionary<string, string> { { "double", doubleValue } });
 
-            AddToColumnParquet func = new AddToColumnParquet();
-            encoder.ReadNextData(ref func);
+            AddToColumnFunc func = new AddToColumnFunc();
+            encoder.AddValue(0, ref func);
             Assert.Equal(new DoubleValue(123.45), func.BoxedValue);
         }
 
@@ -75,10 +75,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var encoder = new StringPartitionEncoder("string");
 
-            encoder.NewBatch(default!, new Dictionary<string, string> { { "string", stringValue } });
+            encoder.NewFile(new Dictionary<string, string> { { "string", stringValue } });
 
-            AddToColumnParquet func = new AddToColumnParquet();
-            encoder.ReadNextData(ref func);
+            AddToColumnFunc func = new AddToColumnFunc();
+            encoder.AddValue(0, ref func);
             Assert.Equal("test", func.BoxedValue!.AsString.ToString());
         }
 
@@ -89,11 +89,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var encoder = new TimestampPartitionEncoder("timestamp");
 
-            encoder.NewBatch(default!, new Dictionary<string, string> { { "timestamp", timestamp } });
+            encoder.NewFile(new Dictionary<string, string> { { "timestamp", timestamp } });
 
-            AddToColumnParquet func = new AddToColumnParquet();
+            AddToColumnFunc func = new AddToColumnFunc();
 
-            encoder.ReadNextData(ref func);
+            encoder.AddValue(0, ref func);
 
             var dt = func.BoxedValue!.AsTimestamp.ToDateTimeOffset();
             Assert.Equal(new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.Zero), dt);
@@ -106,10 +106,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var encoder = new TimestampPartitionEncoder("timestamp");
 
-            encoder.NewBatch(default!, new Dictionary<string, string> { { "timestamp", timestamp } });
+            encoder.NewFile(new Dictionary<string, string> { { "timestamp", timestamp } });
 
-            AddToColumnParquet func = new AddToColumnParquet();
-            encoder.ReadNextData(ref func);
+            AddToColumnFunc func = new AddToColumnFunc();
+            encoder.AddValue(0, ref func);
 
             var dt = func.BoxedValue!.AsTimestamp.ToDateTimeOffset();
             Assert.Equal(DateTimeOffset.Parse(timestamp), dt);
@@ -122,10 +122,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var encoder = new TimestampPartitionEncoder("timestamp");
 
-            encoder.NewBatch(default!, new Dictionary<string, string> { { "timestamp", timestamp } });
+            encoder.NewFile(new Dictionary<string, string> { { "timestamp", timestamp } });
 
-            AddToColumnParquet func = new AddToColumnParquet();
-            encoder.ReadNextData(ref func);
+            AddToColumnFunc func = new AddToColumnFunc();
+            encoder.AddValue(0, ref func);
 
             var dt = func.BoxedValue!.AsTimestamp.ToDateTimeOffset();
             Assert.Equal(DateTimeOffset.Parse(timestamp), dt);
@@ -138,10 +138,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var encoder = new BoolPartitionEncoder("bool");
 
-            encoder.NewBatch(default!, new Dictionary<string, string> { { "bool", boolValue } });
+            encoder.NewFile(new Dictionary<string, string> { { "bool", boolValue } });
 
-            AddToColumnParquet func = new AddToColumnParquet();
-            encoder.ReadNextData(ref func);
+            AddToColumnFunc func = new AddToColumnFunc();
+            encoder.AddValue(0, ref func);
             Assert.Equal(new BoolValue(true), func.BoxedValue);
         }
 
@@ -152,10 +152,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var encoder = new BoolPartitionEncoder("bool");
 
-            encoder.NewBatch(default!, new Dictionary<string, string> { { "bool", boolValue } });
+            encoder.NewFile(new Dictionary<string, string> { { "bool", boolValue } });
 
-            AddToColumnParquet func = new AddToColumnParquet();
-            encoder.ReadNextData(ref func);
+            AddToColumnFunc func = new AddToColumnFunc();
+            encoder.AddValue(0, ref func);
             Assert.Equal(new BoolValue(false), func.BoxedValue);
         }
 
@@ -166,10 +166,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var encoder = new BinaryPartitionEncoder("binary");
 
-            encoder.NewBatch(default!, new Dictionary<string, string> { { "binary", binaryValue } });
+            encoder.NewFile(new Dictionary<string, string> { { "binary", binaryValue } });
 
-            AddToColumnParquet func = new AddToColumnParquet();
-            encoder.ReadNextData(ref func);
+            AddToColumnFunc func = new AddToColumnFunc();
+            encoder.AddValue(0, ref func);
             Assert.Equal(Encoding.Unicode.GetBytes(binaryValue), func.BoxedValue!.AsBinary.ToArray());
         }
 
@@ -180,10 +180,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var encoder = new DecimalPartitionEncoder("decimal");
 
-            encoder.NewBatch(default!, new Dictionary<string, string> { { "decimal", decimalValue } });
+            encoder.NewFile(new Dictionary<string, string> { { "decimal", decimalValue } });
 
-            AddToColumnParquet func = new AddToColumnParquet();
-            encoder.ReadNextData(ref func);
+            AddToColumnFunc func = new AddToColumnFunc();
+            encoder.AddValue(0, ref func);
             Assert.Equal(new DecimalValue(123.45m), func.BoxedValue);
         }
     }

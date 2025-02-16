@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowEncoders;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Encoders;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Storage.DataStructures;

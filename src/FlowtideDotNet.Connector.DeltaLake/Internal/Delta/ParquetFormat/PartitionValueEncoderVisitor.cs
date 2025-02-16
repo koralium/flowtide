@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowEncoders;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowPartitionEncoders;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Encoders;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using System;
