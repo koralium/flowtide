@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Parquet.Net" Version="5.1.0" />
     <PackageReference Include="ParquetSharp" Version="16.1.0" />
     <PackageReference Include="Stowage" Version="2.0.1" />
   </ItemGroup>
