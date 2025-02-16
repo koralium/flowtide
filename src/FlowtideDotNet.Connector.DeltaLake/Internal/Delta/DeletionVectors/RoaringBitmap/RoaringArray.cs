@@ -1,4 +1,16 @@
-﻿using System;
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -6,6 +18,9 @@ using System.Text;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap
 {
+    /// <summary>
+    /// Code from https://github.com/Tornhoof/RoaringBitmap/tree/master which is archived
+    /// </summary>
     internal class RoaringArray : IEnumerable<int>, IEquatable<RoaringArray>
     {
         private const int SerialCookieNoRuncontainer = 12346;
@@ -65,7 +80,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
             return GetEnumerator();
         }
 
-        public bool Equals(RoaringArray other)
+        public bool Equals(RoaringArray? other)
         {
             if (ReferenceEquals(this, other))
             {
@@ -174,8 +189,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
         {
             var xLength = x.m_Size;
             var yLength = y.m_Size;
-            List<ushort> keys = null;
-            List<Container> containers = null;
+            List<ushort>? keys = null;
+            List<Container>? containers = null;
             var size = 0;
             var xPos = 0;
             var yPos = 0;
@@ -195,7 +210,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
                             containers = new List<Container>(length);
                         }
                         keys.Add(xKey);
-                        containers.Add(c);
+                        containers!.Add(c);
                         size++;
                     }
                     xPos++;
@@ -210,7 +225,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
                     yPos = y.AdvanceUntil(xKey, yPos);
                 }
             }
-            return new RoaringArray(size, keys, containers);
+            return new RoaringArray(size, keys!, containers!);
         }
 
         public static RoaringArray operator ^(RoaringArray x, RoaringArray y)
@@ -377,7 +392,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
             return new RoaringArray(size, keys, containers);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             var ra = obj as RoaringArray;
             return ra != null && Equals(ra);
@@ -444,7 +459,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
                     var container = values[k];
                     ArrayContainer ac;
                     BitmapContainer bc;
-                    if ((ac = container as ArrayContainer) != null)
+                    if ((ac = (container as ArrayContainer)!) != null)
                     {
                         if (ac.Equals(ArrayContainer.One))
                         {
@@ -457,7 +472,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
                             ArrayContainer.Serialize(ac, binaryWriter);
                         }
                     }
-                    else if ((bc = container as BitmapContainer) != null)
+                    else if ((bc = (container as BitmapContainer)!) != null)
                     {
                         if (bc.Equals(BitmapContainer.One))
                         {
@@ -505,7 +520,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
                 var isBitmap = new bool[size];
 
 
-                byte[] bitmapOfRunContainers = null;
+                byte[]? bitmapOfRunContainers = null;
                 if (hasRun)
                 {
                     bitmapOfRunContainers = binaryReader.ReadBytes((size + 7) / 8);

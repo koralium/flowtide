@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         private const string ChangeDelete = "delete";
 
         private List<string>? _physicalColumnNamesInBatch;
-        private List<IArrowEncoder> _encoders;
+        private List<IArrowEncoder>? _encoders;
         public void Initialize(DeltaTable table, IReadOnlyList<string> columnNames)
         {
             ParquetArrowTypeVisitor visitor = new ParquetArrowTypeVisitor();
@@ -231,6 +231,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         public async IAsyncEnumerable<BatchResult> ReadDataFile(IFileStorage storage, IOPath table, string path, IDeleteVector deleteVector, Dictionary<string, string>? partitionValues, IMemoryAllocator memoryAllocator)
         {
             Debug.Assert(_physicalColumnNamesInBatch != null);
+            Debug.Assert(_encoders != null);
 
             var stream = await storage.OpenRead(table.Combine(path));
 

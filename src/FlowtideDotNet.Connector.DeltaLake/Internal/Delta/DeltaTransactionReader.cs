@@ -1,6 +1,17 @@
-﻿using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
-using Parquet.Serialization;
 using Stowage;
 using System;
 using System.Collections.Generic;
@@ -196,26 +207,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             }
 
             return null;
-        }
-
-        private static async Task ReadCheckpoint(IFileStorage storage, LogTransactionFile checkpoint, List<DeltaBaseAction> actionsList, Dictionary<DeltaFileKey, DeltaAddAction> addFiles)
-        {
-            // Read the checkpoint file
-            using var checkpointData = await storage.OpenRead(checkpoint.IOEntry.Path);
-            var actions = await ParquetSerializer.DeserializeAsync<DeltaAction>(checkpointData);
-
-            foreach (var action in actions)
-            {
-                if (action.Add != null)
-                {
-                    addFiles.Add(action.Add.GetKey(), action.Add);
-                }
-                if (action.Remove != null)
-                {
-                    addFiles.Remove(action.Remove.GetKey());
-                }
-                actionsList.Add(ToGenericAction(action)!);
-            }
         }
 
         public static async Task<IReadOnlyList<LogTransactionFile>> ReadTransactionLog(IFileStorage storage, IOPath tableName)

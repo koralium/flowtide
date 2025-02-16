@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
 {
     internal class DateEncoder : IArrowEncoder
     {
-        private Date32Array _array;
+        private Date32Array? _array;
 
         public bool IsPartitionValueEncoder => false;
 
