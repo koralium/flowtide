@@ -26,6 +26,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
     internal class Float32Encoder : IArrowEncoder
     {
         private FloatArray? _array;
+
+        public bool IsPartitionValueEncoder => false;
+
         public void AddValue(int index, ref AddToColumnFunc func)
         {
             Debug.Assert(_array != null);

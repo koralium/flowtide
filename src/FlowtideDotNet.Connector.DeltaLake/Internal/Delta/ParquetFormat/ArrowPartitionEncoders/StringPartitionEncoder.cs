@@ -11,54 +11,59 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowEncoders;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowEncoders
+namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowPartitionEncoders
 {
-    internal class Float64Encoder : IArrowEncoder
+    internal class StringPartitionEncoder : IArrowEncoder
     {
-        private DoubleArray? _array;
+        private readonly string physicalName;
+        private StringValue? _partitionValue;
 
-        public bool IsPartitionValueEncoder => false;
+        public StringPartitionEncoder(string physicalName)
+        {
+            this.physicalName = physicalName;
+        }
 
+        public bool IsPartitionValueEncoder => true;
 
         public void AddValue(int index, ref AddToColumnFunc func)
         {
-            Debug.Assert(_array != null);
-
-            var val = _array.GetValue(index);
-            if (!val.HasValue)
+            if (_partitionValue == null)
             {
                 func.AddValue(NullValue.Instance);
             }
             else
             {
-                func.AddValue(new DoubleValue(val.Value));
+                func.AddValue(_partitionValue.Value);
             }
         }
 
         public void NewBatch(IArrowArray arrowArray)
         {
-            if (arrowArray is DoubleArray doubleArray)
-            {
-                _array = doubleArray;
-            }
-            else
-            {
-                throw new ArgumentException("Expected double array", nameof(arrowArray));
-            }
         }
 
         public void NewFile(Dictionary<string, string>? partitionValues)
         {
+            if (partitionValues == null)
+            {
+                throw new ArgumentNullException(nameof(partitionValues));
+            }
+
+            if (!partitionValues.TryGetValue(physicalName, out var value))
+            {
+                throw new ArgumentException($"Partition value for {physicalName} not found");
+            }
+
+            _partitionValue = new StringValue(value);
         }
     }
 }

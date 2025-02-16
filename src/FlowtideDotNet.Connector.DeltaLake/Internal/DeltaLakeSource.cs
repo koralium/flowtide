@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             foreach(var file in deltaCommit.CdcFiles)
             {
                 Debug.Assert(file.Path != null);
-                var batches = _reader.ReadCdcFile(_options.StorageLocation, _tableLoc, file.Path, MemoryAllocator);
+                var batches = _reader.ReadCdcFile(_options.StorageLocation, _tableLoc, file.Path, file.PartitionValues, MemoryAllocator);
 
                 await foreach(var batch in batches)
                 {

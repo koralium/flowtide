@@ -15,6 +15,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
     {
         private StringArray? _array;
 
+        public bool IsPartitionValueEncoder => false;
+
         public void AddValue(int index, ref AddToColumnFunc func)
         {
             Debug.Assert(_array != null);

@@ -100,5 +100,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
             return new StructEncoder(encoders, propertyNames);
         }
+
+        public override IArrowEncoder VisitMapType(MapType type)
+        {
+            var keyEncoder = Visit(type.KeyType);
+            var valueEncoder = Visit(type.ValueType);
+            return new MapEncoder(keyEncoder, valueEncoder);
+        }
     }
 }

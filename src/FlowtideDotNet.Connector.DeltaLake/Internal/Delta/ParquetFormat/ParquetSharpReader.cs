@@ -15,6 +15,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowEncod
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Encoders;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using ParquetSharp.Arrow;
 using SqlParser.Ast;
@@ -31,6 +32,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 {
     internal class ParquetSharpReader : IDeltaFormatReader
     {
+        private const string ChangeUpdatePreImage = "update_preimage";
+        private const string ChangeUpdatePostImage = "update_postimage";
+        private const string ChangeInsert = "insert";
+        private const string ChangeDelete = "delete";
+
         private List<string>? _physicalColumnNamesInBatch;
         private List<IArrowEncoder> _encoders;
         public void Initialize(DeltaTable table, IReadOnlyList<string> columnNames)
@@ -56,7 +62,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 if (table.PartitionColumns.Contains(field.Name))
                 {
                     // Handle partition columns
-                    //encoders.Add(new PartitionValueVisitor(physicalName).Visit(field.Type));
+                    encoders.Add(new PartitionValueEncoderVisitor(physicalName).Visit(field.Type));
                 }
                 else
                 {
@@ -67,9 +73,142 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             _encoders = encoders;
         }
 
-        public IAsyncEnumerable<CdcBatchResult> ReadCdcFile(IFileStorage storage, IOPath table, string path, IMemoryAllocator memoryAllocator)
+        public async IAsyncEnumerable<CdcBatchResult> ReadCdcFile(IFileStorage storage, IOPath table, string path, Dictionary<string, string>? partitionValues, IMemoryAllocator memoryAllocator)
         {
-            throw new NotImplementedException();
+            Debug.Assert(_physicalColumnNamesInBatch != null);
+            if (_encoders == null)
+            {
+                throw new InvalidOperationException("Initialize must be called before ReadDataFile");
+            }
+
+            var stream = await storage.OpenRead(table.Combine(path));
+
+            if (stream == null)
+            {
+                throw new Exception($"File not found: {path}");
+            }
+
+            ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+
+            foreach (var encoder in _encoders)
+            {
+                encoder.NewFile(partitionValues);
+            }
+
+            List<int> columnsToSelect = new List<int>();
+
+            for (int i = 0; i < _physicalColumnNamesInBatch.Count; i++)
+            {
+
+                bool found = false;
+                for (int k = 0; k < fileReader.SchemaManifest.SchemaFields.Count; k++)
+                {
+                    var field = fileReader.SchemaManifest.SchemaFields[k];
+
+                    if (field.Field.Name.Equals(_physicalColumnNamesInBatch[i], StringComparison.OrdinalIgnoreCase))
+                    {
+
+                        found = true;
+                        AddColumnToSelect(field, columnsToSelect);
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    throw new InvalidOperationException($"Could not find field {_physicalColumnNamesInBatch[i]} in batch");
+                }
+            }
+
+            for (int k = 0; k < fileReader.SchemaManifest.SchemaFields.Count; k++)
+            {
+                var field = fileReader.SchemaManifest.SchemaFields[k];
+
+                if (field.Field.Name.Equals("_change_type", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddColumnToSelect(field, columnsToSelect);
+                    break;
+                }
+            }
+
+            int changeTypeIndex = -1;
+            for (int i = 0; i < fileReader.Schema.FieldsList.Count; i++)
+            {
+                if (fileReader.Schema.FieldsList[i].Name == "_change_type")
+                {
+                    changeTypeIndex = i;
+                }
+            }
+            if (changeTypeIndex == -1)
+            {
+                throw new InvalidOperationException("Could not find _change_type column in batch");
+            }
+
+            var batchReader = fileReader.GetRecordBatchReader(columns: columnsToSelect.ToArray());
+
+            int globalIndex = 0;
+            Apache.Arrow.RecordBatch batch;
+            while ((batch = await batchReader.ReadNextRecordBatchAsync()) != null)
+            {
+                using (batch)
+                {
+                    PrimitiveList<int> weights = new PrimitiveList<int>(memoryAllocator);
+                    var changeTypeColumn = batch.Column(changeTypeIndex);
+                    var changeTypes = (Apache.Arrow.StringArray)changeTypeColumn;
+
+                    Column[] outColumns = new Column[_encoders.Count];
+                    for (int i = 0; i < outColumns.Length; i++)
+                    {
+                        outColumns[i] = new Column(memoryAllocator);
+                    }
+                    int batchCount = 0;
+                    int columnIndex = 0;
+                    for (int i = 0; i < _encoders.Count; i++)
+                    {
+                        var encoder = _encoders[i];
+                        if (!encoder.IsPartitionValueEncoder)
+                        {
+                            encoder.NewBatch(batch.Column(columnIndex));
+                            columnIndex++;
+                        }
+                    }
+
+                    for (int i = 0; i < batch.Length; i++, globalIndex++)
+                    {
+                        batchCount++;
+
+                        switch (changeTypes.GetString(i))
+                        {
+                            case ChangeUpdatePreImage:
+                                weights.Add(-1);
+                                break;
+                            case ChangeUpdatePostImage:
+                                weights.Add(1);
+                                break;
+                            case ChangeInsert:
+                                weights.Add(1);
+                                break;
+                            case ChangeDelete:
+                                weights.Add(-1);
+                                break;
+                            default:
+                                throw new InvalidOperationException($"Unknown change type: {changeTypes.GetString(i)}");
+                        }
+
+                        for (int j = 0; j < _encoders.Count; j++)
+                        {
+                            var encoder = _encoders[j];
+                            AddToColumn(encoder, outColumns[j], i);
+                        }
+                    }
+
+                    yield return new CdcBatchResult()
+                    {
+                        count = batchCount,
+                        data = new EventBatchData(outColumns),
+                        weights  = weights
+                    };
+                }
+            }
         }
 
         private static void AddColumnToSelect(SchemaField schemaField, List<int> columnsToSelect)
@@ -104,6 +243,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
 
             List<int> columnsToSelect = new List<int>();
+
+            foreach(var encoder in _encoders)
+            {
+                encoder.NewFile(partitionValues);
+            }
 
             for (int i = 0; i < _physicalColumnNamesInBatch.Count; i++)
             {
@@ -142,10 +286,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                         outColumns[i] = new Column(memoryAllocator);
                     }
                     int batchCount = 0;
+                    int columnIndex = 0;
                     for (int i = 0; i < _encoders.Count; i++)
                     {
                         var encoder = _encoders[i];
-                        encoder.NewBatch(batch.Column(i));
+                        if (!encoder.IsPartitionValueEncoder)
+                        {
+                            encoder.NewBatch(batch.Column(columnIndex));
+                            columnIndex++;
+                        }
                     }
 
                     for (int i = 0; i < batch.Length; i++, globalIndex++)
@@ -167,12 +316,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                         count = batchCount,
                         data = new EventBatchData(outColumns)
                     };
-                    // Do something with this batch of data
                 }
             }
-
-            yield break;
-            throw new NotImplementedException();
         }
     }
 }

@@ -11,63 +11,65 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowEncoders;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static Substrait.Protobuf.Type.Types;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowEncoders
+namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowPartitionEncoders
 {
-    internal class ListEncoder : IArrowEncoder
+    internal class DecimalPartitionEncoder : IArrowEncoder
     {
-        private readonly IArrowEncoder _childEncoder;
-        private ListArray? _array;
+        private readonly string physicalName;
+        private DecimalValue? _value;
 
-        public bool IsPartitionValueEncoder => false;
-
-
-        public ListEncoder(IArrowEncoder childEncoder)
+        public DecimalPartitionEncoder(string physicalName)
         {
-            _childEncoder = childEncoder;
+            this.physicalName = physicalName;
         }
+
+        public bool IsPartitionValueEncoder => true;
 
         public void AddValue(int index, ref AddToColumnFunc func)
         {
-            Debug.Assert(_array != null);
-
-            if (_array.IsNull(index))
+            if (_value == null)
             {
                 func.AddValue(NullValue.Instance);
-                return;
             }
-
-            var startOffset = _array.ValueOffsets[index];
-            var endOffset = _array.ValueOffsets[index + 1];
-
-            List<IDataValue> result = new List<IDataValue>();
-            for (int i = startOffset; i < endOffset; i++)
+            else
             {
-                AddToColumnFunc innerFunc = new AddToColumnFunc();
-                _childEncoder.AddValue(i, ref innerFunc);
-                result.Add(innerFunc.BoxedValue!);
+                func.AddValue(_value.Value);
             }
-            func.AddValue(new ListValue(result));
         }
 
         public void NewBatch(IArrowArray arrowArray)
         {
-            _array = (ListArray)arrowArray;
-            _childEncoder.NewBatch(_array.Values);
         }
 
         public void NewFile(Dictionary<string, string>? partitionValues)
         {
+            if (partitionValues == null)
+            {
+                throw new ArgumentNullException(nameof(partitionValues));
+            }
+
+            if (!partitionValues.TryGetValue(physicalName, out var value))
+            {
+                throw new ArgumentException($"Partition value for {physicalName} not found");
+            }
+
+            if (!decimal.TryParse(value, CultureInfo.InvariantCulture, out var decimalValue))
+            {
+                throw new ArgumentException($"Partition value for {physicalName} is not a decimal");
+            }
+
+            _value = new DecimalValue(decimalValue);
         }
     }
 }

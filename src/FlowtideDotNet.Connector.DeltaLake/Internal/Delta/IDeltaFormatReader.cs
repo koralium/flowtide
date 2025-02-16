@@ -50,6 +50,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             Dictionary<string, string>? partitionValues,
             IMemoryAllocator memoryAllocator);
 
-        IAsyncEnumerable<CdcBatchResult> ReadCdcFile(IFileStorage storage, IOPath table, string path, IMemoryAllocator memoryAllocator);
+        IAsyncEnumerable<CdcBatchResult> ReadCdcFile(IFileStorage storage, IOPath table, string path, Dictionary<string, string>? partitionValues, IMemoryAllocator memoryAllocator);
     }
 }

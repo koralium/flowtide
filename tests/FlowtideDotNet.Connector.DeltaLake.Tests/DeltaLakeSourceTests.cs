@@ -439,7 +439,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task ReadMap()
         {
             var storageLoc = Files.Of.LocalDisk("../../../testdata");
-            DeltaLakeTestStream stream = new DeltaLakeTestStream(nameof(ReadArray), storageLoc);
+            DeltaLakeTestStream stream = new DeltaLakeTestStream(nameof(ReadMap), storageLoc);
 
             await stream.StartStream(@"
             INSERT INTO output
@@ -450,11 +450,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             stream.AssertCurrentDataEqual(new[]
             {
-                new { v = new List<int>(){ 0 } },
-                new { v = new List<int>(){ 0, 1 } },
-                new { v = new List<int>(){ 0, 1, 2 } },
-                new { v = new List<int>(){ 0, 1, 2, 3 } },
-                new { v = new List<int>(){ 0, 1, 2, 3, 4 } },
+                new { v = new Dictionary<string, object>() },
+                new { v = new Dictionary<string, object>(){ { "0", 0} } },
+                new { v = new Dictionary<string, object>(){ { "0", 0 }, { "1", 1 } } },
+                new { v = new Dictionary<string, object>(){ { "0", 0 }, { "1", 1 }, { "2", 2 } } },
+                new { v = new Dictionary<string, object>(){ { "0", 0 }, { "1", 1 }, { "2", 2 }, { "3", 3 } } },
             });
         }
     }
