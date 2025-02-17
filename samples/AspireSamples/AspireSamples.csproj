@@ -22,11 +22,13 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
     <PackageReference Include="Spectre.Console.Cli" Version="0.49.1" />
+    <PackageReference Include="Stowage" Version="2.0.1" />
   </ItemGroup>
 	
 	<Sdk Name="Aspire.AppHost.Sdk" Version="9.0.0" />
 
   <ItemGroup>
+    <ProjectReference Include="..\DeltaLakeSourceUsage\DeltaLakeSourceUsage.csproj" />
     <ProjectReference Include="..\MongoDbToConsoleSample\MongoDbToConsoleSample.csproj" />
     <ProjectReference Include="..\SqlServerToSqlServerStream\SqlServerToSqlServerStream.csproj" />
   </ItemGroup>

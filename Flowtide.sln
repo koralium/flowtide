@@ -101,6 +101,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.De
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.DeltaLake.Tests", "tests\FlowtideDotNet.Connector.DeltaLake.Tests\FlowtideDotNet.Connector.DeltaLake.Tests.csproj", "{CB4D6BB6-F6CA-4281-9E8C-2F1850A38AB7}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DeltaLakeSourceUsage", "samples\DeltaLakeSourceUsage\DeltaLakeSourceUsage.csproj", "{8CD58AF5-5E51-4FA2-B06E-297839FBF1E4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -291,6 +293,10 @@ Global
 		{CB4D6BB6-F6CA-4281-9E8C-2F1850A38AB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CB4D6BB6-F6CA-4281-9E8C-2F1850A38AB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CB4D6BB6-F6CA-4281-9E8C-2F1850A38AB7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8CD58AF5-5E51-4FA2-B06E-297839FBF1E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CD58AF5-5E51-4FA2-B06E-297839FBF1E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8CD58AF5-5E51-4FA2-B06E-297839FBF1E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8CD58AF5-5E51-4FA2-B06E-297839FBF1E4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -342,6 +348,7 @@ Global
 		{AD341C23-9081-4831-A3D1-45488A30C45F} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 		{5065A7D7-CFED-4C8E-9404-2FC766D66B8F} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
 		{CB4D6BB6-F6CA-4281-9E8C-2F1850A38AB7} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
+		{8CD58AF5-5E51-4FA2-B06E-297839FBF1E4} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {314C9503-DE99-42AA-8FB0-E355C91986C4}

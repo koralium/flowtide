@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FASTER.core;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
@@ -57,12 +58,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private bool _hasCheckpointed = false;
 
         private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _changesTree;
+        
+        // Metrics
+        private ICounter<long>? _eventsCounter;
+        private ICounter<long>? _eventsProcessed;
 
         public DeltaLakeSource(ReadRelation readRelation, DeltaLakeOptions options, DataflowBlockOptions blockOptions) : base(blockOptions)
         {
             this._readRelation = readRelation;
             this._options = options;
-            _tableName = readRelation.NamedTable.DotSeperated;
+            _tableName = string.Join("/", readRelation.NamedTable.Names);
             _tableLoc = _tableName;
         }
 
@@ -96,6 +101,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         {
             Debug.Assert(_state?.Value != null);
             Debug.Assert(_reader != null);
+            Debug.Assert(_eventsCounter != null);
+            Debug.Assert(_eventsProcessed != null);
 
             await output.EnterCheckpointLock();
 
@@ -109,6 +116,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
                     iterations.InsertStaticRange(0, 0, (int)batch.count);
 
+                    _eventsCounter.Add(batch.count);
+                    _eventsProcessed.Add(batch.count);
                     await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(batch.weights, iterations, batch.data)));
                 }
             }
@@ -131,6 +140,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             Debug.Assert(_state?.Value != null);
             Debug.Assert(_reader != null);
             Debug.Assert(_changesTree != null);
+            Debug.Assert(_eventsCounter != null);
+            Debug.Assert(_eventsProcessed != null);
 
             await output.EnterCheckpointLock();
 
@@ -233,6 +244,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
                 iterations.InsertStaticRange(0, 0, weights.Count);
 
+                _eventsCounter.Add(weights.Count);
+                _eventsProcessed.Add(weights.Count);
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
             }
 
@@ -298,6 +311,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsProcessed == null)
+            {
+                _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
+            }
+
             _state = await stateManagerClient.GetOrCreateObjectStateAsync<DeltaLakeSourceState>("state");
 
             if (_state.Value == null)
@@ -321,6 +343,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
 
             _table = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tableLoc, maxVersion);
+
+            if (_table == null)
+            {
+                throw new InvalidOperationException($"Delta Lake Table {_tableName} does not exist");
+            }
 
             var reader = new ParquetSharpReader();
             reader.Initialize(_table, _readRelation.BaseSchema.Names);
@@ -347,6 +374,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             Debug.Assert(_state?.Value != null);
             Debug.Assert(_table != null);
             Debug.Assert(_reader != null);
+            Debug.Assert(_eventsCounter != null);
+            Debug.Assert(_eventsProcessed != null);
+
             if (_state.Value.CurrentVersion == -1)
             {
                 await output.EnterCheckpointLock();
@@ -372,6 +402,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         weights.InsertStaticRange(0, 1, (int)batch.count);
                         iterations.InsertStaticRange(0, 0, (int)batch.count);
 
+                        _eventsCounter.Add(batch.count);
+                        _eventsProcessed.Add(batch.count);
                         await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, batch.data)));
                     }
                 }

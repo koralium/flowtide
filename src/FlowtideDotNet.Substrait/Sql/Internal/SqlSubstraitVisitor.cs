@@ -942,7 +942,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 throw new InvalidOperationException("Hints are not supported on tables at this point.");
             }
-            
+
+            var tableNameParts = table.Name.Values.Select(x => x.Value).ToList();
             var tableName = string.Join('.', table.Name.Values.Select(x => x.Value));
 
             if (viewRelations.TryGetValue(tableName, out var viewContainer))
@@ -974,7 +975,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }, emitData);
             }
 
-            if (tablesMetadata.TryGetTable(tableName, out var t))
+            if (tablesMetadata.TryGetTable(tableNameParts, out var t))
             {
                 var emitData = new EmitData();
 

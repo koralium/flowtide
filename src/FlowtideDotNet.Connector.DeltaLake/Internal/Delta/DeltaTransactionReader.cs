@@ -26,9 +26,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
     {
         public const string DeltaLogDirName = "_delta_log/";
 
-        public static async Task<DeltaTable> ReadTable(IFileStorage storage, IOPath tableName, long maxVersion = long.MaxValue)
+        public static async Task<DeltaTable?> ReadTable(IFileStorage storage, IOPath tableName, long maxVersion = long.MaxValue)
         {
             var logs = await ReadTransactionLog(storage, tableName);
+
+            if (logs.Count == 0)
+            {
+                return null;
+            }
 
             List<DeltaBaseAction> actions = new List<DeltaBaseAction>();
 

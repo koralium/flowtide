@@ -28,27 +28,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
     internal class DeltaLakeSqlProvider : ITableProvider
     {
         private readonly DeltaLakeOptions deltaLakeOptions;
-        private HashSet<string>? tableNames;
+        //private HashSet<string>? tableNames;
+
+        private Dictionary<string, TableMetadata> tableMetadataLookup;
+        private HashSet<string> nonExistingTables;
 
         public DeltaLakeSqlProvider(DeltaLakeOptions deltaLakeOptions)
         {
             this.deltaLakeOptions = deltaLakeOptions;
-        }
-
-        [MemberNotNull(nameof(tableNames))]
-        private async Task GetTableNames()
-        {
-            tableNames = new HashSet<string>();
-            var lsResult = await deltaLakeOptions.StorageLocation.Ls();
-            foreach(var result in lsResult)
-            {
-                var name = result.Name;
-                if (name.EndsWith("/"))
-                {
-                    name = name.Substring(0, name.Length - 1);
-                }
-                tableNames.Add(name);
-            }
+            tableMetadataLookup = new Dictionary<string, TableMetadata>();
+            nonExistingTables = new HashSet<string>();
         }
 
         private async Task<TableMetadata?> GetTableMetadata(string tableName)
@@ -81,21 +70,30 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             return new TableMetadata(tableName, schema);
         }
 
-        public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
-            if (tableNames == null)
+            string path = string.Join("/", tableName);
+
+            if (nonExistingTables.Contains(path))
             {
-                GetTableNames().Wait();
+                tableMetadata = null;
+                return false;
             }
-            if (tableNames.Contains(tableName))
+
+            if (tableMetadataLookup.TryGetValue(path, out var table))
             {
-                var result = GetTableMetadata(tableName).Result;
-                if (result != null)
-                {
-                    tableMetadata = result;
-                    return true;
-                }
+                tableMetadata = table;
+                return true;
             }
+            var result = GetTableMetadata(path).Result;
+            if (result != null)
+            {
+                tableMetadataLookup.Add(path, result);
+                tableMetadata = result;
+                return true;
+            }
+            nonExistingTables.Add(path);
+
             tableMetadata = null;
             return false;
         }

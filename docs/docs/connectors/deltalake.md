@@ -16,7 +16,7 @@ The delta lake source allows ingesting data from a delta lake table. To connect 
 
 ```csharp
 connectorManager.AddDeltaLake(new DeltaLakeOptions() {
-    // Connect to local disk, azure, AWS etc here, add the directory beneath the actual table you want to query (table name is selected in the query)
+    // Connect to local disk, azure, AWS etc here, add the directory beneath the actual table you want to query (table name and folders are selected in the query)
     StorageLocation = Files.Of.LocalDisk("./testdata")
 });
 ```
@@ -24,7 +24,7 @@ connectorManager.AddDeltaLake(new DeltaLakeOptions() {
 The delta lake connector uses [Stowage](https://github.com/aloneguid/stowage) to allow connection to different cloud storage solutions, please visit that link to
 check possible connections.
 
-Important to note is that the directory of storage location should be one level beneath the actual table you want to query. The actual table is selected in the query. Example:
+Important to note is that the directory of storage location should be beneath the actual table you want to query. The actual table is selected in the query. Example:
 
 ```sql
 INSERT INTO output
@@ -32,6 +32,15 @@ SELECT * FROM my_delta_lake_table
 ```
 
 In combination with the connector manager addition above, this will use the path `./testdata/my_delta_lake_table`.
+
+If you instead would write:
+
+```sql
+INSERT INTO output
+SELECT * FROM my_folder.my_delta_lake_table
+```
+
+It becomes: `./testdata/my_fylder/mmy_delta_lake_table`.
 
 The delta lake source can calculate all the changes from the table, so no additional state is stored in the stream of the data to correctly calculate changes.
 
@@ -57,4 +66,31 @@ connectorManager.AddDeltaLake(new DeltaLakeOptions() {
     StorageLocation = Files.Of.LocalDisk("./testdata"),
     OneVersionPerCheckpoint = true
 });
+```
+
+### Sample
+
+There is an example in the samples folder that uses the Delta Lake Source to read data from an azure blob storage.
+To run the example, start the `AspireSamples` project and select one of:
+
+* DeltaLake-Source
+* DeltaLake-Source, Replay history
+
+After the project has started, inspect the console log of the application to see a log output of the rows.
+
+### Azure Blob Storage Configuration Example
+
+When using Azure Blob Storage you would configure the storage example like this example:
+
+```csharp
+connectors.AddDeltaLake(new DeltaLakeOptions()
+{
+    StorageLocation = Files.Of.AzureBlobStorage(accountName, accountKey)
+});
+```
+
+This connects the source to the root of the blob storage, to then query a table you must include the container name and all subfolders to the table location:
+
+```sql
+SELECT * FROM my_container.my_optional_parent_folder.my_table
 ```

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using AspireSamples.DeltaLakeSourceSample;
 using AspireSamples.MongoDbToConsole;
 using Spectre.Console;
 using SqlServerToSqlServerAspire.SqlServerToSqlServer;
@@ -23,6 +24,8 @@ var sample = AnsiConsole.Prompt(
         .AddChoices(new[] {
             "SqlServer-To-SqlServer",
             "MongoDB-To-Console",
+            "DeltaLake-Source",
+            "DeltaLake-Source, Replay history"
         }));
 
 switch (sample)
@@ -32,5 +35,11 @@ switch (sample)
         break;
     case "MongoDB-To-Console":
         MongoDbToConsoleStartup.RunSample(builder);
+        break;
+    case "DeltaLake-Source":
+        DeltaLakeSourceStartup.RunSample(builder, false);
+        break;
+    case "DeltaLake-Source, Replay history":
+        DeltaLakeSourceStartup.RunSample(builder, true);
         break;
 }

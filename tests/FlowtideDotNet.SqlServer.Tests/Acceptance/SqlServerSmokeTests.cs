@@ -58,7 +58,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             connectorManager.AddSqlServerSource(() => sqlServerFixture.ConnectionString, (rel) =>
             {
                 var name = rel.NamedTable.Names[0];
-                return $"tpch.dbo.{name}";
+                return new List<string>() { "tpch", "dbo", name };
             });
         }
 

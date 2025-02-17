@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
         public bool CanHandle(ReadRelation readRelation)
         {
-            return _provider.TryGetTableInformation(readRelation.NamedTable.DotSeperated, out _);
+            return _provider.TryGetTableInformation(readRelation.NamedTable.Names, out _);
         }
 
         public IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
