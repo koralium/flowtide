@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         public override bool CanHandle(ReadRelation readRelation)
         {
-            return mongoDbTableProvider.TryGetTableInformation(readRelation.NamedTable.DotSeperated, out _);
+            return mongoDbTableProvider.TryGetTableInformation(readRelation.NamedTable.Names, out _);
         }
 
         public ITableProvider Create()

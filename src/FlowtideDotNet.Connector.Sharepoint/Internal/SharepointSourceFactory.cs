@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
         public override bool CanHandle(ReadRelation readRelation)
         {
-            return tableProvider.TryGetTableInformation(readRelation.NamedTable.DotSeperated, out _);
+            return tableProvider.TryGetTableInformation(readRelation.NamedTable.Names, out _);
         }
 
         public ITableProvider Create()

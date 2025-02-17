@@ -30,9 +30,10 @@ namespace FlowtideDotNet.SqlServer
             this.mustBeInConnectionStringDb = mustBeInConnectionStringDb;
         }
 
-        public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
-            var tableNameSplitted = tableName.Split(".");
+            var fullName = string.Join(".", tableName);
+            var tableNameSplitted = fullName.Split(".");
             string? schema = "dbo";
             string? name = null;
             string? tableCatalog = default;
@@ -103,7 +104,7 @@ namespace FlowtideDotNet.SqlServer
                 tableMetadata = default;
                 return false;
             }
-            tableMetadata = new TableMetadata(tableName, new NamedStruct()
+            tableMetadata = new TableMetadata(fullName, new NamedStruct()
             {
                 Names = columnOutput,
                 Struct = new Struct()

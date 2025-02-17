@@ -16,11 +16,11 @@ namespace FlowtideDotNet.Core.Flexbuffer
 {
     public ref struct FlxString
     {
-        private readonly Span<byte> span;
+        private readonly ReadOnlySpan<byte> span;
 
-        public Span<byte> Span => span;
+        public ReadOnlySpan<byte> Span => span;
 
-        public FlxString(Span<byte> span)
+        public FlxString(ReadOnlySpan<byte> span)
         {
             this.span = span;
         }

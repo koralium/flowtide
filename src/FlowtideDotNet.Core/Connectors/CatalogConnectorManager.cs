@@ -97,9 +97,9 @@ namespace FlowtideDotNet.Core.Connectors
                 .Union(_tableProviders);
         }
 
-        public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
-            if (tableName.StartsWith(catalogName))
+            if (tableName.Count > 1 && tableName[0] == catalogName)
             {
                 if (_resolvedTableProviders == null)
                 {
@@ -107,7 +107,8 @@ namespace FlowtideDotNet.Core.Connectors
                 }
                 for(int i = 0; i < _resolvedTableProviders.Count; i++)
                 {
-                    if (_resolvedTableProviders[i].TryGetTableInformation(tableName.Substring(catalogName.Length + 1), out tableMetadata))
+                    var nameWithoutCatalog = tableName.Skip(1).ToList();
+                    if (_resolvedTableProviders[i].TryGetTableInformation(nameWithoutCatalog, out tableMetadata))
                     {
                         return true;
                     }

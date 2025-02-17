@@ -28,6 +28,8 @@ namespace FlowtideDotNet.Storage.Tree
 
         public Memory<byte> Memory => _values.SlicedMemory;
 
+        public PrimitiveList<T> Data => _values;
+
         public PrimitiveListValueContainer(IMemoryAllocator memoryAllocator)
         {
             _values = new PrimitiveList<T>(memoryAllocator);
