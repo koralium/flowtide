@@ -11,6 +11,9 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using Stowage;
 using System;
 using System.Collections.Generic;
@@ -456,6 +459,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 new { v = new Dictionary<string, object>(){ { "0", 0 }, { "1", 1 }, { "2", 2 } } },
                 new { v = new Dictionary<string, object>(){ { "0", 0 }, { "1", 1 }, { "2", 2 }, { "3", 3 } } },
             });
+        }
+
+        [Fact]
+        public async Task TesParseNativeRoaringBitmapArrayInline()
+        {
+            var vector = new DeletionVector()
+            {
+                StorageType = "i",
+                PathOrInlineDv = "wi5b=000010000siXQKl0rr91000f55c8Xg0@@D72lkbi5=-{L",
+                SizeInBytes = 40,
+                Cardinality = 6
+            };
+
+            var storageLoc = Files.Of.LocalDisk("../../../testdata");
+
+            var result = await DeletionVectorReader.ReadDeletionVector(storageLoc, default!, vector);
+
+            Assert.Equal(new List<long>() { 3, 4, 7, 11, 18, 29 }, result.ToList());
         }
     }
 }

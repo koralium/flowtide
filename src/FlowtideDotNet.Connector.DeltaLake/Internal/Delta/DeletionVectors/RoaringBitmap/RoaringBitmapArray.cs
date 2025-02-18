@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using System;
+using System.Buffers.Binary;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -57,14 +58,30 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
 
         public static RoaringBitmapArray Deserialize(BinaryReader binaryReader)
         {
-            var arr = DeserializeArray(binaryReader);
+            var numberOfBitmaps = binaryReader.ReadInt64();
+            var arr = DeserializeArray(binaryReader, (int)numberOfBitmaps);
 
             return new RoaringBitmapArray(arr);
         }
 
-        static RoaringBitmap[] DeserializeArray(BinaryReader binaryReader)
+        public static RoaringBitmapArray DeserializeInt32Number(BinaryReader binaryReader)
         {
-            var numberOfBitmaps = binaryReader.ReadInt64();
+            var numberOfBitmaps = BinaryPrimitives.ReadInt32BigEndian(binaryReader.ReadBytes(4));
+
+            List<RoaringBitmap> bitmaps = new List<RoaringBitmap>();
+            for (int i = 0; i < numberOfBitmaps; i++)
+            {
+                var bitmapSize = BinaryPrimitives.ReadInt32BigEndian(binaryReader.ReadBytes(4));
+                var bitmap = RoaringBitmap.Deserialize(binaryReader.BaseStream);
+                bitmaps.Add(bitmap);
+            }
+            
+            return new RoaringBitmapArray(bitmaps.ToArray());
+        }
+
+        static RoaringBitmap[] DeserializeArray(BinaryReader binaryReader, int numberOfBitmaps)
+        {
+            
 
             List<RoaringBitmap> bitmaps = new List<RoaringBitmap>();
             int lastIndex = 0;

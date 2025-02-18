@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
             }
             if (StorageType == "u")
             {
-                var guid = Z85.DecodeToGuid(PathOrInlineDv!);
+                var guid = Z85Helper.DecodeToGuid(PathOrInlineDv!);
                 var deletionVectorPath = "deletion_vector_" + guid.ToString() + ".bin";
                 return deletionVectorPath;
             }
