@@ -7,13 +7,28 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types
 {
-    internal class FloatType : PrimitiveType
+    internal class FloatType : PrimitiveType, IEquatable<FloatType>
     {
         public override SchemaType Type => SchemaType.Float;
 
         public override T Accept<T>(DeltaTypeVisitor<T> visitor)
         {
             return visitor.VisitFloatType(this);
+        }
+
+        public bool Equals(FloatType? other)
+        {
+            return other != null;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return Equals(obj as FloatType);
+        }
+
+        public override int GetHashCode()
+        {
+            return Type.GetHashCode();
         }
     }
 }

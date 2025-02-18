@@ -84,6 +84,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public TValueContainer Values => leaf != null ? leaf.values : throw new InvalidOperationException("Tried getting keys on an inactive iterator");
 
+        public LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage => leaf ?? throw new InvalidOperationException("Tried getting current page on an inactive iterator");
+
         public ValueTask SavePage(bool checkForResize)
         {
             Debug.Assert(leaf != null);

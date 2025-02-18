@@ -7,13 +7,28 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types
 {
-    internal class DoubleType : PrimitiveType
+    internal class DoubleType : PrimitiveType, IEquatable<DoubleType>
     {
         public override SchemaType Type => SchemaType.Double;
 
         public override T Accept<T>(DeltaTypeVisitor<T> visitor)
         {
             return visitor.VisitDoubleType(this);
+        }
+
+        public bool Equals(DoubleType? other)
+        {
+            return other != null;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return Equals(obj as DoubleType);
+        }
+
+        public override int GetHashCode()
+        {
+            return Type.GetHashCode();
         }
     }
 }

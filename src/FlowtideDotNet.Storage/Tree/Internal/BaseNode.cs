@@ -16,7 +16,7 @@ using System.Text;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal abstract class BaseNode<K, TKeyContainer> : IBPlusTreeNode, IDisposable
+    public abstract class BaseNode<K, TKeyContainer> : IBPlusTreeNode, IDisposable
         where TKeyContainer: IKeyContainer<K>
     {
         public TKeyContainer keys;

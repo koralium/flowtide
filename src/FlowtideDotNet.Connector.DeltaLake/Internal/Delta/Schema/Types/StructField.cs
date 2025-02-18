@@ -8,7 +8,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types
 {
-    internal class StructField
+    internal class StructField : IEquatable<StructField>
     {
         [JsonPropertyName("name")]
         public string Name { get; }
@@ -28,6 +28,29 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types
             Type = type;
             Nullable = nullable;
             Metadata = metadata;
+        }
+
+        public bool Equals(StructField? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+
+            return Name == other.Name &&
+                   Type.Equals(other.Type) &&
+                   Nullable == other.Nullable &&
+                   Metadata.SequenceEqual(other.Metadata);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return Equals(obj as StructField);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Name, Type, Nullable);
         }
     }
 }
