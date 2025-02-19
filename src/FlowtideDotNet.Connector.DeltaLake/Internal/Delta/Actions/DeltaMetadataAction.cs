@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
         public List<string>? PartitionColumns { get; set; }
 
         [JsonPropertyName("createdTime")]
-        public long? CreatedType { get; set; }
+        public long? CreatedTime { get; set; }
 
         [JsonPropertyName("configuration")]
         public Dictionary<string, string>? Configuration { get; set; }

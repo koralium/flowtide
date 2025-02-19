@@ -239,7 +239,48 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
 
         public override void Write(Utf8JsonWriter writer, SchemaBaseType value, JsonSerializerOptions options)
         {
-            throw new NotImplementedException();
+            if (value is BinaryType)
+            {
+                writer.WriteStringValue("binary");
+            }
+            else if (value is BooleanType)
+            {
+                writer.WriteStringValue("boolean");
+            }
+            else if (value is ByteType)
+            {
+                writer.WriteStringValue("byte");
+            }
+
+            else if (value is StringType)
+            {
+                writer.WriteStringValue("string");
+            }
+            else if (value is StructType structType)
+            {
+                WriteStruct(writer, structType, options);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        private static void WriteStruct(Utf8JsonWriter writer, StructType value, JsonSerializerOptions options)
+        {
+            writer.WriteStartObject();
+
+            writer.WriteString("type", "struct");
+
+            writer.WritePropertyName("fields");
+            writer.WriteStartArray();
+            foreach (var field in value.Fields)
+            {
+                JsonSerializer.Serialize(writer, field, options);
+            }
+            writer.WriteEndArray();
+
+            writer.WriteEndObject();
         }
     }
 }

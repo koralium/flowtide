@@ -30,5 +30,11 @@ namespace FlowtideDotNet.Core
             connectorManager.AddTableProvider(provider);
             return connectorManager;
         }
+
+        public static IConnectorManager AddDeltaLakeSink(this IConnectorManager connectorManager, DeltaLakeOptions options)
+        {
+            connectorManager.AddSink(new DeltaLakeSinkFactory(options));
+            return connectorManager;
+        }
     }
 }

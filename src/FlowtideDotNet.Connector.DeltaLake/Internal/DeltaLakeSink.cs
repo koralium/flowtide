@@ -12,6 +12,11 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Write;
@@ -26,6 +31,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
@@ -85,6 +91,78 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             var table = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tablePath);
 
+            long nextVersion = 0;
+            List<DeltaAction> actions = new List<DeltaAction>();
+            var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            StructType? schema;
+            if (table == null)
+            {
+                // Create schema
+                var fields = new List<StructField>() { new StructField("firstName", new StringType(), true, new Dictionary<string, object>()) };
+                schema = new StructType(fields);
+
+                var jsonOptions = new JsonSerializerOptions();
+                jsonOptions.Converters.Add(new TypeConverter());
+                var schemaString = JsonSerializer.Serialize(schema as SchemaBaseType, jsonOptions);
+
+                actions.Add(new DeltaAction()
+                {
+                    CommitInfo = new DeltaCommitInfoAction()
+                    {
+                        Data = new Dictionary<string, object>()
+                        {
+                            { "operation", "CREATE TABLE" }
+                        }
+                    }
+                });
+
+                actions.Add(new DeltaAction()
+                {
+                    MetaData = new DeltaMetadataAction()
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        SchemaString = schemaString,
+                        Configuration = new Dictionary<string, string>(),
+                        Format = new DeltaMetadataFormat()
+                        {
+                            Provider = "parquet",
+                            Options = new Dictionary<string, string>()
+                        },
+                        PartitionColumns = new List<string>(),
+                        CreatedTime = currentTime
+                    }
+                });
+                actions.Add(new DeltaAction()
+                {
+                    Protocol = new DeltaProtocolAction()
+                    {
+                        MinReaderVersion = 3,
+                        MinWriterVersion = 7,
+                        ReaderFeatures = new List<string>() { "deletionVectors" },
+                        WriterFeatures = new List<string>() { "deletionVectors" }
+                    }
+                });
+            }
+            else
+            {
+                schema = table.Schema;
+                nextVersion = table.Version + 1;
+                actions.Add(new DeltaAction()
+                {
+                    CommitInfo = new DeltaCommitInfoAction()
+                    {
+                        Data = new Dictionary<string, object>() { { "operation", "WRITE" } }
+                    }
+                });
+            }
+
+            var writer = new ParquetSharpWriter(schema);
+
+            
+
+            writer.NewBatch();
+
             List<LeafNode<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>> negativeWeightPages = new List<LeafNode<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>>();
             await foreach(var page in iterator)
             {
@@ -107,6 +185,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                             negativeWeightPages.Add(page.CurrentPage);
                         }
                     }
+                    else
+                    {
+                        // Make sure to handle duplicate rows
+                        for (int i = 0; i < kv.Value; i++)
+                        {
+                            writer.AddRow(kv.Key);
+                        }
+                    }
                 }
 
                
@@ -120,6 +206,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     // Important is that partitions must also be taken into consideration
                 }
             }
+
+            if (negativeWeightPages.Count > 0)
+            {
+
+            }
+
+            string addFilePath = $"part-00000-{Guid.NewGuid().ToString()}.snappy.parquet";
+
+            var fileSize = await writer.WriteData(_options.StorageLocation, _tablePath, addFilePath);
+            actions.Add(new DeltaAction()
+            {
+                Add = new DeltaAddAction()
+                {
+                    Path = addFilePath,
+                    PartitionValues = new Dictionary<string, string>(),
+                    Size = fileSize,
+                    ModificationTime = currentTime,
+                    DataChange = true,
+                }
+            });
+
+            await DeltaTransactionWriter.WriteCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
         }
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)

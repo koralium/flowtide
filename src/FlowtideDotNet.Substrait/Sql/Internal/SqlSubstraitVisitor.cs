@@ -84,12 +84,13 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             else
             {
                 var names = source.EmitData.GetNames();
+                var types = source.EmitData.GetTypes();
                 tableSchema = new NamedStruct()
                 {
                     Names = names.ToList(),
                     Struct = new FlowtideDotNet.Substrait.Type.Struct()
                     {
-                        Types = names.Select(x => new AnyType() { Nullable = true } as SubstraitBaseType).ToList()
+                        Types = types
                     }
                 };
             }
