@@ -241,7 +241,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
 
             ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
-
+            
             List<int> columnsToSelect = new List<int>();
 
             foreach(var encoder in _encoders)

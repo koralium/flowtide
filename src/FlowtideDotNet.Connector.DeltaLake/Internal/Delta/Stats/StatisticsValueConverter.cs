@@ -77,7 +77,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 
         public override void Write(Utf8JsonWriter writer, DeltaValueStatistics value, JsonSerializerOptions options)
         {
-            throw new NotImplementedException();
+            writer.WriteStartObject();
+
+            foreach(var kv in value.Values)
+            {
+                writer.WritePropertyName(kv.Key);
+                var parser = parsers[kv.Key];
+                parser.WriteValue(writer, kv.Value);
+            }
+            writer.WriteEndObject();
         }
     }
 }

@@ -32,6 +32,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
             _bitmaps = bitmaps;
         }
 
+        public static RoaringBitmapArray Create(IEnumerable<long> values)
+        {
+            var groupbyHb = values.Distinct().OrderBy(t => t).GroupBy(HighBytes).OrderBy(t => t.Key).ToList();
+
+            List<RoaringBitmap> result = new List<RoaringBitmap>();
+            foreach(var group in groupbyHb)
+            {
+                if (group.Key > result.Count)
+                {
+                    for (int i = result.Count; i < group.Key; i++)
+                    {
+                        result.Add(RoaringBitmap.Create());
+                    }
+                }
+                var lowValues = group.Select(LowBytes).ToArray();
+                var bitmap = RoaringBitmap.Create(lowValues);
+                result.Add(bitmap);
+            }
+
+            return new RoaringBitmapArray(result.ToArray());
+        }
+
         static int HighBytes(long value)
         {
             return (int)(value >> 32);
@@ -53,6 +75,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
             RoaringBitmap highBitmap = _bitmaps[high];
             var low = LowBytes(value);
             return highBitmap.Contains(low);
+        }
+
+        public void Serialize(System.IO.BinaryWriter binaryWriter)
+        {
+            binaryWriter.Write((long)_bitmaps.Length);
+            for (int i = 0; i < _bitmaps.Length; i++)
+            {
+                binaryWriter.Write(i);
+                RoaringBitmap.Serialize(_bitmaps[i], binaryWriter.BaseStream);
+            }
         }
 
         public static RoaringBitmapArray Deserialize(BinaryReader binaryReader)

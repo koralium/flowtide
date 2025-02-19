@@ -34,5 +34,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
             byte[] byteArray = Encoding.Unicode.GetBytes(str);
             return new BinaryValue(byteArray);
         }
+
+        public void WriteValue<T>(Utf8JsonWriter writer, T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
     }
 }

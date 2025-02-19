@@ -23,5 +23,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
     public interface IStatisticsParser
     {
         IDataValue GetValue(ref Utf8JsonReader reader);
+
+        void WriteValue<T>(Utf8JsonWriter writer, T value)
+            where T : IDataValue;
     }
 }

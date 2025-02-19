@@ -10,8 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.AcceptanceTests.Internal;
+using Stowage;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,20 +27,59 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task TestCreateTable()
         {
-            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTable));
+            var storage = Files.Of.LocalDisk("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTable), storage);
 
-            stream.Generate(10000);
+            stream.Generate(10);
 
             await stream.StartStream(@"
                 CREATE TABLE test (
-                    name STRING
+                    Name STRING,
+                    LastName STRING,
+                    userkey INT
                 );
 
                 INSERT INTO test
-                SELECT firstName FROM users
+                SELECT firstName as Name, lastName, userKey FROM users
             ");
 
-            await stream.WaitForUpdate();
+            await WaitForVersion(storage, stream, 0);
+
+            var firstUser = stream.Users[0];
+            stream.DeleteUser(firstUser);
+
+            stream.Generate(50);
+
+            await WaitForVersion(storage, stream, 1);
+
+            firstUser = stream.Users.Last();
+            stream.DeleteUser(firstUser);
+
+            await WaitForVersion(storage, stream, 2);
+
+            await Task.Delay(1000);
+            
+        }
+
+        private async Task WaitForVersion(IFileStorage storage, FlowtideTestStream stream, long version)
+        {
+            while (true)
+            {
+                try
+                {
+                    var exists = await storage.Exists($"/test/_delta_log/{version.ToString("D20")}.json");
+                    if (exists)
+                    {
+                        break;
+                    }
+                }
+                catch (Exception)
+                {
+                }
+                
+                await stream.SchedulerTick();
+                await Task.Delay(100);
+            }
         }
     }
 }

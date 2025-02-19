@@ -13,11 +13,14 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.Serializers;
@@ -25,6 +28,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Tree.Internal;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Options;
 using Stowage;
 using System;
 using System.Collections.Generic;
@@ -99,8 +103,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             if (table == null)
             {
                 // Create schema
-                var fields = new List<StructField>() { new StructField("firstName", new StringType(), true, new Dictionary<string, object>()) };
-                schema = new StructType(fields);
+                schema = SubstraitTypeToDeltaType.GetSchema(_writeRelation.TableSchema);
 
                 var jsonOptions = new JsonSerializerOptions();
                 jsonOptions.Converters.Add(new TypeConverter());
@@ -163,14 +166,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             writer.NewBatch();
 
+            Dictionary<string, ModifiableDeleteVector> fileDeleteVectors = new Dictionary<string, ModifiableDeleteVector>();
+            List<ColumnRowReference> deleteRows = new List<ColumnRowReference>();
             List<LeafNode<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>> negativeWeightPages = new List<LeafNode<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>>();
             await foreach(var page in iterator)
             {
                 bool addedToNegativeWeights = false;
 
-                foreach(var kv in page)
+                for (int i = 0; i < page.Values.Data.Count; i++)
                 {
-                    if (kv.Value < 0)
+                    var weight = page.Values.Data[i];
+                    if (weight < 0)
                     {
                         if (!addedToNegativeWeights)
                         {
@@ -183,35 +189,115 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
                             // Add the page to negative weight pages if the page has negative weights
                             negativeWeightPages.Add(page.CurrentPage);
+                            deleteRows.Add(new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i });
                         }
                     }
                     else
                     {
                         // Make sure to handle duplicate rows
-                        for (int i = 0; i < kv.Value; i++)
+                        for (int v = 0; v < weight; v++)
                         {
-                            writer.AddRow(kv.Key);
+                            writer.AddRow(new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i});
                         }
                     }
                 }
 
-               
-
                 // How many pages of data that should be processed at the same time when searching existing data
-                if (negativeWeightPages.Count == 4)
+                if (negativeWeightPages.Count == 100)
                 {
                     // This part should try and find which files that should be scanned for each negative record.
                     // After that each file is scanned for the grouping and if found the delition vector of that file is updated.
 
                     // Important is that partitions must also be taken into consideration
                 }
+
+                // Write max 100k rows per file for now, a user must call optimize in another framework to increase the file size
+                if (writer.WrittenCount >= 100_000)
+                {
+                    await WriteNewFile(writer, actions, currentTime);
+                }
             }
 
             if (negativeWeightPages.Count > 0)
             {
+                foreach(var file in table!.AddFiles)
+                {
+                    await ScanDataFileForRows(table, deleteRows, file, fileDeleteVectors);
+                }
+                
+                foreach(var negativePage in negativeWeightPages)
+                {
+                    negativePage.Return();
+                }
+            }
+
+            foreach(var deleteFile in fileDeleteVectors)
+            {
+                var existingFile = table!.AddFiles.First(x => x.Path == deleteFile.Key);
+                actions.Add(new DeltaAction()
+                {
+                    Remove = new DeltaRemoveFileAction()
+                    {
+                        Path = deleteFile.Key,
+                        DeletionVector = existingFile.DeletionVector,
+                        DataChange = true,
+                        DeletionTimestamp = currentTime,
+                        Stats = existingFile.Statistics,
+                        Size = existingFile.Size,
+                        PartitionValues = existingFile.PartitionValues
+                    }
+                });
+
+                if (table.DeleteVectorEnabled)
+                {
+                    var roaringBitmap = deleteFile.Value.ToRoaringBitmapArray();
+
+                    // Write delete vector here to file
+                    var (deletePath, z85string) = DeletionVectorWriter.GenerateDestination();
+
+                    var fileSize = await DeletionVectorWriter.WriteDeletionVector(_options.StorageLocation, _tablePath, deletePath, roaringBitmap);
+
+                    actions.Add(new DeltaAction()
+                    {
+                        Add = new DeltaAddAction()
+                        {
+                            Path = deleteFile.Key,
+                            Size = existingFile.Size,
+                            Statistics = existingFile.Statistics,
+                            PartitionValues = existingFile.PartitionValues,
+                            DataChange = existingFile.DataChange,
+                            ModificationTime = currentTime,
+                            DeletionVector = new DeletionVector()
+                            {
+                                Cardinality = deleteFile.Value.Cardinality,
+                                Offset = 1,
+                                StorageType = "u",
+                                PathOrInlineDv = z85string,
+                                SizeInBytes = fileSize
+                            }
+                        }
+                    });
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
 
             }
 
+            if (writer.WrittenCount > 0)
+            {
+                await WriteNewFile(writer, actions, currentTime);
+            }
+
+            await DeltaTransactionWriter.WriteCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
+
+            // Last thing we do is clear the temporary tree, if the write fails we might need the tree again to recompute the files
+            await _temporaryTree.Clear();
+        }
+
+        private async Task WriteNewFile(ParquetSharpWriter writer, List<DeltaAction> actions, long currentTime)
+        {
             string addFilePath = $"part-00000-{Guid.NewGuid().ToString()}.snappy.parquet";
 
             var fileSize = await writer.WriteData(_options.StorageLocation, _tablePath, addFilePath);
@@ -226,8 +312,52 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     DataChange = true,
                 }
             });
+            writer.NewBatch();
+        }
 
-            await DeltaTransactionWriter.WriteCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
+        private async Task ScanDataFileForRows(DeltaTable table, List<ColumnRowReference> toFind, DeltaAddAction file, Dictionary<string, ModifiableDeleteVector> deleteVectors)
+        {
+            ParquetSharpReader reader = new ParquetSharpReader();
+            reader.Initialize(table, _writeRelation.TableSchema.Names);
+
+            IDeleteVector? deleteVector;
+            if (file.DeletionVector != null)
+            {
+                deleteVector = await DeletionVectorReader.ReadDeletionVector(_options.StorageLocation, _tablePath, file.DeletionVector);
+            }
+            else
+            {
+                deleteVector = EmptyDeleteVector.Instance;
+            }
+
+            // If a modified delete vector already exist, use it instead
+            if (deleteVectors.TryGetValue(file.Path!, out var vector))
+            {
+                deleteVector = vector;
+            }
+
+            // Open file without deletion vector, it will be used when finding rows
+            var iterator = reader.ReadDataFile(_options.StorageLocation, _tablePath, file.Path!, EmptyDeleteVector.Instance, default, MemoryAllocator);
+
+
+            await foreach(var batch in iterator)
+            {
+                for (int i = 0; i < toFind.Count; i++)
+                {
+                    int index = FindRowInBatch.FindRow(toFind[i], batch.data, deleteVector);
+                    if (index >= 0)
+                    {
+                        if (!deleteVectors.TryGetValue(file.Path!, out var modifiedVector))
+                        {
+                            modifiedVector = new ModifiableDeleteVector(deleteVector);
+                            deleteVectors.Add(file.Path!, modifiedVector);
+                        }
+                        modifiedVector.Add(index);
+                        toFind.RemoveAt(i);
+                        i--;
+                    }
+                }
+            }
         }
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)

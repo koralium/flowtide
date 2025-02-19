@@ -70,6 +70,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             NamedStruct? tableSchema = null;
 
+            tablesMetadata.TryGetTable(insert.Name.Values.Select(x => x.Value).ToList(), out var existingTableMetadata);
+
             if (insert.Columns != null && insert.Columns.Count > 0)
             {
                 tableSchema = new NamedStruct()
@@ -85,6 +87,29 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 var names = source.EmitData.GetNames();
                 var types = source.EmitData.GetTypes();
+
+                if (existingTableMetadata != null)
+                {
+                    for (int i = 0; i < names.Count; i++)
+                    {
+                        int nameIndex = -1;
+                        for (int b = 0; b < existingTableMetadata.Schema.Names.Count; b++)
+                        {
+                            if (existingTableMetadata.Schema.Names[b].Equals(names[i], StringComparison.OrdinalIgnoreCase))
+                            {
+                                nameIndex = b;
+                                break;
+                            }
+                        }
+                        if (nameIndex < 0)
+                        {
+                            throw new SubstraitParseException($"Column '{names[i]}' does not exist in table '{insert.Name.ToSql()}'");
+                        }
+                        names[i] = existingTableMetadata.Schema.Names[nameIndex];
+                        types[i] = existingTableMetadata.Schema.Struct!.Types[nameIndex];
+                    }
+                }
+
                 tableSchema = new NamedStruct()
                 {
                     Names = names.ToList(),

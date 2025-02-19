@@ -256,6 +256,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
             {
                 writer.WriteStringValue("string");
             }
+            else if (value is IntegerType)
+            {
+                writer.WriteStringValue("integer");
+            }
+            else if (value is LongType)
+            {
+                writer.WriteStringValue("long");
+            }
             else if (value is StructType structType)
             {
                 WriteStruct(writer, structType, options);

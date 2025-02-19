@@ -61,5 +61,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         public DeltaMetadataFormat Format => _metadata.Format ?? throw new Exception("Format must be defined");
 
         public long Version => _version;
+
+        public bool DeleteVectorEnabled
+        {
+            get
+            {
+                return _protocol.WriterFeatures?.Contains("deletionVectors") ?? false;
+            }
+        }
     }
 }

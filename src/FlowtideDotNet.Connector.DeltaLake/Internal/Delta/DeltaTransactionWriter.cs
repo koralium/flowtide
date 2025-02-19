@@ -48,6 +48,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 await writer.WriteLineAsync(text);
             }
             writer.Close();
+            stream.Close();
         }
     }
 }

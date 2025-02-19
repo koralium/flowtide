@@ -14,7 +14,7 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 
 namespace FlowtideDotNet.Core.ColumnStore.Comparers
 {
-    internal class DataValueComparer : IComparer<IDataValue>
+    public class DataValueComparer : IComparer<IDataValue>
     {
         public static readonly DataValueComparer Instance = new DataValueComparer();
 

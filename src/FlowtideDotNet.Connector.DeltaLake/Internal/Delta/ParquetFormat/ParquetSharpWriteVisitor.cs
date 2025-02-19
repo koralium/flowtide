@@ -27,5 +27,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         {
             return new ParquetStringWriter();
         }
+
+        public override IParquetWriter VisitLongType(LongType type)
+        {
+            return new ParquetInt64Writer();
+        }
     }
 }

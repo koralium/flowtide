@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
 {
-    internal interface IDeleteVector
+    internal interface IDeleteVector : IEnumerable<long>
     {
         bool Contains(long index);
     }

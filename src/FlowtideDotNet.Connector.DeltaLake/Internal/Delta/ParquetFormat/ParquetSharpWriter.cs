@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using Stowage;
 
@@ -24,10 +25,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         private List<IParquetWriter> writers;
         private int rowCount;
         private Apache.Arrow.Schema _schema;
+
+        private IDataValue[] _minValues;
+        private IDataValue[] _maxValues;
+
         public ParquetSharpWriter(StructType schema)
         {
             this.schema = schema;
             var visitor = new ParquetSharpWriteVisitor();
+
+            _minValues = new IDataValue[schema.Fields.Count];
+            _maxValues = new IDataValue[schema.Fields.Count];
 
             writers = new List<IParquetWriter>();
             for (int i = 0; i < schema.Fields.Count; i++)
@@ -48,12 +56,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             _schema = new Apache.Arrow.Schema(fields, new Dictionary<string, string>());
         }
 
+        public int WrittenCount => rowCount;
+
         public void AddRow(ColumnRowReference row)
         {
             rowCount++;
             for (int i = 0; i < writers.Count; i++)
             {
-                writers[i].WriteValue(row.referenceBatch.Columns[i].GetValueAt(row.RowIndex, default));
+                var value = row.referenceBatch.Columns[i].GetValueAt(row.RowIndex, default);
+
+                // Check value against min and max
+
+                writers[i].WriteValue(value);
             }
         }
 

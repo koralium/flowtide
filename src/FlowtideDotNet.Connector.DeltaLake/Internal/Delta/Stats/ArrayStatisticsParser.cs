@@ -49,5 +49,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 
             return new ListValue(values);
         }
+
+        public void WriteValue<T>(Utf8JsonWriter writer, T value) where T : IDataValue
+        {
+            throw new NotImplementedException();
+        }
     }
 }

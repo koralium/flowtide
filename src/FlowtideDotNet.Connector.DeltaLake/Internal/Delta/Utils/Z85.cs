@@ -74,6 +74,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils
         public static string EncodeGuid(Guid guid)
         {
             byte[] bytes = guid.ToByteArray();
+
+            // Convert to big-endian for Z85 encoding
+            Array.Reverse(bytes, 0, 4);  // Time-low
+            Array.Reverse(bytes, 4, 2);  // Time-mid
+            Array.Reverse(bytes, 6, 2);  // Time-high-and-version
+
             return Encode(bytes);
         }
 

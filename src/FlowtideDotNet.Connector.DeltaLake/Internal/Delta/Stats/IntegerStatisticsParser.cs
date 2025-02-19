@@ -27,5 +27,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
             var val = reader.GetInt64();
             return new Int64Value(val);
         }
+
+        public void WriteValue<T>(Utf8JsonWriter writer, T value) where T : IDataValue
+        {
+            if (value.IsNull)
+            {
+                writer.WriteNullValue();
+            }
+            else
+            {
+                writer.WriteNumberValue(value.AsLong);
+            }
+        }
     }
 }

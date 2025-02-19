@@ -23,15 +23,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
     internal class DeltaLakeSinkStream : FlowtideTestStream
     {
-        public DeltaLakeSinkStream(string testName) : base(testName)
+        private readonly IFileStorage storage;
+
+        public DeltaLakeSinkStream(string testName, IFileStorage storage) : base(testName)
         {
+            this.storage = storage;
         }
 
         protected override void AddWriteResolvers(IConnectorManager connectorManger)
         {
             connectorManger.AddDeltaLakeSink(new DeltaLakeOptions()
             {
-                StorageLocation = Files.Of.LocalDisk("./test")
+                StorageLocation = storage
             });
         }
     }

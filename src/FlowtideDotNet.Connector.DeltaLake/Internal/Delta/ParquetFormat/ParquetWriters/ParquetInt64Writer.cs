@@ -10,33 +10,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
+namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters
 {
-    internal class StringStatisticsParser : IStatisticsParser
+    internal class ParquetInt64Writer : IParquetWriter
     {
-        public IDataValue GetValue(ref Utf8JsonReader reader)
+        private Int64Array.Builder? _builder;
+
+        public IArrowArray GetArray()
         {
-            var str = reader.GetString();
-            return new StringValue(str);
+            Debug.Assert(_builder != null);
+            return _builder.Build();
         }
 
-        public void WriteValue<T>(Utf8JsonWriter writer, T value) where T : IDataValue
+        public void NewBatch()
         {
+            _builder = new Int64Array.Builder();
+        }
+
+        public void WriteValue<T>(T value) where T : IDataValue
+        {
+            Debug.Assert(_builder != null);
             if (value.IsNull)
             {
-                writer.WriteNullValue();
+                _builder.AppendNull();
+            }
+            else if (value.Type == ArrowTypeId.Int64)
+            {
+                _builder.Append(value.AsLong);
             }
             else
             {
-                writer.WriteStringValue(value.AsString.Span);
+                throw new NotImplementedException($"Tried to write type {value.Type} to int64 column");
             }
         }
     }

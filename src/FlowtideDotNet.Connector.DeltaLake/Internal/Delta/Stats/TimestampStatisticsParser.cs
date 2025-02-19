@@ -28,5 +28,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
             var val = reader.GetDateTimeOffset();
             return new TimestampTzValue(val);
         }
+
+        public void WriteValue<T>(Utf8JsonWriter writer, T value) where T : IDataValue
+        {
+            if (value.IsNull)
+            {
+                writer.WriteNullValue();
+            }
+            else
+            {
+                writer.WriteStringValue(value.AsTimestamp.ToDateTimeOffset());
+            }
+        }
     }
 }

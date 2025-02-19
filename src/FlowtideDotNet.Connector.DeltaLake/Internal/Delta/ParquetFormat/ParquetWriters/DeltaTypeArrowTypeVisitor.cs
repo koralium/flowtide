@@ -14,5 +14,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         {
             return new StringType();
         }
+
+        public override ArrowType VisitLongType(Schema.Types.LongType type)
+        {
+            return new Int64Type();
+        }
     }
 }
