@@ -39,6 +39,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using static SqlParser.Ast.Privileges;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal
 {
@@ -247,9 +248,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 await HandleDeletedRows(rowsToDeleteByFile, table, fileDeleteVectors, negativeWeightPages);
             }
 
-            foreach(var deleteFile in fileDeleteVectors)
+            await WriteDeleteFiles(fileDeleteVectors, table, actions, currentTime);
+
+            if (writer.WrittenCount > 0)
             {
-                var existingFile = table!.AddFiles.First(x => x.Path == deleteFile.Key);
+                await WriteNewFile(writer, actions, currentTime, schema);
+            }
+
+            await DeltaTransactionWriter.WriteCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
+
+            // Last thing we do is clear the temporary tree, if the write fails we might need the tree again to recompute the files
+            await _temporaryTree.Clear();
+        }
+
+        private async Task WriteDeleteFiles(
+            Dictionary<string, ModifiableDeleteVector> fileDeleteVectors,
+            DeltaTable? table,
+            List<DeltaAction> actions,
+            long currentTime)
+        {
+            foreach (var deleteFile in fileDeleteVectors)
+            {
+                if (table == null)
+                {
+                    throw new InvalidOperationException("Table should not be null when delete is found");
+                }
+                var existingFile = table.AddFiles.First(x => x.Path == deleteFile.Key);
                 actions.Add(new DeltaAction()
                 {
                     Remove = new DeltaRemoveFileAction()
@@ -299,16 +323,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     throw new NotImplementedException();
                 }
             }
-
-            if (writer.WrittenCount > 0)
-            {
-                await WriteNewFile(writer, actions, currentTime, schema);
-            }
-
-            await DeltaTransactionWriter.WriteCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
-
-            // Last thing we do is clear the temporary tree, if the write fails we might need the tree again to recompute the files
-            await _temporaryTree.Clear();
         }
 
         private async Task HandleDeletedRows(
