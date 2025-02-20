@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
 
         public IStatisticsComparer GetStatisticsComparer()
         {
-            throw new NotImplementedException();
+            return new TimestampStatisticsComparer(_minValue, _maxValue, _nullCount);
         }
 
         public IDataValue GetValue(ref Utf8JsonReader reader)
