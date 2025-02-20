@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
 using System.Collections.Generic;
@@ -18,14 +19,38 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
+namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
 {
     internal class FloatStatisticsParser : IStatisticsParser
     {
+        private double? _minValue;
+        private double? _maxValue;
+        private int _nullCount;
+
+        public IStatisticsComparer GetStatisticsComparer()
+        {
+            return new FloatStatisticsComparer(_minValue, _maxValue, _nullCount);
+        }
+
         public IDataValue GetValue(ref Utf8JsonReader reader)
         {
             var val = reader.GetDouble();
             return new DoubleValue(val);
+        }
+
+        public void ReadMaxValue(ref Utf8JsonReader reader)
+        {
+            _maxValue = reader.GetDouble();
+        }
+
+        public void ReadMinValue(ref Utf8JsonReader reader)
+        {
+            _minValue = reader.GetDouble();
+        }
+
+        public void ReadNullValue(ref Utf8JsonReader reader)
+        {
+            _nullCount = reader.GetInt32();
         }
 
         public void WriteValue<T>(Utf8JsonWriter writer, T value) where T : IDataValue

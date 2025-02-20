@@ -29,30 +29,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         private DeltaMetadataAction _metadata;
         private DeltaProtocolAction _protocol;
         private List<DeltaAddAction> _addFiles;
+        private readonly List<DeltaFile> _files;
         private long _version;
         private StructType _schema;
 
-        internal DeltaTable(DeltaMetadataAction metadata, DeltaProtocolAction protocol, List<DeltaAddAction> addFiles, long version)
+        internal DeltaTable(DeltaMetadataAction metadata, DeltaProtocolAction protocol, List<DeltaAddAction> addFiles, StructType schema, List<DeltaFile> files, long version)
         {
             _metadata = metadata;
             _protocol = protocol;
             _addFiles = addFiles;
+            this._files = files;
             _version = version;
-
+            _schema = schema;
             // Read schema
-            var jsonOptions = new JsonSerializerOptions();
-            jsonOptions.Converters.Add(new TypeConverter());
-            var schema = JsonSerializer.Deserialize<SchemaBaseType>(_metadata.SchemaString!, jsonOptions);
-
-            if (schema!.Type != SchemaType.Struct)
-            {
-                throw new Exception("Schema type must be struct");
-            }
-
-            _schema = (StructType)schema;
+            
         }
 
         public List<DeltaAddAction> AddFiles => _addFiles;
+
+        public List<DeltaFile> Files => _files;
 
         public StructType Schema => _schema;
 

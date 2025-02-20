@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
 using System.Collections.Generic;
@@ -21,82 +22,81 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 {
-    internal class DeltaStatisticsVisitor : DeltaTypeVisitor<IStatisticsParser>
+    internal class DeltaStatisticsVisitor : DeltaTypeVisitor<IStatisticsParser?>
     {
-        public override IStatisticsParser VisitBinaryType(BinaryType type)
+        public override IStatisticsParser? VisitBinaryType(BinaryType type)
         {
             return new BinaryStatisticsParser();
         }
 
-        public override IStatisticsParser VisitBooleanType(BooleanType type)
+        public override IStatisticsParser? VisitBooleanType(BooleanType type)
         {
             return new BoolStatisticsParser();
         }
 
-        public override IStatisticsParser VisitDateType(DateType type)
+        public override IStatisticsParser? VisitDateType(DateType type)
         {
             return new DateStatisticsParser();
         }
 
-        public override IStatisticsParser VisitDecimalType(DecimalType type)
+        public override IStatisticsParser? VisitDecimalType(DecimalType type)
         {
             return new DecimalStatisticsParser();
         }
 
-        public override IStatisticsParser VisitFloatType(FloatType type)
+        public override IStatisticsParser? VisitFloatType(FloatType type)
         {
             return new FloatStatisticsParser();
         }
 
-        public override IStatisticsParser VisitDoubleType(DoubleType type)
+        public override IStatisticsParser? VisitDoubleType(DoubleType type)
         {
             return new FloatStatisticsParser();
         }
 
-        public override IStatisticsParser VisitByteType(ByteType type)
+        public override IStatisticsParser? VisitByteType(ByteType type)
         {
             return new IntegerStatisticsParser();
         }
 
-        public override IStatisticsParser VisitIntegerType(IntegerType type)
+        public override IStatisticsParser? VisitIntegerType(IntegerType type)
         {
             return new IntegerStatisticsParser();
         }
 
-        public override IStatisticsParser VisitLongType(LongType type)
+        public override IStatisticsParser? VisitLongType(LongType type)
         {
             return new IntegerStatisticsParser();
         }
 
-        public override IStatisticsParser VisitShortType(ShortType type)
+        public override IStatisticsParser? VisitShortType(ShortType type)
         {
             return new IntegerStatisticsParser();
         }
 
-        public override IStatisticsParser VisitStructType(StructType type)
+        public override IStatisticsParser? VisitStructType(StructType type)
         {
-            return new StructStatisticsParser(default);
+            return null;
         }
 
-        public override IStatisticsParser VisitStringType(StringType type)
+        public override IStatisticsParser? VisitStringType(StringType type)
         {
             return new StringStatisticsParser();
         }
 
-        public override IStatisticsParser VisitTimestampType(TimestampType type)
+        public override IStatisticsParser? VisitTimestampType(TimestampType type)
         {
             return new TimestampStatisticsParser();
         }
 
-        public override IStatisticsParser VisitArrayType(ArrayType type)
+        public override IStatisticsParser? VisitArrayType(ArrayType type)
         {
-            var inner = Visit(type.ElementType!);
-            return new ArrayStatisticsParser(inner);
+            return null;
         }
 
-        public override IStatisticsParser VisitMapType(MapType type)
+        public override IStatisticsParser? VisitMapType(MapType type)
         {
-            return base.VisitMapType(type);
+            return null;
         }
     }
 }

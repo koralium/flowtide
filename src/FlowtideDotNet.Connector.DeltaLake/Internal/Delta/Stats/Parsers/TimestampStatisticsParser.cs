@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using System;
@@ -19,14 +20,38 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
+namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
 {
     internal class TimestampStatisticsParser : IStatisticsParser
     {
+        private DateTimeOffset? _minValue;
+        private DateTimeOffset? _maxValue;
+        private int _nullCount;
+
+        public IStatisticsComparer GetStatisticsComparer()
+        {
+            throw new NotImplementedException();
+        }
+
         public IDataValue GetValue(ref Utf8JsonReader reader)
         {
             var val = reader.GetDateTimeOffset();
             return new TimestampTzValue(val);
+        }
+
+        public void ReadMaxValue(ref Utf8JsonReader reader)
+        {
+            _maxValue = reader.GetDateTimeOffset();
+        }
+
+        public void ReadMinValue(ref Utf8JsonReader reader)
+        {
+            _minValue = reader.GetDateTimeOffset();
+        }
+
+        public void ReadNullValue(ref Utf8JsonReader reader)
+        {
+            _nullCount = reader.GetInt32();
         }
 
         public void WriteValue<T>(Utf8JsonWriter writer, T value) where T : IDataValue

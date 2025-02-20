@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
 using System.Collections.Generic;
@@ -18,14 +19,38 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
+namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
 {
-    internal class IntegerStatisticsParser : IStatisticsParser
+    internal class BoolStatisticsParser : IStatisticsParser
     {
+        private bool? _minValue;
+        private bool? _maxValue;
+        private int _nullCount;
+
+        public IStatisticsComparer GetStatisticsComparer()
+        {
+            return new BoolStatisticsComparer(_minValue, _maxValue, _nullCount);
+        }
+
         public IDataValue GetValue(ref Utf8JsonReader reader)
         {
-            var val = reader.GetInt64();
-            return new Int64Value(val);
+            var boolValue = reader.GetBoolean();
+            return new BoolValue(boolValue);
+        }
+
+        public void ReadMaxValue(ref Utf8JsonReader reader)
+        {
+            _maxValue = reader.GetBoolean();
+        }
+
+        public void ReadMinValue(ref Utf8JsonReader reader)
+        {
+            _minValue = reader.GetBoolean();
+        }
+
+        public void ReadNullValue(ref Utf8JsonReader reader)
+        {
+            _nullCount = reader.GetInt32();
         }
 
         public void WriteValue<T>(Utf8JsonWriter writer, T value) where T : IDataValue
@@ -36,7 +61,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
             }
             else
             {
-                writer.WriteNumberValue(value.AsLong);
+                writer.WriteBooleanValue(value.AsBool);
             }
         }
     }

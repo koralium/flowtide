@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
 using System.Collections.Generic;
@@ -24,6 +25,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
     internal class ParquetStringWriter : IParquetWriter
     {
         private StringArray.Builder? _arrayBuilder;
+        private byte[]? _minValue;
+        private byte[]? _maxValue;
+        private int _nullCount;
 
         public IArrowArray GetArray()
         {
@@ -31,9 +35,35 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             return _arrayBuilder.Build();
         }
 
+        public IDataValue? GetMaxValue()
+        {
+            if (_maxValue == null)
+            {
+                return null;
+            }
+            return new StringValue(_maxValue);
+        }
+
+        public IDataValue? GetMinValue()
+        {
+            if (_minValue == null)
+            {
+                return null;
+            }
+            return new StringValue(_minValue);
+        }
+
+        public IStatisticsComparer GetStatisticsComparer()
+        {
+            return new StringStatisticsComparer(_minValue, _maxValue, _nullCount);
+        }
+
         public void NewBatch()
         {
             _arrayBuilder = new StringArray.Builder();
+            _minValue = null;
+            _maxValue = null;
+            _nullCount = 0;
         }
 
         public void WriteValue<T>(T value) where T : IDataValue
@@ -41,10 +71,29 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             Debug.Assert(_arrayBuilder != null);
             if (value.IsNull)
             {
+                _nullCount++;
                 _arrayBuilder.AppendNull();
             }
             else
             {
+                if (_minValue == null)
+                {
+                    _minValue = value.AsString.Span.ToArray();
+                }
+                else if (_minValue.AsSpan().SequenceCompareTo(value.AsString.Span) > 0)
+                {
+                    _minValue = value.AsString.Span.ToArray();
+                }
+                
+                if (_maxValue == null)
+                {
+                    _maxValue = value.AsString.Span.ToArray();
+                }
+                else if (_maxValue.AsSpan().SequenceCompareTo(value.AsString.Span) < 0)
+                {
+                    _maxValue = value.AsString.Span.ToArray();
+                }
+
                 _arrayBuilder.Append(value.AsString.Span);
             }
         }

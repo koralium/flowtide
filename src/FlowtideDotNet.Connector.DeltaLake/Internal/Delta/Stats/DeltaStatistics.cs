@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,10 +28,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
         [JsonPropertyName("tightBounds")]
         public bool TightBounds { get; set; } = true;
 
-        [JsonPropertyName("minValues")]
-        public DeltaValueStatistics? MinValues { get; set; }
+        public Dictionary<string, IStatisticsComparer>? ValueComparers { get; set; }
 
-        [JsonPropertyName("maxValues")]
-        public DeltaValueStatistics? MaxValues { get; set; }
+        //[JsonPropertyName("minValues")]
+        //public DeltaValueStatistics? MinValues { get; set; }
+
+        //[JsonPropertyName("maxValues")]
+        //public DeltaValueStatistics? MaxValues { get; set; }
     }
 }

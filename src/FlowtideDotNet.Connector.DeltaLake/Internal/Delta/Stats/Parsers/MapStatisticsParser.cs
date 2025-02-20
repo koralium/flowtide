@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
 using System.Collections.Generic;
@@ -18,26 +19,38 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
+namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
 {
-    internal class DecimalStatisticsParser : IStatisticsParser
+    internal class MapStatisticsParser : IStatisticsParser
     {
+        public IStatisticsComparer GetStatisticsComparer()
+        {
+            throw new NotImplementedException();
+        }
+
         public IDataValue GetValue(ref Utf8JsonReader reader)
         {
-            var dec = reader.GetDecimal();
-            return new DecimalValue(dec);
+            throw new NotImplementedException();
+        }
+
+        public void ReadMaxValue(ref Utf8JsonReader reader)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ReadMinValue(ref Utf8JsonReader reader)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ReadNullValue(ref Utf8JsonReader reader)
+        {
+            throw new NotImplementedException();
         }
 
         public void WriteValue<T>(Utf8JsonWriter writer, T value) where T : IDataValue
         {
-            if (value.IsNull)
-            {
-                writer.WriteNullValue();
-            }
-            else
-            {
-                writer.WriteNumberValue(value.AsDecimal);
-            }
+            throw new NotImplementedException();
         }
     }
 }

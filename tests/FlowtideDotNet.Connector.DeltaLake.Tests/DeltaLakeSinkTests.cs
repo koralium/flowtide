@@ -56,9 +56,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             stream.DeleteUser(firstUser);
 
             await WaitForVersion(storage, stream, 2);
-
-            await Task.Delay(1000);
-            
         }
 
         private async Task WaitForVersion(IFileStorage storage, FlowtideTestStream stream, long version)

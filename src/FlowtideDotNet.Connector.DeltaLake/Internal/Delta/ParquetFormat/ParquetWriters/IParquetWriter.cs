@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
 using System.Collections.Generic;
@@ -20,7 +21,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters
 {
-    public interface IParquetWriter
+    internal interface IParquetWriter
     {
         void NewBatch();
 
@@ -28,5 +29,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             where T : IDataValue;
 
         IArrowArray GetArray();
+
+        IDataValue? GetMinValue();
+
+        IDataValue? GetMaxValue();
+
+        IStatisticsComparer GetStatisticsComparer();
     }
 }

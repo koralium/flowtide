@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
 using System.Collections.Generic;
@@ -18,7 +19,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
+namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
 {
     internal class StructStatisticsParser : IStatisticsParser
     {
@@ -29,11 +30,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
             _parsers = parsers;
         }
 
+        public IStatisticsComparer GetStatisticsComparer()
+        {
+            throw new NotImplementedException();
+        }
+
         public IDataValue GetValue(ref Utf8JsonReader reader)
         {
             List<KeyValuePair<IDataValue, IDataValue>> values = new List<KeyValuePair<IDataValue, IDataValue>>();
 
-            
+
             while (true)
             {
                 reader.Read();
@@ -56,6 +62,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
                 }
             }
 
+            throw new NotImplementedException();
+        }
+
+        public void ReadMaxValue(ref Utf8JsonReader reader)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ReadMinValue(ref Utf8JsonReader reader)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ReadNullValue(ref Utf8JsonReader reader)
+        {
             throw new NotImplementedException();
         }
 

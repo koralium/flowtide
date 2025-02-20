@@ -18,26 +18,22 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
+namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 {
-    internal class BinaryStatisticsParser : IStatisticsParser
+    /// <summary>
+    /// Represents a comparer that checks min and max values of against a value.
+    /// They are used to help filter out data files to search valeus in.
+    /// </summary>
+    internal interface IStatisticsComparer
     {
-        public IDataValue GetValue(ref Utf8JsonReader reader)
-        {
-            var str = reader.GetString();
+        bool IsInBetween<T>(T value)
+            where T : IDataValue;
 
-            if (str == null)
-            {
-                return new BinaryValue(null);
-            }
 
-            byte[] byteArray = Encoding.Unicode.GetBytes(str);
-            return new BinaryValue(byteArray);
-        }
+        void WriteMinValue(Utf8JsonWriter writer, string propertyName);
 
-        public void WriteValue<T>(Utf8JsonWriter writer, T value) where T : IDataValue
-        {
-            throw new NotImplementedException();
-        }
+        void WriteMaxValue(Utf8JsonWriter writer, string propertyName);
+
+        void WriteNullValue(Utf8JsonWriter writer, string propertyName);
     }
 }

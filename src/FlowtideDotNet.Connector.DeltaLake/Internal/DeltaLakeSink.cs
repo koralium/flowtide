@@ -18,6 +18,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
@@ -214,7 +215,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 // Write max 100k rows per file for now, a user must call optimize in another framework to increase the file size
                 if (writer.WrittenCount >= 100_000)
                 {
-                    await WriteNewFile(writer, actions, currentTime);
+                    await WriteNewFile(writer, actions, currentTime, schema);
                 }
             }
 
@@ -287,7 +288,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             if (writer.WrittenCount > 0)
             {
-                await WriteNewFile(writer, actions, currentTime);
+                await WriteNewFile(writer, actions, currentTime, schema);
             }
 
             await DeltaTransactionWriter.WriteCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
@@ -296,9 +297,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             await _temporaryTree.Clear();
         }
 
-        private async Task WriteNewFile(ParquetSharpWriter writer, List<DeltaAction> actions, long currentTime)
+        private async Task WriteNewFile(ParquetSharpWriter writer, List<DeltaAction> actions, long currentTime, StructType schema)
         {
             string addFilePath = $"part-00000-{Guid.NewGuid().ToString()}.snappy.parquet";
+
+            var stats = writer.GetStatistics();
+
+            JsonSerializerOptions jsonOptions = new JsonSerializerOptions();
+            jsonOptions.Converters.Add(new DeltaStatisticsConverter(schema));
+            var statsString = JsonSerializer.Serialize(stats, jsonOptions);
 
             var fileSize = await writer.WriteData(_options.StorageLocation, _tablePath, addFilePath);
             actions.Add(new DeltaAction()
@@ -310,6 +317,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     Size = fileSize,
                     ModificationTime = currentTime,
                     DataChange = true,
+                    Statistics = statsString
                 }
             });
             writer.NewBatch();

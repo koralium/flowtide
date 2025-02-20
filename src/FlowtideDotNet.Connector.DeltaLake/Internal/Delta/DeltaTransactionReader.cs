@@ -11,6 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using Stowage;
 using System;
@@ -52,6 +56,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             //    startVersion = checkpoint.Version;
             //    await ReadCheckpoint(storage, checkpoint, actions, addFiles);
             //}
+
+            
 
             long currentVersion = startVersion;
 
@@ -131,7 +137,36 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     }
                 }
             }
-            return new DeltaTable(metadata!, protocol!, addFiles.Values.ToList(), currentVersion);
+
+            if (metadata == null)
+            {
+                throw new Exception("No metadata found for the table");
+
+            }
+
+            var schemaJsonOptions = new JsonSerializerOptions();
+            schemaJsonOptions.Converters.Add(new TypeConverter());
+            var schema = JsonSerializer.Deserialize<SchemaBaseType>(metadata.SchemaString!, schemaJsonOptions);
+
+            if (schema!.Type != SchemaType.Struct)
+            {
+                throw new Exception("Schema type must be struct");
+            }
+
+            var structSchema = (schema as StructType)!;
+
+            JsonSerializerOptions statisticsJsonOptions = new JsonSerializerOptions();
+            statisticsJsonOptions.Converters.Add(new DeltaStatisticsConverter(structSchema));
+
+            List<DeltaFile> deltaFiles = new List<DeltaFile>();
+            foreach(var addFile in addFiles)
+            {
+                var stats = JsonSerializer.Deserialize<DeltaStatistics>(addFile.Value.Statistics!, statisticsJsonOptions);
+                deltaFiles.Add(new DeltaFile(addFile.Value, stats!));
+            }
+
+
+            return new DeltaTable(metadata!, protocol!, addFiles.Values.ToList(), structSchema, deltaFiles, currentVersion);
         }
 
         public static async Task<DeltaCommit?> ReadVersionCommit(IFileStorage storage, IOPath table, long version)

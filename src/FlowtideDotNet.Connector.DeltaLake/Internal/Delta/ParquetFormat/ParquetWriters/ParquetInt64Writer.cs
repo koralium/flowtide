@@ -11,7 +11,9 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -24,6 +26,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
     internal class ParquetInt64Writer : IParquetWriter
     {
         private Int64Array.Builder? _builder;
+        private long? _minValue;
+        private long? _maxValue;
+        private int _nullCount;
+
+        public ParquetInt64Writer()
+        {
+        }
 
         public IArrowArray GetArray()
         {
@@ -31,9 +40,30 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             return _builder.Build();
         }
 
+        public IDataValue? GetMinValue()
+        {
+            if (_minValue == null)
+            {
+                return default;
+            }
+            return new Int64Value(_minValue.Value);
+        }
+
+        public IDataValue? GetMaxValue()
+        {
+            if (_maxValue == null)
+            {
+                return null;
+            }
+            return new Int64Value(_maxValue.Value);
+        }
+
         public void NewBatch()
         {
             _builder = new Int64Array.Builder();
+            _minValue = null;
+            _maxValue = null;
+            _nullCount = 0;
         }
 
         public void WriteValue<T>(T value) where T : IDataValue
@@ -41,16 +71,33 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             Debug.Assert(_builder != null);
             if (value.IsNull)
             {
+                _nullCount++;
                 _builder.AppendNull();
             }
             else if (value.Type == ArrowTypeId.Int64)
             {
+                var val = value.AsLong;
+
+                if (_minValue == null || val < _minValue)
+                {
+                    _minValue = val;
+                }
+                if (_maxValue == null || val > _maxValue)
+                {
+                    _maxValue = val;
+                }
+
                 _builder.Append(value.AsLong);
             }
             else
             {
                 throw new NotImplementedException($"Tried to write type {value.Type} to int64 column");
             }
+        }
+
+        public IStatisticsComparer GetStatisticsComparer()
+        {
+            return new Int64StatisticsComparer(_minValue, _maxValue, _nullCount);
         }
     }
 }

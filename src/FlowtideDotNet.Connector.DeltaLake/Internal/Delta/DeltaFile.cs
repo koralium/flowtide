@@ -10,26 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
+namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 {
-    internal class MapStatisticsParser : IStatisticsParser
+    internal class DeltaFile
     {
-        public IDataValue GetValue(ref Utf8JsonReader reader)
-        {
-            throw new NotImplementedException();
-        }
+        public DeltaAddAction Action { get; set; }
 
-        public void WriteValue<T>(Utf8JsonWriter writer, T value) where T : IDataValue
+        public DeltaStatistics Statistics { get; set; }
+
+        public DeltaFile(DeltaAddAction action, DeltaStatistics statistics)
         {
-            throw new NotImplementedException();
+            Action = action;
+            Statistics = statistics;
         }
     }
 }

@@ -13,6 +13,8 @@
 using Apache.Arrow;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using Stowage;
@@ -26,16 +28,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         private int rowCount;
         private Apache.Arrow.Schema _schema;
 
-        private IDataValue[] _minValues;
-        private IDataValue[] _maxValues;
-
         public ParquetSharpWriter(StructType schema)
         {
             this.schema = schema;
             var visitor = new ParquetSharpWriteVisitor();
-
-            _minValues = new IDataValue[schema.Fields.Count];
-            _maxValues = new IDataValue[schema.Fields.Count];
 
             writers = new List<IParquetWriter>();
             for (int i = 0; i < schema.Fields.Count; i++)
@@ -64,9 +60,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             for (int i = 0; i < writers.Count; i++)
             {
                 var value = row.referenceBatch.Columns[i].GetValueAt(row.RowIndex, default);
-
-                // Check value against min and max
-
                 writers[i].WriteValue(value);
             }
         }
@@ -78,6 +71,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             {
                 writer.NewBatch();
             }
+        }
+
+        public DeltaStatistics GetStatistics()
+        {
+            Dictionary<string, IStatisticsComparer> statistics = new Dictionary<string, IStatisticsComparer>();
+
+            for (int i = 0; i < writers.Count; i++)
+            {
+                statistics.Add(schema.Fields[i].Name, writers[i].GetStatisticsComparer());
+            }
+
+            var obj = new DeltaStatistics()
+            {
+                NumRecords = rowCount,
+                TightBounds = true,
+                ValueComparers = statistics
+            };
+
+            return obj;
         }
 
         public async Task<int> WriteData(IFileStorage storage, IOPath tablePath, string fileName)
