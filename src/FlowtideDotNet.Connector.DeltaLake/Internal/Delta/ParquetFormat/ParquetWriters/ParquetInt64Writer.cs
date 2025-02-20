@@ -40,24 +40,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             return _builder.Build();
         }
 
-        public IDataValue? GetMinValue()
-        {
-            if (_minValue == null)
-            {
-                return default;
-            }
-            return new Int64Value(_minValue.Value);
-        }
-
-        public IDataValue? GetMaxValue()
-        {
-            if (_maxValue == null)
-            {
-                return null;
-            }
-            return new Int64Value(_maxValue.Value);
-        }
-
         public void NewBatch()
         {
             _builder = new Int64Array.Builder();

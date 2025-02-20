@@ -93,7 +93,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             using var iterator = _temporaryTree.CreateIterator();
             await iterator.SeekFirst();
 
-
             var table = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tablePath);
 
             long nextVersion = 0;
@@ -163,12 +162,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             var writer = new ParquetSharpWriter(schema);
 
-            
-
             writer.NewBatch();
 
+            Dictionary<string, List<RowToDelete>> rowsToDeleteByFile = new Dictionary<string, List<RowToDelete>>();
+
             Dictionary<string, ModifiableDeleteVector> fileDeleteVectors = new Dictionary<string, ModifiableDeleteVector>();
-            List<ColumnRowReference> deleteRows = new List<ColumnRowReference>();
             List<LeafNode<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>> negativeWeightPages = new List<LeafNode<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>>();
             await foreach(var page in iterator)
             {
@@ -190,7 +188,27 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
                             // Add the page to negative weight pages if the page has negative weights
                             negativeWeightPages.Add(page.CurrentPage);
-                            deleteRows.Add(new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i });
+
+                            var rowToDelete = new RowToDelete()
+                            {
+                                RowReference = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i },
+                                Weight = weight
+                            };
+
+                            for (int f = 0; f < table!.Files.Count; f++)
+                            {
+                                var file = table.Files[f];
+                                if (file.CanBeInFile(rowToDelete.RowReference, _writeRelation.TableSchema.Names))
+                                {
+                                    if (!rowsToDeleteByFile.TryGetValue(file.Action.Path!, out var deleteRowList))
+                                    {
+                                        deleteRowList = new List<RowToDelete>();
+                                        rowsToDeleteByFile.Add(file.Action.Path!, deleteRowList);
+                                    }
+                                    deleteRowList.Add(rowToDelete);
+                                }
+                            }
+
                         }
                     }
                     else
@@ -206,10 +224,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 // How many pages of data that should be processed at the same time when searching existing data
                 if (negativeWeightPages.Count == 100)
                 {
-                    // This part should try and find which files that should be scanned for each negative record.
-                    // After that each file is scanned for the grouping and if found the delition vector of that file is updated.
-
-                    // Important is that partitions must also be taken into consideration
+                    if (table == null)
+                    {
+                        throw new InvalidOperationException("Table should not be null when delete is found");
+                    }
+                    await HandleDeletedRows(rowsToDeleteByFile, table, fileDeleteVectors, negativeWeightPages);
                 }
 
                 // Write max 100k rows per file for now, a user must call optimize in another framework to increase the file size
@@ -221,15 +240,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             if (negativeWeightPages.Count > 0)
             {
-                foreach(var file in table!.AddFiles)
+                if (table == null)
                 {
-                    await ScanDataFileForRows(table, deleteRows, file, fileDeleteVectors);
+                    throw new InvalidOperationException("Table should not be null when delete is found");
                 }
-                
-                foreach(var negativePage in negativeWeightPages)
-                {
-                    negativePage.Return();
-                }
+                await HandleDeletedRows(rowsToDeleteByFile, table, fileDeleteVectors, negativeWeightPages);
             }
 
             foreach(var deleteFile in fileDeleteVectors)
@@ -283,7 +298,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     throw new NotImplementedException();
                 }
-
             }
 
             if (writer.WrittenCount > 0)
@@ -295,6 +309,27 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             // Last thing we do is clear the temporary tree, if the write fails we might need the tree again to recompute the files
             await _temporaryTree.Clear();
+        }
+
+        private async Task HandleDeletedRows(
+            Dictionary<string, List<RowToDelete>> rowsToDeleteByFile, 
+            DeltaTable table, 
+            Dictionary<string, ModifiableDeleteVector> fileDeleteVectors,
+            List<LeafNode<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>> negativeWeightPages)
+        {
+            foreach (var fileWithPossibleDelete in rowsToDeleteByFile)
+            {
+                // This can be made into tasks later on
+                var file = table!.AddFiles.First(x => x.Path == fileWithPossibleDelete.Key);
+                await ScanDataFileForRows(table, fileWithPossibleDelete.Value, file, fileDeleteVectors);
+            }
+
+            foreach (var negativePage in negativeWeightPages)
+            {
+                negativePage.Return();
+            }
+            negativeWeightPages.Clear();
+            rowsToDeleteByFile.Clear();
         }
 
         private async Task WriteNewFile(ParquetSharpWriter writer, List<DeltaAction> actions, long currentTime, StructType schema)
@@ -323,7 +358,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             writer.NewBatch();
         }
 
-        private async Task ScanDataFileForRows(DeltaTable table, List<ColumnRowReference> toFind, DeltaAddAction file, Dictionary<string, ModifiableDeleteVector> deleteVectors)
+        private async Task ScanDataFileForRows(DeltaTable table, List<RowToDelete> toFind, DeltaAddAction file, Dictionary<string, ModifiableDeleteVector> deleteVectors)
         {
             ParquetSharpReader reader = new ParquetSharpReader();
             reader.Initialize(table, _writeRelation.TableSchema.Names);
@@ -347,22 +382,50 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             // Open file without deletion vector, it will be used when finding rows
             var iterator = reader.ReadDataFile(_options.StorageLocation, _tablePath, file.Path!, EmptyDeleteVector.Instance, default, MemoryAllocator);
 
-
-            await foreach(var batch in iterator)
+            await foreach (var batch in iterator)
             {
                 for (int i = 0; i < toFind.Count; i++)
                 {
-                    int index = FindRowInBatch.FindRow(toFind[i], batch.data, deleteVector);
+                    // Lock to see if the row has been found in another file
+                    lock (toFind[i].Lock)
+                    {
+                        if (toFind[i].Weight == 0)
+                        {
+                            toFind.RemoveAt(i);
+                            i--;
+                            continue;
+                        }
+                    }
+                    int index = FindRowInBatch.FindRow(toFind[i].RowReference, batch.data, deleteVector);
                     if (index >= 0)
                     {
-                        if (!deleteVectors.TryGetValue(file.Path!, out var modifiedVector))
+                        lock (toFind[i].Lock)
                         {
-                            modifiedVector = new ModifiableDeleteVector(deleteVector);
-                            deleteVectors.Add(file.Path!, modifiedVector);
+                            // See if the row has been found in another file
+                            if (toFind[i].Weight == 0)
+                            {
+                                toFind.RemoveAt(i);
+                                i--;
+                                continue;
+                            }
+                            // If not increase the weight until we reach 0
+                            toFind[i].Weight++;
+                            // check if the object has been removed completely
+                            if (toFind[i].Weight == 0)
+                            {
+                                toFind.RemoveAt(i);
+                                i--;
+                            }
                         }
-                        modifiedVector.Add(index);
-                        toFind.RemoveAt(i);
-                        i--;
+                        lock (deleteVectors)
+                        {
+                            if (!deleteVectors.TryGetValue(file.Path!, out var modifiedVector))
+                            {
+                                modifiedVector = new ModifiableDeleteVector(deleteVector);
+                                deleteVectors.Add(file.Path!, modifiedVector);
+                            }
+                            modifiedVector.Add(index);
+                        }
                     }
                 }
             }

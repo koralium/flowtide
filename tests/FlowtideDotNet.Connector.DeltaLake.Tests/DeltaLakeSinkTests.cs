@@ -34,13 +34,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await stream.StartStream(@"
                 CREATE TABLE test (
+                    userkey INT,
                     Name STRING,
-                    LastName STRING,
-                    userkey INT
+                    LastName STRING
                 );
 
                 INSERT INTO test
-                SELECT firstName as Name, lastName, userKey FROM users
+                SELECT userKey, firstName as Name, lastName FROM users
             ");
 
             await WaitForVersion(storage, stream, 0);
@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var firstUser = stream.Users[0];
             stream.DeleteUser(firstUser);
 
-            stream.Generate(50);
+            stream.Generate(1_000_000);
 
             await WaitForVersion(storage, stream, 1);
 

@@ -32,5 +32,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         {
             return new ParquetInt64Writer();
         }
+
+        public override IParquetWriter VisitBooleanType(BooleanType type)
+        {
+            return new ParquetBoolWriter();
+        }
+
+        public override IParquetWriter VisitDateType(DateType type)
+        {
+            return new ParquetDateWriter();
+        }
     }
 }

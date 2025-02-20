@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,6 +31,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         {
             Action = action;
             Statistics = statistics;
+        }
+
+        public bool CanBeInFile(ColumnRowReference rowReference, List<string> columnNames)
+        {
+            if (Statistics.ValueComparers != null)
+            {
+                for (int i = 0; i < columnNames.Count; i++)
+                {
+                    if (Statistics.ValueComparers.TryGetValue(columnNames[i], out var comparer))
+                    {
+                        if (!comparer.IsInBetween(rowReference.referenceBatch.Columns[i].GetValueAt(rowReference.RowIndex, default)))
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
         }
     }
 }

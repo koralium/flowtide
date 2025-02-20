@@ -10,26 +10,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
-using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters
+namespace FlowtideDotNet.Connector.DeltaLake.Internal
 {
-    internal interface IParquetWriter
+    /// <summary>
+    /// Represents a row that should be deleted from the table.
+    /// Files are scanned and the weight of this will increase until it reaches 0.
+    /// This allows deletion of duplicate rows, or a single row if one should remain.
+    /// The lock is used when updating the weight. Since multiple files can be looked at in parallel, this is necessary.
+    /// </summary>
+    internal class RowToDelete
     {
-        void NewBatch();
+        public ColumnRowReference RowReference { get; set; }
 
-        void WriteValue<T>(T value)
-            where T : IDataValue;
+        public int Weight { get; set; }
 
-        IArrowArray GetArray();
-
-        IStatisticsComparer GetStatisticsComparer();
+        public object Lock = new object();
     }
 }

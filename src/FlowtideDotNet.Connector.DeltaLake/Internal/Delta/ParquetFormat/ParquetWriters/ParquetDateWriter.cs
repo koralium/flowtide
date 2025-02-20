@@ -22,62 +22,50 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters
 {
-    internal class ParquetStringWriter : IParquetWriter
+    internal class ParquetDateWriter : IParquetWriter
     {
-        private StringArray.Builder? _arrayBuilder;
-        private byte[]? _minValue;
-        private byte[]? _maxValue;
+        private Date32Array.Builder? _builder;
+        private DateTime? _minValue;
+        private DateTime? _maxValue;
         private int _nullCount;
 
         public IArrowArray GetArray()
         {
-            Debug.Assert(_arrayBuilder != null);
-            return _arrayBuilder.Build();
+            Debug.Assert(_builder != null);
+            return _builder.Build();
         }
 
         public IStatisticsComparer GetStatisticsComparer()
         {
-            return new StringStatisticsComparer(_minValue, _maxValue, _nullCount);
+            return new DateStatisticsComparer(_minValue, _maxValue, _nullCount);
         }
 
         public void NewBatch()
         {
-            _arrayBuilder = new StringArray.Builder();
-            _minValue = null;
-            _maxValue = null;
-            _nullCount = 0;
+            _builder = new Date32Array.Builder();
         }
 
         public void WriteValue<T>(T value) where T : IDataValue
         {
-            Debug.Assert(_arrayBuilder != null);
+            Debug.Assert(_builder != null);
             if (value.IsNull)
             {
                 _nullCount++;
-                _arrayBuilder.AppendNull();
+                _builder.AppendNull();
+                return;
             }
-            else
-            {
-                if (_minValue == null)
-                {
-                    _minValue = value.AsString.Span.ToArray();
-                }
-                else if (_minValue.AsSpan().SequenceCompareTo(value.AsString.Span) > 0)
-                {
-                    _minValue = value.AsString.Span.ToArray();
-                }
-                
-                if (_maxValue == null)
-                {
-                    _maxValue = value.AsString.Span.ToArray();
-                }
-                else if (_maxValue.AsSpan().SequenceCompareTo(value.AsString.Span) < 0)
-                {
-                    _maxValue = value.AsString.Span.ToArray();
-                }
+                var dateValue = value.AsTimestamp.ToDateTimeOffset().DateTime;
 
-                _arrayBuilder.Append(value.AsString.Span);
+            if (_minValue == null || dateValue < _minValue)
+            {
+                _minValue = dateValue;
             }
+            if (_maxValue == null || dateValue > _maxValue)
+            {
+                _maxValue = dateValue;
+            }
+
+            _builder.Append(dateValue);
         }
     }
 }
