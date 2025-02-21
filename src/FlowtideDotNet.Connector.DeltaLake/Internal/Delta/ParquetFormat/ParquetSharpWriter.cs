@@ -25,20 +25,36 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
     {
         private readonly StructType schema;
         private List<IParquetWriter> writers;
+        private List<IParquetWriter> toWrite;
+        private List<IParquetWriter> nullWriters;
         private int rowCount;
         private Apache.Arrow.Schema _schema;
 
-        public ParquetSharpWriter(StructType schema)
+        public ParquetSharpWriter(StructType schema, List<string> columnNames)
         {
             this.schema = schema;
             var visitor = new ParquetSharpWriteVisitor();
 
+            toWrite = new List<IParquetWriter>();
             writers = new List<IParquetWriter>();
+            nullWriters = new List<IParquetWriter>();
             for (int i = 0; i < schema.Fields.Count; i++)
             {
                 var field = schema.Fields[i];
                 var writer = visitor.Visit(field.Type);
                 writers.Add(writer);
+                if (columnNames.Contains(field.Name, StringComparer.OrdinalIgnoreCase))
+                {
+                    toWrite.Add(writer);
+                }
+                else
+                {
+                    if (!field.Nullable)
+                    {
+                        throw new InvalidOperationException($"Column {field.Name} is not nullable and is not present in query which means all rows would be inserted as null.");
+                    }
+                    nullWriters.Add(writer);
+                }
             }
 
             var schemaVisitor = new DeltaTypeArrowTypeVisitor();
@@ -57,10 +73,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         public void AddRow(ColumnRowReference row)
         {
             rowCount++;
-            for (int i = 0; i < writers.Count; i++)
+            for (int i = 0; i < toWrite.Count; i++)
             {
                 var value = row.referenceBatch.Columns[i].GetValueAt(row.RowIndex, default);
-                writers[i].WriteValue(value);
+                toWrite[i].WriteValue(value);
+            }
+            for (int i = 0; i < nullWriters.Count; i++)
+            {
+                nullWriters[i].WriteNull();
             }
         }
 
@@ -79,7 +99,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
             for (int i = 0; i < writers.Count; i++)
             {
-                statistics.Add(schema.Fields[i].Name, writers[i].GetStatisticsComparer());
+                var stats = writers[i].GetStatisticsComparer();
+                if (stats != null)
+                {
+                    statistics.Add(schema.Fields[i].Name, stats);
+                }
             }
 
             var obj = new DeltaStatistics()

@@ -42,5 +42,46 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         {
             return new ParquetDateWriter();
         }
+
+        public override IParquetWriter VisitIntegerType(IntegerType type)
+        {
+            return new ParquetIntegerWriter();
+        }
+
+        public override IParquetWriter VisitFloatType(FloatType type)
+        {
+            return new ParquetFloat32Writer();
+        }
+
+        public override IParquetWriter VisitDecimalType(DecimalType type)
+        {
+            return new ParquetDecimalWriter(type.Precision, type.Scale);
+        }
+
+        public override IParquetWriter VisitDoubleType(DoubleType type)
+        {
+            return new ParquetFloat64Writer();
+        }
+
+        public override IParquetWriter VisitByteType(ByteType type)
+        {
+            return new ParquetInt8Writer();
+        }
+
+        public override IParquetWriter VisitShortType(ShortType type)
+        {
+            return new ParquetInt16Writer();
+        }
+
+        public override IParquetWriter VisitStructType(StructType type)
+        {
+            List< KeyValuePair<string, IParquetWriter> > fields = new List<KeyValuePair<string, IParquetWriter>>();
+            foreach (var field in type.Fields)
+            {
+                var writer = Visit(field.Type);
+                fields.Add(new KeyValuePair<string, IParquetWriter>(field.Name, writer));
+            }
+            return new ParquetStructWriter(fields);
+        }
     }
 }

@@ -28,8 +28,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         void WriteValue<T>(T value)
             where T : IDataValue;
 
+        void WriteNull();
+
         IArrowArray GetArray();
 
-        IStatisticsComparer GetStatisticsComparer();
+        IStatisticsComparer? GetStatisticsComparer();
     }
 }

@@ -64,8 +64,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public void TestDecimalTypeEquality()
         {
-            var x = new DecimalType();
-            var y = new DecimalType();
+            var x = new DecimalType(19, 3);
+            var y = new DecimalType(19, 3);
 
             Assert.Equal(x, y);
             Assert.Equal(x.GetHashCode(), y.GetHashCode());

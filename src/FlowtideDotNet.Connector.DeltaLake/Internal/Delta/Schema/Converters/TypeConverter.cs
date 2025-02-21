@@ -40,7 +40,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
                     "boolean" => new BooleanType(),
                     "byte" => new ByteType(),
                     "date" => new DateType(),
-                    "decimal" => new DecimalType(),
                     "double" => new DoubleType(),
                     "float" => new FloatType(),
                     "integer" => new IntegerType(),
@@ -66,7 +65,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
         {
             if (type != null && type.StartsWith("decimal"))
             {
-                return new DecimalType();
+                var firstLeftSlash = type.IndexOf('(');
+                var firstRightSlash = type.IndexOf(')');
+                var comma = type.IndexOf(',');
+                if (firstLeftSlash == -1 || firstRightSlash == -1 || comma == -1)
+                {
+                    throw new JsonException("Invalid decimal type");
+                }
+
+                var precision = int.Parse(type.Substring(firstLeftSlash + 1, comma - firstLeftSlash - 1));
+                var scale = int.Parse(type.Substring(comma + 1, firstRightSlash - comma - 1));
+
+                return new DecimalType(precision, scale);
             }
             throw new JsonException($"Unknown type: {type}");
         }

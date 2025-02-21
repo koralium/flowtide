@@ -22,27 +22,27 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters
 {
-    internal class ParquetStringWriter : IParquetWriter
+    internal class ParquetInt16Writer : IParquetWriter
     {
-        private StringArray.Builder? _arrayBuilder;
-        private byte[]? _minValue;
-        private byte[]? _maxValue;
+        private Int16Array.Builder? _builder;
+        private long? _minValue;
+        private long? _maxValue;
         private int _nullCount;
 
         public IArrowArray GetArray()
         {
-            Debug.Assert(_arrayBuilder != null);
-            return _arrayBuilder.Build();
+            Debug.Assert(_builder != null);
+            return _builder.Build();
         }
 
         public IStatisticsComparer GetStatisticsComparer()
         {
-            return new StringStatisticsComparer(_minValue, _maxValue, _nullCount);
+            return new Int64StatisticsComparer(_minValue, _maxValue, _nullCount);
         }
 
         public void NewBatch()
         {
-            _arrayBuilder = new StringArray.Builder();
+            _builder = new Int16Array.Builder();
             _minValue = null;
             _maxValue = null;
             _nullCount = 0;
@@ -50,41 +50,33 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public void WriteNull()
         {
-            Debug.Assert(_arrayBuilder != null);
+            Debug.Assert(_builder != null);
             _nullCount++;
-            _arrayBuilder.AppendNull();
+            _builder.AppendNull();
         }
 
         public void WriteValue<T>(T value) where T : IDataValue
         {
-            Debug.Assert(_arrayBuilder != null);
+            Debug.Assert(_builder != null);
             if (value.IsNull)
             {
                 _nullCount++;
-                _arrayBuilder.AppendNull();
+                _builder.AppendNull();
+                return;
             }
-            else
-            {
-                if (_minValue == null)
-                {
-                    _minValue = value.AsString.Span.ToArray();
-                }
-                else if (_minValue.AsSpan().SequenceCompareTo(value.AsString.Span) > 0)
-                {
-                    _minValue = value.AsString.Span.ToArray();
-                }
-                
-                if (_maxValue == null)
-                {
-                    _maxValue = value.AsString.Span.ToArray();
-                }
-                else if (_maxValue.AsSpan().SequenceCompareTo(value.AsString.Span) < 0)
-                {
-                    _maxValue = value.AsString.Span.ToArray();
-                }
 
-                _arrayBuilder.Append(value.AsString.Span);
+            var val = value.AsLong;
+
+            if (_minValue == null || val < _minValue)
+            {
+                _minValue = val;
             }
+            if (_maxValue == null || val > _maxValue)
+            {
+                _maxValue = val;
+            }
+
+            _builder.Append((short)val);
         }
     }
 }

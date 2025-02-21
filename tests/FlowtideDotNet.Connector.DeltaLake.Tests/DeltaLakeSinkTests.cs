@@ -11,12 +11,17 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using Stowage;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
@@ -44,28 +49,113 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 SELECT userKey, firstName as Name, lastName, NullableString FROM users
             ");
 
-            await WaitForVersion(storage, stream, 0);
+            await WaitForVersion(storage, "test", stream, 0);
 
             var firstUser = stream.Users[0];
             stream.DeleteUser(firstUser);
 
             stream.Generate(50);
 
-            await WaitForVersion(storage, stream, 1);
+            await WaitForVersion(storage, "test", stream, 1);
 
             firstUser = stream.Users.Last();
             stream.DeleteUser(firstUser);
 
-            await WaitForVersion(storage, stream, 2);
+            await WaitForVersion(storage, "test", stream, 2);
         }
 
-        private async Task WaitForVersion(IFileStorage storage, FlowtideTestStream stream, long version)
+
+        /// <summary>
+        /// Check that null is added to columns that are not present in the select statement
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task TestInsertSelectionOfColumns()
+        {
+            var storage = Files.Of.LocalDisk("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTable), storage);
+
+            var fields = new List<StructField>()
+            {
+                 new StructField("userkey", new IntegerType(), true, new Dictionary<string, object>()),
+                 new StructField("name", new StringType(), true, new Dictionary<string, object>()),
+                 new StructField("LastName", new StringType(), true, new Dictionary<string, object>()),
+                 new StructField("NullableString", new StringType(), true, new Dictionary<string, object>())
+            };
+            var schemaStruct = new StructType(fields);
+
+            JsonSerializerOptions jsonOptions = new JsonSerializerOptions();
+            jsonOptions.Converters.Add(new TypeConverter());
+
+            await DeltaTransactionWriter.WriteCommit(storage, "test2", 0, new List<Internal.Delta.Actions.DeltaAction>()
+            {
+                new Internal.Delta.Actions.DeltaAction()
+                {
+                    MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
+                    {
+                        SchemaString = JsonSerializer.Serialize(schemaStruct as SchemaBaseType, jsonOptions)
+                    }
+                }
+            });
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                INSERT INTO test2
+                SELECT firstName as Name, NullableString FROM users
+            ");
+
+            await WaitForVersion(storage, "test2", stream, 1);
+        }
+
+        [Fact]
+        public async Task TestInsertIntoStruct()
+        {
+            var storage = Files.Of.LocalDisk("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTable), storage);
+
+            var fields = new List<StructField>()
+            {
+                 new StructField("userkey", new IntegerType(), true, new Dictionary<string, object>()),
+                 new StructField("Struct", new StructType(new List<StructField>()
+                 {
+                     new StructField("name", new StringType(), true, new Dictionary<string, object>()),
+                     new StructField("lastName", new StringType(), true, new Dictionary<string, object>())
+                 }), true, new Dictionary<string, object>())
+            };
+            var schemaStruct = new StructType(fields);
+
+            JsonSerializerOptions jsonOptions = new JsonSerializerOptions();
+            jsonOptions.Converters.Add(new TypeConverter());
+
+            await DeltaTransactionWriter.WriteCommit(storage, "test3", 0, new List<Internal.Delta.Actions.DeltaAction>()
+            {
+                new Internal.Delta.Actions.DeltaAction()
+                {
+                    MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
+                    {
+                        SchemaString = JsonSerializer.Serialize(schemaStruct as SchemaBaseType, jsonOptions)
+                    }
+                }
+            });
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                INSERT INTO test3
+                SELECT userkey, map('name', firstName, 'lastName', lastName) as struct FROM users
+            ");
+
+            await WaitForVersion(storage, "test3", stream, 1);
+        }
+
+        private async Task WaitForVersion(IFileStorage storage, string tableName, FlowtideTestStream stream, long version)
         {
             while (true)
             {
                 try
                 {
-                    var exists = await storage.Exists($"/test/_delta_log/{version.ToString("D20")}.json");
+                    var exists = await storage.Exists($"/{tableName}/_delta_log/{version.ToString("D20")}.json");
                     if (exists)
                     {
                         break;

@@ -81,5 +81,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         {
             return new Int64StatisticsComparer(_minValue, _maxValue, _nullCount);
         }
+
+        public void WriteNull()
+        {
+            Debug.Assert(_builder != null);
+            _nullCount++;
+            _builder.AppendNull();
+        }
     }
 }

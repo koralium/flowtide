@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils
             }
             if (type is DecimalType decimalType)
             {
-                return new Schema.Types.DecimalType();
+                return new Schema.Types.DecimalType(29, 10);
             }
             if (type is Fp32Type)
             {

@@ -48,6 +48,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _nullCount = 0;
         }
 
+        public void WriteNull()
+        {
+            Debug.Assert(_builder != null);
+            _nullCount++;
+            _builder.AppendNull();
+        }
+
         public void WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_builder != null);

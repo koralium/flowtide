@@ -161,7 +161,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 });
             }
 
-            var writer = new ParquetSharpWriter(schema);
+            var writer = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
 
             writer.NewBatch();
 
