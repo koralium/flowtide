@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public IStatisticsComparer? GetStatisticsComparer()
         {
-            return null;
+            return new StructStatisticsComparer(propertyWriters.Select(x => new KeyValuePair<string, IStatisticsComparer>(x.Key, x.Value.GetStatisticsComparer())), _nullCount);
         }
 
         public void NewBatch()

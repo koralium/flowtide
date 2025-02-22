@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
@@ -76,7 +77,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 
         public override IStatisticsParser? VisitStructType(StructType type)
         {
-            return null;
+            Dictionary<string, IStatisticsParser> propertyComparers = new Dictionary<string, IStatisticsParser>(StringComparer.OrdinalIgnoreCase);
+            foreach(var field in type.Fields)
+            {
+                var comparer = Visit(field.Type);
+                if (comparer != null)
+                {
+                    propertyComparers.Add(field.Name, comparer);
+                }
+            }
+            return new StructStatisticsParser(propertyComparers);
         }
 
         public override IStatisticsParser? VisitStringType(StringType type)

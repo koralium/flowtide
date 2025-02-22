@@ -32,8 +32,5 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
         void ReadNullValue(ref Utf8JsonReader reader);
 
         IStatisticsComparer GetStatisticsComparer();
-
-        void WriteValue<T>(Utf8JsonWriter writer, T value)
-            where T : IDataValue;
     }
 }

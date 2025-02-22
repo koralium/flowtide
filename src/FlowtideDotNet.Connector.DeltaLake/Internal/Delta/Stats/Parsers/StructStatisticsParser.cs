@@ -12,12 +12,7 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
 {
@@ -32,7 +27,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
 
         public IStatisticsComparer GetStatisticsComparer()
         {
-            throw new NotImplementedException();
+            return new StructStatisticsComparer(_parsers.Select(x => new KeyValuePair<string, IStatisticsComparer>(x.Key, x.Value.GetStatisticsComparer())), default);
         }
 
         public IDataValue GetValue(ref Utf8JsonReader reader)
@@ -66,23 +61,108 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
         }
 
         public void ReadMaxValue(ref Utf8JsonReader reader)
-        {
-            throw new NotImplementedException();
+        {   
+            while (true)
+            {
+                reader.Read();
+
+                if (reader.TokenType == JsonTokenType.EndObject)
+                {
+                    break;
+                }
+
+                if (reader.TokenType != JsonTokenType.PropertyName)
+                {
+                    throw new JsonException("Expected property name");
+                }
+
+                var propertyName = reader.GetString();
+
+                if (propertyName == null)
+                {
+                    throw new JsonException("Expected property name");
+                }
+
+                reader.Read();
+
+                if (!_parsers.TryGetValue(propertyName, out var parser))
+                {
+                    reader.Skip();
+                    continue;
+                }
+
+                parser.ReadMaxValue(ref reader);
+            }
         }
 
         public void ReadMinValue(ref Utf8JsonReader reader)
         {
-            throw new NotImplementedException();
+            while (true)
+            {
+                reader.Read();
+
+                if (reader.TokenType == JsonTokenType.EndObject)
+                {
+                    break;
+                }
+
+                if (reader.TokenType != JsonTokenType.PropertyName)
+                {
+                    throw new JsonException("Expected property name");
+                }
+
+                var propertyName = reader.GetString();
+
+                if (propertyName == null)
+                {
+                    throw new JsonException("Expected property name");
+                }
+
+                reader.Read();
+
+                if (!_parsers.TryGetValue(propertyName, out var parser))
+                {
+                    reader.Skip();
+                    continue;
+                }
+
+                parser.ReadMinValue(ref reader);
+            }
         }
 
         public void ReadNullValue(ref Utf8JsonReader reader)
         {
-            throw new NotImplementedException();
-        }
+            while (true)
+            {
+                reader.Read();
 
-        public void WriteValue<T>(Utf8JsonWriter writer, T value) where T : IDataValue
-        {
-            throw new NotImplementedException();
+                if (reader.TokenType == JsonTokenType.EndObject)
+                {
+                    break;
+                }
+
+                if (reader.TokenType != JsonTokenType.PropertyName)
+                {
+                    throw new JsonException("Expected property name");
+                }
+
+                var propertyName = reader.GetString();
+
+                if (propertyName == null)
+                {
+                    throw new JsonException("Expected property name");
+                }
+
+                reader.Read();
+
+                if (!_parsers.TryGetValue(propertyName, out var parser))
+                {
+                    reader.Skip();
+                    continue;
+                }
+
+                parser.ReadNullValue(ref reader);
+            }
         }
     }
 }

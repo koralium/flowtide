@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         private readonly List<KeyValuePair<string, IStatisticsComparer>> propertyComparers;
         private readonly int? nullCount;
 
-        public StructStatisticsComparer(List<KeyValuePair<string, IStatisticsComparer>> propertyComparers, int? nullCount)
+        public StructStatisticsComparer(IEnumerable<KeyValuePair<string, IStatisticsComparer>> propertyComparers, int? nullCount)
         {
             this.propertyComparers = propertyComparers.OrderBy(x => x.Key).ToList();
             this.nullCount = nullCount;
@@ -44,27 +44,80 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 
             var mapVal = value.AsMap;
             var mapLength = mapVal.GetLength();
-            for (int i = 0; i < propertyComparers.Count; i++)
-            {
 
+            int mapIndex = 0;
+            int propertyIndex = 0;
+
+            // Both lists are in sorted order, try and find matching keys
+            while (mapIndex < mapLength && propertyIndex < propertyComparers.Count)
+            {
+                var mapKeyString = mapVal.GetKeyAt(mapIndex).AsString.ToString();
+                var comparerKey = propertyComparers[propertyIndex].Key;
+
+                var compareResult = string.Compare(mapKeyString, comparerKey, StringComparison.OrdinalIgnoreCase);
+
+                if (compareResult == 0)
+                {
+                    var comparer = propertyComparers[propertyIndex].Value;
+                    var mapValue = mapVal.GetValueAt(mapIndex);
+
+                    if (!comparer.IsInBetween(mapValue))
+                    {
+                        return false;
+                    }
+
+                    mapIndex++;
+                    propertyIndex++;
+                }
+                else if (compareResult < 0)
+                {
+                    // The map key is less than the comparer key, so we skip this map key
+                    mapIndex++;
+                }
+                else
+                {
+                    // The map key is greater than the comparer key, so we skip this comparer key
+                    propertyIndex++;
+                }
             }
 
-            throw new NotImplementedException();
+            return false;
         }
 
         public void WriteMaxValue(Utf8JsonWriter writer, string propertyName)
         {
-            throw new NotImplementedException();
+            writer.WriteStartObject(propertyName);
+
+            for (int i = 0; i < propertyComparers.Count; i++)
+            {
+                propertyComparers[i].Value.WriteMaxValue(writer, propertyComparers[i].Key);
+            }
+
+            writer.WriteEndObject();
         }
 
         public void WriteMinValue(Utf8JsonWriter writer, string propertyName)
         {
-            throw new NotImplementedException();
+            writer.WriteStartObject(propertyName);
+
+            for (int i = 0; i < propertyComparers.Count; i++)
+            {
+                propertyComparers[i].Value.WriteMinValue(writer, propertyComparers[i].Key);
+            }
+
+            writer.WriteEndObject();
         }
 
         public void WriteNullValue(Utf8JsonWriter writer, string propertyName)
         {
-            throw new NotImplementedException();
+            writer.WriteStartObject(propertyName);
+
+            for (int i = 0; i < propertyComparers.Count; i++)
+            {
+                propertyComparers[i].Value.WriteNullValue(writer, propertyComparers[i].Key);
+            }
+
+            writer.WriteEndObject();
         }
     }
 }
