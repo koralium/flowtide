@@ -124,6 +124,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
         }
 
+        public RecordBatch GetRecordBatch()
+        {
+            List<IArrowArray> arrays = new List<IArrowArray>();
+            for (int i = 0; i < writers.Count; i++)
+            {
+                var array = writers[i].GetArray();
+                arrays.Add(array);
+            }
+
+            var batch = new RecordBatch(_schema, arrays, rowCount);
+            return batch;
+        }
+
         public DeltaStatistics GetStatistics()
         {
             Dictionary<string, IStatisticsComparer> statistics = new Dictionary<string, IStatisticsComparer>();
@@ -153,14 +166,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
             using var writer = new ParquetSharp.Arrow.FileWriter(stream, _schema);
 
-            List<IArrowArray> arrays = new List<IArrowArray>();
-            for (int i = 0; i < writers.Count; i++)
-            {
-                var array = writers[i].GetArray();
-                arrays.Add(array);
-            }
-
-            var batch = new RecordBatch(_schema, arrays, rowCount);
+            var batch = GetRecordBatch();
             writer.WriteRecordBatch(batch);
             writer.Close();
             
