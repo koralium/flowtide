@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowEncoders;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Storage.DataStructures;
@@ -38,20 +39,26 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
         private List<string>? _physicalColumnNamesInBatch;
         private List<IArrowEncoder>? _encoders;
+        
+        public List<StructField>? Fields { get; private set; }
+
         public void Initialize(DeltaTable table, IReadOnlyList<string> columnNames)
         {
             ParquetArrowTypeVisitor visitor = new ParquetArrowTypeVisitor();
             List<IArrowEncoder> encoders = new List<IArrowEncoder>();
             _physicalColumnNamesInBatch = new List<string>();
+            Fields = new List<StructField>();
             for (int i = 0; i < columnNames.Count; i++)
             {
                 var name = columnNames[i];
                 var field = table.Schema.Fields.FirstOrDefault(x => x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-
+                
                 if (field == null)
                 {
                     throw new Exception($"Field {name} not found in schema");
                 }
+
+                Fields.Add(field);
 
                 string physicalName = field.Name;
                 if (field.Metadata.TryGetValue("delta.columnMapping.physicalName", out var mappingName))

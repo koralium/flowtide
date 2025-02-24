@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         {
             get
             {
-                return _protocol.WriterFeatures?.Contains("deletionVectors") ?? false;
+                return _protocol?.WriterFeatures?.Contains("deletionVectors") ?? false;
             }
         }
     }

@@ -397,9 +397,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 deleteVector = vector;
             }
 
+            if (reader.Fields == null)
+            {
+                throw new InvalidOperationException("Fields should not be null");
+            }
+
             // Open file without deletion vector, it will be used when finding rows
             var iterator = reader.ReadDataFile(_options.StorageLocation, _tablePath, file.Path!, EmptyDeleteVector.Instance, default, MemoryAllocator);
-
+            
             await foreach (var batch in iterator)
             {
                 for (int i = 0; i < toFind.Count; i++)
@@ -414,7 +419,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                             continue;
                         }
                     }
-                    int index = FindRowInBatch.FindRow(toFind[i].RowReference, batch.data, deleteVector);
+                    int index = FindRowInBatch.FindRow(toFind[i].RowReference, batch.data, deleteVector, reader.Fields);
                     if (index >= 0)
                     {
                         lock (toFind[i].Lock)

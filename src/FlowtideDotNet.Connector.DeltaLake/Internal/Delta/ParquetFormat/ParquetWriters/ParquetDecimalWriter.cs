@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public void NewBatch()
         {
-            new Decimal128Array.Builder(_type);
+            _builder = new Decimal128Array.Builder(_type);
             _minValue = null;
             _maxValue = null;
             _nullCount = 0;
@@ -93,6 +93,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private void WriteValue(decimal decimalValue)
         {
             Debug.Assert(_builder != null);
+            decimalValue = Math.Round(decimalValue, _type.Scale);
             if (_minValue == null || _minValue.Value.CompareTo(decimalValue) > 0)
             {
                 _minValue = decimalValue;

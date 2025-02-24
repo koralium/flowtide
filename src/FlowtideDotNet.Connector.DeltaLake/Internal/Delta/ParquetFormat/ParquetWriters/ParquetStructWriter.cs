@@ -15,6 +15,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Substrait.Expressions.Literals;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -28,13 +29,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
     internal class ParquetStructWriter : IParquetWriter
     {
         private readonly List<KeyValuePair<string, IParquetWriter>> propertyWriters;
+        private List<int> order;
         ArrowBuffer.BitmapBuilder? _nullBitmap;
         private int _nullCount;
 
 
         public ParquetStructWriter(IEnumerable<KeyValuePair<string, IParquetWriter>> propertyWriters)
         {
+            var keys = propertyWriters.Select(x => x.Key).ToList();
             this.propertyWriters = propertyWriters.OrderBy(x => x.Key).ToList();
+
+            order = new List<int>();
+            foreach (var key in keys)
+            {
+                for (int i = 0; i < this.propertyWriters.Count; i++)
+                {
+                    if (this.propertyWriters[i].Key == key)
+                    {
+                        order.Add(i);
+                        break;
+                    }
+                }
+            }
         }
 
         public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector)
@@ -44,7 +60,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 for (int j = 0; j < propertyWriters.Count; j++)
                 {
                     var field = arr.Fields[j];
-                    propertyWriters[j].Value.CopyArray(field, globalOffset, deleteVector);
+                    propertyWriters[order[j]].Value.CopyArray(field, globalOffset, deleteVector);
                 }
                 for (int i = 0; i < arr.Length; i++)
                 {
@@ -68,8 +84,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             Debug.Assert(_nullBitmap != null);
             List<IArrowArray> arrays = new List<IArrowArray>();
             List<Apache.Arrow.Field> fields = new List<Field>();
-            foreach (var writer in propertyWriters)
+
+            for (int i = 0; i < order.Count; i++)
             {
+                var writer =  propertyWriters[order[i]];
                 var arr = writer.Value.GetArray();
                 arrays.Add(arr);
                 fields.Add(new Apache.Arrow.Field(writer.Key, arr.Data.DataType, true));

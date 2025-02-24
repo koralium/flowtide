@@ -58,17 +58,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 
         public void WriteMaxValue(Utf8JsonWriter writer, string propertyName)
         {
-            if (_minValue != null)
+            if (_maxValue != null)
             {
-                writer.WriteString(propertyName, _minValue.Value);
+                writer.WriteString(propertyName, _maxValue.Value);
             }
         }
 
         public void WriteMinValue(Utf8JsonWriter writer, string propertyName)
         {
-            if (_maxValue != null)
+            if (_minValue != null)
             {
-                writer.WriteString(propertyName, _maxValue.Value);
+                writer.WriteString(propertyName, _minValue.Value);
             }
         }
 

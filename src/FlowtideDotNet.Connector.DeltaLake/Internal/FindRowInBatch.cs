@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -30,15 +31,37 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         /// <param name="rowToFind"></param>
         /// <param name="batch"></param>
         /// <returns></returns>
-        public static int FindRow(ColumnRowReference rowToFind, EventBatchData batch, IDeleteVector deleteVector)
+        public static int FindRow(ColumnRowReference rowToFind, EventBatchData batch, IDeleteVector deleteVector, List<StructField> fields)
         {
-            return FindRowInColumn(rowToFind, batch, 0, deleteVector);
+            return FindRowInColumn(rowToFind, batch, 0, deleteVector, fields);
         }
 
-        private static int FindRowInColumn(ColumnRowReference rowToFind, EventBatchData batch, int columnIndex, IDeleteVector deleteVector)
+        /// <summary>
+        /// Searches an initial column index, if it is found in that column it checks the other columns.
+        /// This can be useful if one column is known to have a high cardinality.
+        /// </summary>
+        /// <param name="rowToFind"></param>
+        /// <param name="batch"></param>
+        /// <param name="columnIndex"></param>
+        /// <param name="deleteVector"></param>
+        /// <returns></returns>
+        private static int FindRowInColumn(ColumnRowReference rowToFind, EventBatchData batch, int columnIndex, IDeleteVector deleteVector, List<StructField> fields)
         {
             var column = batch.Columns[columnIndex];
             var dataToFind = rowToFind.referenceBatch.Columns[columnIndex].GetValueAt(rowToFind.RowIndex, default);
+
+            if (fields[columnIndex].Type is FloatType)
+            {
+                // Special case since flowtide treats float and double as the same type (double)
+                // But we need to cast this to float to fix rounding errors
+                dataToFind = new DoubleValue((float)dataToFind.AsDouble);
+            }
+            else if (fields[columnIndex].Type is DecimalType decType)
+            {
+                // Same for decimal, must round it to the scale of the decimal type
+                dataToFind = new DecimalValue(Math.Round(dataToFind.AsDecimal, decType.Scale));
+            }
+
             for (int i = 0; i < column.Count; i++)
             {
                 if (deleteVector.Contains(i))
@@ -47,15 +70,34 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
                 if (DataValueComparer.Instance.Compare(dataToFind, column.GetValueAt(i, default)) == 0)
                 {
-                    if (batch.Columns.Count > columnIndex + 1)
+                    bool found = true;
+                    for (int c = 0; c < batch.Columns.Count; c++)
                     {
-                        var index = FindRowInColumn(rowToFind, batch, columnIndex + 1, deleteVector);
-                        if (index >= 0)
+                        if (c == columnIndex)
                         {
-                            return index;
+                            continue;
+                        }
+                        var data = rowToFind.referenceBatch.Columns[c].GetValueAt(rowToFind.RowIndex, default);
+
+                        if (fields[c].Type is FloatType)
+                        {
+                            // Special case since flowtide treats float and double as the same type (double)
+                            // But we need to cast this to float to fix rounding errors
+                            data = new DoubleValue((float)data.AsDouble);
+                        }
+                        else if (fields[c].Type is DecimalType decType)
+                        {
+                            // Same for decimal, must round it to the scale of the decimal type
+                            data = new DecimalValue(Math.Round(dataToFind.AsDecimal, decType.Scale));
+                        }
+
+                        if (DataValueComparer.Instance.Compare(data, batch.Columns[c].GetValueAt(i, default)) != 0)
+                        {
+                            found = false;
+                            break;
                         }
                     }
-                    else
+                    if (found)
                     {
                         return i;
                     }

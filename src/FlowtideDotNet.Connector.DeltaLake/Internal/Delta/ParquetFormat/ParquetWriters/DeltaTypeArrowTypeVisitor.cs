@@ -26,6 +26,46 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             return new Int32Type();
         }
 
+        public override ArrowType VisitByteType(Schema.Types.ByteType type)
+        {
+            return new Int8Type();
+        }
+
+        public override ArrowType VisitShortType(Schema.Types.ShortType type)
+        {
+            return new Int16Type();
+        }
+
+        public override ArrowType VisitFloatType(Schema.Types.FloatType type)
+        {
+            return new FloatType();
+        }
+
+        public override ArrowType VisitDoubleType(Schema.Types.DoubleType type)
+        {
+            return new DoubleType();
+        }
+
+        public override ArrowType VisitBooleanType(Schema.Types.BooleanType type)
+        {
+            return new BooleanType();
+        }
+
+        public override ArrowType VisitDateType(Schema.Types.DateType type)
+        {
+            return new Date32Type();
+        }
+
+        public override ArrowType VisitDecimalType(Schema.Types.DecimalType type)
+        {
+            return new Decimal128Type(type.Precision, type.Scale);
+        }
+
+        public override ArrowType VisitTimestampType(Schema.Types.TimestampType type)
+        {
+            return new TimestampType(timezone: default(string));
+        }
+
         public override ArrowType VisitStructType(Schema.Types.StructType type)
         {
             List<Field> fields = new List<Field>();

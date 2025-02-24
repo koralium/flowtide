@@ -274,6 +274,30 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
             {
                 writer.WriteStringValue("long");
             }
+            else if (value is ShortType)
+            {
+                writer.WriteStringValue("short");
+            }
+            else if (value is FloatType)
+            {
+                writer.WriteStringValue("float");
+            }
+            else if (value is DoubleType)
+            {
+                writer.WriteStringValue("double");
+            }
+            else if (value is DateType)
+            {
+                writer.WriteStringValue("date");
+            }
+            else if (value is DecimalType decimalType)
+            {
+                writer.WriteStringValue($"decimal({decimalType.Precision},{decimalType.Scale})");
+            }
+            else if (value is TimestampType)
+            {
+                writer.WriteStringValue("timestamp");
+            }
             else if (value is StructType structType)
             {
                 WriteStruct(writer, structType, options);
