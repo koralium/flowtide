@@ -35,6 +35,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         IStatisticsComparer? GetStatisticsComparer();
 
-        void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector);
+        void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count);
     }
 }
