@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
         {
             get
             {
-                return countedCardinality;
+                return vector.Cardinality + addedDeletes.Count;
             }
         }
 

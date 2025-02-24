@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
@@ -28,6 +29,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private long? _minValue;
         private long? _maxValue;
         private int _nullCount;
+
+        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector)
+        {
+            if (array is Int16Array arr)
+            {
+                for (int i = 0; i < arr.Length; i++)
+                {
+                    if (deleteVector.Contains(globalOffset + i))
+                    {
+                        continue;
+                    }
+
+                    var val = arr.GetValue(i);
+                    if (!val.HasValue)
+                    {
+                        WriteNull();
+                    }
+                    else
+                    {
+                        WriteValue(val.Value);
+                    }
+                }
+                return;
+            }
+            throw new NotImplementedException();
+        }
 
         public IArrowArray GetArray()
         {
@@ -55,6 +82,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _builder.AppendNull();
         }
 
+        private void WriteValue(long val)
+        {
+            Debug.Assert(_builder != null);
+            if (_minValue == null || val < _minValue)
+            {
+                _minValue = val;
+            }
+            if (_maxValue == null || val > _maxValue)
+            {
+                _maxValue = val;
+            }
+
+            _builder.Append((short)val);
+        }
+
         public void WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_builder != null);
@@ -66,17 +108,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             }
 
             var val = value.AsLong;
-
-            if (_minValue == null || val < _minValue)
-            {
-                _minValue = val;
-            }
-            if (_maxValue == null || val > _maxValue)
-            {
-                _maxValue = val;
-            }
-
-            _builder.Append((short)val);
+            WriteValue(val);
         }
     }
 }

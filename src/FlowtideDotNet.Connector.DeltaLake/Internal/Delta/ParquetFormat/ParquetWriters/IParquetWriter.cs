@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
@@ -33,5 +34,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         IArrowArray GetArray();
 
         IStatisticsComparer? GetStatisticsComparer();
+
+        void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector);
     }
 }

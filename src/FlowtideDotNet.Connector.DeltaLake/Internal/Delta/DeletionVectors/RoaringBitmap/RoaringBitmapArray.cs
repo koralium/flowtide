@@ -32,6 +32,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
             _bitmaps = bitmaps;
         }
 
+        public long Cardinality => _bitmaps.Sum(x => x.Cardinality);
+
         public static RoaringBitmapArray Create(IEnumerable<long> values)
         {
             var groupbyHb = values.Distinct().OrderBy(t => t).GroupBy(HighBytes).OrderBy(t => t.Key).ToList();

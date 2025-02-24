@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
@@ -35,6 +36,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         public ParquetDecimalWriter(int precision, int scale)
         {
             _type = new Decimal128Type(precision, scale);
+        }
+
+        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector)
+        {
+            if (array is Decimal128Array arr)
+            {
+                for (int i = 0; i < arr.Length; i++)
+                {
+                    if (deleteVector.Contains(globalOffset + i))
+                    {
+                        continue;
+                    }
+
+                    var val = arr.GetValue(i);
+                    if (!val.HasValue)
+                    {
+                        WriteNull();
+                    }
+                    else
+                    {
+                        WriteValue(val.Value);
+                    }
+                }
+                return;
+            }
+            throw new NotImplementedException();
         }
 
         public IArrowArray GetArray()
@@ -63,6 +90,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _builder.AppendNull();
         }
 
+        private void WriteValue(decimal decimalValue)
+        {
+            Debug.Assert(_builder != null);
+            if (_minValue == null || _minValue.Value.CompareTo(decimalValue) > 0)
+            {
+                _minValue = decimalValue;
+            }
+            if (_maxValue == null || _maxValue.Value.CompareTo(decimalValue) < 0)
+            {
+                _maxValue = decimalValue;
+            }
+            _builder.Append(decimalValue);
+        }
+
         public void WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_builder != null);
@@ -73,16 +114,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 return;
             }
             var decimalValue = value.AsDecimal;
-
-            if (_minValue == null || _minValue.Value.CompareTo(decimalValue) > 0)
-            {
-                _minValue = decimalValue;
-            }
-            if (_maxValue == null || _maxValue.Value.CompareTo(decimalValue) < 0)
-            {
-                _maxValue = decimalValue;
-            }
-            _builder.Append(decimalValue);
+            WriteValue(decimalValue);
         }
     }
 }

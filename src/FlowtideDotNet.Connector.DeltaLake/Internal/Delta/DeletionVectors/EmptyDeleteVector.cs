@@ -11,6 +11,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
     {
         public static readonly EmptyDeleteVector Instance = new EmptyDeleteVector();
 
+        public long Cardinality => 0;
+
         public bool Contains(long index)
         {
             return false;

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.Memory;
@@ -48,6 +49,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _nullCount = 0;
         }
 
+        private void WriteValue(long val)
+        {
+            Debug.Assert(_builder != null);
+            if (_minValue == null || val < _minValue)
+            {
+                _minValue = val;
+            }
+            if (_maxValue == null || val > _maxValue)
+            {
+                _maxValue = val;
+            }
+
+            _builder.Append((short)val);
+        }
+
         public void WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_builder != null);
@@ -59,17 +75,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             else if (value.Type == ArrowTypeId.Int64)
             {
                 var val = value.AsLong;
-
-                if (_minValue == null || val < _minValue)
-                {
-                    _minValue = val;
-                }
-                if (_maxValue == null || val > _maxValue)
-                {
-                    _maxValue = val;
-                }
-
-                _builder.Append(value.AsLong);
+                WriteValue(val);
             }
             else
             {
@@ -87,6 +93,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             Debug.Assert(_builder != null);
             _nullCount++;
             _builder.AppendNull();
+        }
+
+        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector)
+        {
+            if (array is Int64Array arr)
+            {
+                for (int i = 0; i < arr.Length; i++)
+                {
+                    if (deleteVector.Contains(globalOffset + i))
+                    {
+                        continue;
+                    }
+
+                    var val = arr.GetValue(i);
+                    if (!val.HasValue)
+                    {
+                        WriteNull();
+                    }
+                    else
+                    {
+                        WriteValue(val.Value);
+                    }
+                }
+                return;
+            }
+            throw new NotImplementedException();
         }
     }
 }

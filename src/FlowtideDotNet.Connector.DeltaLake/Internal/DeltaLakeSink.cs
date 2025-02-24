@@ -248,7 +248,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 await HandleDeletedRows(rowsToDeleteByFile, table, fileDeleteVectors, negativeWeightPages);
             }
 
-            await WriteDeleteFiles(fileDeleteVectors, table, actions, currentTime);
+            await WriteDeleteFiles(fileDeleteVectors, table, actions, currentTime, writer);
 
             if (writer.WrittenCount > 0)
             {
@@ -265,7 +265,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             Dictionary<string, ModifiableDeleteVector> fileDeleteVectors,
             DeltaTable? table,
             List<DeltaAction> actions,
-            long currentTime)
+            long currentTime,
+            ParquetSharpWriter writer)
         {
             foreach (var deleteFile in fileDeleteVectors)
             {
@@ -273,22 +274,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     throw new InvalidOperationException("Table should not be null when delete is found");
                 }
-                var existingFile = table.AddFiles.First(x => x.Path == deleteFile.Key);
+                var existingFile = table.Files.First(x => x.Action.Path == deleteFile.Key);
                 actions.Add(new DeltaAction()
                 {
                     Remove = new DeltaRemoveFileAction()
                     {
                         Path = deleteFile.Key,
-                        DeletionVector = existingFile.DeletionVector,
+                        DeletionVector = existingFile.Action.DeletionVector,
                         DataChange = true,
                         DeletionTimestamp = currentTime,
-                        Stats = existingFile.Statistics,
-                        Size = existingFile.Size,
-                        PartitionValues = existingFile.PartitionValues
+                        Stats = existingFile.Action.Statistics,
+                        Size = existingFile.Action.Size,
+                        PartitionValues = existingFile.Action.PartitionValues
                     }
                 });
 
-                if (table.DeleteVectorEnabled)
+                var deletePercentage = (double)deleteFile.Value.Cardinality / (double)existingFile.Statistics.NumRecords;
+
+                // Use delete vectors if it is enabled, there is file statistics and the percentage deleted is less than 10%.
+                if (table.DeleteVectorEnabled && !double.IsNaN(deletePercentage) && deletePercentage < 0.1)
                 {
                     var roaringBitmap = deleteFile.Value.ToRoaringBitmapArray();
 
@@ -302,10 +306,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         Add = new DeltaAddAction()
                         {
                             Path = deleteFile.Key,
-                            Size = existingFile.Size,
-                            Statistics = existingFile.Statistics,
-                            PartitionValues = existingFile.PartitionValues,
-                            DataChange = existingFile.DataChange,
+                            Size = existingFile.Action.Size,
+                            Statistics = existingFile.Action.Statistics,
+                            PartitionValues = existingFile.Action.PartitionValues,
+                            DataChange = existingFile.Action.DataChange,
                             ModificationTime = currentTime,
                             DeletionVector = new DeletionVector()
                             {
@@ -320,7 +324,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
                 else
                 {
-                    throw new NotImplementedException();
+                    await writer.CopyFrom(_options.StorageLocation, _tablePath, existingFile.Action.Path!, deleteFile.Value);
                 }
             }
         }

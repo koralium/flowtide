@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
@@ -34,6 +35,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         public ParquetStructWriter(IEnumerable<KeyValuePair<string, IParquetWriter>> propertyWriters)
         {
             this.propertyWriters = propertyWriters.OrderBy(x => x.Key).ToList();
+        }
+
+        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector)
+        {
+            if (array is StructArray arr)
+            {
+                for (int j = 0; j < propertyWriters.Count; j++)
+                {
+                    var field = arr.Fields[j];
+                    propertyWriters[j].Value.CopyArray(field, globalOffset, deleteVector);
+                }
+                for (int i = 0; i < arr.Length; i++)
+                {
+                    if (deleteVector.Contains(globalOffset + i))
+                    {
+                        continue;
+                    }
+
+                    if (arr.IsNull(i))
+                    {
+                        WriteNull();
+                    }
+                }
+                return;
+            }
+            throw new NotImplementedException();
         }
 
         public IArrowArray GetArray()
@@ -82,6 +109,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             {
                 _nullCount++;
                 _nullBitmap.Append(false);
+                foreach(var writer in propertyWriters)
+                {
+                    writer.Value.WriteNull();
+                }
                 return;
             }
 

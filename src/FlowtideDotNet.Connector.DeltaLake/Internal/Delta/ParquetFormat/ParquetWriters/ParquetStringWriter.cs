@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
@@ -28,6 +29,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private byte[]? _minValue;
         private byte[]? _maxValue;
         private int _nullCount;
+
+        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector)
+        {
+            if (array is StringArray arr)
+            {
+                for (int i = 0; i < arr.Length; i++)
+                {
+                    if (deleteVector.Contains(globalOffset + i))
+                    {
+                        continue;
+                    }
+                    
+                    if (arr.IsNull(i))
+                    {
+                        WriteNull();
+                    }
+                    else
+                    {
+                        var val = arr.GetBytes(i);
+                        WriteValue(val);
+                    }
+                }
+                return;
+            }
+            throw new NotImplementedException();
+        }
 
         public IArrowArray GetArray()
         {
@@ -55,6 +82,30 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _arrayBuilder.AppendNull();
         }
 
+        private void WriteValue(in ReadOnlySpan<byte> value)
+        {
+            Debug.Assert(_arrayBuilder != null);
+            if (_minValue == null)
+            {
+                _minValue = value.ToArray();
+            }
+            else if (_minValue.AsSpan().SequenceCompareTo(value) > 0)
+            {
+                _minValue = value.ToArray();
+            }
+
+            if (_maxValue == null)
+            {
+                _maxValue = value.ToArray();
+            }
+            else if (_maxValue.AsSpan().SequenceCompareTo(value) < 0)
+            {
+                _maxValue = value.ToArray();
+            }
+
+            _arrayBuilder.Append(value);
+        }
+
         public void WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_arrayBuilder != null);
@@ -65,25 +116,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             }
             else
             {
-                if (_minValue == null)
-                {
-                    _minValue = value.AsString.Span.ToArray();
-                }
-                else if (_minValue.AsSpan().SequenceCompareTo(value.AsString.Span) > 0)
-                {
-                    _minValue = value.AsString.Span.ToArray();
-                }
-                
-                if (_maxValue == null)
-                {
-                    _maxValue = value.AsString.Span.ToArray();
-                }
-                else if (_maxValue.AsSpan().SequenceCompareTo(value.AsString.Span) < 0)
-                {
-                    _maxValue = value.AsString.Span.ToArray();
-                }
-
-                _arrayBuilder.Append(value.AsString.Span);
+                WriteValue(value.AsString.Span);
             }
         }
     }

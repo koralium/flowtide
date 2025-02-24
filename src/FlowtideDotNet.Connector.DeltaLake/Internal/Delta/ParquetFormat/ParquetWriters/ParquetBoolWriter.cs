@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
@@ -28,6 +29,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private bool? _minValue;
         private bool? _maxValue;
         private int _nullCount;
+
+        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector)
+        {
+            if (array is BooleanArray boolArray)
+            {
+                for (int i = 0; i < boolArray.Length; i++)
+                {
+                    if (deleteVector.Contains(globalOffset + i))
+                    {
+                        continue;
+                    }
+
+                    var val = boolArray.GetValue(i);
+                    if (!val.HasValue)
+                    {
+                        WriteNull();
+                    }
+                    else
+                    {
+                        WriteValue(val.Value);
+                    }
+                }
+                return;
+            }
+            throw new NotImplementedException();
+        }
 
         public IArrowArray GetArray()
         {
@@ -55,6 +82,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _builder.AppendNull();
         }
 
+        private void WriteValue(bool boolValue)
+        {
+            Debug.Assert(_builder != null);
+            _builder.Append(boolValue);
+            if (_minValue == null || _minValue.Value.CompareTo(boolValue) > 0)
+            {
+                _minValue = boolValue;
+            }
+            if (_maxValue == null || _maxValue.Value.CompareTo(boolValue) < 0)
+            {
+                _maxValue = boolValue;
+            }
+        }
+
         public void WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_builder != null);
@@ -65,15 +106,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 return;
             }
             var boolValue = value.AsBool;
-            _builder.Append(boolValue);
-            if (_minValue == null || _minValue.Value.CompareTo(boolValue) > 0)
-            {
-                _minValue = boolValue;
-            }
-            if (_maxValue == null || _maxValue.Value.CompareTo(boolValue) < 0)
-            {
-                _maxValue = boolValue;
-            }
+            WriteValue(boolValue);
         }
     }
 }

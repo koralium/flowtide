@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
@@ -18,6 +19,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using Stowage;
+using System.IO;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 {
@@ -66,6 +68,35 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 fields.Add(new Field(field.Name, type, true));
             }
             _schema = new Apache.Arrow.Schema(fields, new Dictionary<string, string>());
+        }
+
+        public async Task CopyFrom(IFileStorage storage, IOPath table, string filePath, IDeleteVector deleteVector)
+        {
+            using var stream = await storage.OpenRead(table.Combine(filePath));
+
+            if (stream == null)
+            {
+                throw new Exception($"File not found: {filePath}");
+            }
+
+            using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+
+            var batchReader = fileReader.GetRecordBatchReader();
+
+            int globalIndex = 0;
+            Apache.Arrow.RecordBatch batch;
+            while ((batch = await batchReader.ReadNextRecordBatchAsync()) != null)
+            {
+                using (batch)
+                {
+                    for (int i = 0; i < writers.Count; i++)
+                    {
+                        writers[i].CopyArray(batch.Column(i), globalIndex, deleteVector);
+                    }
+                    globalIndex += batch.Length;
+                }
+            }
+            rowCount += (int)(globalIndex - deleteVector.Cardinality);
         }
 
         public int WrittenCount => rowCount;

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
@@ -28,6 +29,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private DateTimeOffset? _minValue;
         private DateTimeOffset? _maxValue;
         private int _nullCount;
+
+        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector)
+        {
+            if (array is TimestampArray arr)
+            {
+                for (int i = 0; i < arr.Length; i++)
+                {
+                    if (deleteVector.Contains(globalOffset + i))
+                    {
+                        continue;
+                    }
+
+                    var val = arr.GetTimestamp(i);
+                    if (!val.HasValue)
+                    {
+                        WriteNull();
+                    }
+                    else
+                    {
+                        WriteValue(val.Value);
+                    }
+                }
+                return;
+            }
+            throw new NotImplementedException();
+        }
 
         public IArrowArray GetArray()
         {
@@ -55,18 +82,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _builder.AppendNull();
         }
 
-        public void WriteValue<T>(T value) where T : IDataValue
+        private void WriteValue(DateTimeOffset val)
         {
             Debug.Assert(_builder != null);
-            if (value.IsNull)
-            {
-                _nullCount++;
-                _builder.AppendNull();
-                return;
-            }
-
-            var val = value.AsTimestamp.ToDateTimeOffset();
-
             if (_minValue == null || val < _minValue)
             {
                 _minValue = val;
@@ -78,6 +96,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             }
 
             _builder.Append(val);
+        }
+
+        public void WriteValue<T>(T value) where T : IDataValue
+        {
+            Debug.Assert(_builder != null);
+            if (value.IsNull)
+            {
+                _nullCount++;
+                _builder.AppendNull();
+                return;
+            }
+
+            var val = value.AsTimestamp.ToDateTimeOffset();
+            WriteValue(val);
         }
     }
 }

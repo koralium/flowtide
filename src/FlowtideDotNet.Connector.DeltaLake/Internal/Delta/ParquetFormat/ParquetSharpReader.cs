@@ -233,14 +233,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             Debug.Assert(_physicalColumnNamesInBatch != null);
             Debug.Assert(_encoders != null);
 
-            var stream = await storage.OpenRead(table.Combine(path));
+            using var stream = await storage.OpenRead(table.Combine(path));
 
             if (stream == null)
             {
                 throw new Exception($"File not found: {path}");
             }
 
-            ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+            using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
             
             List<int> columnsToSelect = new List<int>();
 

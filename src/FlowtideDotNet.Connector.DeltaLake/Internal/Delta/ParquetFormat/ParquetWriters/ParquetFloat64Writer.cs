@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
@@ -28,6 +29,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private double? _minValue;
         private double? _maxValue;
         private int _nullCount;
+
+        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector)
+        {
+            if (array is DoubleArray arr)
+            {
+                for (int i = 0; i < arr.Length; i++)
+                {
+                    if (deleteVector.Contains(globalOffset + i))
+                    {
+                        continue;
+                    }
+
+                    var val = arr.GetValue(i);
+                    if (!val.HasValue)
+                    {
+                        WriteNull();
+                    }
+                    else
+                    {
+                        WriteValue(val.Value);
+                    }
+                }
+                return;
+            }
+            throw new NotImplementedException();
+        }
 
         public IArrowArray GetArray()
         {
@@ -55,6 +82,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _builder.AppendNull();
         }
 
+        private void WriteValue(double doubleValue)
+        {
+            Debug.Assert(_builder != null);
+            if (_minValue == null || _minValue.Value.CompareTo(doubleValue) > 0)
+            {
+                _minValue = doubleValue;
+            }
+            if (_maxValue == null || _maxValue.Value.CompareTo(doubleValue) < 0)
+            {
+                _maxValue = doubleValue;
+            }
+
+            _builder.Append(doubleValue);
+        }
+
         public void WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_builder != null);
@@ -66,17 +108,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             }
 
             var doubleValue = value.AsDouble;
-
-            if (_minValue == null || _minValue.Value.CompareTo(doubleValue) > 0)
-            {
-                _minValue = doubleValue;
-            }
-            if (_maxValue == null || _maxValue.Value.CompareTo(doubleValue) < 0)
-            {
-                _maxValue = doubleValue;
-            }
-
-            _builder.Append(doubleValue);
+            WriteValue(doubleValue);
         }
     }
 }
