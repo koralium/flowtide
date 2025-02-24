@@ -95,11 +95,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _builder.AppendNull();
         }
 
-        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector)
+        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
             if (array is Int64Array arr)
             {
-                for (int i = 0; i < arr.Length; i++)
+                for (int i = index; i < count; i++)
                 {
                     if (deleteVector.Contains(globalOffset + i))
                     {

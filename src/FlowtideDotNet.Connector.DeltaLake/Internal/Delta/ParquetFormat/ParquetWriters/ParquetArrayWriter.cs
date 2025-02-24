@@ -37,8 +37,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         }
 
 
-        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector)
+        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
+            Debug.Assert(_nullBitmap != null);
+            Debug.Assert(_offsetBuilder != null);
+
             if (array is ListArray arr)
             {
                 for (int i = 0; i < arr.Length; i++)
@@ -49,7 +52,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                     }
 
                     //var val = arr.GetDateTime(i);
-                    if (!arr.IsNull(i))
+                    if (arr.IsNull(i))
                     {
                         WriteNull();
                     }
@@ -58,13 +61,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                         var offset = arr.ValueOffsets[i];
                         var length = arr.GetValueLength(i);
 
-                        for (int c = 0; c < length; c++)
-                        {
-                            // TODO: Must have index and count on copy array to support this method for arrays
-                        }
-                        WriteValue(val.Value);
+                        _inner.CopyArray(arr.Values, 0, EmptyDeleteVector.Instance, offset, length);
+                        _nullBitmap.Append(true);
+                        _offsetBuilder.Append(_offsetBuilder.Span[_offsetBuilder.Length - 1] + length);
                     }
                 }
+                return;
             }
             throw new NotImplementedException();
         }
@@ -95,7 +97,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         public void WriteNull()
         {
             Debug.Assert(_nullBitmap != null);
+            Debug.Assert(_offsetBuilder != null);
             _nullBitmap.Append(false);
+            _offsetBuilder.Append(_offsetBuilder.Span[_offsetBuilder.Length - 1]);
             _nullCount++;
         }
 
@@ -105,8 +109,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             Debug.Assert(_offsetBuilder != null);
             if (value.IsNull)
             {
-                _nullBitmap.Append(false);
-                _nullCount++;
+                WriteNull();
                 return;
             }
             _nullBitmap.Append(true);
@@ -117,7 +120,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 _inner.WriteValue(val.GetAt(i));
             }
 
-            _offsetBuilder.Append(val.Count);
+            _offsetBuilder.Append(_offsetBuilder.Span[_offsetBuilder.Length - 1] + val.Count);
         }
     }
 }

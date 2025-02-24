@@ -76,5 +76,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             }
             return new StructType(fields);
         }
+
+        public override ArrowType VisitArrayType(Schema.Types.ArrayType type)
+        {
+            if (type.ElementType == null)
+            {
+                throw new InvalidOperationException("ArrayType must have an ElementType");
+            }
+            var inner = Visit(type.ElementType);
+            return new ListType(inner);
+        }
     }
 }

@@ -30,11 +30,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private bool? _maxValue;
         private int _nullCount;
 
-        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector)
+        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
             if (array is BooleanArray boolArray)
             {
-                for (int i = 0; i < boolArray.Length; i++)
+                for (int i = index; i < count; i++)
                 {
                     if (deleteVector.Contains(globalOffset + i))
                     {

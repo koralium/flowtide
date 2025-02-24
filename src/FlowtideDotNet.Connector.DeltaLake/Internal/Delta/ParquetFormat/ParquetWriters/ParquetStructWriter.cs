@@ -53,14 +53,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             }
         }
 
-        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector)
+        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
             if (array is StructArray arr)
             {
                 for (int j = 0; j < propertyWriters.Count; j++)
                 {
                     var field = arr.Fields[j];
-                    propertyWriters[order[j]].Value.CopyArray(field, globalOffset, deleteVector);
+                    propertyWriters[order[j]].Value.CopyArray(field, globalOffset, deleteVector, index, count);
                 }
                 for (int i = 0; i < arr.Length; i++)
                 {

@@ -454,6 +454,36 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await AssertResult(nameof(WriteTimestamp), storage, "timestamptest", 3, stream.Users.Select(x => new { x.BirthDate }));
         }
 
+        [Fact]
+        public async Task WriteList()
+        {
+            var storage = Files.Of.InternalMemory("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(WriteList), storage);
+
+            await CreateInitialCommitWithSchema(storage, "listtest", new List<StructField>()
+            {
+                 new StructField("list", new ArrayType() { ElementType = new StringType() }, true, new Dictionary<string, object>())
+            });
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                INSERT INTO listtest
+                SELECT list_agg(FirstName) as list FROM users GROUP BY userkey % 2
+            ");
+
+            await WaitForVersion(storage, "listtest", stream, 1);
+
+            // Delete 1 user which will be 10% of users deleted which will cause a copy
+            stream.DeleteUser(stream.Users[0]);
+
+            await WaitForVersion(storage, "listtest", stream, 2);
+
+            var expected = stream.Users.GroupBy(x => x.UserKey % 2).Select(x => new { list = x.Select(y => y.FirstName).OrderBy(y => y).ToList() }).ToList();
+
+            await AssertResult(nameof(WriteList), storage, "listtest", 3, expected);
+        }
+
 
         /// <summary>
         /// Start a stream with the delta lake source and write to test sink and then compare the result

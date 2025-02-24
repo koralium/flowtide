@@ -302,10 +302,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
             {
                 WriteStruct(writer, structType, options);
             }
+            else if (value is ArrayType arrayType)
+            {
+                WriteList(writer, arrayType, options);
+            }
             else
             {
                 throw new NotImplementedException();
             }
+        }
+
+        private static void WriteList(Utf8JsonWriter writer, ArrayType value, JsonSerializerOptions options)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("type", "array");
+            writer.WritePropertyName("elementType");
+            JsonSerializer.Serialize(writer, value.ElementType, options);
+
+            writer.WriteBoolean("containsNull", value.ContainsNull);
+            writer.WriteEndObject();
         }
 
         private static void WriteStruct(Utf8JsonWriter writer, StructType value, JsonSerializerOptions options)

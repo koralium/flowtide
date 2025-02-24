@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 {
                     for (int i = 0; i < writers.Count; i++)
                     {
-                        writers[i].CopyArray(batch.Column(i), globalIndex, deleteVector);
+                        writers[i].CopyArray(batch.Column(i), globalIndex, deleteVector, 0, batch.Length);
                     }
                     globalIndex += batch.Length;
                 }
@@ -161,7 +161,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
 
             var batch = new RecordBatch(_schema, arrays, rowCount);
-
             writer.WriteRecordBatch(batch);
             writer.Close();
             

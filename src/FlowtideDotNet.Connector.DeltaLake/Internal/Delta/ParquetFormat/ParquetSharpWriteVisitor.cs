@@ -78,6 +78,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             return new ParquetTimestampWriter();
         }
 
+        public override IParquetWriter VisitArrayType(ArrayType type)
+        {
+            if (type.ElementType == null)
+            {
+                throw new InvalidOperationException("ArrayType must have an ElementType");
+            }
+            return new ParquetArrayWriter(Visit(type.ElementType));
+        }
+
         public override IParquetWriter VisitStructType(StructType type)
         {
             List< KeyValuePair<string, IParquetWriter> > fields = new List<KeyValuePair<string, IParquetWriter>>();
