@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
                 }
             }
 
-            return false;
+            return true;
         }
 
         public void WriteMaxValue(Utf8JsonWriter writer, string propertyName)

@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
                 }
             }
 
-            Dictionary<string, IStatisticsComparer> comparers = new Dictionary<string, IStatisticsComparer>();
+            Dictionary<string, IStatisticsComparer> comparers = new Dictionary<string, IStatisticsComparer>(StringComparer.OrdinalIgnoreCase);
             foreach(var kv in parsers)
             {
                 comparers.Add(kv.Key, kv.Value.GetStatisticsComparer());

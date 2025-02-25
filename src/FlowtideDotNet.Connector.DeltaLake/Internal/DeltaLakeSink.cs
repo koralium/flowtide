@@ -190,15 +190,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
                         for (int f = 0; f < table!.Files.Count; f++)
                         {
+                            bool foundFile = false;
                             var file = table.Files[f];
                             if (file.CanBeInFile(rowRef, _writeRelation.TableSchema.Names))
                             {
+                                foundFile = true;
                                 if (!rowsToDeleteByFile.TryGetValue(file.Action.Path!, out var deleteRowList))
                                 {
                                     deleteRowList = new List<RowToDelete>();
                                     rowsToDeleteByFile.Add(file.Action.Path!, deleteRowList);
                                 }
                                 deleteRowList.Add(rowToDelete);
+                            }
+                            if (!foundFile)
+                            {
+                                throw new InvalidOperationException($"Could not find any data file that contains the row {rowRef}");
                             }
                         }
                     }

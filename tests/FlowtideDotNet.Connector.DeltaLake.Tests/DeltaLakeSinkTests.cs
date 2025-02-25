@@ -542,6 +542,62 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await AssertResult(nameof(WriteBinary), storage, "binarytest", 3, stream.Users.Select(x => new { v = Encoding.UTF8.GetBytes(x.FirstName!) }));
         }
 
+        [Fact]
+        public async Task TestCreateTableWithStruct()
+        {
+            var storage = Files.Of.InternalMemory("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithStruct), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE subfolder.createstruct (
+                    userkey INT,
+                    struct STRUCT(firstName STRING, lastName STRING)
+                );
+
+                INSERT INTO subfolder.createstruct
+                SELECT userKey, map('firstName', firstName, 'lastName', lastName) as struct FROM users
+            ");
+
+            await WaitForVersion(storage, "subfolder/createstruct", stream, 0);
+
+            var firstUser = stream.Users[0];
+            stream.DeleteUser(firstUser);
+
+            await WaitForVersion(storage, "subfolder/createstruct", stream, 1);
+
+            await AssertResult(nameof(TestCreateTableWithStruct), storage, "subfolder.createstruct", 2, stream.Users.Select(x => new { x.UserKey, @struct = new { firstName = x.FirstName, lastName = x.LastName } }));
+        }
+
+        [Fact]
+        public async Task TestCreateTableWithList()
+        {
+            var storage = Files.Of.LocalDisk("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithList), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE createlist (
+                    list LIST(STRING)
+                );
+
+                INSERT INTO createlist
+                SELECT list_agg(firstName) as list FROM users
+            ");
+
+            await WaitForVersion(storage, "createlist", stream, 0);
+
+            var firstUser = stream.Users[0];
+            stream.DeleteUser(firstUser);
+
+            await WaitForVersion(storage, "createlist", stream, 1);
+
+            var expected = new[] { new { list = stream.Users.Select(x => x.FirstName).OrderBy(x => x).ToList() } };
+
+            await AssertResult(nameof(TestCreateTableWithList), storage, "createlist", 2, expected);
+        }
 
         /// <summary>
         /// Start a stream with the delta lake source and write to test sink and then compare the result

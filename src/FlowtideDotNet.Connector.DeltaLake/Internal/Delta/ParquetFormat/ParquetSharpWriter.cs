@@ -139,7 +139,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
         public DeltaStatistics GetStatistics()
         {
-            Dictionary<string, IStatisticsComparer> statistics = new Dictionary<string, IStatisticsComparer>();
+            Dictionary<string, IStatisticsComparer> statistics = new Dictionary<string, IStatisticsComparer>(StringComparer.OrdinalIgnoreCase);
 
             for (int i = 0; i < writers.Count; i++)
             {
