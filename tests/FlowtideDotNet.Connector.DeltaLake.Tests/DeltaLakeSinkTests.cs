@@ -484,6 +484,64 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await AssertResult(nameof(WriteList), storage, "listtest", 3, expected);
         }
 
+        [Fact]
+        public async Task WriteMap()
+        {
+            var storage = Files.Of.InternalMemory("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(WriteMap), storage);
+
+            await CreateInitialCommitWithSchema(storage, "maptest", new List<StructField>()
+            {
+                 new StructField("map", new MapType(new StringType(), new StringType(), true), true, new Dictionary<string, object>())
+            });
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                INSERT INTO maptest
+                SELECT map('firstName', FirstName) as map FROM users
+            ");
+
+            await WaitForVersion(storage, "maptest", stream, 1);
+
+            // Delete 1 user which will be 10% of users deleted which will cause a copy
+            stream.DeleteUser(stream.Users[0]);
+
+            await WaitForVersion(storage, "maptest", stream, 2);
+
+            var expected = stream.Users.Select(x => new { map = new Dictionary<string, string>() { { "firstName", x.FirstName! } } });
+
+            await AssertResult(nameof(WriteMap), storage, "maptest", 3, expected);
+        }
+
+        [Fact]
+        public async Task WriteBinary()
+        {
+            var storage = Files.Of.InternalMemory("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(WriteBinary), storage);
+
+            await CreateInitialCommitWithSchema(storage, "binarytest", new List<StructField>()
+            {
+                 new StructField("FirstName", new BinaryType(), true, new Dictionary<string, object>())
+            });
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                INSERT INTO binarytest
+                SELECT FirstName FROM users
+            ");
+
+            await WaitForVersion(storage, "binarytest", stream, 1);
+
+            // Delete 1 user which will be 10% of users deleted which will cause a copy
+            stream.DeleteUser(stream.Users[0]);
+
+            await WaitForVersion(storage, "binarytest", stream, 2);
+
+            await AssertResult(nameof(WriteBinary), storage, "binarytest", 3, stream.Users.Select(x => new { v = Encoding.UTF8.GetBytes(x.FirstName!) }));
+        }
+
 
         /// <summary>
         /// Start a stream with the delta lake source and write to test sink and then compare the result

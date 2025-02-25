@@ -212,6 +212,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     }
                 }
 
+                // If we found more than 100k deletes, handle them and and scan files and update deletion vectors
                 if (deleteWriter.WrittenCount >= 100_000)
                 {
                     if (table == null)
@@ -401,7 +402,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             // Open file without deletion vector, it will be used when finding rows
             var iterator = reader.ReadDataFileArrowFormat(_options.StorageLocation, _tablePath, file.Path!);
-            //var iterator = reader.ReadDataFile(_options.StorageLocation, _tablePath, file.Path!, EmptyDeleteVector.Instance, default, MemoryAllocator);
             
             await foreach (var batch in iterator)
             {
@@ -418,7 +418,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         }
                     }
                     int index = comparer.FindOccurance(toFind[i].DeleteIndex, deleteBatch, batch, 0, deleteVector);
-                    //int index = FindRowInBatch.FindRow(toFind[i].RowReference, batch.data, deleteVector, reader.Fields);
                     if (index >= 0)
                     {
                         lock (toFind[i].Lock)

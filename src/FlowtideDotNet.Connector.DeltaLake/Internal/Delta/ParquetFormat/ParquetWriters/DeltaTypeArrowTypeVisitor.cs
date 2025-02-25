@@ -86,5 +86,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             var inner = Visit(type.ElementType);
             return new ListType(inner);
         }
+
+        public override ArrowType VisitBinaryType(Schema.Types.BinaryType type)
+        {
+            return new BinaryType();
+        }
+
+        public override ArrowType VisitMapType(Schema.Types.MapType type)
+        {
+            var keyType = Visit(type.KeyType);
+            var valueType = Visit(type.ValueType);
+
+            return new MapType(keyType, valueType);
+        }
     }
 }

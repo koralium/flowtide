@@ -78,6 +78,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             return new ParquetTimestampWriter();
         }
 
+        public override IParquetWriter VisitBinaryType(BinaryType type)
+        {
+            return new ParquetBinaryWriter();
+        }
+
         public override IParquetWriter VisitArrayType(ArrayType type)
         {
             if (type.ElementType == null)
@@ -96,6 +101,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 fields.Add(new KeyValuePair<string, IParquetWriter>(field.Name, writer));
             }
             return new ParquetStructWriter(fields);
+        }
+
+        public override IParquetWriter VisitMapType(MapType type)
+        {
+            var keyWriter = Visit(type.KeyType);
+            var valueWriter = Visit(type.ValueType);
+
+            return new ParquetMapWriter(keyWriter, valueWriter);
         }
     }
 }

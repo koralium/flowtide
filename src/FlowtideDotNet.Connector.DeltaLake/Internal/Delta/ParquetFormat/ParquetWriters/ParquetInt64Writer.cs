@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         {
             if (array is Int64Array arr)
             {
-                for (int i = index; i < count; i++)
+                for (int i = index; i < (index + count); i++)
                 {
                     if (deleteVector.Contains(globalOffset + i))
                     {

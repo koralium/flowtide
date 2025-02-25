@@ -97,5 +97,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
         {
             return new ArrowTimestampComparer();
         }
+
+        public override IArrowComparer VisitBinaryType(BinaryType type)
+        {
+            return new ArrowBinaryComparer();
+        }
+
+        public override IArrowComparer VisitMapType(MapType type)
+        {
+            var keyComparer = Visit(type.KeyType);
+            var valueComparer = Visit(type.ValueType);
+            return new ArrowMapComparer(keyComparer, valueComparer);
+        }
     }
 }

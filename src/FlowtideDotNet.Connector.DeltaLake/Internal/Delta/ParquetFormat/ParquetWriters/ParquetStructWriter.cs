@@ -62,7 +62,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                     var field = arr.Fields[j];
                     propertyWriters[order[j]].Value.CopyArray(field, globalOffset, deleteVector, index, count);
                 }
-                for (int i = 0; i < arr.Length; i++)
+                for (int i = index; i < (index + count); i++)
                 {
                     if (deleteVector.Contains(globalOffset + i))
                     {

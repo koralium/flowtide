@@ -306,6 +306,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
             {
                 WriteList(writer, arrayType, options);
             }
+            else if (value is MapType mapType)
+            {
+                WriteMap(writer, mapType, options);
+            }
             else
             {
                 throw new NotImplementedException();
@@ -336,6 +340,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
                 JsonSerializer.Serialize(writer, field, options);
             }
             writer.WriteEndArray();
+
+            writer.WriteEndObject();
+        }
+
+        private static void WriteMap(Utf8JsonWriter writer, MapType value, JsonSerializerOptions options)
+        {
+            writer.WriteStartObject();
+
+            writer.WriteString("type", "map");
+
+            writer.WritePropertyName("keyType");
+            JsonSerializer.Serialize(writer, value.KeyType, options);
+
+            writer.WritePropertyName("valueType");
+            JsonSerializer.Serialize(writer, value.ValueType, options);
+
+            writer.WriteBoolean("valueContainsNull", value.ValueContainsNull);
 
             writer.WriteEndObject();
         }

@@ -23,16 +23,16 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters
 {
-    internal class ParquetFloat32Writer : IParquetWriter
+    internal class ParquetBinaryWriter : IParquetWriter
     {
-        private FloatArray.Builder? _builder;
-        private double? _minValue;
-        private double? _maxValue;
+        private BinaryArray.Builder? _arrayBuilder;
+        private byte[]? _minValue;
+        private byte[]? _maxValue;
         private int _nullCount;
 
         public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
-            if (array is FloatArray arr)
+            if (array is BinaryArray arr)
             {
                 for (int i = index; i < (index + count); i++)
                 {
@@ -41,14 +41,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                         continue;
                     }
 
-                    var val = arr.GetValue(i);
-                    if (!val.HasValue)
+                    if (arr.IsNull(i))
                     {
                         WriteNull();
                     }
                     else
                     {
-                        WriteValue(val.Value);
+                        var val = arr.GetBytes(i);
+                        WriteValue(val);
                     }
                 }
                 return;
@@ -58,18 +58,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public IArrowArray GetArray()
         {
-            Debug.Assert(_builder != null);
-            return _builder.Build();
+            Debug.Assert(_arrayBuilder != null);
+            return _arrayBuilder.Build();
         }
 
         public IStatisticsComparer GetStatisticsComparer()
         {
-            return new FloatStatisticsComparer(_minValue, _maxValue, _nullCount);
+            return new StringStatisticsComparer(_minValue, _maxValue, _nullCount);
         }
 
         public void NewBatch()
         {
-            _builder = new FloatArray.Builder();
+            _arrayBuilder = new BinaryArray.Builder();
             _minValue = null;
             _maxValue = null;
             _nullCount = 0;
@@ -77,39 +77,47 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public void WriteNull()
         {
-            Debug.Assert(_builder != null);
+            Debug.Assert(_arrayBuilder != null);
             _nullCount++;
-            _builder.AppendNull();
+            _arrayBuilder.AppendNull();
         }
 
-        private void WriteValue(double val)
+        private void WriteValue(in ReadOnlySpan<byte> value)
         {
-            Debug.Assert(_builder != null);
-            if (_minValue == null || val < _minValue)
+            Debug.Assert(_arrayBuilder != null);
+            if (_minValue == null)
             {
-                _minValue = val;
+                _minValue = value.ToArray();
+            }
+            else if (_minValue.AsSpan().SequenceCompareTo(value) > 0)
+            {
+                _minValue = value.ToArray();
             }
 
-            if (_maxValue == null || val > _maxValue)
+            if (_maxValue == null)
             {
-                _maxValue = val;
+                _maxValue = value.ToArray();
+            }
+            else if (_maxValue.AsSpan().SequenceCompareTo(value) < 0)
+            {
+                _maxValue = value.ToArray();
             }
 
-            _builder.Append((float)val);
+            _arrayBuilder.Append(value);
         }
 
         public void WriteValue<T>(T value) where T : IDataValue
         {
-            Debug.Assert(_builder != null);
+            Debug.Assert(_arrayBuilder != null);
             if (value.IsNull)
             {
                 _nullCount++;
-                _builder.AppendNull();
-                return;
+                _arrayBuilder.AppendNull();
             }
-
-            var val = value.AsDouble;
-            WriteValue(val);
+            else
+            {
+                WriteValue(value.AsBinary);
+            }
         }
     }
 }
