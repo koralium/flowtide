@@ -23,6 +23,7 @@ using Stowage;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -233,6 +234,26 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         {
             var func = new AddToColumnFunc(column);
             encoder.AddValue(index, ref func);
+        }
+
+        public async IAsyncEnumerable<Apache.Arrow.RecordBatch> ReadDataFileArrowFormat(IFileStorage storage, IOPath table, string path)
+        {
+            using var stream = await storage.OpenRead(table.Combine(path));
+
+            if (stream == null)
+            {
+                throw new Exception($"File not found: {path}");
+            }
+
+            using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+
+            var batchReader = fileReader.GetRecordBatchReader();
+
+            Apache.Arrow.RecordBatch batch;
+            while ((batch = await batchReader.ReadNextRecordBatchAsync()) != null)
+            {
+                yield return batch;
+            }
         }
 
         public async IAsyncEnumerable<BatchResult> ReadDataFile(IFileStorage storage, IOPath table, string path, IDeleteVector deleteVector, Dictionary<string, string>? partitionValues, IMemoryAllocator memoryAllocator)

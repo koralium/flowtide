@@ -27,7 +27,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
     /// </summary>
     internal class RowToDelete
     {
-        public ColumnRowReference RowReference { get; set; }
+        /// <summary>
+        /// Location in the delete record batch
+        /// </summary>
+        public int DeleteIndex { get; set; }
 
         public int Weight { get; set; }
 

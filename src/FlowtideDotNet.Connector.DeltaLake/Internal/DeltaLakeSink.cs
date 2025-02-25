@@ -10,11 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
@@ -162,54 +164,42 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
 
             var writer = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
+            var deleteWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
 
             writer.NewBatch();
+            deleteWriter.NewBatch();
 
             Dictionary<string, List<RowToDelete>> rowsToDeleteByFile = new Dictionary<string, List<RowToDelete>>();
-
             Dictionary<string, ModifiableDeleteVector> fileDeleteVectors = new Dictionary<string, ModifiableDeleteVector>();
-            List<LeafNode<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>> negativeWeightPages = new List<LeafNode<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>>();
             await foreach(var page in iterator)
             {
-                bool addedToNegativeWeights = false;
-
                 for (int i = 0; i < page.Values.Data.Count; i++)
                 {
                     var weight = page.Values.Data[i];
                     if (weight < 0)
                     {
-                        if (!addedToNegativeWeights)
+                        int deleteIndex = deleteWriter.WrittenCount;
+                        var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
+                        deleteWriter.AddRow(rowRef);
+
+                        var rowToDelete = new RowToDelete()
                         {
-                            addedToNegativeWeights = true;
+                            DeleteIndex = deleteIndex,
+                            Weight = weight
+                        };
 
-                            if (!page.CurrentPage.TryRent())
+                        for (int f = 0; f < table!.Files.Count; f++)
+                        {
+                            var file = table.Files[f];
+                            if (file.CanBeInFile(rowRef, _writeRelation.TableSchema.Names))
                             {
-                                throw new InvalidOperationException("Could not rent page");
-                            }
-
-                            // Add the page to negative weight pages if the page has negative weights
-                            negativeWeightPages.Add(page.CurrentPage);
-
-                            var rowToDelete = new RowToDelete()
-                            {
-                                RowReference = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i },
-                                Weight = weight
-                            };
-
-                            for (int f = 0; f < table!.Files.Count; f++)
-                            {
-                                var file = table.Files[f];
-                                if (file.CanBeInFile(rowToDelete.RowReference, _writeRelation.TableSchema.Names))
+                                if (!rowsToDeleteByFile.TryGetValue(file.Action.Path!, out var deleteRowList))
                                 {
-                                    if (!rowsToDeleteByFile.TryGetValue(file.Action.Path!, out var deleteRowList))
-                                    {
-                                        deleteRowList = new List<RowToDelete>();
-                                        rowsToDeleteByFile.Add(file.Action.Path!, deleteRowList);
-                                    }
-                                    deleteRowList.Add(rowToDelete);
+                                    deleteRowList = new List<RowToDelete>();
+                                    rowsToDeleteByFile.Add(file.Action.Path!, deleteRowList);
                                 }
+                                deleteRowList.Add(rowToDelete);
                             }
-
                         }
                     }
                     else
@@ -222,14 +212,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     }
                 }
 
-                // How many pages of data that should be processed at the same time when searching existing data
-                if (negativeWeightPages.Count == 100)
+                if (deleteWriter.WrittenCount >= 100_000)
                 {
                     if (table == null)
                     {
                         throw new InvalidOperationException("Table should not be null when delete is found");
                     }
-                    await HandleDeletedRows(rowsToDeleteByFile, table, fileDeleteVectors, negativeWeightPages);
+                    using (var deleteBatch = deleteWriter.GetRecordBatch())
+                    {
+                        await HandleDeletedRows(rowsToDeleteByFile, table, fileDeleteVectors, deleteBatch);
+                    }
+                    deleteWriter.NewBatch();
                 }
 
                 // Write max 100k rows per file for now, a user must call optimize in another framework to increase the file size
@@ -239,13 +232,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
             }
 
-            if (negativeWeightPages.Count > 0)
+            if (deleteWriter.WrittenCount > 0)
             {
                 if (table == null)
                 {
                     throw new InvalidOperationException("Table should not be null when delete is found");
                 }
-                await HandleDeletedRows(rowsToDeleteByFile, table, fileDeleteVectors, negativeWeightPages);
+                using (var deleteBatch = deleteWriter.GetRecordBatch())
+                {
+                    await HandleDeletedRows(rowsToDeleteByFile, table, fileDeleteVectors, deleteBatch);
+                }
             }
 
             await WriteDeleteFiles(fileDeleteVectors, table, actions, currentTime, writer);
@@ -333,20 +329,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             Dictionary<string, List<RowToDelete>> rowsToDeleteByFile, 
             DeltaTable table, 
             Dictionary<string, ModifiableDeleteVector> fileDeleteVectors,
-            List<LeafNode<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>> negativeWeightPages)
+            RecordBatch deleteBatch)
         {
+            var comparer = RecordBatchComparer.Create(table.Schema);
             foreach (var fileWithPossibleDelete in rowsToDeleteByFile)
             {
                 // This can be made into tasks later on
                 var file = table!.AddFiles.First(x => x.Path == fileWithPossibleDelete.Key);
-                await ScanDataFileForRows(table, fileWithPossibleDelete.Value, file, fileDeleteVectors);
+                await ScanDataFileForRows(table, fileWithPossibleDelete.Value, file, fileDeleteVectors, deleteBatch, comparer);
             }
-
-            foreach (var negativePage in negativeWeightPages)
-            {
-                negativePage.Return();
-            }
-            negativeWeightPages.Clear();
             rowsToDeleteByFile.Clear();
         }
 
@@ -376,7 +367,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             writer.NewBatch();
         }
 
-        private async Task ScanDataFileForRows(DeltaTable table, List<RowToDelete> toFind, DeltaAddAction file, Dictionary<string, ModifiableDeleteVector> deleteVectors)
+        private async Task ScanDataFileForRows(
+            DeltaTable table, 
+            List<RowToDelete> toFind, 
+            DeltaAddAction file, 
+            Dictionary<string, ModifiableDeleteVector> deleteVectors,
+            RecordBatch deleteBatch,
+            RecordBatchComparer comparer)
         {
             ParquetSharpReader reader = new ParquetSharpReader();
             reader.Initialize(table, _writeRelation.TableSchema.Names);
@@ -403,7 +400,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
 
             // Open file without deletion vector, it will be used when finding rows
-            var iterator = reader.ReadDataFile(_options.StorageLocation, _tablePath, file.Path!, EmptyDeleteVector.Instance, default, MemoryAllocator);
+            var iterator = reader.ReadDataFileArrowFormat(_options.StorageLocation, _tablePath, file.Path!);
+            //var iterator = reader.ReadDataFile(_options.StorageLocation, _tablePath, file.Path!, EmptyDeleteVector.Instance, default, MemoryAllocator);
             
             await foreach (var batch in iterator)
             {
@@ -419,7 +417,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                             continue;
                         }
                     }
-                    int index = FindRowInBatch.FindRow(toFind[i].RowReference, batch.data, deleteVector, reader.Fields);
+                    int index = comparer.FindOccurance(toFind[i].DeleteIndex, deleteBatch, batch, 0, deleteVector);
+                    //int index = FindRowInBatch.FindRow(toFind[i].RowReference, batch.data, deleteVector, reader.Fields);
                     if (index >= 0)
                     {
                         lock (toFind[i].Lock)
