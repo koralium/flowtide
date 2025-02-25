@@ -553,7 +553,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await stream.StartStream(@"
                 CREATE TABLE subfolder.createstruct (
                     userkey INT,
-                    struct STRUCT(firstName STRING, lastName STRING)
+                    struct STRUCT<firstName STRING, lastName STRING>
                 );
 
                 INSERT INTO subfolder.createstruct
@@ -580,7 +580,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await stream.StartStream(@"
                 CREATE TABLE createlist (
-                    list LIST(STRING)
+                    list LIST<STRING>
                 );
 
                 INSERT INTO createlist
@@ -597,6 +597,147 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var expected = new[] { new { list = stream.Users.Select(x => x.FirstName).OrderBy(x => x).ToList() } };
 
             await AssertResult(nameof(TestCreateTableWithList), storage, "createlist", 2, expected);
+        }
+
+        /// <summary>
+        /// Checks that a table can be created with a decimal with certain precision and scale
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task TestCreateTableWithDecimal()
+        {
+            var storage = Files.Of.LocalDisk("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithDecimal), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE createdecimal (
+                    val decimal(19,3)
+                );
+
+                INSERT INTO createdecimal
+                SELECT money as val FROM orders
+            ");
+
+            await WaitForVersion(storage, "createdecimal", stream, 0);
+
+            var firstOrder = stream.Orders[0];
+            stream.DeleteOrder(firstOrder);
+
+            await WaitForVersion(storage, "createdecimal", stream, 1);
+
+            await AssertResult(nameof(TestCreateTableWithDecimal), storage, "createdecimal", 2, stream.Orders.Select(x => new { val = x.Money }));
+        }
+
+        [Fact]
+        public async Task TestCreateTableWithTimestamp()
+        {
+            var storage = Files.Of.LocalDisk("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithTimestamp), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE createtimestamp (
+                    orderdate TIMESTAMP
+                );
+
+                INSERT INTO createtimestamp
+                SELECT orderdate FROM orders
+            ");
+
+            await WaitForVersion(storage, "createtimestamp", stream, 0);
+
+            var firstOrder = stream.Orders[0];
+            stream.DeleteOrder(firstOrder);
+
+            await WaitForVersion(storage, "createtimestamp", stream, 1);
+
+            var expected = stream.Orders.Select(x => new { DateTime = DateTimeOffset.FromUnixTimeMilliseconds(new DateTimeOffset(x.Orderdate, TimeSpan.Zero).ToUnixTimeMilliseconds()) });
+
+            await AssertResult(nameof(TestCreateTableWithTimestamp), storage, "createtimestamp", 2, expected);
+        }
+
+        [Fact]
+        public async Task TestCreateTableWithBinary()
+        {
+            var storage = Files.Of.LocalDisk("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithTimestamp), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE createbinary (
+                    firstName BINARY
+                );
+
+                INSERT INTO createbinary
+                SELECT firstName FROM users
+            ");
+
+            await WaitForVersion(storage, "createbinary", stream, 0);
+
+            var firstUsers = stream.Users[0];
+            stream.DeleteUser(firstUsers);
+
+            await WaitForVersion(storage, "createbinary", stream, 1);
+
+            await AssertResult(nameof(TestCreateTableWithTimestamp), storage, "createbinary", 2, stream.Users.Select(x => new { val = Encoding.UTF8.GetBytes(x.FirstName!) }) );
+        }
+
+        [Fact]
+        public async Task TestCreateTableWithBool()
+        {
+            var storage = Files.Of.LocalDisk("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithBool), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE createboolean (
+                    active BOOLEAN
+                );
+
+                INSERT INTO createboolean
+                SELECT active FROM users
+            ");
+
+            await WaitForVersion(storage, "createboolean", stream, 0);
+
+            var firstUsers = stream.Users[0];
+            stream.DeleteUser(firstUsers);
+
+            await WaitForVersion(storage, "createboolean", stream, 1);
+
+            await AssertResult(nameof(TestCreateTableWithBool), storage, "createboolean", 2, stream.Users.Select(x => new { val = x.Active }));
+        }
+
+        [Fact]
+        public async Task TestCreateTableWithDate()
+        {
+            var storage = Files.Of.LocalDisk("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithDate), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE createdate (
+                    birthDate DATE
+                );
+
+                INSERT INTO createdate
+                SELECT birthDate FROM users
+            ");
+
+            await WaitForVersion(storage, "createdate", stream, 0);
+
+            var firstUsers = stream.Users[0];
+            stream.DeleteUser(firstUsers);
+
+            await WaitForVersion(storage, "createdate", stream, 1);
+
+            await AssertResult(nameof(TestCreateTableWithDate), storage, "createdate", 2, stream.Users.Select(x => new { val = x.BirthDate }));
         }
 
         /// <summary>

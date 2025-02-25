@@ -20,6 +20,10 @@ namespace FlowtideDotNet.Substrait.Type
 {
     public class DecimalType : SubstraitBaseType
     {
+        public int? Precision { get; set; }
+
+        public int? Scale { get; set; }
+
         public override SubstraitType Type => SubstraitType.Decimal;
     }
 }

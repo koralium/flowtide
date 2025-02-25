@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public override ArrowType VisitTimestampType(Schema.Types.TimestampType type)
         {
-            return new TimestampType(timezone: default(string));
+            return new TimestampType(unit: TimeUnit.Millisecond, timezone: default(string));
         }
 
         public override ArrowType VisitStructType(Schema.Types.StructType type)

@@ -35,9 +35,45 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 DataType.StringType => new StringType(),
                 DataType.Date => new DateType(),
                 DataType.None => new AnyType(),
+                DataType.Timestamp => new TimestampType(),
+                StructSqlDataType structType => HandleStruct(structType),
+                DataType.Array arrType => HandleArray(arrType),
                 DataType.Custom => HandleCustom((dataType as DataType.Custom)!),
+                DataType.Decimal dec => HandleDecimal(dec),
+                DataType.Binary => new BinaryType(),
                 _ => throw new NotImplementedException($"Unknown data type {dataType}")
             };
+        }
+
+        private static DecimalType HandleDecimal(DataType.Decimal decimalType)
+        {
+            if (decimalType.ExactNumberInfo is ExactNumberInfo.PrecisionAndScale precisionAndScale)
+            {
+                return new DecimalType() { Precision = (int)precisionAndScale.Length, Scale = (int)precisionAndScale.Scale };
+            }
+            return new DecimalType();
+            
+        }
+
+        private static SubstraitBaseType HandleArray(DataType.Array array)
+        {
+            var elementType = GetType(array.DataType);
+            return new ListType(elementType);
+        }
+
+        private static SubstraitBaseType HandleStruct(StructSqlDataType structType)
+        {
+            var namedStruct = new NamedStruct()
+            {
+                Names = structType.Names
+            };
+            var types = structType.Types.Select(t => GetType(t)).ToList();
+
+            namedStruct.Struct = new Struct()
+            {
+                Types = types
+            };
+            return namedStruct;
         }
 
         private static DataType StringToType(string type)
@@ -73,49 +109,6 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             if (dataType.Name == "any")
             {
                 return new AnyType();
-            }
-            if (dataType.Name.ToString().Equals("struct", StringComparison.OrdinalIgnoreCase))
-            {
-                if (dataType.Values == null)
-                {
-                    throw new SubstraitParseException("Struct type must have fields");
-                }
-                List<string> names = new List<string>();
-                List<SubstraitBaseType> types = new List<SubstraitBaseType>();
-
-                for (int i = 0; i < dataType.Values.Count; i += 2)
-                {
-                    var fieldName = dataType.Values[i];
-                    var fieldType = dataType.Values[i + 1];
-
-                    var typeResult = GetType(StringToType(fieldType));
-                    names.Add(fieldName);
-                    types.Add(typeResult);
-                }
-                return new NamedStruct()
-                {
-                    Names = names,
-                    Struct = new Struct()
-                    {
-                        Types = types
-                    },
-                    Nullable = true
-                };
-            }
-            if (dataType.Name.ToString().Equals("list", StringComparison.OrdinalIgnoreCase))
-            {
-                if (dataType.Values == null)
-                {
-                    throw new SubstraitParseException("List type must have one field");
-                }
-
-                if (dataType.Values.Count != 1)
-                {
-                    throw new SubstraitParseException("List type must have one field");
-                }
-
-                var fieldType = GetType(StringToType(dataType.Values[0]));
-                return new ListType(fieldType);
             }
             throw new NotImplementedException($"Unknown custom data type {dataType.Name}");
         }

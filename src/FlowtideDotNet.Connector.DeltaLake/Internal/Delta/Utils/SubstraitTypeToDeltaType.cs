@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils
             }
             if (type is DecimalType decimalType)
             {
-                return new Schema.Types.DecimalType(29, 10);
+                return new Schema.Types.DecimalType(decimalType.Precision ?? 29, decimalType.Scale ?? 10);
             }
             if (type is Fp32Type)
             {
@@ -73,6 +73,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils
             if (type is StringType)
             {
                 return new Schema.Types.StringType();
+            }
+            if (type is TimestampType)
+            {
+                return new Schema.Types.TimestampType();
             }
             if (type is ListType listType)
             {
