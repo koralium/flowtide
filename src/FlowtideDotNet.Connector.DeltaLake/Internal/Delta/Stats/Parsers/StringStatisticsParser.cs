@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -47,6 +48,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
         public IDataValue GetValue(ref Utf8JsonReader reader)
         {
             var str = reader.GetString();
+            if (str == null)
+            {
+                return NullValue.Instance;
+            }
             return new StringValue(str);
         }
 

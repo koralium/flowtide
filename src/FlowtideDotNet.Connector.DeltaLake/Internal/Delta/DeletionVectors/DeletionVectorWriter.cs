@@ -49,7 +49,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
 
             array.Serialize(writer);
 
-            //writer.Write((byte)1);
             var bytes = new byte[4];
             BinaryPrimitives.WriteInt32BigEndian(bytes, (int)memoryStream.Position);
 

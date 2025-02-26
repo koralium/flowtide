@@ -54,7 +54,6 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return new DecimalType() { Precision = (int)precisionAndScale.Length, Scale = (int)precisionAndScale.Scale };
             }
             return new DecimalType();
-            
         }
 
         private static SubstraitBaseType HandleArray(DataType.Array array)
@@ -76,34 +75,6 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 Types = types
             };
             return namedStruct;
-        }
-
-        private static DataType StringToType(string type)
-        {
-            return type.ToLower() switch
-            {
-                "boolean" => new DataType.Boolean(),
-                "int" => new DataType.Int(),
-                "bigint" => new DataType.BigInt(),
-                "float" => new DataType.Float(),
-                "double" => new DataType.Double(),
-                "string" => new DataType.StringType(),
-                "date" => new DataType.Date(),
-                "none" => new DataType.None(),
-                _ => new DataType.Custom(type)
-            };
-        }
-
-        private static DataType ParseCustom(string text)
-        {
-            var parenthesis = text.IndexOf("(");
-            if (parenthesis == -1)
-            {
-                return new DataType.Custom(text);
-            }
-            var name = text.Substring(0, parenthesis);
-            var values = text.Substring(parenthesis + 1, text.Length - parenthesis - 2).Split(new string[] { ",", " " }, StringSplitOptions.None);
-            return new DataType.Custom(name, values);
         }
 
         private static SubstraitBaseType HandleCustom(DataType.Custom dataType)

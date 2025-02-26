@@ -29,11 +29,5 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
         public bool TightBounds { get; set; } = true;
 
         public Dictionary<string, IStatisticsComparer>? ValueComparers { get; set; }
-
-        //[JsonPropertyName("minValues")]
-        //public DeltaValueStatistics? MinValues { get; set; }
-
-        //[JsonPropertyName("maxValues")]
-        //public DeltaValueStatistics? MaxValues { get; set; }
     }
 }
