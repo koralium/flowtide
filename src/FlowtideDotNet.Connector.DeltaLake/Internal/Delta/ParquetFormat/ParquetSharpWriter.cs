@@ -31,9 +31,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         private List<IParquetWriter> nullWriters;
         private int rowCount;
         private Apache.Arrow.Schema _schema;
+        private readonly bool _isCdcWriter;
+        private readonly IParquetWriter? _cdcWriter;
 
-        public ParquetSharpWriter(StructType schema, List<string> columnNames)
+        public ParquetSharpWriter(StructType schema, List<string> columnNames, bool isCdcWriter = false)
         {
+            _isCdcWriter = isCdcWriter;
             this.schema = schema;
             var visitor = new ParquetSharpWriteVisitor();
 
@@ -59,6 +62,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 }
             }
 
+            
+
             var schemaVisitor = new DeltaTypeArrowTypeVisitor();
 
             List<Apache.Arrow.Field> fields = new List<Field>();
@@ -67,6 +72,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 var type = schemaVisitor.Visit(field.Type);
                 fields.Add(new Field(field.Name, type, true));
             }
+
+            if (isCdcWriter)
+            {
+                var stringWriter = new ParquetStringWriter();
+                writers.Add(stringWriter);
+                _cdcWriter = stringWriter;
+
+                fields.Add(new Field("_change_type", new Apache.Arrow.Types.StringType(), false));
+            }
+
             _schema = new Apache.Arrow.Schema(fields, new Dictionary<string, string>());
         }
 
@@ -101,7 +116,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
         public int WrittenCount => rowCount;
 
-        public void AddRow(ColumnRowReference row)
+        public void AddRow(ColumnRowReference row, bool isDelete = false)
         {
             rowCount++;
             for (int i = 0; i < toWrite.Count; i++)
@@ -112,6 +127,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             for (int i = 0; i < nullWriters.Count; i++)
             {
                 nullWriters[i].WriteNull();
+            }
+
+            // Cdc logic
+            if (isDelete)
+            {
+                if (!_isCdcWriter)
+                {
+                    throw new InvalidOperationException("Delete records are only supported in CDC mode.");
+                }
+                _cdcWriter!.WriteValue(new StringValue("delete"));
+            }
+            else
+            {
+                if (_isCdcWriter)
+                {
+                    _cdcWriter!.WriteValue(new StringValue("insert"));
+                }
             }
         }
 

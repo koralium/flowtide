@@ -103,6 +103,20 @@ Delta Lake Features:
 * Deletion vectors
 * Statistics output
 * Data file skipping
+* Change data files
+
+### Change data feed
+
+It is possible to enable flowtide to write change data files which can help speed up change data readers.
+This is done by setting the flag `WriteCdcFiles` to `true` in the options when configuring the delta lake connector.
+
+This creates new files in a `_change_data` folder and adds the corresponding actions in the delta log.
+Change data files are only added if there are deletes on existing rows, since the `add` action gives the same performance
+to read change data if there are no deletes. This also saves on storage space.
+
+To be able to reduce memory usage, Flowtide writes the change data files as it creates a commit, but they can then be deleted
+before completing the commit.
+
 
 ### Supported data types
 

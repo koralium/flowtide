@@ -166,8 +166,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             var writer = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
             var deleteWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
 
+            ParquetSharpWriter? cdcWriter = default;
+            if (_options.WriteCdcFiles)
+            {
+                cdcWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, isCdcWriter: true);
+                cdcWriter.NewBatch();
+            }
+
             writer.NewBatch();
             deleteWriter.NewBatch();
+
+            // Flag that tracks if any delete was written, if this is false, no cdc file is required even if it is enabled.
+            bool deleteWritten = false;
 
             Dictionary<string, List<RowToDelete>> rowsToDeleteByFile = new Dictionary<string, List<RowToDelete>>();
             Dictionary<string, ModifiableDeleteVector> fileDeleteVectors = new Dictionary<string, ModifiableDeleteVector>();
@@ -178,9 +188,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     var weight = page.Values.Data[i];
                     if (weight < 0)
                     {
+                        deleteWritten = true;
                         int deleteIndex = deleteWriter.WrittenCount;
                         var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
                         deleteWriter.AddRow(rowRef);
+                        if (cdcWriter != null)
+                        {
+                            cdcWriter.AddRow(rowRef, true);
+                        }
 
                         var rowToDelete = new RowToDelete()
                         {
@@ -188,9 +203,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                             Weight = weight
                         };
 
+                        bool foundFile = false;
                         for (int f = 0; f < table!.Files.Count; f++)
                         {
-                            bool foundFile = false;
                             var file = table.Files[f];
                             if (file.CanBeInFile(rowRef, _writeRelation.TableSchema.Names))
                             {
@@ -202,10 +217,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                                 }
                                 deleteRowList.Add(rowToDelete);
                             }
-                            if (!foundFile)
-                            {
-                                throw new InvalidOperationException($"Could not find any data file that contains the row {rowRef}");
-                            }
+                        }
+                        if (!foundFile)
+                        {
+                            throw new InvalidOperationException($"Could not find any data file that contains the row {rowRef}");
                         }
                     }
                     else
@@ -213,7 +228,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         // Make sure to handle duplicate rows
                         for (int v = 0; v < weight; v++)
                         {
-                            writer.AddRow(new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i});
+                            var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
+                            writer.AddRow(rowRef);
+                            if (cdcWriter != null)
+                            {
+                                cdcWriter.AddRow(rowRef);
+                            }
                         }
                     }
                 }
@@ -237,6 +257,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     await WriteNewFile(writer, actions, currentTime, schema);
                 }
+                if (cdcWriter != null && cdcWriter.WrittenCount >= 100_000)
+                {
+                    await WriteNewCdcFile(cdcWriter, actions, currentTime);
+                }
             }
 
             if (deleteWriter.WrittenCount > 0)
@@ -257,11 +281,40 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             {
                 await WriteNewFile(writer, actions, currentTime, schema);
             }
+            if (cdcWriter != null)
+            {
+                if (deleteWritten)
+                {
+                    if (cdcWriter.WrittenCount > 0)
+                    {
+                        await WriteNewCdcFile(cdcWriter, actions, currentTime);
+                    }
+                }
+                else
+                {
+                    // Remove written cdc files since there was no delete, the rows are included in the add actions
+                    await RemoveWrittenCdcFiles(actions);
+                }
+            }
 
             await DeltaTransactionWriter.WriteCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
 
             // Last thing we do is clear the temporary tree, if the write fails we might need the tree again to recompute the files
             await _temporaryTree.Clear();
+        }
+
+        private async Task RemoveWrittenCdcFiles(List<DeltaAction> actions)
+        {
+            for (int i = 0; i < actions.Count; i++)
+            {
+                var action = actions[i];
+                if (action.Cdc != null)
+                {
+                    await _options.StorageLocation.Rm(_tablePath.Combine(action.Cdc.Path));
+                    actions.RemoveAt(i);
+                    i--;
+                }
+            }
         }
 
         private async Task WriteDeleteFiles(
@@ -346,6 +399,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 await ScanDataFileForRows(table, fileWithPossibleDelete.Value, file, fileDeleteVectors, deleteBatch, comparer);
             }
             rowsToDeleteByFile.Clear();
+        }
+
+        private async Task WriteNewCdcFile(ParquetSharpWriter cdcWriter, List<DeltaAction> actions, long currentTime)
+        {
+            string addFilePath = $"_change_data/cdc-00000-{Guid.NewGuid().ToString()}.snappy.parquet";
+
+            var fileSize = await cdcWriter.WriteData(_options.StorageLocation, _tablePath, addFilePath);
+            actions.Add(new DeltaAction()
+            {
+                Cdc = new DeltaCdcAction()
+                {
+                    DataChange = true,
+                    PartitionValues = new Dictionary<string, string>(),
+                    Path = addFilePath,
+                    Size = fileSize
+                }
+            });
+            cdcWriter.NewBatch();
         }
 
         private async Task WriteNewFile(ParquetSharpWriter writer, List<DeltaAction> actions, long currentTime, StructType schema)

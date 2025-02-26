@@ -663,7 +663,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task TestCreateTableWithBinary()
         {
             var storage = Files.Of.InternalMemory("./test");
-            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithTimestamp), storage);
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithBinary), storage);
 
             stream.Generate(10);
 
@@ -683,7 +683,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "createbinary", stream, 1);
 
-            await AssertResult(nameof(TestCreateTableWithTimestamp), storage, "createbinary", 2, stream.Users.Select(x => new { val = Encoding.UTF8.GetBytes(x.FirstName!) }) );
+            await AssertResult(nameof(TestCreateTableWithBinary), storage, "createbinary", 2, stream.Users.Select(x => new { val = Encoding.UTF8.GetBytes(x.FirstName!) }) );
         }
 
         [Fact]

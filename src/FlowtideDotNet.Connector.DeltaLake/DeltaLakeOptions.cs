@@ -29,5 +29,7 @@ namespace FlowtideDotNet.Connector.DeltaLake
         public bool OneVersionPerCheckpoint { get; set; } = false;
 
         public TimeSpan DeltaCheckInterval { get; set; } = TimeSpan.FromSeconds(10);
+
+        public bool WriteCdcFiles { get; set; } = false;
     }
 }
