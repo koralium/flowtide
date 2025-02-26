@@ -30,6 +30,6 @@ namespace FlowtideDotNet.Connector.DeltaLake
 
         public TimeSpan DeltaCheckInterval { get; set; } = TimeSpan.FromSeconds(10);
 
-        public bool WriteCdcFiles { get; set; } = false;
+        public bool WriteChangeDataOnNewTables { get; set; } = false;
     }
 }

@@ -144,7 +144,9 @@ The delta lake sink does not yet support partitioned tables.
 ### Change data feed
 
 It is possible to enable flowtide to write change data files which can help speed up change data readers.
-This is done by setting the flag `WriteCdcFiles` to `true` in the options when configuring the delta lake connector.
+This is done by setting the flag `WriteChangeDataOnNewTables` to `true` in the options when configuring the delta lake connector.
+If it is an existing table, the writerFeatures in protocol must contain `changeDataFeed` and the metadata configuration must contain `delta.enableChangeDataFeed`
+set to `true`.
 
 This creates new files in a `_change_data` folder and adds the corresponding actions in the delta log.
 Change data files are only added if there are deletes on existing rows, since the `add` action gives the same performance

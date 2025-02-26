@@ -64,5 +64,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 return _protocol?.WriterFeatures?.Contains("deletionVectors") ?? false;
             }
         }
+
+        public bool ChangeDataEnabled
+        {
+            get
+            {
+                bool featureEnabled = _protocol?.WriterFeatures?.Contains("changeDataFeed") ?? false;
+                if (!featureEnabled)
+                {
+                    return false;
+                }
+                if (_metadata.Configuration?.TryGetValue("delta.enableChangeDataFeed", out var value) ?? false)
+                {
+                    if (value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
     }
 }

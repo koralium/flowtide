@@ -102,9 +102,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             List<DeltaAction> actions = new List<DeltaAction>();
             var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
+            bool changeDataEnabled = false;
+
             StructType? schema;
             if (table == null)
             {
+                changeDataEnabled = _options.WriteChangeDataOnNewTables;
                 // Create schema
                 schema = SubstraitTypeToDeltaType.GetSchema(_writeRelation.TableSchema);
 
@@ -123,13 +126,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     }
                 });
 
+                var tableConfiguration = new Dictionary<string, string>();
+
+                if (changeDataEnabled)
+                {
+                    tableConfiguration.Add("delta.enableChangeDataFeed", "true");
+                }
+
                 actions.Add(new DeltaAction()
                 {
                     MetaData = new DeltaMetadataAction()
                     {
                         Id = Guid.NewGuid().ToString(),
                         SchemaString = schemaString,
-                        Configuration = new Dictionary<string, string>(),
+                        Configuration = tableConfiguration,
                         Format = new DeltaMetadataFormat()
                         {
                             Provider = "parquet",
@@ -139,6 +149,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         CreatedTime = currentTime
                     }
                 });
+
+                var writerFeatures = new List<string>() { "deletionVectors" };
+                if (changeDataEnabled)
+                {
+                    writerFeatures.Add("changeDataFeed");
+                }
+
                 actions.Add(new DeltaAction()
                 {
                     Protocol = new DeltaProtocolAction()
@@ -146,7 +163,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         MinReaderVersion = 3,
                         MinWriterVersion = 7,
                         ReaderFeatures = new List<string>() { "deletionVectors" },
-                        WriterFeatures = new List<string>() { "deletionVectors" }
+                        WriterFeatures = writerFeatures
                     }
                 });
             }
@@ -154,6 +171,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             {
                 schema = table.Schema;
                 nextVersion = table.Version + 1;
+                changeDataEnabled = table.ChangeDataEnabled;
                 actions.Add(new DeltaAction()
                 {
                     CommitInfo = new DeltaCommitInfoAction()
@@ -172,7 +190,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             var deleteWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
 
             ParquetSharpWriter? cdcWriter = default;
-            if (_options.WriteCdcFiles)
+            if (changeDataEnabled)
             {
                 cdcWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, isCdcWriter: true);
                 cdcWriter.NewBatch();
