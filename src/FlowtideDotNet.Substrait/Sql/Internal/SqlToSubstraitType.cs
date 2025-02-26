@@ -30,6 +30,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 DataType.Boolean => new BoolType(),
                 DataType.Int => new Int64Type(),
                 DataType.BigInt => new Int64Type(),
+                DataType.Integer => new Int64Type(),
                 DataType.Float => new Fp64Type(),
                 DataType.Double => new Fp64Type(),
                 DataType.StringType => new StringType(),
@@ -40,6 +41,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 DataType.Array arrType => HandleArray(arrType),
                 DataType.Custom => HandleCustom((dataType as DataType.Custom)!),
                 DataType.Decimal dec => HandleDecimal(dec),
+                MapSqlDataType mapType => new MapType(GetType(mapType.KeyType), GetType(mapType.ValueType)),
                 DataType.Binary => new BinaryType(),
                 _ => throw new NotImplementedException($"Unknown data type {dataType}")
             };

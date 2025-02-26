@@ -58,6 +58,38 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         }
     }
 
+    public record class MapSqlDataType : DataType
+    {
+        public DataType KeyType { get; }
+
+        public DataType ValueType { get; }
+
+        public MapSqlDataType(DataType keyType, DataType valueType)
+        {
+            KeyType = keyType;
+            ValueType = valueType;
+        }
+
+        public override void ToSql(SqlTextWriter writer)
+        {
+            writer.Write(ToString());
+        }
+
+        public override string ToString()
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+
+            stringBuilder.Append("MAP<");
+
+            stringBuilder.Append(KeyType.ToSql());
+            stringBuilder.Append(", ");
+            stringBuilder.Append(ValueType.ToSql());
+
+            stringBuilder.Append(">");
+            return stringBuilder.ToString();
+        }
+    }
+
     /// <summary>
     /// All code taken from https://github.com/TylerBrinks/SqlParser-cs/blob/main/src/SqlParser/Parser.cs
     /// and modified only to remove the requirement of data type when creating a table.
@@ -392,6 +424,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     parser.ExpectToken<GreaterThan>();
                     return new DataType.Array(dataType);
                 }
+                if (word.Value.Equals("MAP", StringComparison.OrdinalIgnoreCase))
+                {
+                    parser.ExpectToken<LessThan>();
+                    DataType keyType = ParseDataType(parser);
+                    parser.ExpectToken<Comma>();
+                    DataType valueType = ParseDataType(parser);
+                    parser.ExpectToken<GreaterThan>();
+                    return new MapSqlDataType(keyType, valueType);
+                }
             }
             
             DataType ParseDecimal()
@@ -425,8 +466,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
             else
             {
-                //parser.ParseDataType();
-                dataType = ParseDataType(parser); //parser.ParseDataType();
+                dataType = ParseDataType(parser);
             }
             var collation = Parser.ParseInit(parser.ParseKeyword(Keyword.COLLATE), parser.ParseObjectName);
             Sequence<ColumnOptionDef>? options = null;

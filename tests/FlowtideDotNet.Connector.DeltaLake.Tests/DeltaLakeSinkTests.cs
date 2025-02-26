@@ -573,7 +573,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task TestCreateTableWithList()
         {
-            var storage = Files.Of.LocalDisk("./test");
+            var storage = Files.Of.InternalMemory("./test");
             DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithList), storage);
 
             stream.Generate(10);
@@ -606,7 +606,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task TestCreateTableWithDecimal()
         {
-            var storage = Files.Of.LocalDisk("./test");
+            var storage = Files.Of.InternalMemory("./test");
             DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithDecimal), storage);
 
             stream.Generate(10);
@@ -633,7 +633,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task TestCreateTableWithTimestamp()
         {
-            var storage = Files.Of.LocalDisk("./test");
+            var storage = Files.Of.InternalMemory("./test");
             DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithTimestamp), storage);
 
             stream.Generate(10);
@@ -662,7 +662,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task TestCreateTableWithBinary()
         {
-            var storage = Files.Of.LocalDisk("./test");
+            var storage = Files.Of.InternalMemory("./test");
             DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithTimestamp), storage);
 
             stream.Generate(10);
@@ -689,7 +689,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task TestCreateTableWithBool()
         {
-            var storage = Files.Of.LocalDisk("./test");
+            var storage = Files.Of.InternalMemory("./test");
             DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithBool), storage);
 
             stream.Generate(10);
@@ -716,7 +716,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task TestCreateTableWithDate()
         {
-            var storage = Files.Of.LocalDisk("./test");
+            var storage = Files.Of.InternalMemory("./test");
             DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithDate), storage);
 
             stream.Generate(10);
@@ -738,6 +738,88 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await WaitForVersion(storage, "createdate", stream, 1);
 
             await AssertResult(nameof(TestCreateTableWithDate), storage, "createdate", 2, stream.Users.Select(x => new { val = x.BirthDate }));
+        }
+
+        [Fact]
+        public async Task TestCreateTableWithDouble()
+        {
+            var storage = Files.Of.InternalMemory("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithDouble), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE createdouble (
+                    DoubleValue DOUBLE
+                );
+
+                INSERT INTO createdouble
+                SELECT DoubleValue FROM users
+            ");
+
+            await WaitForVersion(storage, "createdouble", stream, 0);
+
+            var firstUsers = stream.Users[0];
+            stream.DeleteUser(firstUsers);
+
+            await WaitForVersion(storage, "createdouble", stream, 1);
+
+            await AssertResult(nameof(TestCreateTableWithDouble), storage, "createdouble", 2, stream.Users.Select(x => new { val = x.DoubleValue }));
+        }
+
+        [Fact]
+        public async Task TestCreateTableWithInteger()
+        {
+            var storage = Files.Of.InternalMemory("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithInteger), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE createinteger (
+                    val1 Integer,
+                    val2 Int
+                );
+
+                INSERT INTO createinteger
+                SELECT userkey as val1, userkey as val2 FROM users
+            ");
+
+            await WaitForVersion(storage, "createinteger", stream, 0);
+
+            var firstUsers = stream.Users[0];
+            stream.DeleteUser(firstUsers);
+
+            await WaitForVersion(storage, "createinteger", stream, 1);
+
+            await AssertResult(nameof(TestCreateTableWithInteger), storage, "createinteger", 2, stream.Users.Select(x => new { val = x.UserKey, val2 = x.UserKey }));
+        }
+
+        [Fact]
+        public async Task TestCreateTableWithMap()
+        {
+            var storage = Files.Of.InternalMemory("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTableWithMap), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE createmap (
+                    val MAP<STRING, STRING>
+                );
+
+                INSERT INTO createmap
+                SELECT map(firstName, lastName) as val FROM users
+            ");
+
+            await WaitForVersion(storage, "createmap", stream, 0);
+
+            var firstUsers = stream.Users[0];
+            stream.DeleteUser(firstUsers);
+
+            await WaitForVersion(storage, "createmap", stream, 1);
+
+            await AssertResult(nameof(TestCreateTableWithMap), storage, "createmap", 2, stream.Users.Select(x => new { val = new Dictionary<string, string>() { { x.FirstName!, x.LastName! } } }));
         }
 
         /// <summary>
