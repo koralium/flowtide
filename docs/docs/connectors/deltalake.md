@@ -94,3 +94,85 @@ This connects the source to the root of the blob storage, to then query a table 
 ```sql
 SELECT * FROM my_container.my_optional_parent_folder.my_table
 ```
+
+## Delta Lake Sink
+
+
+Delta Lake Features:
+
+* Deletion vectors
+* Statistics output
+* Data file skipping
+
+### Supported data types
+
+Flowtide can write the following data types to a delta lake table:
+
+* Array
+* Binary
+* Boolean
+* Date
+* Decimal
+* Float
+* Double
+* Byte
+* Short
+* Integer
+* Long
+* String
+* Timestamp
+* Struct
+* Map
+
+### Creating a new table
+
+It is possible to create a new delta lake table if it does not exist. This is done by using the `CREATE TABLE` syntax to
+clearly set the data types for each column.
+
+Not all delta lake data types are supported in Flowtide SQL, so for full type support please create an empty table manually.
+The data types that are supported with `CREATE TABLE` and how they are mapped are:
+
+| Flowtide SQL name | Flowtide Internal Type | Delta Lake name | Comment                                                                                            |
+| ----------------- | ---------------------- | --------------- | -------------------------------------------------------------------------------------------------- |
+| int               | Integer                | long            | In flowtide integers are treated as the same type, the size is dynamically increased.              |
+| binary            | binary                 | binary          |                                                                                                    |
+| boolean           | boolean                | boolean         |                                                                                                    |
+| date              | timestamp              | date            |                                                                                                    |
+| decimal           | decimal                | decimal         | Flowtide uses C# decimal format, this then gets converted into a decimal with precision and scale. |
+| double            | double                 | double          | Flowtide only manages double precision floating point numbers.                                     |
+| timestamp         | timestamp              | timestamp       |                                                                                                    |
+| struct            | map                    | struct          | Map should be used to create struct values at this point.                                          |
+| map               | map                    | map             |                                                                                                    |
+| list              | list                   | array           |                                                                                                    |
+
+
+#### Sql example
+
+```sql
+CREATE TABLE test (
+  intval INT,
+  binval BINARY,
+  boolval BOOLEAN,
+  dateval DATE,
+  decimalVal DECIMAL(19, 3),
+  doubleVal DOUBLE,
+  timeVal TIMESTAMP, 
+  structVal STRUCT<firstName STRING, lastName STRING>,
+  mapVal MAP<STRING, STRING>,
+  listVal LIST<STRING>
+);
+
+INSERT INTO test
+SELECT 
+  intval, 
+  binval, 
+  boolval, 
+  dateval, 
+  decimalVal, 
+  doubleVal, 
+  timeVal, 
+  MAP('firstName', firstName, 'lastName', lastName) as structVal,
+  MAP('firstName', firstName, 'lastName', lastName) as mapVal,
+  list(firstName, lastName) as listVal
+FROM my_source_table;
+```

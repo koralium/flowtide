@@ -51,7 +51,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                         continue;
                     }
 
-                    //var val = arr.GetDateTime(i);
                     if (arr.IsNull(i))
                     {
                         WriteNull();
