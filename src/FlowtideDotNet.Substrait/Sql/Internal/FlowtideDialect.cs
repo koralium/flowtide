@@ -381,6 +381,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         return new DataType.BigNumeric(new ExactNumberInfo.None());;
                 }
 
+                if (word.Value.Equals("any", StringComparison.OrdinalIgnoreCase))
+                {
+                    return new DataType.Custom(new ObjectName(new Ident("any")));
+                }
+
                 if (word.Value.Equals("STRUCT", StringComparison.OrdinalIgnoreCase))
                 {
                     parser.ExpectToken<LessThan>();

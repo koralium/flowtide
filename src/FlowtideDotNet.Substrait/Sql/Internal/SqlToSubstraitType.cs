@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             if (dataType.Name == "any")
             {
-                return new AnyType();
+                return new AnyType() { Nullable = true };
             }
             throw new NotImplementedException($"Unknown custom data type {dataType.Name}");
         }
