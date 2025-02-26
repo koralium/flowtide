@@ -161,6 +161,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         Data = new Dictionary<string, object>() { { "operation", "WRITE" } }
                     }
                 });
+
+                if (table.PartitionColumns.Count > 0)
+                {
+                    throw new NotImplementedException("Partition columns are not implemented yet");
+                }
             }
 
             var writer = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
