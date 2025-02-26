@@ -61,7 +61,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         {
             get
             {
-                return _protocol?.WriterFeatures?.Contains("deletionVectors") ?? false;
+                bool featureEnabled = _protocol?.WriterFeatures?.Contains("deletionVectors") ?? false;
+                if (!featureEnabled)
+                {
+                    return false;
+                }
+                if (_metadata.Configuration?.TryGetValue("delta.enableDeletionVectors", out var value) ?? false)
+                {
+                    if (value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+                return false;
             }
         }
 

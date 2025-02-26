@@ -31,5 +31,7 @@ namespace FlowtideDotNet.Connector.DeltaLake
         public TimeSpan DeltaCheckInterval { get; set; } = TimeSpan.FromSeconds(10);
 
         public bool WriteChangeDataOnNewTables { get; set; } = false;
+
+        public bool EnableDeletionVectorsOnNewTables { get; set; } = true;
     }
 }

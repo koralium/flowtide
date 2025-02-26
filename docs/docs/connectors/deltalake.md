@@ -28,6 +28,19 @@ SELECT ... FROM my_catalog.{optional_directory_name}.my_table_name
 
 As with all other connectors you can ofcourse read and write from and to any other connector.
 
+## Options
+
+These are the options that can be configured when adding the delta lake connector:
+
+| Name                             | Description                                                                            | Default    | Required |
+| -------------------------------- | -------------------------------------------------------------------------------------- | ---------- | -------- |
+| StorageLocation                  | Connection where the tables are located                                                | Null       | Yes      |
+| OneVersionPerCheckpoint          | Only used for reading, it then makes sure that each commit is sent once per checkpoint | False      | No       |
+| DeltaCheckInterval               | Only used for reading, how often it should be checked if a new commit exists           | 10 seconds | No       |
+| WriteChangeDataOnNewTables       | If new tables created by the connector should enable change feed                       | False      | No       |
+| EnableDeletionVectorsOnNewTables | If new tables created by the connector should enable deletion vectors                  | True       | No       |
+
+
 ## Delta Lake Source
 
 The delta lake source allows ingesting data from a delta lake table. To connect to a delta lake table, use `AddDeltaLake` method on the connector manager.
@@ -154,6 +167,9 @@ to read change data if there are no deletes. This also saves on storage space.
 
 To be able to reduce memory usage, Flowtide writes the change data files as it creates a commit, but they can then be deleted
 before completing the commit.
+
+Since this connector writes the exact result set in the query, it does not have the concept of primary keys and rows can be duplicated if that is the result
+of the query. This means that the change data feed only contains `delete` and `insert` operations.
 
 
 ### Supported data types

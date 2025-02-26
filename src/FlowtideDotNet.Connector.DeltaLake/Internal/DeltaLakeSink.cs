@@ -30,6 +30,7 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Tree.Internal;
+using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Options;
 using Stowage;
@@ -103,11 +104,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             bool changeDataEnabled = false;
+            bool deletionVectorEnabled = false;
 
             StructType? schema;
             if (table == null)
             {
                 changeDataEnabled = _options.WriteChangeDataOnNewTables;
+                deletionVectorEnabled = _options.EnableDeletionVectorsOnNewTables;
+
                 // Create schema
                 schema = SubstraitTypeToDeltaType.GetSchema(_writeRelation.TableSchema);
 
@@ -132,6 +136,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     tableConfiguration.Add("delta.enableChangeDataFeed", "true");
                 }
+                if (deletionVectorEnabled)
+                {
+                    tableConfiguration.Add("delta.enableDeletionVectors", "true");
+                }
 
                 actions.Add(new DeltaAction()
                 {
@@ -150,10 +158,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     }
                 });
 
-                var writerFeatures = new List<string>() { "deletionVectors" };
+                var writerFeatures = new List<string>();
+                if (deletionVectorEnabled)
+                {
+                    writerFeatures.Add("deletionVectors");
+                }
                 if (changeDataEnabled)
                 {
                     writerFeatures.Add("changeDataFeed");
+                }
+
+                var readerFeatures = new List<string>();
+                if (deletionVectorEnabled)
+                {
+                    readerFeatures.Add("deletionVectors");
                 }
 
                 actions.Add(new DeltaAction()
@@ -162,7 +180,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     {
                         MinReaderVersion = 3,
                         MinWriterVersion = 7,
-                        ReaderFeatures = new List<string>() { "deletionVectors" },
+                        ReaderFeatures = readerFeatures,
                         WriterFeatures = writerFeatures
                     }
                 });
@@ -172,6 +190,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 schema = table.Schema;
                 nextVersion = table.Version + 1;
                 changeDataEnabled = table.ChangeDataEnabled;
+                deletionVectorEnabled = table.DeleteVectorEnabled;
                 actions.Add(new DeltaAction()
                 {
                     CommitInfo = new DeltaCommitInfoAction()
