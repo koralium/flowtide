@@ -24,6 +24,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 {
     internal class ParquetArrowTypeVisitor : DeltaTypeVisitor<IArrowEncoder>
     {
+        public override IArrowEncoder VisitBinaryType(BinaryType type)
+        {
+            return new BinaryEncoder();
+        }
+
         public override IArrowEncoder VisitBooleanType(BooleanType type)
         {
             return new BoolEncoder();

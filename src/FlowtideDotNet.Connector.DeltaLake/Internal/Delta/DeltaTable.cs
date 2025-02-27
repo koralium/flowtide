@@ -29,30 +29,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         private DeltaMetadataAction _metadata;
         private DeltaProtocolAction _protocol;
         private List<DeltaAddAction> _addFiles;
+        private readonly List<DeltaFile> _files;
         private long _version;
         private StructType _schema;
 
-        internal DeltaTable(DeltaMetadataAction metadata, DeltaProtocolAction protocol, List<DeltaAddAction> addFiles, long version)
+        internal DeltaTable(DeltaMetadataAction metadata, DeltaProtocolAction protocol, List<DeltaAddAction> addFiles, StructType schema, List<DeltaFile> files, long version)
         {
             _metadata = metadata;
             _protocol = protocol;
             _addFiles = addFiles;
+            this._files = files;
             _version = version;
-
+            _schema = schema;
             // Read schema
-            var jsonOptions = new JsonSerializerOptions();
-            jsonOptions.Converters.Add(new TypeConverter());
-            var schema = JsonSerializer.Deserialize<SchemaBaseType>(_metadata.SchemaString!, jsonOptions);
-
-            if (schema!.Type != SchemaType.Struct)
-            {
-                throw new Exception("Schema type must be struct");
-            }
-
-            _schema = (StructType)schema;
+            
         }
 
         public List<DeltaAddAction> AddFiles => _addFiles;
+
+        public List<DeltaFile> Files => _files;
 
         public StructType Schema => _schema;
 
@@ -61,5 +56,45 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         public DeltaMetadataFormat Format => _metadata.Format ?? throw new Exception("Format must be defined");
 
         public long Version => _version;
+
+        public bool DeleteVectorEnabled
+        {
+            get
+            {
+                bool featureEnabled = _protocol?.WriterFeatures?.Contains("deletionVectors") ?? false;
+                if (!featureEnabled)
+                {
+                    return false;
+                }
+                if (_metadata.Configuration?.TryGetValue("delta.enableDeletionVectors", out var value) ?? false)
+                {
+                    if (value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        public bool ChangeDataEnabled
+        {
+            get
+            {
+                bool featureEnabled = _protocol?.WriterFeatures?.Contains("changeDataFeed") ?? false;
+                if (!featureEnabled)
+                {
+                    return false;
+                }
+                if (_metadata.Configuration?.TryGetValue("delta.enableChangeDataFeed", out var value) ?? false)
+                {
+                    if (value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
     }
 }

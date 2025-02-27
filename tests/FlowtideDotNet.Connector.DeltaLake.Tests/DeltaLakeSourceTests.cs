@@ -170,6 +170,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
+        public async Task ReadBinary()
+        {
+            var storageLoc = Files.Of.LocalDisk("../../../testdata");
+            DeltaLakeTestStream stream = new DeltaLakeTestStream(nameof(ReadBinary), storageLoc);
+
+            await stream.StartStream(@"
+            INSERT INTO output
+            SELECT binary FROM all_primitive_types
+            ", ignoreSameDataCheck: true);
+
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual(new[] {
+                new {v = new byte[]{ } },
+                new {v = new byte[]{ 0 } },
+                new {v = new byte[]{ 0, 0 } },
+                new {v = new byte[]{ 0, 0, 0 } },
+                new {v = new byte[]{ 0, 0, 0, 0 } }
+            });
+        }
+
+        [Fact]
         public async Task ReadInt64()
         {
             var storageLoc = Files.Of.LocalDisk("../../../testdata");

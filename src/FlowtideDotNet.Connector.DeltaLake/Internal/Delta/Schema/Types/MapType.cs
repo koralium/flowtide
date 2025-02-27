@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types
 {
-    internal class MapType : SchemaBaseType
+    internal class MapType : SchemaBaseType, IEquatable<MapType>
     {
         public override SchemaType Type => SchemaType.Map;
 
@@ -38,6 +38,31 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types
         public override T Accept<T>(DeltaTypeVisitor<T> visitor)
         {
             return visitor.VisitMapType(this);
+        }
+
+        public bool Equals(MapType? other)
+        {
+            if (other is null)
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+
+            return KeyType.Equals(other.KeyType) && ValueType.Equals(other.ValueType) && ValueContainsNull == other.ValueContainsNull;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return Equals(obj as MapType);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(KeyType, ValueType, ValueContainsNull);
         }
     }
 }

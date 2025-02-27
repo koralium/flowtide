@@ -33,11 +33,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
         protected override void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddDeltaLake(new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = true, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) });
+            connectorManger.AddDeltaLakeSource(new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = true, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) });
 
             connectorManger.AddCatalog("catalogtest", c =>
             {
-                c.AddDeltaLake(new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = true, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) });
+                c.AddDeltaLakeSource(new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = true, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) });
             });
         }
     }

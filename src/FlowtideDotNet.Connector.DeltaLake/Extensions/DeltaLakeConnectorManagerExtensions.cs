@@ -23,11 +23,28 @@ namespace FlowtideDotNet.Core
 {
     public static class DeltaLakeConnectorManagerExtensions
     {
-        public static IConnectorManager AddDeltaLake(this IConnectorManager connectorManager, DeltaLakeOptions options)
+        public static IConnectorManager AddDeltaLakeSource(this IConnectorManager connectorManager, DeltaLakeOptions options)
         {
             var provider = new DeltaLakeSqlProvider(options);
             connectorManager.AddSource(new DeltaSourceFactory(options, provider));
             connectorManager.AddTableProvider(provider);
+            return connectorManager;
+        }
+
+        public static IConnectorManager AddDeltaLakeSink(this IConnectorManager connectorManager, DeltaLakeOptions options)
+        {
+            connectorManager.AddSink(new DeltaLakeSinkFactory(options));
+            return connectorManager;
+        }
+
+        public static IConnectorManager AddDeltaLakeCatalog(this IConnectorManager connectorManager, string catalogName, DeltaLakeOptions options)
+        {
+            connectorManager.AddCatalog(catalogName, c =>
+            {
+                c.AddDeltaLakeSource(options);
+                c.AddDeltaLakeSink(options);
+            });
+
             return connectorManager;
         }
     }

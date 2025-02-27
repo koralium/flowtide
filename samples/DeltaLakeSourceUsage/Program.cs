@@ -40,7 +40,7 @@ builder.Services.AddFlowtideStream("my_stream")
     .AddConnectors(connectors =>
     {
         var (endpoint, accountName, accountKey)= GetUriAndSharedKeyFromBlobConnectionString(azureLakeBlobStorageConnStr!);
-        connectors.AddDeltaLake(new FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions()
+        connectors.AddDeltaLakeSource(new FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions()
         {
             StorageLocation = Files.Of.AzureBlobStorage(endpoint, accountName, accountKey),
             OneVersionPerCheckpoint = shouldReplay,

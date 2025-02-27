@@ -40,7 +40,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
                     "boolean" => new BooleanType(),
                     "byte" => new ByteType(),
                     "date" => new DateType(),
-                    "decimal" => new DecimalType(),
                     "double" => new DoubleType(),
                     "float" => new FloatType(),
                     "integer" => new IntegerType(),
@@ -66,7 +65,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
         {
             if (type != null && type.StartsWith("decimal"))
             {
-                return new DecimalType();
+                var firstLeftSlash = type.IndexOf('(');
+                var firstRightSlash = type.IndexOf(')');
+                var comma = type.IndexOf(',');
+                if (firstLeftSlash == -1 || firstRightSlash == -1 || comma == -1)
+                {
+                    throw new JsonException("Invalid decimal type");
+                }
+
+                var precision = int.Parse(type.Substring(firstLeftSlash + 1, comma - firstLeftSlash - 1));
+                var scale = int.Parse(type.Substring(comma + 1, firstRightSlash - comma - 1));
+
+                return new DecimalType(precision, scale);
             }
             throw new JsonException($"Unknown type: {type}");
         }
@@ -239,7 +249,116 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
 
         public override void Write(Utf8JsonWriter writer, SchemaBaseType value, JsonSerializerOptions options)
         {
-            throw new NotImplementedException();
+            if (value is BinaryType)
+            {
+                writer.WriteStringValue("binary");
+            }
+            else if (value is BooleanType)
+            {
+                writer.WriteStringValue("boolean");
+            }
+            else if (value is ByteType)
+            {
+                writer.WriteStringValue("byte");
+            }
+
+            else if (value is StringType)
+            {
+                writer.WriteStringValue("string");
+            }
+            else if (value is IntegerType)
+            {
+                writer.WriteStringValue("integer");
+            }
+            else if (value is LongType)
+            {
+                writer.WriteStringValue("long");
+            }
+            else if (value is ShortType)
+            {
+                writer.WriteStringValue("short");
+            }
+            else if (value is FloatType)
+            {
+                writer.WriteStringValue("float");
+            }
+            else if (value is DoubleType)
+            {
+                writer.WriteStringValue("double");
+            }
+            else if (value is DateType)
+            {
+                writer.WriteStringValue("date");
+            }
+            else if (value is DecimalType decimalType)
+            {
+                writer.WriteStringValue($"decimal({decimalType.Precision},{decimalType.Scale})");
+            }
+            else if (value is TimestampType)
+            {
+                writer.WriteStringValue("timestamp");
+            }
+            else if (value is StructType structType)
+            {
+                WriteStruct(writer, structType, options);
+            }
+            else if (value is ArrayType arrayType)
+            {
+                WriteList(writer, arrayType, options);
+            }
+            else if (value is MapType mapType)
+            {
+                WriteMap(writer, mapType, options);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        private static void WriteList(Utf8JsonWriter writer, ArrayType value, JsonSerializerOptions options)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("type", "array");
+            writer.WritePropertyName("elementType");
+            JsonSerializer.Serialize(writer, value.ElementType, options);
+
+            writer.WriteBoolean("containsNull", value.ContainsNull);
+            writer.WriteEndObject();
+        }
+
+        private static void WriteStruct(Utf8JsonWriter writer, StructType value, JsonSerializerOptions options)
+        {
+            writer.WriteStartObject();
+
+            writer.WriteString("type", "struct");
+
+            writer.WritePropertyName("fields");
+            writer.WriteStartArray();
+            foreach (var field in value.Fields)
+            {
+                JsonSerializer.Serialize(writer, field, options);
+            }
+            writer.WriteEndArray();
+
+            writer.WriteEndObject();
+        }
+
+        private static void WriteMap(Utf8JsonWriter writer, MapType value, JsonSerializerOptions options)
+        {
+            writer.WriteStartObject();
+
+            writer.WriteString("type", "map");
+
+            writer.WritePropertyName("keyType");
+            JsonSerializer.Serialize(writer, value.KeyType, options);
+
+            writer.WritePropertyName("valueType");
+            JsonSerializer.Serialize(writer, value.ValueType, options);
+
+            writer.WriteBoolean("valueContainsNull", value.ValueContainsNull);
+
+            writer.WriteEndObject();
         }
     }
 }

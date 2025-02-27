@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowEncoders;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Storage.DataStructures;
@@ -22,6 +23,7 @@ using Stowage;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -38,20 +40,26 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
         private List<string>? _physicalColumnNamesInBatch;
         private List<IArrowEncoder>? _encoders;
+        
+        public List<StructField>? Fields { get; private set; }
+
         public void Initialize(DeltaTable table, IReadOnlyList<string> columnNames)
         {
             ParquetArrowTypeVisitor visitor = new ParquetArrowTypeVisitor();
             List<IArrowEncoder> encoders = new List<IArrowEncoder>();
             _physicalColumnNamesInBatch = new List<string>();
+            Fields = new List<StructField>();
             for (int i = 0; i < columnNames.Count; i++)
             {
                 var name = columnNames[i];
                 var field = table.Schema.Fields.FirstOrDefault(x => x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-
+                
                 if (field == null)
                 {
                     throw new Exception($"Field {name} not found in schema");
                 }
+
+                Fields.Add(field);
 
                 string physicalName = field.Name;
                 if (field.Metadata.TryGetValue("delta.columnMapping.physicalName", out var mappingName))
@@ -228,20 +236,40 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             encoder.AddValue(index, ref func);
         }
 
-        public async IAsyncEnumerable<BatchResult> ReadDataFile(IFileStorage storage, IOPath table, string path, IDeleteVector deleteVector, Dictionary<string, string>? partitionValues, IMemoryAllocator memoryAllocator)
+        public async IAsyncEnumerable<Apache.Arrow.RecordBatch> ReadDataFileArrowFormat(IFileStorage storage, IOPath table, string path)
         {
-            Debug.Assert(_physicalColumnNamesInBatch != null);
-            Debug.Assert(_encoders != null);
-
-            var stream = await storage.OpenRead(table.Combine(path));
+            using var stream = await storage.OpenRead(table.Combine(path));
 
             if (stream == null)
             {
                 throw new Exception($"File not found: {path}");
             }
 
-            ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+            using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
 
+            var batchReader = fileReader.GetRecordBatchReader();
+
+            Apache.Arrow.RecordBatch batch;
+            while ((batch = await batchReader.ReadNextRecordBatchAsync()) != null)
+            {
+                yield return batch;
+            }
+        }
+
+        public async IAsyncEnumerable<BatchResult> ReadDataFile(IFileStorage storage, IOPath table, string path, IDeleteVector deleteVector, Dictionary<string, string>? partitionValues, IMemoryAllocator memoryAllocator)
+        {
+            Debug.Assert(_physicalColumnNamesInBatch != null);
+            Debug.Assert(_encoders != null);
+
+            using var stream = await storage.OpenRead(table.Combine(path));
+
+            if (stream == null)
+            {
+                throw new Exception($"File not found: {path}");
+            }
+
+            using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+            
             List<int> columnsToSelect = new List<int>();
 
             foreach(var encoder in _encoders)
