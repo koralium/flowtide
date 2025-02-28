@@ -315,7 +315,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             {
                 yield break;
             }
-            //var nextIdToSearch = changedIndexEnumerator.Current.id;
 
             int globalIndex = 0;
             Apache.Arrow.RecordBatch batch;
@@ -360,11 +359,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                         batchCount++;
                         weights.Add(changedIndexEnumerator.Current.weight);
                         changeHasNext = changedIndexEnumerator.MoveNext();
+
                         if (!changeHasNext)
                         {
                             break;
                         }
-                        //nextIdToSearch = changedIndexEnumerator.Current.id;
+
                         if (changedIndexEnumerator.Current.id >= globalIndex + batch.Length)
                         {
                             break;
@@ -425,7 +425,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
 
             var batchReader = fileReader.GetRecordBatchReader(columns: columnsToSelect.ToArray());
-
 
             int globalIndex = 0;
             Apache.Arrow.RecordBatch batch;
