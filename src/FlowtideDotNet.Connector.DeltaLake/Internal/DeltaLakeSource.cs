@@ -145,8 +145,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             await output.EnterCheckpointLock();
 
-            foreach (var file in deltaCommit.AddedFiles)
+            var deletionVectorFiles = deltaCommit.RemovedFiles.Select(x => x.Path).Intersect(deltaCommit.AddedFiles.Select(x => x.Path)).ToList();
+
+            var addedFiles = deltaCommit.AddedFiles.Where(x => !deletionVectorFiles.Contains(x.Path)).ToList();
+            var removedFiles = deltaCommit.RemovedFiles.Where(x => !deletionVectorFiles.Contains(x.Path)).ToList();
+
+            foreach (var file in addedFiles)
             {
+                if (!file.DataChange)
+                {
+                    continue;
+                }
                 Debug.Assert(file.Path != null);
                 IDeleteVector? deleteVector;
                 if (file.DeletionVector != null)
@@ -183,11 +192,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                             }
                         });
                     }
+                    batch.data.Dispose();
                 }
             }
 
-            foreach (var file in deltaCommit.RemovedFiles)
+            foreach (var file in removedFiles)
             {
+                if (!file.DataChange)
+                {
+                    continue;
+                }
                 Debug.Assert(file.Path != null);
                 IDeleteVector? deleteVector;
                 if (file.DeletionVector != null)
@@ -224,6 +238,72 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                             }
                         });
                     }
+                    batch.data.Dispose();
+                }
+            }
+
+            foreach(var deletionVectorFile in deletionVectorFiles)
+            {
+                var addedFile = deltaCommit.AddedFiles.Single(x => x.Path == deletionVectorFile);
+                var removedFile = deltaCommit.RemovedFiles.Single(x => x.Path == deletionVectorFile);
+
+                if ((!addedFile.DataChange) && (!removedFile.DataChange))
+                {
+                    continue;
+                }
+
+                // Get the deletion vectors of the files
+                IDeleteVector? addedFileDeleteVector;
+                if (addedFile.DeletionVector != null)
+                {
+                    addedFileDeleteVector = await DeletionVectorReader.ReadDeletionVector(_options.StorageLocation, _tableLoc, addedFile.DeletionVector);
+                }
+                else
+                {
+                    addedFileDeleteVector = EmptyDeleteVector.Instance;
+                }
+                IDeleteVector? removedFileDeleteVector;
+                if (removedFile.DeletionVector != null)
+                {
+                    removedFileDeleteVector = await DeletionVectorReader.ReadDeletionVector(_options.StorageLocation, _tableLoc, removedFile.DeletionVector);
+                }
+                else
+                {
+                    removedFileDeleteVector = EmptyDeleteVector.Instance;
+                }
+
+                // Get the differences between the deletion vectors, if a number is in the added file but not in the removed file, it should be a -1 weight
+                // If it is in the removed file but not in the added file, it should be a 1 weight, this is like an insert
+                var diffIterator = new DeletionVectorDiffIterator(removedFileDeleteVector, addedFileDeleteVector);
+                var changedRowsIterator = _reader.ReadAddRemovedDataFile(_options.StorageLocation, _tableLoc, deletionVectorFile!, diffIterator, addedFile.PartitionValues, MemoryAllocator);
+
+                await foreach(var batch in changedRowsIterator)
+                {
+                    // add them to the changes tree, since a row might have been added and removed in the same version, we need to keep track of the weight
+                    // This removes any unneccessary duplicate rows.
+                    for (int i = 0; i < batch.count; i++)
+                    {
+                        await _changesTree.RMWNoResult(new ColumnRowReference() { referenceBatch = batch.data, RowIndex = i }, batch.weights[i], (input, current, exists) =>
+                        {
+                            if (exists)
+                            {
+                                var newWeight = current + input;
+
+                                if (newWeight == 0)
+                                {
+                                    return (0, GenericWriteOperation.Delete);
+                                }
+
+                                return (newWeight, GenericWriteOperation.Upsert);
+                            }
+                            else
+                            {
+                                return (input, GenericWriteOperation.Upsert);
+                            }
+                        });
+                    }
+                    batch.data.Dispose();
+                    batch.weights.Dispose();
                 }
             }
 
@@ -412,6 +492,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 await output.SendWatermark(new Base.Watermark(_tableName, _state.Value.CurrentVersion));
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                 output.ExitCheckpointLock();
+            }
+            else
+            {
+                // Load delta if we have a current version
+                await LoadDelta(output, default);
             }
 
             await RegisterTrigger(DeltaLoadName, _options.DeltaCheckInterval);

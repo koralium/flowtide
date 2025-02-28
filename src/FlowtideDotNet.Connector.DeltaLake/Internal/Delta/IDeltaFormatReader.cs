@@ -26,6 +26,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         public long count;
     }
 
+    internal struct BatchResultWithWeights
+    {
+        public EventBatchData data;
+        public PrimitiveList<int> weights;
+        public long count;
+    }
+
     internal struct CdcBatchResult
     {
         public EventBatchData data;
@@ -47,6 +54,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             IOPath table,
             string path,
             IDeleteVector deleteVector,
+            Dictionary<string, string>? partitionValues,
+            IMemoryAllocator memoryAllocator);
+
+        IAsyncEnumerable<BatchResultWithWeights> ReadAddRemovedDataFile(
+            IFileStorage storage,
+            IOPath table,
+            string path,
+            IEnumerable<(long id, int weight)> changedIndices,
             Dictionary<string, string>? partitionValues,
             IMemoryAllocator memoryAllocator);
 

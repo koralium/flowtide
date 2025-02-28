@@ -256,6 +256,131 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
         }
 
+        public async IAsyncEnumerable<BatchResultWithWeights> ReadAddRemovedDataFile(
+            IFileStorage storage, 
+            IOPath table, 
+            string path,
+            IEnumerable<(long id, int weight)> changedIndices,
+            Dictionary<string, string>? partitionValues, 
+            IMemoryAllocator memoryAllocator)
+        {
+            Debug.Assert(_physicalColumnNamesInBatch != null);
+            Debug.Assert(_encoders != null);
+
+            using var stream = await storage.OpenRead(table.Combine(path));
+
+            if (stream == null)
+            {
+                throw new Exception($"File not found: {path}");
+            }
+
+            using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+
+            List<int> columnsToSelect = new List<int>();
+
+            foreach (var encoder in _encoders)
+            {
+                encoder.NewFile(partitionValues);
+            }
+
+            for (int i = 0; i < _physicalColumnNamesInBatch.Count; i++)
+            {
+
+                bool found = false;
+                for (int k = 0; k < fileReader.SchemaManifest.SchemaFields.Count; k++)
+                {
+                    var field = fileReader.SchemaManifest.SchemaFields[k];
+
+                    if (field.Field.Name.Equals(_physicalColumnNamesInBatch[i], StringComparison.OrdinalIgnoreCase))
+                    {
+
+                        found = true;
+                        AddColumnToSelect(field, columnsToSelect);
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    throw new InvalidOperationException($"Could not find field {_physicalColumnNamesInBatch[i]} in batch");
+                }
+            }
+
+            var batchReader = fileReader.GetRecordBatchReader(columns: columnsToSelect.ToArray());
+
+
+            var changedIndexEnumerator = changedIndices.GetEnumerator();
+
+            var changeHasNext = changedIndexEnumerator.MoveNext();
+            if (!changeHasNext)
+            {
+                yield break;
+            }
+
+            int globalIndex = 0;
+            Apache.Arrow.RecordBatch batch;
+            while ((batch = await batchReader.ReadNextRecordBatchAsync()) != null && changeHasNext)
+            {
+                if (globalIndex + batch.Length < changedIndexEnumerator.Current.id)
+                {
+                    // The index to search is not in this batch, skip it
+                    globalIndex += batch.Length;
+                    batch.Dispose();
+                    continue;
+                }
+                using (batch)
+                {
+                    PrimitiveList<int> weights = new PrimitiveList<int>(memoryAllocator);
+                    Column[] outColumns = new Column[_encoders.Count];
+                    for (int i = 0; i < outColumns.Length; i++)
+                    {
+                        outColumns[i] = new Column(memoryAllocator);
+                    }
+                    int batchCount = 0;
+                    int columnIndex = 0;
+                    for (int i = 0; i < _encoders.Count; i++)
+                    {
+                        var encoder = _encoders[i];
+                        if (!encoder.IsPartitionValueEncoder)
+                        {
+                            encoder.NewBatch(batch.Column(columnIndex));
+                            columnIndex++;
+                        }
+                    }
+
+                    while (changeHasNext)
+                    {
+                        var relativeIndex = (int)(changedIndexEnumerator.Current.id - globalIndex);
+                        for (int j = 0; j < _encoders.Count; j++)
+                        {
+                            var encoder = _encoders[j];
+                            AddToColumn(encoder, outColumns[j], relativeIndex);
+                        }
+
+                        batchCount++;
+                        weights.Add(changedIndexEnumerator.Current.weight);
+                        changeHasNext = changedIndexEnumerator.MoveNext();
+
+                        if (!changeHasNext)
+                        {
+                            break;
+                        }
+
+                        if (changedIndexEnumerator.Current.id >= globalIndex + batch.Length)
+                        {
+                            break;
+                        }
+                    }
+
+                    yield return new BatchResultWithWeights()
+                    {
+                        count = batchCount,
+                        data = new EventBatchData(outColumns),
+                        weights = weights
+                    };
+                }
+            }
+        }
+
         public async IAsyncEnumerable<BatchResult> ReadDataFile(IFileStorage storage, IOPath table, string path, IDeleteVector deleteVector, Dictionary<string, string>? partitionValues, IMemoryAllocator memoryAllocator)
         {
             Debug.Assert(_physicalColumnNamesInBatch != null);
@@ -300,7 +425,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
 
             var batchReader = fileReader.GetRecordBatchReader(columns: columnsToSelect.ToArray());
-
 
             int globalIndex = 0;
             Apache.Arrow.RecordBatch batch;
