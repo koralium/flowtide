@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
             var sink = new ColumnElasticSearchSink(options, options.ExecutionMode, writeRelation, dataflowBlockOptions);
-            sink.CreateIndexAndMappings();
+            sink.CreateIndexAndMappings().ConfigureAwait(false).GetAwaiter().GetResult();
             return sink;
         }
     }

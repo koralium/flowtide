@@ -10,11 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Elasticsearch.Net;
+using Elastic.Clients.Elasticsearch;
+using Elastic.Clients.Elasticsearch.Mapping;
+using Elastic.Transport;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Connector.CosmosDB.Tests;
 using FlowtideDotNet.Connector.ElasticSearch.Exceptions;
-using Nest;
 
 namespace FlowtideDotNet.Connector.ElasticSearch.Tests
 {
@@ -26,8 +27,8 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
         {
             this.elasticSearchFixture = elasticSearchFixture;
 
-            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
-            elasticClient.Indices.Delete("testindex");
+            ElasticsearchClient elasticClient = new ElasticsearchClient(elasticSearchFixture.GetConnectionSettings());
+            elasticClient.Indices.DeleteAsync("testindex").Wait();
         }
 
         [Fact]
@@ -45,7 +46,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             FROM users
             ");
 
-            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
+            ElasticsearchClient elasticClient = new ElasticsearchClient(elasticSearchFixture.GetConnectionSettings());
 
             var lastUser = stream.Users.Last();
             bool success = false;
@@ -53,15 +54,15 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             do
             {
                 await stream.SchedulerTick();
-                stringResponse = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
-                success = stringResponse.ApiCall.HttpStatusCode == 200;
+                stringResponse = await elasticClient.Transport.GetAsync<StringResponse>("testindex/_doc/" + lastUser.UserKey.ToString());
+                success = stringResponse.ApiCallDetails.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
 
-            var resp = await elasticClient.SourceAsync<User>(lastUser.UserKey.ToString(), g => g.Index("testindex"));
+            var resp = await elasticClient.GetSourceAsync<User>(lastUser.UserKey.ToString(), g => g.Index("testindex"));
 
-            var mappingInfo = elasticClient.Indices.GetMapping<User>(b => b.Index("testindex"));
-            var birthDateField = mappingInfo.Indices["testindex"].Mappings.Properties["birthDate"];
+            var mappingInfo = await elasticClient.Indices.GetMappingAsync<User>(b => b.Indices("testindex"));
+            var birthDateField = mappingInfo.Indices["testindex"].Mappings.Properties!["birthDate"];
             Assert.Equal("date", birthDateField.Type);
             Assert.Equal(lastUser.BirthDate!.Value, resp.Body.BirthDate!.Value.ToUniversalTime(), TimeSpan.FromMilliseconds(1));
         }
@@ -81,15 +82,15 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             FROM users
             ");
 
-            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
+            ElasticsearchClient elasticClient = new ElasticsearchClient(elasticSearchFixture.GetConnectionSettings());
 
             var lastUser = stream.Users.Last();
             bool success = false;
             do
             {
                 await stream.SchedulerTick();
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
-                success = resp.ApiCall.HttpStatusCode == 200;
+                var resp = await elasticClient.Transport.GetAsync<StringResponse>("testindex/_doc/" + lastUser.UserKey.ToString());
+                success = resp.ApiCallDetails.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
 
@@ -101,8 +102,8 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             do
             {
                 await stream.SchedulerTick();
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
-                success = resp.ApiCall.HttpStatusCode == 200;
+                var resp = await elasticClient.Transport.GetAsync<StringResponse>("testindex/_doc/" + lastUser.UserKey.ToString());
+                success = resp.ApiCallDetails.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
 
@@ -112,8 +113,8 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             do
             {
                 await stream.SchedulerTick();
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
-                success = resp.ApiCall.HttpStatusCode == 404;
+                var resp = await elasticClient.Transport.GetAsync<StringResponse>("testindex/_doc/" + lastUser.UserKey.ToString());
+                success = resp.ApiCallDetails.HttpStatusCode == 404;
                 await Task.Delay(10);
             } while (!success);
         }
@@ -141,15 +142,15 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             FROM users
             ");
 
-            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
+            ElasticsearchClient elasticClient = new ElasticsearchClient(elasticSearchFixture.GetConnectionSettings());
 
             var lastUser = stream.Users.Last();
             bool success = false;
             do
             {
                 await stream.SchedulerTick();
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
-                success = resp.ApiCall.HttpStatusCode == 200;
+                var resp = await elasticClient.Transport.GetAsync<StringResponse>("testindex/_doc/" + lastUser.UserKey.ToString());
+                success = resp.ApiCallDetails.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
 
@@ -186,15 +187,15 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             FROM users
             ");
 
-            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
+            ElasticsearchClient elasticClient = new ElasticsearchClient(elasticSearchFixture.GetConnectionSettings());
 
             var lastUser = stream.Users.Last();
             bool success = false;
             do
             {
                 await stream.SchedulerTick();
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
-                success = resp.ApiCall.HttpStatusCode == 200;
+                var resp = await elasticClient.Transport.GetAsync<StringResponse>("testindex/_doc/" + lastUser.UserKey.ToString());
+                success = resp.ApiCallDetails.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
 
@@ -226,14 +227,14 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             FROM users
             ");
 
-            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
+            ElasticsearchClient elasticClient = new ElasticsearchClient(elasticSearchFixture.GetConnectionSettings());
 
             var lastUser = stream.Users.Last();
             bool success = false;
             do
             {
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
-                success = resp.ApiCall.HttpStatusCode == 200;
+                var resp = await elasticClient.Transport.GetAsync<StringResponse>("testindex/_doc/" + lastUser.UserKey.ToString());
+                success = resp.ApiCallDetails.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
 
@@ -242,8 +243,8 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
         [Fact]
         public async Task TestInsertWithCustomMappingIndexExistsWithNoMappings()
         {
-            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
-            elasticClient.Indices.Create("testindex");
+            ElasticsearchClient elasticClient = new ElasticsearchClient(elasticSearchFixture.GetConnectionSettings());
+            await elasticClient.Indices.CreateAsync("testindex");
             ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsertWithCustomMappingIndexExistsWithNoMappings", (properties) =>
             {
                 properties["FirstName"] = new KeywordProperty();
@@ -263,8 +264,8 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             bool success = false;
             do
             {
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
-                success = resp.ApiCall.HttpStatusCode == 200;
+                var resp = await elasticClient.Transport.GetAsync<StringResponse>("testindex/_doc/" + lastUser.UserKey.ToString());
+                success = resp.ApiCallDetails.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
         }
@@ -272,8 +273,12 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
         [Fact]
         public async Task TestInsertWithCustomMappingIndexExistsWithMappings()
         {
-            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
-            elasticClient.Indices.Create("testindex", c => c.Map(m => m.Properties(p => p.Keyword(k => k.Name("FirstName")))));
+            Properties props = new Properties
+            {
+                { "FirstName", new KeywordProperty() }
+            };
+            ElasticsearchClient elasticClient = new ElasticsearchClient(elasticSearchFixture.GetConnectionSettings());
+            await elasticClient.Indices.CreateAsync("testindex", c => c.Mappings(m => m.Properties(props)));
             ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsertWithCustomMappingIndexExistsWithMappings", (properties) =>
             {
                 properties["FirstName"] = new KeywordProperty();
@@ -293,8 +298,8 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             bool success = false;
             do
             {
-                var resp = await elasticClient.LowLevel.GetAsync<StringResponse>("testindex", lastUser.UserKey.ToString());
-                success = resp.ApiCall.HttpStatusCode == 200;
+                var resp = await elasticClient.Transport.GetAsync<StringResponse>("testindex/_doc/" + lastUser.UserKey.ToString());
+                success = resp.ApiCallDetails.HttpStatusCode == 200;
                 await Task.Delay(10);
             } while (!success);
 
@@ -303,9 +308,13 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
         [Fact]
         public async Task TestInsertWithCustomMappingIndexExistsWithMappingsCollision()
         {
-            ElasticClient elasticClient = new ElasticClient(elasticSearchFixture.GetConnectionSettings());
-            elasticClient.Indices.Delete("testindex");
-            elasticClient.Indices.Create("testindex", c => c.Map(m => m.Properties(p => p.Text(k => k.Name("FirstName")))));
+            ElasticsearchClient elasticClient = new ElasticsearchClient(elasticSearchFixture.GetConnectionSettings());
+            await elasticClient.Indices.DeleteAsync("testindex");
+            Properties props = new Properties
+            {
+                { "FirstName", new TextProperty() }
+            };
+            await elasticClient.Indices.CreateAsync("testindex", c => c.Mappings(m => m.Properties(props)));
             ElasticsearchTestStream stream = new ElasticsearchTestStream(elasticSearchFixture, "TestInsertWithCustomMappingIndexExistsWithMappingsCollision", (properties) =>
             {
                 properties["FirstName"] = new KeywordProperty();
