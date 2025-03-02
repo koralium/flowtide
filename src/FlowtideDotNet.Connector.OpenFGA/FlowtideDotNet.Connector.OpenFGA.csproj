@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenFga.Sdk" Version="0.3.1" />
+    <PackageReference Include="OpenFga.Sdk" Version="0.5.1" />
   </ItemGroup>
 
   <ItemGroup>
