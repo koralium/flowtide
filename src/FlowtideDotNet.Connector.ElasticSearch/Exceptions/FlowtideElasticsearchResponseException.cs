@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Nest;
+using Elastic.Transport.Products.Elasticsearch;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,21 +22,21 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Exceptions
 {
     public class FlowtideElasticsearchResponseException : Exception
     {
-        public FlowtideElasticsearchResponseException(IResponse response)
+        public FlowtideElasticsearchResponseException(ElasticsearchResponse response)
         {
             Response = response;
         }
 
-        public FlowtideElasticsearchResponseException(IResponse response, string? message) : base(message)
+        public FlowtideElasticsearchResponseException(ElasticsearchResponse response, string? message) : base(message)
         {
             Response = response;
         }
 
-        public FlowtideElasticsearchResponseException(IResponse response, string? message, Exception? innerException) : base(message, innerException)
+        public FlowtideElasticsearchResponseException(ElasticsearchResponse response, string? message, Exception? innerException) : base(message, innerException)
         {
             Response = response;
         }
 
-        public IResponse Response { get; }
+        public ElasticsearchResponse Response { get; }
     }
 }

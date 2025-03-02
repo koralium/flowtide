@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Amazon.Runtime.Internal.Util;
 using AspireSamples.DataMigration;
 using AspireSamples.Entities;
 using Microsoft.Extensions.DependencyInjection;

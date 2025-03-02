@@ -21,10 +21,13 @@ This field will not be added to the source fields.
 To use the *ElasticSearch Sink* add the following line to the *ConnectorManager*:
 
 ```csharp
-connectorManager.AddElasticsearchSink("*", elasticSearchConnectionSettings);
+connectorManager.AddElasticsearchSink("*", new FlowtideElasticsearchOptions()
+{
+    ConnectionSettings = () => new ElasticsearchClientSettings(new Uri(...))
+});
 ```
 
-The table name in the write relation becomes the index the sink writes to.
+The table name in the write relation becomes the index the sink writes to. The connection settings are a function to allow the usage of rolling passwords when connecting to elasticsearch.
 
 ### Example
 
@@ -37,7 +40,10 @@ sqlBuilder.Sql(@"
     FROM users
 ");
 
-connectorManager.AddElasticsearchSink("*", elasticSearchConnectionSettings);
+connectorManager.AddElasticsearchSink("*", new FlowtideElasticsearchOptions()
+{
+    ConnectionSettings = () => new ElasticsearchClientSettings(new Uri(...))
+});
 
 ...
 ```
@@ -50,9 +56,9 @@ This is possible by using the *GetIndexNameFunc* and *OnInitialDataSent* functio
 Example:
 
 ```csharp
-connectorManager.AddElasticsearchSink("*", new FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions()
+connectorManager.AddElasticsearchSink("*", new FlowtideElasticsearchOptions()
 {
-    ConnectionSettings = connectionSettings,
+    ConnectionSettings = () => connectionSettings,
     CustomMappings = (props) =>
     {
         // Add cusotm mappings
@@ -65,23 +71,25 @@ connectorManager.AddElasticsearchSink("*", new FlowtideDotNet.Connector.ElasticS
     },
     OnInitialDataSent = async (client, writeRelation, indexName) =>
     {
-        var aliasName = writeRelation.NamedObject.DotSeperated;
-        // Get indices that the alias already points to.
-        var oldIndices = await client.GetIndicesPointingToAliasAsync(aliasName);
-        // Add the index to the alias
-        var putAliasResponse = await client.Indices.PutAliasAsync(indexName, aliasName);
-        
-        if (putAliasResponse.IsValid)
+        var aliasName = writeRel.NamedObject.DotSeperated;
+        var getAliasResponse = await client.Indices.GetAliasAsync(new Elastic.Clients.Elasticsearch.IndexManagement.GetAliasRequest(name: aliasName));
+
+        var putAliasResponse = await client.Indices.PutAliasAsync(indexName, writeRel.NamedObject.DotSeperated);
+
+        var oldIndices = getAliasResponse.Aliases.Keys.ToList();
+        if (putAliasResponse.IsSuccess())
         {
-            // Remove all old indices that existed on the alias
             foreach (var oldIndex in oldIndices)
             {
-                await client.Indices.DeleteAsync(oldIndex);
+                if (oldIndex != indexName)
+                {
+                    await client.Indices.DeleteAsync(oldIndex);
+                }
             }
         }
         else
         {
-            throw new InvalidOperationException(putAliasResponse.ServerError.Error.StackTrace);
+            throw new InvalidOperationException(putAliasResponse.ElasticsearchServerError!.Error.StackTrace);
         }
     },
 });
