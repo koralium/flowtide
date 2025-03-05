@@ -83,6 +83,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     continue;
                 }
 
+                if (log.IsCompacted)
+                {
+                    continue;
+                }
+
                 if (log.IsJson)
                 {
                     // Read the json file
@@ -276,8 +281,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
                 var isJson = file.Name.EndsWith(".json");
                 var isCheckpoint = file.Name.EndsWith(".checkpoint.parquet");
+                var isCompacted = file.Name.Contains(".compacted.");
 
-                logs.Add(new LogTransactionFile(file.Name, isCheckpoint, isJson, version, file));
+                logs.Add(new LogTransactionFile(file.Name, isCheckpoint, isJson, version, file, isCompacted));
             }
 
             return logs;
