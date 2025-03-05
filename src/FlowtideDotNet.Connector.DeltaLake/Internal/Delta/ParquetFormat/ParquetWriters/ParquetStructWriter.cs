@@ -100,7 +100,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public IStatisticsComparer? GetStatisticsComparer()
         {
-            return new StructStatisticsComparer(propertyWriters.Select(x => new KeyValuePair<string, IStatisticsComparer>(x.Key, x.Value.GetStatisticsComparer())), _nullCount);
+            List<KeyValuePair<string, IStatisticsComparer>> statisticsComparers = new List<KeyValuePair<string, IStatisticsComparer>>();
+            foreach(var writer in propertyWriters)
+            {
+                var comparer = writer.Value.GetStatisticsComparer();
+                if (comparer != null)
+                {
+                    statisticsComparers.Add(new KeyValuePair<string, IStatisticsComparer>(writer.Key, comparer));
+                }
+            }
+            return new StructStatisticsComparer(statisticsComparers, _nullCount);
         }
 
         public void NewBatch()
