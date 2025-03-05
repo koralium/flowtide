@@ -94,9 +94,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
     /// All code taken from https://github.com/TylerBrinks/SqlParser-cs/blob/main/src/SqlParser/Parser.cs
     /// and modified only to remove the requirement of data type when creating a table.
     /// </summary>
-    internal class FlowtideDialect : MsSqlDialect
+    internal class FlowtideDialect : Dialect
     {
-        
+
+        public override bool SupportsConnectBy => true;
+
+
         private static bool TryParseSubstream(Parser parser)
         {
             var token = parser.PeekToken();
@@ -108,6 +111,32 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
             return false;
         }
+
+        public override bool IsDelimitedIdentifierStart(char character)
+        {
+            return character is Symbols.DoubleQuote or Symbols.SquareBracketOpen;
+        }
+
+        public override bool IsIdentifierStart(char character)
+        {
+            // See https://docs.microsoft.com/en-us/sql/relational-databases/databases/database-identifiers?view=sql-server-2017#rules-for-regular-identifiers
+            // We don't support non-latin "letters" currently.
+
+            return character.IsLetter() ||
+                   character is Symbols.Underscore
+                       or Symbols.Num
+                       or Symbols.At;
+        }
+
+        public override bool IsIdentifierPart(char character)
+        {
+            return character.IsAlphaNumeric() ||
+                   character is Symbols.At
+                       or Symbols.Dollar
+                       or Symbols.Num
+                       or Symbols.Underscore;
+        }
+
 
         public override Statement? ParseStatement(Parser parser)
         {
@@ -131,7 +160,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return base.ParseStatement(parser);
         }
 
-        public CreateTable ParseCreateTable(Parser parser, bool orReplace, bool temporary, bool? global, bool transient)
+        public Statement.CreateTable ParseCreateTable(Parser parser, bool orReplace, bool temporary, bool? global, bool transient)
         {
             var ifNotExists = parser.ParseIfNotExists();
             var tableName = parser.ParseObjectName();
@@ -172,7 +201,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                 if (token is Word w)
                 {
-                    return w.Value;
+                    var name = w.Value;
+
+                    var peeked = parser.PeekToken();
+                    var parameters = Parser.ParseInit(peeked is LeftParen,
+                        () =>
+                        {
+                            return parser.ExpectParens(() => parser.ParseCommaSeparated(parser.ParseIdentifier));
+                        });
+
+                    return new TableEngine(name, parameters);
                 }
 
                 throw Parser.Expected("identifier", token);
@@ -180,14 +218,20 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             var orderBy = Parser.ParseInit(parser.ParseKeywordSequence(Keyword.ORDER, Keyword.BY), () =>
             {
-                if (!parser.ConsumeToken<LeftParen>())
+                OneOrManyWithParens<Expression> orderExpression;
+                if (parser.ConsumeToken<LeftParen>())
                 {
-                    return new Sequence<Ident> { parser.ParseIdentifier() };
-                }
+                    var cols = Parser.ParseInit(parser.PeekToken() is not RightParen, () => parser.ParseCommaSeparated(parser.ParseExpr));
 
-                var cols = Parser.ParseInit(parser.PeekToken() is not RightParen, () => parser.ParseCommaSeparated(parser.ParseIdentifier));
-                parser.ExpectRightParen();
-                return cols;
+                    parser.ExpectRightParen();
+                    orderExpression = new OneOrManyWithParens<Expression>.Many(cols!);
+                }
+                else
+                {
+                    orderExpression = new OneOrManyWithParens<Expression>.One(parser.ParseExpr());
+                }   
+
+                return orderExpression;
 
             });
 
@@ -235,7 +279,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 onCommit = OnCommit.Drop;
             }
 
-            return new CreateTable(tableName, columns)
+            return new Statement.CreateTable(new SqlParser.Ast.CreateTable(tableName, columns)
             {
                 Temporary = temporary,
                 Constraints = constraints.Any() ? constraints : null,
@@ -256,8 +300,20 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 DefaultCharset = defaultCharset,
                 Collation = collation,
                 OnCommit = onCommit,
-                OnCluster = onCluster
-            };
+                OnCluster = onCluster!
+            });
+        }
+
+        bool ParseAnyOptionalTableConstraints(Parser parser, Action<TableConstraint> action)
+        {
+            bool any = false;
+            while (true)
+            {
+                var constraint = parser.ParseOptionalTableConstraint(any, false);
+                if (constraint == null) return any;
+                action(constraint);
+                any = true;
+            }
         }
 
         public (Sequence<ColumnDef>, Sequence<TableConstraint>) ParseColumns(Parser parser)
@@ -272,12 +328,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             while (true)
             {
-                var constraint = parser.ParseOptionalTableConstraint();
-                if (constraint != null)
+                if (ParseAnyOptionalTableConstraints(parser, constraint => constraints.Add(constraint)))
                 {
-                    constraints.Add(constraint);
+                    // work has been done already
                 }
-                else if (parser.PeekToken() is Word)
+                else if (parser.PeekToken() is Word || parser.PeekToken() is SingleQuotedString)
                 {
                     columns.Add(ParseColumnDef(parser));
                 }
@@ -288,15 +343,18 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                 var commaFound = parser.ConsumeToken<Comma>();
 
-                if (parser.ConsumeToken<RightParen>())
-                {
-                    // allow a trailing comma, even though it's not in standard
-                    break;
-                }
+                var peeked = parser.PeekToken();
+                var rightParen = parser.PeekToken() is RightParen;
 
-                if (!commaFound)
+                if (!commaFound && !rightParen)
                 {
                     Parser.ThrowExpected("',' or ')' after column definition", parser.PeekToken());
+                }
+                
+                if (rightParen && (!commaFound || this.SupportsTrailingCommas))
+                {
+                    parser.ConsumeToken<RightParen>();
+                    break;
                 }
             }
 
@@ -420,14 +478,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     parser.ExpectToken<LessThan>();
                     DataType dataType = ParseDataType(parser);
                     parser.ExpectToken<GreaterThan>();
-                    return new DataType.Array(dataType);
+                    return new DataType.Array(new ArrayElementTypeDef.AngleBracket(dataType));
                 }
                 if (word.Value.Equals("ARRAY", StringComparison.OrdinalIgnoreCase))
                 {
                     parser.ExpectToken<LessThan>();
                     DataType dataType = ParseDataType(parser);
                     parser.ExpectToken<GreaterThan>();
-                    return new DataType.Array(dataType);
+                    return new DataType.Array(new ArrayElementTypeDef.AngleBracket(dataType));
                 }
                 if (word.Value.Equals("MAP", StringComparison.OrdinalIgnoreCase))
                 {

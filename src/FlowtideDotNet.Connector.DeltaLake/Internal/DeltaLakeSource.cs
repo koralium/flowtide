@@ -379,7 +379,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
                 else
                 {
-                    await LoadFileData(commitInfo, output);
+                        await LoadFileData(commitInfo, output);
                 }
             } while (true);
         }

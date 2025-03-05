@@ -422,7 +422,7 @@ namespace FlowtideDotNet.Substrait.Sql
             }
             if (literalValue.Value is Value.HexStringLiteral hexStringLiteral)
             {
-                var hexBytes = Convert.FromHexString(hexStringLiteral.Value);
+                var hexBytes = System.Convert.FromHexString(hexStringLiteral.Value);
                 return new ExpressionData(new BinaryLiteral()
                 {
                     Value = hexBytes
@@ -749,7 +749,7 @@ namespace FlowtideDotNet.Substrait.Sql
             Expressions.Expression escapeChar = new NullLiteral();
             if (like.EscapeChar != null)
             {
-                escapeChar = new StringLiteral() { Value = like.EscapeChar.Value.ToString() };
+                escapeChar = new StringLiteral() { Value = like.EscapeChar };
             }
             
             var likeFunction = new ScalarFunction()

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Exceptions;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Sql.Internal.TableFunctions;
@@ -21,15 +22,35 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 {
     internal static class BuiltInSqlFunctions
     {
+        internal static FunctionArgumentList GetFunctionArguments(FunctionArguments arguments)
+        {
+            if (arguments is FunctionArguments.List listArguments)
+            {
+                return listArguments.ArgumentList;
+            }
+            if (arguments is FunctionArguments.None noneArguments)
+            {
+                return new FunctionArgumentList(new SqlParser.Sequence<FunctionArg>());
+            }
+            if (arguments is FunctionArguments.Subquery subQueryArgument)
+            {
+                throw new SubstraitParseException("Subquery is not supported as an argument");
+            }
+            else
+            {
+                throw new SubstraitParseException("Unknown function argument type");
+            }
+        }
         public static void AddBuiltInFunctions(SqlFunctionRegister sqlFunctionRegister)
         {
             sqlFunctionRegister.RegisterScalarFunction("ceiling", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("ceiling must have exactly one argument");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
                     return new ScalarResponse(
@@ -49,11 +70,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             });
             sqlFunctionRegister.RegisterScalarFunction("round", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("round must have exactly one argument");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
                     return new ScalarResponse(
@@ -85,11 +107,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("is_infinite", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("is_infinite must have exactly one argument");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
                     return new ScalarResponse(
@@ -110,11 +133,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("is_finite", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("is_finite must have exactly one argument");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
                     return new ScalarResponse(
@@ -135,11 +159,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("is_nan", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("is_nan must have exactly one argument");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
                     return new ScalarResponse(
@@ -160,13 +185,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("nullif", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 2)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 2)
                 {
                     throw new InvalidOperationException("nullif must have exactly two arguments");
                 }
                 SubstraitBaseType returnType = new AnyType();
                 var arguments = new List<Expressions.Expression>();
-                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
                     arguments.Add(expr.Expr);
@@ -177,7 +203,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new NotImplementedException("nullif does not support the input parameter");
                 }
-                if (f.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
+                if (argList.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
                 {
                     var expr = visitor.Visit(funcExpr2.Expression, emitData);
                     arguments.Add(expr.Expr);
@@ -200,11 +226,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("lower", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("lower must have exactly one argument");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
 
@@ -226,11 +253,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("upper", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("upper must have exactly one argument");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
 
@@ -252,11 +280,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("ltrim", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("ltrim must have exactly one argument");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
                     return new ScalarResponse(
@@ -277,11 +306,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("rtrim", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("rtrim must have exactly one argument");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
 
@@ -303,11 +333,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("to_string", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("to_string must have exactly one argument");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
 
@@ -329,11 +360,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("guid", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("guid must have exactly one argument");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
 
@@ -355,12 +387,13 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("strftime", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 2)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 2)
                 {
                     throw new InvalidOperationException("strftime must have exactly two arguments");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr1 &&
-                f.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
+                if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr1 &&
+                argList.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
                 {
                     var expr1 = visitor.Visit(funcExpr1.Expression, emitData);
                     var expr2 = visitor.Visit(funcExpr2.Expression, emitData);
@@ -396,7 +429,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("map", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count % 2 != 0)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count % 2 != 0)
                 {
                     throw new InvalidOperationException("Map must have an even number of arguments, one for key and one for value.");
                 }
@@ -406,10 +440,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 };
                 SubstraitBaseType? keyType = new AnyType();
                 SubstraitBaseType? valueType = new AnyType();
-                for (int i = 0; i < f.Args.Count; i += 2)
+                for (int i = 0; i < argList.Args.Count; i += 2)
                 {
-                    var keyArg = f.Args[i];
-                    var valArg = f.Args[i + 1];
+                    var keyArg = argList.Args[i];
+                    var valArg = argList.Args[i + 1];
                     if (keyArg is FunctionArg.Unnamed keyunnamed && keyunnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression keyFuncExprUnnamed)
                     {
                         var keyExpr = visitor.Visit(keyFuncExprUnnamed.Expression, emitData);
@@ -437,7 +471,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterScalarFunction("list", (f, visitor, emitData) =>
             {
-                if (f.Args == null)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null)
                 {
                     throw new InvalidOperationException("List must have an argument list.");
                 }
@@ -446,9 +481,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     Values = new List<Expressions.Expression>()
                 };
-                for (int i = 0; i < f.Args.Count; i += 1)
+                for (int i = 0; i < argList.Args.Count; i += 1)
                 {
-                    var arg = f.Args[i];
+                    var arg = argList.Args[i];
                     if (arg is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExprUnnamed)
                     {
                         var expr = visitor.Visit(funcExprUnnamed.Expression, emitData);
@@ -479,11 +514,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterAggregateFunction("count", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("count must have exactly one argument, and be '*'");
                 }
-                if (!(f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                if (!(argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("count must have exactly one argument, and be '*'");
                 }
@@ -500,15 +536,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterAggregateFunction("sum", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("sum must have exactly one argument, and not be '*'");
                 }
-                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("sum must have exactly one argument, and not be '*'");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData);
 
@@ -545,15 +582,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterAggregateFunction("sum0", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("sum0 must have exactly one argument, and not be '*'");
                 }
-                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("sum0 must have exactly one argument, and not be '*'");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData);
 
@@ -593,15 +631,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterAggregateFunction("list_agg", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("list_agg must have exactly one argument, and not be '*'");
                 }
-                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("list_agg must have exactly one argument, and not be '*'");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData);
 
@@ -620,20 +659,21 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             sqlFunctionRegister.RegisterAggregateFunction("string_agg", (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 2)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 2)
                 {
                     throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
                 }
-                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
                 }
-                if ((f.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                if ((argList.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
-                f.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
+                argList.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
                 {
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
                     var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData).Expr;
@@ -696,15 +736,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             sqlFunctionRegister.RegisterAggregateFunction(functionName, (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
                 }
-                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
 
@@ -730,15 +771,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             sqlFunctionRegister.RegisterScalarFunction(functionName, (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 1)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
                 }
-                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
 
@@ -765,20 +807,21 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             sqlFunctionRegister.RegisterScalarFunction(functionName, (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 2)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 2)
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
                 }
-                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
                 }
-                if ((f.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                if ((argList.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
-                f.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
+                argList.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
                 {
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
                     var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData).Expr;
@@ -806,25 +849,26 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             sqlFunctionRegister.RegisterScalarFunction(functionName, (f, visitor, emitData) =>
             {
-                if (f.Args == null || f.Args.Count != 3)
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 3)
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly three arguments, and not be '*'");
                 }
-                if ((f.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly three arguments, and not be '*'");
                 }
-                if ((f.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                if ((argList.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly three arguments, and not be '*'");
                 }
-                if ((f.Args[2] is FunctionArg.Unnamed unnamed3 && unnamed3.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                if ((argList.Args[2] is FunctionArg.Unnamed unnamed3 && unnamed3.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly three arguments, and not be '*'");
                 }
-                if (f.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
-                f.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2 &&
-                f.Args[2] is FunctionArg.Unnamed arg3 && arg3.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr3)
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
+                argList.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2 &&
+                argList.Args[2] is FunctionArg.Unnamed arg3 && arg3.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr3)
                 {
                     var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
                     var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData).Expr;
@@ -857,10 +901,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             SubstraitBaseType? returnType = default;
 
             {
-                Debug.Assert(function.Args != null);
-                for (int i = 0; i < function.Args.Count; i++)
+                var argList = GetFunctionArguments(function.Args);
+                Debug.Assert(argList.Args != null);
+                for (int i = 0; i < argList.Args.Count; i++)
                 {
-                    var arg = function.Args[i];
+                    var arg = argList.Args[i];
                     if (arg is FunctionArg.Unnamed unnamed)
                     {
                         if (unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
@@ -910,10 +955,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             SubstraitBaseType? returnType = default;
 
             {
-                Debug.Assert(function.Args != null);
-                for (int i = 0; i < function.Args.Count; i++)
+                var argList = GetFunctionArguments(function.Args);
+                Debug.Assert(argList.Args != null);
+                for (int i = 0; i < argList.Args.Count; i++)
                 {
-                    var arg = function.Args[i];
+                    var arg = argList.Args[i];
                     if (arg is FunctionArg.Unnamed unnamed)
                     {
                         if (unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
