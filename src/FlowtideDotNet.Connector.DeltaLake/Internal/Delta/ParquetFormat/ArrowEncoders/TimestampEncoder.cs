@@ -30,7 +30,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
 
         public void AddValue(int index, ref AddToColumnFunc func)
         {
-            Debug.Assert(_array != null);
+            if (_array == null)
+            {
+                func.AddValue(NullValue.Instance);
+                return;
+            }
 
             var val = _array.GetTimestamp(index);
             if (!val.HasValue)
@@ -57,6 +61,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
 
         public void NewFile(Dictionary<string, string>? partitionValues)
         {
+        }
+
+        public void NewNullBatch()
+        {
+            _array = default;
         }
     }
 }

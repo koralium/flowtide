@@ -66,5 +66,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowP
             byte[] byteArray = Encoding.Unicode.GetBytes(value);
             _value = new BinaryValue(byteArray);
         }
+
+        public void NewNullBatch()
+        {
+        }
     }
 }

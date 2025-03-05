@@ -379,7 +379,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
                 else
                 {
-                    await LoadFileData(commitInfo, output);
+                        await LoadFileData(commitInfo, output);
                 }
             } while (true);
         }
@@ -422,15 +422,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 maxVersion = 0;
             }
 
+            // Always fetch latest table to get all the latest column names
+            var latestTable = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tableLoc);
             _table = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tableLoc, maxVersion);
 
-            if (_table == null)
+            if (_table == null || latestTable == null)
             {
                 throw new InvalidOperationException($"Delta Lake Table {_tableName} does not exist");
             }
 
             var reader = new ParquetSharpReader();
-            reader.Initialize(_table, _readRelation.BaseSchema.Names);
+            reader.Initialize(latestTable, _readRelation.BaseSchema.Names);
             _reader = reader;
 
             _changesTree = await stateManagerClient.GetOrCreateTree("changes", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>() 
