@@ -58,8 +58,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         private static SubstraitBaseType HandleArray(DataType.Array array)
         {
-            var elementType = GetType(array.DataType);
-            return new ListType(elementType);
+            if (array.DataType is ArrayElementTypeDef.AngleBracket angleBracketType)
+            {
+                var elementType = GetType(angleBracketType.DataType);
+                return new ListType(elementType);
+            }
+            else
+            {
+                throw new SubstraitParseException("Unknown array type");
+            }
         }
 
         private static SubstraitBaseType HandleStruct(StructSqlDataType structType)

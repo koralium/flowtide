@@ -18,7 +18,6 @@ using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using ParquetSharp.Arrow;
-using SqlParser.Ast;
 using Stowage;
 using System;
 using System.Collections.Generic;
