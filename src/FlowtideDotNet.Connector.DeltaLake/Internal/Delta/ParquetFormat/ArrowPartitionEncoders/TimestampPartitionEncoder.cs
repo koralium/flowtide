@@ -69,5 +69,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowP
 
             _value = new TimestampTzValue(dateValue);
         }
+
+        public void NewNullBatch()
+        {
+        }
     }
 }
