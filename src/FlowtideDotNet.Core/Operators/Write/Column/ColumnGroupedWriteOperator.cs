@@ -156,12 +156,14 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(m_hasSentInitialData != null);
+            Debug.Assert(m_tree != null);
             if (m_executionMode == ExecutionMode.OnCheckpoint || (m_executionMode == ExecutionMode.Hybrid && !m_hasSentInitialData.Value))
             {
                 await SendData();
             }
             Checkpoint(checkpointTime);
             await m_hasSentInitialData.Commit();
+            await m_tree.Commit();
         }
 
         protected abstract void Checkpoint(long checkpointTime);
