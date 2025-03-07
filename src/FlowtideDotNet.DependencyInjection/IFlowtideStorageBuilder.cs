@@ -30,6 +30,11 @@ namespace FlowtideDotNet.DependencyInjection
         /// </summary>
         long? MaxProcessMemory { get; set; }
 
+        /// <summary>
+        /// Only in use if MaxProcessMemory is not set.
+        /// </summary>
+        int? MaxPageCount { get; set; }
+
         int MinPageCount { get; set; }
 
         IFlowtideStorageBuilder SetPersistentStorage(IPersistentStorage persistentStorage);
