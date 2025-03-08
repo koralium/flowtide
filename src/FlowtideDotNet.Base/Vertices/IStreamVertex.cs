@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Base.Vertices
 
         string DisplayName { get; }
 
-        Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler);
+        Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler);
 
         void CreateBlock();
 
@@ -45,5 +45,9 @@ namespace FlowtideDotNet.Base.Vertices
         Task DeleteAsync();
 
         IEnumerable<ITargetBlock<IStreamEvent>> GetLinks();
+
+        void Pause();
+
+        void Resume();
     }
 }

@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
         }
     }
 
-    internal class TestIngress : ReadBaseOperator<object>
+    internal class TestIngress : ReadBaseOperator
     {
         public TestIngress(DataflowBlockOptions options) : base(options)
         {
@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
             return Task.FromResult<IReadOnlySet<string>>(watermarks);
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }

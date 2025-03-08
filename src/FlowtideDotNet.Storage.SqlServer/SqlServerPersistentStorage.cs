@@ -196,15 +196,21 @@ namespace FlowtideDotNet.Storage.SqlServer
             _stream.Reset();
         }
 
-        public bool TryGetValue(long key, [NotNullWhen(true)] out byte[]? value)
+        public bool TryGetValue(long key, [NotNullWhen(true)] out ReadOnlyMemory<byte>? value)
         {
 #if DEBUG_WRITE
             _debugWriter!.WriteCall([key]);
 #endif
 
             Debug.Assert(_storageRepository != null, "Stream repository should be initialized");
-            value = _storageRepository.Read(key);
-            return value != null;
+            var bytes = _storageRepository.Read(key);
+            if (bytes != null)
+            {
+                value = bytes;
+                return true;
+            }
+            value = null;
+            return false;
         }
 
         public ValueTask Write(long key, byte[] value)

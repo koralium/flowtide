@@ -1,4 +1,16 @@
-﻿using FlowtideDotNet.Base;
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Operators.Write.Column;
@@ -11,11 +23,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.MongoDB.Internal
 {
-    internal class MongoDbSinkState : ColumnWriteState
-    {
-
-    }
-    class MongoDBSink : ColumnGroupedWriteOperator<MongoDbSinkState>
+    class MongoDBSink : ColumnGroupedWriteOperator
     {
         private readonly FlowtideMongoDBSinkOptions m_options;
         private readonly ColumnsToBsonDoc m_serializer;
@@ -46,9 +54,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         public override string DisplayName => "MongoDB Sink";
 
-        protected override MongoDbSinkState Checkpoint(long checkpointTime)
+        protected override void Checkpoint(long checkpointTime)
         {
-            return new MongoDbSinkState();
         }
 
         protected override Task OnInitialDataSent()
@@ -64,9 +71,9 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             }
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, MongoDbSinkState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            await base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+            await base.InitializeOrRestore(restoreTime, stateManagerClient);
             var urlBuilder = new MongoUrlBuilder(m_options.ConnectionString);
             var connection = urlBuilder.ToMongoUrl();
             var client = new MongoClient(connection);
@@ -126,7 +133,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             }
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken)
+        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
         {
             Debug.Assert(collection != null);
             Debug.Assert(_eventsCounter != null);

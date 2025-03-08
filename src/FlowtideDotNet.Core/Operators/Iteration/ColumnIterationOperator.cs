@@ -30,12 +30,8 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Iteration
 {
-    internal class IterationState
-    {
 
-    }
-
-    internal class ColumnIterationOperator : FixedPointVertex<StreamEventBatch, IterationState>
+    internal class ColumnIterationOperator : FixedPointVertex<StreamEventBatch>
     {
         private readonly IterationRelation _iterationRelation;
         private ICounter<long>? _eventsProcessed;
@@ -59,7 +55,7 @@ namespace FlowtideDotNet.Core.Operators.Iteration
             return visitor.ReadExists;
         }
 
-        protected override Task InitializeOrRestore(IterationState? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             if (_eventsProcessed == null)
             {

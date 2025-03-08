@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Substrait.Exceptions;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Type;
 using SqlParser.Ast;
@@ -55,18 +56,39 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(Users.Select(x => new { v = "staticvalue" }));
         }
 
+        internal static FunctionArgumentList GetFunctionArguments(FunctionArguments arguments)
+        {
+            if (arguments is FunctionArguments.List listArguments)
+            {
+                return listArguments.ArgumentList;
+            }
+            if (arguments is FunctionArguments.None noneArguments)
+            {
+                return new FunctionArgumentList(new SqlParser.Sequence<FunctionArg>());
+            }
+            if (arguments is FunctionArguments.Subquery subQueryArgument)
+            {
+                throw new SubstraitParseException("Subquery is not supported as an argument");
+            }
+            else
+            {
+                throw new SubstraitParseException("Unknown function argument type");
+            }
+        }
+
         [Fact]
         public async Task CustomOneParameterWithExpression()
         {
             SqlFunctionRegister.RegisterScalarFunction("addnumbers",
                 (func, visitor, emitData) =>
                 {
-                    if (func.Args?.Count != 1)
+                    var argList = GetFunctionArguments(func.Args);
+                    if (argList.Args?.Count != 1)
                     {
                         throw new ArgumentException("Addnumbers must have 1 parameter");
                     }
                     List<Substrait.Expressions.Expression> args = new List<Substrait.Expressions.Expression>();
-                    if (func.Args[0] is FunctionArg.Unnamed unnamedArg)
+                    if (argList.Args[0] is FunctionArg.Unnamed unnamedArg)
                     {
                         if (unnamedArg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                         {

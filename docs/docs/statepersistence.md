@@ -196,24 +196,18 @@ A data page is fetched using the following logic:
 ## Compression
 
 It is possible to compress pages in the state.
-This is done by providing two functions to state serialize options, a compress function and a decompress function.
+The option that exist today is to compress pages with Zstd. Most storage backends add zstd compression by default to save on network throughput and storage size.
 
-Example using ZLib compression:
+To set compression, it is set under add storage:
 
 ```csharp
-builder.WithStateOptions(() => new StateManagerOptions()
-{
+builder.AddStorage(b => {
     ...
-    SerializeOptions = new StateSerializeOptions()
-    {
-        CompressFunc = (stream) =>
-        {
-            return new System.IO.Compression.ZLibStream(stream, CompressionMode.Compress);
-        },
-        DecompressFunc = (stream) =>
-        {
-            return new System.IO.Compression.ZLibStream(stream, CompressionMode.Decompress);
-        }
-    }
-})
+    
+    // Use zstd page compression
+    b.ZstdPageCompression();
+    
+    // Use no compression even if the storage medium added compression
+    b.NoCompression();
+});
 ```

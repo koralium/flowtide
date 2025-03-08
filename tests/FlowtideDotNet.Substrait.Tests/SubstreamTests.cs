@@ -457,7 +457,7 @@ namespace FlowtideDotNet.Substrait.Tests
             SUBSTREAM stream1;
 
             -- Create an exchange relation here that will be broadcasted
-            CREATE VIEW test WITH (DISTRIBUTED = true, SCATTER_BY = 'val', PARTITION_COUNT = 2) AS
+            CREATE VIEW test WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 2) AS
             SELECT val FROM table1;
 
             INSERT INTO output
@@ -649,7 +649,7 @@ namespace FlowtideDotNet.Substrait.Tests
                 SUBSTREAM stream1;
 
                 -- Create an exchange relation here that will be broadcasted
-                CREATE VIEW test WITH (DISTRIBUTED = true, SCATTER_BY = 'val') AS
+                CREATE VIEW test WITH (DISTRIBUTED = true, SCATTER_BY = val) AS
                 SELECT val FROM table1;
 
                 INSERT INTO output
@@ -677,7 +677,7 @@ namespace FlowtideDotNet.Substrait.Tests
                 SUBSTREAM stream1;
 
                 -- Create an exchange relation here that will be broadcasted
-                CREATE VIEW test WITH (SCATTER_BY = 'val') AS
+                CREATE VIEW test WITH (SCATTER_BY = val) AS
                 SELECT val FROM table1;
 
                 INSERT INTO output
@@ -697,12 +697,12 @@ namespace FlowtideDotNet.Substrait.Tests
 
             SUBSTREAM stream1;
 
-            CREATE VIEW read_table_1_stream1 WITH (DISTRIBUTED = true, SCATTER_BY = 'val', PARTITION_COUNT = 2) AS
+            CREATE VIEW read_table_1_stream1 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 2) AS
             SELECT val FROM table1;
 
             SUBSTREAM stream2;
 
-            CREATE VIEW read_table_2_stream2 WITH (DISTRIBUTED = true, SCATTER_BY = 'val', PARTITION_COUNT = 2) AS
+            CREATE VIEW read_table_2_stream2 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 2) AS
             SELECT val FROM table2;
 
             SUBSTREAM stream1;

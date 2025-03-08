@@ -42,7 +42,7 @@ using static Substrait.Protobuf.AggregateRel.Types;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 {
-    internal class ColumnAggregateOperator : UnaryVertex<StreamEventBatch, AggregateOperatorState>
+    internal class ColumnAggregateOperator : UnaryVertex<StreamEventBatch>
     {
         private readonly AggregateRelation m_aggregateRelation;
         private readonly FunctionsRegister m_functionsRegister;
@@ -139,7 +139,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             return Task.CompletedTask;
         }
 
-        public override async Task<AggregateOperatorState> OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
             Debug.Assert(_tree != null);
             Debug.Assert(m_groupValues != null);
@@ -171,8 +171,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             // Reset iterator
             _treeIterator!.Dispose();
             _treeIterator = _tree.CreateIterator();
-
-            return new AggregateOperatorState();
         }
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
@@ -194,7 +192,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             PrimitiveList<int> outputWeights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> outputIterations = new PrimitiveList<uint>(MemoryAllocator);
 
-            var outputColumnCount = m_outputCount; //(groupExpressions?.Count ?? 0) + m_measures.Count;
+            var outputColumnCount = m_outputCount;
             ColumnStore.Column[] outputColumns = new ColumnStore.Column[outputColumnCount];
 
             for (int i = 0; i < outputColumnCount; i++)
@@ -624,7 +622,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             yield break;
         }
 
-        protected override async Task InitializeOrRestore(AggregateOperatorState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))

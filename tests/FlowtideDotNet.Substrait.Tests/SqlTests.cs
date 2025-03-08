@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Substrait.Tests
                 );
             ");
 
-            var exists = builder._tablesMetadata.TryGetTable("testtable", out var table);
+            var exists = builder._tablesMetadata.TryGetTable(new List<string>() { "testtable" }, out var table);
             Assert.True(exists);
 
             var expected = new TableMetadata("testtable", new NamedStruct()
@@ -1013,9 +1013,10 @@ namespace FlowtideDotNet.Substrait.Tests
 
         private sealed class TestTableProvider : ITableProvider
         {
-            public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+            public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
             {
-                if (tableName.Equals("testtable", StringComparison.OrdinalIgnoreCase))
+                var fullName = string.Join(".", tableName);
+                if (fullName.Equals("testtable", StringComparison.OrdinalIgnoreCase))
                 {
                     tableMetadata = new TableMetadata("testtable", new NamedStruct()
                     {

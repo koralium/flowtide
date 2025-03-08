@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         }
     }
 
-    internal class BenchmarkWriteOperator : WriteBaseOperator<object>
+    internal class BenchmarkWriteOperator : WriteBaseOperator
     {
         private readonly Action onCheckpoint;
 
@@ -62,15 +62,15 @@ namespace FlowtideDotNet.Benchmarks.Stream
             return Task.CompletedTask;
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }
 
-        protected override Task<object> OnCheckpoint(long checkpointTime)
+        protected override Task OnCheckpoint(long checkpointTime)
         {
             onCheckpoint();
-            return Task.FromResult(new object());
+            return Task.CompletedTask;
         }
 
         protected override Task OnRecieve(StreamEventBatch msg, long time)

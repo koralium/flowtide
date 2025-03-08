@@ -221,7 +221,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
         {
-            writer.WriteStringValue(_values.Get(index).ToDateTimeOffset());
+            var dt = _values.Get(index).ToDateTimeOffset();
+            writer.WriteStringValue(dt);
         }
 
         protected virtual void Dispose(bool disposing)

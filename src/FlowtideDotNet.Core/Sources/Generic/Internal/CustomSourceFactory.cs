@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
+using FlowtideDotNet.Substrait.Type;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -46,9 +47,23 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             return new GenericTableProvider<T>(tableName);
         }
 
+        public override Relation ModifyPlan(ReadRelation readRelation)
+        {
+            var keyIndex = readRelation.BaseSchema.Names.IndexOf("__key");
+            if (keyIndex < 0)
+            {
+                readRelation.BaseSchema.Names.Add("__key");
+                if (readRelation.BaseSchema.Struct != null)
+                {
+                    readRelation.BaseSchema.Struct.Types.Add(new StringType());
+                }
+            }
+            return base.ModifyPlan(readRelation);
+        }
+
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            return new GenericReadOperator<T>(readRelation, dataSourceFunc(readRelation), functionsRegister, dataflowBlockOptions);
+            return new GenericReadOperator<T>(dataSourceFunc(readRelation), readRelation, functionsRegister, dataflowBlockOptions);
         }
     }
 }

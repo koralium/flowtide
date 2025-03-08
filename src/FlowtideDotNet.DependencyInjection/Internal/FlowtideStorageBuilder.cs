@@ -28,7 +28,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             this.services = services;
         }
 
-        public IFlowtideStorageBuilder SetCompressionFunction(StateSerializeOptions serializeOptions)
+        public IFlowtideStorageBuilder SetCompression(StateSerializeOptions serializeOptions)
         {
             services.AddKeyedSingleton(name, serializeOptions);
             return this;
@@ -57,13 +57,15 @@ namespace FlowtideDotNet.DependencyInjection.Internal
 
         public string Name => name;
 
+        public int? MaxPageCount { get; set; }
+
         internal StateManagerOptions Build(IServiceProvider serviceProvider)
         {
             var persistentStorage = serviceProvider.GetKeyedService<IPersistentStorage>(name);
             var serializeOptions = serviceProvider.GetKeyedService<StateSerializeOptions>(name);
             var fileCacheOptions = serviceProvider.GetKeyedService<FileCacheOptions>(name);
 
-            if (MaxProcessMemory == null)
+            if (MaxProcessMemory == null && MaxPageCount == null)
             {
                 var memoryInfo = GC.GetGCMemoryInfo();
                 MaxProcessMemory = (long)(memoryInfo.TotalAvailableMemoryBytes * 0.8);
@@ -80,9 +82,10 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 SerializeOptions = serializeOptions,
                 UseReadCache = UseReadCache,
                 TemporaryStorageOptions = fileCacheOptions,
-                MaxProcessMemory = MaxProcessMemory.Value,
+                MaxProcessMemory = MaxProcessMemory ?? -1,
                 MinCachePageCount = MinPageCount,
-                CachePageCount = 1000
+                
+                CachePageCount = MaxPageCount ?? 1000
             };
         }
 

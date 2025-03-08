@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Core.Engine
                 transform?.Invoke(writeRel);
 
                 var sink = new ColumnElasticSearchSink(options, options.ExecutionMode, writeRel, opt);
-                sink.CreateIndexAndMappings();
+                sink.CreateIndexAndMappings().GetAwaiter().GetResult();
                 return sink;
             });
             return factory;

@@ -339,13 +339,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var stringColumn = (Apache.Arrow.StringArray)arr.Fields[1];
             var nullColumn = (Apache.Arrow.NullArray)arr.Fields[0];
-            var intColumn = (Apache.Arrow.Int64Array)arr.Fields[2];
+            var intColumn = (Apache.Arrow.Int8Array)arr.Fields[2];
 
             Assert.Equal("1", stringColumn.GetString(arr.ValueOffsets[0]));
             Assert.True(nullColumn.IsNull(arr.ValueOffsets[1]));
-            Assert.Equal(1, intColumn.GetValue(arr.ValueOffsets[2]));
+            Assert.Equal(1, (long)intColumn.GetValue(arr.ValueOffsets[2])!);
             Assert.Equal("2", stringColumn.GetString(arr.ValueOffsets[3]));
-            Assert.Equal(2, intColumn.GetValue(arr.ValueOffsets[4]));
+            Assert.Equal(2, (long)intColumn.GetValue(arr.ValueOffsets[4])!);
         }
 
         [Fact]
@@ -447,9 +447,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("value", firstMapKeys.GetString(1));
 
             var firstMapStringColumn = (Apache.Arrow.StringArray)firstMapValues.Fields[2];
-            var firstMapIntColumn = (Apache.Arrow.Int64Array)firstMapValues.Fields[1];
+            var firstMapIntColumn = (Apache.Arrow.Int8Array)firstMapValues.Fields[1];
 
-            Assert.Equal(1, firstMapIntColumn.GetValue(firstMapValues.ValueOffsets[0]));
+            Assert.Equal(1, (long)firstMapIntColumn.GetValue(firstMapValues.ValueOffsets[0])!);
             Assert.Equal("hello1", firstMapStringColumn.GetString(firstMapValues.ValueOffsets[1]));
 
             var secondMapKeys = (Apache.Arrow.StringArray)secondMap.Fields[0];
@@ -458,9 +458,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("value", secondMapKeys.GetString(1));
 
             var secondMapStringColumn = (Apache.Arrow.StringArray)secondMapValues.Fields[2];
-            var secondMapIntColumn = (Apache.Arrow.Int64Array)secondMapValues.Fields[1];
+            var secondMapIntColumn = (Apache.Arrow.Int8Array)secondMapValues.Fields[1];
 
-            Assert.Equal(2, secondMapIntColumn.GetValue(secondMapValues.ValueOffsets[0]));
+            Assert.Equal(2, (long)secondMapIntColumn.GetValue(secondMapValues.ValueOffsets[0])!);
             Assert.Equal("hello2", secondMapStringColumn.GetString(secondMapValues.ValueOffsets[1]));
         }
 

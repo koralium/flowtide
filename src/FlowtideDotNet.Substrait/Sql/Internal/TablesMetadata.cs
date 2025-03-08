@@ -60,19 +60,20 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             };
         }
 
-        public bool TryGetTable(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        public bool TryGetTable(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
-            if (_tables.TryGetValue(tableName, out var tableMetadataInfo))
+            string fullName = string.Join(".", tableName);
+            if (_tables.TryGetValue(fullName, out var tableMetadataInfo))
             {
-                tableMetadata = new TableMetadata(tableName, CopyNamedStruct(tableMetadataInfo.Schema));
+                tableMetadata = new TableMetadata(fullName, CopyNamedStruct(tableMetadataInfo.Schema));
                 return true;
             }
             foreach(var tableProvider in _tableProviders)
             {
                 if (tableProvider.TryGetTableInformation(tableName, out var tableMetadataFromProvider))
                 {
-                    _tables.TryAdd(tableName, tableMetadataFromProvider);
-                    tableMetadata = new TableMetadata(tableName, CopyNamedStruct(tableMetadataFromProvider.Schema));
+                    _tables.TryAdd(fullName, tableMetadataFromProvider);
+                    tableMetadata = new TableMetadata(fullName, CopyNamedStruct(tableMetadataFromProvider.Schema));
                     return true;
                 }
             }

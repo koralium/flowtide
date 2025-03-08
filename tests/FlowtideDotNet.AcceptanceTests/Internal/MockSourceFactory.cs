@@ -38,6 +38,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             var table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
 
+            var emit = readRelation.Emit?.ToList();
             List<int> pks = new List<int>();
             foreach (var primaryKeyIndex in table.PrimaryKeyIndices)
             {
@@ -61,9 +62,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 }
             }
 
+            List<int> readEmit = new List<int>();
+            for (int i = 0; i < readRelation.BaseSchema.Names.Count; i++)
+            {
+                readEmit.Add(i);
+            }
+            readRelation.Emit = readEmit;
+
             return new NormalizationRelation()
             {
-                Emit = readRelation.Emit,
+                Emit = emit,
                 Filter = readRelation.Filter,
                 Input = readRelation,
                 KeyIndex = pks

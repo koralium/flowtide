@@ -22,13 +22,13 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.TableFunction
 {
-    internal class TableFunctionReadOperator : IngressVertex<StreamEventBatch, TableFunctionReadState>
+    internal class TableFunctionReadOperator : IngressVertex<StreamEventBatch>
     {
         private IReadOnlySet<string>? _watermarkNames;
         private readonly TableFunctionRelation _tableFunctionRelation;
         private readonly IFunctionsRegister _functionsRegister;
         private Func<EventBatchData, int, IEnumerable<EventBatchWeighted>>? _func;
-        private bool _hasSentInitial = false;
+        private IObjectState<TableFunctionReadState>? _state;
 
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
@@ -65,11 +65,15 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             throw new InvalidOperationException("Get watermarks called before initialize");
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, TableFunctionReadState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            if (state != null)
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<TableFunctionReadState>("table_func_state");
+            if (_state.Value == null)
             {
-                _hasSentInitial = state.HasSentInitial;
+                _state.Value = new TableFunctionReadState()
+                {
+                    HasSentInitial = false
+                };
             }
             if (_eventsCounter == null)
             {
@@ -84,16 +88,12 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
 
             var compileResult = ColumnTableFunctionCompiler.CompileWithArg(_tableFunctionRelation.TableFunction, _functionsRegister, MemoryAllocator);
             _func = compileResult.Function;
-
-            return Task.CompletedTask;
         }
 
-        protected override Task<TableFunctionReadState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
-            return Task.FromResult(new TableFunctionReadState()
-            {
-                HasSentInitial = _hasSentInitial
-            });
+            Debug.Assert(_state != null);
+            await _state.Commit();
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
@@ -101,8 +101,9 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             Debug.Assert(_func != null);
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_eventsProcessed != null);
+            Debug.Assert(_state?.Value != null);
 
-            if (!_hasSentInitial)
+            if (!_state.Value.HasSentInitial)
             {
                 var batches = _func(new EventBatchData(Array.Empty<IColumn>()), 0);
 
@@ -116,7 +117,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
 
                 await output.SendWatermark(new Base.Watermark(Name, 1));
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
-                _hasSentInitial = true;
+                _state.Value.HasSentInitial = true;
             }
         }
     }

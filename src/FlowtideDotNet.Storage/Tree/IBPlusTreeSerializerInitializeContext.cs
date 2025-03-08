@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Storage.Tree
     {
         IReadOnlyList<long> SavedPageIds { get; }
 
-        Task<Memory<byte>> ReadPage(long pageId);
+        Task<ReadOnlyMemory<byte>> ReadPage(long pageId);
 
         long GetNewPageId();
     }

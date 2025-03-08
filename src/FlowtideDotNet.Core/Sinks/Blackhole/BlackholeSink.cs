@@ -16,7 +16,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Sinks.Blackhole
 {
-    internal class BlackholeSink : WriteBaseOperator<object?>
+    internal class BlackholeSink : WriteBaseOperator
     {
         public BlackholeSink(ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -34,14 +34,14 @@ namespace FlowtideDotNet.Core.Sinks.Blackhole
             return Task.CompletedTask;
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }
 
-        protected override Task<object?> OnCheckpoint(long checkpointTime)
+        protected override Task OnCheckpoint(long checkpointTime)
         {
-            return Task.FromResult<object?>(null);
+            return Task.CompletedTask;
         }
 
         protected override Task OnRecieve(StreamEventBatch msg, long time)

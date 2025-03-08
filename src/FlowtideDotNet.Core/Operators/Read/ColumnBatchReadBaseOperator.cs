@@ -43,18 +43,12 @@ namespace FlowtideDotNet.Core.Operators.Read
 
     public record struct DeltaReadEvent(EventBatchWeighted? BatchData, Watermark? Watermark);
 
-    public class ColumnBatchReadState
-    {
-        public bool InitialSent { get; set; }
-    }
-
-    public abstract class ColumnBatchReadBaseOperator<TState> : ReadBaseOperator<TState>
-        where TState: ColumnBatchReadState
+    public abstract class ColumnBatchReadBaseOperator : ReadBaseOperator
     {
         public const string DeltaLoadTriggerName = "delta_load";
         public const string FullLoadTriggerName = "full_load";
 
-        private bool _initialSent;
+        private IObjectState<bool>? _initialSent;
         private readonly ReadRelation _readRelation;
         private readonly Func<EventBatchData, int, bool>? _filter;
         private List<int>? _primaryKeyColumns;
@@ -69,6 +63,7 @@ namespace FlowtideDotNet.Core.Operators.Read
         private IColumn[]? _deleteTreeToPersistentColumns;
         private EventBatchData? _deleteTreeTopersistentBatch;
         private ICounter<long>? _eventsCounter;
+        private bool _waitingForFullLoad;
 
         public ColumnBatchReadBaseOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(options)
         {
@@ -99,9 +94,39 @@ namespace FlowtideDotNet.Core.Operators.Read
                                 {
                                     lock (_taskLock)
                                     {
+                                        if (_waitingForFullLoad)
+                                        {
+                                            _deltaLoadTask = RunTask(FullLoadTrigger);
+                                            _waitingForFullLoad = false;
+                                        }
+                                        else
+                                        {
+                                            _deltaLoadTask = default;
+                                        }
+                                    }
+                                });
+                        }
+                        return Task.CompletedTask;
+                    }
+                case FullLoadTriggerName:
+                    lock (_taskLock)
+                    {
+                        if (_deltaLoadTask == null)
+                        {
+                            _deltaLoadTask = RunTask(FullLoadTrigger)
+                                .ContinueWith((task) =>
+                                {
+                                    lock (_taskLock)
+                                    {
+                                        // Full load just happened, so we reset the flag
+                                        _waitingForFullLoad = false;
                                         _deltaLoadTask = default;
                                     }
                                 });
+                        }
+                        else
+                        {
+                            _waitingForFullLoad = true;
                         }
                         return Task.CompletedTask;
                     }
@@ -115,17 +140,15 @@ namespace FlowtideDotNet.Core.Operators.Read
             await DoDeltaLoad(output);
         }
 
-
-        protected override async Task InitializeOrRestore(long restoreTime, TState? state, IStateManagerClient stateManagerClient)
+        protected virtual async Task FullLoadTrigger(IngressOutput<StreamEventBatch> output, object? state)
         {
-            if (state != null)
-            {
-                _initialSent = state.InitialSent;
-            }
-            else
-            {
-                _initialSent = false;
-            }
+            await DoFullLoad(output);
+        }
+
+
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
+        {
+            _initialSent = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initial_sent");
 
             if (_eventsCounter == null)
             {
@@ -199,16 +222,16 @@ namespace FlowtideDotNet.Core.Operators.Read
                 });
         }
 
-        protected override async Task<TState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(_persistentTree != null);
+            Debug.Assert(_initialSent != null);
             await _persistentTree.Commit();
-            var state = await Checkpoint(checkpointTime).ConfigureAwait(false);
-            state.InitialSent = _initialSent;
-            return state;
+            await Checkpoint(checkpointTime).ConfigureAwait(false);
+            await _initialSent.Commit();
         }
 
-        protected abstract Task<TState> Checkpoint(long checkpointTime);
+        protected abstract Task Checkpoint(long checkpointTime);
 
         protected abstract IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, CancellationToken enumeratorCancellationToken = default);
 
@@ -275,7 +298,6 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_emitList != null);
             Debug.Assert(_primaryKeyColumns != null);
             Debug.Assert(_eventsCounter != null);
-            
 
             await foreach (var e in DeltaLoad(output.EnterCheckpointLock, output.ExitCheckpointLock, output.CancellationToken))
             {
@@ -603,6 +625,12 @@ namespace FlowtideDotNet.Core.Operators.Read
 
             sentData |= await OutputDeletedRowsFromFullLoad(output);
 
+            if (sentData && lastWatermark == -1)
+            {
+                // This happens if all existing data was deleted, a watermark of 1 is added for now
+                lastWatermark = 1;
+            }
+
             if (lastWatermark >= 0 && sentData)
             {
                 await output.SendWatermark(new Watermark(_readRelation.NamedTable.DotSeperated, lastWatermark));
@@ -735,11 +763,12 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            if (!_initialSent)
+            Debug.Assert(_initialSent != null);
+            if (!_initialSent.Value)
             {
                 // Only do full load if we have not done it before
                 await DoFullLoad(output);
-                _initialSent = true;
+                _initialSent.Value = true;
             }
 
             await RegisterTrigger(DeltaLoadTriggerName, TimeSpan.FromMilliseconds(1));

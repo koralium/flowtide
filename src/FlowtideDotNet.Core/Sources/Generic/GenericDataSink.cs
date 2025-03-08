@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers;
 using FlowtideDotNet.Substrait.Relations;
 using System;
 using System.Collections.Generic;
@@ -27,7 +29,12 @@ namespace FlowtideDotNet.Core.Sources.Generic
         /// <returns></returns>
         public abstract Task<List<string>> GetPrimaryKeyNames();
 
-        public abstract Task OnChanges(IAsyncEnumerable<FlowtideGenericWriteObject<T>> changes);
+        public virtual IEnumerable<IObjectColumnResolver> GetCustomConverters()
+        {
+            yield break;
+        }
+
+        public abstract Task OnChanges(IAsyncEnumerable<FlowtideGenericWriteObject<T>> changes, Watermark watermark, bool isInitialData, CancellationToken cancellationToken);
 
         public virtual Task Initialize(WriteRelation writeRelation)
         {

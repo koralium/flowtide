@@ -22,6 +22,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
     {
         long GetNewPageId();
 
-        Task<Memory<byte>> ReadPage(long pageId);
+        Task<ReadOnlyMemory<byte>> ReadPage(long pageId);
     }
 }

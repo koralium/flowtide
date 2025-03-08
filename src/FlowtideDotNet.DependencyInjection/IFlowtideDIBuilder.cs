@@ -35,6 +35,6 @@ namespace FlowtideDotNet.DependencyInjection
 
         IFlowtideDIBuilder AddStorage(Action<IFlowtideStorageBuilder> storageOptions);
 
-        IFlowtideDIBuilder AddCustomOptions(Action<FlowtideBuilder> options);
+        IFlowtideDIBuilder AddCustomOptions(Action<IServiceProvider, FlowtideBuilder> options);
     }
 }

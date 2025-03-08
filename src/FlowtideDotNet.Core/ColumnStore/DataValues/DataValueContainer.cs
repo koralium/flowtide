@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IListValue AsList => _listValue!.AsList;
 
-        public Span<byte> AsBinary => _binaryValue.AsBinary;
+        public ReadOnlySpan<byte> AsBinary => _binaryValue.AsBinary;
 
         public IMapValue AsMap => _mapValue!.AsMap;
 

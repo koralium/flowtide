@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public IListValue AsList => throw new NotImplementedException();
 
-        public Span<byte> AsBinary => throw new NotImplementedException();
+        public ReadOnlySpan<byte> AsBinary => throw new NotImplementedException();
 
         public IMapValue AsMap => throw new NotImplementedException();
 
@@ -105,5 +105,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         }
 
         public long UnixTimestampMicroseconds => (ticks - UnixEpochTicks) / TicksPerMicrosecond;
+
+        public override string ToString()
+        {
+            return ToDateTimeOffset().ToString("yyyy-MM-ddTHH:mm:ss.fffffffzzz");
+        }
     }
 }

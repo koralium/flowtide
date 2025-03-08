@@ -84,6 +84,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return EndTable();
         }
 
+        public int AddIntType(int bitWidth)
+        {
+            StartTable(2);
+            AddBitWidth(bitWidth);
+            AddIsSigned(true);
+            return EndTable();
+        }
+
         void AddBitWidth(int bitWidth)
         {
             AddInt(0, bitWidth, 0);

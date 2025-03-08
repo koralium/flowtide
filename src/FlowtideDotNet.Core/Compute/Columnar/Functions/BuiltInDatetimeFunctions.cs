@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         {
             if (value.Type == ArrowTypeId.Timestamp)
             {
-                var dt = value.AsTimestamp.ToDateTimeOffset().DateTime;
+                var dt = value.AsTimestamp.ToDateTimeOffset();
                 result._type = ArrowTypeId.String;
                 result._stringValue = new StringValue(Strftime.ToStrFTime(dt, format.AsString.ToString(), CultureInfo.InvariantCulture));
                 return result;

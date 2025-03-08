@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             switch (type)
             {
                 case ArrowTypeId.Int64:
-                    return Int64ColumnFactory.Get(_memoryAllocator);
+                    return new IntegerColumn(_memoryAllocator);
                 case ArrowTypeId.String:
                     return new StringColumn(_memoryAllocator);
                 case ArrowTypeId.Boolean:
@@ -1052,7 +1052,15 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (_type != ArrowTypeId.Union)
             {
                 // Union does not have a validity bitmap in apache arrow
-                dataWriter.WriteArrowBuffer(_validityList!.MemorySlice.Span);
+                if (_nullCounter == 0)
+                {
+                    // write an empty buffer if there is no null values
+                    dataWriter.WriteArrowBuffer(Span<byte>.Empty);
+                }
+                else
+                {
+                    dataWriter.WriteArrowBuffer(_validityList!.MemorySlice.Span);
+                }
             }
 
             _dataColumn!.WriteDataToBuffer(ref dataWriter);

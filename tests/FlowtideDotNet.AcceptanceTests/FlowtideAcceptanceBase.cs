@@ -15,6 +15,7 @@ using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Substrait.Sql;
@@ -52,7 +53,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
         protected Task StartStream() => flowtideTestStream.StartStream();
 
-        public List<FlxVector> GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
+        public EventBatchData GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 
         protected void AssertCurrentDataEqual<T>(IEnumerable<T> data)
         {
@@ -112,6 +113,11 @@ namespace FlowtideDotNet.AcceptanceTests
         public void AddOrUpdateUser(User user)
         {
             flowtideTestStream.AddOrUpdateUser(user);
+        }
+
+        public void AddOrUpdateOrder(Order order)
+        {
+            flowtideTestStream.AddOrUpdateOrder(order);
         }
 
         public void DeleteUser(User user)

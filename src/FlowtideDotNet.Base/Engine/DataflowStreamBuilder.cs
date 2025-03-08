@@ -18,6 +18,7 @@ using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace FlowtideDotNet.Base.Engine
 {
@@ -30,16 +31,18 @@ namespace FlowtideDotNet.Base.Engine
         private IStateHandler? _stateHandler;
         private readonly string _streamName;
         private IStreamScheduler? _streamScheduler;
-        private IStreamNotificationReciever? _streamNotificationReciever;
         private StateManagerOptions? _stateManagerOptions;
         private ILoggerFactory? _loggerFactory;
         private StreamVersionInformation? _streamVersionInformation;
         private readonly DataflowStreamOptions _dataflowStreamOptions;
+        private IOptionsMonitor<FlowtidePauseOptions>? _pauseMonitor;
+        private readonly StreamNotificationReceiver _streamNotificationReceiver;
 
         public DataflowStreamBuilder(string streamName)
         {
             _streamName = streamName;
             _dataflowStreamOptions = new DataflowStreamOptions();
+            _streamNotificationReceiver = new StreamNotificationReceiver(streamName);
         }
 
         public DataflowStreamBuilder AddPropagatorBlock(string name, IStreamVertex block)
@@ -56,7 +59,7 @@ namespace FlowtideDotNet.Base.Engine
             return this;
         }
 
-        public DataflowStreamBuilder AddEgressBlock(string name, IStreamEgressVertex block) 
+        public DataflowStreamBuilder AddEgressBlock(string name, IStreamEgressVertex block)
         {
             block.Setup(_streamName, name);
             _egressBlocks.Add(name, block);
@@ -87,12 +90,6 @@ namespace FlowtideDotNet.Base.Engine
             return this;
         }
 
-        public DataflowStreamBuilder WithNotificationReciever(IStreamNotificationReciever notificationReciever)
-        {
-            _streamNotificationReciever = notificationReciever;
-            return this;
-        }
-
         public DataflowStreamBuilder WithLoggerFactory(ILoggerFactory loggerFactory)
         {
             _loggerFactory = loggerFactory;
@@ -117,6 +114,30 @@ namespace FlowtideDotNet.Base.Engine
             return this;
         }
 
+        public DataflowStreamBuilder AddCheckpointListener(ICheckpointListener listener)
+        {
+            _streamNotificationReceiver.AddCheckpointListener(listener);
+            return this;
+        }
+
+        public DataflowStreamBuilder AddStateChangeListener(IStreamStateChangeListener listener)
+        {
+            _streamNotificationReceiver.AddStreamStateChangeListener(listener);
+            return this;
+        }
+
+        public DataflowStreamBuilder AddFailureListener(IFailureListener listener)
+        {
+            _streamNotificationReceiver.AddFailureListener(listener);
+            return this;
+        }
+
+        public DataflowStreamBuilder WithPauseMonitor(IOptionsMonitor<FlowtidePauseOptions> pauseMonitor)
+        {
+            _pauseMonitor = pauseMonitor;
+            return this;
+        }
+
         public DataflowStream Build()
         {
             if (_stateManagerOptions == null)
@@ -133,20 +154,21 @@ namespace FlowtideDotNet.Base.Engine
             }
 
             var streamContext = new StreamContext(
-                _streamName, 
-                _propagatorBlocks, 
-                _ingressBlocks, 
-                _egressBlocks, 
-                _stateHandler, 
-                _state, 
+                _streamName,
+                _propagatorBlocks,
+                _ingressBlocks,
+                _egressBlocks,
+                _stateHandler,
+                _state,
                 _streamScheduler,
-                _streamNotificationReciever,
+                _streamNotificationReceiver,
                 _stateManagerOptions,
                 _loggerFactory,
                 _streamVersionInformation,
                 _dataflowStreamOptions,
-                new StreamMemoryManager(_streamName));
-
+                new StreamMemoryManager(_streamName),
+                _pauseMonitor);
+            
             return new DataflowStream(streamContext);
         }
     }

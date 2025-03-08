@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Tree;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,12 +22,10 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
 {
     internal class ListKeyWithSizeSerializer : IBPlusTreeKeySerializer<KeyValuePair<long, long>, ListKeyContainerWithSize>
     {
-       // private readonly IBplusTreeSerializer<KeyValuePair<long, long>> serializer;
         private readonly int sizePerElement;
 
-        public ListKeyWithSizeSerializer( int sizePerElement)
+        public ListKeyWithSizeSerializer(int sizePerElement)
         {
-            //this.serializer = serializer;
             this.sizePerElement = sizePerElement;
         }
 
@@ -40,7 +39,7 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
             return new ListKeyContainerWithSize(1);
         }
 
-        public ListKeyContainerWithSize Deserialize(in BinaryReader reader)
+        public ListKeyContainerWithSize Deserialize(ref SequenceReader<byte> reader)
         {
             throw new NotImplementedException();
         }
@@ -50,7 +49,7 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in ListKeyContainerWithSize values)
+        public void Serialize(in IBufferWriter<byte> writer, in ListKeyContainerWithSize values)
         {
             throw new NotImplementedException();
         }

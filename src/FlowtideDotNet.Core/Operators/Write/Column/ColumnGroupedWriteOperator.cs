@@ -25,8 +25,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Write.Column
 {
-    public abstract class ColumnGroupedWriteOperator<TState> : EgressVertex<StreamEventBatch, TState>
-        where TState : ColumnWriteState
+    public abstract class ColumnGroupedWriteOperator : EgressVertex<StreamEventBatch>
     {
         private readonly ExecutionMode m_executionMode;
         private readonly WriteRelation m_writeRelation;
@@ -41,7 +40,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         private bool m_hasModified;
         private Watermark? m_latestWatermark;
         private WriteTreeSearchComparer? m_writeTreeSearchComparer;
-        private bool m_hasSentInitialData;
+        private IObjectState<bool>? m_hasSentInitialData;
         private ExistingRowComparer? m_existingRowComparer;
         private IReadOnlyList<int>? m_primaryKeyColumns;
         private readonly IColumn[] _deleteBatchColumns;
@@ -78,16 +77,10 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
         protected abstract ValueTask<IReadOnlyList<int>> GetPrimaryKeyColumns();
 
-        protected override async Task InitializeOrRestore(long restoreTime, TState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            if (state != null)
-            {
-                m_hasSentInitialData = state.InitialDataSent;
-            }
-            else
-            {
-                m_hasSentInitialData = false;
-            }
+            m_hasSentInitialData = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initialDataSent");
+
             m_primaryKeyColumns = await GetPrimaryKeyColumns();
 
             m_tree = await stateManagerClient.GetOrCreateTree("output",
@@ -118,7 +111,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             }
             m_writeTreeSearchComparer = new WriteTreeSearchComparer(m_primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList(), referenceColumns);
 
-            if (FetchExistingData && !m_hasSentInitialData)
+            if (FetchExistingData && !m_hasSentInitialData.Value)
             {
                 var primaryKeySelectorList = m_primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList();
                 m_existingRowComparer = new ExistingRowComparer(primaryKeySelectorList, primaryKeySelectorList);
@@ -150,28 +143,30 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
         protected override Task OnWatermark(Watermark watermark)
         {
+            Debug.Assert(m_hasSentInitialData != null);
             m_latestWatermark = watermark;
             if (m_executionMode == ExecutionMode.OnWatermark ||
-                (m_executionMode == ExecutionMode.Hybrid && m_hasSentInitialData))
+                (m_executionMode == ExecutionMode.Hybrid && m_hasSentInitialData.Value))
             {
                 return SendData();
             }
             return base.OnWatermark(watermark);
         }
 
-        protected override async Task<TState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
-            if (m_executionMode == ExecutionMode.OnCheckpoint || (m_executionMode == ExecutionMode.Hybrid && !m_hasSentInitialData))
+            Debug.Assert(m_hasSentInitialData != null);
+            Debug.Assert(m_tree != null);
+            if (m_executionMode == ExecutionMode.OnCheckpoint || (m_executionMode == ExecutionMode.Hybrid && !m_hasSentInitialData.Value))
             {
                 await SendData();
             }
-
-            var newState = Checkpoint(checkpointTime);
-            newState.InitialDataSent = m_hasSentInitialData;
-            return newState;
+            Checkpoint(checkpointTime);
+            await m_hasSentInitialData.Commit();
+            await m_tree.Commit();
         }
 
-        protected abstract TState Checkpoint(long checkpointTime);
+        protected abstract void Checkpoint(long checkpointTime);
 
         private async IAsyncEnumerable<ColumnWriteOperation> GetChangedRows()
         {
@@ -179,6 +174,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             Debug.Assert(m_tree != null);
             Debug.Assert(m_writeTreeSearchComparer != null);
             Debug.Assert(m_primaryKeyColumns != null);
+            Debug.Assert(m_hasSentInitialData != null);
 
             using var modifiedIterator = m_modified.CreateIterator();
             await modifiedIterator.SeekFirst();
@@ -222,7 +218,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 }
             }
 
-            if (!m_hasSentInitialData &&
+            if (!m_hasSentInitialData.Value &&
                 FetchExistingData)
             {
                 await foreach (var row in DeleteExistingData())
@@ -308,17 +304,18 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         {
             Debug.Assert(m_modified != null);
             Debug.Assert(m_latestWatermark != null);
+            Debug.Assert(m_hasSentInitialData != null);
             if (m_hasModified)
             {
                 var changedRows = GetChangedRows();
-                await UploadChanges(changedRows, m_latestWatermark, CancellationToken);
+                await UploadChanges(changedRows, m_latestWatermark, !m_hasSentInitialData.Value, CancellationToken);
                 await m_modified.Clear();
                 m_hasModified = false;
             }
-            if (m_hasSentInitialData == false)
+            if (m_hasSentInitialData.Value == false)
             {
                 await OnInitialDataSent();
-                m_hasSentInitialData = true;
+                m_hasSentInitialData.Value = true;
             }
         }
 
@@ -327,7 +324,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             return Task.CompletedTask;
         }
 
-        protected abstract Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken);
+        protected abstract Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, bool isInitialData, CancellationToken cancellationToken);
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {

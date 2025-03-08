@@ -38,7 +38,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(
                 Orders.Select(o => new { 
-                    Orderdate =  DateTimeOffset.FromUnixTimeMilliseconds(new DateTimeOffset(o.Orderdate).ToUnixTimeMilliseconds()).ToString("yyyy-MM-dd HH:mm:ss") 
+                    Orderdate =  o.Orderdate.ToString("yyyy-MM-dd HH:mm:ss") 
                 })
                 );
         }
