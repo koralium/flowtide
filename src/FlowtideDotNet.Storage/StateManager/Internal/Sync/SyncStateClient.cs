@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly int m_bplusTreePageSize;
         private readonly int m_bplusTreePageSizeBytes;
         private readonly IMemoryAllocator memoryAllocator;
-        private readonly ConcurrentDictionary<long, int> m_modified;
+        private readonly Dictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
         private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
@@ -87,7 +87,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.m_bplusTreePageSizeBytes = bplusTreePageSizeBytes;
             this.memoryAllocator = memoryAllocator;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name, memoryAllocator);
-            m_modified = new ConcurrentDictionary<long, int>();
+            m_modified = new Dictionary<long, int>();
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
             if (!string.IsNullOrEmpty(name))
             {
@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 else
                 {
-                    m_modified.Add(key, 0);
+                    m_modified[key] = 0;
                 }
 
                 var modLookup = key % _lookupTable.Length;
