@@ -397,6 +397,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     stateManager.DeleteFromCache(kv.Key);
                     m_fileCache.Free(kv.Key);
                 }
+                for (int i = 0; i < _lookupTable.Length; i++)
+                {
+                    _lookupTable[i].Value = default;
+                    _lookupTable[i].Key = 0;
+                }
                 m_modified.Clear();
                 m_fileCache.FreeAll();
                 m_fileCacheVersion.Clear();
