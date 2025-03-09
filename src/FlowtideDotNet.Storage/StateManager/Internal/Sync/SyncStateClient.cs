@@ -354,6 +354,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 if (disposing)
                 {
                     m_fileCache.Dispose();
+                    if (options.ValueSerializer != null)
+                    {
+                        options.ValueSerializer.Dispose();
+                    }
                 }
 
                 disposedValue = true;

@@ -14,7 +14,7 @@ using System.Buffers;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
-    public interface IStateSerializer
+    public interface IStateSerializer : IDisposable
     {
         void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value);
 
