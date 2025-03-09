@@ -85,6 +85,8 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public bool Initialized { get; private set; }
 
+        internal int LookupCacheSize => 0;
+
         internal StateSerializeOptions SerializeOptions => options?.SerializeOptions ?? throw new InvalidOperationException("Manager must be initialized before getting serialize options");
 
         public ulong PageCommits => m_metadata != null ? Volatile.Read(ref m_metadata.PageCommits) : throw new InvalidOperationException("Manager must be initialized before getting page commits");

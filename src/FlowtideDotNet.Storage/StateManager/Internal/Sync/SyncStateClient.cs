@@ -46,10 +46,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly Histogram<float>? m_temporaryWriteMsHistogram;
         private readonly TagList tagList;
 
-        // Method containers for addOrUpdate methods to skip casting to Func all the time
-        private Func<long, int> addorUpdate_newValue_container;
-        private Func<long, int, int> addorUpdate_existingValue_container;
-
         private CacheValue[] _lookupTable;
 
         /// <summary>
@@ -97,8 +93,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             tagList = options.TagList;
             tagList.Add("state_client", name);
-            addorUpdate_newValue_container = AddOrUpdate_NewValue;
-            addorUpdate_existingValue_container = AddOrUpdate_ExistingValue;
+            
             _lookupTable = new CacheValue[1009];
         }
 
@@ -117,26 +112,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public int BPlusTreePageSize => m_bplusTreePageSize;
 
         public int BPlusTreePageSizeBytes => m_bplusTreePageSizeBytes;
-
-        private class AddOrUpdateState
-        {
-            public bool isFull;
-            public V? value;
-        }
-
-        private AddOrUpdateState _addOrUpdateState = new AddOrUpdateState();
-
-        private int AddOrUpdate_NewValue(long key)
-        {
-            _addOrUpdateState.isFull = stateManager.AddOrUpdate(key, _addOrUpdateState.value!, this);
-            return 0;
-        }
-
-        private int AddOrUpdate_ExistingValue(long key, int old)
-        {
-            _addOrUpdateState.isFull = stateManager.AddOrUpdate(key, _addOrUpdateState.value!, this);
-            return old + 1;
-        }
 
         public bool AddOrUpdate(in long key, V value)
         {
