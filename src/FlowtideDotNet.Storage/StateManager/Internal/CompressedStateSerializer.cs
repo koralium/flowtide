@@ -114,6 +114,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             if (!_disposedValue)
             {
                 Methods.ZSTD_freeDCtx(_dctx);
+                Methods.ZSTD_freeCCtx(_cctx);
                 _handle.Free();
                 _disposedValue = true;
             }
