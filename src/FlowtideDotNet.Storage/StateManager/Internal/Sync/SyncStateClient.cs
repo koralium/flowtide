@@ -18,6 +18,7 @@ using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using static FlowtideDotNet.Storage.StateManager.Internal.Sync.LruTableSync;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
@@ -36,7 +37,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly int m_bplusTreePageSize;
         private readonly int m_bplusTreePageSizeBytes;
         private readonly IMemoryAllocator memoryAllocator;
-        private readonly ConcurrentDictionary<long, int> m_modified;
+        private readonly Dictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
         private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
@@ -45,9 +46,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly Histogram<float>? m_temporaryWriteMsHistogram;
         private readonly TagList tagList;
 
-        // Method containers for addOrUpdate methods to skip casting to Func all the time
-        private Func<long, int> addorUpdate_newValue_container;
-        private Func<long, int, int> addorUpdate_existingValue_container;
+        private CacheValue[] _lookupTable;
 
         /// <summary>
         /// Value of how many pages have changed since last commit.
@@ -84,7 +83,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.m_bplusTreePageSizeBytes = bplusTreePageSizeBytes;
             this.memoryAllocator = memoryAllocator;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name, memoryAllocator);
-            m_modified = new ConcurrentDictionary<long, int>();
+            m_modified = new Dictionary<long, int>();
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
             if (!string.IsNullOrEmpty(name))
             {
@@ -94,8 +93,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             tagList = options.TagList;
             tagList.Add("state_client", name);
-            addorUpdate_newValue_container = AddOrUpdate_NewValue;
-            addorUpdate_existingValue_container = AddOrUpdate_ExistingValue;
+            
+            _lookupTable = new CacheValue[1009];
         }
 
         public TMetadata? Metadata
@@ -114,33 +113,35 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public int BPlusTreePageSizeBytes => m_bplusTreePageSizeBytes;
 
-        private class AddOrUpdateState
-        {
-            public bool isFull;
-            public V? value;
-        }
-
-        private AddOrUpdateState _addOrUpdateState = new AddOrUpdateState();
-
-        private int AddOrUpdate_NewValue(long key)
-        {
-            _addOrUpdateState.isFull = stateManager.AddOrUpdate(key, _addOrUpdateState.value!, this);
-            return 0;
-        }
-
-        private int AddOrUpdate_ExistingValue(long key, int old)
-        {
-            _addOrUpdateState.isFull = stateManager.AddOrUpdate(key, _addOrUpdateState.value!, this);
-            return old + 1;
-        }
-
         public bool AddOrUpdate(in long key, V value)
         {
             lock (m_lock)
             {
-                _addOrUpdateState.value = value;
-                m_modified.AddOrUpdate(key, addorUpdate_newValue_container, addorUpdate_existingValue_container);
-                return _addOrUpdateState.isFull;
+                if (m_modified.TryGetValue(key, out var old))
+                {
+                    m_modified[key] = old + 1;
+                }
+                else
+                {
+                    m_modified[key] = 0;
+                }
+
+                var modLookup = key % _lookupTable.Length;
+                if (_lookupTable[modLookup].Key == key)
+                {
+                    var node = _lookupTable[modLookup].Value!;
+                    lock (node)
+                    {
+                        node.ValueRef.version = node.ValueRef.version + 1;
+                        // If it is not removed, we can return directly, otherwise it needs to be readded
+                        if (!node.ValueRef.removed)
+                        {
+                            return false;
+                        }
+                    }
+                }
+
+                return stateManager.AddOrUpdate(key, value, this);
             }
         }
 
@@ -267,14 +268,34 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return stateManager.GetNewPageId();
         }
 
-        public ValueTask<V?> GetValue(in long key, string from)
+        public ValueTask<V?> GetValue(in long key)
         {
             Debug.Assert(options.ValueSerializer != null);
             lock (m_lock)
             {
-                if (stateManager.TryGetValueFromCache<V>(key, out var val))
+                var modLookup = key % _lookupTable.Length;
+
+                if (_lookupTable[modLookup].Key == key)
                 {
-                    return ValueTask.FromResult<V?>(val);
+                    var node = _lookupTable[modLookup].Value!;
+                    lock (node)
+                    {
+                        if (!node.ValueRef.removed)
+                        {
+                            if (!node.ValueRef.value.TryRent())
+                            {
+                                throw new InvalidOperationException("Could not rent value from cache");
+                            }
+                            node.ValueRef.useCount = Math.Min(node.ValueRef.useCount + 1, 5);
+                            return ValueTask.FromResult<V?>((V)_lookupTable[modLookup].Value!.ValueRef.value);
+                        }
+                    }
+                }
+
+                if (stateManager.TryGetCacheValueFromCache(key, out var cacheVal))
+                {
+                    _lookupTable[modLookup] = new CacheValue { Key = key, Value = cacheVal };
+                    return ValueTask.FromResult<V?>((V)cacheVal.ValueRef.value);
                 }
                 Interlocked.Increment(ref cacheMisses);
                 // Read from temporary file storage
@@ -355,6 +376,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     stateManager.DeleteFromCache(kv.Key);
                     m_fileCache.Free(kv.Key);
                 }
+                for (int i = 0; i < _lookupTable.Length; i++)
+                {
+                    _lookupTable[i].Value = default;
+                    _lookupTable[i].Key = 0;
+                }
                 m_modified.Clear();
                 m_fileCache.FreeAll();
                 m_fileCacheVersion.Clear();
@@ -375,7 +401,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             Debug.Assert(options.ValueSerializer != null);
             foreach (var value in valuesToEvict)
             {
-                bool isModified = m_modified.TryGetValue(value.Item1.ValueRef.key, out var val);
+                var modLookup = value.Item1.ValueRef.key % _lookupTable.Length;
+                bool isModified;
+                int val;
+                lock (m_lock)
+                {
+                    isModified = m_modified.TryGetValue(value.Item1.ValueRef.key, out val);
+                    if (_lookupTable[modLookup].Key == value.Item1.ValueRef.key)
+                    {
+                        _lookupTable[modLookup] = new CacheValue { Key = -1, Value = null };
+                    }
+                }
                 if (!useReadCache)
                 {
                     // Skip writing data if we dont use read cache and its not modified or deleted
@@ -462,6 +498,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         Task IStateSerializerCheckpointWriter.RemovePage(long pageId)
         {
             return session.Delete(pageId);
+        }
+
+        private struct CacheValue
+        {
+            public long Key;
+            public LinkedListNode<LinkedListValue>? Value;
         }
     }
 }

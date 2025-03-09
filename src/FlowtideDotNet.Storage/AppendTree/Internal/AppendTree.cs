@@ -65,7 +65,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             }
             else
             {
-                m_rightNode = (await m_stateClient.GetValue(m_stateClient.Metadata.Right, "")) as LeafNode<K, V, TKeyContainer, TValueContainer>;
+                m_rightNode = (await m_stateClient.GetValue(m_stateClient.Metadata.Right)) as LeafNode<K, V, TKeyContainer, TValueContainer>;
                 m_rightNode!.TryRent();
                 m_rightInternalNodes.Clear();
                 await CreateInternalNodesList(m_stateClient.Metadata.Root);
@@ -140,7 +140,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             {
                 return m_rightNode!;
             }
-            return await m_stateClient.GetValue(id, "");
+            return await m_stateClient.GetValue(id);
         }
 
         public async ValueTask Clear()

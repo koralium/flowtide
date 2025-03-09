@@ -42,7 +42,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 {
                     if (expected.Columns[c].GetTypeAt(i, default) != actual.Columns[c].GetTypeAt(i, default))
                     {
-                        Assert.Fail($"EventBatchData column type mismatch at index {i}, expected: {expected.Columns[c].GetTypeAt(i, default)}, actual: {actual.Columns[c].GetTypeAt(i, default)}");
+                        Assert.Fail($"EventBatchData column type mismatch at index {i}, expected: {expected.Columns[c].GetTypeAt(i, default)}, actual: {actual.Columns[c].GetTypeAt(i, default)}, values: {expected.Columns[c].GetValueAt(i, default)} != {actual.Columns[c].GetValueAt(i, default)}");
                     }
 
                     var compareVal = comparer.Compare(expected.Columns[c].GetValueAt(i, default), actual.Columns[c].GetValueAt(i, default));

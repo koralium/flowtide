@@ -220,6 +220,28 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             await m_cleanupTask!;
         }
 
+        public bool TryGetCacheValue(long key, out LinkedListNode<LinkedListValue>? node)
+        {
+            if(cache.TryGetValue(key, out node))
+            {
+                lock (node)
+                {
+                    if (node.ValueRef.removed)
+                    {
+                        return false;
+                    }
+                    if (!node.ValueRef.value.TryRent())
+                    {
+                        throw new InvalidOperationException("Could not rent value from cache");
+                    }
+                    node.ValueRef.useCount = Math.Min(node.ValueRef.useCount + 1, 5);
+                    Interlocked.Increment(ref m_cacheHits);
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public bool TryGetValue(long key, out ICacheObject? cacheObject)
         {
             if (cache.TryGetValue(key, out var node))
