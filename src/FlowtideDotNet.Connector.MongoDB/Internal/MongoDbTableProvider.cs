@@ -44,11 +44,12 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 }
             }
         }
-        public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
-            if (_tableNames.Contains(tableName))
+            var fullName = string.Join(".", tableName);
+            if (_tableNames.Contains(fullName))
             {
-                tableMetadata = new TableMetadata(tableName, new NamedStruct()
+                tableMetadata = new TableMetadata(fullName, new NamedStruct()
                 {
                     Names = new List<string>() { "_id", "_doc" },
                     Struct = new Struct()

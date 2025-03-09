@@ -35,9 +35,10 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             });
         }
 
-        public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
-            if (tableName.Equals(_tableMetadata.Name, StringComparison.OrdinalIgnoreCase))
+            var fullName = string.Join(".", tableName);
+            if (fullName.Equals(_tableMetadata.Name, StringComparison.OrdinalIgnoreCase))
             {
                 tableMetadata = _tableMetadata;
                 return true;

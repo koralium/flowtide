@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override bool CanHandle(WriteRelation writeRelation)
         {
-            return _sqlServerTableProvider.TryGetTableInformation(writeRelation.NamedObject.DotSeperated, out _);
+            return _sqlServerTableProvider.TryGetTableInformation(writeRelation.NamedObject.Names, out _);
         }
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)

@@ -166,9 +166,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override EmitData? VisitTable(TableFactor.Table table, object? state)
         {
+            var tableNameParts = table.Name.Values.Select(x => x.Value).ToList();
             var tableName = string.Join('.', table.Name.Values.Select(x => x.Value));
 
-            if (tablesMetadata.TryGetTable(tableName, out var t))
+            if (tablesMetadata.TryGetTable(tableNameParts, out var t))
             {
                 var emitData = new EmitData();
 

@@ -14,6 +14,6 @@ namespace FlowtideDotNet.Base.Engine
 {
     public interface IFailureListener
     {
-        void OnFailure(Exception? exception);
+        void OnFailure(StreamFailureNotification notification);
     }
 }

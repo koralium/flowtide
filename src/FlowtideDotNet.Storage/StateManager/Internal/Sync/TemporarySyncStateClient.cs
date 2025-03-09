@@ -77,9 +77,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return baseClient.GetNewPageId();
         }
 
-        public ValueTask<V?> GetValue(in long key, string from)
+        public ValueTask<V?> GetValue(in long key)
         {
-            return baseClient.GetValue(key, from);
+            return baseClient.GetValue(key);
         }
 
         public override ValueTask Reset(bool clearMetadata)

@@ -38,22 +38,23 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             _graphClient = new GraphServiceClient(_sharepointSourceOptions.TokenCredential);
             _prefix = prefix ?? "";
         }
-        public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
+            string fullName = string.Join(".", tableName);
             TryLoadSharepointData();
             if (_listResponse == null || _listResponse.Value == null)
             {
                 throw new InvalidOperationException("Could not fetch sharepoint information");
             }
 
-            if (!tableName.StartsWith(_prefix))
+            if (!fullName.StartsWith(_prefix))
             {
                 tableMetadata = null;
                 return false;
             }
-            tableName = tableName.Substring(_prefix.Length);
+            fullName = fullName.Substring(_prefix.Length);
 
-            var list = _listResponse.Value.Find(x => x.Name == tableName);
+            var list = _listResponse.Value.Find(x => x.Name == fullName);
             if (list == null)
             {
                 tableMetadata = null;

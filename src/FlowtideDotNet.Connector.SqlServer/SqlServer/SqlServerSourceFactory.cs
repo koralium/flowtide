@@ -34,12 +34,12 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
     public class SqlServerSourceFactory : AbstractConnectorSourceFactory, IConnectorTableProviderFactory
     {
         private readonly Func<string> _connectionStringFunc;
-        private readonly Func<ReadRelation, string>? customTableNameFunc;
+        private readonly Func<ReadRelation, IReadOnlyList<string>>? customTableNameFunc;
         private readonly SqlServerTableProvider _tableProvider;
 
         public SqlServerSourceFactory(
             Func<string> connectionStringFunc, 
-            Func<ReadRelation, string>? tableNameTransform = null,
+            Func<ReadRelation, IReadOnlyList<string>>? tableNameTransform = null,
             bool useDatabaseDefinedInConnectionStringOnly = false)
         {
             this._connectionStringFunc = connectionStringFunc;
@@ -61,8 +61,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override bool CanHandle(ReadRelation readRelation)
         {
-            var tableName = customTableNameFunc?.Invoke(readRelation) ?? readRelation.NamedTable.DotSeperated;
-
+            var tableName = customTableNameFunc?.Invoke(readRelation) ?? readRelation.NamedTable.Names;
             return _tableProvider.TryGetTableInformation(tableName, out _);
         }
 
@@ -73,16 +72,18 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override Relation ModifyPlan(ReadRelation readRelation)
         {
-            var tableName = customTableNameFunc?.Invoke(readRelation) ?? readRelation.NamedTable.DotSeperated;
+            var tableName = customTableNameFunc?.Invoke(readRelation) ?? readRelation.NamedTable.Names;
+
+            string fullName = string.Join(".", tableName);
 
             using var conn = new SqlConnection(_connectionStringFunc());
             conn.Open();
-            var primaryKeys = SqlServerUtils.GetPrimaryKeys(conn, tableName).GetAwaiter().GetResult();
+            var primaryKeys = SqlServerUtils.GetPrimaryKeys(conn, fullName).GetAwaiter().GetResult();
 
-            var isChangeTrackingEnabled = SqlServerUtils.IsChangeTrackingEnabled(conn, tableName).GetAwaiter().GetResult();
+            var isChangeTrackingEnabled = SqlServerUtils.IsChangeTrackingEnabled(conn, fullName).GetAwaiter().GetResult();
             if (!isChangeTrackingEnabled)
             {
-                throw new InvalidOperationException($"Change tracking must be enabled on table '{tableName}'");
+                throw new InvalidOperationException($"Change tracking must be enabled on table '{fullName}'");
             }
 
             List<int> pkIndices = new List<int>();
@@ -112,8 +113,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            var tableName = customTableNameFunc?.Invoke(readRelation) ?? readRelation.NamedTable.DotSeperated;
-            return new ColumnSqlServerDataSource(_connectionStringFunc, tableName, readRelation, dataflowBlockOptions);
+            var tableName = customTableNameFunc?.Invoke(readRelation) ?? readRelation.NamedTable.Names;
+
+            string fullName = string.Join(".", tableName);
+            return new ColumnSqlServerDataSource(_connectionStringFunc, fullName, readRelation, dataflowBlockOptions);
         }
     }
 }

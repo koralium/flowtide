@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.ColumnStore
     [DebuggerDisplay(@"\{String: {ToString()}\}")]
     public struct StringValue : IDataValue
     {
-        private Memory<byte> _utf8;
+        private ReadOnlyMemory<byte> _utf8;
 
         public ArrowTypeId Type => ArrowTypeId.String;
 
@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _utf8 = utf8;
         }
 
-        public StringValue(Memory<byte> utf8)
+        public StringValue(ReadOnlyMemory<byte> utf8)
         {
             _utf8 = utf8;
         }

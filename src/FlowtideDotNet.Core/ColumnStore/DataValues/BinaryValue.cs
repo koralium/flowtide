@@ -61,5 +61,23 @@ namespace FlowtideDotNet.Core.ColumnStore
             container._type = ArrowTypeId.Binary;
             container._binaryValue = this;
         }
+
+        public override string ToString()
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.Append("[");
+            for (int i = 0; i < _bytes.Length; i++)
+            {
+                builder.Append(_bytes.Span[i].ToString());
+
+                if (i < _bytes.Length - 1)
+                {
+                    builder.Append(", ");
+                }
+            }
+
+            builder.Append("]");
+            return builder.ToString();
+        }
     }
 }

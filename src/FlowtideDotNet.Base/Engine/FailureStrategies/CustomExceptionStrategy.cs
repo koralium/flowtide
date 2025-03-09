@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Engine;
+using FlowtideDotNet.Base.Engine.Internal;
 
 namespace FlowtideDotNet.Engine.FailureStrategies
 {
@@ -27,9 +28,9 @@ namespace FlowtideDotNet.Engine.FailureStrategies
             _handler = handler;
         }
 
-        public void OnFailure(Exception? exception)
+        public void OnFailure(StreamFailureNotification notification)
         {
-            _handler(exception);
+            _handler(notification.Exception);
         }
     }
 }

@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
-    internal class ColumnComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
+    public class ColumnComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
     {
         private DataValueContainer dataValueContainer;
         private readonly int columnCount;
@@ -47,6 +47,14 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             int index = -1;
             int start = 0;
             int end = keyContainer.Count - 1;
+            if (columnCount == 0)
+            {
+                if (keyContainer.Count == 0)
+                {
+                    return -1;
+                }
+                return 0;
+            }
             for (int i = 0; i < columnCount; i++)
             {
                 // Get value by container to skip boxing for each value

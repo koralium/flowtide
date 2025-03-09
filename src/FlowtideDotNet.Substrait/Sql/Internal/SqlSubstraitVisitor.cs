@@ -64,32 +64,58 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override RelationData? VisitInsertStatement(Statement.Insert insert, object? state)
         {
-            var source = Visit(insert.Source, state);
+            var source = Visit(insert.InsertOperation.Source!, state);
 
             Debug.Assert(source != null);
 
             NamedStruct? tableSchema = null;
 
-            if (insert.Columns != null && insert.Columns.Count > 0)
+            tablesMetadata.TryGetTable(insert.InsertOperation.Name.Values.Select(x => x.Value).ToList(), out var existingTableMetadata);
+
+            if (insert.InsertOperation.Columns != null && insert.InsertOperation.Columns.Count > 0)
             {
                 tableSchema = new NamedStruct()
                 {
-                    Names = insert.Columns.Select(x => x.Value).ToList(),
+                    Names = insert.InsertOperation.Columns.Select(x => x.Value).ToList(),
                     Struct = new FlowtideDotNet.Substrait.Type.Struct()
                     {
-                        Types = insert.Columns.Select(x => new AnyType() { Nullable = true } as SubstraitBaseType).ToList()
+                        Types = insert.InsertOperation.Columns.Select(x => new AnyType() { Nullable = true } as SubstraitBaseType).ToList()
                     }
                 };
             }
             else
             {
                 var names = source.EmitData.GetNames();
+                var types = source.EmitData.GetTypes();
+
+                if (existingTableMetadata != null)
+                {
+                    for (int i = 0; i < names.Count; i++)
+                    {
+                        int nameIndex = -1;
+                        for (int b = 0; b < existingTableMetadata.Schema.Names.Count; b++)
+                        {
+                            if (existingTableMetadata.Schema.Names[b].Equals(names[i], StringComparison.OrdinalIgnoreCase))
+                            {
+                                nameIndex = b;
+                                break;
+                            }
+                        }
+                        if (nameIndex < 0)
+                        {
+                            throw new SubstraitParseException($"Column '{names[i]}' does not exist in table '{insert.InsertOperation.Name.ToSql()}'");
+                        }
+                        names[i] = existingTableMetadata.Schema.Names[nameIndex];
+                        types[i] = existingTableMetadata.Schema.Struct!.Types[nameIndex];
+                    }
+                }
+
                 tableSchema = new NamedStruct()
                 {
                     Names = names.ToList(),
                     Struct = new FlowtideDotNet.Substrait.Type.Struct()
                     {
-                        Types = names.Select(x => new AnyType() { Nullable = true } as SubstraitBaseType).ToList()
+                        Types = types
                     }
                 };
             }
@@ -97,7 +123,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             var writeRelation = new WriteRelation()
             {
                 Input = source.Relation,
-                NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.Name.Values.Select(x => x.Value).ToList() },
+                NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.InsertOperation.Name.Values.Select(x => x.Value).ToList() },
                 TableSchema = tableSchema
             };
 
@@ -123,63 +149,68 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             bool isDistributed = false;
             Expressions.FieldReference? scatterField = default;
             int? partitionCount = default;
-            if (createView.WithOptions != null)
+            if (createView.Options != null && createView.Options is CreateTableOptions.With withOptions)
             {
-                foreach(var opt in createView.WithOptions)
+                
+                foreach(var opt in withOptions.OptionsList)
                 {
-                    var upperName = opt.Name.ToString().ToUpper();
-                    if (upperName == SqlTextResources.Buffered)
+                    if (opt is SqlOption.KeyValue kvOption)
                     {
-                        var val = opt.Value.ToSql();
-                        if (string.Equals(val, bool.TrueString, StringComparison.OrdinalIgnoreCase))
+                        var upperName = kvOption.Name.ToString().ToUpper();
+                        if (upperName == SqlTextResources.Buffered)
                         {
-                            isBuffered = true;
-                        }
-                    }
-                    else if (upperName == SqlTextResources.Distributed)
-                    {
-                        var val = opt.Value.ToSql();
-                        if (string.Equals(val, bool.TrueString, StringComparison.OrdinalIgnoreCase))
-                        {
-                            isDistributed = true;
-                        }
-                    }
-                    else if (upperName == SqlTextResources.ScatterBy)
-                    {
-                        if (opt.Value is Value.StringBasedValue stringBasedVal)
-                        {
-                            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-                            // Do a lookup on the partition by field
-                            var exprData = exprVisitor.Visit(new Expression.Identifier(new Ident(stringBasedVal.Value)), relationData.EmitData);
-                            if (exprData.Expr is Expressions.FieldReference fieldReference)
+                            var val = kvOption.Value.ToSql();
+                            if (string.Equals(val, bool.TrueString, StringComparison.OrdinalIgnoreCase))
                             {
-                                scatterField = fieldReference;
+                                isBuffered = true;
+                            }
+                        }
+                        else if (upperName == SqlTextResources.Distributed)
+                        {
+                            var val = kvOption.Value.ToSql();
+                            if (string.Equals(val, bool.TrueString, StringComparison.OrdinalIgnoreCase))
+                            {
+                                isDistributed = true;
+                            }
+                        }
+                        else if (upperName == SqlTextResources.ScatterBy)
+                        {
+                            if (kvOption.Value is Expression.Identifier scatterIdentifier)
+                            {
+                                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                                // Do a lookup on the partition by field
+                                var exprData = exprVisitor.Visit(scatterIdentifier, relationData.EmitData);
+                                if (exprData.Expr is Expressions.FieldReference fieldReference)
+                                {
+                                    scatterField = fieldReference;
+                                }
+                                else
+                                {
+                                    throw new SubstraitParseException("SCATTER_BY expects a field reference.");
+                                }
                             }
                             else
                             {
-                                throw new SubstraitParseException("SCATTER_BY expects a field reference.");
+                                throw new SubstraitParseException("SCATTER_BY expects an identifier.");
+                            }
+                        }
+                        else if (upperName == SqlTextResources.PartitionCount)
+                        {
+                            if (int.TryParse(kvOption.Value.ToSql(), out var partitionCountValue))
+                            {
+                                partitionCount = partitionCountValue;
+                            }
+                            else
+                            {
+                                throw new SubstraitParseException($"Invalid partition count expected a number got '{kvOption.Value.ToSql()}'");
                             }
                         }
                         else
                         {
-                            throw new SubstraitParseException("SCATTER_BY expects a string based value with qoutes.");
+                            throw new SubstraitParseException($"Unknown option '{kvOption.Name}' in create view statement");
                         }
                     }
-                    else if (upperName == SqlTextResources.PartitionCount)
-                    {
-                        if (int.TryParse(opt.Value.ToSql(), out var partitionCountValue))
-                        {
-                            partitionCount = partitionCountValue;
-                        }
-                        else
-                        {
-                            throw new SubstraitParseException($"Invalid partition count expected a number got '{opt.Value.ToSql()}'");
-                        }
-                    }
-                    else
-                    {
-                        throw new SubstraitParseException($"Unknown option '{opt.Name}' in create view statement");
-                    }
+                    
                 }
             }
 
@@ -254,15 +285,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override RelationData? VisitCreateTable(Statement.CreateTable createTable, object? state)
         {
-            var tableName = string.Join(".", createTable.Name.Values.Select(x=> x.Value));
-            var columnNames = createTable.Columns.Select(x => x.Name.Value).ToList();
+            var tableName = string.Join(".", createTable.Element.Name.Values.Select(x=> x.Value));
+            var columnNames = createTable.Element.Columns.Select(x => x.Name.Value).ToList();
 
             NamedStruct schema = new NamedStruct()
             {
                 Names = columnNames,
                 Struct = new Struct()
                 {
-                    Types = createTable.Columns.Select(x => SqlToSubstraitType.GetType(x.DataType)).ToList()
+                    Types = createTable.Element.Columns.Select(x => SqlToSubstraitType.GetType(x.DataType)).ToList()
                 }
             };
 
@@ -320,11 +351,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 throw new InvalidOperationException("Could not create a plan from the query");
             }
-            if (query.OrderBy != null)
+            if (query.OrderBy != null && query.OrderBy.Expressions != null)
             {
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
                 List<Expressions.SortField> sortFields = new List<Expressions.SortField>();
-                foreach (var o in query.OrderBy)
+                foreach (var o in query.OrderBy.Expressions)
                 {
                     var expr = exprVisitor.Visit(o.Expression, node.EmitData);
                     var sortDirection = GetSortDirection(o);
@@ -480,7 +511,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 outNode = VisitProjection(select.Projection, outNode);
             }
 
-            if (select.Distinct)
+            if (select.Distinct != null)
             {
                 if (outNode == null)
                 {
@@ -503,16 +534,33 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("TOP statement is not supported without a FROM statement");
                 }
-                var literal = select.Top.Quantity?.AsLiteral()?.Value?.AsNumber();
-                if (literal == null)
-                {
-                    throw new NotSupportedException("Only numeric literal values are supported in the TOP statement");
+
+                if (select.Top.Quantity is TopQuantity.Constant topConstant)
+                {   
+                    var literal = topConstant.Quantity;
+                    outNode = new RelationData(new FetchRelation()
+                    {
+                        Input = outNode.Relation,
+                        Count = (int)literal
+                    }, outNode.EmitData);
                 }
-                outNode = new RelationData(new FetchRelation()
+                else if (select.Top.Quantity is TopQuantity.TopExpression topExpression)
                 {
-                    Input = outNode.Relation,
-                    Count = int.Parse(literal.Value)
-                }, outNode.EmitData);
+                    var literal = topExpression.Expression?.AsLiteral()?.Value?.AsNumber();
+                    if (literal == null)
+                    {
+                        throw new NotSupportedException("Only numeric literal values are supported in the TOP statement");
+                    }
+                    outNode = new RelationData(new FetchRelation()
+                    {
+                        Input = outNode.Relation,
+                        Count = int.Parse(literal.Value)
+                    }, outNode.EmitData);
+                }
+                else
+                {
+                    throw new SubstraitParseException("TOP statement only supports constant values");
+                }
             }
 
             return outNode;
@@ -539,13 +587,21 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     GroupingExpressions = new List<Expressions.Expression>()
                 };
                 aggRel.Groupings.Add(grouping);
-                foreach (var group in select.GroupBy)
+                
+                if (select.GroupBy is GroupByExpression.Expressions groupByExpressions)
                 {
-                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-                    var result = exprVisitor.Visit(group, parent.EmitData);
-                    grouping.GroupingExpressions.Add(result.Expr);
-                    aggEmitData.Add(group, emitcount, result.Name, result.Type);
-                    emitcount++;
+                    foreach (var group in groupByExpressions.ColumnNames)
+                    {
+                        var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                        var result = exprVisitor.Visit(group, parent.EmitData);
+                        grouping.GroupingExpressions.Add(result.Expr);
+                        aggEmitData.Add(group, emitcount, result.Name, result.Type);
+                        emitcount++;
+                    }
+                }
+                else
+                {
+                    throw new SubstraitParseException("Only column names are supported in GROUP BY");
                 }
             }
 
@@ -751,7 +807,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 table.Args != null)
             {
                 name = string.Join('.', table.Name.Values.Select(x => x.Value));
-                args = table.Args;
+                args = table.Args.Arguments;
                 return;
             }
             throw new InvalidOperationException("Table factor is not a table function");
@@ -942,7 +998,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 throw new InvalidOperationException("Hints are not supported on tables at this point.");
             }
-            
+
+            var tableNameParts = table.Name.Values.Select(x => x.Value).ToList();
             var tableName = string.Join('.', table.Name.Values.Select(x => x.Value));
 
             if (viewRelations.TryGetValue(tableName, out var viewContainer))
@@ -974,7 +1031,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }, emitData);
             }
 
-            if (tablesMetadata.TryGetTable(tableName, out var t))
+            if (tablesMetadata.TryGetTable(tableNameParts, out var t))
             {
                 var emitData = new EmitData();
 

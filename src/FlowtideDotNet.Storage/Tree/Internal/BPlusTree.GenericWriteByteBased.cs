@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
-            var rootNodeTask = m_stateClient.GetValue(m_stateClient.Metadata.Root, "WriteRoot");
+            var rootNodeTask = m_stateClient.GetValue(m_stateClient.Metadata.Root);
 
             if (!rootNodeTask.IsCompletedSuccessfully)
             {
@@ -159,7 +159,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 index = ~index;
             }
             var childId = parentNode.children[index];
-            var getChildTask = m_stateClient.GetValue(childId, "GetGenericWriteInternal");
+            var getChildTask = m_stateClient.GetValue(childId);
 
             if (!getChildTask.IsCompletedSuccessfully)
             {
@@ -224,7 +224,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         // Merge with left neighbor
                         var leftNeighborId = parentNode.children[index - 1];
-                        var getLeftNodeTask = m_stateClient.GetValue(leftNeighborId, "GenericWrite_Internal_AfterGetNode1");
+                        var getLeftNodeTask = m_stateClient.GetValue(leftNeighborId);
                         if (!getLeftNodeTask.IsCompletedSuccessfully)
                         {
                             return GenericWrite_Internal_AfterGetNode_LeafNodeTooSmall_SlowGetLeftByteBased(getLeftNodeTask, leafNode, parentNode, index, result);
@@ -237,7 +237,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         // Merge with right neighbor
                         var rightNeighborId = parentNode.children[index + 1];
-                        var getRightNodeTask = m_stateClient.GetValue(rightNeighborId, "GenericWrite_Internal_AfterGetNode2");
+                        var getRightNodeTask = m_stateClient.GetValue(rightNeighborId);
                         if (!getRightNodeTask.IsCompletedSuccessfully)
                         {
                             return GenericWrite_Internal_AfterGetNode_NodeTooSmall_SlowGetRightByteBased(getRightNodeTask, leafNode, parentNode, index, result);
@@ -365,7 +365,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 if (index == parentNode.keys.Count)
                 {
                     var leftNeighborId = parentNode.children[index - 1];
-                    var getLeftNodeTask = m_stateClient.GetValue(leftNeighborId, "GenericWrite_Internal_AfterGetNode_AfterCallInternal1");
+                    var getLeftNodeTask = m_stateClient.GetValue(leftNeighborId);
                     if (!getLeftNodeTask.IsCompletedSuccessfully)
                     {
                         return GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_SlowGetLeftByteBased(getLeftNodeTask, internalNode, parentNode, index, result);
@@ -376,7 +376,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 else
                 {
                     var rightNeighborId = parentNode.children[index + 1];
-                    var getRightNodeTask = m_stateClient.GetValue(rightNeighborId, "GenericWrite_Internal_AfterGetNode_AfterCallInternal2");
+                    var getRightNodeTask = m_stateClient.GetValue(rightNeighborId);
                     if (!getRightNodeTask.IsCompletedSuccessfully)
                     {
                         return GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_SlowGetRightByteBased(getRightNodeTask, internalNode, parentNode, index, result);
