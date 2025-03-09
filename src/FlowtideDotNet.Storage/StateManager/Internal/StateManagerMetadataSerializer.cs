@@ -37,6 +37,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             return Deserialize(bytes, length);
         }
 
+        public void Dispose()
+        {
+        }
+
         public Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
         {
             return Task.CompletedTask;
