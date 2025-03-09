@@ -158,7 +158,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     lock (node)
                     {
                         node.ValueRef.version = node.ValueRef.version + 1;
-                        return false;
+                        // If it is not removed, we can return directly, otherwise it needs to be readded
+                        if (!node.ValueRef.removed)
+                        {
+                            return false;
+                        }
                     }
                 }
 
