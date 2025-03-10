@@ -18,6 +18,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
     {
         void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value);
 
+        /// <summary>
+        /// Called when there has been no activity in a while on the stream.
+        /// Allows clearing of temporary memory structures to reduce fragmentation.
+        /// </summary>
+        void ClearTemporaryAllocations();
+
         ICacheObject DeserializeCacheObject(ReadOnlyMemory<byte> bytes, int length);
 
         Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata)

@@ -474,6 +474,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             if (isCleanup)
             {
                 m_fileCache.ClearTemporaryAllocations();
+                if (options.ValueSerializer != null)
+                {
+                    options.ValueSerializer.ClearTemporaryAllocations();
+                }
             }
         }
 

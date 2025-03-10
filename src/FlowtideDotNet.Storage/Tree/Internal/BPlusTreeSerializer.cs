@@ -217,5 +217,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public void Dispose()
         {
         }
+
+        public void ClearTemporaryAllocations()
+        {
+        }
     }
 }

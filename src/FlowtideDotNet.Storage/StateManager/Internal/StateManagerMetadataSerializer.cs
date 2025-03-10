@@ -23,6 +23,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             return Task.CompletedTask;
         }
 
+        public void ClearTemporaryAllocations()
+        {
+        }
+
         public StateManagerMetadata Deserialize(ReadOnlyMemory<byte> bytes, int length)
         {
             var slice = bytes.Span.Slice(0, length);

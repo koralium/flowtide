@@ -18,6 +18,7 @@ using System;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
@@ -38,20 +39,35 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         private ZSTD_CCtx_s* _cctx;
         private bool _disposedValue;
         private readonly IMemoryAllocator _memoryAllocator;
+        private readonly int _compressionLevel;
         private SortedList<IntPtr, int> _allocatedMemory;
         private GCHandle _handle;
         private readonly object _lock = new object();
+        private bool _isInitialized;
 
         public FlowtideZstdCompressor(IMemoryAllocator memoryAllocator, int compressionLevel)
         {
             _memoryAllocator = memoryAllocator;
+            this._compressionLevel = compressionLevel;
             _allocatedMemory = new SortedList<nint, int>();
+            _handle = GCHandle.Alloc(this);
+            _isInitialized = false;   
+        }
 
+        private void SetParameter(ZSTD_cParameter parameter, int value)
+        {
+            Methods.ZSTD_CCtx_setParameter(_cctx, parameter, value).EnsureZstdSuccess();
+        }
+
+        private void CreateContexts()
+        {
+            if (_isInitialized)
+            {
+                return;
+            }
             delegate* managed<void*, nuint, void*> customAlloc = &CustomAlloc;
             delegate* managed<void*, void*, void> customFree = &CustomFree;
 
-            _handle = GCHandle.Alloc(this);
-            
             var customMem = new ZSTD_customMem()
             {
                 customAlloc = customAlloc,
@@ -60,12 +76,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             };
             _dctx = Methods.ZSTD_createDCtx_advanced(customMem);
             _cctx = Methods.ZSTD_createCCtx_advanced(customMem);
-            SetParameter(ZSTD_cParameter.ZSTD_c_compressionLevel, compressionLevel);
+
+            SetParameter(ZSTD_cParameter.ZSTD_c_compressionLevel, _compressionLevel);
+            _isInitialized = true;
         }
 
-        private void SetParameter(ZSTD_cParameter parameter, int value)
+        /// <summary>
+        /// Used to remove all allocations, is used both on dispose and on cleanup to help reduce fragmentation
+        /// when the stream is on low load.
+        /// </summary>
+        public void ResetContexts()
         {
-            Methods.ZSTD_CCtx_setParameter(_cctx, parameter, value).EnsureZstdSuccess();
+            if (_isInitialized)
+            {
+                Methods.ZSTD_freeDCtx(_dctx);
+                Methods.ZSTD_freeCCtx(_cctx);
+            }
+            _isInitialized = false;
         }
 
 
@@ -101,6 +128,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
 
         public int Wrap(ReadOnlySpan<byte> src, Span<byte> dest)
         {
+            CreateContexts();
             fixed (byte* srcPtr = src)
             fixed (byte* destPtr = dest)
             {
@@ -111,6 +139,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
 
         public int Unwrap(ReadOnlySpan<byte> src, Span<byte> dest)
         {
+            CreateContexts();
             fixed (byte* srcPtr = src)
             fixed (byte* destPtr = dest)
             {
@@ -124,8 +153,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         {
             if (!_disposedValue)
             {
-                Methods.ZSTD_freeDCtx(_dctx);
-                Methods.ZSTD_freeCCtx(_cctx);
+                ResetContexts();
                 _handle.Free();
                 _disposedValue = true;
             }
@@ -163,6 +191,21 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         public Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
         {
             return _serializer.CheckpointAsync(checkpointWriter, metadata);
+        }
+
+        public void ClearTemporaryAllocations()
+        {
+            lock (_readLock)
+            {
+                lock (_writeLock)
+                {
+                    _compressor.ResetContexts();
+                    // Create a new empty buffer writer with an empty size
+                    _bufferWriter = new ArrayBufferWriter<byte>();
+                }
+            }
+
+            _serializer.ClearTemporaryAllocations();
         }
 
         public TValue Deserialize(ReadOnlyMemory<byte> bytes, int length)
