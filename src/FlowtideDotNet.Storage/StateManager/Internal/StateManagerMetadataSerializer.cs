@@ -23,6 +23,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             return Task.CompletedTask;
         }
 
+        public void ClearTemporaryAllocations()
+        {
+        }
+
         public StateManagerMetadata Deserialize(ReadOnlyMemory<byte> bytes, int length)
         {
             var slice = bytes.Span.Slice(0, length);
@@ -35,6 +39,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         public ICacheObject DeserializeCacheObject(ReadOnlyMemory<byte> bytes, int length)
         {
             return Deserialize(bytes, length);
+        }
+
+        public void Dispose()
+        {
         }
 
         public Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
