@@ -71,7 +71,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             // Register the allocated memory to metrics
             instance._memoryAllocator.RegisterAllocationToMetrics((int)size);
             var ptr = NativeMemory.Alloc(size);
-            instance._allocatedMemory.Add(new nint(ptr), (int)size);
+            lock (instance._lock)
+            {
+                instance._allocatedMemory.Add(new nint(ptr), (int)size);
+            }
             return ptr;
         }
 
