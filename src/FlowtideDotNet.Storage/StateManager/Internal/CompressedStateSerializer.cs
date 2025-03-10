@@ -28,6 +28,10 @@ using ZstdSharp.Unsafe;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
+    /// <summary>
+    /// Implementation of both compressor and decompressor from zstdsharp, only to use own memory allocation
+    /// to get that memory to metrics correctly.
+    /// </summary>
     internal unsafe class FlowtideZstdCompressor : IDisposable
     {
         private ZSTD_DCtx_s* _dctx;
@@ -36,6 +40,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         private readonly IMemoryAllocator _memoryAllocator;
         private SortedList<IntPtr, int> _allocatedMemory;
         private GCHandle _handle;
+        private readonly object _lock = new object();
 
         public FlowtideZstdCompressor(IMemoryAllocator memoryAllocator, int compressionLevel)
         {
@@ -82,11 +87,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         {
             GCHandle handle = GCHandle.FromIntPtr((IntPtr)opaque);
             var instance = (FlowtideZstdCompressor)handle.Target!;
-            if (instance._allocatedMemory.TryGetValue(new nint(ptr), out var size))
+            lock (instance._lock)
             {
-                // Remove allocated memory from metrics
-                instance._memoryAllocator.RegisterFreeToMetrics(size);
-                instance._allocatedMemory.Remove(new nint(ptr));
+                if (instance._allocatedMemory.TryGetValue(new nint(ptr), out var size))
+                {
+                    // Remove allocated memory from metrics
+                    instance._memoryAllocator.RegisterFreeToMetrics(size);
+                    instance._allocatedMemory.Remove(new nint(ptr));
+                }
             }
             NativeMemory.Free(ptr);
         }
