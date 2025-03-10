@@ -9,8 +9,6 @@ tags: [release]
 ### New serializer to improve serializations speeds
 
 A new custom serializer has been implemented that follows the Apache Arrow serialization while minimizing extra allocations and memory copies.
-Instead of using `Stream` it uses `IBufferWriter` to directly write to properly memory-aligned memory
-to write to files.
 
 Additionally, the default compression method was also changed from using ZLib to Zstd. 
 This change was also made to improve serialization performance.
