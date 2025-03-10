@@ -22,9 +22,11 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Hashing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -300,6 +302,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             mem.Span.CopyTo(newMem.Memory.Span);
 
             return new Int64Column(newMem, Count, memoryAllocator);
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            Debug.Assert(_data != null);
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteInt64LittleEndian(buffer, _data.GetRef(index));
+            hashAlgorithm.Append(buffer);
         }
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)

@@ -36,6 +36,7 @@ using FlowtideDotNet.Core.Operators.TableFunction;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Core.Operators.Exchange;
 using System.Threading.Tasks;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Core.Operators.Join;
@@ -675,6 +676,42 @@ namespace FlowtideDotNet.Core.Engine
                 return op;
             }
            
+        }
+
+        public override IStreamVertex VisitExchangeRelation(ExchangeRelation exchangeRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            var id = _operatorId++;
+            var op = new ExchangeOperator(exchangeRelation, functionsRegister, DefaultBlockOptions);
+
+            exchangeRelation.Input.Accept(this, op);
+            dataflowStreamBuilder.AddEgressBlock(id.ToString(), op);
+            return op;
+        }
+
+        /// <summary>
+        /// Links exchange operators to their standard output, no special operator is required.
+        /// It just links the partition output the the linking block.
+        /// </summary>
+        /// <param name="standardOutputExchangeReferenceRelation"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public override IStreamVertex VisitStandardOutputExchangeReferenceRelation(StandardOutputExchangeReferenceRelation standardOutputExchangeReferenceRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            // Fetch exchange 
+            var relTree = GetOrBuildRelation(standardOutputExchangeReferenceRelation.RelationId);
+            if (relTree.StreamVertex is ExchangeOperator exchangeOperator)
+            {
+                if (state != null)
+                {
+                    exchangeOperator.Sources[standardOutputExchangeReferenceRelation.TargetId].LinkTo(state);
+                }
+                return exchangeOperator;
+            }
+            else
+            {
+                throw new InvalidOperationException("StandardOutputExchangeReferenceRelation must reference an ExchangeOperator");
+            }
         }
     }
 }
