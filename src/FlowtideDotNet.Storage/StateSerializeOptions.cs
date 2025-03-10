@@ -32,6 +32,6 @@ namespace FlowtideDotNet.Storage
 
         public CompressionMethod CompressionMethod { get; set; }
 
-        public int? ComressionLevel { get; set; }
+        public int? CompressionLevel { get; set; }
     }
 }

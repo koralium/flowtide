@@ -6,8 +6,7 @@ tags: [release]
 
 ## Major changes
 
-### New serializer to improve serializations speeds
-
+### New serializer to improve serialization speed
 A new custom serializer has been implemented that follows the Apache Arrow serialization while minimizing extra allocations and memory copies.
 
 Additionally, the default compression method was also changed from using ZLib to Zstd. 
