@@ -6,8 +6,7 @@ tags: [release]
 
 ## Major changes
 
-### New serializer to improve serializations speeds
-
+### New serializer to improve serialization speed
 A new custom serializer has been implemented that follows the Apache Arrow serialization while minimizing extra allocations and memory copies.
 Instead of using `Stream` it uses `IBufferWriter` to directly write to properly memory-aligned memory
 to write to files.
