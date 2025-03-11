@@ -1427,12 +1427,12 @@ namespace FlowtideDotNet.AcceptanceTests
                     pm.userkey
                 FROM projects p
                 LEFT JOIN projectmembers pm
-                ON p.projectnumber = pm.projectnumber AND p.companyid = pm.companyid AND pm.userkey >= ProjectKey", ignoreSameDataCheck: false);
+                ON p.projectnumber = pm.projectnumber AND p.companyid = pm.companyid AND pm.userkey % ProjectKey = 1", ignoreSameDataCheck: false);
             await WaitForUpdate();
             // add the project to do the join
             AddOrUpdateProject(new Project()
             {
-                ProjectKey = 1,
+                ProjectKey = 2,
                 CompanyId = "1",
                 ProjectNumber = "123",
                 Name = "Project 1"
