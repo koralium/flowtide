@@ -155,6 +155,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.AddOrUpdateOrder(order);
         }
 
+        public void AddOrUpdateProject(Project project)
+        {
+            generator.AddOrUpdateProject(project);
+        }
+
+        public void AddOrUpdateProjectMember(ProjectMember projectMember)
+        {
+            generator.AddOrUpdateProjectMember(projectMember);
+        }
+
 
         [MemberNotNull(nameof(_connectorManager))]
         public void SetupConnectorManager()
