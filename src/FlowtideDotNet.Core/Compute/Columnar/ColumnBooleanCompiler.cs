@@ -26,14 +26,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar
 {
     internal static class ColumnBooleanCompiler
     {
-        public static Func<EventBatchData, int, bool> Compile(Substrait.Expressions.Expression expression, IFunctionsRegister functionsRegister)
+        public static Func<EventBatchData, int, bool> Compile(Substrait.Expressions.Expression expression, IFunctionsRegister functionsRegister, int relativeIndex = 0)
         {
             var batchParam = System.Linq.Expressions.Expression.Parameter(typeof(EventBatchData));
             var intParam = System.Linq.Expressions.Expression.Parameter(typeof(int));
 
             var visitor = new ColumnarExpressionVisitor(functionsRegister);
             var resultContainer = System.Linq.Expressions.Expression.Constant(new DataValueContainer());
-            var expr = visitor.Visit(expression, new ColumnParameterInfo(new List<ParameterExpression>() { batchParam }, new List<ParameterExpression>() { intParam }, new List<int> { 0 }, resultContainer));
+            var expr = visitor.Visit(expression, new ColumnParameterInfo(new List<ParameterExpression>() { batchParam }, new List<ParameterExpression>() { intParam }, new List<int> { relativeIndex }, resultContainer));
 
             if (expr == null)
             {

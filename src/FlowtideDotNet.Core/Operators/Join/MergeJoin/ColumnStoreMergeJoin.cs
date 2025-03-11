@@ -64,6 +64,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private IBPlusTreeIterator<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _rightIterator;
 
         protected readonly Func<EventBatchData, int, EventBatchData, int, bool>? _postCondition;
+        private readonly Func<EventBatchData, int, bool>? _leftPostCondition;
+        private readonly Func<EventBatchData, int, bool>? _rightPostCondition;
 
         private readonly DataValueContainer _dataValueContainer;
 
@@ -95,6 +97,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             if (mergeJoinRelation.PostJoinFilter != null)
             {
+                (_leftPostCondition, _rightPostCondition) = PostJoinExtractor.CheckForLeftOrRightPostJoinConditions(mergeJoinRelation, functionsRegister);
                 _postCondition = ColumnBooleanCompiler.CompileTwoInputs(mergeJoinRelation.PostJoinFilter, functionsRegister, mergeJoinRelation.Left.OutputLength);
             }
         }
@@ -201,6 +204,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     referenceBatch = msg.Data.EventBatchData,
                     RowIndex = i
                 };
+
+                if (_leftPostCondition != null && (_mergeJoinRelation.Type == JoinType.Inner || _mergeJoinRelation.Type == JoinType.Right))
+                {
+                    // If it is a right or inner join we can check early the post join condition to skip the row
+                    // if it does not match
+                    if (!_leftPostCondition(msg.Data.EventBatchData, i))
+                    {
+                        continue;
+                    }
+                }
 
                 await _rightIterator.Seek(in columnReference, _searchRightComparer);
                 int weight = msg.Data.Weights[i];
@@ -405,6 +418,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     referenceBatch = msg.Data.EventBatchData,
                     RowIndex = i
                 };
+
+                
+                if (_rightPostCondition != null && (_mergeJoinRelation.Type == JoinType.Inner || _mergeJoinRelation.Type == JoinType.Left))
+                {
+                    if (!_rightPostCondition(msg.Data.EventBatchData, i))
+                    {
+                        continue;
+                    }
+                }
 
                 await _leftIterator.Seek(in columnReference, _searchLeftComparer);
 
