@@ -85,6 +85,38 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             mockTable.AddOrUpdate(new List<Order>() { order });
         }
 
+        public void AddOrUpdateProject(Project project)
+        {
+            var index = Projects.FindIndex(x => x.ProjectKey == project.ProjectKey);
+
+            if (index >= 0)
+            {
+                Projects[index] = project;
+            }
+            else
+            {
+                Projects.Add(project);
+            }
+            var mockTable = mockDatabase.GetOrCreateTable<Project>("projects");
+            mockTable.AddOrUpdate(new List<Project>() { project });
+        }
+
+        public void AddOrUpdateProjectMember(ProjectMember projectMember)
+        {
+            var index = ProjectMembers.FindIndex(x => x.ProjectMemberKey == projectMember.ProjectMemberKey);
+
+            if (index >= 0)
+            {
+                ProjectMembers[index] = projectMember;
+            }
+            else
+            {
+                ProjectMembers.Add(projectMember);
+            }
+            var mockTable = mockDatabase.GetOrCreateTable<ProjectMember>("projectmembers");
+            mockTable.AddOrUpdate(new List<ProjectMember>() { projectMember });
+        }
+
         public void AddOrUpdateCompany(Company company)
         {
             var index = Companies.FindIndex(x => x.CompanyId == company.CompanyId);

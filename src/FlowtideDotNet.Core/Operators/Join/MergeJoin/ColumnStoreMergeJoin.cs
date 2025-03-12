@@ -230,8 +230,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             {
                                 if (!_postCondition(columnReference.referenceBatch, columnReference.RowIndex, pageKeyStorage._data, k))
                                 {
-                                    _searchRightComparer.end = int.MinValue;
-                                    break;
+                                    continue;
                                 }
                             }
                             pageUpdated |= RecieveLeftHandleElement(
@@ -436,8 +435,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             {
                                 if (!_postCondition(pageKeyStorage._data, k, columnReference.referenceBatch, columnReference.RowIndex))
                                 {
-                                    _searchLeftComparer.end = int.MinValue;
-                                    break;
+                                    continue;
                                 }
                             }
                             pageUpdated |= RecieveRightHandleElement(
@@ -503,6 +501,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         {
                             await page.SavePage(false);
                         }
+                        // Checks if we end before the last element, if we do, we dont have to fetch the next page
                         if (_searchLeftComparer.end < (page.Keys.Count - 1))
                         {
                             break;
