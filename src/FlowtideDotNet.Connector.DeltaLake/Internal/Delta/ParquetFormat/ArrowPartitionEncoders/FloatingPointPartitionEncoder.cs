@@ -71,5 +71,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowP
 
             _value = new DoubleValue(doubleValue);
         }
+
+        public void NewNullBatch()
+        {
+        }
     }
 }

@@ -18,6 +18,7 @@ using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.Metrics;
 using System.Diagnostics.CodeAnalysis;
+using static FlowtideDotNet.Storage.StateManager.Internal.Sync.LruTableSync;
 using FlowtideDotNet.Storage.StateManager.Internal.ObjectState;
 using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
@@ -83,6 +84,8 @@ namespace FlowtideDotNet.Storage.StateManager
         internal LruTableSync LruTable => m_lruTable ?? throw new InvalidOperationException("Manager must be initialized before getting LRU table");
 
         public bool Initialized { get; private set; }
+
+        internal int LookupCacheSize => 0;
 
         internal StateSerializeOptions SerializeOptions => options?.SerializeOptions ?? throw new InvalidOperationException("Manager must be initialized before getting serialize options");
 
@@ -177,6 +180,12 @@ namespace FlowtideDotNet.Storage.StateManager
         {
             Debug.Assert(m_lruTable != null);
             m_lruTable.Clear();
+        }
+
+        internal bool TryGetCacheValueFromCache(in long key, [NotNullWhen(true)] out LinkedListNode<LinkedListValue>? value)
+        {
+            Debug.Assert(m_lruTable != null);
+            return m_lruTable.TryGetCacheValue(key, out value);
         }
 
         internal bool TryGetValueFromCache<T>(in long key, [NotNullWhen(true)] out T? value)

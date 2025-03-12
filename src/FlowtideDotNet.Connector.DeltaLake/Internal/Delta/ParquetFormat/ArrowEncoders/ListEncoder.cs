@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
     {
         private readonly IArrowEncoder _childEncoder;
         private ListArray? _array;
+        private bool _isNullColumn;
 
         public bool IsPartitionValueEncoder => false;
 
@@ -39,6 +40,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
 
         public void AddValue(int index, ref AddToColumnFunc func)
         {
+            if (_isNullColumn)
+            {
+                func.AddValue(NullValue.Instance);
+                return;
+            }
             Debug.Assert(_array != null);
 
             if (_array.IsNull(index))
@@ -64,10 +70,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
         {
             _array = (ListArray)arrowArray;
             _childEncoder.NewBatch(_array.Values);
+            _isNullColumn = false;
         }
 
         public void NewFile(Dictionary<string, string>? partitionValues)
         {
+        }
+
+        public void NewNullBatch()
+        {
+            _isNullColumn = true;
         }
     }
 }

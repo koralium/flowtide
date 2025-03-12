@@ -102,7 +102,7 @@ namespace FlowtideDotNet.DependencyInjection
             {
                 CompressionMethod = CompressionMethod.Page,
                 CompressionType = CompressionType.Zstd,
-                ComressionLevel = compressionLevel
+                CompressionLevel = compressionLevel
             });
         }
 

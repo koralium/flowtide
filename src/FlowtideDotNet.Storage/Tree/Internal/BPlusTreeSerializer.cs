@@ -213,5 +213,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             throw new NotImplementedException();
         }
+
+        public void Dispose()
+        {
+        }
+
+        public void ClearTemporaryAllocations()
+        {
+        }
     }
 }

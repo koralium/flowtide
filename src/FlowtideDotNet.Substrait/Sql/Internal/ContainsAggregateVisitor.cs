@@ -78,9 +78,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 _aggregateFunctions.Add(function);
                 containsAggregate = true;
             }
-            if (function.Args != null)
+            var argList = BuiltInSqlFunctions.GetFunctionArguments(function.Args);
+            if (argList.Args != null)
             {
-                foreach (var arg in function.Args)
+                foreach (var arg in argList.Args)
                 {
                     if (arg is FunctionArg.Named namedFunctionArg)
                     {

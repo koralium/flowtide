@@ -155,6 +155,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.AddOrUpdateOrder(order);
         }
 
+        public void AddOrUpdateProject(Project project)
+        {
+            generator.AddOrUpdateProject(project);
+        }
+
+        public void AddOrUpdateProjectMember(ProjectMember projectMember)
+        {
+            generator.AddOrUpdateProjectMember(projectMember);
+        }
+
 
         [MemberNotNull(nameof(_connectorManager))]
         public void SetupConnectorManager()
@@ -240,6 +250,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _persistentStorage,
                     DefaultBPlusTreePageSize = pageSize,
+                    //DefaultBPlusTreePageSizeBytes = 1,
                     TemporaryStorageOptions = new Storage.FileCacheOptions()
                     {
                         DirectoryPath = $"./data/tempFiles/{testName}/tmp"

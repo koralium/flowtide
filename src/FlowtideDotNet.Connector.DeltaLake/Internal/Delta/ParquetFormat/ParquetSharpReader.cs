@@ -18,7 +18,6 @@ using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using ParquetSharp.Arrow;
-using SqlParser.Ast;
 using Stowage;
 using System;
 using System.Collections.Generic;
@@ -402,6 +401,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 encoder.NewFile(partitionValues);
             }
 
+            HashSet<int> nullColumns = new HashSet<int>();
             for (int i = 0; i < _physicalColumnNamesInBatch.Count; i++)
             {
                 
@@ -420,7 +420,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 }
                 if (!found)
                 {
-                    throw new InvalidOperationException($"Could not find field {_physicalColumnNamesInBatch[i]} in batch");
+                    nullColumns.Add(i);
                 }
             }
 
@@ -444,7 +444,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                         var encoder = _encoders[i];
                         if (!encoder.IsPartitionValueEncoder)
                         {
-                            encoder.NewBatch(batch.Column(columnIndex));
+                            if (nullColumns.Contains(i))
+                            {
+                                encoder.NewNullBatch();
+                            }
+                            else
+                            {
+                                encoder.NewBatch(batch.Column(columnIndex));
+                            }
+                            
                             columnIndex++;
                         }
                     }

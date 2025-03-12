@@ -25,6 +25,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
         bool IsPartitionValueEncoder { get; }
         void NewFile(Dictionary<string, string>? partitionValues);
         void NewBatch(IArrowArray arrowArray);
+        void NewNullBatch();
         void AddValue(int index, ref AddToColumnFunc func);
     }
 }

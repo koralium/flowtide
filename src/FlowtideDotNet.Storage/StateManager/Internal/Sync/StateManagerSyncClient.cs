@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             
             if (stateManager.SerializeOptions.CompressionType == CompressionType.Zstd && stateManager.SerializeOptions.CompressionMethod == CompressionMethod.Page)
             {
-                serializer = new CompressedStateSerializer<V>(serializer, stateManager.SerializeOptions.ComressionLevel.HasValue ? stateManager.SerializeOptions.ComressionLevel.Value : 3 );
+                serializer = new CompressedStateSerializer<V>(serializer, stateManager.SerializeOptions.CompressionLevel.HasValue ? stateManager.SerializeOptions.CompressionLevel.Value : 3, memoryAllocator);
             }
 
             var stateClient = await stateManager.CreateClientAsync<V, TMetadata>(combinedName, new StateClientOptions<V>()

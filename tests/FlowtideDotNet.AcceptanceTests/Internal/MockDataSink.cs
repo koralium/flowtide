@@ -38,6 +38,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _tree;
 
+#if DEBUG_WRITE
+        // Debug data
+        private StreamWriter? allInput;
+#endif
+
         public MockDataSink(
             WriteRelation writeRelation,
             ExecutionDataflowBlockOptions executionDataflowBlockOptions, 
@@ -65,6 +70,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
+#if DEBUG_WRITE
+            if (allInput != null)
+            {
+                allInput.WriteLine("Restart");
+            }
+            else
+            {
+                allInput = File.CreateText($"debugwrite/{StreamName}-{Name}.sink.txt");
+            }
+#endif
             _tree = await stateManagerClient.GetOrCreateTree("sink", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>()
             {
                 Comparer = new ColumnComparer(writeRelation.OutputLength),
@@ -111,7 +126,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 {
                     if (kv.Value < 0)
                     {
-                        Assert.Fail("Row exist in sink with negaive weight");
+                        Assert.Fail("Row exist in sink with negaive weight: " + kv.Key.ToString());
                     }
                     for (int i = 0; i < kv.Key.referenceBatch.Columns.Count; i++)
                     {
@@ -143,14 +158,22 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             
         }
 
-        protected override Task OnRecieve(StreamEventBatch msg, long time)
+        protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
+#if DEBUG_WRITE
+            allInput!.WriteLine("New batch");
+            foreach (var e in msg.Events)
+            {
+                allInput!.WriteLine($"{e.Weight} {e.ToJson()}");
+            }
+            await allInput.FlushAsync();
+#endif
             Debug.Assert(_tree != null);
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
                 var rowRef = new ColumnRowReference() { referenceBatch = msg.Data.EventBatchData, RowIndex = i };
                 var weight = msg.Data.Weights[i];
-                _tree.RMWNoResult(in rowRef, in weight, (input, current, exist) =>
+                await _tree.RMWNoResult(in rowRef, in weight, (input, current, exist) =>
                 {
                     if (exist)
                     {
@@ -164,7 +187,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     return (input, GenericWriteOperation.Upsert);
                 });
             }
-            return Task.CompletedTask;
         }
     }
 }
