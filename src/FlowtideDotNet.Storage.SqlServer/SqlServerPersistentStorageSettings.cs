@@ -18,9 +18,9 @@ namespace FlowtideDotNet.Storage.SqlServer
     public class SqlServerPersistentStorageSettings
     {
         /// <summary>
-        /// Gets or sets the connection string used to connect to the SQL Server database.
+        /// Gets or sets function for retrieval of the connection string used to connect to the SQL Server database.
         /// </summary>
-        public required string ConnectionString { get; set; }
+        public required Func<string> ConnectionStringFunc { get; set; }
 
         /// <summary>
         /// Gets or sets the limit for the number of pages to be written in bulk operations. 

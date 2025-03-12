@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall();
 #endif
             var reader = new StreamPageDataReader(pages);
-            using var connection = new SqlConnection(Settings.ConnectionString);
+            using var connection = new SqlConnection(Settings.ConnectionStringFunc());
             await connection.OpenAsync();
             await SaveStreamPagesAsync(reader, connection);
         }

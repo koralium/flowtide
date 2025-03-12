@@ -391,7 +391,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
         {
             var settings = new SqlServerPersistentStorageSettings
             {
-                ConnectionString = _fixture.ConnectionString,
+                ConnectionStringFunc = () => _fixture.ConnectionString,
                 WritePagesBulkLimit = writePagesBulkLimit,
                 BulkCopySettings = new SqlServerBulkCopySettings(),
                 StreamTableName = $"[{schema}].[Streams]",
