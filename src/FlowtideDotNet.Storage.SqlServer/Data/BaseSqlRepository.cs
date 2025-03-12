@@ -10,13 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Azure;
 using FlowtideDotNet.Storage.SqlServer.Exceptions;
 using Microsoft.Data.SqlClient;
 using System.Buffers.Binary;
 using System.Data;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace FlowtideDotNet.Storage.SqlServer.Data
@@ -61,7 +58,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall([key]);
 #endif
 
-            using var connection = new SqlConnection(Settings.ConnectionString);
+            using var connection = new SqlConnection(Settings.ConnectionStringFunc());
             using var cmd = new SqlCommand();
             cmd.Connection = connection;
             cmd.Parameters.AddWithValue("@key", key);
@@ -105,7 +102,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall([key]);
 #endif
 
-            using var connection = new SqlConnection(Settings.ConnectionString);
+            using var connection = new SqlConnection(Settings.ConnectionStringFunc());
             using var cmd = new SqlCommand();
             cmd.Connection = connection;
             cmd.Parameters.AddWithValue("@key", key);
@@ -158,7 +155,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
             if (transaction == null)
             {
-                using var connection = new SqlConnection(Settings.ConnectionString);
+                using var connection = new SqlConnection(Settings.ConnectionStringFunc());
                 await connection.OpenAsync();
                 await SaveStreamPagesAsync(reader, connection);
             }
@@ -236,7 +233,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall();
 #endif
 
-            using var connection = new SqlConnection(Settings.ConnectionString);
+            using var connection = new SqlConnection(Settings.ConnectionStringFunc());
             using var cmd = new SqlCommand($"DELETE FROM {Settings.StreamPageTableName} WHERE Version > @Version AND StreamKey = @StreamKey", connection);
             cmd.Parameters.AddWithValue("@Version", Stream.Metadata.CurrentVersion);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);

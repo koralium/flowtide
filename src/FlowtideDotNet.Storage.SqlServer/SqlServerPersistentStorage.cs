@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Storage.SqlServer
             Debug.Assert(_stream != null, "Stream should be initialized");
             Debug.Assert(_storageRepository != null, "Stream repository should be initialized");
 
-            using var connection = new SqlConnection(_settings.ConnectionString);
+            using var connection = new SqlConnection(_settings.ConnectionStringFunc());
             await connection.OpenAsync();
             using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
 
@@ -98,7 +98,7 @@ namespace FlowtideDotNet.Storage.SqlServer
 
             // todo: We might not actually need to do anything on compact as it's already done in checkpoint?
             Debug.Assert(_storageRepository != null, "Stream repository should be initialized");
-            using var connection = new SqlConnection(_settings.ConnectionString);
+            using var connection = new SqlConnection(_settings.ConnectionStringFunc());
             await connection.OpenAsync();
             using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
 
@@ -146,7 +146,7 @@ namespace FlowtideDotNet.Storage.SqlServer
                 await repo.ClearLocalAndWaitForBackgroundTasks();
             }
 
-            using var connection = new SqlConnection(_settings.ConnectionString);
+            using var connection = new SqlConnection(_settings.ConnectionStringFunc());
             await connection.OpenAsync();
             using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
 
