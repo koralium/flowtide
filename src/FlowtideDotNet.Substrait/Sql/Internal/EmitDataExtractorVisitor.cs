@@ -132,7 +132,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             int outputCounter = 0;
             foreach (var s in selects)
             {
-                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, new Dictionary<string, SortedDictionary<string, string>>());
                 if (s is SelectItem.ExpressionWithAlias exprAlias)
                 {
                     SubstraitBaseType returnType = new AnyType();

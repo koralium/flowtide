@@ -70,11 +70,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     string methodName = nameof(Substring);
                     if (scalarFunction.Options != null && scalarFunction.Options.TryGetValue(NegativeStart, out var negativeStart))
                     {
-                        if (negativeStart == WrapFromEnd)
+                        var negativeStartValue = negativeStart.First();
+                        if (negativeStartValue == WrapFromEnd)
                         {
                             methodName = nameof(SubstringWrapFromEnd);
                         }
-                        else if (negativeStart == LeftOfBeginning)
+                        else if (negativeStartValue == LeftOfBeginning)
                         {
                             methodName = nameof(SubstringLeftOfBeginning);
                         }
@@ -97,7 +98,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 {
                     bool ignoreNulls = false;
 
-                    if(func.Options != null && func.Options.TryGetValue(NullHandling, out var nullHandling) && nullHandling == IgnoreNulls)
+                    if(func.Options != null && func.Options.TryGetValue(NullHandling, out var nullHandling) && nullHandling.First() == IgnoreNulls)
                     {
                         ignoreNulls = true;
                     }

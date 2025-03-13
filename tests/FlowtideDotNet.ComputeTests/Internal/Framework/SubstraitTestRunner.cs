@@ -116,7 +116,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
                 Arguments = expressionList,
                 ExtensionUri = extensionUri,
                 ExtensionName = parsedTest.FunctionName,
-                Options = parsedTest.Options
+                Options = parsedTest.Options.ToDictionary(x => x.Key, x => (IReadOnlyList<string>)new List<string> { x.Value })
             }, register);
 
             Column[] columns = new Column[parsedTest.Arguments.Count];

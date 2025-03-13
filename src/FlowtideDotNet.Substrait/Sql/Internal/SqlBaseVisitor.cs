@@ -38,6 +38,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 return VisitBeginSubStream(beginSubStream);
             }
+            if (statement is Statement.SetVariable setVariable)
+            {
+                return VisitSetVariable(setVariable);
+            }
+            throw new NotImplementedException();
+        }
+
+        protected virtual TReturn VisitSetVariable(Statement.SetVariable setVariable)
+        {
             throw new NotImplementedException();
         }
 

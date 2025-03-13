@@ -30,7 +30,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task CustomStaticScalar()
         {
             SqlFunctionRegister.RegisterScalarFunction("static", 
-                (func, visitor, emitData) =>
+                (func, options, visitor, emitData) =>
                 {
                     List<Substrait.Expressions.Expression> args = new List<Substrait.Expressions.Expression>();
                     return new Substrait.Sql.ScalarResponse(
@@ -45,7 +45,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 });
 
             FunctionsRegister.RegisterScalarFunction("/custom.yaml", "static",
-                (func, parameterInfo, visitor) =>
+                (func, arameterInfo, visitor) =>
                 {
                     return System.Linq.Expressions.Expression.Constant(FlxValue.FromMemory(FlexBuffer.SingleValue("staticvalue")));
                 });
@@ -80,7 +80,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task CustomOneParameterWithExpression()
         {
             SqlFunctionRegister.RegisterScalarFunction("addnumbers",
-                (func, visitor, emitData) =>
+                (func, options, visitor, emitData) =>
                 {
                     var argList = GetFunctionArguments(func.Args);
                     if (argList.Args?.Count != 1)

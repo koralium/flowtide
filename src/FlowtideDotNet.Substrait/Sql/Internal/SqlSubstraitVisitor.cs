@@ -34,6 +34,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private string? subStreamName;
         private int exchangeTargetIdCounter;
         private readonly List<Relation> subRelations;
+        private Dictionary<string, SortedDictionary<string, string>> globalFunctionOptions;
 
         public SqlSubstraitVisitor(SqlPlanBuilder sqlPlanBuilder, SqlFunctionRegister sqlFunctionRegister)
         {
@@ -44,6 +45,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             exchangeRelations = new Dictionary<string, ExchangeContainer>(StringComparer.OrdinalIgnoreCase);
             viewRelations = new Dictionary<string, ViewContainer>(StringComparer.OrdinalIgnoreCase);
             subRelations = new List<Relation>();
+            globalFunctionOptions = new Dictionary<string, SortedDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
         }
 
         public List<Relation> GetRelations(Sequence<Statement> statements)
@@ -177,7 +179,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             if (kvOption.Value is Expression.Identifier scatterIdentifier)
                             {
-                                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
                                 // Do a lookup on the partition by field
                                 var exprData = exprVisitor.Visit(scatterIdentifier, relationData.EmitData);
                                 if (exprData.Expr is Expressions.FieldReference fieldReference)
@@ -353,7 +355,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
             if (query.OrderBy != null && query.OrderBy.Expressions != null)
             {
-                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
                 List<Expressions.SortField> sortFields = new List<Expressions.SortField>();
                 foreach (var o in query.OrderBy.Expressions)
                 {
@@ -476,7 +478,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             
             if (select.Selection != null)
             {
-                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
                 var expr = exprVisitor.Visit(select.Selection, outNode.EmitData);
                 outNode = new RelationData(new FilterRelation()
                 {
@@ -592,7 +594,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     foreach (var group in groupByExpressions.ColumnNames)
                     {
-                        var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                        var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
                         var result = exprVisitor.Visit(group, parent.EmitData);
                         grouping.GroupingExpressions.Add(result.Expr);
                         aggEmitData.Add(group, emitcount, result.Name, result.Type);
@@ -608,7 +610,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             foreach (var foundMeasure in containsAggregateVisitor.AggregateFunctions)
             {
                 var mapper = sqlFunctionRegister.GetAggregateMapper(foundMeasure.Name);
-                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
 
                 var aggregateResponse = mapper(foundMeasure, exprVisitor, parent.EmitData);
                 aggRel.Measures.Add(new AggregateMeasure()
@@ -621,7 +623,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             if (select.Having != null)
             {
-                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
                 outputRelation = new FilterRelation()
                 {
                     Condition = exprVisitor.Visit(select.Having, aggEmitData).Expr,
@@ -640,7 +642,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             int outputCounter = 0;
             foreach (var s in selects)
             {
-                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
                 if (s is SelectItem.ExpressionWithAlias exprAlias)
                 {
                     var condition = exprVisitor.Visit(exprAlias.Expression, emitData);
@@ -700,7 +702,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             int outputCounter = 0;
             foreach (var s in selects)
             {
-                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
                 if (s is SelectItem.ExpressionWithAlias exprAlias)
                 {
                     var condition = exprVisitor.Visit(exprAlias.Expression, parent.EmitData);
@@ -817,7 +819,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             GetTableFunctionNameAndArgs(tableFactor, out var name, out var args);
             var tableFunctionMapper = sqlFunctionRegister.GetTableMapper(name);
-            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
 
             var tableFunction = tableFunctionMapper(
                 new SqlTableFunctionArgument(args, tableFactor.Alias?.Name.Value, exprVisitor, new EmitData())
@@ -848,7 +850,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             GetTableFunctionNameAndArgs(join.Relation, out var name, out var args);
 
             var tableFunctionMapper = sqlFunctionRegister.GetTableMapper(name);
-            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
 
             var tableFunction = tableFunctionMapper(
                 new SqlTableFunctionArgument(args, join.Relation?.Alias?.Name.Value, exprVisitor, parent.EmitData)
@@ -1099,7 +1101,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                 if (leftOuter.JoinConstraint is JoinConstraint.On on)
                 {
-                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
                     var condition = exprVisitor.Visit(on.Expression, joinEmitData);
                     joinRelation.Expression = condition.Expr;
                 }
@@ -1113,7 +1115,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 joinRelation.Type = JoinType.Inner;
                 if (inner.JoinConstraint is JoinConstraint.On on)
                 {
-                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
                     var condition = exprVisitor.Visit(on.Expression, joinEmitData);
                     joinRelation.Expression = condition.Expr;
                 }
@@ -1127,7 +1129,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 joinRelation.Type = JoinType.Right;
                 if (rightJoin.JoinConstraint is JoinConstraint.On on)
                 {
-                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
                     var condition = exprVisitor.Visit(on.Expression, joinEmitData);
                     joinRelation.Expression = condition.Expr;
                 }
@@ -1141,7 +1143,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 joinRelation.Type = JoinType.Outer;
                 if (fullOuterJoin.JoinConstraint is JoinConstraint.On on)
                 {
-                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
                     var condition = exprVisitor.Visit(on.Expression, joinEmitData);
                     joinRelation.Expression = condition.Expr;
                 }
@@ -1286,7 +1288,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             foreach (var row in valuesExpression.Values.Rows)
             {
                 List<Expressions.Expression> expressions = new List<Expressions.Expression>();
-                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister, globalFunctionOptions);
                 foreach(var expr in row)
                 {
                     var condition = exprVisitor.Visit(expr, emitData);
@@ -1319,6 +1321,42 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             };
             return new RelationData(relation, projectEmitData);
+        }
+
+        protected override RelationData VisitSetVariable(Statement.SetVariable setVariable)
+        {
+            var variableString = setVariable.Variables.ToString();
+
+            if (variableString.StartsWith("function."))
+            {
+                
+                var dotIndex = variableString.IndexOf('.', 9);
+
+                if (dotIndex > 0)
+                {
+                    var funcName = variableString.Substring(9, dotIndex - 9);
+                    var optionName = variableString.Substring(dotIndex + 1);
+
+                    var value = string.Join(".", setVariable.Value!.Select(x => x.ToSql()));
+
+                    if (!globalFunctionOptions.TryGetValue(funcName, out var functionOptions))
+                    {
+                        functionOptions = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                        globalFunctionOptions.Add(funcName, functionOptions);
+                    }
+                    functionOptions[optionName] = value;
+                    return default!;
+                }
+                else
+                {
+                    throw new NotSupportedException("Invalid function option format.");
+                }
+                
+            }
+            else
+            {
+                throw new NotSupportedException($"{variableString} is not supported");
+            }
         }
     }
 }
