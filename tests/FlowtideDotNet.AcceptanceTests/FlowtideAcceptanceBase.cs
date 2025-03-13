@@ -120,6 +120,16 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.AddOrUpdateOrder(order);
         }
 
+        public void AddOrUpdateProject(Project project)
+        {
+            flowtideTestStream.AddOrUpdateProject(project);
+        }
+
+        public void AddOrUpdateProjectMember(ProjectMember projectMember)
+        {
+            flowtideTestStream.AddOrUpdateProjectMember(projectMember);
+        }
+
         public void DeleteUser(User user)
         {
             flowtideTestStream.DeleteUser(user);

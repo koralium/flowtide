@@ -1402,5 +1402,45 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(fullOuterJoin);
         }
+
+        [Fact]
+        public async Task PostJoinConditionShouldCheckAllRows()
+        {
+            // Add members first to make sure all the data is inside the tree
+            AddOrUpdateProjectMember(new ProjectMember()
+            {
+                CompanyId = "1",
+                ProjectNumber = "123",
+                UserKey = 0,
+                ProjectMemberKey = 1
+            });
+            AddOrUpdateProjectMember(new ProjectMember()
+            {
+                CompanyId = "1",
+                ProjectNumber = "123",
+                UserKey = 1,
+                ProjectMemberKey = 2
+            });
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    pm.userkey
+                FROM projects p
+                LEFT JOIN projectmembers pm
+                ON p.projectnumber = pm.projectnumber AND p.companyid = pm.companyid AND pm.userkey % ProjectKey = 1", ignoreSameDataCheck: false);
+            await WaitForUpdate();
+            // add the project to do the join
+            AddOrUpdateProject(new Project()
+            {
+                ProjectKey = 2,
+                CompanyId = "1",
+                ProjectNumber = "123",
+                Name = "Project 1"
+            });
+            await WaitForUpdate();
+
+            var actualData = GetActualRows();
+            AssertCurrentDataEqual(new[] { new { val = 1 } });
+        }
     }
 }
