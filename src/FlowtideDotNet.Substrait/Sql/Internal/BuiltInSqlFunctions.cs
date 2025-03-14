@@ -41,9 +41,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new SubstraitParseException("Unknown function argument type");
             }
         }
+
+        internal static IReadOnlyDictionary<string, IReadOnlyList<string>> GetOptions(IReadOnlyDictionary<string, string> options)
+        {
+            return options.ToDictionary(x => x.Key, x => (IReadOnlyList<string>)new List<string> { x.Value }, StringComparer.OrdinalIgnoreCase);
+        }
+
         public static void AddBuiltInFunctions(SqlFunctionRegister sqlFunctionRegister)
         {
-            sqlFunctionRegister.RegisterScalarFunction("ceiling", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("ceiling", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 1)
@@ -58,7 +64,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = FunctionsRounding.Uri,
                             ExtensionName = FunctionsRounding.Ceil,
-                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                            Arguments = new List<Expressions.Expression>() { expr.Expr },
+                            Options = GetOptions(options)
                         },
                         expr.Type
                         );
@@ -68,7 +75,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     throw new NotImplementedException("ceiling does not support the input parameter");
                 }
             });
-            sqlFunctionRegister.RegisterScalarFunction("round", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("round", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 1)
@@ -83,7 +90,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = FunctionsRounding.Uri,
                             ExtensionName = FunctionsRounding.Round,
-                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                            Arguments = new List<Expressions.Expression>() { expr.Expr },
+                            Options = GetOptions(options)
                         },
                         expr.Type
                         );
@@ -93,19 +101,19 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     throw new NotImplementedException("round does not support the input parameter");
                 }
             });
-            sqlFunctionRegister.RegisterScalarFunction("coalesce", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("coalesce", (f, options, visitor, emitData) =>
             {
-                var exprData = VisitCoalesce(f, visitor, emitData);
+                var exprData = VisitCoalesce(f, options, visitor, emitData);
                 return new ScalarResponse(exprData.Expr, exprData.Type);
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("concat", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("concat", (f, options, visitor, emitData) =>
             {
-                var exprData = VisitConcat(f, visitor, emitData);
+                var exprData = VisitConcat(f, options, visitor, emitData);
                 return new ScalarResponse(exprData.Expr, exprData.Type);
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("is_infinite", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("is_infinite", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 1)
@@ -120,7 +128,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = FunctionsComparison.Uri,
                             ExtensionName = FunctionsComparison.isInfinite,
-                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                            Arguments = new List<Expressions.Expression>() { expr.Expr },
+                            Options = GetOptions(options)
                         },
                         new BoolType() { Nullable = true }
                         );
@@ -131,7 +140,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("is_finite", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("is_finite", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 1)
@@ -146,7 +155,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = FunctionsComparison.Uri,
                             ExtensionName = FunctionsComparison.IsFinite,
-                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                            Arguments = new List<Expressions.Expression>() { expr.Expr },
+                            Options = GetOptions(options)
                         },
                         new BoolType() { Nullable = true }
                         );
@@ -157,7 +167,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("is_nan", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("is_nan", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 1)
@@ -172,7 +182,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = FunctionsComparison.Uri,
                             ExtensionName = FunctionsComparison.IsNan,
-                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                            Arguments = new List<Expressions.Expression>() { expr.Expr },
+                            Options = GetOptions(options)
                         },
                         new BoolType() { Nullable = true }
                         );
@@ -183,7 +194,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("nullif", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("nullif", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 2)
@@ -218,13 +229,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     {
                         ExtensionUri = FunctionsComparison.Uri,
                         ExtensionName = FunctionsComparison.NullIf,
-                        Arguments = arguments
+                        Arguments = arguments,
+                        Options = GetOptions(options)
                     },
                     returnType
                     );
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("lower", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("lower", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 1)
@@ -240,7 +252,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = FunctionsString.Uri,
                             ExtensionName = FunctionsString.Lower,
-                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                            Arguments = new List<Expressions.Expression>() { expr.Expr },
+                            Options = GetOptions(options)
                         },
                         expr.Type
                         );
@@ -251,7 +264,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("upper", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("upper", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 1)
@@ -267,7 +280,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = FunctionsString.Uri,
                             ExtensionName = FunctionsString.Upper,
-                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                            Arguments = new List<Expressions.Expression>() { expr.Expr },
+                            Options = GetOptions(options)
                         },
                         expr.Type
                         );
@@ -278,7 +292,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("ltrim", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("ltrim", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 1)
@@ -293,7 +307,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = FunctionsString.Uri,
                             ExtensionName = FunctionsString.LTrim,
-                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                            Arguments = new List<Expressions.Expression>() { expr.Expr },
+                            Options = GetOptions(options)
                         },
                         new StringType() { Nullable = true }
                         );
@@ -304,7 +319,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("rtrim", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("rtrim", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 1)
@@ -320,7 +335,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = FunctionsString.Uri,
                             ExtensionName = FunctionsString.RTrim,
-                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                            Arguments = new List<Expressions.Expression>() { expr.Expr },
+                            Options = GetOptions(options)
                         },
                         new StringType() { Nullable = true }
                         );
@@ -331,7 +347,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("to_string", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("to_string", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 1)
@@ -347,7 +363,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = FunctionsString.Uri,
                             ExtensionName = FunctionsString.To_String,
-                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                            Arguments = new List<Expressions.Expression>() { expr.Expr },
+                            Options = GetOptions(options)
                         },
                         new StringType() { Nullable = true }
                         );
@@ -358,7 +375,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("guid", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("guid", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 1)
@@ -374,7 +391,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = FunctionsGuid.Uri,
                             ExtensionName = FunctionsGuid.ParseGuid,
-                            Arguments = new List<Expressions.Expression>() { expr.Expr }
+                            Arguments = new List<Expressions.Expression>() { expr.Expr },
+                            Options = GetOptions(options)
                         },
                         new StringType() { Nullable = true }
                         );
@@ -385,7 +403,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("strftime", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("strftime", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 2)
@@ -403,7 +421,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = FunctionsDatetime.Uri,
                             ExtensionName = FunctionsDatetime.Strftime,
-                            Arguments = new List<Expressions.Expression>() { expr1.Expr, expr2.Expr }
+                            Arguments = new List<Expressions.Expression>() { expr1.Expr, expr2.Expr },
+                            Options = GetOptions(options)
                         },
                         new StringType() { Nullable = true }
                         );
@@ -414,20 +433,21 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
             
-            sqlFunctionRegister.RegisterScalarFunction("gettimestamp", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("gettimestamp", (f, options, visitor, emitData) =>
             {
                 return new ScalarResponse(
                     new ScalarFunction()
                     {
                         ExtensionUri = FunctionsDatetime.Uri,
                         ExtensionName = FunctionsDatetime.GetTimestamp,
-                        Arguments = new List<Expressions.Expression>()
+                        Arguments = new List<Expressions.Expression>(),
+                        Options = GetOptions(options)
                     },
                     new Int64Type()
                     );
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("map", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("map", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count % 2 != 0)
@@ -469,7 +489,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return new ScalarResponse(mapNestedExpression, new MapType(keyType, valueType));
             });
 
-            sqlFunctionRegister.RegisterScalarFunction("list", (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction("list", (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null)
@@ -769,7 +789,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             string extensionUri,
             string extensionName)
         {
-            sqlFunctionRegister.RegisterScalarFunction(functionName, (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction(functionName, (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 1)
@@ -790,7 +810,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = extensionUri,
                             ExtensionName = extensionName,
-                            Arguments = new List<Expressions.Expression>() { argExpr }
+                            Arguments = new List<Expressions.Expression>() { argExpr },
+                            Options = GetOptions(options)
                         },
                         new AnyType()
                         );
@@ -805,7 +826,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             string extensionUri,
             string extensionName)
         {
-            sqlFunctionRegister.RegisterScalarFunction(functionName, (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction(functionName, (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 2)
@@ -832,7 +853,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = extensionUri,
                             ExtensionName = extensionName,
-                            Arguments = new List<Expressions.Expression>() { argExpr, argExpr2 }
+                            Arguments = new List<Expressions.Expression>() { argExpr, argExpr2 },
+                            Options = GetOptions(options)
                         },
                         new AnyType()
                         );
@@ -847,7 +869,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             string extensionUri,
             string extensionName)
         {
-            sqlFunctionRegister.RegisterScalarFunction(functionName, (f, visitor, emitData) =>
+            sqlFunctionRegister.RegisterScalarFunction(functionName, (f, options, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
                 if (argList.Args == null || argList.Args.Count != 3)
@@ -880,7 +902,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = extensionUri,
                             ExtensionName = extensionName,
-                            Arguments = new List<Expressions.Expression>() { argExpr, argExpr2, argExpr3 }
+                            Arguments = new List<Expressions.Expression>() { argExpr, argExpr2, argExpr3 },
+                            Options = GetOptions(options)
                         },
                         new AnyType()
                         );
@@ -889,13 +912,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             });
         }
 
-        private static ExpressionData VisitCoalesce(SqlParser.Ast.Expression.Function function, SqlExpressionVisitor visitor, EmitData state)
+        private static ExpressionData VisitCoalesce(SqlParser.Ast.Expression.Function function, IReadOnlyDictionary<string, string> options, SqlExpressionVisitor visitor, EmitData state)
         {
             var coalesceFunction = new ScalarFunction()
             {
                 ExtensionUri = FunctionsComparison.Uri,
                 ExtensionName = FunctionsComparison.Coalesce,
-                Arguments = new List<Expressions.Expression>()
+                Arguments = new List<Expressions.Expression>(),
+                Options = GetOptions(options)
             };
 
             SubstraitBaseType? returnType = default;
@@ -943,13 +967,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return new ExpressionData(coalesceFunction, "$coalesce", returnType);
         }
 
-        private static ExpressionData VisitConcat(SqlParser.Ast.Expression.Function function, SqlExpressionVisitor visitor, EmitData state)
+        private static ExpressionData VisitConcat(SqlParser.Ast.Expression.Function function, IReadOnlyDictionary<string, string> options, SqlExpressionVisitor visitor, EmitData state)
         {
             var coalesceFunction = new ScalarFunction()
             {
                 ExtensionUri = FunctionsString.Uri,
                 ExtensionName = FunctionsString.Concat,
-                Arguments = new List<Expressions.Expression>()
+                Arguments = new List<Expressions.Expression>(),
+                Options = GetOptions(options)
             };
 
             SubstraitBaseType? returnType = default;

@@ -70,7 +70,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                         throw new NotSupportedException("Only one option is supported at this time.");
                     }
 
-                    methodInformation = methodsInformation.FirstOrDefault(x => x.option == func.Options.Keys[0] && x.optionValue == func.Options.Values[0]);
+                    methodInformation = methodsInformation.FirstOrDefault(x =>
+                    {
+                        var firstOption = func.Options.First();
+                        return x.option == firstOption.Key && x.optionValue == firstOption.Value.First();
+                    });
                 }
                 if (methodInformation == null)
                 {

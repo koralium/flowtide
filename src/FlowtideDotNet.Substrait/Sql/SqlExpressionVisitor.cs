@@ -19,6 +19,7 @@ using FlowtideDotNet.Substrait.Sql.Internal;
 using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 using SqlParser.Ast;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using static SqlParser.Ast.Expression;
 
@@ -27,10 +28,13 @@ namespace FlowtideDotNet.Substrait.Sql
     public class SqlExpressionVisitor : BaseExpressionVisitor<ExpressionData, EmitData>
     {
         private readonly SqlFunctionRegister sqlFunctionRegister;
+        private readonly Dictionary<string, SortedDictionary<string, string>> globalFunctionOptions;
 
-        internal SqlExpressionVisitor(SqlFunctionRegister sqlFunctionRegister)
+        internal SqlExpressionVisitor(SqlFunctionRegister sqlFunctionRegister, 
+            Dictionary<string, SortedDictionary<string, string>> globalFunctionOptions)
         {
             this.sqlFunctionRegister = sqlFunctionRegister;
+            this.globalFunctionOptions = globalFunctionOptions;
         }
 
         public override ExpressionData Visit(SqlParser.Ast.Expression expression, EmitData state)
@@ -68,7 +72,8 @@ namespace FlowtideDotNet.Substrait.Sql
                         {
                             left.Expr,
                             right.Expr
-                        }
+                        },
+                        Options = GetFunctionOptions(FunctionsComparison.Equal)
                     };
                     return new ExpressionData(func, $"{left.Name}_{right.Name}", returnType);
                 case BinaryOperator.Gt:
@@ -81,7 +86,8 @@ namespace FlowtideDotNet.Substrait.Sql
                             {
                                 left.Expr,
                                 right.Expr
-                            }
+                            },
+                            Options = GetFunctionOptions(FunctionsComparison.GreaterThan)
                         }, $"{left.Name}_{right.Name}", returnType
                         );
                 case BinaryOperator.GtEq:
@@ -94,7 +100,8 @@ namespace FlowtideDotNet.Substrait.Sql
                             {
                                 left.Expr,
                                 right.Expr
-                            }
+                            },
+                            Options = GetFunctionOptions(FunctionsComparison.GreaterThanOrEqual)
                         }, $"{left.Name}_{right.Name}", returnType
                         );
                 case BinaryOperator.Lt:
@@ -120,7 +127,8 @@ namespace FlowtideDotNet.Substrait.Sql
                             {
                                 left.Expr,
                                 right.Expr
-                            }
+                            },
+                            Options = GetFunctionOptions(FunctionsComparison.LessThanOrEqual)
                         }, $"{left.Name}_{right.Name}", returnType
                         );
                 case BinaryOperator.NotEq:
@@ -133,7 +141,8 @@ namespace FlowtideDotNet.Substrait.Sql
                             {
                                 left.Expr,
                                 right.Expr
-                            }
+                            },
+                            Options = GetFunctionOptions(FunctionsComparison.NotEqual)
                         }, $"{left.Name}_{right.Name}", returnType
                         );
                 case BinaryOperator.And:
@@ -165,7 +174,8 @@ namespace FlowtideDotNet.Substrait.Sql
                         {
                             Arguments = expressions,
                             ExtensionName = FunctionsBoolean.And,
-                            ExtensionUri = FunctionsBoolean.Uri
+                            ExtensionUri = FunctionsBoolean.Uri,
+                            Options = GetFunctionOptions(FunctionsBoolean.And)
                         }, $"{left.Name}_{right.Name}", returnType
                         );
                 case BinaryOperator.Or:
@@ -178,7 +188,8 @@ namespace FlowtideDotNet.Substrait.Sql
                             {
                                 left.Expr,
                                 right.Expr
-                            }
+                            },
+                            Options = GetFunctionOptions(FunctionsBoolean.Or)
                         }, $"{left.Name}_{right.Name}", returnType
                         );
                 case BinaryOperator.StringConcat:
@@ -209,7 +220,8 @@ namespace FlowtideDotNet.Substrait.Sql
                         {
                             ExtensionUri = FunctionsString.Uri,
                             ExtensionName = FunctionsString.Concat,
-                            Arguments = concatExpressions
+                            Arguments = concatExpressions,
+                            Options = GetFunctionOptions(FunctionsString.Concat)
                         }, $"$concat", returnType);
                 case BinaryOperator.Plus:
                     returnType = left.Type;
@@ -222,7 +234,8 @@ namespace FlowtideDotNet.Substrait.Sql
                             {
                                 left.Expr,
                                 right.Expr
-                            }
+                            },
+                            Options = GetFunctionOptions(FunctionsArithmetic.Add)
                         },
                         $"$add",
                         returnType
@@ -238,7 +251,8 @@ namespace FlowtideDotNet.Substrait.Sql
                             {
                                 left.Expr,
                                 right.Expr
-                            }
+                            },
+                            Options = GetFunctionOptions(FunctionsArithmetic.Subtract)
                         },
                         $"$subtract",
                         returnType
@@ -254,7 +268,8 @@ namespace FlowtideDotNet.Substrait.Sql
                             {
                                 left.Expr,
                                 right.Expr
-                            }
+                            },
+                            Options = GetFunctionOptions(FunctionsArithmetic.Multiply)
                         }, "$multiply", returnType);
                 case BinaryOperator.Divide:
                     returnType = left.Type;
@@ -267,7 +282,8 @@ namespace FlowtideDotNet.Substrait.Sql
                             {
                                 left.Expr,
                                 right.Expr
-                            }
+                            },
+                            Options = GetFunctionOptions(FunctionsArithmetic.Divide)
                         }, "$divide", returnType);
                 case BinaryOperator.Modulo:
                     returnType = left.Type;
@@ -280,7 +296,8 @@ namespace FlowtideDotNet.Substrait.Sql
                             {
                                 left.Expr,
                                 right.Expr
-                            }
+                            },
+                            Options = GetFunctionOptions(FunctionsArithmetic.Modulo)
                         }, "$modulo", returnType);
                 case BinaryOperator.Xor:
                     returnType = left.Type;
@@ -293,7 +310,8 @@ namespace FlowtideDotNet.Substrait.Sql
                             {
                                 left.Expr,
                                 right.Expr
-                            }
+                            },
+                            Options = GetFunctionOptions(FunctionsBoolean.Xor)
                         }, 
                         $"{left.Name}_{right.Name}",
                         returnType
@@ -324,7 +342,8 @@ namespace FlowtideDotNet.Substrait.Sql
                     {
                         ExtensionUri = FunctionsString.Uri,
                         ExtensionName = FunctionsString.Trim,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        Arguments = new List<Expressions.Expression>() { expr.Expr },
+                        Options = GetFunctionOptions(FunctionsString.Trim)
                     },
                     "$trim",
                     returnType
@@ -337,7 +356,8 @@ namespace FlowtideDotNet.Substrait.Sql
                     {
                         ExtensionUri = FunctionsString.Uri,
                         ExtensionName = FunctionsString.RTrim,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        Arguments = new List<Expressions.Expression>() { expr.Expr },
+                        Options = GetFunctionOptions(FunctionsString.RTrim)
                     },
                     "$trim",
                     returnType
@@ -350,7 +370,8 @@ namespace FlowtideDotNet.Substrait.Sql
                     {
                         ExtensionUri = FunctionsString.Uri,
                         ExtensionName = FunctionsString.LTrim,
-                        Arguments = new List<Expressions.Expression>() { expr.Expr }
+                        Arguments = new List<Expressions.Expression>() { expr.Expr },
+                        Options = GetFunctionOptions(FunctionsString.LTrim)
                     },
                     "$trim",
                     returnType
@@ -487,7 +508,16 @@ namespace FlowtideDotNet.Substrait.Sql
             if (functionType == FunctionType.Scalar)
             {
                 var mapper = sqlFunctionRegister.GetScalarMapper(functionName);
-                var expr = mapper(function, this, state);
+                IReadOnlyDictionary<string, string>? opt = default;
+                if (globalFunctionOptions.TryGetValue(functionName, out var globalOptions))
+                {
+                    opt = globalOptions;
+                }
+                else
+                {
+                    opt = ImmutableDictionary<string, string>.Empty;
+                }
+                var expr = mapper(function, opt, this, state);
                 return new ExpressionData(
                     expr.Expression,
                     $"${functionName}",
@@ -508,7 +538,8 @@ namespace FlowtideDotNet.Substrait.Sql
                 Arguments = new List<Expressions.Expression>()
                 {
                     expr.Expr
-                }
+                },
+                Options = GetFunctionOptions(FunctionsComparison.IsNotNull)
             }, "$isnotnull", expr.Type);
         }
 
@@ -520,7 +551,8 @@ namespace FlowtideDotNet.Substrait.Sql
                 {
                     ExtensionUri = FunctionsRounding.Uri,
                     ExtensionName = FunctionsRounding.Floor,
-                    Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    Arguments = new List<Expressions.Expression>() { expr.Expr },
+                    Options = GetFunctionOptions(FunctionsRounding.Floor)
                 }, "$floor", expr.Type);
         }
 
@@ -532,7 +564,8 @@ namespace FlowtideDotNet.Substrait.Sql
                 {
                     ExtensionUri = FunctionsRounding.Uri,
                     ExtensionName = FunctionsRounding.Ceil,
-                    Arguments = new List<Expressions.Expression>() { expr.Expr }
+                    Arguments = new List<Expressions.Expression>() { expr.Expr },
+                    Options = GetFunctionOptions(FunctionsRounding.Ceil)
                 }, "ceil", expr.Type);
         }
 
@@ -549,14 +582,15 @@ namespace FlowtideDotNet.Substrait.Sql
             return base.VisitUnaryOperation(unaryOp, state);
         }
 
-        private static ExpressionData VisitNotUnaryOp(ExpressionData expressionData)
+        private ExpressionData VisitNotUnaryOp(ExpressionData expressionData)
         {
             return new ExpressionData(
                 new ScalarFunction()
                 {
                     ExtensionUri = FunctionsBoolean.Uri,
                     ExtensionName = FunctionsBoolean.Not,
-                    Arguments = new List<Expressions.Expression>() { expressionData.Expr }
+                    Arguments = new List<Expressions.Expression>() { expressionData.Expr },
+                    Options = GetFunctionOptions(FunctionsBoolean.Not)
                 }, expressionData.Name,
                 expressionData.Type 
                 );
@@ -576,7 +610,8 @@ namespace FlowtideDotNet.Substrait.Sql
                 {
                     ExtensionUri = FunctionsArithmetic.Uri,
                     ExtensionName = FunctionsArithmetic.Negate,
-                    Arguments = new List<Expressions.Expression>() { expressionData.Expr }
+                    Arguments = new List<Expressions.Expression>() { expressionData.Expr },
+                    Options = GetFunctionOptions(FunctionsArithmetic.Negate)
                 }, "$negate",
                 expressionData.Type
                 );
@@ -598,7 +633,8 @@ namespace FlowtideDotNet.Substrait.Sql
                         expr.Expr,
                         low.Expr,
                         high.Expr
-                    }
+                    },
+                    Options = GetFunctionOptions(FunctionsComparison.Between)
                 }, "$between",
                 new BoolType() { Nullable = true }
             );
@@ -615,7 +651,8 @@ namespace FlowtideDotNet.Substrait.Sql
                     Arguments = new List<Expressions.Expression>()
                     {
                         expr.Expr
-                    }
+                    },
+                    Options = GetFunctionOptions(FunctionsComparison.IsNull)
                 }, "$isnull",
                 new BoolType() { Nullable = true }
             );
@@ -700,11 +737,26 @@ namespace FlowtideDotNet.Substrait.Sql
             return Visit(nested.Expression, state);
         }
 
+        private IReadOnlyDictionary<string, IReadOnlyList<string>> GetFunctionOptions(string name)
+        {
+            IReadOnlyDictionary<string, string>? functionOptions;
+            if (globalFunctionOptions.TryGetValue(name, out var options))
+            {
+                functionOptions = options;
+            }
+            else
+            {
+                functionOptions = ImmutableDictionary<string, string>.Empty;
+            }
+            return BuiltInSqlFunctions.GetOptions(functionOptions);
+        }
+
         protected override ExpressionData VisitSubstring(Substring substring, EmitData state)
         {
             Debug.Assert(substring.SubstringFrom != null);
             var expr = Visit(substring.Expression, state);
             var from = Visit(substring.SubstringFrom, state);
+
             if (substring.SubstringFor == null)
             {
                 var substringFunction = new ScalarFunction()
@@ -715,7 +767,8 @@ namespace FlowtideDotNet.Substrait.Sql
                     {
                         expr.Expr,
                         from.Expr
-                    }
+                    },
+                    Options = GetFunctionOptions(FunctionsString.Substring)
                 };
                 return new ExpressionData(substringFunction, expr.Name, new StringType() { Nullable = true });
             }
@@ -731,7 +784,8 @@ namespace FlowtideDotNet.Substrait.Sql
                         expr.Expr,
                         from.Expr,
                         length.Expr
-                    }
+                    },
+                    Options = GetFunctionOptions(FunctionsString.Substring)
                 };
                 return new ExpressionData(substringFunction, expr.Name, new StringType() { Nullable = true });
             }
@@ -761,7 +815,8 @@ namespace FlowtideDotNet.Substrait.Sql
                     expr.Expr,
                     pattern.Expr,
                     escapeChar
-                }
+                },
+                Options = GetFunctionOptions(FunctionsString.Like)
             };
 
             var result = new ExpressionData(likeFunction, expr.Name, new BoolType() { Nullable = true });

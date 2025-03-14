@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Substrait.Expressions
 
         public required List<Expression> Arguments { get; set; }
 
-        public SortedList<string, string>? Options { get; set; }
+        public IReadOnlyDictionary<string, IReadOnlyList<string>>? Options { get; set; }
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {

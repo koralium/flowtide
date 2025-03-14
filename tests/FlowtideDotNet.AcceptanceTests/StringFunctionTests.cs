@@ -143,6 +143,17 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task SelectWithSubstringWithOptions()
+        {
+            GenerateData(1000);
+            await StartStream(@"
+            SET function.substring.negative_start TO WRAP_FROM_END;
+            INSERT INTO output SELECT substring(firstName, -2) as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.Substring(x.FirstName.Length - 2) }));
+        }
+
+        [Fact]
         public async Task SelectWithReplace()
         {
             GenerateData();

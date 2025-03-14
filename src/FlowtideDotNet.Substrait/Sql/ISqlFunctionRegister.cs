@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Substrait.Sql
 
     public interface ISqlFunctionRegister
     {
-        void RegisterScalarFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, ScalarResponse> mapFunc);
+        void RegisterScalarFunction(string name, Func<SqlParser.Ast.Expression.Function, IReadOnlyDictionary<string, string>, SqlExpressionVisitor, EmitData, ScalarResponse> mapFunc);
 
         void RegisterAggregateFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateResponse> mapFunc);
 
