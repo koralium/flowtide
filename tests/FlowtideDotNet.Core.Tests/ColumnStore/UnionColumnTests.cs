@@ -13,9 +13,11 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -487,6 +489,29 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("world", unionColumn.GetValueAt(1, default).AsString.ToString());
             Assert.True(unionColumn.GetValueAt(2, default).IsNull);
             Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+        }
+
+        [Fact]
+        public void TestInsertRangeFromInsertBasicColumnWithEmptyValidityList()
+        {
+            Column unionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            Column stringColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("hello"),
+                new StringValue("world")
+            };
+
+            unionColumn.InsertRangeFrom(1, stringColumn, 1, 1);
+
+            Assert.Equal(3, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal("world", unionColumn.GetValueAt(1, default).AsString.ToString());
+            Assert.Equal(3, unionColumn.GetValueAt(2, default).AsDecimal);
         }
 
         [Fact]
