@@ -12,7 +12,9 @@
 
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -102,6 +104,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public static TimestampTzValue FromUnixMicroseconds(long microseconds)
         {
             return new TimestampTzValue(UnixEpochTicks + (microseconds * TicksPerMicrosecond), 0);
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteInt64LittleEndian(buffer, ticks);
+            hashAlgorithm.Append(buffer);
         }
 
         public long UnixTimestampMicroseconds => (ticks - UnixEpochTicks) / TicksPerMicrosecond;
