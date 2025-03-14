@@ -812,10 +812,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                     {
                         Debug.Assert(_dataColumn != null);
                         Debug.Assert(column._dataColumn != null);
-                        _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._validityList);
+                        _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._nullCounter > 0 ? column._validityList : default);
                         return;
                     }
-                    //Debug.Assert(_dataColumn != null);
+
                     if (_nullCounter > 0 || column._nullCounter > 0)
                     {
                         if (_nullCounter > 0 && column._nullCounter > 0)
@@ -851,7 +851,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     Debug.Assert(_dataColumn != null);
                     Debug.Assert(column._dataColumn != null);
                     // Insert the actual data
-                    _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._validityList);
+                    _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._nullCounter > 0 ? column._validityList : default);
                 }
                 else
                 {
@@ -921,7 +921,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     Debug.Assert(column._dataColumn != null);
 
                     // Insert the data into the union column
-                    _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._validityList);
+                    _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._nullCounter > 0 ? column._validityList : default);
                 }
             }
             else
