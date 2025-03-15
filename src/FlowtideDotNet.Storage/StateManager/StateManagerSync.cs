@@ -97,6 +97,8 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public long PageCount => m_metadata != null ? Volatile.Read(ref m_metadata.PageCount) : throw new InvalidOperationException("Manager must be initialized before getting page count");
 
+        public long CurrentVersion => m_persistentStorage?.CurrentVersion ?? 0;
+
         private protected StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILogger logger, Meter meter, string streamName)
         {
             this.m_metadataSerializer = metadataSerializer;

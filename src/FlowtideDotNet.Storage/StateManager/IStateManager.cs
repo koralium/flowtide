@@ -20,6 +20,8 @@ namespace FlowtideDotNet.Storage.StateManager
         bool Initialized { get; }
         Task InitializeAsync();
 
+        long CurrentVersion { get; }
+
         IStateManagerClient GetOrCreateClient(string name, TagList tagList = default);
 
         Task Compact();

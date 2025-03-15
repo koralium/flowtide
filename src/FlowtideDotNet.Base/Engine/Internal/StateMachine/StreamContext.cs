@@ -41,6 +41,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
     internal class StreamContext : IStreamTriggerCaller, IAsyncDisposable
     {
+        private static ActivitySource s_exceptionActivitySource = new ActivitySource("FlowtideDotNet.Base.StreamException");
+
         internal readonly string streamName;
         internal readonly Dictionary<string, IStreamVertex> propagatorBlocks;
         internal readonly Dictionary<string, IStreamIngressVertex> ingressBlocks;
@@ -193,6 +195,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _contextMeter.CreateObservableGauge<int>("flowtide_wanted_state", () =>
             {
                 return new Measurement<int>((int)_wantedState, new KeyValuePair<string, object?>("stream", streamName));
+            });
+            _contextMeter.CreateObservableGauge<long>("flowtide_stream_checkpoint_version", () =>
+            {
+                Debug.Assert(_stateManager != null, nameof(_stateManager));
+                return new Measurement<long>(_stateManager.CurrentVersion, new KeyValuePair<string, object?>("stream", streamName));
             });
             if (loggerFactory == null)
             {
@@ -566,6 +573,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task OnFailure(Exception? e)
         {
+            var activity = s_exceptionActivitySource.StartActivity("StreamFailure", ActivityKind.Internal, null);
+
+            if (activity != null)
+            {
+                activity.SetStatus(ActivityStatusCode.Error);
+                activity.SetTag("stream", streamName);
+                if (e != null)
+                {
+                    activity.SetTag("exception", e);
+                }
+                activity.Stop();
+                activity.Dispose();
+            }
+            
             _logger.StreamError(e, streamName);
             lock (_contextLock)
             {
