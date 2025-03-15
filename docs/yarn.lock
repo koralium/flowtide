@@ -3861,10 +3861,10 @@ dns-packet@^5.2.2:
   dependencies:
     "@leichtgewicht/ip-codec" "^2.0.1"
 
-docusaurus-lunr-search@^3.6.0:
-  version "3.6.0"
-  resolved "https://registry.yarnpkg.com/docusaurus-lunr-search/-/docusaurus-lunr-search-3.6.0.tgz#f708e4fcb84581db141f3c92fefce9ad0386a3a9"
-  integrity sha512-CCEAnj5e67sUZmIb2hOl4xb4nDN07fb0fvRDDmdWlYpUvyS1CSKbw4lsGInLyUFEEEBzxQmT6zaVQdF/8Zretg==
+docusaurus-lunr-search@^3.6.1:
+  version "3.6.1"
+  resolved "https://registry.yarnpkg.com/docusaurus-lunr-search/-/docusaurus-lunr-search-3.6.1.tgz#18f3aff2f845d7cb1bc51868d79edab7b989a744"
+  integrity sha512-ms2FWYzR7OrvS2x0/HSPaAenAATrBenGpCwWpjmpK8SnUpqygVPvuss2RG5l2ZuMxpKFP0rhEnEy8Kx4lSQimw==
   dependencies:
     autocomplete.js "^0.37.1"
     clsx "^2.1.1"
