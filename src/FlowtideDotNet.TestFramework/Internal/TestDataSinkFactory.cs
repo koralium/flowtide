@@ -26,7 +26,6 @@ namespace FlowtideDotNet.TestFramework.Internal
 {
     internal class TestDataSinkFactory : RegexConnectorSinkFactory
     {
-        private readonly int egressCrashOnCheckpointCount;
         private readonly TestDataSink sink;
 
         public TestDataSinkFactory(string regexPattern, TestDataSink sink) : base(regexPattern)
