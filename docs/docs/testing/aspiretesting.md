@@ -4,8 +4,7 @@ sidebar_position: 2
 
 # .NET Aspire Testing
 
-If you run your stream with the help of .NET Aspire it may be benefical to run the tests using the Aspire test framework.
-
+If you run your stream with the help of .NET Aspire it may be beneficial to run the tests using the Aspire test framework.
 This page describes how `FlowtideDotNet.TestFramework` can help you test your stream more easily.
 
 Testing an aspire project requires using HTTP calls to check the stream status, instead of injecting other type of monitors
