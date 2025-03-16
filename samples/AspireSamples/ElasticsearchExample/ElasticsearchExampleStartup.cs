@@ -48,7 +48,7 @@ namespace AspireSamples.ElasticsearchExample
                 {
                     var envVariables = await resource.GetEnvironmentVariableValuesAsync();
 
-                    int initialCount = 1000;//100_000;
+                    int initialCount = 100_000;
 
                     if (envVariables.TryGetValue("initialCount", out var initialCountStr))
                     {
