@@ -6,7 +6,7 @@ sidebar_position: 2
 
 If you run your stream with the help of .NET Aspire it may be benefical to run the tests using the Aspire test framework.
 
-This page describes how `FlowtideDotNet.TestFramework` can help you more test your stream more easily.
+This page describes how `FlowtideDotNet.TestFramework` can help you test your stream more easily.
 
 Testing an aspire project requires using HTTP calls to check the stream status, instead of injecting other type of monitors
 to the stream to check the status. Since this endpoint can contain exception information, this means that the test endpoint could cause a security issue and should only be mapped during tests.
