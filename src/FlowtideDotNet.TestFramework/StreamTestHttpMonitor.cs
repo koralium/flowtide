@@ -39,6 +39,12 @@ namespace FlowtideDotNet.TestFramework
                 {
                     throw new Exception(result.LatestException);
                 }
+                // Check if the start checkpoint version is greater than the current checkpoint
+                // Then replace it since no checkpoint has happened yet if start and current match
+                if (result.StartCheckpointVersion > _currentCheckpoint)
+                {
+                    _currentCheckpoint = (int)result.StartCheckpointVersion;
+                }
                 if (result.CheckpointVersion > _currentCheckpoint)
                 {
                     _currentCheckpoint = (int)result.CheckpointVersion;

@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# Integration testing
+# Integration Testing
 
 This section assumes that the Flowtide stream is implemented as a webapplication with minimal API.
 

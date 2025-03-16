@@ -97,6 +97,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly ILogger<StreamContext> _logger;
 
         internal bool _initialCheckpointTaken = false;
+        
+        // Test variable
+        internal long _startCheckpointVersion = 0;
 
         public StreamStatus Status => _streamStatus;
 
@@ -200,6 +203,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 Debug.Assert(_stateManager != null, nameof(_stateManager));
                 return new Measurement<long>(_stateManager.CurrentVersion, new KeyValuePair<string, object?>("stream", streamName));
+            });
+            // Meter that tells which version the stream started on, useful for testing
+            _contextMeter.CreateObservableGauge<long>("flowtide_stream_start_checkpoint_version", () =>
+            {
+                return new Measurement<long>(_startCheckpointVersion, new KeyValuePair<string, object?>("stream", streamName));
             });
             if (loggerFactory == null)
             {

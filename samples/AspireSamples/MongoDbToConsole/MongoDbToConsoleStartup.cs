@@ -59,7 +59,7 @@ namespace AspireSamples.MongoDbToConsole
             DataGenerator dataGenerator = new DataGenerator();
 
             var dataInsert = DataInsertResource.AddDataInsert(builder, "data-insert",
-                async (logger, statusUpdate, token) =>
+                async (logger, statusUpdate, resource, token) =>
                 {
                     var connStr = await source.Resource.ConnectionStringExpression.GetValueAsync(token);
                     MongoClient mongoClient = new MongoClient(connStr);
@@ -74,7 +74,7 @@ namespace AspireSamples.MongoDbToConsole
                     await userCollection.InsertManyAsync(users);
                     await orderCollection.InsertManyAsync(orders);
                 },
-                async (logger, token) =>
+                async (logger, resource, token) =>
                 {
                     var connStr = await source.Resource.ConnectionStringExpression.GetValueAsync(token);
                     MongoClient mongoClient = new MongoClient(connStr);

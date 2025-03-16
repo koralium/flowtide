@@ -29,10 +29,12 @@ namespace FlowtideDotNet.AspNetCore.Internal
         private readonly ActivityListener _activityListener;
 
         private ConcurrentDictionary<string, long> _checkpointVersions;
+        private ConcurrentDictionary<string, long> _startCheckpointVersions;
         private ConcurrentDictionary<string, Exception> _latestFailure;
 
         public TestInformationListener()
         {
+            _startCheckpointVersions = new ConcurrentDictionary<string, long>();
             _checkpointVersions = new ConcurrentDictionary<string, long>();
             _latestFailure = new ConcurrentDictionary<string, Exception>();
             _meterListener = new MeterListener();
@@ -88,6 +90,21 @@ namespace FlowtideDotNet.AspNetCore.Internal
                         }
                     }
                 }
+                else if (instrument.Name == "flowtide_stream_start_checkpoint_version")
+                {
+                    for (int i = 0; i < tags.Length; i++)
+                    {
+                        if (tags[i].Key == "stream")
+                        {
+                            var streamName = tags[i].Value?.ToString();
+                            if (streamName != null)
+                            {
+                                _startCheckpointVersions.AddOrUpdate(streamName, measurement, (key, value) => measurement);
+                            }
+                            break;
+                        }
+                    }
+                }
             });
 
             _meterListener.Start();
@@ -96,6 +113,10 @@ namespace FlowtideDotNet.AspNetCore.Internal
         private void OnInstrumentPublished(Instrument instrument, MeterListener meterListener)
         {
             if (instrument.Name == "flowtide_stream_checkpoint_version")
+            {
+                meterListener.EnableMeasurementEvents(instrument);
+            }
+            else if (instrument.Name == "flowtide_stream_start_checkpoint_version")
             {
                 meterListener.EnableMeasurementEvents(instrument);
             }
@@ -112,9 +133,17 @@ namespace FlowtideDotNet.AspNetCore.Internal
                 return false;
             }
 
+            bool hasStartVersion = _startCheckpointVersions.TryGetValue(streamName, out var startCheckpointVersion);
+
+            if (!hasStartVersion)
+            {
+                information = default;
+                return false;
+            }
+
             _latestFailure.TryGetValue(streamName, out var latestFailure);
 
-            information = new StreamTestInformation(checkpointVersion, latestFailure?.ToString());
+            information = new StreamTestInformation(checkpointVersion, latestFailure?.ToString(), startCheckpointVersion);
             return true;
         }
     }

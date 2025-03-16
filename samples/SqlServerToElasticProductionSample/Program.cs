@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.Engine;
 using OpenTelemetry.Metrics;
 using FlowtideDotNet.DependencyInjection;
 using Elastic.Clients.Elasticsearch;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -76,5 +77,11 @@ var app = builder.Build();
 
 app.UseFlowtideUI("/stream");
 app.UseOpenTelemetryPrometheusScrapingEndpoint();
+
+if (builder.Configuration.GetValue<bool>("TEST_MODE"))
+{
+    // If we are in test mode, map the test endpoint
+    app.MapFlowtideTestInformation();
+}
 
 app.Run();

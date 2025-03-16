@@ -21,6 +21,9 @@ namespace FlowtideDotNet.AspNetCore.Testing
 {
     public class StreamTestInformation
     {
+        [JsonPropertyName("startCheckpointVersion")]
+        public long StartCheckpointVersion { get; }
+
         [JsonPropertyName("checkpointVersion")]
         public long CheckpointVersion { get; }
 
@@ -28,10 +31,11 @@ namespace FlowtideDotNet.AspNetCore.Testing
         public string? LatestException { get; }
 
         [JsonConstructor]
-        public StreamTestInformation(long checkpointVersion, string? latestException)
+        public StreamTestInformation(long checkpointVersion, string? latestException, long startCheckpointVersion)
         {
             CheckpointVersion = checkpointVersion;
             LatestException = latestException;
+            StartCheckpointVersion = startCheckpointVersion;
         }
     }
 }
