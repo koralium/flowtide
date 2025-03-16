@@ -74,5 +74,5 @@ public async Task MyTest()
 }
 ```
 
-If you want to test modifying data while the stream is running, it may be benifical to pause and resume it.
+If you want to test modifying data while the stream is running, it may be beneficial to pause and resume it.
 To do that, also add `UseFlowtidePauseResumeEndpoints` to the exposed endpoints when testing. Please read [Pause And Resume](../deployment/pauseresume.md#pause-and-stop-using-api-endpoint) for more information.
