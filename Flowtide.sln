@@ -101,6 +101,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DeltaLakeSourceUsage", "sam
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.ComputeTests", "tests\FlowtideDotNet.ComputeTests\FlowtideDotNet.ComputeTests.csproj", "{723C59E4-BE30-4FA4-ABBE-AB334A73BAE4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.TestFramework", "src\FlowtideDotNet.TestFramework\FlowtideDotNet.TestFramework.csproj", "{F6CC21FB-4B9F-4AAA-924B-BDB64635E238}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.TestFramework.Tests", "tests\FlowtideDotNet.TestFramework.Tests\FlowtideDotNet.TestFramework.Tests.csproj", "{613073CD-FA82-49AC-BE15-72811C98AAEA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.TestFramework.WebTesting", "tests\FlowtideDotNet.TestFramework.WebTesting\FlowtideDotNet.TestFramework.WebTesting.csproj", "{14F12480-1E0D-4819-AA2E-622C43540BDB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -291,6 +297,18 @@ Global
 		{723C59E4-BE30-4FA4-ABBE-AB334A73BAE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{723C59E4-BE30-4FA4-ABBE-AB334A73BAE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{723C59E4-BE30-4FA4-ABBE-AB334A73BAE4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F6CC21FB-4B9F-4AAA-924B-BDB64635E238}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F6CC21FB-4B9F-4AAA-924B-BDB64635E238}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F6CC21FB-4B9F-4AAA-924B-BDB64635E238}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F6CC21FB-4B9F-4AAA-924B-BDB64635E238}.Release|Any CPU.Build.0 = Release|Any CPU
+		{613073CD-FA82-49AC-BE15-72811C98AAEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{613073CD-FA82-49AC-BE15-72811C98AAEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{613073CD-FA82-49AC-BE15-72811C98AAEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{613073CD-FA82-49AC-BE15-72811C98AAEA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{14F12480-1E0D-4819-AA2E-622C43540BDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{14F12480-1E0D-4819-AA2E-622C43540BDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{14F12480-1E0D-4819-AA2E-622C43540BDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{14F12480-1E0D-4819-AA2E-622C43540BDB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -342,6 +360,9 @@ Global
 		{CB4D6BB6-F6CA-4281-9E8C-2F1850A38AB7} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 		{8CD58AF5-5E51-4FA2-B06E-297839FBF1E4} = {099E7EB7-4B9A-4CD5-BD2B-088751AE085B}
 		{723C59E4-BE30-4FA4-ABBE-AB334A73BAE4} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
+		{F6CC21FB-4B9F-4AAA-924B-BDB64635E238} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
+		{613073CD-FA82-49AC-BE15-72811C98AAEA} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
+		{14F12480-1E0D-4819-AA2E-622C43540BDB} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {314C9503-DE99-42AA-8FB0-E355C91986C4}
