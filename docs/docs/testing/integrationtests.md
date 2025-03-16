@@ -165,7 +165,7 @@ public async Task TestStreamOutput()
 {
     _factory.CreateClient(); //Create a client to start the stream
 
-    // Wait for the stream to checkpoint before asserting the resultig data
+    // Wait for the stream to checkpoint before asserting the resulting data
     await _inProcessMonitor.WaitForCheckpoint();
 
     Assert.True(_sink.IsCurrentDataEqual(new[] 
