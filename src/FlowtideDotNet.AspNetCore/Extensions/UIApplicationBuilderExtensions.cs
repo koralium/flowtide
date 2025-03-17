@@ -94,7 +94,7 @@ namespace FlowtideDotNet.AspNetCore.Extensions
             }
             app.Map($"{basePath}/pause", appBuilder =>
             {
-                appBuilder.Use((HttpContext context,Func<Task> next) =>
+                appBuilder.Use((HttpContext context, Func<Task> next) =>
                 {
                     context.RequestServices.GetRequiredService<FlowtideDotNet.Base.Engine.DataflowStream>().Pause();
                     context.Response.StatusCode = 200;

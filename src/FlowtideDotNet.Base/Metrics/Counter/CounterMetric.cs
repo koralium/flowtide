@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Base.Metrics.Counter
         public void Add<T>(T value, ReadOnlySpan<KeyValuePair<string, object?>> tags)
         {
             var tagsString = tags.ConvertToString();
-            
+
             if (!_counters.TryGetValue(tagsString, out var metric))
             {
                 metric = _createMetricFunc();
@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Base.Metrics.Counter
             }
 
             Dictionary<string, CounterTagSnapshot> tagValues = new Dictionary<string, CounterTagSnapshot>();
-            foreach(var kv in _counters)
+            foreach (var kv in _counters)
             {
                 var snapshot = kv.Value.GetSnapshot();
                 totalSum += snapshot.Sum;
@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Base.Metrics.Counter
             return new CounterSnapshot(Name, Unit, Description, new CounterTagSnapshot(totalSum, totalRate), true, tagValues);
         }
 
-        public void RecordMeasurement<T1>(T1 value, ReadOnlySpan<KeyValuePair<string, object?>> tags) where T1: struct
+        public void RecordMeasurement<T1>(T1 value, ReadOnlySpan<KeyValuePair<string, object?>> tags) where T1 : struct
         {
             Add(value, tags);
         }

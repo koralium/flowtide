@@ -110,8 +110,8 @@ namespace FlowtideDotNet.Substrait.Tests
                         Input = new WriteRelation()
                         {
                             NamedObject = new Type.NamedTable(){ Names = new List<string>() { "output" }},
-                            TableSchema = new Type.NamedStruct() 
-                            { 
+                            TableSchema = new Type.NamedStruct()
+                            {
                                 Names = new List<string>() {"val" },
                                 Struct = new Struct()
                                 {

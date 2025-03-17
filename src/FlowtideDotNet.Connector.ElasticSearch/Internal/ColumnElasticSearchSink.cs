@@ -21,13 +21,9 @@ using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Operators.Write.Column;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.ElasticSearch.Internal
@@ -46,7 +42,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         private ICounter<long>? m_eventsCounter;
 
 
-        public ColumnElasticSearchSink(FlowtideElasticsearchOptions elasticsearchOptions, ExecutionMode executionMode, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+        public ColumnElasticSearchSink(FlowtideElasticsearchOptions elasticsearchOptions, ExecutionMode executionMode, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(executionMode, writeRelation, executionDataflowBlockOptions)
         {
             m_elasticsearchOptions = elasticsearchOptions;
@@ -191,7 +187,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                         response = await m_client.Transport.PostAsync<BulkResponse>("_bulk", PostData.ReadOnlyMemory(memoryStream.ToArray()));
                         //response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
                         if (e is TaskCanceledException)
                         {
@@ -199,7 +195,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                         }
                         throw;
                     }
-                    
+
 
                     if (response.Errors)
                     {

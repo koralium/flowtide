@@ -12,11 +12,6 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -36,7 +31,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             var comparer = new DataValueComparer();
 
-            for (int i= 0; i < expected.Count; i++)
+            for (int i = 0; i < expected.Count; i++)
             {
                 for (int c = 0; c < expected.Columns.Count; c++)
                 {

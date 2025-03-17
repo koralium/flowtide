@@ -12,15 +12,9 @@
 
 using FlowtideDotNet.Connector.OpenFGA.Internal;
 using FlowtideDotNet.Core.Engine;
-using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Extensions
 {

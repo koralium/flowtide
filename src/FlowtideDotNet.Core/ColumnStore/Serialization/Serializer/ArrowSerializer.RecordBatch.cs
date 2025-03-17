@@ -35,39 +35,39 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return EndTable();
         }
 
-        void AddLength(long length) 
-        { 
-            AddLong(0, length, 0); 
+        void AddLength(long length)
+        {
+            AddLong(0, length, 0);
         }
 
-        void AddVariadicCounts(int variadicCountsOffset) 
-        { 
-            AddOffset(4, variadicCountsOffset, 0); 
+        void AddVariadicCounts(int variadicCountsOffset)
+        {
+            AddOffset(4, variadicCountsOffset, 0);
         }
 
-        void AddCompression(int compressionOffset) 
-        { 
-            AddOffset(3, compressionOffset, 0); 
+        void AddCompression(int compressionOffset)
+        {
+            AddOffset(3, compressionOffset, 0);
         }
 
-        void AddBuffers(int buffersOffset) 
-        { 
-            AddOffset(2, buffersOffset, 0); 
+        void AddBuffers(int buffersOffset)
+        {
+            AddOffset(2, buffersOffset, 0);
         }
 
-        void AddNodes(int nodesOffset) 
-        { 
-            AddOffset(1, nodesOffset, 0); 
+        void AddNodes(int nodesOffset)
+        {
+            AddOffset(1, nodesOffset, 0);
         }
 
-        public void RecordBatchStartNodesVector(int numElems) 
-        { 
-            StartVector(16, numElems, 8); 
+        public void RecordBatchStartNodesVector(int numElems)
+        {
+            StartVector(16, numElems, 8);
         }
 
-        public void RecordBatchStartBuffersVector(int numElems) 
-        { 
-            StartVector(16, numElems, 8); 
+        public void RecordBatchStartBuffersVector(int numElems)
+        {
+            StartVector(16, numElems, 8);
         }
 
         public static void UpdateBufferLengthAndOffsetAtIndex(Span<byte> data, int buffersOffset, int index, long offset, long length)

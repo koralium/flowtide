@@ -11,8 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Expressions;
-using FlowtideDotNet.Substrait.Type;
-using SqlParser;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {

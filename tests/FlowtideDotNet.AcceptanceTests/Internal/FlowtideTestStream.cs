@@ -10,8 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FastMember;
-using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
@@ -19,25 +17,18 @@ using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
-using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
-using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
-using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
-using Serilog;
-using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using Serilog;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -62,7 +53,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public string TestName => testName;
 
-        public IReadOnlyList<User> Users  => generator.Users;
+        public IReadOnlyList<User> Users => generator.Users;
 
         public IReadOnlyList<Order> Orders => generator.Orders;
 
@@ -178,9 +169,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         }
 
         public async Task StartStream(
-            string sql, 
-            int parallelism = 1, 
-            StateSerializeOptions? stateSerializeOptions = default, 
+            string sql,
+            int parallelism = 1,
+            StateSerializeOptions? stateSerializeOptions = default,
             TimeSpan? timestampInterval = default,
             int pageSize = 1024,
             bool ignoreSameDataCheck = false)
@@ -206,7 +197,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
 
-            
+
 
 
 #if DEBUG_WRITE
@@ -290,7 +281,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 _dataUpdated = false;
             }
         }
-    
+
         /// <summary>
         /// Simulate a crash on the stream, waits until the stream has failed.
         /// </summary>

@@ -12,11 +12,6 @@
 
 using Authzed.Api.V1;
 using Grpc.Core;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.SpiceDB
 {
@@ -26,6 +21,6 @@ namespace FlowtideDotNet.Connector.SpiceDB
 
         public Func<Metadata>? GetMetadata { get; set; }
 
-        public Consistency? Consistency { get; set; } 
+        public Consistency? Consistency { get; set; }
     }
 }

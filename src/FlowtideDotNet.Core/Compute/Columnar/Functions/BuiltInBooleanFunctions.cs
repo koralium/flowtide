@@ -10,18 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
@@ -66,7 +60,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         private static LambdaExpression GetBoolValueLambda(System.Type inputType)
         {
             var methodInfo = typeof(BuiltInBooleanFunctions).GetMethod(nameof(GetBoolValue), BindingFlags.Static | BindingFlags.NonPublic)!.MakeGenericMethod(inputType);
-        
+
             var parameter = System.Linq.Expressions.Expression.Parameter(inputType, "x");
             var call = System.Linq.Expressions.Expression.Call(methodInfo, parameter);
             return System.Linq.Expressions.Expression.Lambda(call, parameter);

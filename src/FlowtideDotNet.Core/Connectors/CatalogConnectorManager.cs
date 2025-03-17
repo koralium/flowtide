@@ -13,12 +13,7 @@
 using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Connectors
 {
@@ -105,7 +100,7 @@ namespace FlowtideDotNet.Core.Connectors
                 {
                     _resolvedTableProviders = GetTableProviders().ToList();
                 }
-                for(int i = 0; i < _resolvedTableProviders.Count; i++)
+                for (int i = 0; i < _resolvedTableProviders.Count; i++)
                 {
                     var nameWithoutCatalog = tableName.Skip(1).ToList();
                     if (_resolvedTableProviders[i].TryGetTableInformation(nameWithoutCatalog, out tableMetadata))

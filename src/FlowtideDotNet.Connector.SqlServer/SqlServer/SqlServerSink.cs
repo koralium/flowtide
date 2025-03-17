@@ -10,21 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.SqlServer;
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using Microsoft.Data.SqlClient;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
+using Microsoft.Data.SqlClient;
 using System.Data;
-using System.Threading.Tasks.Dataflow;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-using FlowtideDotNet.Connector.SqlServer.SqlServer;
-using FlowtideDotNet.Connector.SqlServer;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.SqlServer.SqlServer
 {
@@ -252,14 +251,14 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             await LoadMetadata();
             Debug.Assert(PrimaryKeyComparer != null);
             // Create a tree for storing modified data.
-            m_modified = await stateManagerClient.GetOrCreateTree("temporary", 
+            m_modified = await stateManagerClient.GetOrCreateTree("temporary",
                 new Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
-            {
-                Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                MemoryAllocator = MemoryAllocator
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
             // Clear the modified tree in case of a crash
             await m_modified.Clear();
         }

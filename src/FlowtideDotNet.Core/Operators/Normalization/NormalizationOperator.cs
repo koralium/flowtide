@@ -10,20 +10,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Operators.Read;
-using FlowtideDotNet.Substrait.Relations;
-using System.Text;
-using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Core.Utils;
+using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Storage.Serializers;
-using Microsoft.Extensions.Logging;
+using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
-using FlowtideDotNet.Core.Compute.Internal;
-using FlowtideDotNet.Core.Compute;
-using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Core.Utils;
+using System.Text;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
@@ -45,7 +44,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         public override string DisplayName => "Normalize";
 
         public NormalizationOperator(
-            NormalizationRelation normalizationRelation, 
+            NormalizationRelation normalizationRelation,
             FunctionsRegister functionsRegister,
             ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -78,12 +77,12 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             _eventsProcessed.Add(msg.Events.Count);
 
             List<RowEvent> output = new List<RowEvent>();
-            foreach(var e in msg.Events)
+            foreach (var e in msg.Events)
             {
                 if (e.Weight > 0)
                 {
                     var stringBuilder = new StringBuilder();
-                    foreach(var i in normalizationRelation.KeyIndex)
+                    foreach (var i in normalizationRelation.KeyIndex)
                     {
                         stringBuilder.Append(e.GetColumn(i).ToJson);
                         stringBuilder.Append('|');
@@ -103,7 +102,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                     await Delete(key, output);
                 }
             }
-            
+
 
 #if DEBUG_WRITE
             foreach(var e in output)
@@ -118,7 +117,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 _eventsCounter.Add(output.Count);
                 yield return new StreamEventBatch(output, normalizationRelation.OutputLength);
             }
-            
+
         }
 
         protected async Task Upsert(string ke, RowEvent input, List<RowEvent> output)
@@ -214,7 +213,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             Debug.Assert(_tree != null);
             bool isFound = false;
             IngressData? data;
-            
+
             var (op, val) = await _tree.RMW(ke, default, (input, current, found) =>
             {
                 if (found)
@@ -259,14 +258,14 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            _tree = await stateManagerClient.GetOrCreateTree("input", 
+            _tree = await stateManagerClient.GetOrCreateTree("input",
                 new BPlusTreeOptions<string, IngressData, ListKeyContainer<string>, ListValueContainer<IngressData>>()
-            {
-                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
-                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
-                ValueSerializer = new ValueListSerializer<IngressData>(new IngressDataStateSerializer()),
-                MemoryAllocator = MemoryAllocator
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                    KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                    ValueSerializer = new ValueListSerializer<IngressData>(new IngressDataStateSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
         }
 
         public override ValueTask DisposeAsync()

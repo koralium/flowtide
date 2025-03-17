@@ -33,9 +33,9 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         public MongoDBSink(
             FlowtideMongoDBSinkOptions options,
-            ExecutionMode executionMode, 
-            WriteRelation writeRelation, 
-            ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+            ExecutionMode executionMode,
+            WriteRelation writeRelation,
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(executionMode, writeRelation, executionDataflowBlockOptions)
         {
             m_options = options;

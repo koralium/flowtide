@@ -10,13 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.Connector.OpenFGA.Extensions;
+using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.DependencyInjection;
 using OpenFga.Sdk.Client;
 using OpenFga.Sdk.Client.Model;
-using FlowtideDotNet.AspNetCore.Extensions;
-using FlowtideDotNet.Core;
-using FlowtideDotNet.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 

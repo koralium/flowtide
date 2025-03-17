@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Core.Tests
 
             public DateTime? NullableDateTime { get; set; }
 
-            public Dictionary<string, int> ?Dictionary { get; set; }
+            public Dictionary<string, int>? Dictionary { get; set; }
 
             public int? NullableInteger { get; set; }
 
@@ -398,7 +398,7 @@ namespace FlowtideDotNet.Core.Tests
 
             if (deserialized.BaseObject is Dictionary<object, object> dict)
             {
-                Assert.Equal(((InnerObject)testObject.BaseObject!).Name, dict["Name"]);   
+                Assert.Equal(((InnerObject)testObject.BaseObject!).Name, dict["Name"]);
             }
             else
             {

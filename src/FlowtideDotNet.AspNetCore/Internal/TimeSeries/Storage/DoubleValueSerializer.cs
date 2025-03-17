@@ -10,8 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow.Memory;
-using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
@@ -52,7 +50,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                 throw new InvalidOperationException("Failed to read bytes");
             }
             reader.Advance(count);
-            return new DoubleValueContainer(new PrimitiveList<double>(nativeMemory, count / 8, memoryAllocator));   
+            return new DoubleValueContainer(new PrimitiveList<double>(nativeMemory, count / 8, memoryAllocator));
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)

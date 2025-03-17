@@ -23,15 +23,8 @@ using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Substrait.CustomProtobuf;
 using FlowtideDotNet.Substrait.Relations;
-using SqlParser.Tokens;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
@@ -393,7 +386,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             for (int i = 0; i < _leftOutputColumns.Count; i++)
             {
                 var outputColumn = columns[_leftOutputIndices[i]];
-                outputColumn.InsertRangeFrom(outputColumn.Count, leftColumns[_leftOutputColumns[i]], leftIndex, 1); 
+                outputColumn.InsertRangeFrom(outputColumn.Count, leftColumns[_leftOutputColumns[i]], leftIndex, 1);
             }
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {

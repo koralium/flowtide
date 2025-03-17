@@ -40,8 +40,8 @@ namespace FlowtideDotNet.Core.Operators.Partition
 
         protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
-            if (_eventsProcessed == null) 
-            {                 
+            if (_eventsProcessed == null)
+            {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
             return Task.CompletedTask;
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Core.Operators.Partition
             Debug.Assert(_eventsProcessed != null);
             _eventsProcessed.Add(data.Events.Count);
             int columnCount = 0;
-            foreach(var e in data.Events)
+            foreach (var e in data.Events)
             {
                 columnCount = e.Length;
                 var hash = _partitionFunction(e);

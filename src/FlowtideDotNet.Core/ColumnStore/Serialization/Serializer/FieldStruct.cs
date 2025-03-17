@@ -25,31 +25,31 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             this.position = position;
         }
 
-        public bool Nullable 
-        { 
-            get 
+        public bool Nullable
+        {
+            get
             {
-                int o = ReadUtils.__offset(in span, in position, 6); 
-                return o != 0 ? 0 != ReadUtils.Get(in span, o + position) : (bool)false; 
-            } 
+                int o = ReadUtils.__offset(in span, in position, 6);
+                return o != 0 ? 0 != ReadUtils.Get(in span, o + position) : (bool)false;
+            }
         }
 
-        public ArrowType TypeType 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 8); 
-                return o != 0 ? (ArrowType)ReadUtils.Get(in span, o + position) : 0; 
-            } 
+        public ArrowType TypeType
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 8);
+                return o != 0 ? (ArrowType)ReadUtils.Get(in span, o + position) : 0;
+            }
         }
 
-        public int CustomMetadataLength 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 16); 
-                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0; 
-            } 
+        public int CustomMetadataLength
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 16);
+                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0;
+            }
         }
 
         public KeyValueStruct CustomMetadata(int j)
@@ -59,12 +59,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return new KeyValueStruct(span, pos);
         }
 
-        public int ChildrenLength 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 14); 
-                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0; 
+        public int ChildrenLength
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 14);
+                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0;
             }
         }
 
@@ -74,15 +74,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return new FieldStruct(span, ReadUtils.__indirect(in span, ReadUtils.__vector(in span, in position, o) + j * 4));
         }
 
-        public ReadOnlySpan<byte> GetNameBytes() 
-        { 
+        public ReadOnlySpan<byte> GetNameBytes()
+        {
             return ReadUtils.__vector_as_span<byte>(in span, in position, 4, 1);
         }
 
-        public TypeUtf8Struct TypeAsUtf8() 
-        { 
+        public TypeUtf8Struct TypeAsUtf8()
+        {
             int o = ReadUtils.__offset(in span, in position, 10);
-            return new TypeUtf8Struct(span, ReadUtils.__indirect(in span, position + o)); 
+            return new TypeUtf8Struct(span, ReadUtils.__indirect(in span, position + o));
         }
 
         public TypeIntStruct TypeAsInt()

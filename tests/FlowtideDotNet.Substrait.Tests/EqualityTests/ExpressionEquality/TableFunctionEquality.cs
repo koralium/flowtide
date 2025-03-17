@@ -12,11 +12,6 @@
 
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.Literals;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Tests.EqualityTests.ExpressionEquality
 {
@@ -34,7 +29,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.ExpressionEquality
                 ExtensionName = "testname1",
                 Arguments = new List<Expression>()
                 {
-                    new StringLiteral() { Value = "test1" } 
+                    new StringLiteral() { Value = "test1" }
                 },
                 TableSchema = new Type.NamedStruct()
                 {

@@ -71,7 +71,7 @@ namespace FlowtideDotNet.SqlServer
             {
                 conn.ChangeDatabase(tableCatalog);
             }
-            catch(DbException dbException)
+            catch (DbException dbException)
             {
                 if (dbException.Message.Contains("not able to access the database"))
                 {
@@ -79,7 +79,7 @@ namespace FlowtideDotNet.SqlServer
                     return false;
                 }
             }
-            
+
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "select COLUMN_NAME, DATA_TYPE from INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @tableName AND TABLE_SCHEMA = @tableSchema  AND TABLE_CATALOG = @catalog";
             cmd.Parameters.Add(new SqlParameter("@tableName", name));
@@ -89,7 +89,7 @@ namespace FlowtideDotNet.SqlServer
             using var reader = cmd.ExecuteReader();
             List<string> columnOutput = new List<string>();
             List<SubstraitBaseType> columnTypes = new List<SubstraitBaseType>();
-            
+
             var columnNameOrdinal = reader.GetOrdinal("COLUMN_NAME");
             var dataTypeOrdinal = reader.GetOrdinal("DATA_TYPE");
             while (reader.Read())

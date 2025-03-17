@@ -13,34 +13,31 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Vertices;
+using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Base.Vertices.PartitionVertices;
+using FlowtideDotNet.Base.Vertices.Unary;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Operators.Aggregate;
+using FlowtideDotNet.Core.Operators.Aggregate.Column;
+using FlowtideDotNet.Core.Operators.Buffer;
 using FlowtideDotNet.Core.Operators.Filter;
+using FlowtideDotNet.Core.Operators.Iteration;
 using FlowtideDotNet.Core.Operators.Join.MergeJoin;
 using FlowtideDotNet.Core.Operators.Join.NestedLoopJoin;
 using FlowtideDotNet.Core.Operators.Normalization;
+using FlowtideDotNet.Core.Operators.Partition;
 using FlowtideDotNet.Core.Operators.Project;
 using FlowtideDotNet.Core.Operators.Set;
+using FlowtideDotNet.Core.Operators.TableFunction;
+using FlowtideDotNet.Core.Operators.TimestampProvider;
+using FlowtideDotNet.Core.Operators.TopN;
 using FlowtideDotNet.Core.Operators.VirtualTable;
+using FlowtideDotNet.Substrait;
+using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Substrait;
-using FlowtideDotNet.Core.Compute;
-using FlowtideDotNet.Core.Operators.Aggregate;
-using FlowtideDotNet.Core.Operators.Iteration;
-using FlowtideDotNet.Core.Operators.Partition;
-using FlowtideDotNet.Base.Vertices.PartitionVertices;
-using FlowtideDotNet.Substrait.Expressions;
-using FlowtideDotNet.Core.Operators.TimestampProvider;
-using FlowtideDotNet.Core.Operators.Buffer;
-using FlowtideDotNet.Core.Operators.TopN;
-using FlowtideDotNet.Core.Operators.TableFunction;
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Base.Vertices.Egress;
-using System.Threading.Tasks;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
-using FlowtideDotNet.Core.Operators.Join;
-using FlowtideDotNet.Base.Vertices.Unary;
-using FlowtideDotNet.Core.Operators.Aggregate.Column;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -122,14 +119,14 @@ namespace FlowtideDotNet.Core.Engine
                 _doneRelations.Add(index, relationTree);
             }
             return relationTree;
-        } 
+        }
 
         public SubstraitVisitor(
-            Plan plan, 
-            DataflowStreamBuilder dataflowStreamBuilder, 
+            Plan plan,
+            DataflowStreamBuilder dataflowStreamBuilder,
             IConnectorManager? connectorManager,
             IReadWriteFactory? readWriteFactory,
-            int queueSize, 
+            int queueSize,
             FunctionsRegister functionsRegister,
             int parallelism,
             TimeSpan getTimestampInterval,
@@ -166,7 +163,7 @@ namespace FlowtideDotNet.Core.Engine
         {
             var id = _operatorId++;
             UnaryVertex<StreamEventBatch>? op;
-            
+
             if (_useColumnStore)
             {
                 op = new ColumnFilterOperator(filterRelation, functionsRegister, DefaultBlockOptions);
@@ -180,7 +177,7 @@ namespace FlowtideDotNet.Core.Engine
             {
                 op.LinkTo(state);
             }
-            
+
             filterRelation.Input.Accept(this, op);
             dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
             return op;
@@ -205,7 +202,7 @@ namespace FlowtideDotNet.Core.Engine
             {
                 op.LinkTo(state);
             }
-            
+
             projectRelation.Input.Accept(this, op);
             dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
             return op;
@@ -215,7 +212,7 @@ namespace FlowtideDotNet.Core.Engine
         {
             if (aggregateRelation.Groupings != null && aggregateRelation.Groupings.Count == 1 && parallelism > 1)
             {
-                
+
                 var partitionOperatorId = _operatorId++;
                 var partitionOperator = new PartitionOperator(new PartitionOperatorOptions(aggregateRelation.Groupings[0].GroupingExpressions), functionsRegister, parallelism, DefaultBlockOptions);
                 dataflowStreamBuilder.AddPropagatorBlock(partitionOperatorId.ToString(), partitionOperator);
@@ -335,7 +332,7 @@ namespace FlowtideDotNet.Core.Engine
                 {
                     op = new MergeJoinOperatorBase(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
                 }
-                
+
                 if (state != null)
                 {
                     op.LinkTo(state);
@@ -352,7 +349,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitJoinRelation(JoinRelation joinRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            
+
             if (joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right || joinRelation.Type == JoinType.Outer)
             {
                 //throw new NotSupportedException();
@@ -382,13 +379,13 @@ namespace FlowtideDotNet.Core.Engine
         {
             var id = _operatorId++;
             var op = ColumnSetOperatorFactory.CreateColumnSetOperator(setRelation, DefaultBlockOptions); // new SetOperator(setRelation, DefaultBlockOptions);
-            
+
             if (state != null)
             {
                 op.LinkTo(state);
             }
-            
-            for(int i = 0; i < setRelation.Inputs.Count; i++)
+
+            for (int i = 0; i < setRelation.Inputs.Count; i++)
             {
                 setRelation.Inputs[i].Accept(this, op.Targets[i]);
             }
@@ -508,7 +505,7 @@ namespace FlowtideDotNet.Core.Engine
             {
                 throw new NotSupportedException("Write operator must be an ITargetBlock<IStreamEvent>");
             }
-            
+
             dataflowStreamBuilder.AddEgressBlock(id.ToString(), op);
             return op;
         }
@@ -596,7 +593,7 @@ namespace FlowtideDotNet.Core.Engine
 
             _iterationOperators.Add(iterationRelation.IterationName, op);
             Visit(iterationRelation.LoopPlan, op.FeedbackTarget);
-            
+
             return (op.EgressSource as IStreamVertex)!;
         }
 
@@ -674,7 +671,7 @@ namespace FlowtideDotNet.Core.Engine
                 dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
                 return op;
             }
-           
+
         }
     }
 }

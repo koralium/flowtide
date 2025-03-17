@@ -12,11 +12,6 @@
 
 using Apache.Arrow;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers
 {

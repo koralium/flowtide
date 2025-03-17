@@ -10,13 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
 {
@@ -46,7 +40,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
             {
                 if (removedEnumerator.Current < addedEnumerator.Current)
                 {
-                    yield return (removedEnumerator.Current,  1);
+                    yield return (removedEnumerator.Current, 1);
                     removedHasNext = removedEnumerator.MoveNext();
                 }
                 else if (removedEnumerator.Current == addedEnumerator.Current)

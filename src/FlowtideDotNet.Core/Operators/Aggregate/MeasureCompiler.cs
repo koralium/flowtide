@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 var groupingKeyParameter = System.Linq.Expressions.Expression.Parameter(typeof(RowEvent));
                 var parametersInfo = new ParametersInfo(new List<ParameterExpression>() { param }, new List<int> { 0 });
                 var expressionVisitor = new FlowtideExpressionVisitor(functionsRegister, typeof(RowEvent));
-                var container =  definition.CreateContainer(
+                var container = definition.CreateContainer(
                     groupingLength,
                     stateManagerClient,
                     memoryAllocator,

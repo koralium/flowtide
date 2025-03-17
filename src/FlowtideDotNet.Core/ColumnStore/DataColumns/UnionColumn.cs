@@ -11,21 +11,16 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using Apache.Arrow.Memory;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
-using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
 using System.Buffers;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
@@ -138,7 +133,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public void InsertAt<T>(in int index, in T value) where T: IDataValue
+        public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
             if (value.Type == ArrowTypeId.Null)
             {
@@ -153,14 +148,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             var arrayIndex = _typeIds[typeByte];
             // Find the first occurence of the same type in the type list
             var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, arrayIndex);
-                
+
             var valueColumn = _valueColumns[arrayIndex];
             var nextOccurenceOffset = 0;
             if (nextOccurence < 0)
             {
                 nextOccurenceOffset = valueColumn.Count;
             }
-            else 
+            else
             {
                 // Get the offset of the next occurence so this can be directly infront of it.
                 nextOccurenceOffset = _offsets.Get(nextOccurence);
@@ -481,7 +476,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 _offsets.RemoveRange(start, count);
             }
-            
+
 
             _typeList.RemoveRange(start, count);
         }
@@ -494,7 +489,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 var valueColumnIndex = _typeList[i];
                 var valueColumn = _valueColumns[valueColumnIndex];
                 size += valueColumn.GetByteSize(_offsets.Get(i), _offsets.Get(i));
-                
+
             }
             return size + ((end - start + 1) * sizeof(int));
         }
@@ -578,7 +573,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                                 nextOccurenceOffset = _offsets.Get(nextOccurence);
                             }
                         }
-                        
+
                         valueColumn.InsertRangeFrom(nextOccurenceOffset, other, currentStart, nextNullLocation - currentStart, default);
                         _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextOccurenceOffset, nextNullLocation - currentStart, _typeList.Span, valueColumnIndex, nextNullLocation - currentStart);
                         nextOccurenceOffset += nextNullLocation - currentStart;
@@ -586,7 +581,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         _typeList.InsertStaticRange(currentIndex, valueColumnIndex, nextNullLocation - currentStart);
                         currentIndex += nextNullLocation - currentStart;
                     }
-                    
+
                     var nextNotNullLocation = validityList.FindNextTrueIndex(nextNullLocation);
                     if (nextNotNullLocation < 0)
                     {

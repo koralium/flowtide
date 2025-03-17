@@ -10,10 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using DataflowStream.dataflow.Internal.Extensions;
 using DataflowStream.dataflow.Internal;
-using System.Diagnostics.CodeAnalysis;
+using DataflowStream.dataflow.Internal.Extensions;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.Ingress.Internal
@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress.Internal
         private readonly Func<ICheckpointEvent, Task> _onCheckpoint;
 
         /// <summary>Initializes the <see cref="BufferBlock{T}"/>.</summary>
-        public IngressSource(Func<ICheckpointEvent,  Task> onCheckpoint) :
+        public IngressSource(Func<ICheckpointEvent, Task> onCheckpoint) :
             this(onCheckpoint, DataflowBlockOptionsExtensions.DefaultDataflowBlockOptions)
         { }
 
@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress.Internal
                         ((IDataflowBlock)thisBlock).Fault(task.Exception ?? new AggregateException("Error in checkpoint task without exception"));
                         return;
                     }
-                    
+
                     lock (thisBlock.IncomingLock)
                     {
                         // Add the checkpoint to the source to send it to the next block
@@ -149,7 +149,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress.Internal
 
         internal void InjectCheckpoint(T checkpoint, ISourceBlock<T> checkpointBlock)
         {
-            lock(IncomingLock)
+            lock (IncomingLock)
             {
                 if (_targetDecliningPermanently)
                 {
@@ -228,7 +228,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress.Internal
                     {
                         Console.WriteLine("Postponed checkpoint");
                     }
-                    
+
                     Debug.Assert(_boundingState != null && _boundingState.PostponedMessages != null,
                         "PostponedMessages must have been initialized during construction in bounding mode.");
 

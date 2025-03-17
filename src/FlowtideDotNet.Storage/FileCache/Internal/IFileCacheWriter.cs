@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
         void Write(long position, Memory<byte> data);
         ReadOnlyMemory<byte> Read(long position, int length);
         T Read<T>(long position, int length, IStateSerializer<T> serializer)
-            where T: ICacheObject;
+            where T : ICacheObject;
         void Flush();
         void ClearTemporaryAllocations();
     }

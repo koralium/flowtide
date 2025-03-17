@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Aspire.Hosting;
 using AspireSamples.DataMigration;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -20,11 +19,6 @@ using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Projects;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AspireSamples.ElasticsearchExample
 {
@@ -139,7 +133,7 @@ namespace AspireSamples.ElasticsearchExample
                 },
                 (logger, resource, token) =>
                 {
-                    return Task.CompletedTask;    
+                    return Task.CompletedTask;
                 })
                 .WaitFor(sqldb1);
             var insertCount = builder.Configuration.GetValue<long?>("insert_count");

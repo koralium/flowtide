@@ -75,7 +75,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { Name = x.TrimmableNullableString?.Trim() }));
         }
-        
+
         [Fact]
         public async Task SelectWithLTrim()
         {

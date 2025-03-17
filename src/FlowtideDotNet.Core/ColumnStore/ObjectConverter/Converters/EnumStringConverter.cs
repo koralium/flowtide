@@ -12,12 +12,6 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Google.Protobuf.Reflection.FeatureSet.Types;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 {

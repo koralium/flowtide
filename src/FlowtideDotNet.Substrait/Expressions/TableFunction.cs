@@ -11,11 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Type;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
@@ -52,7 +47,7 @@ namespace FlowtideDotNet.Substrait.Expressions
             var code = new HashCode();
             code.Add(ExtensionUri);
             code.Add(ExtensionName);
-            foreach(var argument in Arguments)
+            foreach (var argument in Arguments)
             {
                 code.Add(argument);
             }

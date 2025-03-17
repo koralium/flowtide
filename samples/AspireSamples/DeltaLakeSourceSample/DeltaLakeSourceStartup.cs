@@ -11,17 +11,10 @@
 // limitations under the License.
 
 using AspireSamples.DataMigration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Stowage;
-using Projects;
-using Azure.Identity;
 using Azure.Storage.Blobs;
-using Aspire.Hosting;
 using Microsoft.Extensions.Logging;
+using Projects;
+using Stowage;
 
 namespace AspireSamples.DeltaLakeSourceSample
 {

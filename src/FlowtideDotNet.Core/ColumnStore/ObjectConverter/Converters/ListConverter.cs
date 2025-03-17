@@ -12,12 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 {
@@ -42,10 +37,10 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             {
                 var newObj = (IList)typeInfo.CreateObject!();
                 var listVal = value.AsList;
-                
+
                 for (int i = 0; i < listVal.Count; i++)
                 {
-                     newObj.Add(innerConverter.Deserialize(listVal.GetAt(i)));
+                    newObj.Add(innerConverter.Deserialize(listVal.GetAt(i)));
                 }
 
                 return newObj;

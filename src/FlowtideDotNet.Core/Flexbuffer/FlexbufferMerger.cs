@@ -18,7 +18,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
     {
         public static void Emit(FlxVector vec1, List<int> emit)
         {
-            
+
             var span = vec1.Span;
             for (int i = 0; i < vec1.Length; i++)
             {
@@ -37,10 +37,10 @@ namespace FlowtideDotNet.Core.Flexbuffer
                             sizeWidth <<= 1;
                             size = (int)FlxValue.ReadULong(span, indirectOffset - sizeWidth, (byte)sizeWidth);
                         }
-                        
+
                         break;
                     case FlexBuffers.Type.Vector:
-                        
+
 
                         break;
                 }

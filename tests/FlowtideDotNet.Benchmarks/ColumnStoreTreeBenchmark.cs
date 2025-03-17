@@ -12,25 +12,17 @@
 
 using BenchmarkDotNet.Attributes;
 using FASTER.core;
-using FastSerialization;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Core.Storage;
-using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using Microsoft.Extensions.Logging.Abstractions;
-using Substrait.Protobuf;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Benchmarks
 {

@@ -32,29 +32,29 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return EndTable();
         }
 
-        void AddCustomMetadata(int customMetadataOffset) 
-        { 
-            AddOffset(4, customMetadataOffset, 0); 
+        void AddCustomMetadata(int customMetadataOffset)
+        {
+            AddOffset(4, customMetadataOffset, 0);
         }
 
-        void AddBodyLength(long bodyLength) 
-        { 
-            AddLong(3, bodyLength, 0); 
+        void AddBodyLength(long bodyLength)
+        {
+            AddLong(3, bodyLength, 0);
         }
 
-        void AddHeader(int headerOffset) 
-        { 
-            AddOffset(2, headerOffset, 0); 
+        void AddHeader(int headerOffset)
+        {
+            AddOffset(2, headerOffset, 0);
         }
 
-        void AddVersion(short version) 
-        { 
-            AddShort(0, version, 0); 
+        void AddVersion(short version)
+        {
+            AddShort(0, version, 0);
         }
 
-        void AddHeaderType(MessageHeader headerType) 
-        { 
-            AddByte(1, (byte)headerType, 0); 
+        void AddHeaderType(MessageHeader headerType)
+        {
+            AddByte(1, (byte)headerType, 0);
         }
     }
 }

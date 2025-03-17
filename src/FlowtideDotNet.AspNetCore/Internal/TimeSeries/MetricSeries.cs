@@ -73,7 +73,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         public async Task Prune(long timestamp)
         {
-            foreach(var serie in GetAllSeries())
+            foreach (var serie in GetAllSeries())
             {
                 await serie.Prune(timestamp);
             }

@@ -83,7 +83,7 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             throw new NotImplementedException("Aggregate relation is not implemented");
         }
-        
+
         public virtual TReturn VisitIterationRelation(IterationRelation iterationRelation, TState state)
         {
             throw new NotImplementedException("Iteration relation is not implemented");

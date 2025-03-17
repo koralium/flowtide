@@ -12,10 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
 
 namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
 {
@@ -60,7 +57,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
                         return new TimestampTzValue(result);
                     }
                     throw new Exception($"Could not parse timestamp {value}");
-                    
+
             }
             throw new NotImplementedException(dataType);
         }

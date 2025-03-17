@@ -12,19 +12,11 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.Utils;
-using FlowtideDotNet.Core.Sources.Generic.Internal;
 using FlowtideDotNet.Storage.Memory;
-using Google.Protobuf;
-using Microsoft.VisualBasic;
-using System;
 using System.Buffers;
 using System.Buffers.Binary;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
@@ -120,7 +112,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 ReadSchemaFromSequence(ref data);
                 _schemaRead = true;
             }
-            
+
             ReadRecordBatchHeaderFromSequence(ref data);
 
             var message = MessageStruct.GetRootAsMessage(ref _schemaBytes, 0);
@@ -137,7 +129,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             var recordBatchMessage = MessageStruct.GetRootAsMessage(ref _recordBatchHeaderBytes, 0);
             var recordBatchHeader = new RecordBatchStruct(_recordBatchHeaderBytes, recordBatchMessage.HeaderPosition());
-            
+
             if (recordBatchHeader.HasCompression)
             {
                 var compressionInfo = recordBatchHeader.Compression;
@@ -192,7 +184,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
         private Column DeserializeColumn(
             ref SequenceReader<byte> data,
-            ref readonly FieldStruct fieldStruct, 
+            ref readonly FieldStruct fieldStruct,
             ref readonly RecordBatchStruct recordBatchStruct)
         {
             var fieldNode = ReadNextFieldNode(in recordBatchStruct);
@@ -240,8 +232,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
         private DataColumnResult DeserializeDataColumn(
             ref SequenceReader<byte> data,
-            ref readonly FieldStruct fieldStruct, 
-            ref readonly RecordBatchStruct recordBatchStruct, 
+            ref readonly FieldStruct fieldStruct,
+            ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
             switch (fieldStruct.TypeType)
@@ -321,8 +313,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
         private MapColumn DeserializeMapColumn(
             ref SequenceReader<byte> data,
-            ref readonly FieldStruct fieldStruct, 
-            ref readonly RecordBatchStruct recordBatchStruct, 
+            ref readonly FieldStruct fieldStruct,
+            ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
             if (fieldStruct.ChildrenLength != 1)
@@ -359,13 +351,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             keyColumn.Dispose();
             valueColumn.Dispose();
             return new MapColumn(memoryAllocator);
-            
+
         }
 
         private ListColumn DeserializeListColumn(
             ref SequenceReader<byte> data,
             scoped ref readonly FieldStruct fieldStruct,
-            scoped ref readonly RecordBatchStruct recordBatchStruct, 
+            scoped ref readonly RecordBatchStruct recordBatchStruct,
             int length)
         {
             if (fieldStruct.ChildrenLength != 1)
@@ -608,7 +600,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 data.Advance(bufferLength);
             }
 
-            
+
             return true;
         }
     }

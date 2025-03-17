@@ -206,7 +206,7 @@ namespace FlowtideDotNet.Storage.FileCache
                     _freePages.Remove(new FreePage(node.Next.ValueRef.allocatedSize, node.Next));
                     memoryNodes.Remove(node.Next);
                     allocatedPages.Remove(pageKey);
-                    
+
 
                     // Check if we can remove this segment
                     CheckifSegmentCanBeRemoved(node);
@@ -245,7 +245,7 @@ namespace FlowtideDotNet.Storage.FileCache
                         memoryNodes.Remove(node);
                     }
 
-                    
+
                     allocatedPages.Remove(pageKey);
                     // Schedule a remove file task for that segment
                     if (segmentWriters.TryGetValue(node.ValueRef.fileNumber, out var segment))
@@ -344,7 +344,7 @@ namespace FlowtideDotNet.Storage.FileCache
             _freePages.Add(new FreePage(newNode.ValueRef.allocatedSize, newNode));
         }
 
-        
+
 
         public void Write(long id, SerializableObject serializableObject)
         {
@@ -480,9 +480,9 @@ namespace FlowtideDotNet.Storage.FileCache
 
         public void Flush()
         {
-            lock(m_lock)
+            lock (m_lock)
             {
-                foreach(var writer in segmentWriters)
+                foreach (var writer in segmentWriters)
                 {
                     writer.Value.Flush();
                 }
@@ -493,7 +493,7 @@ namespace FlowtideDotNet.Storage.FileCache
         {
             lock (m_lock)
             {
-                foreach(var writer in segmentWriters)
+                foreach (var writer in segmentWriters)
                 {
                     writer.Value.ClearTemporaryAllocations();
                 }
@@ -511,7 +511,7 @@ namespace FlowtideDotNet.Storage.FileCache
                         allocatedPages.Clear();
                         memoryNodes.Clear();
                         _freePages.Clear();
-                        foreach(var segment in segmentWriters)
+                        foreach (var segment in segmentWriters)
                         {
                             segment.Value.Dispose();
                         }

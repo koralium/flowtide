@@ -31,10 +31,10 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
         public KafkaSink(WriteRelation writeRelation, FlowtideKafkaSinkOptions flowtideKafkaSinkOptions, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
         {
-            if ((flowtideKafkaSinkOptions.FetchExistingKeyDeserializer != null || 
+            if ((flowtideKafkaSinkOptions.FetchExistingKeyDeserializer != null ||
                 flowtideKafkaSinkOptions.FetchExistingValueDeserializer != null ||
                 flowtideKafkaSinkOptions.FetchExistingConfig != null) &&
-                (flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null || 
+                (flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null ||
                 flowtideKafkaSinkOptions.FetchExistingKeyDeserializer == null ||
                 flowtideKafkaSinkOptions.FetchExistingConfig == null))
             {
@@ -135,7 +135,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             }
 
             List<KeyValuePair<byte[], byte[]?>> output = new List<KeyValuePair<byte[], byte[]?>>();
-            await foreach(var row in rows)
+            await foreach (var row in rows)
             {
                 if (FetchExistingData && !row.IsDeleted)
                 {

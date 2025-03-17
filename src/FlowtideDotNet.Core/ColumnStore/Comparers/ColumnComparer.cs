@@ -10,12 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Comparers
 {
@@ -40,7 +35,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Comparers
             {
                 return false;
             }
-            
+
             for (int i = 0; i < x.Count; i++)
             {
                 var xVal = x.GetValueAt(i, default);

@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Connector.Kafka
         public Task Initialize(WriteRelation writeRelation)
         {
             int keyIndex = -1;
-            for ( int i = 0; i < writeRelation.TableSchema.Names.Count; i++)
+            for (int i = 0; i < writeRelation.TableSchema.Names.Count; i++)
             {
                 if (writeRelation.TableSchema.Names[i].ToLower() == "_key")
                 {

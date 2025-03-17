@@ -19,7 +19,6 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using Stowage;
-using System.IO;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 {
@@ -62,12 +61,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 }
             }
 
-            
+
 
             var schemaVisitor = new DeltaTypeArrowTypeVisitor();
 
             List<Apache.Arrow.Field> fields = new List<Field>();
-            foreach(var field in schema.Fields)
+            foreach (var field in schema.Fields)
             {
                 var type = schemaVisitor.Visit(field.Type);
                 fields.Add(new Field(field.Name, type, true));
@@ -201,7 +200,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             var batch = GetRecordBatch();
             writer.WriteRecordBatch(batch);
             writer.Close();
-            
+
             var length = stream.Position;
 
             return (int)length;

@@ -11,12 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Flexbuffer;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
@@ -24,7 +19,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
     public struct NullValue : IDataValue
     {
         public static readonly NullValue Instance = new NullValue();
-        public ArrowTypeId Type =>  ArrowTypeId.Null;
+        public ArrowTypeId Type => ArrowTypeId.Null;
 
         public long AsLong => throw new NotImplementedException();
 

@@ -31,7 +31,7 @@ namespace FlowtideDotNet.ComputeTests
             {
                 parser.AddErrorListener(errorListener);
             }
-            
+
 
             var context = parser.doc();
 

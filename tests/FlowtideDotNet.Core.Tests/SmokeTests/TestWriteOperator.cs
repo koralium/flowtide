@@ -10,16 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlexBuffers;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.StateManager;
-using FlexBuffers;
 using FlowtideDotNet.Substrait.Relations;
-using System.Text;
-using System.Threading.Tasks.Dataflow;
-using System.Text.Json;
-using System.Globalization;
 using System.Diagnostics;
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Tests.SmokeTests
 {
@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 {
                     var primaryKeyIndex = primaryKeyIds[i];
                     keyBuilder.Append(m.GetColumn(primaryKeyIndex).ToJson);
-                    if ((i+ 1) < primaryKeyIds.Count)
+                    if ((i + 1) < primaryKeyIds.Count)
                     {
                         keyBuilder.Append("|");
                     }
@@ -115,7 +115,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 if (rows.Count >= 1 && !isDeleted)
                 {
                     List<T> newDataList = new List<T>();
-                    foreach(var ev in rows)
+                    foreach (var ev in rows)
                     {
                         newDataList.Add(Deserialize(ev));
                     }

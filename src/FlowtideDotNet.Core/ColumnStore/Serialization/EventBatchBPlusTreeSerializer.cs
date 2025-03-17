@@ -12,12 +12,7 @@
 
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using ZstdSharp;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
@@ -27,7 +22,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         private readonly EventBatchSerializer _batchSerializer;
         private readonly object _lock = new object();
 
-        
+
 
         public EventBatchBPlusTreeSerializer()
         {

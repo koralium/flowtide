@@ -16,7 +16,6 @@ using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Connector.CosmosDB.Tests;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Substrait.Relations;
 
@@ -30,11 +29,11 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
         private readonly Func<ElasticsearchClient, WriteRelation, string, Watermark, Task>? onDataSent;
 
         public ElasticsearchTestStream(
-            ElasticSearchFixture elasticSearchFixture, 
-            string testName, 
+            ElasticSearchFixture elasticSearchFixture,
+            string testName,
             Action<Properties>? customMapping = null,
             Func<ElasticsearchClient, WriteRelation, string, Task>? onInitialDataSent = null,
-            Func<ElasticsearchClient, WriteRelation, string, Watermark, Task>? onDataSent = null) 
+            Func<ElasticsearchClient, WriteRelation, string, Watermark, Task>? onDataSent = null)
             : base(testName)
         {
             this.elasticSearchFixture = elasticSearchFixture;

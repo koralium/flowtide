@@ -11,13 +11,13 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
+using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FASTER.core;
 using Microsoft.Extensions.Logging.Abstractions;
-using FlowtideDotNet.Storage.Memory;
 using System.Diagnostics;
 
 namespace DifferntialCompute.Benchmarks
@@ -36,7 +36,7 @@ namespace DifferntialCompute.Benchmarks
             {
                 CachePageCount = 1_000_000
             }, NullLogger.Instance, new System.Diagnostics.Metrics.Meter("storage"), "storage");
-            
+
             stateManager.InitializeAsync().GetAwaiter().GetResult();
 
             nodeClient = stateManager.GetOrCreateClient("node1");
@@ -52,7 +52,7 @@ namespace DifferntialCompute.Benchmarks
                 Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
                 KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
                 ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
-                MemoryAllocator =  GlobalMemoryManager.Instance
+                MemoryAllocator = GlobalMemoryManager.Instance
             }).GetAwaiter().GetResult();
             tree.Clear();
         }

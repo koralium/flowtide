@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
             var collection = database.GetCollection<BsonDocument>("test");
             collection.Indexes.CreateOne(new CreateIndexModel<BsonDocument>(Builders<BsonDocument>.IndexKeys.Ascending("UserKey")));
 
-            
+
             while (true)
             {
                 var count = await collection.CountDocumentsAsync(new BsonDocument());

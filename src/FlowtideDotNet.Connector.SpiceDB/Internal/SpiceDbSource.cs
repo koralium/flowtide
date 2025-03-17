@@ -12,7 +12,6 @@
 
 using Authzed.Api.V1;
 using Authzed.Internal;
-using FlexBuffers;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Connector.SpiceDB.Internal.SchemaParser;
@@ -21,16 +20,9 @@ using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Grpc.Core;
-using Microsoft.Extensions.Logging;
-using SqlParser;
-using System;
-using System.Buffers;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Internal
@@ -153,14 +145,14 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 foreach (var type in schema.Types)
                 {
                     readTypes.Add(type.Key);
-                }           
+                }
                 watermarkNames = new HashSet<string>();
                 foreach (var type in readTypes)
                 {
                     watermarkNames.Add($"spicedb_{type}");
                 }
             }
-            
+
 
             m_client = new PermissionsService.PermissionsServiceClient(m_spiceDbSourceOptions.Channel);
             m_watchClient = new WatchService.WatchServiceClient(m_spiceDbSourceOptions.Channel);
@@ -198,7 +190,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             Debug.Assert(m_state?.Value?.TypeTimestamps != null);
 
             var builder = ImmutableDictionary.CreateBuilder<string, long>();
-            foreach(var kv in m_state.Value.TypeTimestamps)
+            foreach (var kv in m_state.Value.TypeTimestamps)
             {
                 builder.Add($"spicedb_{kv.Key}", kv.Value);
             }
@@ -285,7 +277,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                         output.ExitCheckpointLock();
                     }
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     if (e is RpcException rpcException)
                     {
@@ -406,9 +398,9 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                             m_state.Value.TypeTimestamps[readType] = minRevision;
                             break;
                         }
-                        catch(Exception e)
+                        catch (Exception e)
                         {
-                            if (e is RpcException rpcException && 
+                            if (e is RpcException rpcException &&
                                 rpcException.InnerException != null &&
                                 rpcException.InnerException is HttpProtocolException httpProtocolException &&
                                 httpProtocolException.ErrorCode == 0)
@@ -426,7 +418,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                             }
                         }
                     }
-                    
+
                 }
                 m_state.Value.ContinuationToken = firstToken;
                 await output.SendWatermark(GetCurrentWatermark());

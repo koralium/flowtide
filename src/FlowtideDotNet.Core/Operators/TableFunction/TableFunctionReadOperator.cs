@@ -108,7 +108,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
                 var batches = _func(new EventBatchData(Array.Empty<IColumn>()), 0);
 
 
-                foreach(var batch in batches)
+                foreach (var batch in batches)
                 {
                     _eventsCounter.Add(batch.Count);
                     _eventsProcessed.Add(batch.Count);

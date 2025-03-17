@@ -17,12 +17,7 @@ using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -33,19 +28,19 @@ namespace FlowtideDotNet.Core.ColumnStore
         ArrowTypeId Type { get; }
 
         int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList)
-            where T: IDataValue;
+            where T : IDataValue;
 
         int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);
 
         int Add<T>(in T value)
-            where T: IDataValue;
+            where T : IDataValue;
 
         IDataValue GetValueAt(in int index, in ReferenceSegment? child);
 
         void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child);
 
         int Update<T>(in int index, in T value)
-            where T: IDataValue;
+            where T : IDataValue;
 
         (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue;

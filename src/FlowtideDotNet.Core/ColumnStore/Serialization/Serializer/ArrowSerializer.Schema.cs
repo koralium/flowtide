@@ -30,32 +30,32 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return EndTable();
         }
 
-        void SchemaAddEndianness(short endianness) 
-        { 
-            AddShort(0, (short)endianness, 0); 
+        void SchemaAddEndianness(short endianness)
+        {
+            AddShort(0, (short)endianness, 0);
         }
 
-        void SchemaAddFields(int fieldsOffset) 
-        { 
-            AddOffset(1, fieldsOffset, 0); 
+        void SchemaAddFields(int fieldsOffset)
+        {
+            AddOffset(1, fieldsOffset, 0);
         }
 
-        void SchemaAddCustomMetadata(int customMetadataOffset) 
-        { 
-            AddOffset(2, customMetadataOffset, 0); 
+        void SchemaAddCustomMetadata(int customMetadataOffset)
+        {
+            AddOffset(2, customMetadataOffset, 0);
         }
 
-        void SchemaAddFeatures(int featuresOffset) 
-        { 
-            AddOffset(3, featuresOffset, 0); 
+        void SchemaAddFeatures(int featuresOffset)
+        {
+            AddOffset(3, featuresOffset, 0);
         }
 
-        public int SchemaCreateFieldsVector(Span<int> data) 
-        { 
+        public int SchemaCreateFieldsVector(Span<int> data)
+        {
             StartVector(4, data.Length, 4);
             for (int i = data.Length - 1; i >= 0; i--)
             {
-                AddOffset(data[i]); 
+                AddOffset(data[i]);
             }
             return EndVector();
         }

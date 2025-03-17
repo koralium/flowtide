@@ -11,12 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Zanzibar;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Internal.SchemaParser.Internal
 {

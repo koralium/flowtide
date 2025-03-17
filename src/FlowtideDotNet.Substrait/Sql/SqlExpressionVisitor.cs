@@ -294,7 +294,7 @@ namespace FlowtideDotNet.Substrait.Sql
                                 left.Expr,
                                 right.Expr
                             }
-                        }, 
+                        },
                         $"{left.Name}_{right.Name}",
                         returnType
                         );
@@ -360,7 +360,7 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 throw new NotSupportedException();
             }
-            
+
         }
 
         protected override ExpressionData VisitCompoundIdentifier(SqlParser.Ast.Expression.CompoundIdentifier compoundIdentifier, EmitData state)
@@ -558,7 +558,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     ExtensionName = FunctionsBoolean.Not,
                     Arguments = new List<Expressions.Expression>() { expressionData.Expr }
                 }, expressionData.Name,
-                expressionData.Type 
+                expressionData.Type
                 );
         }
 
@@ -625,12 +625,12 @@ namespace FlowtideDotNet.Substrait.Sql
         {
             var expr = Visit(inList.Expression, state);
             List<Expressions.Expression> options = new List<Expressions.Expression>();
-            foreach(var v in inList.List)
+            foreach (var v in inList.List)
             {
                 options.Add(Visit(v, state).Expr);
             }
-            
-        
+
+
             var result = new ExpressionData(
                 new SingularOrListExpression()
                 {
@@ -657,7 +657,7 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 baseType = new StringType();
             }
-            else if(cast.DataType is SqlParser.Ast.DataType.Int || 
+            else if (cast.DataType is SqlParser.Ast.DataType.Int ||
                 cast.DataType is SqlParser.Ast.DataType.Integer ||
                 cast.DataType is SqlParser.Ast.DataType.SmallInt ||
                 cast.DataType is SqlParser.Ast.DataType.TinyInt)
@@ -751,7 +751,7 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 escapeChar = new StringLiteral() { Value = like.EscapeChar };
             }
-            
+
             var likeFunction = new ScalarFunction()
             {
                 ExtensionUri = FunctionsString.Uri,

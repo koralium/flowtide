@@ -90,11 +90,11 @@ namespace FlowtideDotNet.Core.Sinks
             using NativeBufferWriter memoryStream = new NativeBufferWriter(MemoryAllocator);
             Utf8JsonWriter writer = new Utf8JsonWriter(memoryStream);
 
-            
+
             int count = 0;
-            await foreach(var page in iterator)
+            await foreach (var page in iterator)
             {
-                foreach(var kv in page)
+                foreach (var kv in page)
                 {
                     var vals = new object[writeRelation.TableSchema.Names.Count + 1];
                     vals[0] = kv.Value;

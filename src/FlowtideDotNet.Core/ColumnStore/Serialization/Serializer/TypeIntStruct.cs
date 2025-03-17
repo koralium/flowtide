@@ -10,13 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
 {
     internal ref struct TypeIntStruct
@@ -30,22 +23,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
             this.position = position;
         }
 
-        public int BitWidth 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 4); 
-                return o != 0 ? ReadUtils.GetInt(in span, o + position) : (int)0; 
-            } 
+        public int BitWidth
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 4);
+                return o != 0 ? ReadUtils.GetInt(in span, o + position) : (int)0;
+            }
         }
 
-        public bool IsSigned 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 6); 
-                return o != 0 ? 0 != ReadUtils.Get(in span, o + position) : (bool)false; 
-            } 
+        public bool IsSigned
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 6);
+                return o != 0 ? 0 != ReadUtils.Get(in span, o + position) : (bool)false;
+            }
         }
     }
 }

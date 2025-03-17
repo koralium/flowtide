@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
     internal class EmitPushdownVisitor : OptimizerBaseVisitor
     {
         private Dictionary<int, List<ReferenceRelation>> referenceRelations;
-        
+
         public EmitPushdownVisitor(Dictionary<int, List<ReferenceRelation>> referenceRelations)
         {
             this.referenceRelations = referenceRelations;
@@ -141,7 +141,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                         }
                     }
                 }
-                
+
                 if (aggregateRelation.Groupings != null)
                 {
                     foreach (var grouping in aggregateRelation.Groupings)
@@ -152,7 +152,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                         }
                     }
                 }
-                
+
                 var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
 
                 var inputEmitResult = CreateInputEmitList(input, usedFields);
@@ -175,7 +175,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                         }
                     }
                 }
-                
+
                 if (aggregateRelation.Groupings != null)
                 {
                     foreach (var grouping in aggregateRelation.Groupings)
@@ -238,10 +238,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 }
 
                 var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
-                
+
                 if (projectRelation.EmitSet)
                 {
-                    foreach(var field in projectRelation.Emit!)
+                    foreach (var field in projectRelation.Emit!)
                     {
                         if (field < input.OutputLength)
                         {
@@ -489,7 +489,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
         public override Relation VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, object state)
         {
             var inputLength = mergeJoinRelation.Left.OutputLength + mergeJoinRelation.Right.OutputLength;
-            
+
             if (mergeJoinRelation.Left is ReferenceRelation leftReference)
             {
                 var projectRel = new ProjectRelation()
@@ -508,16 +508,16 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 };
                 mergeJoinRelation.Right = projectRel;
             }
-            
+
             if (inputLength > mergeJoinRelation.OutputLength)
             {
                 var usageVisitor = new ExpressionFieldUsageVisitor(mergeJoinRelation.Left.OutputLength);
                 // Visit all possible field references
-                foreach(var leftFieldKey in mergeJoinRelation.LeftKeys)
+                foreach (var leftFieldKey in mergeJoinRelation.LeftKeys)
                 {
                     usageVisitor.Visit(leftFieldKey, default);
                 }
-                foreach(var rightFieldKey in mergeJoinRelation.RightKeys)
+                foreach (var rightFieldKey in mergeJoinRelation.RightKeys)
                 {
                     usageVisitor.Visit(rightFieldKey, default);
                 }
@@ -593,9 +593,9 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                     replacementCounter += 1;
                 }
 
-                foreach(var field in rightUsage)
+                foreach (var field in rightUsage)
                 {
-                    var rightIndex = field- mergeJoinRelation.Left.OutputLength;
+                    var rightIndex = field - mergeJoinRelation.Left.OutputLength;
 
                     rightEmit.Add(rightEmitToInternal[rightIndex]);
                     oldToNew.Add(field, replacementCounter);

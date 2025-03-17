@@ -18,13 +18,8 @@ using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
 using OpenFga.Sdk.Client;
 using OpenFga.Sdk.Client.Model;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Internal
@@ -97,7 +92,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
             var result = m_openFGASinkOptions.DeleteExistingDataFetcher(m_openFgaClient);
 
-            await foreach(var tuple in result)
+            await foreach (var tuple in result)
             {
                 yield return m_existingDataRowEncoder.Encode(tuple, 1);
             }
@@ -199,7 +194,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
             int count = 0;
             List<Task> tasks = new List<Task>();
-            await foreach(var row in rows)
+            await foreach (var row in rows)
             {
                 count++;
                 IClientWriteOptions? clientWriteOptions = default;
