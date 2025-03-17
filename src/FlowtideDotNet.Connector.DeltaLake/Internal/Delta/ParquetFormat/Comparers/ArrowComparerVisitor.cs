@@ -80,7 +80,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
         {
             List<IArrowComparer> propertyComparers = new List<IArrowComparer>();
 
-            foreach(var field in type.Fields)
+            foreach (var field in type.Fields)
             {
                 propertyComparers.Add(Visit(field.Type));
             }

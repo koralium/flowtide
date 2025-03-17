@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
                 var values = untypedArray.GetValue();
                 foreach (var val in values)
                 {
-                    HandleUntypedNode(val);   
+                    HandleUntypedNode(val);
                 }
                 flexBuffer.EndVector(startArr, false, false);
                 var bytes = flexBuffer.Finish();

@@ -975,7 +975,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 var nullTypePointer = arrowSerializer.AddNullType();
                 return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Null, nullTypePointer);
             }
-            
+
             return _dataColumn!.CreateSchemaField(ref arrowSerializer, emptyStringPointer, pointerStack);
         }
 
@@ -1027,7 +1027,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // Union does not have a validity bitmap in apache arrow
                 arrowSerializer.AddBufferForward(_validityList!.MemorySlice.Length);
             }
-            
+
             _dataColumn!.AddBuffers(ref arrowSerializer);
         }
 

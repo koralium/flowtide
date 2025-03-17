@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
             opt.Converters.Clear();
             var resolver = new DefaultJsonTypeInfoResolver();
             var typeInfo = resolver.GetTypeInfo(type, opt);
-            
+
             if (typeInfo.Properties.Count == 0)
             {
                 return new ObjectConverterTypeInfo(type, ConvertKind(typeInfo.Kind), Array.Empty<ObjectConverterPropertyInfo>(), typeInfo.CreateObject);

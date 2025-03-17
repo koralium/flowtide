@@ -22,7 +22,7 @@ builder.Services.AddOpenTelemetry()
     {
         builder.AddPrometheusExporter(o =>
         {
-            
+
         });
         builder.AddMeter("flowtide.*");
     });

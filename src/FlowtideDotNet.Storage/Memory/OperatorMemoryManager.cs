@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Storage.Memory
                     RegisterAllocationToMetrics(size);
                     RegisterFreeToMetrics(previousLength);
                 }
-                
+
                 native.ptr = newPtr;
                 native.length = size;
                 return native;

@@ -21,7 +21,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
         private List<KeyValuePair<string, string>[]> _tagsList = new List<KeyValuePair<string, string>[]>();
         private List<MetricValue> _metrics = new List<MetricValue>();
         private ReaderWriterLockSlim _rwLock = new ReaderWriterLockSlim();
-        
+
 
         public CounterInstrument(string name, bool isObservable)
         {
@@ -75,7 +75,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
                 {
                     tagList[i] = new KeyValuePair<string, string>(tags[i].Key, tags[i].Value!.ToString()!);
                 }
-                    
+
                 var metricValue = new MetricValue(tagList.ToDictionary(x => x.Key.Replace(".", "_"), x => x.Value));
                 metricValue.Value = value;
 
@@ -97,7 +97,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
                 var metric = _metrics[i];
                 await series.SetValueToSerie(name, metric.Tags, timestamp, metric.Value);
             }
-            
+
         }
     }
 }

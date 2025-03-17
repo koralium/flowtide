@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
         {
             var code = new HashCode();
             code.Add(Type);
-            foreach(var expr in Expressions)
+            foreach (var expr in Expressions)
             {
                 code.Add(expr);
             }

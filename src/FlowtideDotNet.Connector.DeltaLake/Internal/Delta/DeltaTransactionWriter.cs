@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
-            foreach(var commit in actions)
+            foreach (var commit in actions)
             {
                 var text = JsonSerializer.Serialize(commit, options);
                 await writer.WriteLineAsync(text);

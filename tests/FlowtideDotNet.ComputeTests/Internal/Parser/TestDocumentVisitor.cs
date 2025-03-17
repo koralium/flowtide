@@ -40,7 +40,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Parser
                     testGroupList.Add(testGroupVisitor.Visit(testGroup));
                 }
             }
-            
+
 
             return new TestDocument()
             {

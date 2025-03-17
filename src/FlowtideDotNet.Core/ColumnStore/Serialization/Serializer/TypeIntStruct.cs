@@ -23,22 +23,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
             this.position = position;
         }
 
-        public int BitWidth 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 4); 
-                return o != 0 ? ReadUtils.GetInt(in span, o + position) : (int)0; 
-            } 
+        public int BitWidth
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 4);
+                return o != 0 ? ReadUtils.GetInt(in span, o + position) : (int)0;
+            }
         }
 
-        public bool IsSigned 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 6); 
-                return o != 0 ? 0 != ReadUtils.Get(in span, o + position) : (bool)false; 
-            } 
+        public bool IsSigned
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 6);
+                return o != 0 ? 0 != ReadUtils.Get(in span, o + position) : (bool)false;
+            }
         }
     }
 }

@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public DecimalColumn(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _values = new PrimitiveList<decimal>(memory, length, memoryAllocator);   
+            _values = new PrimitiveList<decimal>(memory, length, memoryAllocator);
         }
 
         internal DecimalColumn(PrimitiveList<decimal> values)
@@ -107,7 +107,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._decimalValue = new DecimalValue(_values[index]);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue
         {
             if (desc)

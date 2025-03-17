@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
 {
     internal class SpiceDbSink : SimpleGroupedWriteOperator
     {
-        private readonly int m_resourceObjectTypeIndex; 
+        private readonly int m_resourceObjectTypeIndex;
         private readonly int m_resourceObjectIdIndex;
         private readonly int m_relationIndex;
         private readonly int m_subjectObjectTypeIndex;
@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 {
                     m_spiceDbSinkOptions.DeleteExistingDataFilter.OptionalCursor = cursor;
                 }
-                
+
                 var relationshipsStream = m_client.ReadRelationships(m_spiceDbSinkOptions.DeleteExistingDataFilter, metadata);
                 var readAllEnumerable = relationshipsStream.ResponseStream;
 
@@ -124,13 +124,13 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 {
                     try
                     {
-                        if(!await readAllEnumerable.MoveNext())
+                        if (!await readAllEnumerable.MoveNext())
                         {
                             run = false;
                             break;
                         }
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
                         if (e is RpcException rpcException &&
                             rpcException.InnerException is HttpProtocolException protocolException &&
@@ -147,7 +147,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     yield return m_existingDataEncoder.Encode(readAllEnumerable.Current.Relationship, 1);
                     cursor = readAllEnumerable.Current.AfterResultCursor;
                 }
-            }   
+            }
         }
 
         private static string ColumnToString(scoped in FlxValueRef flxValue)
@@ -233,10 +233,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             var watch = Stopwatch.StartNew();
             string? lastToken = default;
             List<Task<string>> uploadTasks = new List<Task<string>>();
-            await foreach(var row in rows)
+            await foreach (var row in rows)
             {
                 var relationship = GetRelationship(row);
-                
+
                 if (row.IsDeleted)
                 {
                     request.Updates.Add(new RelationshipUpdate()
@@ -247,10 +247,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 }
                 else
                 {
-                    request.Updates.Add(new RelationshipUpdate() 
-                    { 
-                        Operation = RelationshipUpdate.Types.Operation.Touch, 
-                        Relationship = relationship 
+                    request.Updates.Add(new RelationshipUpdate()
+                    {
+                        Operation = RelationshipUpdate.Types.Operation.Touch,
+                        Relationship = relationship
                     });
                 }
                 if (request.Updates.Count >= m_spiceDbSinkOptions.BatchSize)
@@ -277,7 +277,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                                 response = await m_client.WriteRelationshipsAsync(req, metadata, cancellationToken: cancellationToken);
                                 break;
                             }
-                            catch(Exception e)
+                            catch (Exception e)
                             {
                                 retries++;
                                 if (retries < 5)

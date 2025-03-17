@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Core.Operators.Buffer
 
                 for (int i = 0; i < page.Keys._data.Columns.Count; i++)
                 {
-                     columns[i] = page.Keys._data.Columns[i].Copy(MemoryAllocator);
+                    columns[i] = page.Keys._data.Columns[i].Copy(MemoryAllocator);
                 }
                 _eventsCounter.Add(weights.Count);
                 yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));

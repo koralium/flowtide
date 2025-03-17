@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             tagList = options.TagList;
             tagList.Add("state_client", name);
-            
+
             _lookupTable = new CacheValue[1009];
         }
 
@@ -307,7 +307,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         throw new InvalidOperationException("Could not rent value when fetched from storage.");
                     }
                     stateManager.AddOrUpdate(key, value, this);
-                    
+
                     if (m_temporaryReadMsHistogram != null)
                     {
                         m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);

@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Operators.Iteration
         {
             return Task.CompletedTask;
         }
-        
+
         protected override Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
             return Task.CompletedTask;

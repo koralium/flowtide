@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             _version = version;
             _schema = schema;
             // Read schema
-            
+
         }
 
         public List<DeltaAddAction> AddFiles => _addFiles;

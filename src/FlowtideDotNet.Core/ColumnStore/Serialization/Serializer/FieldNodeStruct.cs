@@ -25,20 +25,20 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             this.position = position;
         }
 
-        public long Length 
-        { 
-            get 
-            { 
-                return ReadUtils.GetLong(in span, position + 0); 
-            } 
+        public long Length
+        {
+            get
+            {
+                return ReadUtils.GetLong(in span, position + 0);
+            }
         }
 
-        public long NullCount 
-        { 
-            get 
-            { 
-                return ReadUtils.GetLong(in span, position + 8); 
-            } 
+        public long NullCount
+        {
+            get
+            {
+                return ReadUtils.GetLong(in span, position + 8);
+            }
         }
     }
 }

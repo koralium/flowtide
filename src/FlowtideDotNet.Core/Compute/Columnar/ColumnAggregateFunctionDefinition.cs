@@ -20,7 +20,7 @@ using static FlowtideDotNet.Core.Compute.IFunctionsRegister;
 
 namespace FlowtideDotNet.Core.Compute.Columnar
 {
-    internal abstract class ColumnAggregateFunctionDefinition 
+    internal abstract class ColumnAggregateFunctionDefinition
     {
         public abstract Task<IColumnAggregateContainer> CreateContainer(
             int groupingLength,

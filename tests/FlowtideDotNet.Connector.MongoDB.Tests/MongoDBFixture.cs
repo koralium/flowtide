@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
         public MongoDBFixture()
             : this(false)
         {
-            
+
         }
 
         protected MongoDBFixture(bool disableChangeStream)
@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
         public async Task InitializeAsync()
         {
             await _mongoDbContainer.StartAsync();
-            
+
             if (!disableChangeStream)
             {
                 var execResult = await _mongoDbContainer.ExecAsync(new List<string>() { "/bin/bash", "-c", "echo \"rs.initiate({_id:'rs0',members:[{_id:0,host:'127.0.0.1:27017'}]})\" | mongosh --port 27017 --quiet" });

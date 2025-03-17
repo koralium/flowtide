@@ -145,7 +145,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     Vector128<sbyte> mappingVector = Vector128.Load(pMapping);
 
                     int vectorSize = Vector128<sbyte>.Count;
-                    
+
                     for (; i <= count - vectorSize; i += vectorSize)
                     {
                         Vector128<sbyte> sourceVector = Vector128.Load(pSource + start + i);

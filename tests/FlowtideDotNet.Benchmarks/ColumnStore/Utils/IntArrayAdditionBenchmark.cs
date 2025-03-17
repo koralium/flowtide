@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
         {
             int elementCount = 100_000_000;
             source = new int[elementCount];
-            
+
             for (int i = 0; i < elementCount; i++)
             {
                 source[i] = i;

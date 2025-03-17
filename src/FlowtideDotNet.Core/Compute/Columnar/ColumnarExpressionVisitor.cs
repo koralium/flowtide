@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                     var convertExpr = System.Linq.Expressions.Expression.Call(convertToRowEventMethod, state.BatchParameters[i], state.IndexParameters[i]);
                     parameterList.Add(convertExpr);
                 }
-                
+
                 var visitor = new FlowtideExpressionVisitor(functionsRegister, typeof(RowEvent));
                 var func = function.MapFunc(scalarFunction, new ParametersInfo(parameterList, state.RelativeIndices), visitor);
                 var convertToDataValueMethod = typeof(ColumnarExpressionVisitor).GetMethod(nameof(ConvertFlxValueToDataValue), BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
@@ -149,7 +149,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
 
         public override System.Linq.Expressions.Expression? VisitNumericLiteral(NumericLiteral numericLiteral, ColumnParameterInfo state)
         {
-            if(numericLiteral.Value % 1 == 0)
+            if (numericLiteral.Value % 1 == 0)
             {
                 return System.Linq.Expressions.Expression.Constant(new Int64Value((long)numericLiteral.Value), typeof(IDataValue));
             }
@@ -171,7 +171,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                 throw new InvalidOperationException("The expression to cast is null.");
             }
 
-            switch(castExpression.Type.Type)
+            switch (castExpression.Type.Type)
             {
                 case SubstraitType.String:
                     return ColumnCastImplementations.CallCastToString(expr, state.ResultDataValue);
@@ -243,7 +243,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             var newArrayExpr = System.Linq.Expressions.Expression.NewArrayInit(typeof(IDataValue), arrInitExpressions);
 
             var newListValueExpr = System.Linq.Expressions.Expression.New(typeof(ListValue).GetConstructor([typeof(IDataValue[])])!, newArrayExpr);
-            
+
             return newListValueExpr;
         }
 
@@ -251,7 +251,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
         {
             List<System.Linq.Expressions.Expression> arrInitExpressions = new List<System.Linq.Expressions.Expression>();
 
-            foreach(var pair in mapNestedExpression.KeyValues)
+            foreach (var pair in mapNestedExpression.KeyValues)
             {
                 var keyExpr = pair.Key.Accept(this, state.UpdateResultDataValue(System.Linq.Expressions.Expression.Constant(new DataValueContainer())));
                 var valueExpr = pair.Value.Accept(this, state.UpdateResultDataValue(System.Linq.Expressions.Expression.Constant(new DataValueContainer())));

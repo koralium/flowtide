@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Optimizer
                 {
                     if (readRelation.EmitSet)
                     {
-                        for(int i = 0; i < filterRelation.Emit.Count; i++)
+                        for (int i = 0; i < filterRelation.Emit.Count; i++)
                         {
 
                         }

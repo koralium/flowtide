@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         private readonly int columnCount;
         private readonly IMemoryAllocator memoryAllocator;
         private readonly EventBatchBPlusTreeSerializer _batchSerializer;
-        
+
 
         public ColumnStoreSerializer(int columnCount, IMemoryAllocator memoryAllocator)
         {

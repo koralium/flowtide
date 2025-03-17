@@ -34,8 +34,9 @@ namespace AspireSamples.DataMigration
             {
                 opt.ToTable("users")
                 .HasKey(x => x.UserKey);
-            }); 
-            modelBuilder.Entity<Order>(opt => {
+            });
+            modelBuilder.Entity<Order>(opt =>
+            {
                 opt.ToTable("orders")
                 .HasKey(x => x.OrderKey);
             });

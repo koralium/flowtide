@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                     {
                         continue;
                     }
-                    
+
                     if (arr.IsNull(i))
                     {
                         WriteNull();

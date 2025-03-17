@@ -84,7 +84,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
                 await series.SetValueToSerie($"{name}_sum", metric.Tags, timestamp, metric.Value);
                 await series.SetValueToSerie($"{name}_count", metric.Tags, timestamp, metric.Count);
             }
-            
+
         }
     }
 }

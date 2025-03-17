@@ -21,6 +21,6 @@ namespace FlowtideDotNet.Connector.SpiceDB
 
         public Func<Metadata>? GetMetadata { get; set; }
 
-        public Consistency? Consistency { get; set; } 
+        public Consistency? Consistency { get; set; }
     }
 }

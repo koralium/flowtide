@@ -13,7 +13,7 @@
 namespace FlowtideDotNet.Storage.Tree
 {
     public interface IBplusTreeComparer<K, TKeyContainer>
-        where TKeyContainer: IKeyContainer<K>
+        where TKeyContainer : IKeyContainer<K>
     {
         /// <summary>
         /// Find which index the key is in.

@@ -31,7 +31,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 SELECT TOP 1 userkey 
                 FROM users");
             });
-            
+
             Assert.Equal("Fetch operation (top or limit) is not supported without an order by", ex.Message);
         }
 
@@ -43,7 +43,7 @@ namespace FlowtideDotNet.AcceptanceTests
             INSERT INTO output 
             SELECT TOP 1 userkey 
             FROM users
-            ORDER BY userkey");  
+            ORDER BY userkey");
 
             await WaitForUpdate();
 

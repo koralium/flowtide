@@ -31,7 +31,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 var tableMembers = TypeAccessor.Create(typeof(T)).GetMembers();
                 List<int> keyIndices = new List<int>();
-                List<SubstraitBaseType> types = new List<SubstraitBaseType>(); 
+                List<SubstraitBaseType> types = new List<SubstraitBaseType>();
                 for (int i = 0; i < tableMembers.Count; i++)
                 {
                     var attr = tableMembers[i].GetAttribute(typeof(KeyAttribute), false);

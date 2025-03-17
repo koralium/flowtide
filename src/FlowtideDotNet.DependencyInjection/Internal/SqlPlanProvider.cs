@@ -30,7 +30,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
         public Plan GetPlan()
         {
             var sqlPlanBuilder = new SqlPlanBuilder();
-            foreach(var tableProvider in connectorManager.GetTableProviders())
+            foreach (var tableProvider in connectorManager.GetTableProviders())
             {
                 sqlPlanBuilder.AddTableProvider(tableProvider);
             }

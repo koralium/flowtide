@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
                 func.AddValue(NullValue.Instance);
                 return;
             }
-            
+
             if (_array.IsNull(index))
             {
                 func.AddValue(NullValue.Instance);

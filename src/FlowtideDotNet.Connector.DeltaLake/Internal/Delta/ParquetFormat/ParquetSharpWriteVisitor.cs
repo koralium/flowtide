@@ -89,7 +89,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
         public override IParquetWriter VisitStructType(StructType type)
         {
-            List< KeyValuePair<string, IParquetWriter> > fields = new List<KeyValuePair<string, IParquetWriter>>();
+            List<KeyValuePair<string, IParquetWriter>> fields = new List<KeyValuePair<string, IParquetWriter>>();
             foreach (var field in type.Fields)
             {
                 var writer = Visit(field.Type);

@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
     public struct NullValue : IDataValue
     {
         public static readonly NullValue Instance = new NullValue();
-        public ArrowTypeId Type =>  ArrowTypeId.Null;
+        public ArrowTypeId Type => ArrowTypeId.Null;
 
         public long AsLong => throw new NotImplementedException();
 

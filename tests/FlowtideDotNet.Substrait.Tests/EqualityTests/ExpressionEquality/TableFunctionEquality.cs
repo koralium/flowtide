@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.ExpressionEquality
                 ExtensionName = "testname1",
                 Arguments = new List<Expression>()
                 {
-                    new StringLiteral() { Value = "test1" } 
+                    new StringLiteral() { Value = "test1" }
                 },
                 TableSchema = new Type.NamedStruct()
                 {

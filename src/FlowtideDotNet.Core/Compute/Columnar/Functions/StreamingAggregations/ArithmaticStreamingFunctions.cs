@@ -129,7 +129,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
         private static void GetSum0Value(ColumnReference state, ColumnStore.Column outputColumn)
         {
             var stateVal = state.GetValue();
-            
+
             if (stateVal.Type == ArrowTypeId.Null)
             {
                 outputColumn.Add(new DoubleValue(0.0));

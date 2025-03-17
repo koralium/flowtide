@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
             var groupbyHb = values.Distinct().OrderBy(t => t).GroupBy(HighBytes).OrderBy(t => t.Key).ToList();
 
             List<RoaringBitmap> result = new List<RoaringBitmap>();
-            foreach(var group in groupbyHb)
+            foreach (var group in groupbyHb)
             {
                 if (group.Key > result.Count)
                 {

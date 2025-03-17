@@ -36,13 +36,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             this.position = offset;
         }
 
-        public long BodyLength 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 10); 
-                return o != 0 ? ReadUtils.GetLong(in span, o + position) : (long)0; 
-            } 
+        public long BodyLength
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 10);
+                return o != 0 ? ReadUtils.GetLong(in span, o + position) : (long)0;
+            }
         }
 
         public long BodyLengthIndex

@@ -36,7 +36,7 @@ namespace DifferntialCompute.Benchmarks
             {
                 CachePageCount = 1_000_000
             }, NullLogger.Instance, new System.Diagnostics.Metrics.Meter("storage"), "storage");
-            
+
             stateManager.InitializeAsync().GetAwaiter().GetResult();
 
             nodeClient = stateManager.GetOrCreateClient("node1");
@@ -52,7 +52,7 @@ namespace DifferntialCompute.Benchmarks
                 Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
                 KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
                 ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
-                MemoryAllocator =  GlobalMemoryManager.Instance
+                MemoryAllocator = GlobalMemoryManager.Instance
             }).GetAwaiter().GetResult();
             tree.Clear();
         }

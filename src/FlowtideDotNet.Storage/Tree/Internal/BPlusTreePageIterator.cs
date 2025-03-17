@@ -16,8 +16,8 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
     internal class BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> : IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>
-        where TKeyContainer: IKeyContainer<K>
-        where TValueContainer: IValueContainer<V>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         internal class Enumerator : IEnumerator<KeyValuePair<K, V>>
         {
@@ -111,7 +111,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     return WaitForNotFull();
                 }
             }
-           
+
             return ValueTask.CompletedTask;
         }
 

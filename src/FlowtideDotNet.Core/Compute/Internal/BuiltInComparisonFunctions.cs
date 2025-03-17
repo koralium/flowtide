@@ -57,8 +57,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     for (int i = scalarFunction.Arguments.Count - 2; i >= 0; i--)
                     {
                         var newArg = visitor.Visit(scalarFunction.Arguments[i], parametersInfo);
-                        if (newArg == null) 
-                        {                             
+                        if (newArg == null)
+                        {
                             throw new InvalidOperationException("Could not compile coalesce function");
                         }
                         var condition = System.Linq.Expressions.Expression.Not(AccessIsNullProperty(newArg));

@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         public List<Relation> GetRelations(Sequence<Statement> statements)
         {
             subRelations.Clear();
-            foreach(var statement in statements)
+            foreach (var statement in statements)
             {
                 var relData = Visit(statement, default);
                 if (relData == null)
@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 subRelations.Add(relData.Relation);
             }
-            
+
             return subRelations;
         }
 
@@ -148,8 +148,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             int? partitionCount = default;
             if (createView.Options != null && createView.Options is CreateTableOptions.With withOptions)
             {
-                
-                foreach(var opt in withOptions.OptionsList)
+
+                foreach (var opt in withOptions.OptionsList)
                 {
                     if (opt is SqlOption.KeyValue kvOption)
                     {
@@ -207,7 +207,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             throw new SubstraitParseException($"Unknown option '{kvOption.Name}' in create view statement");
                         }
                     }
-                    
+
                 }
             }
 
@@ -245,7 +245,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 };
 
                 // Add the exchange relation to a lookup table so usage of the view can add to the targets.
-                exchangeRelations.Add(createView.Name.ToSql(),new ExchangeContainer(relationData.EmitData, subRelations.Count, relation.OutputLength, exchangeRelation, subStreamName));
+                exchangeRelations.Add(createView.Name.ToSql(), new ExchangeContainer(relationData.EmitData, subRelations.Count, relation.OutputLength, exchangeRelation, subStreamName));
 
                 if (subStreamName == null)
                 {
@@ -260,7 +260,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         Name = subStreamName
                     };
                 }
-                
+
                 subRelations.Add(relation);
             }
             else
@@ -276,13 +276,13 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 viewRelations.Add(viewName, new ViewContainer(relationData.EmitData, subRelations.Count, relation.OutputLength));
                 subRelations.Add(relation);
             }
-            
+
             return default;
         }
 
         protected override RelationData? VisitCreateTable(Statement.CreateTable createTable, object? state)
         {
-            var tableName = string.Join(".", createTable.Element.Name.Values.Select(x=> x.Value));
+            var tableName = string.Join(".", createTable.Element.Name.Values.Select(x => x.Value));
             var columnNames = createTable.Element.Columns.Select(x => x.Name.Value).ToList();
 
             NamedStruct schema = new NamedStruct()
@@ -302,8 +302,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             if (query.With != null)
             {
-                
-                
+
+
                 foreach (var with in query.With.CteTables)
                 {
                     var emitDataExtractor = new EmitDataExtractorVisitor(tablesMetadata, sqlFunctionRegister);
@@ -314,10 +314,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     }
                     var alias = with.Alias.Name.ToSql();
                     var container = new CTEContainer(alias, cteEmitData, cteEmitData.GetNames().Count);
-                    
+
                     cteContainers.Add(alias, container);
                     var p = Visit(with.Query, state)!.Relation;
-                    
+
                     // Check if this is recursive CTE
                     if (container.UsageCounter > 0)
                     {
@@ -441,7 +441,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
                 }
-            }   
+            }
             return sortDirection;
         }
 
@@ -470,7 +470,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     throw new NotImplementedException("Only queries that does 'FROM' with potential joins is supported at this time");
                 }
             }
-            
+
             if (select.Selection != null)
             {
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
@@ -533,7 +533,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
 
                 if (select.Top.Quantity is TopQuantity.Constant topConstant)
-                {   
+                {
                     var literal = topConstant.Quantity;
                     outNode = new RelationData(new FetchRelation()
                     {
@@ -584,7 +584,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     GroupingExpressions = new List<Expressions.Expression>()
                 };
                 aggRel.Groupings.Add(grouping);
-                
+
                 if (select.GroupBy is GroupByExpression.Expressions groupByExpressions)
                 {
                     foreach (var group in groupByExpressions.ColumnNames)
@@ -778,7 +778,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 parent = Visit(tableWithJoins.Relation, state);
             }
-            
+
             Debug.Assert(parent != null);
             if (tableWithJoins.Joins != null)
             {
@@ -1172,9 +1172,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     if (relationData.Relation is VirtualTableReadRelation virtualTableReadRelation)
                     {
                         virtualTableReadRelation.BaseSchema.Names = columnAliases;
-                    }  
+                    }
                 }
-                
+
                 // Append the alias to the emit data so its possible to find columns from the emit data
                 var newEmitData = relationData.EmitData.CloneWithAlias(derived.Alias.Name.Value, columnAliases);
                 return new RelationData(relationData.Relation, newEmitData);
@@ -1284,7 +1284,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 List<Expressions.Expression> expressions = new List<Expressions.Expression>();
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-                foreach(var expr in row)
+                foreach (var expr in row)
                 {
                     var condition = exprVisitor.Visit(expr, emitData);
                     expressions.Add(condition.Expr);

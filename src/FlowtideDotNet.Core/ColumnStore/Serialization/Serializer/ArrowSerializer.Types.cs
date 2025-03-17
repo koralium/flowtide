@@ -110,8 +110,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return EndTable();
         }
 
-        void FloatingPoinTypeAddPrecision(ArrowFloatingPrecision precision) 
-        { 
+        void FloatingPoinTypeAddPrecision(ArrowFloatingPrecision precision)
+        {
             AddShort(0, (short)precision, 0);
         }
 
@@ -146,24 +146,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return AddUnionType(UnionCreateTypeIdsVector(typeIds), mode);
         }
 
-        public int UnionCreateTypeIdsVector(Span<int> data) 
+        public int UnionCreateTypeIdsVector(Span<int> data)
         {
             StartVector(4, data.Length, 4);
-            for (int i = data.Length - 1; i >= 0; i--) 
-            { 
-                AddInt(data[i]); 
-            } 
-            return EndVector(); 
+            for (int i = data.Length - 1; i >= 0; i--)
+            {
+                AddInt(data[i]);
+            }
+            return EndVector();
         }
 
-        void UnionTypeAddTypeIds(int typeIdsOffset) 
-        { 
-            AddOffset(1, typeIdsOffset, 0); 
+        void UnionTypeAddTypeIds(int typeIdsOffset)
+        {
+            AddOffset(1, typeIdsOffset, 0);
         }
 
-        void UnionTypeAddMode(ArrowUnionMode mode) 
-        { 
-            AddShort(0, (short)mode, 0); 
+        void UnionTypeAddMode(ArrowUnionMode mode)
+        {
+            AddShort(0, (short)mode, 0);
         }
 
         public int AddMapType(bool keysSorted)
@@ -179,9 +179,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return EndTable();
         }
 
-        void MapTypeAddKeysSorted(bool keysSorted) 
-        { 
-            AddBool(0, keysSorted, false); 
+        void MapTypeAddKeysSorted(bool keysSorted)
+        {
+            AddBool(0, keysSorted, false);
         }
 
         public int AddFixedSizeBinaryType(int byteWidth)
@@ -191,9 +191,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return EndTable();
         }
 
-        void FixedSizeBinaryTypeAddByteWidth(int byteWidth) 
-        { 
-            AddInt(0, byteWidth, 0); 
+        void FixedSizeBinaryTypeAddByteWidth(int byteWidth)
+        {
+            AddInt(0, byteWidth, 0);
         }
     }
 }

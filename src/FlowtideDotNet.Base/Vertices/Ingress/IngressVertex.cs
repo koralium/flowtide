@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         private void InitializeBlock()
         {
-            lock(_stateLock)
+            lock (_stateLock)
             {
                 if (options.CancellationToken.IsCancellationRequested)
                 {
@@ -85,7 +85,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 _ingressState._linkCount = _links.Count;
 
                 ISourceBlock<IStreamEvent> source = _ingressState._block;
-                
+
                 if (_links.Count > 1)
                 {
                     var broadcastBlock = new GuaranteedBroadcastBlock<IStreamEvent>(new ExecutionDataflowBlockOptions()
@@ -100,14 +100,14 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 _ingressState._sourceBlock = source;
                 _ingressState._output = new IngressOutput<TData>(_ingressState, _ingressState._block);
                 _ingressState._tokenSource = new CancellationTokenSource();
-                _ingressState._block.Completion.ContinueWith(t =>   
+                _ingressState._block.Completion.ContinueWith(t =>
                 {
                     Logger.LogDebug(t.Exception, "Block failure");
                     lock (_stateLock)
                     {
                         _ingressState._taskEnabled = false;
                     }
-                    
+
                     _ingressState._tokenSource.Cancel();
                 });
             }
@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 List<Task> tasks = new List<Task>();
                 tasks.Add(_ingressState._block.Completion);
 
-                foreach(var task in _runningTasks.Values)
+                foreach (var task in _runningTasks.Values)
                 {
                     tasks.Add(task);
                 }
@@ -225,7 +225,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             {
                 _ingressState._inCheckpointLock = false;
                 _ingressState._checkpointLock.Release();
-            }   
+            }
         }
 
         protected abstract Task<IReadOnlySet<string>> GetWatermarkNames();
@@ -275,7 +275,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 }, tState, _ingressState._output.CancellationToken, taskCreationOptions, TaskScheduler.Default)
                 .Unwrap();
 
-                
+
                 _runningTasks.Add(taskId, t);
                 t.ContinueWith((task, state) =>
                 {
@@ -289,7 +289,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                         _runningTasks.Remove(taskState.taskId);
                     }
                 }, tState, default, TaskContinuationOptions.None, TaskScheduler.Default);
-                
+
 
                 return t;
             }
@@ -402,7 +402,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
             await InitializeOrRestore(restoreTime, vertexHandler.StateClient);
 
-            lock(_stateLock)
+            lock (_stateLock)
             {
                 _ingressState._taskEnabled = true;
             }
@@ -444,10 +444,10 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 if (_ingressState._inCheckpointLock && _ingressState._checkpointLock != null)
                 {
                     _ingressState._inCheckpointLock = false;
-                    _ingressState._checkpointLock.Release();   
+                    _ingressState._checkpointLock.Release();
                 }
             }
-            
+
             return ValueTask.CompletedTask;
         }
 

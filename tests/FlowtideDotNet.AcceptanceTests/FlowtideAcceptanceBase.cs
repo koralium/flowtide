@@ -41,9 +41,9 @@ namespace FlowtideDotNet.AcceptanceTests
         public StreamStateValue State => flowtideTestStream.State;
 
         protected Task StartStream(
-            string sql, 
-            int parallelism = 1, 
-            StateSerializeOptions? stateSerializeOptions = default, 
+            string sql,
+            int parallelism = 1,
+            StateSerializeOptions? stateSerializeOptions = default,
             int pageSize = 1024,
             bool ignoreSameDataCheck = false) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck);
 
@@ -159,7 +159,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public async Task DisposeAsync()
         {
-            
+
             await flowtideTestStream.DisposeAsync();
         }
 

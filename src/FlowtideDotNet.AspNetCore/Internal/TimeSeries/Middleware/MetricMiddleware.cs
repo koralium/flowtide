@@ -59,7 +59,7 @@ namespace FlowtideDotNet.AspNetCore.Internal.TimeSeries.Middleware
                     return HandleSeries(httpContext);
                 }
             }
-            
+
             return _next(httpContext);
         }
 

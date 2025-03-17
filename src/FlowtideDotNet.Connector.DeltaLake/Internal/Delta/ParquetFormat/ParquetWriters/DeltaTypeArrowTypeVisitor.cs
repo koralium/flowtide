@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         public override ArrowType VisitStructType(Schema.Types.StructType type)
         {
             List<Field> fields = new List<Field>();
-            foreach(var field in type.Fields)
+            foreach (var field in type.Fields)
             {
                 var arrowType = Visit(field.Type);
                 fields.Add(new Field(field.Name, arrowType, field.Nullable));

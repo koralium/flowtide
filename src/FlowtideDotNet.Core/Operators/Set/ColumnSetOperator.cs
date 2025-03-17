@@ -26,7 +26,7 @@ using System.Threading.Tasks.Dataflow;
 namespace FlowtideDotNet.Core.Operators.Set
 {
     internal class ColumnSetOperator<TStruct> : MultipleInputVertex<StreamEventBatch>
-        where TStruct: unmanaged, IInputWeight
+        where TStruct : unmanaged, IInputWeight
     {
         private readonly SetRelation _setRelation;
         private IBPlusTree<ColumnRowReference, TStruct, ColumnKeyStorageContainer, PrimitiveListValueContainer<TStruct>>? _tree;

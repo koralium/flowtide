@@ -36,7 +36,7 @@ namespace AspireSamples.MongoDbToConsole
             builder.Eventing.Subscribe<ResourceReadyEvent>(mongoInitialize.Resource, async (ev, token) =>
             {
                 var resourceNotification = ev.Services.GetRequiredService<ResourceNotificationService>();
-                
+
                 await resourceNotification.WaitForResourceAsync(mongoInitialize.Resource.Name, "Exited");
 
                 // Small wait to ensure the resource is ready to be updated

@@ -33,7 +33,7 @@ namespace AspireSamples.DataMigration
 
         public async Task BeforeStartAsync(DistributedApplicationModel appModel, CancellationToken cancellationToken = default)
         {
-            
+
             var dataInsertResource = appModel.Resources.OfType<DataInsertResource>().SingleOrDefault();
 
             if (dataInsertResource is null)
@@ -94,7 +94,7 @@ namespace AspireSamples.DataMigration
                     {
                         await dataInsertResource.initialInsert(logger, statusUpdater, tokenSource.Token);
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
                         logger.LogError(e, "Error inserting initial data");
                         await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
@@ -104,7 +104,7 @@ namespace AspireSamples.DataMigration
                         });
                         return;
                     }
-                    
+
 
                     await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
                     {
@@ -124,7 +124,7 @@ namespace AspireSamples.DataMigration
 
             return Task.CompletedTask;
         }
-        
+
         public ValueTask DisposeAsync()
         {
             tokenSource.Cancel();
@@ -143,7 +143,7 @@ namespace AspireSamples.DataMigration
         }
 
         public static IResourceBuilder<DataInsertResource> AddDataInsert(
-            IDistributedApplicationBuilder builder, 
+            IDistributedApplicationBuilder builder,
             string name,
             Func<ILogger, Action<string>, CancellationToken, Task> before,
             Func<ILogger, CancellationToken, Task> after
@@ -153,7 +153,7 @@ namespace AspireSamples.DataMigration
 
             builder.Services.TryAddLifecycleHook<DataInsertLifecyclehook>();
 
-            var res = builder.AddResource<DataInsertResource>(resource); 
+            var res = builder.AddResource<DataInsertResource>(resource);
 
             return res;
         }

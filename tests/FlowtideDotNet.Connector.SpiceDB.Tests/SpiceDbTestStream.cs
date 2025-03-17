@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
         private readonly ReadRelationshipsRequest? deleteExistingFilter;
 
         public SpiceDbTestStream(
-            string testName, 
+            string testName,
             GrpcChannel grpcChannel,
             bool addWriteResolver,
             bool addReadResolver,

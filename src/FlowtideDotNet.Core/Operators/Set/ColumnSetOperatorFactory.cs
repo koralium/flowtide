@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                 return new UnionAllSetOperator(setRelation, executionDataflowBlockOptions);
             }
 
-            switch(setRelation.Inputs.Count)
+            switch (setRelation.Inputs.Count)
             {
                 case 1:
                     return new ColumnSetOperator<InputWeights1>(setRelation, executionDataflowBlockOptions);

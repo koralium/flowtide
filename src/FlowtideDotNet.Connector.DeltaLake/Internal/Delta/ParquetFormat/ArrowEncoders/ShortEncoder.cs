@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
 
         public void NewNullBatch()
         {
-           _array = null;
+            _array = null;
         }
     }
 }

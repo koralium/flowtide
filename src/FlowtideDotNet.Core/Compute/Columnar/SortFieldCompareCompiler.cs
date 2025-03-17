@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
 
         // These methods are collected through reflection 
         internal static int CompareAscendingNullsFirstImplementation<T1, T2>(T1 a, T2 b)
-            where T1: IDataValue
+            where T1 : IDataValue
             where T2 : IDataValue
         {
             if (a.IsNull)

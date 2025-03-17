@@ -92,7 +92,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
 
             await WaitForUpdate();
-            var expected = Users.Select(x => new { x.UserKey }).Union(Users.Select(u => new { UserKey = u.UserKey + 1 })).Except(Users.Select(x => new {x.UserKey})).Distinct().ToList();
+            var expected = Users.Select(x => new { x.UserKey }).Union(Users.Select(u => new { UserKey = u.UserKey + 1 })).Except(Users.Select(x => new { x.UserKey })).Distinct().ToList();
             AssertCurrentDataEqual(expected);
         }
 

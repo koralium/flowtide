@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             where TMetadata : class, IStorageMetadata
         {
             var combinedName = $"{m_name}_{name}";
-            
+
             if (stateManager.SerializeOptions.CompressionType == CompressionType.Zstd && stateManager.SerializeOptions.CompressionMethod == CompressionMethod.Page)
             {
                 serializer = new CompressedStateSerializer<V>(serializer, stateManager.SerializeOptions.CompressionLevel.HasValue ? stateManager.SerializeOptions.CompressionLevel.Value : 3, memoryAllocator);

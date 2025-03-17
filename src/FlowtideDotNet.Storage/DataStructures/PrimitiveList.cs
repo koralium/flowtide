@@ -18,7 +18,7 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Storage.DataStructures
 {
     public unsafe class PrimitiveList<T> : IDisposable, IReadOnlyList<T>
-        where T: unmanaged
+        where T : unmanaged
     {
         private void* _data;
         private int _dataLength;

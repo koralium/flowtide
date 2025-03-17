@@ -130,7 +130,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end, SpanByteComparer.Instance);
             }
-            
+
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
@@ -265,7 +265,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             arrowSerializer.AddBufferForward(_binaryList.OffsetMemory.Length);
             arrowSerializer.AddBufferForward(_binaryList.DataMemory.Length);
-            
+
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)

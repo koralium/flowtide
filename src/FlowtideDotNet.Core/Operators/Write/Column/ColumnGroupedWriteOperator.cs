@@ -126,13 +126,13 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 });
                 await UpsertExistingData();
             }
-            
+
         }
 
         private async Task UpsertExistingData()
         {
             Debug.Assert(m_existingData != null);
-            await foreach(var batch in GetExistingData())
+            await foreach (var batch in GetExistingData())
             {
                 for (int i = 0; i < batch.Count; i++)
                 {
@@ -350,7 +350,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                     }
                     return (input, GenericWriteOperation.Upsert);
                 });
-                
+
                 await m_modified.Upsert(in rowReference, 1);
             }
         }

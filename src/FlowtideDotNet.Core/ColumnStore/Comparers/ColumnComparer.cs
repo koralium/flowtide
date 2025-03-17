@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Comparers
             {
                 return false;
             }
-            
+
             for (int i = 0; i < x.Count; i++)
             {
                 var xVal = x.GetValueAt(i, default);

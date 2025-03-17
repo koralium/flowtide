@@ -28,9 +28,9 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 
         public GenericWriteOperator(
             GenericDataSink<T> genericDataSink,
-            ExecutionMode executionMode, 
-            WriteRelation writeRelation, 
-            ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+            ExecutionMode executionMode,
+            WriteRelation writeRelation,
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(executionMode, writeRelation, executionDataflowBlockOptions)
         {
             this._genericDataSink = genericDataSink;

@@ -293,7 +293,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
-        ~NativeLongList()   
+        ~NativeLongList()
         {
             Dispose(disposing: false);
         }

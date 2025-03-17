@@ -105,7 +105,7 @@ namespace FlowtideDotNet.Substrait.Relations
             }
             if (Groupings != null)
             {
-                foreach(var group in Groupings)
+                foreach (var group in Groupings)
                 {
                     length += group.GroupingExpressions.Count;
                 }

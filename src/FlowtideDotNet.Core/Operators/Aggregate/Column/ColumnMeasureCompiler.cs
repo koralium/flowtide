@@ -34,8 +34,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 var groupingKeyParameter = System.Linq.Expressions.Expression.Parameter(typeof(ColumnRowReference));
                 var valueResultExpr = System.Linq.Expressions.Expression.Constant(new DataValueContainer());
                 var parametersInfo = new ColumnParameterInfo(
-                    new List<ParameterExpression>() { param }, 
-                    new List<ParameterExpression>() { indexParam }, 
+                    new List<ParameterExpression>() { param },
+                    new List<ParameterExpression>() { indexParam },
                     new List<int> { 0 },
                     valueResultExpr);
 

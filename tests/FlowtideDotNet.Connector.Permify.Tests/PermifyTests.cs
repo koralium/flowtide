@@ -146,7 +146,8 @@ namespace FlowtideDotNet.Connector.Permify.Tests
                 Metadata = new RelationshipWriteRequestMetadata(),
                 TenantId = tenantId
             };
-            writeRequest.Tuples.Add(new PermifyProto.Tuple() {
+            writeRequest.Tuples.Add(new PermifyProto.Tuple()
+            {
                 Entity = new PermifyProto.Entity()
                 {
                     Id = "1",

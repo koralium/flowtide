@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                             throw new NotSupportedException($"Substring option {NegativeStart}={negativeStart} is not supported.");
                         }
                     }
-                    
+
 
                     MethodInfo? toStringMethod = typeof(BuiltInStringFunctions).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
                     Debug.Assert(toStringMethod != null);
@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 {
                     bool ignoreNulls = false;
 
-                    if(func.Options != null && func.Options.TryGetValue(NullHandling, out var nullHandling) && nullHandling == IgnoreNulls)
+                    if (func.Options != null && func.Options.TryGetValue(NullHandling, out var nullHandling) && nullHandling == IgnoreNulls)
                     {
                         ignoreNulls = true;
                     }
@@ -180,8 +180,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         }
 
         private static bool SubstringTryGetParameters<T1, T2, T3>(
-            T1 value, 
-            T2 start, 
+            T1 value,
+            T2 start,
             T3 length,
             [NotNullWhen(true)] out string? stringVal,
             out int startInt,
@@ -681,7 +681,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             }
 
             result._type = ArrowTypeId.Int64;
-            
+
             result._int64Value = new Int64Value(new StringInfo(value.AsString.ToString()).LengthInTextElements);
             return result;
         }

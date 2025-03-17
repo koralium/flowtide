@@ -15,8 +15,8 @@ using System.Text;
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
     public class LeafNode<K, V, TKeyContainer, TValueContainer> : BaseNode<K, TKeyContainer>
-        where TKeyContainer: IKeyContainer<K>
-        where TValueContainer: IValueContainer<V>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
 
         public TValueContainer values;

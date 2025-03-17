@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
         public MongoDbNoChangeStreamFixture()
             : base(true)
         {
-            
+
         }
     }
 }

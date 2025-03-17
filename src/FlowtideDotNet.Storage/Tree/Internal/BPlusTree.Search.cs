@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 return SearchRoot_Slow(key, rootTask, searchComparer);
             }
-            return  SearchLeafNodeForRead_AfterTask(key, rootTask.Result!, searchComparer);
+            return SearchLeafNodeForRead_AfterTask(key, rootTask.Result!, searchComparer);
         }
 
         private async ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchRoot_Slow(K key, ValueTask<IBPlusTreeNode?> task, IBplusTreeComparer<K, TKeyContainer> searchComparer)

@@ -31,9 +31,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public int MinSize { get; set; } = 1000;
 
         public string StreamName { get; }
-        
+
         public ILogger Logger { get; }
-        
+
         public Meter Meter { get; }
     }
 }

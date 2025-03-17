@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     Type = new StringType()
                 });
             }
-            
+
             writeRelation.Input = new ProjectRelation()
             {
                 Emit = emit,

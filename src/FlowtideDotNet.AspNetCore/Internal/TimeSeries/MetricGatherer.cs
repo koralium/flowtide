@@ -93,7 +93,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             });
 
             _meterListener.Start();
-            
+
 
             _gatheringTask = Task.Factory.StartNew(GatheringLoop, TaskCreationOptions.LongRunning)
                 .Unwrap();
@@ -124,7 +124,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                             iterationsSinceLastPrune++;
                         }
                     }
-                    
+
                 }
                 catch (Exception)
                 {

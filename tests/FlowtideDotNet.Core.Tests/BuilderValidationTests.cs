@@ -184,7 +184,7 @@ namespace FlowtideDotNet.Core.Tests
                 await stream2.StartAsync();
             });
             Assert.Equal("Stream plan hash stored in storage is different than the hash used.", ex.Message);
-            
+
         }
     }
 }

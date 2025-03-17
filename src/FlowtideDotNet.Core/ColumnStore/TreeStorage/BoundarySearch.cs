@@ -20,18 +20,18 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
     internal static class BoundarySearch
     {
         public static (int, int) SearchBoundriesForColumn<T>(in UnionColumn column, in T value, in int index, in int end)
-            where T: IDataValue
+            where T : IDataValue
         {
             int lo = index;
             int hi = end;
             int maxNotFound = hi;
-            
+
             bool found = false;
             while (lo <= hi)
             {
                 int i = lo + ((hi - lo) >> 1);
 
-                
+
                 int c = column.CompareTo(i, value, default, default);
                 if (c == 0)
                 {
@@ -98,10 +98,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         }
 
         public static (int, int) SearchBoundriesForMapColumn<T>(
-            in MapColumn column, 
-            in T value, 
-            in int index, 
-            in int end, 
+            in MapColumn column,
+            in T value,
+            in int index,
+            in int end,
             in ReferenceSegment? child,
             in BitmapList? validityList)
             where T : IDataValue
@@ -266,11 +266,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         }
 
         public static (int, int) SearchBoundriesForDataColumn<T>(
-            in IDataColumn column, 
-            in T value, 
-            in int index, 
-            in int end, 
-            in ReferenceSegment? child, 
+            in IDataColumn column,
+            in T value,
+            in int index,
+            in int end,
+            in ReferenceSegment? child,
             in BitmapList? validityList)
             where T : IDataValue
         {
@@ -446,7 +446,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             arr += UnsafeEx.Cgt(size, 1) & UnsafeEx.Clt(*arr, value);
             arr += UnsafeEx.Cgt(size, 0) & UnsafeEx.Clt(*arr, value);
 
-            
+
             start = (int)(arr - list.Pointer);
             int lowIndex = start;
             if (start > end || *arr != value)

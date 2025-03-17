@@ -26,8 +26,8 @@ namespace FlowtideDotNet.Core.Sources.Generic
         }
 
         public static IConnectorManager AddCustomSink<T>(
-            this IConnectorManager manager, 
-            string tableName, 
+            this IConnectorManager manager,
+            string tableName,
             Func<WriteRelation, GenericDataSink<T>> createFunc,
             ExecutionMode executionMode = ExecutionMode.Hybrid)
             where T : class

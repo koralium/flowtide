@@ -70,7 +70,7 @@ namespace SqlSampleWithUI
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            
+
             for (int i = 0; i < 1_0_000; i++)
             {
                 await output.EnterCheckpointLock();
@@ -79,7 +79,7 @@ namespace SqlSampleWithUI
                 PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
                 PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
-                
+
                 for (int b = 0; b < 16; b++)
                 {
                     columns[b] = Column.Create(memoryManager);
@@ -96,7 +96,7 @@ namespace SqlSampleWithUI
                 }
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 output.ExitCheckpointLock();
-                
+
             }
             ScheduleCheckpoint(TimeSpan.FromSeconds(1));
         }

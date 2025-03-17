@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Substrait.Conversion
             //    throw new InvalidOperationException("When adding a write relation a primary key must be set");
             //}
             SubstraitToDifferentialComputeVisitor visitor = new SubstraitToDifferentialComputeVisitor(addWriteRelation, tableName, primaryKeys.ToList());
-            for(int i = 0; i < plan.Relations.Count; i++)
+            for (int i = 0; i < plan.Relations.Count; i++)
             {
                 plan.Relations[i] = visitor.Visit(plan.Relations[i], new object());
             }

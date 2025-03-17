@@ -156,7 +156,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             _context._stateManager.Dispose();
 
-            
+
             await TransitionTo(StreamStateValue.NotStarted);
             _context._logger.StoppedStream(_context.streamName);
 

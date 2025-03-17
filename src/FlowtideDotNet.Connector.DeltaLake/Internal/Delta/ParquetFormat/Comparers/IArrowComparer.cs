@@ -39,10 +39,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
         /// <param name="toFindIn"></param>
         /// <returns></returns>
         int FindOccurance(
-            int toFindIndex, 
-            IArrowArray toFindFrom, 
-            int searchIndex, 
-            int searchLength, 
+            int toFindIndex,
+            IArrowArray toFindFrom,
+            int searchIndex,
+            int searchLength,
             IArrowArray toFindIn,
             int globalOffset,
             IDeleteVector deleteVector);

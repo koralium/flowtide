@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Base.Engine
                 _dataflowStreamOptions,
                 new StreamMemoryManager(_streamName),
                 _pauseMonitor);
-            
+
             return new DataflowStream(streamContext);
         }
     }

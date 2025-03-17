@@ -21,7 +21,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public List<User> Users { get; private set; }
         public List<Order> Orders { get; private set; }
-        public List<Company> Companies { get; private set;}
+        public List<Company> Companies { get; private set; }
         public List<Project> Projects { get; private set; }
         public List<ProjectMember> ProjectMembers { get; private set; }
 
@@ -223,7 +223,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .RuleFor(x => x.Name, (f, u) => f.Company.CompanyName());
 
             var newCompanies = testCompanies.Generate(count);
-            
+
             // Add a null company for unit testing, useful for Kleene logic testing
             newCompanies.Add(new Company()
             {

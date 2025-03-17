@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public Span<byte> Span => new Span<byte>(data, length);
 
         public BinaryInfo(byte* data, int length)
-        {   
+        {
             this.data = data;
             this.length = length;
         }
@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _memoryOwner = dataMemory;
             var lastoffset = _offsets.Get(offsetLength - 1);
             _length = lastoffset;
-            
+
         }
 
         private void EnsureCapacity(int length)
@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 data.CopyTo(span.Slice(offset));
                 _length += difference;
                 _offsets.Update(index + 1, offset + data.Length, difference);
-            }   
+            }
         }
 
         /// <summary>
@@ -190,18 +190,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var offset = _offsets.Get(index);
 
             // Take out the length that all bytes must be moved
-            var toMove =  data.Length;
+            var toMove = data.Length;
             var span = AccessSpan;
 
             // Move all elements after the index
             span.Slice(offset, _length - offset).CopyTo(span.Slice(offset + toMove));
-            
+
             // Insert data of the new element
             data.CopyTo(span.Slice(offset));
 
             // Add the offset and add the size to all offsets above this one.
             _offsets.InsertAt(index, offset, toMove);
-            
+
             _length += data.Length;
         }
 
@@ -235,7 +235,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 var length = _offsets.Get(index + 1) - offset;
                 // Remove the offset and negate the length of all elements above this index.
                 _offsets.RemoveAt(index, -length);
-                
+
                 var span = AccessSpan;
 
                 // Move all elements after the index
@@ -262,8 +262,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public Span<byte> Get(in int index)
         {
-                var offset = _offsets.Get(index);
-                return AccessSpan.Slice(offset, _offsets.Get(index + 1) - offset);
+            var offset = _offsets.Get(index);
+            return AccessSpan.Slice(offset, _offsets.Get(index + 1) - offset);
         }
 
         public Memory<byte> GetMemory(in int index)

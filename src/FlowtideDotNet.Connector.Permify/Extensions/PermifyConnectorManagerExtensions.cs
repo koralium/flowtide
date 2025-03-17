@@ -18,8 +18,8 @@ namespace FlowtideDotNet.Core
     public static class PermifyConnectorManagerExtensions
     {
         public static IConnectorManager AddPermifyRelationshipSink(
-            this IConnectorManager connectorManager, 
-            string regexPattern, 
+            this IConnectorManager connectorManager,
+            string regexPattern,
             PermifySinkOptions permifySinkOptions)
         {
             connectorManager.AddSink(new PermifyRelationSinkFactory(regexPattern, permifySinkOptions));

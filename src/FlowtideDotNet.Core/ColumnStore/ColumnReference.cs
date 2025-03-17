@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public void Update<T>(T value)
-            where T: IDataValue
+            where T : IDataValue
         {
             if (cacheObject != null)
             {
@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 column.UpdateAt(index, value);
             }
-            
+
         }
     }
 }

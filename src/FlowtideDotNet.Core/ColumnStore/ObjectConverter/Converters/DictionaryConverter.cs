@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             if (obj is IDictionary<TKey, TValue> dictionary)
             {
                 List<KeyValuePair<IDataValue, IDataValue>> values = new List<KeyValuePair<IDataValue, IDataValue>>();
-                foreach(var kv in dictionary)
+                foreach (var kv in dictionary)
                 {
                     var keyFunc = new AddToColumnFunc();
                     var valueFunc = new AddToColumnFunc();

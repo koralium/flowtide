@@ -50,7 +50,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                 throw new InvalidOperationException("Failed to read bytes");
             }
             reader.Advance(count);
-            return new DoubleValueContainer(new PrimitiveList<double>(nativeMemory, count / 8, memoryAllocator));   
+            return new DoubleValueContainer(new PrimitiveList<double>(nativeMemory, count / 8, memoryAllocator));
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)

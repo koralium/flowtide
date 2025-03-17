@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             {
                 Logger.RecievedWatermarkWithoutSourceOperator(StreamName, Name);
             }
-            
+
             return OnWatermark(watermark);
         }
 
@@ -227,7 +227,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
                 _cancellationTokenSource.Dispose();
                 _cancellationTokenSource = null;
             }
-            
+
             return ValueTask.CompletedTask;
         }
 

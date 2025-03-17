@@ -24,7 +24,7 @@ using System.Threading.Tasks.Dataflow;
 namespace FlowtideDotNet.Core.Sources.Generic.Internal
 {
     internal class GenericReadOperator<T> : ColumnBatchReadBaseOperator
-        where T: class
+        where T : class
     {
         private readonly GenericDataSourceAsync<T> _genericDataSource;
         private readonly ReadRelation _readRelation;

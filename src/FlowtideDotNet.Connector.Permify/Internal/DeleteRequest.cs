@@ -63,12 +63,12 @@ namespace FlowtideDotNet.Connector.Permify.Internal
                 filter.Subject.Relation = _subjectRelation;
             }
 
-            foreach(var entityId in _entityIds)
+            foreach (var entityId in _entityIds)
             {
                 filter.Entity.Ids.Add(entityId);
             }
 
-            foreach(var subjectId in _subjectIds)
+            foreach (var subjectId in _subjectIds)
             {
                 filter.Subject.Ids.Add(subjectId);
             }

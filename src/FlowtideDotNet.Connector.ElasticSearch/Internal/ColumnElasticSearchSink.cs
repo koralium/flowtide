@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         private ICounter<long>? m_eventsCounter;
 
 
-        public ColumnElasticSearchSink(FlowtideElasticsearchOptions elasticsearchOptions, ExecutionMode executionMode, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+        public ColumnElasticSearchSink(FlowtideElasticsearchOptions elasticsearchOptions, ExecutionMode executionMode, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(executionMode, writeRelation, executionDataflowBlockOptions)
         {
             m_elasticsearchOptions = elasticsearchOptions;
@@ -187,7 +187,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                         response = await m_client.Transport.PostAsync<BulkResponse>("_bulk", PostData.ReadOnlyMemory(memoryStream.ToArray()));
                         //response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
                         if (e is TaskCanceledException)
                         {
@@ -195,7 +195,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                         }
                         throw;
                     }
-                    
+
 
                     if (response.Errors)
                     {

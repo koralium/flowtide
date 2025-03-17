@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Substrait
                 {
                     FunctionReference = anchor,
                 };
-                foreach(var arg in scalarFunction.Arguments)
+                foreach (var arg in scalarFunction.Arguments)
                 {
                     scalar.Arguments.Add(new Protobuf.FunctionArgument()
                     {
@@ -112,8 +112,8 @@ namespace FlowtideDotNet.Substrait
 
             public override Protobuf.Expression? VisitNumericLiteral(NumericLiteral numericLiteral, SerializerVisitorState state)
             {
-                if (numericLiteral.Value % 1 == 0) 
-                { 
+                if (numericLiteral.Value % 1 == 0)
+                {
                     return new Protobuf.Expression()
                     {
                         Literal = new Protobuf.Expression.Types.Literal()
@@ -146,7 +146,7 @@ namespace FlowtideDotNet.Substrait
             public override Protobuf.Expression? VisitIfThen(IfThenExpression ifThenExpression, SerializerVisitorState state)
             {
                 var ifThen = new Protobuf.Expression.Types.IfThen();
-                foreach(var ifStatement in ifThenExpression.Ifs)
+                foreach (var ifStatement in ifThenExpression.Ifs)
                 {
                     ifThen.Ifs.Add(new Protobuf.Expression.Types.IfThen.Types.IfClause()
                     {
@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Substrait
             {
                 var list = new Protobuf.Expression.Types.Literal.Types.List();
 
-                foreach(var item in arrayLiteral.Expressions)
+                foreach (var item in arrayLiteral.Expressions)
                 {
                     var itemExpr = Visit(item, state);
                     if (itemExpr == null)
@@ -226,7 +226,7 @@ namespace FlowtideDotNet.Substrait
                     Value = Visit(singularOrList.Value, state)
                 };
 
-                foreach(var opt in singularOrList.Options)
+                foreach (var opt in singularOrList.Options)
                 {
                     list.Options.Add(Visit(opt, state));
                 }
@@ -239,15 +239,15 @@ namespace FlowtideDotNet.Substrait
             public override Protobuf.Expression? VisitMultiOrList(MultiOrListExpression multiOrList, SerializerVisitorState state)
             {
                 var list = new Protobuf.Expression.Types.MultiOrList();
-                
-                foreach(var val in multiOrList.Value)
+
+                foreach (var val in multiOrList.Value)
                 {
                     list.Value.Add(Visit(val, state));
                 }
                 foreach (var opt in multiOrList.Options)
                 {
                     var record = new Protobuf.Expression.Types.MultiOrList.Types.Record();
-                    foreach(var optVal in opt.Fields)
+                    foreach (var optVal in opt.Fields)
                     {
                         record.Fields.Add(Visit(optVal, state));
                     }
@@ -285,7 +285,7 @@ namespace FlowtideDotNet.Substrait
             public override Protobuf.Rel VisitReadRelation(ReadRelation readRelation, SerializerVisitorState state)
             {
                 var readRel = new Protobuf.ReadRel();
-                
+
                 if (readRelation.NamedTable != null)
                 {
                     readRel.NamedTable = new Protobuf.ReadRel.Types.NamedTable();
@@ -299,7 +299,7 @@ namespace FlowtideDotNet.Substrait
                     {
                         var anyTypeAnchor = GetAnyTypeId(state);
                         readRel.BaseSchema.Struct = new Protobuf.Type.Types.Struct();
-                        foreach(var type in readRelation.BaseSchema.Struct.Types)
+                        foreach (var type in readRelation.BaseSchema.Struct.Types)
                         {
                             readRel.BaseSchema.Struct.Types_.Add(new Protobuf.Type()
                             {
@@ -358,7 +358,7 @@ namespace FlowtideDotNet.Substrait
             public override Protobuf.Rel VisitFilterRelation(FilterRelation filterRelation, SerializerVisitorState state)
             {
                 var filterRel = new Protobuf.FilterRel();
-                
+
                 if (filterRelation.Condition != null)
                 {
                     var exprVisitor = new SerializerExpressionVisitor();
@@ -386,8 +386,8 @@ namespace FlowtideDotNet.Substrait
                 if (aggregateRelation.Groupings != null)
                 {
                     var exprVisitor = new SerializerExpressionVisitor();
-                    
-                    foreach(var grouping in aggregateRelation.Groupings)
+
+                    foreach (var grouping in aggregateRelation.Groupings)
                     {
                         var grp = new Protobuf.AggregateRel.Types.Grouping();
                         foreach (var groupExpr in grouping.GroupingExpressions)
@@ -416,7 +416,7 @@ namespace FlowtideDotNet.Substrait
                             };
                             if (measure.Measure.Arguments != null)
                             {
-                                foreach(var arg in measure.Measure.Arguments)
+                                foreach (var arg in measure.Measure.Arguments)
                                 {
                                     m.Measure_.Arguments.Add(new Protobuf.FunctionArgument()
                                     {
@@ -527,7 +527,7 @@ namespace FlowtideDotNet.Substrait
                 switch (joinRelation.Type)
                 {
                     case JoinType.Anti:
-                        joinRel.Type  = Protobuf.JoinRel.Types.JoinType.Anti;
+                        joinRel.Type = Protobuf.JoinRel.Types.JoinType.Anti;
                         break;
                     case JoinType.Semi:
                         joinRel.Type = Protobuf.JoinRel.Types.JoinType.Semi;
@@ -667,7 +667,7 @@ namespace FlowtideDotNet.Substrait
                 {
                     customRel.Filter = exprVisitor.Visit(normalizationRelation.Filter, state);
                 }
-                foreach(var k in normalizationRelation.KeyIndex)
+                foreach (var k in normalizationRelation.KeyIndex)
                 {
                     customRel.KeyIndex.Add(k);
                 }
@@ -830,13 +830,13 @@ namespace FlowtideDotNet.Substrait
             public override Protobuf.Rel VisitWriteRelation(WriteRelation writeRelation, SerializerVisitorState state)
             {
                 var writeRel = new Protobuf.WriteRel();
-                
+
                 if (writeRelation.TableSchema != null)
                 {
-                    
+
                     writeRel.TableSchema = new Protobuf.NamedStruct();
                     writeRel.TableSchema.Names.AddRange(writeRelation.TableSchema.Names);
-                    if(writeRelation.TableSchema.Struct != null)
+                    if (writeRelation.TableSchema.Struct != null)
                     {
                         var anyTypeAnchor = GetAnyTypeId(state);
                         writeRel.TableSchema.Struct = new Protobuf.Type.Types.Struct();

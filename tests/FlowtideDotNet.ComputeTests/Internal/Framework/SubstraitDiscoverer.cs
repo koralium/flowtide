@@ -86,7 +86,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
         {
             var resourceNames = TestAssembly.Assembly.GetManifestResourceNames();
 
-            foreach(var embeddedResourceName in resourceNames)
+            foreach (var embeddedResourceName in resourceNames)
             {
                 if (!embeddedResourceName.EndsWith(".test"))
                 {
@@ -104,11 +104,11 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
                 // Get the last folder name that the file is in
                 var folderName = Path.GetFileName(Path.GetDirectoryName(embeddedFolderName + "/"));
 
-                
+
                 var doc = new TestCaseParser().Parse(txt);
 
                 var fullPathBase = Path.GetDirectoryName(TestAssembly.AssemblyPath!);
-                
+
                 // remove bin debug, release info from the file location
                 var fileLocation = FixFileLocation($"{fullPathBase}/{embeddedFolderName}/{fileName}");
 

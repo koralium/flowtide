@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             switch (triggerName)
             {
                 case DeltaLoadTriggerName:
-                    lock(_taskLock)
+                    lock (_taskLock)
                     {
                         if (_deltaLoadTask == null)
                         {
@@ -121,7 +121,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                         }
                         return Task.CompletedTask;
                     }
-                    
+
             }
             return Task.CompletedTask;
         }
@@ -184,7 +184,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                 deleteTreeKeys.Add(i);
             }
 
-            _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp", 
+            _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp",
                 new BPlusTreeOptions<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>()
                 {
                     Comparer = new NormalizeTreeComparer(_primaryKeyColumns),
@@ -311,7 +311,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                         var weight = e.BatchData.Weights[i];
 
                         var rowReference = new ColumnRowReference() { referenceBatch = e.BatchData.EventBatchData, RowIndex = i };
-                        if (weight < 0) 
+                        if (weight < 0)
                         {
                             // Delete operation
                             await _persistentTree.RMWNoResult(rowReference, rowReference, (input, current, exists) =>
@@ -667,7 +667,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             {
                 foreach (var kv in page)
                 {
-                    for(int k = 0; k < _primaryKeyColumns.Count; k++)
+                    for (int k = 0; k < _primaryKeyColumns.Count; k++)
                     {
                         _deleteTreeToPersistentColumns[_primaryKeyColumns[k]] = kv.Key.referenceBatch.Columns[k];
                     }

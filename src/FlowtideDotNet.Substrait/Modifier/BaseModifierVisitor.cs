@@ -142,7 +142,7 @@ namespace FlowtideDotNet.Substrait.Modifier
             {
                 tableFunctionRelation.Input = Visit(tableFunctionRelation.Input, state);
             }
-            
+
             return tableFunctionRelation;
         }
 

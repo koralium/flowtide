@@ -58,21 +58,21 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                 //}
                 //foreach (var kv in page)
                 //{
-                    // Skip values that do not follow the step width
-                    if (kv.Key < (lastTimestamp + stepWidth))
-                    {
-                        continue;
-                    }
-                    if (kv.Key > endTimestamp)
-                    {
-                        //ended = true;
-                        yield break;
-                    }
-                    
-                    // Remove the step width from the info to help match in aggregate operators.
-                    var timestamp = (kv.Key / stepWidth) * stepWidth;
-                    lastTimestamp = timestamp;
-                    yield return new MetricResult(kv.Value, timestamp);
+                // Skip values that do not follow the step width
+                if (kv.Key < (lastTimestamp + stepWidth))
+                {
+                    continue;
+                }
+                if (kv.Key > endTimestamp)
+                {
+                    //ended = true;
+                    yield break;
+                }
+
+                // Remove the step width from the info to help match in aggregate operators.
+                var timestamp = (kv.Key / stepWidth) * stepWidth;
+                lastTimestamp = timestamp;
+                yield return new MetricResult(kv.Value, timestamp);
                 //}
             }
         }

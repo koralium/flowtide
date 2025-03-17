@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
         }
 
         public void ReadMaxValue(ref Utf8JsonReader reader)
-        {   
+        {
             while (true)
             {
                 reader.Read();

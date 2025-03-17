@@ -21,8 +21,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
         public DeltaMetadataAction? UpdatedMetadata { get; }
 
         public DeltaCommit(
-            List<DeltaAddAction> addedFiles, 
-            List<DeltaRemoveFileAction> removedFiles, 
+            List<DeltaAddAction> addedFiles,
+            List<DeltaRemoveFileAction> removedFiles,
             List<DeltaCdcAction> cdcFiles,
             DeltaMetadataAction? updatedMetadata)
         {

@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
                     weights.Add(1);
                     iterations.Add(0);
                     outputColumns[0].Add(new MapValue(
-                        new KeyValuePair<IDataValue, IDataValue>(_keyValue, map.GetKeyAt(i)), 
+                        new KeyValuePair<IDataValue, IDataValue>(_keyValue, map.GetKeyAt(i)),
                         new KeyValuePair<IDataValue, IDataValue>(_valueValue, map.GetValueAt(i))
                     ));
                 }

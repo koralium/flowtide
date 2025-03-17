@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core
         {
             var catalogManager = new CatalogConnectorManager(catalogName);
             options(catalogManager);
-            _catalogs.Add(catalogName,catalogManager);
+            _catalogs.Add(catalogName, catalogManager);
             _tableProviders.Add(catalogManager);
         }
 

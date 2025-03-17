@@ -173,7 +173,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
             {
                 outputColumn.Add(NullValue.Instance);
             }
-            
+
         }
 
         private static Task<MinMaxColumnAggregationSingleton> InitializeMin(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)

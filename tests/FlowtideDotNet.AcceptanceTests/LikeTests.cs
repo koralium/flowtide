@@ -30,7 +30,7 @@ namespace FlowtideDotNet.AcceptanceTests
             SELECT firstName FROM users WHERE firstName LIKE '" + firstLetterFirstUser + @"%';
             ");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Where(x => x.FirstName!.StartsWith(firstLetterFirstUser)).Select(x => new { firstName = x.FirstName}));
+            AssertCurrentDataEqual(Users.Where(x => x.FirstName!.StartsWith(firstLetterFirstUser)).Select(x => new { firstName = x.FirstName }));
         }
 
         [Fact]

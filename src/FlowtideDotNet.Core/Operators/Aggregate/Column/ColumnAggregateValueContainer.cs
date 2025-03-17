@@ -62,7 +62,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         {
             if (container is ColumnAggregateValueContainer columnKeyStorageContainer)
             {
-                for (int i =0; i < columnCount; i++)
+                for (int i = 0; i < columnCount; i++)
                 {
                     _eventBatch.Columns[i].InsertRangeFrom(_eventBatch.Columns[i].Count, columnKeyStorageContainer._eventBatch.Columns[i], start, count);
                 }

@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.Engine
                 }
 
                 List<int> pkIndices = new List<int>();
-                foreach(var pk in primaryKeys)
+                foreach (var pk in primaryKeys)
                 {
                     var pkIndex = relation.BaseSchema.Names.FindIndex((s) => s.Equals(pk, StringComparison.OrdinalIgnoreCase));
                     if (pkIndex == -1)
@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Core.Engine
                     Input = relation,
                     Filter = relation.Filter,
                     KeyIndex = pkIndices,
-                    Emit  = relation.Emit
+                    Emit = relation.Emit
                 });
             });
             return readWriteFactory;

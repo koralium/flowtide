@@ -46,17 +46,17 @@ namespace FlowtideDotNet.Storage.Tests
             await manager.LruTable.StopCleanupTask();
 
             var client = manager.GetOrCreateClient("client");
-            var tree = await client.GetOrCreateTree("tree", 
+            var tree = await client.GetOrCreateTree("tree",
                 new BPlusTreeOptions<long, int, ListKeyContainer<long>, ListValueContainer<int>>()
-            {
-                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
-                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                MemoryAllocator = GlobalMemoryManager.Instance
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                    KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    MemoryAllocator = GlobalMemoryManager.Instance
+                });
             //Version 0
             await tree.Upsert(1, 1);
-            
+
             await manager.LruTable.ForceCleanup();
 
             //Version 1

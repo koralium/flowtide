@@ -15,7 +15,7 @@ using System.Text;
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
     public abstract class BaseNode<K, TKeyContainer> : IBPlusTreeNode, IDisposable
-        where TKeyContainer: IKeyContainer<K>
+        where TKeyContainer : IKeyContainer<K>
     {
         public TKeyContainer keys;
         private int _rentCount;

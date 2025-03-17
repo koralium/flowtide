@@ -93,6 +93,6 @@ namespace FlowtideDotNet.Storage.Tree
         public PrimitiveList<T> GetPrimitiveListCopy(IMemoryAllocator memoryAllocator)
         {
             return _values.Copy(memoryAllocator);
-        } 
+        }
     }
 }

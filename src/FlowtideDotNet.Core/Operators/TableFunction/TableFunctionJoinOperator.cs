@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
         public TableFunctionJoinOperator(
             TableFunctionRelation tableFunctionRelation,
             IFunctionsRegister functionsRegister,
-            ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(executionDataflowBlockOptions)
         {
             _tableFunctionRelation = tableFunctionRelation;
@@ -134,9 +134,9 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
                 var inputWeight = inputWeights[inputIndex];
                 var inputIteration = iterations[inputIndex];
                 var newRows = _func(data, inputIndex);
-                
+
                 bool emittedAny = false;
-                foreach(var batch in newRows)
+                foreach (var batch in newRows)
                 {
                     int matchStart = -1;
                     int matchEnd = -1;

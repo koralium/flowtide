@@ -73,9 +73,9 @@ namespace FlowtideDotNet.Core.Operators.Write
             List<RowEvent> events = new List<RowEvent>();
 
             bool breakAll = false;
-            await foreach(var page in iterator)
+            await foreach (var page in iterator)
             {
-                foreach(var kv in page)
+                foreach (var kv in page)
                 {
                     if (_comparer!(kv.Key, seekEvent) != 0)
                     {
@@ -84,7 +84,7 @@ namespace FlowtideDotNet.Core.Operators.Write
                     }
                     if (kv.Value > 0)
                     {
-                        
+
                         var ev = new RowEvent(kv.Value, 0, kv.Key.RowData);
                         events.Add(ev);
                     }
@@ -121,14 +121,14 @@ namespace FlowtideDotNet.Core.Operators.Write
             _streamEventComparer = new StreamEventComparer(GroupIndexCreator.CreateComparer<RowEvent>(primaryKeyColumns));
             _comparer = GroupIndexCreator.CreateComparer<GroupedStreamEvent>(primaryKeyColumns);
 
-            _tree = await stateManagerClient.GetOrCreateTree("output", 
-                new BPlusTreeOptions<GroupedStreamEvent, int, ListKeyContainer<GroupedStreamEvent>, ListValueContainer<int>>() 
-            { 
-                Comparer = new BPlusTreeListComparer<GroupedStreamEvent>(new GroupedStreamEventComparer(_comparer)),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                KeySerializer = new KeyListSerializer<GroupedStreamEvent>(new GroupedStreamEventBPlusTreeSerializer()),
-                MemoryAllocator = MemoryAllocator
-            });
+            _tree = await stateManagerClient.GetOrCreateTree("output",
+                new BPlusTreeOptions<GroupedStreamEvent, int, ListKeyContainer<GroupedStreamEvent>, ListValueContainer<int>>()
+                {
+                    Comparer = new BPlusTreeListComparer<GroupedStreamEvent>(new GroupedStreamEventComparer(_comparer)),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    KeySerializer = new KeyListSerializer<GroupedStreamEvent>(new GroupedStreamEventBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
 
             await Initialize(restoreTime, stateManagerClient);
         }

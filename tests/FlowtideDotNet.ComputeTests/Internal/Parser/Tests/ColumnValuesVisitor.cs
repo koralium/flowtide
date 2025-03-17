@@ -29,9 +29,9 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
         {
             var visitor = new ColumnValueVisitor(dataType);
 
-            
+
             Column result = new Column(GlobalMemoryManager.Instance);
-            foreach(var val in context.literal())
+            foreach (var val in context.literal())
             {
                 result.Add(visitor.Visit(val));
             }

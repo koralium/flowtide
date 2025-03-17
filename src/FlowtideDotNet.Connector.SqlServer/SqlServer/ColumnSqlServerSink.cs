@@ -39,8 +39,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public ColumnSqlServerSink(
             SqlServerSinkOptions sqlServerSinkOptions,
-            WriteRelation writeRelation, 
-            ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+            WriteRelation writeRelation,
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(sqlServerSinkOptions.ExecutionMode, writeRelation, executionDataflowBlockOptions)
         {
             this.m_connectionStringFunc = sqlServerSinkOptions.ConnectionStringFunc;
@@ -166,7 +166,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             Logger.StartingDatabaseUpdate(StreamName, Name);
 
-            await foreach(var row in rows)
+            await foreach (var row in rows)
             {
                 m_mapRowFunc(m_dataTable, row.IsDeleted, row.EventBatchData, row.Index);
 

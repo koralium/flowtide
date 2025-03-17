@@ -129,8 +129,8 @@ namespace FlowtideDotNet.Core.Compute
         }
 
         public void RegisterStreamingAggregateFunction(
-            string uri, 
-            string name, 
+            string uri,
+            string name,
             Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
             Func<byte[]?, FlxValue> stateToValueFunc)
         {
@@ -159,12 +159,12 @@ namespace FlowtideDotNet.Core.Compute
         }
 
         public void RegisterStatefulAggregateFunction<T>(
-            string uri, 
-            string name, 
-            IFunctionsRegister.AggregateInitializeFunction<T> stateFunction, 
-            Action<T> disposeFunction, 
+            string uri,
+            string name,
+            IFunctionsRegister.AggregateInitializeFunction<T> stateFunction,
+            Action<T> disposeFunction,
             Func<T, Task> commitFunction,
-            IFunctionsRegister.AggregateMapFunction mapFunc, 
+            IFunctionsRegister.AggregateMapFunction mapFunc,
             IFunctionsRegister.AggregateStateToValueFunction<T> stateToValueFunc)
         {
             _aggregateFunctions.Add($"{uri}:{name}", new StatefulAggregateFunctionDefinition<T>(
@@ -181,7 +181,7 @@ namespace FlowtideDotNet.Core.Compute
         }
 
         public void RegisterColumnTableFunction(
-            string uri, 
+            string uri,
             string name,
             Func<TableFunction, ColumnParameterInfo, ColumnarExpressionVisitor, IMemoryAllocator, TableFunctionResult> mapFunc)
         {

@@ -80,7 +80,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             var stateManager = serviceProvider.GetKeyedService<StateManagerOptions>(streamName);
 
             var pauseMonitor = serviceProvider.GetService<IOptionsMonitor<FlowtidePauseOptions>>();
-            
+
             if (connectorManager == null)
             {
                 throw new FlowtideMissingConnectorManagerException("IConnectorManager must be registered in the service collection, please do so manually or use the \"AddConnectors\" method.");

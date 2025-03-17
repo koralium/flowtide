@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Storage.Tests
 
         public void Dispose()
         {
-            
+
         }
 
         public long GetFileSize(int segment)
@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Storage.Tests
 
         public void RemoveSegment(int segment)
         {
-            
+
         }
 
         public void RemoveSegmentAsync(int segment, AsyncCallback callback, IAsyncResult result)
@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Storage.Tests
 
         public void Reset()
         {
-            
+
         }
 
         public bool Throttle()
@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Storage.Tests
 
         public void TruncateUntilAddress(long toAddress)
         {
-            
+
         }
 
         public void TruncateUntilAddressAsync(long toAddress, AsyncCallback callback, IAsyncResult result)
@@ -246,9 +246,9 @@ namespace FlowtideDotNet.Storage.Tests
                         LogDevice = new WriteFailureDevice(),
                         MemorySize = 128,
                         PageSize = 128,
-                        
+
                     })
-            }, nullFactory.CreateLogger("logger"), new Meter($"storage"), "storage");
+                }, nullFactory.CreateLogger("logger"), new Meter($"storage"), "storage");
             await manager.InitializeAsync();
             var client = manager.GetOrCreateClient("test");
             var tree = await client.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
@@ -299,7 +299,7 @@ namespace FlowtideDotNet.Storage.Tests
                         PageSize = 512,
 
                     })
-            }, logger, new Meter($"storage"), "storage");
+                }, logger, new Meter($"storage"), "storage");
             await manager.InitializeAsync();
             var client = manager.GetOrCreateClient("test");
             var tree = await client.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
@@ -315,13 +315,13 @@ namespace FlowtideDotNet.Storage.Tests
             {
                 await tree.Upsert(i, "hello");
             }
-            
+
             await tree.Commit();
             await manager.CheckpointAsync();
             manager.ClearCache();
 
             device.readFailure = true;
-            
+
 
             await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () =>
             {

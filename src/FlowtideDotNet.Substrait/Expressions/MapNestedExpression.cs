@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override int GetHashCode()
         {
             var code = new HashCode();
-            foreach(var keyValue in KeyValues)
+            foreach (var keyValue in KeyValues)
             {
                 code.Add(keyValue);
             }

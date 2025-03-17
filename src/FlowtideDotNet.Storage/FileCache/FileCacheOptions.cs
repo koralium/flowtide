@@ -15,7 +15,7 @@ namespace FlowtideDotNet.Storage
     public class FileCacheOptions
     {
         public string DirectoryPath { get; set; } = "./data/tempFiles";
-        
+
         public long SegmentSize { get; set; } = (long)1024 * 1024 * 1024 * 80;
 
         public FileShare FileShare { get; set; } = FileShare.None;

@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
     {
         private int m_bufferBodyLength = 0;
         private int forwardBufferPosition = 0;
-        
+
 
         public void AddBufferForward(long bufferLength)
         {

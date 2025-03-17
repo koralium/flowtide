@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             stream.DeleteUser(firstUser);
 
             await WaitForVersion(storage, "test", stream, 2);
-            
+
             await AssertResult(nameof(TestCreateTable), storage, "test", 3, stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
         }
 
@@ -389,7 +389,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             stream.DeleteOrder(stream.Orders[0]);
 
             await WaitForVersion(storage, "decimaltest", stream, 2);
-            
+
             await AssertResult(nameof(WriteDecimal), storage, "decimaltest", 3, stream.Orders.Select(x => new { Money = Math.Round(x.Money!.Value / 3, 2) }));
         }
 
@@ -678,7 +678,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "createbinary", stream, 1);
 
-            await AssertResult(nameof(TestCreateTableWithBinary), storage, "createbinary", 2, stream.Users.Select(x => new { val = Encoding.UTF8.GetBytes(x.FirstName!) }) );
+            await AssertResult(nameof(TestCreateTableWithBinary), storage, "createbinary", 2, stream.Users.Select(x => new { val = Encoding.UTF8.GetBytes(x.FirstName!) }));
         }
 
         [Fact]
@@ -876,7 +876,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 catch (Exception)
                 {
                 }
-                
+
                 await stream.SchedulerTick();
                 await Task.Delay(100);
             }

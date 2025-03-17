@@ -140,7 +140,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     is_nan(0/0), is_nan(1/2), is_nan(userkey), is_nan(nullablestring) 
                 FROM users u");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { nan = true, not_nan = false, userkey = false, nullString = default(string)}));
+            AssertCurrentDataEqual(Users.Select(x => new { nan = true, not_nan = false, userkey = false, nullString = default(string) }));
         }
 
         [Fact]

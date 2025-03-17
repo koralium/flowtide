@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Visit(IArrowArray array)
         {
-            
+
             throw new NotImplementedException($"Type {array.GetType().Name} is not yet supported.");
         }
 
@@ -173,7 +173,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _bitmapList = null;
 
             var type = (UnionType)CurrentField.DataType;
-            
+
             var typeMemory = GetMemoryOwner(array.TypeBuffer);
             var offsetMemory = GetMemoryOwner(array.ValueOffsetBuffer);
 
@@ -192,7 +192,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 {
                     throw new InvalidOperationException("Inner columns in a union should not have null values, they should be on the union level");
                 }
-                
+
                 columns.Add(_dataColumn ?? throw new InvalidOperationException("Internal column is null"));
                 // Reset null counter
                 _nullCount = 0;
@@ -246,7 +246,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             }
 
             var offsetMemoryOwner = GetMemoryOwner(array.ValueOffsetsBuffer);
-            
+
             _dataColumn = new MapColumn(keyColumn!, valueColumn!, offsetMemoryOwner, array.ValueOffsets.Length, preAllocatedMemoryManager);
             _typeId = ArrowTypeId.Map;
         }

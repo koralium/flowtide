@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Core.Connectors
                 {
                     _resolvedTableProviders = GetTableProviders().ToList();
                 }
-                for(int i = 0; i < _resolvedTableProviders.Count; i++)
+                for (int i = 0; i < _resolvedTableProviders.Count; i++)
                 {
                     var nameWithoutCatalog = tableName.Skip(1).ToList();
                     if (_resolvedTableProviders[i].TryGetTableInformation(nameWithoutCatalog, out tableMetadata))

@@ -156,13 +156,13 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return;
             }
             if (value.AsBool)
-            {                 
+            {
                 _data.InsertAt(index, true);
             }
             else
             {
                 _data.InsertAt(index, false);
-            } 
+            }
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)

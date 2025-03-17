@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
             {
                 minValue = Encoding.UTF8.GetBytes(_minValue);
             }
-            if (_maxValue != null) 
+            if (_maxValue != null)
             {
                 maxValue = Encoding.UTF8.GetBytes(_maxValue);
             }

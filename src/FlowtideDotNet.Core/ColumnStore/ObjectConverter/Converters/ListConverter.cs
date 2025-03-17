@@ -37,10 +37,10 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             {
                 var newObj = (IList)typeInfo.CreateObject!();
                 var listVal = value.AsList;
-                
+
                 for (int i = 0; i < listVal.Count; i++)
                 {
-                     newObj.Add(innerConverter.Deserialize(listVal.GetAt(i)));
+                    newObj.Add(innerConverter.Deserialize(listVal.GetAt(i)));
                 }
 
                 return newObj;

@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Column column = new Column(GlobalMemoryManager.Instance);
             column.InsertAt(0, new Int64Value(1));
             column.UpdateAt(0, new NullValue());
-            
+
             Assert.True(column.GetValueAt(0, default).Type == ArrowTypeId.Null);
         }
 
@@ -132,7 +132,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("2", arrowArray.GetString(2));
         }
 
-        
+
 
         [Fact]
         public void ValidateInsertRangeSetsNullCorrectly()

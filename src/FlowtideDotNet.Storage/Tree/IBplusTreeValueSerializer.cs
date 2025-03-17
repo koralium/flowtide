@@ -15,7 +15,7 @@ using System.Buffers;
 namespace FlowtideDotNet.Storage.Tree
 {
     public interface IBplusTreeValueSerializer<V, TValueContainer>
-        where TValueContainer: IValueContainer<V>
+        where TValueContainer : IValueContainer<V>
     {
         TValueContainer CreateEmpty();
 

@@ -47,8 +47,8 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 "relation",
                 "object_type",
                 "object_id");
-            
-            for (int i  = 0; i < zanzibarRelations.Count - 1; i++)
+
+            for (int i = 0; i < zanzibarRelations.Count - 1; i++)
             {
                 var flowtideReferenceRelation = visitor.Visit(zanzibarRelations[i], default);
                 outputPlan.Relations.Add(flowtideReferenceRelation);
@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
                 }
             };
             outputPlan.Relations.Add(rootRelation);
-            
+
 
             return outputPlan;
         }

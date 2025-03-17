@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
             var alignedLength = (newLength + sectorSize - 1) / sectorSize * sectorSize;
             if (_memory.Memory.Length < alignedLength)
             {
-                _memory = memoryAllocator.Realloc(_memory, alignedLength,  sectorSize);
+                _memory = memoryAllocator.Realloc(_memory, alignedLength, sectorSize);
             }
             return _memory.Memory.Slice(_position);
         }

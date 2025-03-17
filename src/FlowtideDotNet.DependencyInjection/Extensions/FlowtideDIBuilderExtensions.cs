@@ -20,15 +20,16 @@ namespace FlowtideDotNet.DependencyInjection
 {
     public static class FlowtideDIBuilderExtensions
     {
-      public static IFlowtideDIBuilder AddSqlFileAsPlan(this IFlowtideDIBuilder builder, string filePath)
-      {
-          var sqlText = File.ReadAllText(filePath);
-          return builder.AddSqlTextAsPlan(sqlText);
-      }
+        public static IFlowtideDIBuilder AddSqlFileAsPlan(this IFlowtideDIBuilder builder, string filePath)
+        {
+            var sqlText = File.ReadAllText(filePath);
+            return builder.AddSqlTextAsPlan(sqlText);
+        }
 
         public static IFlowtideDIBuilder AddSqlTextAsPlan(this IFlowtideDIBuilder builder, string sqlText)
         {
-            builder.Services.AddKeyedSingleton<IFlowtidePlanProvider>(builder.StreamName, (provider, key) => {
+            builder.Services.AddKeyedSingleton<IFlowtidePlanProvider>(builder.StreamName, (provider, key) =>
+            {
                 var connectorManager = provider.GetRequiredKeyedService<IConnectorManager>(builder.StreamName);
                 return new SqlPlanProvider(sqlText, connectorManager);
             });
@@ -46,10 +47,11 @@ namespace FlowtideDotNet.DependencyInjection
 
         public static IFlowtideDIBuilder AddSqlPlan(this IFlowtideDIBuilder builder, Action<SqlPlanBuilder> configure)
         {
-            builder.Services.AddKeyedSingleton<IFlowtidePlanProvider>(builder.StreamName, (provider, key) => {
+            builder.Services.AddKeyedSingleton<IFlowtidePlanProvider>(builder.StreamName, (provider, key) =>
+            {
                 var connectorManager = provider.GetRequiredKeyedService<IConnectorManager>(builder.StreamName);
                 var sqlPlanBuilder = new SqlPlanBuilder();
-                foreach(var tableProvider in connectorManager.GetTableProviders())
+                foreach (var tableProvider in connectorManager.GetTableProviders())
                 {
                     sqlPlanBuilder.AddTableProvider(tableProvider);
                 }

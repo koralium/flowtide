@@ -454,7 +454,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         public void TestSerializeDeserializeIntegerColumn()
         {
             SerializeDeserializeTest(
-                new Int64Value(1), 
+                new Int64Value(1),
                 new Int64Value(2));
         }
 
@@ -462,8 +462,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         public void TestSerializeDeserializeBoolColumn()
         {
             SerializeDeserializeTest(
-                new BoolValue(true), 
-                new BoolValue(false), 
+                new BoolValue(true),
+                new BoolValue(false),
                 new BoolValue(true));
         }
 
@@ -686,7 +686,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
         class TrainingBatchCompressor : IBatchCompressor
         {
-            
+
             private List<byte[]> dictList = new List<byte[]>();
             public TrainingBatchCompressor()
             {

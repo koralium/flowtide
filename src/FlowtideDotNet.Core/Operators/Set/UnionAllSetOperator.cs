@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                         }
                     }
                 }
-                
+
                 if (difference)
                 {
                     _emit = setRelation.Emit.ToArray();

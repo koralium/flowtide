@@ -57,7 +57,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
                         return new TimestampTzValue(result);
                     }
                     throw new Exception($"Could not parse timestamp {value}");
-                    
+
             }
             throw new NotImplementedException(dataType);
         }

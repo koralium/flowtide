@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
         private List<string>? _physicalColumnNamesInBatch;
         private List<IArrowEncoder>? _encoders;
-        
+
         public List<StructField>? Fields { get; private set; }
 
         public void Initialize(DeltaTable table, IReadOnlyList<string> columnNames)
@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             {
                 var name = columnNames[i];
                 var field = table.Schema.Fields.FirstOrDefault(x => x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-                
+
                 if (field == null)
                 {
                     throw new Exception($"Field {name} not found in schema");
@@ -205,7 +205,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                     {
                         count = batchCount,
                         data = new EventBatchData(outColumns),
-                        weights  = weights
+                        weights = weights
                     };
                 }
             }
@@ -250,11 +250,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         }
 
         public async IAsyncEnumerable<BatchResultWithWeights> ReadAddRemovedDataFile(
-            IFileStorage storage, 
-            IOPath table, 
+            IFileStorage storage,
+            IOPath table,
             string path,
             IEnumerable<(long id, int weight)> changedIndices,
-            Dictionary<string, string>? partitionValues, 
+            Dictionary<string, string>? partitionValues,
             IMemoryAllocator memoryAllocator)
         {
             Debug.Assert(_physicalColumnNamesInBatch != null);
@@ -387,10 +387,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
 
             using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
-            
+
             List<int> columnsToSelect = new List<int>();
 
-            foreach(var encoder in _encoders)
+            foreach (var encoder in _encoders)
             {
                 encoder.NewFile(partitionValues);
             }
@@ -398,15 +398,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             HashSet<int> nullColumns = new HashSet<int>();
             for (int i = 0; i < _physicalColumnNamesInBatch.Count; i++)
             {
-                
+
                 bool found = false;
                 for (int k = 0; k < fileReader.SchemaManifest.SchemaFields.Count; k++)
                 {
                     var field = fileReader.SchemaManifest.SchemaFields[k];
-                    
+
                     if (field.Field.Name.Equals(_physicalColumnNamesInBatch[i], StringComparison.OrdinalIgnoreCase))
                     {
-                        
+
                         found = true;
                         AddColumnToSelect(field, columnsToSelect);
                         break;
@@ -446,7 +446,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                             {
                                 encoder.NewBatch(batch.Column(columnIndex));
                             }
-                            
+
                             columnIndex++;
                         }
                     }

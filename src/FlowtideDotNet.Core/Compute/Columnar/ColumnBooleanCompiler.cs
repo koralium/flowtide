@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             var resultContainer = System.Linq.Expressions.Expression.Constant(new DataValueContainer());
             var expr = visitor.Visit(expression, new ColumnParameterInfo(
                 new List<ParameterExpression>() { batchParam1, batchParam2 }
-                , new List<ParameterExpression>() { intParam1, intParam2 }, 
+                , new List<ParameterExpression>() { intParam1, intParam2 },
                 new List<int> { 0, leftSize }, resultContainer));
 
             if (expr == null)

@@ -60,8 +60,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             FlowtideMongoDbSourceOptions sourceOptions,
             string databaseName,
             string collectionName,
-            ReadRelation readRelation, 
-            IFunctionsRegister functionsRegister, 
+            ReadRelation readRelation,
+            IFunctionsRegister functionsRegister,
             DataflowBlockOptions options) : base(readRelation, functionsRegister, options)
         {
             this._options = sourceOptions;
@@ -230,8 +230,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                                 _lastWallTime = currentTime;
                                 _operationCounter = 0;
                             }
-                        }    
-                        
+                        }
+
                         timestamp = new BsonTimestamp(_lastWallTime, _operationCounter);
                     }
                     else
@@ -338,7 +338,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
                     this.DeltaLoadInterval = TimeSpan.FromMilliseconds(1);
                 }
-                catch(MongoCommandException e)
+                catch (MongoCommandException e)
                 {
                     Logger.ChangeStreamDisabledUsingFullLoad(e, StreamName, Name);
                     _watchDisabled = true;
@@ -365,7 +365,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             }
 
             var cursor = await collection.FindAsync(Builders<BsonDocument>.Filter.Empty);
-            
+
             while (await cursor.MoveNextAsync(cancelTokenSource.Token))
             {
                 cancelTokenSource.Token.ThrowIfCancellationRequested();

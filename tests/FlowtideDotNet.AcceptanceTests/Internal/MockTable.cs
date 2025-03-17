@@ -52,7 +52,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public void AddOrUpdate<T>(IEnumerable<T> rows)
         {
-            foreach(var row in rows)
+            foreach (var row in rows)
             {
                 if (row == null)
                 {
@@ -64,7 +64,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public void Delete<T>(IEnumerable<T> rows)
         {
-            foreach(var row in rows)
+            foreach (var row in rows)
             {
                 if (row == null)
                 {
@@ -241,7 +241,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                                         else if (kv.Value is string stringV)
                                         {
                                             m.Add(kv.Key, stringV);
-                                        }   
+                                        }
                                     }
                                 });
                             }
@@ -255,7 +255,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                             {
                                 v.Vector(m =>
                                 {
-                                    foreach(var inner in item)
+                                    foreach (var inner in item)
                                     {
                                         m.Add(inner);
                                     }
@@ -281,8 +281,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     }
                 }
             });
-            
-            
+
+
         }
 
         public (IEnumerable<RowOperation> changes, int offset) GetOperations(int fromOffset)

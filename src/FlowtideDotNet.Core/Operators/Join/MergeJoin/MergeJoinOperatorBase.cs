@@ -135,10 +135,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 bool shouldBreak = false;
                 // Iterate pages
                 int joinWeight = 0;
-                await foreach(var page in it)
+                await foreach (var page in it)
                 {
                     // Iterate values in the page
-                    foreach(var kv in page)
+                    foreach (var kv in page)
                     {
                         if (_keyCondition(joinEventCheck, kv.Key))
                         {
@@ -154,7 +154,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     yield return new StreamEventBatch(output, mergeJoinRelation.OutputLength);
                                     output = new List<RowEvent>();
                                 }
-                                
+
                             }
                         }
                         else
@@ -180,7 +180,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         yield return new StreamEventBatch(output, mergeJoinRelation.OutputLength);
                         output = new List<RowEvent>();
                     }
-                    
+
                     await _leftTree.RMW(joinEvent, new JoinStorageValue() { Weight = e.Weight, JoinWeight = joinWeight }, (input, current, found) =>
                     {
                         if (found)
@@ -252,10 +252,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 await it.Seek(joinEventCheck);
 
                 bool shouldBreak = false;
-                await foreach(var page in it)
+                await foreach (var page in it)
                 {
                     bool pageUpdated = false;
-                    foreach(var kv in page)
+                    foreach (var kv in page)
                     {
                         if (_keyCondition(kv.Key, joinEventCheck))
                         {
@@ -264,7 +264,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 int outputWeight = e.Weight * kv.Value.Weight;
                                 output.Add(OnConditionSuccess(kv.Key, joinEventCheck, outputWeight, e.Iteration));
 
-                                
+
 
                                 if (mergeJoinRelation.Type == JoinType.Left)
                                 {
@@ -289,7 +289,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     yield return new StreamEventBatch(output, mergeJoinRelation.OutputLength);
                                     output = new List<RowEvent>();
                                 }
-                                
+
                             }
                         }
                         else
@@ -390,22 +390,22 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
 
             _flexBuffer.Clear();
-            _leftTree = await stateManagerClient.GetOrCreateTree("left", 
+            _leftTree = await stateManagerClient.GetOrCreateTree("left",
                 new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>()
-            {
-                Comparer = new BPlusTreeListComparer<JoinStreamEvent>(leftComparer),
-                KeySerializer = new KeyListSerializer<JoinStreamEvent>(new JoinStreamEvenBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer()),
-                MemoryAllocator = MemoryAllocator
-            });
-            _rightTree = await stateManagerClient.GetOrCreateTree("right", 
+                {
+                    Comparer = new BPlusTreeListComparer<JoinStreamEvent>(leftComparer),
+                    KeySerializer = new KeyListSerializer<JoinStreamEvent>(new JoinStreamEvenBPlusTreeSerializer()),
+                    ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
+            _rightTree = await stateManagerClient.GetOrCreateTree("right",
                 new BPlusTreeOptions<JoinStreamEvent, JoinStorageValue, ListKeyContainer<JoinStreamEvent>, ListValueContainer<JoinStorageValue>>()
-            {
-                Comparer = new BPlusTreeListComparer<JoinStreamEvent>(rightComparer),
-                KeySerializer = new KeyListSerializer<JoinStreamEvent>(new JoinStreamEvenBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer()),
-                MemoryAllocator = MemoryAllocator
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<JoinStreamEvent>(rightComparer),
+                    KeySerializer = new KeyListSerializer<JoinStreamEvent>(new JoinStreamEvenBPlusTreeSerializer()),
+                    ValueSerializer = new ValueListSerializer<JoinStorageValue>(new JoinStorageValueBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
         }
     }
 }

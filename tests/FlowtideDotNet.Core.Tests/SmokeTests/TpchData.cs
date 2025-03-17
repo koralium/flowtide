@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 PrepareHeaderForMatch = args => args.Header.ToLower(),
             };
-            
+
 
             using var csv = new CsvReader(reader, config);
             return csv.GetRecords<T>().ToList();

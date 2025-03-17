@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Substrait.Relations
         }
 
         public required Relation Input { get; set; }
-        
+
         public required List<Expression> Expressions { get; set; }
 
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Substrait.Relations
             var code = new HashCode();
             code.Add(base.GetHashCode());
             code.Add(Input);
-            foreach(var expression in Expressions)
+            foreach (var expression in Expressions)
             {
                 code.Add(expression);
             }

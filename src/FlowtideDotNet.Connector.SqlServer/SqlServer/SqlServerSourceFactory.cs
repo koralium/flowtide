@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
         private readonly SqlServerTableProvider _tableProvider;
 
         public SqlServerSourceFactory(
-            Func<string> connectionStringFunc, 
+            Func<string> connectionStringFunc,
             Func<ReadRelation, IReadOnlyList<string>>? tableNameTransform = null,
             bool useDatabaseDefinedInConnectionStringOnly = false)
         {

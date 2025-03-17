@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     }
                 }
             }
-            
+
         }
 
         public override string DisplayName => "Aggregation";
@@ -197,7 +197,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 var emptyRow = new ColumnRowReference() { referenceBatch = m_groupValuesBatch, RowIndex = 0 };
                 var comparer = new AggregateSearchComparer(0);
                 await _treeIterator!.Seek(emptyRow, comparer);
-                
+
                 if (!comparer.noMatch)
                 {
                     var enumerator = _treeIterator.GetAsyncEnumerator();
@@ -265,7 +265,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             // Add it to the state for previous value, so the value can be removed if changed
                             m_temporaryStateValues[m_measures.Count + i].Add(newValue);
                         }
-                        
+
                     }
                     outputIterations.Add(0);
                     outputWeights.Add(1);
@@ -303,7 +303,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     {
                         var comparer = new AggregateSearchComparer(m_groupValues.Length);
                         await _treeIterator!.Seek(kv.Key, comparer);
-                        
+
                         if (comparer.noMatch)
                         {
                             continue;
@@ -362,7 +362,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             }
                         }
 
-                        
+
                         // Add measure values
                         for (int i = 0; i < m_measures.Count; i++)
                         {
@@ -388,7 +388,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                                 treePage.ExitWriteLock();
                             }
                         }
-                        
+
 
                         outputIterations.Add(0);
                         outputWeights.Add(1);
@@ -476,7 +476,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(m_groupValuesBatch != null);
             Debug.Assert(m_temporaryStateBatch != null);
 
-            for(int i = 0; i < m_groupValues.Length; i++)
+            for (int i = 0; i < m_groupValues.Length; i++)
             {
                 m_groupValues[i].Clear();
             }
@@ -510,20 +510,20 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     }
 
                     await _temporaryTree.RMWNoResult(new ColumnRowReference()
+                    {
+                        referenceBatch = m_groupValuesBatch,
+                        RowIndex = groupIndex
+                    }, default, (_, current, exist) =>
+                    {
+                        if (exist)
                         {
-                            referenceBatch = m_groupValuesBatch,
-                            RowIndex = groupIndex
-                        }, default, (_, current, exist) =>
+                            return (1, GenericWriteOperation.None);
+                        }
+                        else
                         {
-                            if (exist)
-                            {
-                                return (1, GenericWriteOperation.None);
-                            }
-                            else
-                            {
-                                return (1, GenericWriteOperation.Upsert);
-                            }
-                        });
+                            return (1, GenericWriteOperation.Upsert);
+                        }
+                    });
                 }
 
                 var comparer = new AggregateSearchComparer(m_groupValues.Length);
@@ -532,7 +532,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     referenceBatch = m_groupValuesBatch,
                     RowIndex = groupIndex
                 }, comparer);
-                
+
 
                 if (!comparer.noMatch)
                 {
@@ -590,7 +590,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             col.Add(NullValue.Instance);
                         }
                     }
-                    
+
 
                     await _tree.Upsert(new ColumnRowReference()
                     {

@@ -84,7 +84,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
             _stateManagerClient = stateManagerClient;
             _decoders = await client.GetColumnDecoders(listId, columns.Keys.ToList(), stateManagerClient);
             _columns = columns.Keys.ToHashSet();
-            foreach(var column in columns)
+            foreach (var column in columns)
             {
                 _descriptions[column.Key] = column.Value.Description;
             }

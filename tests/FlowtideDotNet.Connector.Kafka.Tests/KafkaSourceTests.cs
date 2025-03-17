@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
                 FROM [test-topic]
             ");
 
-            
+
             consumer.Subscribe("output");
 
             var msg1 = consumer.Consume();
@@ -98,7 +98,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
             });
 
             var msg3 = consumer.Consume();
-            
+
             Assert.Equal("key", msg3.Message.Key);
             Assert.Null(msg3.Message.Value);
         }
@@ -134,7 +134,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
                 Value = @"{""firstName"":""testSecond"",""lastName"":""testSecond""}"
             });
 
-            
+
             var consumer = new ConsumerBuilder<string, string>(kafkaFixture.GetConsumerConfig("testwithexistingdata")).Build();
 
             KafkaTestStream kafkaTestStream = new KafkaTestStream(kafkaFixture, topic, "testwithexistingdata", true);

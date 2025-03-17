@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
         {
-            if (watermarkNames != null) 
+            if (watermarkNames != null)
             {
                 return Task.FromResult(watermarkNames);
             }
@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
                     HasSentInitial = false
                 };
             }
-            
+
         }
 
         protected override async Task OnCheckpoint(long checkpointTime)
@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
                 columns[i] = Column.Create(MemoryAllocator);
             }
 
-            foreach(var row in virtualTableReadRelation.Values.Expressions)
+            foreach (var row in virtualTableReadRelation.Values.Expressions)
             {
                 weights.Add(1);
                 iterations.Add(0);

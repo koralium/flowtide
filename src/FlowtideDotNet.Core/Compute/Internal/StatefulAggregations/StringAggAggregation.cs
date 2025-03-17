@@ -102,14 +102,14 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
 
         private static async Task<StringAggAggregationSingleton> Initialize(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
-            var tree = await stateManagerClient.GetOrCreateTree("stringaggtree", 
+            var tree = await stateManagerClient.GetOrCreateTree("stringaggtree",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
-            {
-                Comparer = new BPlusTreeListComparer<RowEvent>(new ListAggAggregationInsertComparer(groupingLength + 1)),
-                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                MemoryAllocator = memoryAllocator
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<RowEvent>(new ListAggAggregationInsertComparer(groupingLength + 1)),
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    MemoryAllocator = memoryAllocator
+                });
 
             return new StringAggAggregationSingleton(tree, groupingLength);
         }

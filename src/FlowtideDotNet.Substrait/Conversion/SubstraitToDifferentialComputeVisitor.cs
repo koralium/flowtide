@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Substrait.Conversion
             if (addWrite)
             {
                 var types = new List<Type.SubstraitBaseType>();
-                foreach(var name in rootRelation.Names)
+                foreach (var name in rootRelation.Names)
                 {
                     bool nullable = true;
                     if (primaryKeys.Contains(name, StringComparer.InvariantCultureIgnoreCase))
@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Substrait.Conversion
 
         public override Relation VisitSetRelation(SetRelation setRelation, object state)
         {
-            for(int i = 0; i < setRelation.Inputs.Count; i++)
+            for (int i = 0; i < setRelation.Inputs.Count; i++)
             {
                 setRelation.Inputs[i] = Visit(setRelation.Inputs[i], state);
             }
@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Substrait.Conversion
             {
                 throw new NotSupportedException("One column must be not nullable");
             }
-            
+
 
             var normalizationRelation = new NormalizationRelation()
             {

@@ -34,17 +34,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
         }
 
-        public int FieldsLength 
-        { 
-            get 
-            { 
+        public int FieldsLength
+        {
+            get
+            {
                 int o = ReadUtils.__offset(in span, in position, 6);
-                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0; 
-            } 
+                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0;
+            }
         }
 
-        public FieldStruct Fields(int j) 
-        { 
+        public FieldStruct Fields(int j)
+        {
             int o = ReadUtils.__offset(in span, in position, 6);
             var fieldLocation = ReadUtils.__indirect(in span, ReadUtils.__vector(in span, in position, o) + j * 4);
             return new FieldStruct(span, fieldLocation);

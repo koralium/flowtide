@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
                 }
                 written += 8;
                 paddedLength = checked((int)BitUtility.RoundUpToMultipleOf8(written));
-                
+
             }
             else
             {

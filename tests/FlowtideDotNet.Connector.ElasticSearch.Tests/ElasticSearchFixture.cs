@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Tests
             {
                 await container.DisposeAsync();
             }
-            
+
         }
 
         private sealed class WaitUntil : IWaitUntil

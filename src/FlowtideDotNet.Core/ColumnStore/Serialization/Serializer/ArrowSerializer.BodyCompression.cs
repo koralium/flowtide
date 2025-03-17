@@ -46,14 +46,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return EndTable();
         }
 
-        void BodyCompressionAddMethod(BodyCompressionMethod method) 
-        { 
-            AddSbyte(1, (sbyte)method, 0); 
+        void BodyCompressionAddMethod(BodyCompressionMethod method)
+        {
+            AddSbyte(1, (sbyte)method, 0);
         }
 
-        void BodyCompressionAddCodec(CompressionType codec) 
-        { 
-            AddSbyte(0, (sbyte)codec, 0); 
+        void BodyCompressionAddCodec(CompressionType codec)
+        {
+            AddSbyte(0, (sbyte)codec, 0);
         }
     }
 }

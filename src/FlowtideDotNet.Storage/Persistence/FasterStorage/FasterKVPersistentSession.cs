@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
         }
 
         public async ValueTask<T> Read<T>(long key, IStateSerializer<T> serializer)
-            where T: ICacheObject
+            where T : ICacheObject
         {
             var memory = await Read(key);
             return serializer.Deserialize(memory, memory.Length);

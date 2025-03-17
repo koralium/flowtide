@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Substrait.Relations
 {
     public abstract class Relation
     {
-        
+
         public List<int>? Emit { get; set; }
 
         [MemberNotNullWhen(true, nameof(Emit))]

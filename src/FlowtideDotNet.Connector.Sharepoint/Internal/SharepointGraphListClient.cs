@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             this.streamName = streamName;
             this.operatorId = operatorId;
             this.logger = logger;
-            
+
         }
 
         public async Task Initialize()
@@ -120,7 +120,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     break;
                 }
             }
-            
+
             if (response.StatusCode != System.Net.HttpStatusCode.OK)
             {
                 var err = await response.Content.ReadAsStringAsync();
@@ -166,7 +166,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             var columnsDict = await GetColumns(list);
 
             Dictionary<string, IColumnDecoder> output = new Dictionary<string, IColumnDecoder>();
-            foreach(var column in columnNames)
+            foreach (var column in columnNames)
             {
                 var encoder = GetColumnDecoder(column, columnsDict);
                 await encoder.Initialize(column, list, this, stateManagerClient.GetChildManager(column), columnsDict);
@@ -185,7 +185,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
 
             List<IColumnEncoder> output = new List<IColumnEncoder>();
-            foreach(var column in columns)
+            foreach (var column in columns)
             {
                 var col = listColumns.Value.Find(x => x.Name?.Equals(column, StringComparison.OrdinalIgnoreCase) ?? false);
                 if (col == null)
@@ -336,9 +336,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     AdditionalData = obj
                 }
             });
-            if (item == null) 
-            { 
-                throw new InvalidOperationException("Could not create item"); 
+            if (item == null)
+            {
+                throw new InvalidOperationException("Could not create item");
             }
             return item.Id!;
         }

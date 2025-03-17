@@ -214,7 +214,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     {
                         return length - (otherEnd - otherStart);
                     }
-                    
+
                     for (int i = 0; i < length; i++)
                     {
                         var otherKeyVal = refmap.mapColumn._keyColumn.GetValueAt(otherStart + i, default);
@@ -245,7 +245,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     var dataValueContainer = new DataValueContainer();
                     for (int i = 0; i < length; i++)
                     {
-                        mapValue.GetKeyAt(i, dataValueContainer);   
+                        mapValue.GetKeyAt(i, dataValueContainer);
                         var keyCompareVal = _keyColumn.CompareTo(startOffset + i, dataValueContainer, default);
                         if (keyCompareVal != 0)
                         {
@@ -351,7 +351,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             return index;
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue
         {
             if (desc)
@@ -391,7 +391,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             else
             {
                 var dataValueContainer = new DataValueContainer();
-                
+
                 for (int i = 0; i < mapLength; i++)
                 {
                     map.GetKeyAt(i, dataValueContainer);
@@ -594,7 +594,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             pointerStack[1] = _valueColumn.CreateSchemaField(ref arrowSerializer, emptyStringPointer, childStack);
             var structChildrenPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, 2));
             pointerStack[0] = arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Struct_, structPointer, childrenOffset: structChildrenPointer);
-            
+
             var childrenPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, 1));
             return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Map, typePointer, childrenOffset: childrenPointer);
         }

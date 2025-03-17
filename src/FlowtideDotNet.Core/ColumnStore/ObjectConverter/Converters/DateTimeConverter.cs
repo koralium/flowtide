@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
     {
         public DateTimeConverter()
         {
-            
+
         }
         public object Deserialize<T>(T value) where T : IDataValue
         {
@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             {
                 return default!;
             }
-            
+
             if (value.Type == ArrowTypeId.Timestamp)
             {
                 var timestamp = value.AsTimestamp;

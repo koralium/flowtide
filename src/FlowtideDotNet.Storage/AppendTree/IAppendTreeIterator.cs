@@ -15,7 +15,7 @@ using FlowtideDotNet.Storage.Tree;
 namespace FlowtideDotNet.Storage.AppendTree
 {
     public interface IAppendTreeIterator<K, V, TKeyContainer> : IAsyncEnumerable<KeyValuePair<K, V>>, IDisposable
-        where TKeyContainer: IKeyContainer<K>
+        where TKeyContainer : IKeyContainer<K>
     {
         ValueTask Seek(in K key, in IBplusTreeComparer<K, TKeyContainer>? searchComparer = null);
     }

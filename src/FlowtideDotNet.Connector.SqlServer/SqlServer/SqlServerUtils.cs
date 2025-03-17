@@ -580,7 +580,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
             List<string> primaryKeyEquals = new List<string>();
             List<string> columnSelects = new List<string>();
-            if (readRelation.BaseSchema.Struct == null) 
+            if (readRelation.BaseSchema.Struct == null)
             {
                 throw new FlowtideException("Struct must be defined in the base schema for SQL Server.");
             }
@@ -853,7 +853,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         }
 
         public static Action<DataTable, bool, EventBatchData, int> GetDataRowFromColumnsFunc(
-            IReadOnlyCollection<DbColumn> columns, 
+            IReadOnlyCollection<DbColumn> columns,
             IReadOnlyList<int> primaryKeys,
             DataValueContainer dataValueContainer)
         {
@@ -1467,7 +1467,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     return TimeSpan.FromTicks(c.AsLong);
                 };
             }
-         
+
             throw new NotImplementedException();
         }
 

@@ -37,11 +37,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     .Unwrap()
                     .ContinueWith(t =>
                     {
-                        lock(_lock)
+                        lock (_lock)
                         {
                             _currentTask = null;
                         }
-                        
+
                         if (t.IsFaulted)
                         {
                             Debug.Assert(_context != null, nameof(_context));

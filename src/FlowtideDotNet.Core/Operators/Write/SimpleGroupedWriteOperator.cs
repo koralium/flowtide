@@ -126,7 +126,7 @@ namespace FlowtideDotNet.Core.Operators.Write
             Debug.Assert(m_modified != null);
             Debug.Assert(m_existingData != null);
             Debug.Assert(PrimaryKeyComparer != null);
-            
+
             var treeIterator = m_modified.CreateIterator();
             var existingIterator = m_existingData.CreateIterator();
             await treeIterator.SeekFirst();
@@ -269,31 +269,31 @@ namespace FlowtideDotNet.Core.Operators.Write
                     SentInitialData = false
                 };
             }
-            m_modified = await stateManagerClient.GetOrCreateTree("temporary", 
+            m_modified = await stateManagerClient.GetOrCreateTree("temporary",
                 new BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
-            {
-                Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                MemoryAllocator = MemoryAllocator
-            });
-            await m_modified.Clear();
-
-            if (FetchExistingData && !_state!.Value.SentInitialData)
-            {
-                // Create a tree to store existing data in the destination
-                // This will be used to check written data to existing data if it should be removed from the destination.
-                m_existingData = await stateManagerClient.GetOrCreateTree("existing_data", 
-                    new BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
                 {
                     Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
                     KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
                     MemoryAllocator = MemoryAllocator
                 });
+            await m_modified.Clear();
+
+            if (FetchExistingData && !_state!.Value.SentInitialData)
+            {
+                // Create a tree to store existing data in the destination
+                // This will be used to check written data to existing data if it should be removed from the destination.
+                m_existingData = await stateManagerClient.GetOrCreateTree("existing_data",
+                    new BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
+                    {
+                        Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer),
+                        ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                        KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                        MemoryAllocator = MemoryAllocator
+                    });
 
                 Logger.FetchingExistingDataInDataSource(StreamName, Name);
-                await foreach(var row in GetExistingData())
+                await foreach (var row in GetExistingData())
                 {
                     await m_existingData.Upsert(row, 1);
                 }

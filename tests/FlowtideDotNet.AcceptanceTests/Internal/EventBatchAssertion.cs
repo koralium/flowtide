@@ -31,7 +31,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             var comparer = new DataValueComparer();
 
-            for (int i= 0; i < expected.Count; i++)
+            for (int i = 0; i < expected.Count; i++)
             {
                 for (int c = 0; c < expected.Columns.Count; c++)
                 {

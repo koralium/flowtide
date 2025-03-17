@@ -171,7 +171,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             else
             {
                 // Dispose columns, weights and iterations since they are not required.
-                for(int i = 0; i < outputColumns.Length; i++)
+                for (int i = 0; i < outputColumns.Length; i++)
                 {
                     outputColumns[i].Dispose();
                 }
@@ -315,7 +315,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                             {
                                 _convertFunctions[i](reader, outputColumns[i]);
                             }
-                            
+
                             primaryKeyValues.Clear();
                             for (int i = 0; i < primaryKeyOrdinals.Count; i++)
                             {
@@ -347,7 +347,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                             }
                         }
 
-                        foreach(var weightedBatch in weightedBatches)
+                        foreach (var weightedBatch in weightedBatches)
                         {
                             _eventsCounter.Add(weightedBatch.Count);
                             _eventsProcessed.Add(weightedBatch.Count);

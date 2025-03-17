@@ -17,8 +17,8 @@ using System.Text;
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
     internal partial class BPlusTree<K, V, TKeyContainer, TValueContainer> : IBPlusTree<K, V, TKeyContainer, TValueContainer>
-        where TKeyContainer: IKeyContainer<K>
-        where TValueContainer: IValueContainer<V>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         internal readonly IStateClient<IBPlusTreeNode, BPlusTreeMetadata> m_stateClient;
         private readonly BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> m_options;
@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private bool m_isByteBased;
         private int byteMinSize;
 
-        public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options) 
+        public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
         {
             Debug.Assert(options.BucketSize.HasValue);
             Debug.Assert(options.PageSizeBytes.HasValue);

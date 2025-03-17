@@ -17,8 +17,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
     public class TableFunctionDefinition
     {
         public TableFunctionDefinition(
-            string uri, 
-            string name, 
+            string uri,
+            string name,
             Func<TableFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc)
         {
             Uri = uri;

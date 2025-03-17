@@ -77,16 +77,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar
         public Func<AggregateFunction, ColumnParameterInfo, ColumnarExpressionVisitor, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> UpdateStateFunc { get; }
 
         public override Task<IColumnAggregateContainer> CreateContainer(
-            int groupingLength, 
+            int groupingLength,
             IStateManagerClient stateManagerClient,
             IMemoryAllocator memoryAllocator,
-            AggregateFunction aggregateFunction, 
-            ColumnParameterInfo parametersInfo, 
-            ColumnarExpressionVisitor visitor, 
-            ParameterExpression eventBatchParameter, 
-            ParameterExpression indexParameter, 
-            ParameterExpression stateParameter, 
-            ParameterExpression weightParameter, 
+            AggregateFunction aggregateFunction,
+            ColumnParameterInfo parametersInfo,
+            ColumnarExpressionVisitor visitor,
+            ParameterExpression eventBatchParameter,
+            ParameterExpression indexParameter,
+            ParameterExpression stateParameter,
+            ParameterExpression weightParameter,
             ParameterExpression groupingKeyParameter)
         {
             var mapFunc = UpdateStateFunc(aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter);

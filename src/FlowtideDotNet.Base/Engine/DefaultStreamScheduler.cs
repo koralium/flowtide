@@ -44,12 +44,12 @@ namespace FlowtideDotNet.Base.Engine
 
         public virtual Task Schedule(string triggerName, string operatorName, TimeSpan interval)
         {
-            lock(_lock)
+            lock (_lock)
             {
                 _existingSchedules.Add($"{operatorName}.{triggerName}", interval);
                 _queue.Enqueue((operatorName, triggerName), DateTime.UtcNow.Add(interval));
             }
-            
+
             return Task.CompletedTask;
         }
 
@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Base.Engine
             // Check if there is any trigger in queue that should be run.
             while (_queue.TryPeek(out _, out var time) && time.CompareTo(DateTime.UtcNow) <= 0)
             {
-                
+
                 var triggerInfo = _queue.Dequeue();
 
                 // Try and schedule the next trigger

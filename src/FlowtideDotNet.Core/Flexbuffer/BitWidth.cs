@@ -12,18 +12,18 @@
 
 namespace FlexBuffers
 {
-    public enum BitWidth: byte
+    public enum BitWidth : byte
     {
         Width8, Width16, Width32, Width64
     }
-    
+
     public static class BitWidthUtil
     {
         public static BitWidth Width(sbyte value)
         {
             return BitWidth.Width8;
         }
-        
+
         public static BitWidth Width(short value)
         {
             if (value >= 0)
@@ -49,24 +49,24 @@ namespace FlexBuffers
             }
             return value >= short.MinValue ? BitWidth.Width16 : BitWidth.Width32;
         }
-        
+
         public static BitWidth Width(long value)
         {
             if (value >= 0)
             {
-                return value <= int.MaxValue ? Width((int) value) : BitWidth.Width64;
+                return value <= int.MaxValue ? Width((int)value) : BitWidth.Width64;
             }
             else
             {
-                return value >= int.MinValue ? Width((int) value) : BitWidth.Width64;
+                return value >= int.MinValue ? Width((int)value) : BitWidth.Width64;
             }
         }
-        
+
         public static BitWidth Width(byte value)
         {
             return BitWidth.Width8;
         }
-        
+
         public static BitWidth Width(ushort value)
         {
             return value <= byte.MaxValue ? BitWidth.Width8 : BitWidth.Width16;
@@ -81,17 +81,17 @@ namespace FlexBuffers
 
             return value <= ushort.MaxValue ? BitWidth.Width16 : BitWidth.Width32;
         }
-        
+
         public static BitWidth Width(ulong value)
         {
-            return value <= uint.MaxValue ? Width((uint) value) : BitWidth.Width64;
+            return value <= uint.MaxValue ? Width((uint)value) : BitWidth.Width64;
         }
 
         public static BitWidth Width(float value)
         {
             return BitWidth.Width32;
         }
-        
+
         public static BitWidth Width(double value)
         {
             return ((double)((float)value)) == value ? BitWidth.Width32 : BitWidth.Width64;

@@ -52,7 +52,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public string TestName => testName;
 
-        public IReadOnlyList<User> Users  => generator.Users;
+        public IReadOnlyList<User> Users => generator.Users;
 
         public IReadOnlyList<Order> Orders => generator.Orders;
 
@@ -168,9 +168,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         }
 
         public async Task StartStream(
-            string sql, 
-            int parallelism = 1, 
-            StateSerializeOptions? stateSerializeOptions = default, 
+            string sql,
+            int parallelism = 1,
+            StateSerializeOptions? stateSerializeOptions = default,
             TimeSpan? timestampInterval = default,
             int pageSize = 1024,
             bool ignoreSameDataCheck = false)
@@ -196,7 +196,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
 
-            
+
 
 
 #if DEBUG_WRITE
@@ -280,7 +280,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 _dataUpdated = false;
             }
         }
-    
+
         /// <summary>
         /// Simulate a crash on the stream, waits until the stream has failed.
         /// </summary>

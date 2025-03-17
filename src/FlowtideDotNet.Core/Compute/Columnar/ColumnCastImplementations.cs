@@ -174,7 +174,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                 {
                     result._stringValue = new StringValue(value.AsTimestamp.ToDateTimeOffset().ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
                 }
-                
+
                 return result;
             }
 
@@ -240,7 +240,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
         }
 
         internal static IDataValue CastToDecimal<T>(T value, DataValueContainer result)
-            where T: IDataValue
+            where T : IDataValue
         {
             if (value.IsNull)
             {
@@ -293,7 +293,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
         }
 
         internal static IDataValue CastToBool<T>(T value, DataValueContainer result)
-            where T: IDataValue
+            where T : IDataValue
         {
             if (value.IsNull)
             {
@@ -337,7 +337,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
         }
 
         internal static IDataValue CastToDouble<T>(T value, DataValueContainer result)
-            where T: IDataValue
+            where T : IDataValue
         {
             if (value.IsNull)
             {

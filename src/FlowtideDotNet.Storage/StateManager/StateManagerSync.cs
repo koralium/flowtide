@@ -238,14 +238,14 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(m_fileCacheOptions != null);
-            
+
             bool foundStateClient = false;
             StateClient? cachedClient;
             lock (m_lock)
             {
                 foundStateClient = _stateClients.TryGetValue(client, out cachedClient);
             }
-            
+
             if (foundStateClient)
             {
                 return ValueTask.FromResult((cachedClient as IObjectState<T>)!);
@@ -292,7 +292,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     clientMetadataPageId = GetNewPageId_Internal();
                     m_metadata.ClientMetadataLocations.Add(client, clientMetadataPageId);
                 }
-                
+
                 var clientMetadata = new StateClientMetadata<T>();
 
                 lock (m_lock)
@@ -327,7 +327,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     var metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes.Value, bytes.Value.Length);
                     var persistentSession = m_persistentStorage.CreateSession();
                     var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheOptions, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
-                    
+
                     lock (m_lock)
                     {
                         _stateClients.Add(client, stateClient);

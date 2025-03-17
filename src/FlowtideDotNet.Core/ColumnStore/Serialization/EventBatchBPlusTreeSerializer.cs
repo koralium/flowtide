@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         private readonly EventBatchSerializer _batchSerializer;
         private readonly object _lock = new object();
 
-        
+
 
         public EventBatchBPlusTreeSerializer()
         {

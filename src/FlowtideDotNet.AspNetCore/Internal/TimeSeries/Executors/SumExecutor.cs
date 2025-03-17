@@ -34,21 +34,21 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
         public async IAsyncEnumerable<MetricResult> GetValues(long startTimestamp, long endTimestamp, int stepWidth)
         {
             var iterators = series.Select(v => v.GetValues(startTimestamp, endTimestamp, stepWidth).GetAsyncEnumerator()).ToList();
-            
+
             bool[] done = new bool[iterators.Count];
             long[] lastTimestamps = new long[iterators.Count];
             List<(IAsyncEnumerator<MetricResult>, int)> outputIterators = new List<(IAsyncEnumerator<MetricResult>, int)>();
 
-            for(int i = 0; i < iterators.Count; i++)
+            for (int i = 0; i < iterators.Count; i++)
             {
                 outputIterators.Add((iterators[i], i));
             }
-            
+
             while (!done.All(x => x))
             {
                 // Find iterators that have the same lowest timestamp, output those values
                 // Only move forward iterators that are behind
-                foreach(var iterator in outputIterators)
+                foreach (var iterator in outputIterators)
                 {
                     if (!await iterator.Item1.MoveNextAsync())
                     {

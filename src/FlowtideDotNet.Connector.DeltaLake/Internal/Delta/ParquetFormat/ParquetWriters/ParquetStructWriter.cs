@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
             for (int i = 0; i < order.Count; i++)
             {
-                var writer =  propertyWriters[order[i]];
+                var writer = propertyWriters[order[i]];
                 var arr = writer.Value.GetArray();
                 arrays.Add(arr);
                 fields.Add(new Apache.Arrow.Field(writer.Key, arr.Data.DataType, true));
@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         public IStatisticsComparer? GetStatisticsComparer()
         {
             List<KeyValuePair<string, IStatisticsComparer>> statisticsComparers = new List<KeyValuePair<string, IStatisticsComparer>>();
-            foreach(var writer in propertyWriters)
+            foreach (var writer in propertyWriters)
             {
                 var comparer = writer.Value.GetStatisticsComparer();
                 if (comparer != null)
@@ -108,7 +108,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         {
             _nullBitmap = new ArrowBuffer.BitmapBuilder();
             _nullCount++;
-            foreach(var writer in propertyWriters)
+            foreach (var writer in propertyWriters)
             {
                 writer.Value.NewBatch();
             }
@@ -128,7 +128,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             {
                 _nullCount++;
                 _nullBitmap.Append(false);
-                foreach(var writer in propertyWriters)
+                foreach (var writer in propertyWriters)
                 {
                     writer.Value.WriteNull();
                 }

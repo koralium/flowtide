@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Core
             {
                 _rentCount -= 1;
             }
-            
+
         }
     }
 }

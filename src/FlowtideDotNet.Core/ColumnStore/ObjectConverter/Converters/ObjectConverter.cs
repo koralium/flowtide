@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 
                     values.Add(new KeyValuePair<IDataValue, IDataValue>(new StringValue(property.Name), func.BoxedValue));
                 }
-                
+
             }
             addFunc.AddValue(new MapValue(values));
         }

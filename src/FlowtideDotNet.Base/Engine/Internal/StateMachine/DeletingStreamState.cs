@@ -66,14 +66,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     }
                 });
             }
-            
+
         }
 
         private async Task DeleteEntireStream()
         {
             Debug.Assert(_context != null, nameof(_context));
-            
-            _context.ForEachBlock((key,block) =>
+
+            _context.ForEachBlock((key, block) =>
             {
                 block.Complete();
             });

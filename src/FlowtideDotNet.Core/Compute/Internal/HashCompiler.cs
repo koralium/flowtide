@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             hashExpressions.Add(assignToSpanExpr);
 
             // Call get hash and put it into the destination
-            var hashMethod = typeof(XxHash32).GetMethod("GetHashAndReset", new System.Type[] {typeof(Span<byte>)});
+            var hashMethod = typeof(XxHash32).GetMethod("GetHashAndReset", new System.Type[] { typeof(Span<byte>) });
             Debug.Assert(hashMethod != null);
             var callGetHash = System.Linq.Expressions.Expression.Call(hashConstant, hashMethod, spanVariable);
             hashExpressions.Add(callGetHash);

@@ -15,7 +15,7 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
     internal class StateClientOptions<V>
-        where V: ICacheObject
+        where V : ICacheObject
     {
         public IStateSerializer<V>? ValueSerializer { get; set; }
 

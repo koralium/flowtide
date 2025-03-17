@@ -28,8 +28,8 @@ namespace FlowtideDotNet.Connector.Permify.Internal
         }
 
         public override IStreamEgressVertex CreateSink(
-            WriteRelation writeRelation, 
-            IFunctionsRegister functionsRegister, 
+            WriteRelation writeRelation,
+            IFunctionsRegister functionsRegister,
             ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
             return new PermifyRelationSink(writeRelation, _permifySinkOptions, dataflowBlockOptions);

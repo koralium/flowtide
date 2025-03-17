@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                 var listLength = listVal.Count;
 
                 var obj = Array.CreateInstance(innerType, listLength);
-                
+
                 for (int i = 0; i < listLength; i++)
                 {
                     var element = innerConverter.Deserialize(listVal.GetAt(i));

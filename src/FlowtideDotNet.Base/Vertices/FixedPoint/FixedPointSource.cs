@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         public void Initialize()
         {
             _block = new TransformBlock<KeyValuePair<int, IStreamEvent>, IStreamEvent>(x => x.Value, executionDataflowBlockOptions);
-            
+
             if (_links.Count > 1)
             {
                 // If there are more than 1 link, we must broadcast the message to all targets

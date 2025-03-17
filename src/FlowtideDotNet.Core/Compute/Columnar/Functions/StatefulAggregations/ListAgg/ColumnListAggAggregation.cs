@@ -83,7 +83,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
                 throw new InvalidOperationException("List_agg must have one argument.");
             }
             var arg = visitor.Visit(function.Arguments[0], parametersInfo);
-            
+
             var expr = GetListAggBody(arg!.Type);
             var body = expr.Body;
             var replacer = new ParameterReplacerVisitor(expr.Parameters[0], arg!);
@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
         private static System.Linq.Expressions.LambdaExpression GetListAggBody(System.Type inputType)
         {
             var methodInfo = typeof(ColumnListAggAggregation).GetMethod(nameof(DoListAgg), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.MakeGenericMethod(inputType);
-            
+
             var ev = System.Linq.Expressions.Expression.Parameter(inputType, "ev");
             var state = System.Linq.Expressions.Expression.Parameter(typeof(ColumnReference), "state");
             var weight = System.Linq.Expressions.Expression.Parameter(typeof(long), "weight");
@@ -157,7 +157,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             if (!singleton.SearchComparer.noMatch)
             {
                 bool firstPage = true;
-                await foreach(var page in iterator)
+                await foreach (var page in iterator)
                 {
                     if (!firstPage)
                     {

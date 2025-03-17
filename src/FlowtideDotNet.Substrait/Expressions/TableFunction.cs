@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Substrait.Expressions
             var code = new HashCode();
             code.Add(ExtensionUri);
             code.Add(ExtensionName);
-            foreach(var argument in Arguments)
+            foreach (var argument in Arguments)
             {
                 code.Add(argument);
             }

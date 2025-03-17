@@ -154,6 +154,6 @@ namespace FlowtideDotNet.Benchmarks
             }
         }
 
-        
+
     }
 }

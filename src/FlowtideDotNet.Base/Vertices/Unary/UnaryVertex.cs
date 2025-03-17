@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 {
                     var enumerator = OnTrigger(triggerEvent.Name, triggerEvent.State);
                     // Inject data into the stream from the trigger
-                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => 
+                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) =>
                     {
                         if (source is IRentable rentable)
                         {
@@ -112,7 +112,8 @@ namespace FlowtideDotNet.Base.Vertices.Unary
 
                     if (streamMessage.Data is IRentable inputRentable)
                     {
-                        return new AsyncEnumerableReturnRentable<T, IStreamEvent>(inputRentable, enumerator, (source) => {
+                        return new AsyncEnumerableReturnRentable<T, IStreamEvent>(inputRentable, enumerator, (source) =>
+                        {
                             if (source is IRentable rentable)
                             {
                                 rentable.Rent(_links.Count);
@@ -122,7 +123,8 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                     }
                     else
                     {
-                        return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
+                        return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) =>
+                        {
                             if (source is IRentable rentable)
                             {
                                 rentable.Rent(_links.Count);
@@ -243,8 +245,8 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 var links = GetLinks();
 
                 List<Measurement<int>> measurements = new List<Measurement<int>>();
-                
-                foreach(var link in links)
+
+                foreach (var link in links)
                 {
                     TagList tags = new TagList
                     {

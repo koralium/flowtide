@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         {
             Dictionary<int, List<MethodDetails>> methodDetails = new Dictionary<int, List<MethodDetails>>();
 
-            for (int i =0; i < methods.Length; i++)
+            for (int i = 0; i < methods.Length; i++)
             {
                 string? optionName = null;
                 string? optionValue = null;
@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 }
                 list.Add(new MethodDetails(methods[i], methodParameters, genericArguments, optionName, optionValue));
             }
-            
+
 
             functionRegister.RegisterColumnScalarFunction(extensionUri, extensionName, (func, paramInfo, visitor) =>
             {

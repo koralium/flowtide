@@ -413,7 +413,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     throw new NotImplementedException("stftime does not support the input parameter");
                 }
             });
-            
+
             sqlFunctionRegister.RegisterScalarFunction("gettimestamp", (f, visitor, emitData) =>
             {
                 return new ScalarResponse(
@@ -447,7 +447,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     if (keyArg is FunctionArg.Unnamed keyunnamed && keyunnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression keyFuncExprUnnamed)
                     {
                         var keyExpr = visitor.Visit(keyFuncExprUnnamed.Expression, emitData);
-                        
+
                         if (valArg is FunctionArg.Unnamed valunnamed && valunnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression valFuncExprUnnamed)
                         {
                             var valExpr = visitor.Visit(valFuncExprUnnamed.Expression, emitData);
@@ -691,7 +691,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
             });
 
-            
+
 
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "power", FunctionsArithmetic.Uri, FunctionsArithmetic.Power);
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "sqrt", FunctionsArithmetic.Uri, FunctionsArithmetic.Sqrt);
@@ -728,7 +728,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         }
 
         private static void RegisterSingleVariableFunction(
-            SqlFunctionRegister sqlFunctionRegister, 
+            SqlFunctionRegister sqlFunctionRegister,
             string functionName,
             string extensionUri,
             string extensionName,
@@ -911,7 +911,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         if (unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                         {
                             var expr = visitor.Visit(funcExpr.Expression, state);
-                            
+
                             if (returnType == null)
                             {
                                 returnType = expr.Type;

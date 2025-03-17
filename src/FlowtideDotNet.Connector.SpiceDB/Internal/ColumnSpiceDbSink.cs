@@ -44,9 +44,9 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
 
         public ColumnSpiceDbSink(
             SpiceDbSinkOptions spiceDbSinkOptions,
-            ExecutionMode executionMode, 
-            WriteRelation writeRelation, 
-            ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+            ExecutionMode executionMode,
+            WriteRelation writeRelation,
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(executionMode, writeRelation, executionDataflowBlockOptions)
         {
             m_resourceObjectTypeIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("resource_type", StringComparison.OrdinalIgnoreCase));
@@ -276,7 +276,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             List<Task<string>> uploadTasks = new List<Task<string>>();
             await foreach (var row in rows)
             {
-                
+
                 var relationship = GetRelationship(row);
 
                 if (row.IsDeleted)

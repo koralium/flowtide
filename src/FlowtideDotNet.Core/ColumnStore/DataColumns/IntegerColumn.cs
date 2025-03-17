@@ -617,8 +617,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public IntegerColumn(IMemoryAllocator memoryAllocator, IMemoryOwner<byte> memory, int length, int bitWidth)
         {
             this._memoryAllocator = memoryAllocator;
-            
-            switch(bitWidth)
+
+            switch (bitWidth)
             {
                 case 8:
                     _data = new Int8Data(new PrimitiveList<sbyte>(memory, length, memoryAllocator));

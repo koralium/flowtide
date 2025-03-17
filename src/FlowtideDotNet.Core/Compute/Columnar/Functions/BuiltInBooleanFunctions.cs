@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         private static LambdaExpression GetBoolValueLambda(System.Type inputType)
         {
             var methodInfo = typeof(BuiltInBooleanFunctions).GetMethod(nameof(GetBoolValue), BindingFlags.Static | BindingFlags.NonPublic)!.MakeGenericMethod(inputType);
-        
+
             var parameter = System.Linq.Expressions.Expression.Parameter(inputType, "x");
             var call = System.Linq.Expressions.Expression.Call(methodInfo, parameter);
             return System.Linq.Expressions.Expression.Lambda(call, parameter);

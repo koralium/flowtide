@@ -123,7 +123,7 @@ namespace AspireSamples.ElasticsearchExample
                 },
                 (logger, token) =>
                 {
-                    return Task.CompletedTask;    
+                    return Task.CompletedTask;
                 })
                 .WaitFor(sqldb1);
 

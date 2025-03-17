@@ -18,8 +18,8 @@ namespace FlowtideDotNet.Base.Metrics.Counter
             string name,
             string? unit,
             string? description,
-            CounterTagSnapshot total, 
-            bool isMultiDimensional, 
+            CounterTagSnapshot total,
+            bool isMultiDimensional,
             IReadOnlyDictionary<string, CounterTagSnapshot> tagValues)
         {
             Name = name;
@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Base.Metrics.Counter
         public string? Unit { get; }
 
         public string? Description { get; }
-        
+
         public CounterTagSnapshot Total { get; }
 
         public bool IsMultiDimensional { get; }

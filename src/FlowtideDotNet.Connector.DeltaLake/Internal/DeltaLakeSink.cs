@@ -212,7 +212,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             Dictionary<string, List<RowToDelete>> rowsToDeleteByFile = new Dictionary<string, List<RowToDelete>>();
             Dictionary<string, ModifiableDeleteVector> fileDeleteVectors = new Dictionary<string, ModifiableDeleteVector>();
-            await foreach(var page in iterator)
+            await foreach (var page in iterator)
             {
                 for (int i = 0; i < page.Values.Data.Count; i++)
                 {
@@ -417,8 +417,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         }
 
         private async Task HandleDeletedRows(
-            Dictionary<string, List<RowToDelete>> rowsToDeleteByFile, 
-            DeltaTable table, 
+            Dictionary<string, List<RowToDelete>> rowsToDeleteByFile,
+            DeltaTable table,
             Dictionary<string, ModifiableDeleteVector> fileDeleteVectors,
             RecordBatch deleteBatch)
         {
@@ -477,9 +477,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         }
 
         private async Task ScanDataFileForRows(
-            DeltaTable table, 
-            List<RowToDelete> toFind, 
-            DeltaAddAction file, 
+            DeltaTable table,
+            List<RowToDelete> toFind,
+            DeltaAddAction file,
             Dictionary<string, ModifiableDeleteVector> deleteVectors,
             RecordBatch deleteBatch,
             RecordBatchComparer comparer)
@@ -510,7 +510,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             // Open file without deletion vector, it will be used when finding rows
             var iterator = reader.ReadDataFileArrowFormat(_options.StorageLocation, _tablePath, file.Path!);
-            
+
             await foreach (var batch in iterator)
             {
                 for (int i = 0; i < toFind.Count; i++)

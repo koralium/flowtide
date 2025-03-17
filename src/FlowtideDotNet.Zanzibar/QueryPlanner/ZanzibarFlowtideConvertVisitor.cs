@@ -211,7 +211,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
         {
             HashSet<ResultUserType> resultTypes = new HashSet<ResultUserType>();
             List<ZanzibarRelation> relations = new List<ZanzibarRelation>();
-            foreach(var type in relation.Types)
+            foreach (var type in relation.Types)
             {
                 if (!_schema.Types.TryGetValue(type.Name, out var typeDefinition))
                 {
@@ -267,7 +267,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 throw new InvalidOperationException("At this time only 1 type is allowed for tuple to userset");
             }
             var resultType = tuplesetResult.ResultTypes.First();
-            
+
             if (!_schema.Types.TryGetValue(resultType.TypeName, out var resultTypeDefinition))
             {
                 throw new InvalidOperationException($"Type {resultType.TypeName} not found in the schema");

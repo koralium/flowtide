@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Core.Compute
             {
                 return dec.AsDecimal.CompareTo((decimal)b.AsDouble);
             }
-            if (b.ValueType == FlexBuffers.Type.Int) 
+            if (b.ValueType == FlexBuffers.Type.Int)
             {
                 return dec.AsDecimal.CompareTo((decimal)b.AsDouble);
             }
@@ -45,13 +45,13 @@ namespace FlowtideDotNet.Core.Compute
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int CompareLongSameWidth(in FlxValue a, in FlxValue b, in byte width) 
+        private static int CompareLongSameWidth(in FlxValue a, in FlxValue b, in byte width)
         {
             if (width >= 4)
             {
                 if (width == 4)
                 {
-                       return BitConverter.ToInt32(a._buffer, a._offset) - BitConverter.ToInt32(b._buffer, b._offset);
+                    return BitConverter.ToInt32(a._buffer, a._offset) - BitConverter.ToInt32(b._buffer, b._offset);
                 }
                 else
                 {

@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Core.Optimizer.DirectFieldSimplification
         public override Relation VisitProjectRelation(ProjectRelation projectRelation, object state)
         {
             projectRelation.Input = Visit(projectRelation.Input, state);
-            
+
             var newEmitList = new List<int>();
 
             if (projectRelation.EmitSet)

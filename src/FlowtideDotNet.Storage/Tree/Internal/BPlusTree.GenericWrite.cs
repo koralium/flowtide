@@ -708,7 +708,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var emptyValues = m_options.ValueSerializer.CreateEmpty();
             var newNode = new LeafNode<K, V, TKeyContainer, TValueContainer>(newNodeId, emptyKeys, emptyValues);
             newNode.EnterWriteLock();
-            
+
             // Set the next id on the new node to the now left childs next id.
             newNode.next = child.next;
 
@@ -858,7 +858,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 var remainder = half - rightNode.keys.Count;
 
-                
+
                 leftNode.keys.Add(parentKey);
                 // Copy values from left to right at the beginning
                 rightKeys.AddRangeFrom(leftNode.keys, leftNode.keys.Count - remainder, remainder);

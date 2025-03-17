@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.St
         public readonly IBPlusTreeIterator<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> iterator;
 
         public ColumnStringAggAggregationSingleton(
-            IBPlusTree<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> tree, 
+            IBPlusTree<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> tree,
             int keyLength)
         {
             Tree = tree;

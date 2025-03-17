@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             this._compressionLevel = compressionLevel;
             _allocatedMemory = new SortedList<nint, int>();
             _handle = GCHandle.Alloc(this);
-            _isInitialized = false;   
+            _isInitialized = false;
         }
 
         private void SetParameter(ZSTD_cParameter parameter, int value)

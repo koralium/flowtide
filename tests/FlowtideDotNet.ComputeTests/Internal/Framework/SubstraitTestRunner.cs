@@ -40,7 +40,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
         }
         public static void TestMethod()
         {
-            
+
         }
     }
 
@@ -177,7 +177,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
             await stateManager.InitializeAsync();
             var stateClient = stateManager.GetOrCreateClient("a");
             var compileResult = await ColumnMeasureCompiler.CompileMeasure(0, stateClient, aggregateFunction, register, GlobalMemoryManager.Instance);
-            
+
             IColumn[] groupingBatchColumns = new IColumn[0];
             var groupBatch = new EventBatchData(groupingBatchColumns);
             var groupingKey = new ColumnRowReference() { referenceBatch = groupBatch, RowIndex = 0 };

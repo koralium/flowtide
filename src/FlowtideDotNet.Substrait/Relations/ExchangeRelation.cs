@@ -11,7 +11,8 @@
 // limitations under the License.
 
 namespace FlowtideDotNet.Substrait.Relations
-{public sealed class ExchangeRelation : Relation, IEquatable<ExchangeRelation>
+{
+    public sealed class ExchangeRelation : Relation, IEquatable<ExchangeRelation>
     {
         public required Relation Input { get; set; }
 
@@ -62,7 +63,7 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(PartitionCount);
             code.Add(ExchangeKind);
 
-            foreach(var target in Targets)
+            foreach (var target in Targets)
             {
                 code.Add(target);
             }

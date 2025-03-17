@@ -80,7 +80,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             this.targetCount = targetCount;
             this.executionDataflowBlockOptions = executionDataflowBlockOptions;
             _targetHolders = new MultipleInputTargetHolder[targetCount];
-            
+
             for (int i = 0; i < targetCount; i++)
             {
                 _targetHolders[i] = new MultipleInputTargetHolder(i, executionDataflowBlockOptions);
@@ -117,7 +117,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     {
                         enumerator = WaitForPause(enumerator);
                     }
-                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
+                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) =>
+                    {
                         if (source is IRentable rentable)
                         {
                             rentable.Rent(_links.Count);
@@ -137,7 +138,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
                     if (streamMessage.Data is IRentable rentable)
                     {
-                        return new AsyncEnumerableReturnRentable<T, IStreamEvent>(rentable, enumerator, (source) => {
+                        return new AsyncEnumerableReturnRentable<T, IStreamEvent>(rentable, enumerator, (source) =>
+                        {
                             if (source is IRentable rentable)
                             {
                                 rentable.Rent(_links.Count);
@@ -147,7 +149,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     }
                     else
                     {
-                        return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
+                        return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) =>
+                        {
                             if (source is IRentable rentable)
                             {
                                 rentable.Rent(_links.Count);
@@ -263,7 +266,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             Debug.Assert(_targetSentWatermark != null);
             Debug.Assert(_targetSentDataSinceLastWatermark != null);
 
-            if (_currentWatermark == null) 
+            if (_currentWatermark == null)
             {
                 _currentWatermark = new Watermark(ImmutableDictionary<string, long>.Empty, watermark.StartTime)
                 {
@@ -373,7 +376,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 {
                     if (e is InitWatermarksEvent previous)
                     {
-                        foreach(var name in previous.WatermarkNames)
+                        foreach (var name in previous.WatermarkNames)
                         {
                             uniqueNames.Add(name);
                         }
@@ -387,7 +390,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 }
                 _targetWatermarkNames = targetsWatermarks.ToArray();
                 _currentWatermark = new Watermark(uniqueNames.Select(x => new KeyValuePair<string, long>(x, -1)).ToImmutableDictionary(), DateTimeOffset.UtcNow);
-                
+
 
                 return initWatermarksEvent;
             }
@@ -457,7 +460,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 #pragma warning disable CS8619 // Nullability of reference types in value doesn't match target type.
                     checkpoints = _targetInCheckpoint.ToArray();
 #pragma warning restore CS8619 // Nullability of reference types in value doesn't match target type.
-                              // Reset
+                    // Reset
                     for (int i = 0; i < _targetInCheckpoint.Length; i++)
                     {
                         _targetInCheckpoint[i] = null;
@@ -489,7 +492,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             {
                 tokenSource.Cancel();
             }
-            
+
             _transformBlock.Complete();
         }
 
@@ -506,7 +509,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             {
                 tokenSource.Cancel();
             }
-            
+
             (_transformBlock as IDataflowBlock).Fault(exception);
         }
 
@@ -670,7 +673,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             _name = operatorName;
             _streamName = streamName;
 
-            foreach(var target in Targets)
+            foreach (var target in Targets)
             {
                 target.Setup(operatorName);
             }

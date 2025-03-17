@@ -32,13 +32,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return EndTable();
         }
 
-        private void KeyValueAddKey(int keyOffset) 
-        { 
-            AddOffset(0, keyOffset, 0); 
+        private void KeyValueAddKey(int keyOffset)
+        {
+            AddOffset(0, keyOffset, 0);
         }
-        public void KeyValueAddValue(int valueOffset) 
-        { 
-            AddOffset(1, valueOffset, 0); 
+        public void KeyValueAddValue(int valueOffset)
+        {
+            AddOffset(1, valueOffset, 0);
         }
     }
 }

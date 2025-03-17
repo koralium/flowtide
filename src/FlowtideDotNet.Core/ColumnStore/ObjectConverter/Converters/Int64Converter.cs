@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             {
                 throw new NotImplementedException();
             }
-            
+
         }
 
         public void Serialize(object obj, ref AddToColumnFunc addFunc)

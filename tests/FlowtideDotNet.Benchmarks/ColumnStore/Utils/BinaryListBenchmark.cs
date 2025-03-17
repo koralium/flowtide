@@ -64,9 +64,9 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
             {
                 bl.Add(item);
             }
-            
+
         }
 
-        
+
     }
 }

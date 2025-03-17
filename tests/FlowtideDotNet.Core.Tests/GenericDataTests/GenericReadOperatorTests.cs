@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             {
                 builder.AddGenericDataTable<User>("users");
             });
-            
+
             await stream.StartStream(@"
                 INSERT INTO output
                 SELECT 
@@ -105,7 +105,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             ");
             await stream.WaitForUpdate();
 
-            stream.AssertCurrentDataEqual(new List<User>() { new User { UserKey = 1, FirstName = "Test" } }.Select(x => new {x.UserKey, x.FirstName}));
+            stream.AssertCurrentDataEqual(new List<User>() { new User { UserKey = 1, FirstName = "Test" } }.Select(x => new { x.UserKey, x.FirstName }));
 
             // Update user 1
             source.AddChange(new FlowtideGenericObject<User>("1", new User { UserKey = 1, FirstName = "Test2" }, 2, false));

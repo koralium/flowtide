@@ -23,22 +23,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
             this.position = position;
         }
 
-        public CompressionType Codec 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 4); 
-                return o != 0 ? (CompressionType)ReadUtils.GetSbyte(in span, o + position) : CompressionType.LZ4_FRAME; 
-            } 
+        public CompressionType Codec
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 4);
+                return o != 0 ? (CompressionType)ReadUtils.GetSbyte(in span, o + position) : CompressionType.LZ4_FRAME;
+            }
         }
 
-        public BodyCompressionMethod Method 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 6); 
-                return o != 0 ? (BodyCompressionMethod)ReadUtils.GetSbyte(in span, o + position) : BodyCompressionMethod.BUFFER; 
-            } 
+        public BodyCompressionMethod Method
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 6);
+                return o != 0 ? (BodyCompressionMethod)ReadUtils.GetSbyte(in span, o + position) : BodyCompressionMethod.BUFFER;
+            }
         }
 
     }

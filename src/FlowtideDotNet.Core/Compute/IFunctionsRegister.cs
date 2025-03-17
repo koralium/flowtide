@@ -26,8 +26,8 @@ namespace FlowtideDotNet.Core.Compute
     public interface IFunctionsRegister
     {
         void RegisterColumnScalarFunction(
-            string uri, 
-            string name, 
+            string uri,
+            string name,
             Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, System.Linq.Expressions.Expression> mapFunc);
 
         /// <summary>
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Core.Compute
         /// <param name="uri"></param>
         /// <param name="name"></param>
         void RegisterStreamingAggregateFunction(
-            string uri, 
+            string uri,
             string name,
             Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
             Func<byte[]?, FlxValue> stateToValueFunc);
@@ -127,7 +127,7 @@ namespace FlowtideDotNet.Core.Compute
         /// <param name="mapFunc"></param>
         void RegisterTableFunction(
             string uri,
-            string name, 
+            string name,
             Func<TableFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc);
 
         bool TryGetTableFunction(string uri, string name, [NotNullWhen(true)] out TableFunctionDefinition? tableFunctionDefinition);

@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
             {
                 if (removedEnumerator.Current < addedEnumerator.Current)
                 {
-                    yield return (removedEnumerator.Current,  1);
+                    yield return (removedEnumerator.Current, 1);
                     removedHasNext = removedEnumerator.MoveNext();
                 }
                 else if (removedEnumerator.Current == addedEnumerator.Current)

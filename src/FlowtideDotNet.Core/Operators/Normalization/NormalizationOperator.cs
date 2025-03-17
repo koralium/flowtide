@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         public override string DisplayName => "Normalize";
 
         public NormalizationOperator(
-            NormalizationRelation normalizationRelation, 
+            NormalizationRelation normalizationRelation,
             FunctionsRegister functionsRegister,
             ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -77,12 +77,12 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             _eventsProcessed.Add(msg.Events.Count);
 
             List<RowEvent> output = new List<RowEvent>();
-            foreach(var e in msg.Events)
+            foreach (var e in msg.Events)
             {
                 if (e.Weight > 0)
                 {
                     var stringBuilder = new StringBuilder();
-                    foreach(var i in normalizationRelation.KeyIndex)
+                    foreach (var i in normalizationRelation.KeyIndex)
                     {
                         stringBuilder.Append(e.GetColumn(i).ToJson);
                         stringBuilder.Append('|');
@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                     await Delete(key, output);
                 }
             }
-            
+
 
 #if DEBUG_WRITE
             foreach(var e in output)
@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 _eventsCounter.Add(output.Count);
                 yield return new StreamEventBatch(output, normalizationRelation.OutputLength);
             }
-            
+
         }
 
         protected async Task Upsert(string ke, RowEvent input, List<RowEvent> output)
@@ -213,7 +213,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             Debug.Assert(_tree != null);
             bool isFound = false;
             IngressData? data;
-            
+
             var (op, val) = await _tree.RMW(ke, default, (input, current, found) =>
             {
                 if (found)
@@ -258,14 +258,14 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            _tree = await stateManagerClient.GetOrCreateTree("input", 
+            _tree = await stateManagerClient.GetOrCreateTree("input",
                 new BPlusTreeOptions<string, IngressData, ListKeyContainer<string>, ListValueContainer<IngressData>>()
-            {
-                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
-                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
-                ValueSerializer = new ValueListSerializer<IngressData>(new IngressDataStateSerializer()),
-                MemoryAllocator = MemoryAllocator
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                    KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                    ValueSerializer = new ValueListSerializer<IngressData>(new IngressDataStateSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
         }
 
         public override ValueTask DisposeAsync()

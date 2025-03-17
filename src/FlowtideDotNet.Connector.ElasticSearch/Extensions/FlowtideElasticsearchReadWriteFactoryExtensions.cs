@@ -20,9 +20,9 @@ namespace FlowtideDotNet.Core.Engine
     public static class FlowtideElasticsearchReadWriteFactoryExtensions
     {
         public static ReadWriteFactory AddElasticsearchSink(
-            this ReadWriteFactory factory, 
-            string regexPattern, 
-            FlowtideElasticsearchOptions options, 
+            this ReadWriteFactory factory,
+            string regexPattern,
+            FlowtideElasticsearchOptions options,
             Action<WriteRelation>? transform = null)
         {
             if (regexPattern == "*")

@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public Int64Column()
         {
-            
+
         }
 
         public void Assign(IMemoryAllocator memoryAllocator)
@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data = NativeLongListFactory.Get(memory, length, memoryAllocator);
         }
 
-        public int Add<T>(in T value) where T: IDataValue
+        public int Add<T>(in T value) where T : IDataValue
         {
             Debug.Assert(_data != null);
             var index = _data.Count;
@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             Debug.Assert(_data != null);
-            
+
             if (otherColumn is Int64Column int64Column)
             {
                 Debug.Assert(int64Column._data != null);
@@ -122,7 +122,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
-            where T: IDataValue
+            where T : IDataValue
         {
             Debug.Assert(_data != null);
             var val = dataValue.AsLong;

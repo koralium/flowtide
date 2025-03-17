@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Substrait.Sql
         public void AddPlanAsView(string viewName, Plan plan)
         {
             List<string>? names = default;
-            for(int i = 0; i < plan.Relations.Count; i++)
+            for (int i = 0; i < plan.Relations.Count; i++)
             {
                 if (plan.Relations[i] is RootRelation rootRelation)
                 {
@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Substrait.Sql
 
         public void Sql(string sqlText)
         {
-            
+
             var statements = _parser.ParseSql(sqlText, new FlowtideDialect(), new ParserOptions()
             {
                 RecursionLimit = 100000

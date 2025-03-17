@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Substrait
         }
 
         [Obsolete("Use inserts with SQL instead")]
-        public PlanModifier WriteToTable(string tableName) 
+        public PlanModifier WriteToTable(string tableName)
         {
             _writeToTables.Add(tableName);
             return this;

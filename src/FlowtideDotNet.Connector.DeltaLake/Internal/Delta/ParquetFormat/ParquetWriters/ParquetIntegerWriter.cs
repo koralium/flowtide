@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _maxValue = null;
             _nullCount = 0;
         }
-            
+
         public void WriteNull()
         {
             Debug.Assert(_builder != null);

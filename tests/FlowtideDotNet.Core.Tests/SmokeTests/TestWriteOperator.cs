@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 {
                     var primaryKeyIndex = primaryKeyIds[i];
                     keyBuilder.Append(m.GetColumn(primaryKeyIndex).ToJson);
-                    if ((i+ 1) < primaryKeyIds.Count)
+                    if ((i + 1) < primaryKeyIds.Count)
                     {
                         keyBuilder.Append("|");
                     }
@@ -115,7 +115,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 if (rows.Count >= 1 && !isDeleted)
                 {
                     List<T> newDataList = new List<T>();
-                    foreach(var ev in rows)
+                    foreach (var ev in rows)
                     {
                         newDataList.Add(Deserialize(ev));
                     }

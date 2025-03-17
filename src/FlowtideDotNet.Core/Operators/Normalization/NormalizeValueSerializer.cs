@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         public NormalizeValueStorage CreateEmpty()
         {
-            return new NormalizeValueStorage(_columnsToStore, _memoryAllocator);    
+            return new NormalizeValueStorage(_columnsToStore, _memoryAllocator);
         }
 
         public NormalizeValueStorage Deserialize(ref SequenceReader<byte> reader)

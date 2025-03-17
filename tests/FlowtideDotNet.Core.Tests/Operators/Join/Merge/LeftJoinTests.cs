@@ -291,7 +291,7 @@
 //                Assert.Fail("Expected event batch");
 //            }
 
-            
+
 
 //            response = await recieveBuffer.ReceiveAsync();
 //            if (response is StreamMessage<StreamEventBatch> eventBatchChange)

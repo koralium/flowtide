@@ -42,7 +42,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public MockDataSink(
             WriteRelation writeRelation,
-            ExecutionDataflowBlockOptions executionDataflowBlockOptions, 
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions,
             Action<EventBatchData> onDataChange,
             int crashOnCheckpointCount,
             Action<Watermark> onWatermark) : base(executionDataflowBlockOptions)
@@ -152,7 +152,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 onDataChange(newData);
                 watermarkRecieved = false;
             }
-            
+
         }
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)

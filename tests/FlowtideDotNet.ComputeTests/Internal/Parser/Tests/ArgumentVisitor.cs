@@ -118,12 +118,12 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
         public override IDataValue VisitListArg([NotNull] FuncTestCaseParser.ListArgContext context)
         {
             var elemType = new ListTypeVisitor().Visit(context.listType());
-            
+
             dataType = elemType.GetText();
             var literalList = context.literalList();
 
             List<IDataValue> values = new List<IDataValue>();
-            foreach(var literal in literalList.literal())
+            foreach (var literal in literalList.literal())
             {
                 values.Add(Visit(literal));
             }

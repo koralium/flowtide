@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Core.Operators.Project
         public ProjectOperator(ProjectRelation projectRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             _expressions = new Func<RowEvent, FlxValue>[projectRelation.Expressions.Count];
-            
+
             for (int i = 0; i < _expressions.Length; i++)
             {
                 _expressions[i] = ProjectCompiler.Compile(projectRelation.Expressions[i], functionsRegister);
@@ -80,7 +80,7 @@ namespace FlowtideDotNet.Core.Operators.Project
 #endif
                 FlxValue[] extraFelds = new FlxValue[_expressions.Length];
 
-                for(int i = 0; i < _expressions.Length; i++)
+                for (int i = 0; i < _expressions.Length; i++)
                 {
                     extraFelds[i] = _expressions[i](e);
                 }
@@ -156,7 +156,7 @@ namespace FlowtideDotNet.Core.Operators.Project
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            
+
             return Task.CompletedTask;
         }
     }

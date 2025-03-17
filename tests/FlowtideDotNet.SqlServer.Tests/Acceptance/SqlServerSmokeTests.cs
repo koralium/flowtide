@@ -230,7 +230,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             sink.CreateBlock();
             sink.Link();
 
-            
+
             await sink.Initialize("1", 0, 0, vertexHandler);
 
             await sink.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(new List<RowEvent>()
@@ -256,7 +256,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                         return reader.Read();
                     });
 
-                if(hasRow)
+                if (hasRow)
                 {
                     break;
                 }

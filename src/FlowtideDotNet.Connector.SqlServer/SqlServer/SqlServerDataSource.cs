@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             this.connectionStringFunc = connectionStringFunc;
             _tableName = tableName;
             this.readRelation = readRelation;
-            
+
             _watermarks = new HashSet<string>() { _tableName };
             _displayName = "SqlServer-" + tableName;
 
@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     }
                 }
             }
-            
+
             //_streamEventCreator = SqlServerUtils.GetStreamEventCreator(readRelation);
         }
 
@@ -146,7 +146,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 _state.Value.ChangeTrackingVersion = changeVersion;
                 SetHealth(true);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 SetHealth(false);
                 Logger.ExceptionFetchingChanges(ex, StreamName, Name);
@@ -158,7 +158,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 _state.Value.ChangeTrackingVersion = previousChangeVersion;
                 result.Clear();
             }
-            
+
 
             if (result.Count > 0)
             {
@@ -169,7 +169,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.Value.ChangeTrackingVersion));
                 this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }
-            
+
             output.ExitCheckpointLock();
         }
 
@@ -221,7 +221,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 var columnSchema = await reader.GetColumnSchemaAsync();
                 _streamEventCreator = SqlServerUtils.GetStreamEventCreator(columnSchema);
             }
-                
+
             primaryKeys = await SqlServerUtils.GetPrimaryKeys(sqlConnection, _tableName);
         }
 
@@ -269,7 +269,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             Debug.Assert(primaryKeys != null);
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_eventsProcessed != null);
-            
+
             // Check if we have never read the initial data before
             if (_state.Value.ChangeTrackingVersion < 0)
             {
@@ -284,7 +284,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 int batchSize = 10000;
                 List<RowEvent> cache = new List<RowEvent>();
                 int retryCount = 0;
-                while(true)
+                while (true)
                 {
                     try
                     {
@@ -318,7 +318,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             break;
                         }
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
                         SetHealth(false);
                         Logger.ErrorReadingData(e, _tableName, StreamName, Name);
@@ -331,7 +331,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         Logger.RetryingCount(retryCount, StreamName, Name);
                         await sqlConnection.DisposeAsync();
 
-                        
+
                         // Recreate the connection
                         sqlConnection = new SqlConnection(connectionStringFunc());
                         await sqlConnection.OpenAsync(output.CancellationToken);

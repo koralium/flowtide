@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Core.Operators.Project
                     _expressions[k](data.EventBatchData, i, projectionColumns[k]);
                 }
             }
-                
+
             if (projectRelation.EmitSet)
             {
                 IColumn[] outputColumns = new IColumn[projectRelation.OutputLength];

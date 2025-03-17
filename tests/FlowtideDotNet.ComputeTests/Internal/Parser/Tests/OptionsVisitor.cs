@@ -20,7 +20,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
         {
             var options = context.funcOption();
             SortedList<string, string> result = new SortedList<string, string>();
-            for(int i = 0; i < options.Length; i++)
+            for (int i = 0; i < options.Length; i++)
             {
                 var option = (KeyValuePair<string, string>)VisitFuncOption(options[i]);
                 result.Add(option.Key, option.Value);
