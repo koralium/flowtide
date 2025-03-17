@@ -20,9 +20,9 @@ namespace FlowtideDotNet.TestFramework.Tests
     public class IntegrationTests : IDisposable
     {
         private readonly WebApplicationFactory<Program> _factory;
-        private TestDataSink _sink;
-        private TestDataTable _source;
-        private StreamTestMonitor _inProcessMonitor;
+        private readonly TestDataSink _sink;
+        private readonly TestDataTable _source;
+        private readonly StreamTestMonitor _inProcessMonitor;
 
         public IntegrationTests()
         {
