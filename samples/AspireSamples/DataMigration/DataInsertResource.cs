@@ -92,7 +92,7 @@ namespace AspireSamples.DataMigration
                     });
                     try
                     {
-                        await dataInsertResource.initialInsert(logger, statusUpdater, tokenSource.Token);
+                        await dataInsertResource.initialInsert(logger, statusUpdater, dataInsertResource, tokenSource.Token);
                     }
                     catch (Exception e)
                     {
@@ -112,7 +112,7 @@ namespace AspireSamples.DataMigration
                         State = "Running"
                     });
 
-                    await dataInsertResource.afterStart(logger, tokenSource.Token);
+                    await dataInsertResource.afterStart(logger, dataInsertResource, tokenSource.Token);
 
                     await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
                     {
@@ -132,11 +132,11 @@ namespace AspireSamples.DataMigration
         }
     }
 
-    internal class DataInsertResource : Resource, IResourceWithWaitSupport
+    internal class DataInsertResource : Resource, IResourceWithWaitSupport, IResourceWithEnvironment
     {
-        internal readonly Func<ILogger, Action<string>, CancellationToken, Task> initialInsert;
-        internal readonly Func<ILogger, CancellationToken, Task> afterStart;
-        public DataInsertResource(string name, Func<ILogger, Action<string>, CancellationToken, Task> initialInsert, Func<ILogger, CancellationToken, Task> afterStart) : base(name)
+        internal readonly Func<ILogger, Action<string>, DataInsertResource, CancellationToken, Task> initialInsert;
+        internal readonly Func<ILogger, DataInsertResource, CancellationToken, Task> afterStart;
+        public DataInsertResource(string name, Func<ILogger, Action<string>, DataInsertResource, CancellationToken, Task> initialInsert, Func<ILogger, DataInsertResource, CancellationToken, Task> afterStart) : base(name)
         {
             this.initialInsert = initialInsert;
             this.afterStart = afterStart;
@@ -145,8 +145,8 @@ namespace AspireSamples.DataMigration
         public static IResourceBuilder<DataInsertResource> AddDataInsert(
             IDistributedApplicationBuilder builder,
             string name,
-            Func<ILogger, Action<string>, CancellationToken, Task> before,
-            Func<ILogger, CancellationToken, Task> after
+            Func<ILogger, Action<string>, DataInsertResource, CancellationToken, Task> before,
+            Func<ILogger, DataInsertResource, CancellationToken, Task> after
             )
         {
             var resource = new DataInsertResource(name, before, after);

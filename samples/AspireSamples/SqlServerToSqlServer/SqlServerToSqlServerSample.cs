@@ -41,7 +41,7 @@ namespace SqlServerToSqlServerAspire.SqlServerToSqlServer
             DataGenerator dataGenerator = new DataGenerator();
 
             var dataInsert = DataInsertResource.AddDataInsert(builder, "data-insert",
-                async (logger, statusUpdate, token) =>
+                async (logger, statusUpdate, resource, token) =>
                 {
                     // Create destination tables
                     var connectionStringDb2 = await sqldb2.Resource.GetConnectionStringAsync();
@@ -159,7 +159,7 @@ namespace SqlServerToSqlServerAspire.SqlServerToSqlServer
 
                     await ctx.SaveChangesAsync();
                 },
-                async (logger, token) =>
+                async (logger, resource, token) =>
                 {
                     // Update loop
                     var connectionString = await sqldb1.Resource.GetConnectionStringAsync();

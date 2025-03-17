@@ -77,4 +77,10 @@ var app = builder.Build();
 app.UseFlowtideUI("/stream");
 app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
+if (builder.Configuration.GetValue<bool>("TEST_MODE"))
+{
+    // If we are in test mode, map the test endpoint
+    app.MapFlowtideTestInformation();
+}
+
 app.Run();
