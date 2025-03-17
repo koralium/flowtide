@@ -17,7 +17,6 @@ using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Immutable;
-using ZstdSharp;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {

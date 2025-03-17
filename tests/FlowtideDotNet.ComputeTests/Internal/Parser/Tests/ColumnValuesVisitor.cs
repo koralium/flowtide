@@ -13,9 +13,6 @@
 using Antlr4.Runtime.Misc;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.Memory;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
 {

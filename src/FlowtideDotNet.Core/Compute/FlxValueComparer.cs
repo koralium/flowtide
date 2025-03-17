@@ -10,9 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Flexbuffer;
 using FlexBuffers;
-using SqlParser.Ast;
+using FlowtideDotNet.Core.Flexbuffer;
 using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Core.Compute

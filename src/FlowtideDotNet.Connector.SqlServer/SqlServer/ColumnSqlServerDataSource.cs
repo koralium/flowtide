@@ -14,7 +14,6 @@ using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Storage.DataStructures;
@@ -23,7 +22,6 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
 using Microsoft.Data.SqlClient;
 using System.Diagnostics;
-using System.Resources;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.SqlServer.SqlServer

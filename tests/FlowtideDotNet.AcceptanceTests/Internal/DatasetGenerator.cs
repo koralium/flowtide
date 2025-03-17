@@ -12,7 +12,6 @@
 
 using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
-using static SqlParser.Ast.Statement;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {

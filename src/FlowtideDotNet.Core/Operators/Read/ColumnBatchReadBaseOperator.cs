@@ -10,31 +10,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Operators.Normalization;
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Substrait.CustomProtobuf;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static SqlParser.Ast.DataType;
-using static SqlParser.Ast.Expression;
-using FlowtideDotNet.Storage.DataStructures;
-using FlowtideDotNet.Core.ColumnStore.Comparers;
-using FlowtideDotNet.Storage.Serializers;
-using FlowtideDotNet.Base;
-using System.Runtime.CompilerServices;
-using FlowtideDotNet.Base.Metrics;
 
 namespace FlowtideDotNet.Core.Operators.Read
 {

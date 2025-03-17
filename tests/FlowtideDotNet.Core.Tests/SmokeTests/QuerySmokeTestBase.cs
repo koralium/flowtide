@@ -10,18 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FASTER.core;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Optimizer;
-using FlowtideDotNet.Storage.DeviceFactories;
-using FlowtideDotNet.Substrait;
+using FlowtideDotNet.Core.Tests.SmokeTests.Count;
 using FlowtideDotNet.Core.Tests.SmokeTests.LineItemLeftJoinOrders;
 using FlowtideDotNet.Core.Tests.SmokeTests.StringJoin;
-using FASTER.core;
-using System.Diagnostics;
-using FlowtideDotNet.Core.Tests.SmokeTests.Count;
+using FlowtideDotNet.Storage.DeviceFactories;
+using FlowtideDotNet.Substrait;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Tests.SmokeTests
 {

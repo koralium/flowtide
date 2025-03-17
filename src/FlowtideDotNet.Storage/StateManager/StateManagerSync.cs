@@ -10,18 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.StateManager.Internal;
-using FlowtideDotNet.Storage.StateManager.Internal.Sync;
-using System.Diagnostics;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
-using Microsoft.Extensions.Logging;
-using System.Diagnostics.Metrics;
-using System.Diagnostics.CodeAnalysis;
-using static FlowtideDotNet.Storage.StateManager.Internal.Sync.LruTableSync;
+using FlowtideDotNet.Storage.StateManager.Internal;
 using FlowtideDotNet.Storage.StateManager.Internal.ObjectState;
-using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager.Internal.Sync;
+using Microsoft.Extensions.Logging;
 using System.Buffers;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Metrics;
+using static FlowtideDotNet.Storage.StateManager.Internal.Sync.LruTableSync;
 
 namespace FlowtideDotNet.Storage.StateManager
 {

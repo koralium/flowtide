@@ -13,8 +13,6 @@
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers;
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Sources.Generic;
 using FlowtideDotNet.Substrait.Sql;
 

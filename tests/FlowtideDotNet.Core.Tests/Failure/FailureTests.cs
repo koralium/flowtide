@@ -13,10 +13,8 @@
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Storage.DeviceFactories;
-using FlowtideDotNet.Substrait.Conversion;
 using FlowtideDotNet.Substrait;
-using FASTER.core;
-using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Substrait.Conversion;
 
 namespace FlowtideDotNet.Core.Tests.Failure
 {

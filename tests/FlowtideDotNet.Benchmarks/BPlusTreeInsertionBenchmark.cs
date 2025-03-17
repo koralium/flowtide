@@ -11,13 +11,13 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
+using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FASTER.core;
 using Microsoft.Extensions.Logging.Abstractions;
-using FlowtideDotNet.Storage.Memory;
 using System.Diagnostics;
 
 namespace DifferntialCompute.Benchmarks

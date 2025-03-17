@@ -12,7 +12,6 @@
 
 using Authzed.Api.V1;
 using Authzed.Internal;
-using FlexBuffers;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Connector.SpiceDB.Internal.SchemaParser;
@@ -21,16 +20,9 @@ using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Grpc.Core;
-using Microsoft.Extensions.Logging;
-using SqlParser;
-using System;
-using System.Buffers;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Internal

@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Zanzibar.QueryPlanner.Models;
-using System.Reflection.Metadata;
 
 namespace FlowtideDotNet.Zanzibar.QueryPlanner
 {

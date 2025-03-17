@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.ComputeTests;
 using Xunit.Sdk;
 using Xunit.v3;
 

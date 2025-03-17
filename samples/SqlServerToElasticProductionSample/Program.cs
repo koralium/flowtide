@@ -10,12 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Elastic.Clients.Elasticsearch;
 using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Engine;
-using OpenTelemetry.Metrics;
 using FlowtideDotNet.DependencyInjection;
-using Elastic.Clients.Elasticsearch;
+using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 

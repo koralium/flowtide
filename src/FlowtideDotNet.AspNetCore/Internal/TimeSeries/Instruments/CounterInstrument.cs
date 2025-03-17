@@ -11,8 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.AspNetCore.Internal.TimeSeries.Utils;
-using System.Collections.Concurrent;
-using System.Text;
 
 namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
 {

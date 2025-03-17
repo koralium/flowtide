@@ -10,20 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Compute.Internal;
-using FlowtideDotNet.Core.Compute;
-using FlowtideDotNet.Storage.StateManager;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
-using FlowtideDotNet.Substrait.Expressions;
-using FlowtideDotNet.Core.Compute.Columnar;
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Expressions;
+using System.Linq.Expressions;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 {

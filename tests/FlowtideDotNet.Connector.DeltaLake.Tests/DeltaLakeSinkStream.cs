@@ -13,11 +13,6 @@
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core;
 using Stowage;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {

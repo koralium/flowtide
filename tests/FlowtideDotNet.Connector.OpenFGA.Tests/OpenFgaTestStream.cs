@@ -13,16 +13,8 @@
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.OpenFGA.Extensions;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Core.Engine;
 using OpenFga.Sdk.Client;
-using OpenFga.Sdk.Client.Model;
 using OpenFga.Sdk.Model;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Tests
 {

@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using System.Diagnostics;
-using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.StateManager
 {

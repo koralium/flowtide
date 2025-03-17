@@ -12,8 +12,6 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.ColumnStore;
-using Microsoft.Extensions.Logging;
-using System.Diagnostics.Tracing;
 
 namespace FlowtideDotNet.Core
 {

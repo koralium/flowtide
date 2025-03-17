@@ -10,13 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Protobuf = Substrait.Protobuf;
-using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Expressions;
-using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
+using FlowtideDotNet.Substrait.Expressions.Literals;
+using FlowtideDotNet.Substrait.Relations;
 using Google.Protobuf;
 using Substrait.Protobuf;
+using Protobuf = Substrait.Protobuf;
 
 namespace FlowtideDotNet.Substrait
 {

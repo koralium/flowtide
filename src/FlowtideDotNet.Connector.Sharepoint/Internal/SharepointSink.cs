@@ -22,7 +22,6 @@ using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
-using Substrait.Protobuf;
 using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks.Dataflow;

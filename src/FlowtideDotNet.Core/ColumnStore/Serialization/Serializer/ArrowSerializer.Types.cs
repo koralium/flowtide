@@ -10,16 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow.Types;
-using FlexBuffers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.ExactNumberInfo;
-
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
     internal enum ArrowType : byte

@@ -13,12 +13,8 @@
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
 {

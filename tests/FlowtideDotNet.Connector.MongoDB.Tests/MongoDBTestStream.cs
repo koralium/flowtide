@@ -13,8 +13,6 @@
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.MongoDB.Extensions;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Core.Engine;
 using MongoDB.Bson;
 using MongoDB.Driver;
 

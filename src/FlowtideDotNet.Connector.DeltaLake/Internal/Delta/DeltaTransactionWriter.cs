@@ -12,12 +12,7 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using Stowage;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 {

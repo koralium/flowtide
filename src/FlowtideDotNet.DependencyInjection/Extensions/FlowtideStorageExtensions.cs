@@ -17,7 +17,6 @@ using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.IO.Compression;
 
 namespace FlowtideDotNet.DependencyInjection
 {

@@ -10,13 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
+using System.Text.Json.Serialization;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
 {

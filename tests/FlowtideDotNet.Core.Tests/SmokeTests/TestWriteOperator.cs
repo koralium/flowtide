@@ -10,16 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlexBuffers;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.StateManager;
-using FlexBuffers;
 using FlowtideDotNet.Substrait.Relations;
-using System.Text;
-using System.Threading.Tasks.Dataflow;
-using System.Text.Json;
-using System.Globalization;
 using System.Diagnostics;
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Tests.SmokeTests
 {

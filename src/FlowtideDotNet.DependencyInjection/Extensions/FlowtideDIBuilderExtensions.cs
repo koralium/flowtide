@@ -15,11 +15,6 @@ using FlowtideDotNet.DependencyInjection.Internal;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.DependencyInjection
 {

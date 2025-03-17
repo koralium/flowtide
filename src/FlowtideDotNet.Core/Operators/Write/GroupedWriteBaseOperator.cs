@@ -11,12 +11,12 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.Egress;
-using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.Compute.Group;
+using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Storage.Serializers;
 using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Write
 {

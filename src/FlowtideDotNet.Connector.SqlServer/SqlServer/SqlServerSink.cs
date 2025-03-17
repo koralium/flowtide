@@ -10,21 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.SqlServer;
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using Microsoft.Data.SqlClient;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
+using Microsoft.Data.SqlClient;
 using System.Data;
-using System.Threading.Tasks.Dataflow;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-using FlowtideDotNet.Connector.SqlServer.SqlServer;
-using FlowtideDotNet.Connector.SqlServer;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.SqlServer.SqlServer
 {

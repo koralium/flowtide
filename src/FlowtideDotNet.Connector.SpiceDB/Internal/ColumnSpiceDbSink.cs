@@ -14,20 +14,13 @@ using Authzed.Api.V1;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Operators.Write.Column;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Grpc.Core;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Internal

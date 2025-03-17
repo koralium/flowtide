@@ -19,21 +19,9 @@ using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Grpc.Core;
-using Grpc.Gateway.ProtocGenOpenapiv2.Options;
-using Grpc.Net.Client;
-using Microsoft.Extensions.Logging;
-using Substrait.Protobuf;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Tracing;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static Grpc.Core.Metadata;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Internal
 {

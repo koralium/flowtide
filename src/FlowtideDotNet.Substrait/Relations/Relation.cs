@@ -11,8 +11,6 @@
 // limitations under the License.
 
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Substrait.Relations
 {

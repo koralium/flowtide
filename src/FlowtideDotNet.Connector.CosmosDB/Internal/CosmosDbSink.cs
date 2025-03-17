@@ -18,7 +18,6 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 

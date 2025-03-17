@@ -10,20 +10,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.MultipleInput;
-using FlowtideDotNet.Core.Operators.Join.NestedLoopJoin;
-using FlowtideDotNet.Substrait.Relations;
-using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Storage.StateManager;
-using FlowtideDotNet.Storage.Tree;
-using Microsoft.Extensions.Logging;
-using System.Buffers;
-using System.Diagnostics;
-using FlowtideDotNet.Core.Compute.Internal;
-using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.Operators.Join.NestedLoopJoin;
 using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.Serializers;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Substrait.Relations;
+using System.Buffers;
+using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {

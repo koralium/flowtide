@@ -18,14 +18,8 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.Statement;
 
 namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
 {

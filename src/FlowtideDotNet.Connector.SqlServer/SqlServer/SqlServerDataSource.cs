@@ -10,19 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Read;
-using FlowtideDotNet.Storage.StateManager;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Logging;
-using FlowtideDotNet.Substrait.Relations;
-using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.SqlServer.SqlServer;
-using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Data.SqlClient;
 using System.Diagnostics;
-using FlowtideDotNet.Connector.SqlServer.SqlServer;
-using Substrait.Protobuf;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {

@@ -12,11 +12,6 @@
 
 using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
 {

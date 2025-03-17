@@ -11,15 +11,14 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Storage.StateManager;
-using FlexBuffers;
-using FlowtideDotNet.Substrait.Relations;
-using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Core.Compute.Columnar;
-using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.VirtualTable
 {

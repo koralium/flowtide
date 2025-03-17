@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector;
 using FlowtideDotNet.Connector.Sharepoint;
 using FlowtideDotNet.Connector.Sharepoint.Internal;
 using FlowtideDotNet.Substrait.Relations;

@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using FlowtideDotNet.Base;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
@@ -23,26 +22,16 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Storage.Tree.Internal;
-using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Relations;
-using Microsoft.Extensions.Options;
 using Stowage;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static SqlParser.Ast.Privileges;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal
 {

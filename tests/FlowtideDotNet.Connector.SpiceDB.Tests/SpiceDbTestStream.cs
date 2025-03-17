@@ -14,8 +14,6 @@ using Authzed.Api.V1;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.SpiceDB.Extensions;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Core.Engine;
 using Grpc.Core;
 using Grpc.Net.Client;
 

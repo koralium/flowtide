@@ -10,8 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.Persistence;
 using FASTER.core;
+using FlowtideDotNet.Storage.Persistence;
 
 namespace FlowtideDotNet.Storage.StateManager
 {

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
@@ -17,11 +18,10 @@ using FlowtideDotNet.Engine.FailureStrategies;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Extensions.Options;
-using FlowtideDotNet.Base;
 
 namespace FlowtideDotNet.Core.Engine
 {

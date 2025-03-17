@@ -10,20 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core;
 using FlexBuffers;
-using Microsoft.Data.SqlClient;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Type;
+using Microsoft.Data.SqlClient;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Text;
-using Microsoft.Extensions.Primitives;
-using FlowtideDotNet.Core.ColumnStore;
-using System.Collections.Generic;
-using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Substrait.Type;
-using FlowtideDotNet.Core.Exceptions;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer

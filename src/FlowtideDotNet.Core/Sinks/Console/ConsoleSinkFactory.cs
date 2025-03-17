@@ -14,14 +14,7 @@ using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Core.Sinks
 {

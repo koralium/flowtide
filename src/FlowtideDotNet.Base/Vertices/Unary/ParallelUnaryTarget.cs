@@ -10,10 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using DataflowStream.dataflow.Internal.Extensions;
 using DataflowStream.dataflow.Internal;
-using System.Diagnostics.CodeAnalysis;
+using DataflowStream.dataflow.Internal.Extensions;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.Unary

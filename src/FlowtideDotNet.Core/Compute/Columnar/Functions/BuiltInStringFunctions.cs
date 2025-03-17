@@ -10,23 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.StringAgg;
-using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {

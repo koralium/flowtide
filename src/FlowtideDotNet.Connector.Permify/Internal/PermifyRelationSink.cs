@@ -11,13 +11,13 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Core.Operators.Write;
+using FlowtideDotNet.Substrait.Relations;
+using Grpc.Core;
+using System.Globalization;
 using System.Threading.Tasks.Dataflow;
 using PermifyProto=Base.V1;
-using FlowtideDotNet.Substrait.Relations;
-using FlowtideDotNet.Core.Flexbuffer;
-using System.Globalization;
-using Grpc.Core;
 
 namespace FlowtideDotNet.Connector.Permify.Internal
 {

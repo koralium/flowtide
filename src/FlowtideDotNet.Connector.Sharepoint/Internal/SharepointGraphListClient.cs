@@ -11,19 +11,13 @@
 // limitations under the License.
 
 using Azure.Core;
-using FlexBuffers;
 using FlowtideDotNet.Connector.Sharepoint.Internal.Decoders;
 using FlowtideDotNet.Connector.Sharepoint.Internal.Encoders;
-using FlowtideDotNet.Core;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
-using Microsoft.Kiota.Http.HttpClientLibrary.Middleware;
-using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
-using System.Buffers;
-using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text;
 

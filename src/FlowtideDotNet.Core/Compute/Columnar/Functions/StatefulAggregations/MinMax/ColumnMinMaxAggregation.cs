@@ -10,16 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Linq.Expressions;
-using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.MinMax
 {

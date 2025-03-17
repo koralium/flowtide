@@ -12,7 +12,6 @@
 
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
-using Testcontainers.MongoDb;
 
 namespace FlowtideDotNet.Connector.MongoDB.Tests
 {

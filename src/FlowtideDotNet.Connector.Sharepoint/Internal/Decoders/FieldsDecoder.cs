@@ -13,15 +13,8 @@
 using FlexBuffers;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Graph.Models;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.ConflictTarget;
-using static Substrait.Protobuf.FunctionSignature.Types;
 
 namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 {

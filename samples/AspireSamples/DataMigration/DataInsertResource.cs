@@ -10,19 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Aspire.Hosting.ApplicationModel;
-using Aspire.Hosting.Azure;
 using Aspire.Hosting.Lifecycle;
-using Azure.ResourceManager;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace AspireSamples.DataMigration
 {

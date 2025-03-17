@@ -10,11 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Optimizer.EmitPushdown;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.Literals;
-using FlowtideDotNet.Substrait.Relations;
-using FlowtideDotNet.Core.Optimizer.EmitPushdown;
 using FlowtideDotNet.Substrait.FunctionExtensions;
+using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
 {

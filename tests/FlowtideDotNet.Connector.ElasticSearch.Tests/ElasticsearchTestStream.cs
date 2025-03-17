@@ -16,7 +16,6 @@ using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Connector.CosmosDB.Tests;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Substrait.Relations;
 

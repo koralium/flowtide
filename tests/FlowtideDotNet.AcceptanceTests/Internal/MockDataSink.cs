@@ -10,18 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.Operators.Set;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
-using System.Buffers;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 

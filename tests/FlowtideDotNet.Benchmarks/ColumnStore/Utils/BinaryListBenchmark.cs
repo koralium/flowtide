@@ -13,12 +13,6 @@
 using BenchmarkDotNet.Attributes;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
-using Substrait.Protobuf;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
 {

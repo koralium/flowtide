@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Engine;
-using FlowtideDotNet.Base.Engine.Internal;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Engine.FailureStrategies

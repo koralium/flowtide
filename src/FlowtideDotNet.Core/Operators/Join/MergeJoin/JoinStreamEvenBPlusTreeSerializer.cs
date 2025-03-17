@@ -10,8 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.Tree;
 using FlexBuffers;
+using FlowtideDotNet.Storage.Tree;
 using System.Buffers;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin

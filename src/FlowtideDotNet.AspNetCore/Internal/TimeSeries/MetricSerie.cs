@@ -11,8 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.AppendTree.Internal;
-using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Storage.Tree.Internal;
 
 namespace FlowtideDotNet.AspNetCore.TimeSeries
 {

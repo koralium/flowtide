@@ -12,11 +12,6 @@
 
 using Antlr4.Runtime.Misc;
 using FlowtideDotNet.ComputeTests.Internal.Parser;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.ComputeTests.Internal.Tests
 {

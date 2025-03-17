@@ -19,7 +19,6 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using Stowage;
-using System.IO;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 {

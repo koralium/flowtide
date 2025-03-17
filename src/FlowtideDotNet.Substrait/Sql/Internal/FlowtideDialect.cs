@@ -15,7 +15,6 @@ using SqlParser.Ast;
 using SqlParser.Dialects;
 using SqlParser.Tokens;
 using System.Text;
-using static SqlParser.Ast.Statement;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {

@@ -12,9 +12,7 @@
 
 using FlowtideDotNet.Connector.SqlServer;
 using FlowtideDotNet.Connector.SqlServer.SqlServer;
-using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
-using FlowtideDotNet.Substrait.Tests.SqlServer;
 using FlowtideDotNet.Substrait.Type;
 using System.Text.RegularExpressions;
 

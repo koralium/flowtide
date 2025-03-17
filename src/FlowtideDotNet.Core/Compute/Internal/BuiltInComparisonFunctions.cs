@@ -13,7 +13,6 @@
 using FlexBuffers;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Diagnostics;
-using System.Reflection;
 
 namespace FlowtideDotNet.Core.Compute.Internal
 {

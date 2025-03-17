@@ -11,17 +11,9 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.ColumnStore.Utils;
-using FlowtideDotNet.Core.Operators.Normalization;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 {

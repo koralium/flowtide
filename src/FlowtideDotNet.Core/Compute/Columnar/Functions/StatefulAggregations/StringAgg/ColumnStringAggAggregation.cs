@@ -10,26 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.ListAgg;
 using FlowtideDotNet.Core.Compute.Internal;
-using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.Expression;
-using static SqlParser.Ast.Statement;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.StringAgg
 {

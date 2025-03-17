@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager.Internal;
-using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Text;
 

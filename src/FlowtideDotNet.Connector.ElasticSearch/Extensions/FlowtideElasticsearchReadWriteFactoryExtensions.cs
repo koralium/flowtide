@@ -14,7 +14,6 @@ using FlowtideDotNet.Connector.ElasticSearch;
 using FlowtideDotNet.Connector.ElasticSearch.Internal;
 using FlowtideDotNet.Substrait.Relations;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Engine
 {

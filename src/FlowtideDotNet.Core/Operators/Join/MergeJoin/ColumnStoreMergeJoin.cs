@@ -15,27 +15,16 @@ using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Compute;
-using FlowtideDotNet.Core.Operators.Join.NestedLoopJoin;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Utils;
-using FlowtideDotNet.Storage.Serializers;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Core.ColumnStore.Utils;
-using FlowtideDotNet.Core.Compute.Columnar;
-using FlowtideDotNet.Storage.DataStructures;
-using FlowtideDotNet.Storage.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {

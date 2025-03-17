@@ -11,8 +11,6 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using FlowtideDotNet.Storage.Memory;
-using System.Buffers;
 using System.Buffers.Binary;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer

@@ -12,7 +12,6 @@
 
 
 using FlowtideDotNet.AspNetCore.Internal.TimeSeries.Utils;
-using System.Collections.Concurrent;
 
 namespace FlowtideDotNet.AspNetCore.TimeSeries.Instruments
 {

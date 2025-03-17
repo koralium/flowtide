@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Metrics;
-using System.Text.Json;
 
 namespace FlowtideDotNet.Base.Engine
 {

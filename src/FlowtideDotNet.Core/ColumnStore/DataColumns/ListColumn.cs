@@ -10,24 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow.Types;
 using Apache.Arrow;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
-using FlowtideDotNet.Core.ColumnStore.Serialization;
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using static Substrait.Protobuf.Expression.Types.Literal.Types;
 using System.Collections;
-using static SqlParser.Ast.TableConstraint;
-using FlowtideDotNet.Storage.Memory;
 using System.Text.Json;
-using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {

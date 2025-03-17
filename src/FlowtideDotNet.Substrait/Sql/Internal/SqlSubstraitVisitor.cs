@@ -15,11 +15,8 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 using SqlParser.Ast;
-using SqlParser.Tokens;
-using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {

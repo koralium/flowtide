@@ -16,13 +16,8 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using Stowage;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {

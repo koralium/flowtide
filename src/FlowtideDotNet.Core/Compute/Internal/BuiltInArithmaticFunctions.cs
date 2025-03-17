@@ -14,7 +14,6 @@ using FlexBuffers;
 using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Buffers.Binary;
-using System.ComponentModel.Design;
 using System.Linq.Expressions;
 
 namespace FlowtideDotNet.Core.Compute.Internal

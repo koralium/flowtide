@@ -10,15 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
-using FASTER.core;
-using FlowtideDotNet.Storage.Persistence.FasterStorage;
+using FlowtideDotNet.Storage.Tree;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.Metrics;
-using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Storage.Tests
 {

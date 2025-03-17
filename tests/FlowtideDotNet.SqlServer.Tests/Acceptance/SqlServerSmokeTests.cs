@@ -10,28 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Engine;
-using FlowtideDotNet.Core.Tests.SmokeTests;
 using EFCore.BulkExtensions;
-using Microsoft.EntityFrameworkCore;
-using FlowtideDotNet.Substrait.Sql;
-using FlowtideDotNet.Substrait;
-using FlowtideDotNet.Substrait.Relations;
-using FlowtideDotNet.Substrait.Expressions;
-using FlowtideDotNet.Substrait.Type;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
-using FlowtideDotNet.SqlServer.SqlServer;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine.Internal;
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base;
-using FlowtideDotNet.Storage.StateManager;
-using Microsoft.Extensions.Logging.Abstractions;
-using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Core;
-using System.Diagnostics.Metrics;
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Connector.SqlServer.SqlServer;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Core.Tests.SmokeTests;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait;
+using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Sql;
+using FlowtideDotNet.Substrait.Type;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics.Metrics;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 {

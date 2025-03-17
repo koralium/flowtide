@@ -10,18 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Unary;
-using FlowtideDotNet.Storage.StateManager;
 using FlexBuffers;
-using Microsoft.Extensions.Logging;
-using FlowtideDotNet.Substrait.Relations;
-using System.Threading.Tasks.Dataflow;
-using System.Diagnostics;
+using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Utils;
+using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
-using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core.Utils;
-using FlowtideDotNet.Base.Utils;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Project
 {

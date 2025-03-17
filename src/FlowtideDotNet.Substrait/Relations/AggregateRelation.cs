@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Expressions;
-using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Substrait.Relations
 {

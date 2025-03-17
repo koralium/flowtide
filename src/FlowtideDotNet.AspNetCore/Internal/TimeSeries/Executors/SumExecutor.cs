@@ -11,7 +11,6 @@
 // limitations under the License.
 
 
-using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace FlowtideDotNet.AspNetCore.TimeSeries

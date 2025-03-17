@@ -11,11 +11,6 @@
 // limitations under the License.
 
 using Antlr4.Runtime.Misc;
-using FlowtideDotNet.ComputeTests.Internal.Tests;
-using System;
-using System.Collections.Generic;
-using System.Runtime.Versioning;
-using System.Text;
 
 namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
 {

@@ -10,9 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Text;
-using System.Globalization;
 using System.Buffers;
+using System.Globalization;
+using System.Text;
 
 // This code is based on LightJson project.
 // https://github.com/MarcosLopezC/LightJson
