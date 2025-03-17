@@ -33,11 +33,11 @@ namespace FlowtideDotNet.TestFramework
 
                 if (result == null)
                 {
-                    throw new Exception("Failed to get test information");
+                    throw new InvalidOperationException("Failed to get test information");
                 }
                 if (result.LatestException != null)
                 {
-                    throw new Exception(result.LatestException);
+                    throw new InvalidOperationException(result.LatestException);
                 }
                 // Check if the start checkpoint version is greater than the current checkpoint
                 // Then replace it since no checkpoint has happened yet if start and current match
