@@ -26,14 +26,13 @@ namespace FlowtideDotNet.TestFramework.Tests
 
         public IntegrationTests()
         {
-            _source = TestDataTable.Create(new[]
-            {
+            _source = TestDataTable.Create(
                 new { val = 0 },
                 new { val = 1 },
                 new { val = 2 },
                 new { val = 3 },
                 new { val = 4 }
-            });
+            );
 
             _sink = new TestDataSink();
             _inProcessMonitor = new StreamTestMonitor();
