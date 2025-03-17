@@ -20,15 +20,9 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
-using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -981,7 +975,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 var nullTypePointer = arrowSerializer.AddNullType();
                 return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Null, nullTypePointer);
             }
-            
+
             return _dataColumn!.CreateSchemaField(ref arrowSerializer, emptyStringPointer, pointerStack);
         }
 
@@ -1033,7 +1027,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // Union does not have a validity bitmap in apache arrow
                 arrowSerializer.AddBufferForward(_validityList!.MemorySlice.Length);
             }
-            
+
             _dataColumn!.AddBuffers(ref arrowSerializer);
         }
 

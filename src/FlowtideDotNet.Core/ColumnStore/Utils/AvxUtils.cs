@@ -10,14 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Intrinsics.X86;
 using System.Runtime.Intrinsics;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics.X86;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
@@ -82,7 +76,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             unsafe
             {
                 fixed (int* pArray = array)
-                fixed(sbyte* pCond = conditionalValues)
+                fixed (sbyte* pCond = conditionalValues)
                 {
                     // Check if there is overlap
                     if (sourceIndex < destIndex && sourceIndex + length > destIndex)
@@ -258,7 +252,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         }
 
         public static unsafe void MemCopyAdditionByType(
-            Span<int> source, 
+            Span<int> source,
             Span<int> destination,
             Span<sbyte> typeIds,
             int sourceIndex,
@@ -307,11 +301,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         }
 
         public static unsafe void InPlaceMemCopyAdditionByType(
-            Span<int> array, 
-            Span<sbyte> typeIds, 
-            int sourceIndex, 
-            int destIndex, 
-            int length, 
+            Span<int> array,
+            Span<sbyte> typeIds,
+            int sourceIndex,
+            int destIndex,
+            int length,
             Span<int> toAdd,
             int numberOfTypes)
         {
@@ -515,7 +509,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     {
                         int vectorSize = Vector512<int>.Count;
                         var vec512 = Vector512.Create(addition);
-                        
+
                         for (; i <= source.Length - vectorSize; i += vectorSize)
                         {
                             Vector512<int> sourceVector = Avx512F.LoadAlignedVector512(pSrc + i);

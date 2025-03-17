@@ -10,18 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.StateManager.Internal;
-using FlowtideDotNet.Storage.StateManager.Internal.Sync;
-using System.Diagnostics;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
-using Microsoft.Extensions.Logging;
-using System.Diagnostics.Metrics;
-using System.Diagnostics.CodeAnalysis;
-using static FlowtideDotNet.Storage.StateManager.Internal.Sync.LruTableSync;
+using FlowtideDotNet.Storage.StateManager.Internal;
 using FlowtideDotNet.Storage.StateManager.Internal.ObjectState;
-using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager.Internal.Sync;
+using Microsoft.Extensions.Logging;
 using System.Buffers;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Metrics;
+using static FlowtideDotNet.Storage.StateManager.Internal.Sync.LruTableSync;
 
 namespace FlowtideDotNet.Storage.StateManager
 {
@@ -238,14 +238,14 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(m_fileCacheOptions != null);
-            
+
             bool foundStateClient = false;
             StateClient? cachedClient;
             lock (m_lock)
             {
                 foundStateClient = _stateClients.TryGetValue(client, out cachedClient);
             }
-            
+
             if (foundStateClient)
             {
                 return ValueTask.FromResult((cachedClient as IObjectState<T>)!);
@@ -292,7 +292,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     clientMetadataPageId = GetNewPageId_Internal();
                     m_metadata.ClientMetadataLocations.Add(client, clientMetadataPageId);
                 }
-                
+
                 var clientMetadata = new StateClientMetadata<T>();
 
                 lock (m_lock)
@@ -327,7 +327,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     var metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes.Value, bytes.Value.Length);
                     var persistentSession = m_persistentStorage.CreateSession();
                     var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheOptions, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
-                    
+
                     lock (m_lock)
                     {
                         _stateClients.Add(client, stateClient);

@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Storage.DeviceFactories
 
         public void Delete(FileDescriptor fileInfo)
         {
-            lock (m_lock) 
+            lock (m_lock)
             {
                 var key = GetDeviceKey(fileInfo);
                 if (devices.TryGetValue(key, out var container))
@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Storage.DeviceFactories
 
         public IEnumerable<FileDescriptor> ListContents(string path)
         {
-            lock(m_lock)
+            lock (m_lock)
             {
                 return devices.Where(x => x.Key.StartsWith(path)).Select(x => x.Value.FileDescriptor);
             }

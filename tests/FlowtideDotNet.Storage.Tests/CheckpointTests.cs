@@ -10,15 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
-using FASTER.core;
-using FlowtideDotNet.Storage.Persistence.FasterStorage;
+using FlowtideDotNet.Storage.Tree;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.Metrics;
-using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Storage.Tests
 {
@@ -56,12 +56,12 @@ namespace FlowtideDotNet.Storage.Tests
 
             await stateManager.CheckpointAsync();
 
-            
+
             await tree.Upsert(1, "helloOther");
 
             var (found, val) = await tree.GetValue(1);
             Assert.Equal("helloOther", val);
-            
+
             // Restore
             await stateManager.InitializeAsync();
 
@@ -77,7 +77,8 @@ namespace FlowtideDotNet.Storage.Tests
             (found, val) = await tree.GetValue(1);
 
             Assert.Equal("hello", val);
-  ;     }
+            ;
+        }
 
         [Fact]
         public async Task TestFailureAfterNewRootInBPlusTree()
@@ -155,7 +156,7 @@ namespace FlowtideDotNet.Storage.Tests
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistentcompact"
                     })
-                },  NullLogger.Instance, new Meter($"storage"), "storage");
+                }, NullLogger.Instance, new Meter($"storage"), "storage");
 
             await stateManager.InitializeAsync();
 

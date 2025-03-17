@@ -29,7 +29,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task CustomStaticScalar()
         {
-            SqlFunctionRegister.RegisterScalarFunction("static", 
+            SqlFunctionRegister.RegisterScalarFunction("static",
                 (func, visitor, emitData) =>
                 {
                     List<Substrait.Expressions.Expression> args = new List<Substrait.Expressions.Expression>();

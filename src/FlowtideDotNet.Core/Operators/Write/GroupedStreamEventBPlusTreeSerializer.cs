@@ -10,8 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.Tree;
 using FlexBuffers;
+using FlowtideDotNet.Storage.Tree;
 using System.Buffers;
 
 namespace FlowtideDotNet.Core.Operators.Write
@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Core.Operators.Write
             writer.Write(value.TargetId);
 
             // TODO: Can be improved
-            var compactData = (CompactRowData)new RowEvent(0,0, value.RowData).Compact(new FlexBuffer(ArrayPool<byte>.Shared)).RowData;
+            var compactData = (CompactRowData)new RowEvent(0, 0, value.RowData).Compact(new FlexBuffer(ArrayPool<byte>.Shared)).RowData;
 
             writer.Write(compactData.Span.Length);
             writer.Write(compactData.Span);

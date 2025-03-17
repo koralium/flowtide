@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
@@ -27,12 +26,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
 using Stowage;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal
@@ -58,7 +52,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private bool _hasCheckpointed = false;
 
         private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _changesTree;
-        
+
         // Metrics
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
@@ -92,7 +86,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                                 _deltaLoadTask = null;
                             }
                         });
-                }   
+                }
             }
             return Task.CompletedTask;
         }
@@ -106,12 +100,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             await output.EnterCheckpointLock();
 
-            foreach(var file in deltaCommit.CdcFiles)
+            foreach (var file in deltaCommit.CdcFiles)
             {
                 Debug.Assert(file.Path != null);
                 var batches = _reader.ReadCdcFile(_options.StorageLocation, _tableLoc, file.Path, file.PartitionValues, MemoryAllocator);
 
-                await foreach(var batch in batches)
+                await foreach (var batch in batches)
                 {
                     PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
                     iterations.InsertStaticRange(0, 0, (int)batch.count);
@@ -242,7 +236,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
             }
 
-            foreach(var deletionVectorFile in deletionVectorFiles)
+            foreach (var deletionVectorFile in deletionVectorFiles)
             {
                 var addedFile = deltaCommit.AddedFiles.Single(x => x.Path == deletionVectorFile);
                 var removedFile = deltaCommit.RemovedFiles.Single(x => x.Path == deletionVectorFile);
@@ -277,7 +271,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 var diffIterator = new DeletionVectorDiffIterator(removedFileDeleteVector, addedFileDeleteVector);
                 var changedRowsIterator = _reader.ReadAddRemovedDataFile(_options.StorageLocation, _tableLoc, deletionVectorFile!, diffIterator, addedFile.PartitionValues, MemoryAllocator);
 
-                await foreach(var batch in changedRowsIterator)
+                await foreach (var batch in changedRowsIterator)
                 {
                     // add them to the changes tree, since a row might have been added and removed in the same version, we need to keep track of the weight
                     // This removes any unneccessary duplicate rows.
@@ -379,7 +373,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
                 else
                 {
-                        await LoadFileData(commitInfo, output);
+                    await LoadFileData(commitInfo, output);
                 }
             } while (true);
         }
@@ -435,8 +429,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             reader.Initialize(latestTable, _readRelation.BaseSchema.Names);
             _reader = reader;
 
-            _changesTree = await stateManagerClient.GetOrCreateTree("changes", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>() 
-            { 
+            _changesTree = await stateManagerClient.GetOrCreateTree("changes", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>()
+            {
                 Comparer = new ColumnComparer(_readRelation.BaseSchema.Names.Count),
                 KeySerializer = new ColumnStoreSerializer(_readRelation.BaseSchema.Names.Count, MemoryAllocator),
                 MemoryAllocator = MemoryAllocator,
@@ -462,7 +456,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             if (_state.Value.CurrentVersion == -1)
             {
                 await output.EnterCheckpointLock();
-                foreach(var file in _table.AddFiles)
+                foreach (var file in _table.AddFiles)
                 {
                     Debug.Assert(file.Path != null);
                     IDeleteVector? deleteVector;
@@ -477,7 +471,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
                     var batches = _reader.ReadDataFile(_options.StorageLocation, _tableLoc, file.Path, deleteVector, file.PartitionValues, MemoryAllocator);
 
-                    await foreach(var batch in batches)
+                    await foreach (var batch in batches)
                     {
                         PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
                         PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);

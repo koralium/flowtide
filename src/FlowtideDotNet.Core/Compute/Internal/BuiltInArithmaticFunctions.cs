@@ -14,7 +14,6 @@ using FlexBuffers;
 using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Buffers.Binary;
-using System.ComponentModel.Design;
 using System.Linq.Expressions;
 
 namespace FlowtideDotNet.Core.Compute.Internal
@@ -52,9 +51,9 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Degrees, (x) => DegreesImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Abs, (x) => AbsImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Sign, (x) => SignImplementation(x));
-            
+
             // Aggregate functions
-            functionsRegister.RegisterStreamingAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, 
+            functionsRegister.RegisterStreamingAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum,
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>
                 {
                     if (aggregateFunction.Arguments.Count != 1)
@@ -365,7 +364,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     {
                         return FlxValue.FromBytes(FlexBuffer.SingleValue(double.NaN));
                     }
-                    
+
                 }
                 // Int add float, will always return a float
                 else if (y.ValueType == FlexBuffers.Type.Float)

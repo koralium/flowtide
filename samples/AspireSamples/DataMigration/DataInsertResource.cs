@@ -10,19 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Aspire.Hosting.ApplicationModel;
-using Aspire.Hosting.Azure;
 using Aspire.Hosting.Lifecycle;
-using Azure.ResourceManager;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace AspireSamples.DataMigration
 {
@@ -44,7 +33,7 @@ namespace AspireSamples.DataMigration
 
         public async Task BeforeStartAsync(DistributedApplicationModel appModel, CancellationToken cancellationToken = default)
         {
-            
+
             var dataInsertResource = appModel.Resources.OfType<DataInsertResource>().SingleOrDefault();
 
             if (dataInsertResource is null)
@@ -105,7 +94,7 @@ namespace AspireSamples.DataMigration
                     {
                         await dataInsertResource.initialInsert(logger, statusUpdater, tokenSource.Token);
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
                         logger.LogError(e, "Error inserting initial data");
                         await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
@@ -115,7 +104,7 @@ namespace AspireSamples.DataMigration
                         });
                         return;
                     }
-                    
+
 
                     await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
                     {
@@ -135,7 +124,7 @@ namespace AspireSamples.DataMigration
 
             return Task.CompletedTask;
         }
-        
+
         public ValueTask DisposeAsync()
         {
             tokenSource.Cancel();
@@ -154,7 +143,7 @@ namespace AspireSamples.DataMigration
         }
 
         public static IResourceBuilder<DataInsertResource> AddDataInsert(
-            IDistributedApplicationBuilder builder, 
+            IDistributedApplicationBuilder builder,
             string name,
             Func<ILogger, Action<string>, CancellationToken, Task> before,
             Func<ILogger, CancellationToken, Task> after
@@ -164,7 +153,7 @@ namespace AspireSamples.DataMigration
 
             builder.Services.TryAddLifecycleHook<DataInsertLifecyclehook>();
 
-            var res = builder.AddResource<DataInsertResource>(resource); 
+            var res = builder.AddResource<DataInsertResource>(resource);
 
             return res;
         }

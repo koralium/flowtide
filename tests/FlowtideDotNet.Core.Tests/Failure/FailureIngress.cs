@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
             ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             await output.EnterCheckpointLock();
 
-            _ = RunTask( async (output, o) =>
+            _ = RunTask(async (output, o) =>
             {
                 await Task.Delay(TimeSpan.FromSeconds(10));
             });

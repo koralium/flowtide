@@ -343,7 +343,7 @@ namespace FlowtideDotNet.Substrait.Tests
 ";
             var deserializer = new SubstraitDeserializer();
             var plan = deserializer.Deserialize(ibisOutput);
-            
+
         }
     }
 }

@@ -12,11 +12,6 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers
 {
@@ -85,7 +80,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
         {
             List<IArrowComparer> propertyComparers = new List<IArrowComparer>();
 
-            foreach(var field in type.Fields)
+            foreach (var field in type.Fields)
             {
                 propertyComparers.Add(Visit(field.Type));
             }

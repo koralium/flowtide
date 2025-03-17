@@ -12,11 +12,6 @@
 
 using Apache.Arrow;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers
 {
@@ -44,10 +39,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
         /// <param name="toFindIn"></param>
         /// <returns></returns>
         int FindOccurance(
-            int toFindIndex, 
-            IArrowArray toFindFrom, 
-            int searchIndex, 
-            int searchLength, 
+            int toFindIndex,
+            IArrowArray toFindFrom,
+            int searchIndex,
+            int searchLength,
             IArrowArray toFindIn,
             int globalOffset,
             IDeleteVector deleteVector);

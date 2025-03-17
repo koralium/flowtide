@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Core.Optimizer
                     Type = joinRelation.Type
                 };
             }
-            
+
             if (joinRelation.Expression is ScalarFunction andFunction &&
                 andFunction.ExtensionUri == FunctionsBoolean.Uri &&
                 andFunction.ExtensionName == FunctionsBoolean.And)
@@ -112,7 +112,7 @@ namespace FlowtideDotNet.Core.Optimizer
                     };
                 }
             }
-                return base.VisitJoinRelation(joinRelation, state);
+            return base.VisitJoinRelation(joinRelation, state);
         }
     }
 }

@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override void EgressCheckpointDone(string name)
         {
-            
+
         }
 
         public override void Initialize(StreamStateValue previousState)

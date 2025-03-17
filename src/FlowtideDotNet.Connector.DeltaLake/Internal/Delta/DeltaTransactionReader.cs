@@ -17,12 +17,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using Stowage;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 {
@@ -57,7 +52,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             //    await ReadCheckpoint(storage, checkpoint, actions, addFiles);
             //}
 
-            
+
 
             long currentVersion = startVersion;
 
@@ -164,7 +159,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             statisticsJsonOptions.Converters.Add(new DeltaStatisticsConverter(structSchema));
 
             List<DeltaFile> deltaFiles = new List<DeltaFile>();
-            foreach(var addFile in addFiles)
+            foreach (var addFile in addFiles)
             {
                 var stats = JsonSerializer.Deserialize<DeltaStatistics>(addFile.Value.Statistics!, statisticsJsonOptions);
                 deltaFiles.Add(new DeltaFile(addFile.Value, stats!));

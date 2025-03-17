@@ -15,7 +15,6 @@ using SqlParser.Ast;
 using SqlParser.Dialects;
 using SqlParser.Tokens;
 using System.Text;
-using static SqlParser.Ast.Statement;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {
@@ -141,7 +140,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         public override Statement? ParseStatement(Parser parser)
         {
             if (parser.ParseKeyword(Keyword.CREATE))
-            {   
+            {
                 if (parser.ParseKeyword(Keyword.TABLE))
                 {
                     return ParseCreateTable(parser, false, false, false, false);
@@ -156,7 +155,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 var objName = parser.ParseObjectName();
                 return new BeginSubStream(objName);
             }
-            
+
             return base.ParseStatement(parser);
         }
 
@@ -229,7 +228,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 else
                 {
                     orderExpression = new OneOrManyWithParens<Expression>.One(parser.ParseExpr());
-                }   
+                }
 
                 return orderExpression;
 
@@ -350,7 +349,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     Parser.ThrowExpected("',' or ')' after column definition", parser.PeekToken());
                 }
-                
+
                 if (rightParen && (!commaFound || this.SupportsTrailingCommas))
                 {
                     parser.ConsumeToken<RightParen>();
@@ -436,7 +435,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     case Keyword.DEC:
                         return new DataType.Dec(new ExactNumberInfo.None());
                     case Keyword.BIGNUMERIC:
-                        return new DataType.BigNumeric(new ExactNumberInfo.None());;
+                        return new DataType.BigNumeric(new ExactNumberInfo.None()); ;
                 }
 
                 if (word.Value.Equals("any", StringComparison.OrdinalIgnoreCase))
@@ -497,7 +496,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new MapSqlDataType(keyType, valueType);
                 }
             }
-            
+
             DataType ParseDecimal()
             {
                 if (!parser.PeekTokenIs<LeftParen>())

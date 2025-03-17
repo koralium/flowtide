@@ -17,11 +17,9 @@ using FlowtideDotNet.Base.Vertices.Egress.Internal;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
-using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.Egress
@@ -88,7 +86,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             {
                 Logger.RecievedWatermarkWithoutSourceOperator(StreamName, Name);
             }
-            
+
             return OnWatermark(watermark);
         }
 
@@ -229,7 +227,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
                 _cancellationTokenSource.Dispose();
                 _cancellationTokenSource = null;
             }
-            
+
             return ValueTask.CompletedTask;
         }
 

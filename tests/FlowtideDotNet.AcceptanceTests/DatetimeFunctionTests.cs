@@ -20,7 +20,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public DatetimeFunctionTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
         {
         }
-        
+
         /// <summary>
         /// Test to convert a timestamp to a string
         /// </summary>
@@ -37,8 +37,9 @@ namespace FlowtideDotNet.AcceptanceTests
             ");
             await WaitForUpdate();
             AssertCurrentDataEqual(
-                Orders.Select(o => new { 
-                    Orderdate =  o.Orderdate.ToString("yyyy-MM-dd HH:mm:ss") 
+                Orders.Select(o => new
+                {
+                    Orderdate = o.Orderdate.ToString("yyyy-MM-dd HH:mm:ss")
                 })
                 );
         }
@@ -88,7 +89,8 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             AssertCurrentDataEqual(
-                Orders.Where(x => x.Orderdate < DateTime.UtcNow).Select(o => new {
+                Orders.Where(x => x.Orderdate < DateTime.UtcNow).Select(o => new
+                {
                     o.OrderKey
                 })
                 );
@@ -114,7 +116,8 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             AssertCurrentDataEqual(
-                Orders.Where(x => x.Orderdate < DateTime.UtcNow).Select(o => new {
+                Orders.Where(x => x.Orderdate < DateTime.UtcNow).Select(o => new
+                {
                     o.OrderKey,
                     Active = o.Orderdate < DateTime.UtcNow
                 })
@@ -161,7 +164,8 @@ namespace FlowtideDotNet.AcceptanceTests
             ");
             await WaitForUpdate();
             AssertCurrentDataEqual(
-                Orders.Select(o => new {
+                Orders.Select(o => new
+                {
                     OrderKey = o.OrderKey.ToString()
                 })
                 );

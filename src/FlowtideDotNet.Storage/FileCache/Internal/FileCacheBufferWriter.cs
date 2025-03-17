@@ -11,13 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Memory;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.FileCache.Internal
 {
@@ -81,7 +76,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
             var alignedLength = (newLength + sectorSize - 1) / sectorSize * sectorSize;
             if (_memory.Memory.Length < alignedLength)
             {
-                _memory = memoryAllocator.Realloc(_memory, alignedLength,  sectorSize);
+                _memory = memoryAllocator.Realloc(_memory, alignedLength, sectorSize);
             }
             return _memory.Memory.Slice(_position);
         }

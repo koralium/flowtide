@@ -10,18 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FASTER.core;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Optimizer;
-using FlowtideDotNet.Storage.DeviceFactories;
-using FlowtideDotNet.Substrait;
+using FlowtideDotNet.Core.Tests.SmokeTests.Count;
 using FlowtideDotNet.Core.Tests.SmokeTests.LineItemLeftJoinOrders;
 using FlowtideDotNet.Core.Tests.SmokeTests.StringJoin;
-using FASTER.core;
-using System.Diagnostics;
-using FlowtideDotNet.Core.Tests.SmokeTests.Count;
+using FlowtideDotNet.Storage.DeviceFactories;
+using FlowtideDotNet.Substrait;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Tests.SmokeTests
 {
@@ -118,9 +118,9 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<LineItem>("SelectLineItems", "./SmokeTests/SelectLineItems/queryplan.json", rows =>
             {
                 actualData = rows;
-            }, new List<int>() { 0, 1});
+            }, new List<int>() { 0, 1 });
 
-            while(changesCounter == 0)
+            while (changesCounter == 0)
             {
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
             }
@@ -341,7 +341,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<LineItemJoinOrderResult>("LineItemInnerJoinOrdersNLJ", "./SmokeTests/LineItemInnerJoinOrders/queryplan.json", rows =>
             {
                 actualData = rows;
-            }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true});
+            }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
 
             while (changesCounter == 0)
             {
@@ -417,7 +417,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
         {
             var truck = TpchData.GetShipmodes().First(x => x.Mode == "TRUCK");
             await AddLineItems(new List<LineItem>() { TpchData.GetLineItems().First(x => x.Shipmode == "TRUCK") });
-            
+
             List<StringJoinResult>? actualData = default;
             await StartStream<StringJoinResult>("LeftJoinUpdateLeftValues", "./SmokeTests/LeftJoinUpdateLeftValues/queryplan.json", rows =>
             {

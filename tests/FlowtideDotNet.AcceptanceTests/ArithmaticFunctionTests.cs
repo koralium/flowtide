@@ -1380,7 +1380,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT sum(userkey) FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] {new {Sum = (long)Users.Sum(x => x.UserKey)}} );
+            AssertCurrentDataEqual(new[] { new { Sum = (long)Users.Sum(x => x.UserKey) } });
         }
 
         [Fact]

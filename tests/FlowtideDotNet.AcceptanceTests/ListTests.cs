@@ -49,7 +49,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 ");
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(new [] { new { list = Orders.Select(x => x.OrderKey).ToList() } });
+            AssertCurrentDataEqual(new[] { new { list = Orders.Select(x => x.OrderKey).ToList() } });
         }
 
         [Fact]

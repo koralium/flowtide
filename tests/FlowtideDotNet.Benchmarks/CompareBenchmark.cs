@@ -11,18 +11,11 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Columns;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Join;
 using FlowtideDotNet.Storage.Memory;
-using System;
-using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Benchmarks
 {
@@ -161,6 +154,6 @@ namespace FlowtideDotNet.Benchmarks
             }
         }
 
-        
+
     }
 }

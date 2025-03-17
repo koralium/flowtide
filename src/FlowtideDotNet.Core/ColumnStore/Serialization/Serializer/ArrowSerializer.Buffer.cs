@@ -11,14 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using Google.Protobuf.WellKnownTypes;
-using SqlParser.Ast;
-using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
@@ -28,7 +21,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
     {
         private int m_bufferBodyLength = 0;
         private int forwardBufferPosition = 0;
-        
+
 
         public void AddBufferForward(long bufferLength)
         {

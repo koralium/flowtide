@@ -74,10 +74,10 @@ namespace FlowtideDotNet.Core.Compute.Internal
     internal class StatefulAggregateFunctionDefinition<T> : AggregateFunctionDefinition
     {
         public StatefulAggregateFunctionDefinition(
-            AggregateInitializeFunction<T> initializeFunction, 
-            Action<T> disposeFunction, 
+            AggregateInitializeFunction<T> initializeFunction,
+            Action<T> disposeFunction,
             Func<T, Task> commitFunction,
-            AggregateMapFunction mapFunc, 
+            AggregateMapFunction mapFunc,
             AggregateStateToValueFunction<T> stateToValueFunc)
         {
             InitializeFunction = initializeFunction;
@@ -96,19 +96,19 @@ namespace FlowtideDotNet.Core.Compute.Internal
         public AggregateStateToValueFunction<T> StateToValueFunc { get; }
 
         public override async Task<IAggregateContainer> CreateContainer(
-            int groupingLength, 
+            int groupingLength,
             IStateManagerClient stateManagerClient,
             IMemoryAllocator memoryAllocator,
             AggregateFunction aggregateFunction,
-            ParametersInfo parametersInfo, 
-            ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo> visitor, 
+            ParametersInfo parametersInfo,
+            ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo> visitor,
             ParameterExpression eventParameter,
-            ParameterExpression stateParameter, 
-            ParameterExpression weightParameter, 
+            ParameterExpression stateParameter,
+            ParameterExpression weightParameter,
             ParameterExpression groupingKeyParameter)
         {
             var singleton = await InitializeFunction(groupingLength, stateManagerClient, memoryAllocator);
-            
+
             var singletonParameter = System.Linq.Expressions.Expression.Parameter(typeof(T));
             var mapResult = MapFunc(aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter, singletonParameter, groupingKeyParameter);
             var lambda = System.Linq.Expressions.Expression.Lambda<Func<RowEvent, byte[]?, long, T, RowEvent, ValueTask<byte[]>>>(mapResult, eventParameter, stateParameter, weightParameter, singletonParameter, groupingKeyParameter);

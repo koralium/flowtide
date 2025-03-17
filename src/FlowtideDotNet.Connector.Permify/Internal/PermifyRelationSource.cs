@@ -121,7 +121,7 @@ namespace FlowtideDotNet.Connector.Permify.Internal
                     if (initWatch)
                     {
                         Metadata metadata = GetMetadata();
-                        
+
                         var watchRequest = new PermifyProto.WatchRequest()
                         {
                             TenantId = _permifySourceOptions.TenantId
@@ -138,7 +138,7 @@ namespace FlowtideDotNet.Connector.Permify.Internal
                     {
                         await output.EnterCheckpointLock();
                         List<RowEvent> outData = new List<RowEvent>();
-                        foreach(var change in _watchStream.ResponseStream.Current.Changes.DataChanges_)
+                        foreach (var change in _watchStream.ResponseStream.Current.Changes.DataChanges_)
                         {
                             if (change.TypeCase == PermifyProto.DataChange.TypeOneofCase.Tuple)
                             {
@@ -169,7 +169,7 @@ namespace FlowtideDotNet.Connector.Permify.Internal
                         initWatch = true;
                     }
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     if (e is RpcException rpcException &&
                         rpcException.Status.StatusCode == StatusCode.Unavailable)

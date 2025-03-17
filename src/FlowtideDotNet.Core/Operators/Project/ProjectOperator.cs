@@ -10,18 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Unary;
-using FlowtideDotNet.Storage.StateManager;
 using FlexBuffers;
-using Microsoft.Extensions.Logging;
-using FlowtideDotNet.Substrait.Relations;
-using System.Threading.Tasks.Dataflow;
-using System.Diagnostics;
+using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Utils;
+using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
-using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core.Utils;
-using FlowtideDotNet.Base.Utils;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Project
 {
@@ -44,7 +43,7 @@ namespace FlowtideDotNet.Core.Operators.Project
         public ProjectOperator(ProjectRelation projectRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             _expressions = new Func<RowEvent, FlxValue>[projectRelation.Expressions.Count];
-            
+
             for (int i = 0; i < _expressions.Length; i++)
             {
                 _expressions[i] = ProjectCompiler.Compile(projectRelation.Expressions[i], functionsRegister);
@@ -81,7 +80,7 @@ namespace FlowtideDotNet.Core.Operators.Project
 #endif
                 FlxValue[] extraFelds = new FlxValue[_expressions.Length];
 
-                for(int i = 0; i < _expressions.Length; i++)
+                for (int i = 0; i < _expressions.Length; i++)
                 {
                     extraFelds[i] = _expressions[i](e);
                 }
@@ -157,7 +156,7 @@ namespace FlowtideDotNet.Core.Operators.Project
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            
+
             return Task.CompletedTask;
         }
     }

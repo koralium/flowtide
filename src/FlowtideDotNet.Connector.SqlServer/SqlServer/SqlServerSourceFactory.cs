@@ -13,21 +13,13 @@
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
 using FlowtideDotNet.Substrait.Type;
 using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
@@ -38,7 +30,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
         private readonly SqlServerTableProvider _tableProvider;
 
         public SqlServerSourceFactory(
-            Func<string> connectionStringFunc, 
+            Func<string> connectionStringFunc,
             Func<ReadRelation, IReadOnlyList<string>>? tableNameTransform = null,
             bool useDatabaseDefinedInConnectionStringOnly = false)
         {

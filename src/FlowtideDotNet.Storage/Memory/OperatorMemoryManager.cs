@@ -10,16 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Buffers;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Memory
 {
@@ -78,7 +71,7 @@ namespace FlowtideDotNet.Storage.Memory
                     RegisterAllocationToMetrics(size);
                     RegisterFreeToMetrics(previousLength);
                 }
-                
+
                 native.ptr = newPtr;
                 native.length = size;
                 return native;

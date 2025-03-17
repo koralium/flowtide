@@ -10,8 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.StateManager.Internal;
 using FASTER.core;
+using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Storage.Persistence.FasterStorage
@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             var result = await m_adminSession.UpsertAsync(1, SpanByte.FromPinnedMemory(memory), token: tokenSource.Token);
             var status = result.Complete();
             handle.Dispose();
-            
+
             await TakeCheckpointAsync(includeIndex);
         }
 
@@ -54,12 +54,12 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             {
                 using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                 (success, token) = await m_persistentStorage.TakeFullCheckpointAsync(CheckpointType.FoldOver, cancellationToken: tokenSource.Token).ConfigureAwait(false);
-                if (!success) 
-                { 
-                    retryCount++; 
+                if (!success)
+                {
+                    retryCount++;
                     if (retryCount > 10)
                     {
-                        throw new InvalidOperationException("Failed to take checkpoint"); 
+                        throw new InvalidOperationException("Failed to take checkpoint");
                     }
                 }
             } while (!success);

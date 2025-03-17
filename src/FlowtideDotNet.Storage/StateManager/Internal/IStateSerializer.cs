@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             where TMetadata : IStorageMetadata;
     }
     public interface IStateSerializer<T> : IStateSerializer
-        where T: ICacheObject
+        where T : ICacheObject
     {
         void Serialize(in IBufferWriter<byte> bufferWriter, in T value);
 

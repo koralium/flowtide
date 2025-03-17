@@ -10,17 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.Compute.Internal;
-using SqlParser.Ast;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar
 {
@@ -68,7 +60,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             var resultContainer = System.Linq.Expressions.Expression.Constant(new DataValueContainer());
             var expr = visitor.Visit(expression, new ColumnParameterInfo(
                 new List<ParameterExpression>() { batchParam1, batchParam2 }
-                , new List<ParameterExpression>() { intParam1, intParam2 }, 
+                , new List<ParameterExpression>() { intParam1, intParam2 },
                 new List<int> { 0, leftSize }, resultContainer));
 
             if (expr == null)

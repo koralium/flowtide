@@ -19,23 +19,14 @@ using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Bson.IO;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
-using MongoDB.Driver.Core.Connections;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static SqlParser.Ast.DataType;
-using static SqlParser.Ast.SequenceOptions;
 
 namespace FlowtideDotNet.Connector.MongoDB.Internal
 {
@@ -69,8 +60,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             FlowtideMongoDbSourceOptions sourceOptions,
             string databaseName,
             string collectionName,
-            ReadRelation readRelation, 
-            IFunctionsRegister functionsRegister, 
+            ReadRelation readRelation,
+            IFunctionsRegister functionsRegister,
             DataflowBlockOptions options) : base(readRelation, functionsRegister, options)
         {
             this._options = sourceOptions;
@@ -239,8 +230,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                                 _lastWallTime = currentTime;
                                 _operationCounter = 0;
                             }
-                        }    
-                        
+                        }
+
                         timestamp = new BsonTimestamp(_lastWallTime, _operationCounter);
                     }
                     else
@@ -347,7 +338,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
                     this.DeltaLoadInterval = TimeSpan.FromMilliseconds(1);
                 }
-                catch(MongoCommandException e)
+                catch (MongoCommandException e)
                 {
                     Logger.ChangeStreamDisabledUsingFullLoad(e, StreamName, Name);
                     _watchDisabled = true;
@@ -374,7 +365,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             }
 
             var cursor = await collection.FindAsync(Builders<BsonDocument>.Filter.Empty);
-            
+
             while (await cursor.MoveNextAsync(cancelTokenSource.Token))
             {
                 cancelTokenSource.Token.ThrowIfCancellationRequested();

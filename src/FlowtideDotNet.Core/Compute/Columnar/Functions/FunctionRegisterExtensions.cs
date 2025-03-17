@@ -11,13 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
@@ -28,7 +23,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         {
             Dictionary<int, List<MethodDetails>> methodDetails = new Dictionary<int, List<MethodDetails>>();
 
-            for (int i =0; i < methods.Length; i++)
+            for (int i = 0; i < methods.Length; i++)
             {
                 string? optionName = null;
                 string? optionValue = null;
@@ -53,7 +48,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 }
                 list.Add(new MethodDetails(methods[i], methodParameters, genericArguments, optionName, optionValue));
             }
-            
+
 
             functionRegister.RegisterColumnScalarFunction(extensionUri, extensionName, (func, paramInfo, visitor) =>
             {

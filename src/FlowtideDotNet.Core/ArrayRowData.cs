@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Core
                 arr = new FlxValue[emitList.Count];
                 for (int i = 0; i < emitList.Count; i++)
                 {
-                    var index= emitList[i];
+                    var index = emitList[i];
 
                     if (index < leftLength)
                     {

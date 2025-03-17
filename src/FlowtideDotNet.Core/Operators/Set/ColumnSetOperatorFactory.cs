@@ -13,11 +13,6 @@
 using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Core.Operators.Set.Structs;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Set
@@ -31,7 +26,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                 return new UnionAllSetOperator(setRelation, executionDataflowBlockOptions);
             }
 
-            switch(setRelation.Inputs.Count)
+            switch (setRelation.Inputs.Count)
             {
                 case 1:
                     return new ColumnSetOperator<InputWeights1>(setRelation, executionDataflowBlockOptions);

@@ -12,12 +12,7 @@
 
 using FlowtideDotNet.Storage.Memory;
 using Microsoft.Extensions.ObjectPool;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
@@ -33,7 +28,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private static ObjectPool<NativeLongList> _pool = new DefaultObjectPool<NativeLongList>(new ObjectPoolProvider(), 10000);
 
         public static NativeLongList Get(IMemoryAllocator memoryAllocator)
-        {   
+        {
             return new NativeLongList(memoryAllocator);
             //var list = _pool.Get();
             //list.Assign(memoryAllocator);

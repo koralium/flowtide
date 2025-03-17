@@ -10,15 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FASTER.core;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.Metrics;
-using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Storage.Tests
 {
@@ -43,15 +43,15 @@ namespace FlowtideDotNet.Storage.Tests
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
-            var tree = await nodeClient.GetOrCreateTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>("tree", 
+            var tree = await nodeClient.GetOrCreateTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>("tree",
                 new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
-            {
-                BucketSize = 8,
-                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
-                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
-                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
-                MemoryAllocator = GlobalMemoryManager.Instance
-            });
+                {
+                    BucketSize = 8,
+                    Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                    KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                    ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                    MemoryAllocator = GlobalMemoryManager.Instance
+                });
             return tree;
         }
 
@@ -66,9 +66,9 @@ namespace FlowtideDotNet.Storage.Tests
             await it.SeekFirst();
 
             int count = 0;
-            await foreach(var page in it)
+            await foreach (var page in it)
             {
-                foreach(var kv in page)
+                foreach (var kv in page)
                 {
                     Assert.Equal(count, kv.Key);
                     count++;

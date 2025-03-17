@@ -17,7 +17,6 @@ using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.IO.Compression;
 
 namespace FlowtideDotNet.DependencyInjection
 {
@@ -54,7 +53,7 @@ namespace FlowtideDotNet.DependencyInjection
             storageBuilder.ZstdPageCompression();
             return storageBuilder;
         }
-        
+
         /// <summary>
         /// Use FasterKV Azure storage, uses ZLib compression as default
         /// </summary>
@@ -64,8 +63,8 @@ namespace FlowtideDotNet.DependencyInjection
         /// <param name="directoryName">Directory name where the data should be stored.</param>
         /// <returns></returns>
         public static IFlowtideStorageBuilder AddFasterKVAzureStorage(
-            this IFlowtideStorageBuilder storageBuilder, 
-            string azureStorageString, 
+            this IFlowtideStorageBuilder storageBuilder,
+            string azureStorageString,
             string containerName,
             string directoryName)
         {

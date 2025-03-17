@@ -12,12 +12,6 @@
 
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
 {
@@ -252,7 +246,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
                 list.InsertAt(i, true);
             }
             list.RemoveAt(64);
-            
+
             Assert.False(list.Get(0));
             for (int i = 1; i < 64; i++)
             {
@@ -277,7 +271,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             }
 
             list.InsertAt(607, false);
-            
+
             for (int i = 0; i < 583; i++)
             {
                 Assert.False(list.Get(i));
@@ -312,7 +306,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
                     expected.Add(true);
                 }
             }
-            
+
             for (int i = 0; i < expected.Count; i++)
             {
                 Assert.Equal(expected[i], list.Get(i));
@@ -784,7 +778,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             for (int i = 0; i < 128; i++)
             {
                 var actual = list.FindNextFalseIndex(i);
-                Assert.Equal(i + (i +1) % 2, actual);
+                Assert.Equal(i + (i + 1) % 2, actual);
             }
         }
 

@@ -10,21 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow.Memory;
-using FASTER.core;
 using FlowtideDotNet.Storage.Memory;
-using System;
 using System.Buffers;
-using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.TableConstraint;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
@@ -73,7 +63,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 {
                     newLength = 64;
                 }
-                
+
                 var allocLength = newLength * sizeof(int);
                 if (_memoryOwner == null)
                 {
@@ -205,11 +195,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
 
         public void InsertRangeFromTypeBasedAddition(
-            int index, 
-            IntList other, 
-            int start, 
-            int count, 
-            Span<sbyte> thisTypeIds, 
+            int index,
+            IntList other,
+            int start,
+            int count,
+            Span<sbyte> thisTypeIds,
             Span<int> thisToAdd,
             Span<sbyte> otherTypeIds,
             Span<int> otherToAdd,
@@ -226,11 +216,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         }
 
         public void InsertIncrementalRangeConditionalAdditionOnExisting(
-            int index,  
-            int startValue, 
-            int count, 
-            Span<sbyte> conditionalValues, 
-            sbyte conditionalValue, 
+            int index,
+            int startValue,
+            int count,
+            Span<sbyte> conditionalValues,
+            sbyte conditionalValue,
             int additionOnMovedExisting)
         {
             EnsureCapacity(_length + count);
@@ -244,7 +234,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 var vecIndex = Vector256.Create(0, 1, 2, 3, 4, 5, 6, 7);
                 var vecStride = Vector256.Create(8);
 
-                fixed(int* spanPtr = span)
+                fixed (int* spanPtr = span)
                 {
                     var end = count - 8;
                     for (; i < end; i += 8)

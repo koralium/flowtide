@@ -14,8 +14,6 @@ using Authzed.Api.V1;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.SpiceDB.Extensions;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Core.Engine;
 using Grpc.Core;
 using Grpc.Net.Client;
 
@@ -29,7 +27,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
         private readonly ReadRelationshipsRequest? deleteExistingFilter;
 
         public SpiceDbTestStream(
-            string testName, 
+            string testName,
             GrpcChannel grpcChannel,
             bool addWriteResolver,
             bool addReadResolver,

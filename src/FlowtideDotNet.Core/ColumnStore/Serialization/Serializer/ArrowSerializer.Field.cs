@@ -36,14 +36,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return EndTable();
         }
 
-        public int CreateChildrenVector(Span<int> data) 
+        public int CreateChildrenVector(Span<int> data)
         {
             StartVector(4, data.Length, 4);
             for (int i = data.Length - 1; i >= 0; i--)
             {
                 AddOffset(data[i]);
             }
-            return EndVector(); 
+            return EndVector();
         }
 
         public int CreateCustomMetadataVector(Span<int> data)

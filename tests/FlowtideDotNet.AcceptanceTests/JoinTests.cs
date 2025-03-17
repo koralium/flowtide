@@ -73,7 +73,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             AssertCurrentDataEqual(
-                from order in Orders 
+                from order in Orders
                 join user in Users on order.UserKey equals user.UserKey into gj
                 from subuser in gj.DefaultIfEmpty()
                 select new
@@ -579,7 +579,7 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(expected);
 
             var orderList = Orders.ToList();
-            foreach(var order in orderList)
+            foreach (var order in orderList)
             {
                 DeleteOrder(order);
             }
@@ -1075,9 +1075,9 @@ namespace FlowtideDotNet.AcceptanceTests
             //
 
             var expected = from user in Users
-            join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey
-            join project in Projects on new { projectmember.ProjectNumber, projectmember.CompanyId } equals new { project.ProjectNumber, project.CompanyId }
-            select new { user.UserKey, project.Name };
+                           join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey
+                           join project in Projects on new { projectmember.ProjectNumber, projectmember.CompanyId } equals new { project.ProjectNumber, project.CompanyId }
+                           select new { user.UserKey, project.Name };
 
             var expectedList = expected.ToList();
 
@@ -1345,15 +1345,15 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             var rightJoin = (from user in Users
-             join order in Orders on user.UserKey equals order.UserKey into gj
-             from suborder in gj.DefaultIfEmpty()
-             select new
-             {
-                 suborder?.OrderKey,
-                 user.UserKey,
-                 user.FirstName,
-                 user.LastName
-             });
+                             join order in Orders on user.UserKey equals order.UserKey into gj
+                             from suborder in gj.DefaultIfEmpty()
+                             select new
+                             {
+                                 suborder?.OrderKey,
+                                 user.UserKey,
+                                 user.FirstName,
+                                 user.LastName
+                             });
 
             var leftJoin = (
                 from order in Orders
@@ -1376,15 +1376,15 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             rightJoin = (from user in Users
-                             join order in Orders on user.UserKey equals order.UserKey into gj
-                             from suborder in gj.DefaultIfEmpty()
-                             select new
-                             {
-                                 suborder?.OrderKey,
-                                 user.UserKey,
-                                 user.FirstName,
-                                 user.LastName
-                             });
+                         join order in Orders on user.UserKey equals order.UserKey into gj
+                         from suborder in gj.DefaultIfEmpty()
+                         select new
+                         {
+                             suborder?.OrderKey,
+                             user.UserKey,
+                             user.FirstName,
+                             user.LastName
+                         });
 
             leftJoin = (
                 from order in Orders

@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Core.Engine
     public static class FlowtideCosmosDbReadWriteFactoryExtensions
     {
         public static ReadWriteFactory AddCosmosDbSink(
-            this ReadWriteFactory readWriteFactory, 
+            this ReadWriteFactory readWriteFactory,
             string regexPattern,
             string connectionString,
             string databaseName,

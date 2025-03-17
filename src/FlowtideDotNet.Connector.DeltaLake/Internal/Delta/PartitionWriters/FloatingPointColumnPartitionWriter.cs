@@ -11,12 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.PartitionWriters
 {

@@ -11,22 +11,13 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.DependencyInjection.Exceptions;
-using FlowtideDotNet.Engine.FailureStrategies;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.IO.Compression;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.DependencyInjection.Internal
 {
@@ -89,7 +80,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             var stateManager = serviceProvider.GetKeyedService<StateManagerOptions>(streamName);
 
             var pauseMonitor = serviceProvider.GetService<IOptionsMonitor<FlowtidePauseOptions>>();
-            
+
             if (connectorManager == null)
             {
                 throw new FlowtideMissingConnectorManagerException("IConnectorManager must be registered in the service collection, please do so manually or use the \"AddConnectors\" method.");

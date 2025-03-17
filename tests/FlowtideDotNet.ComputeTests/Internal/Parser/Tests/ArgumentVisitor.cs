@@ -14,12 +14,7 @@ using Antlr4.Runtime.Misc;
 using FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.ComputeTests.Internal.Tests
 {
@@ -123,12 +118,12 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
         public override IDataValue VisitListArg([NotNull] FuncTestCaseParser.ListArgContext context)
         {
             var elemType = new ListTypeVisitor().Visit(context.listType());
-            
+
             dataType = elemType.GetText();
             var literalList = context.literalList();
 
             List<IDataValue> values = new List<IDataValue>();
-            foreach(var literal in literalList.literal())
+            foreach (var literal in literalList.literal())
             {
                 values.Add(Visit(literal));
             }

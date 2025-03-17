@@ -17,13 +17,12 @@ using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Immutable;
-using ZstdSharp;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
     internal class BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer> : IStateSerializer<IBPlusTreeNode>
-        where TKeyContainer: IKeyContainer<K>
-        where TValueContainer: IValueContainer<V>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         private readonly IBPlusTreeKeySerializer<K, TKeyContainer> _keySerializer;
         private readonly IBplusTreeValueSerializer<V, TValueContainer> _valueSerializer;
@@ -81,8 +80,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     keyMetadataPages = treeMetadata.Metadata.KeyMetadataPages;
                     valueMetadataPages = treeMetadata.Metadata.ValueMetadataPages;
                 }
-                else 
-                { 
+                else
+                {
                     keyMetadataPages = ImmutableList<long>.Empty;
                     valueMetadataPages = ImmutableList<long>.Empty;
                 }
@@ -171,7 +170,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return Deserialize(bytes, length);
         }
 
-        public void Serialize(in IBufferWriter<byte> bufferWriter,in IBPlusTreeNode value)
+        public void Serialize(in IBufferWriter<byte> bufferWriter, in IBPlusTreeNode value)
         {
             if (value is LeafNode<K, V, TKeyContainer, TValueContainer> leaf)
             {

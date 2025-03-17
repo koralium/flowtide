@@ -101,7 +101,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             var topic = metadata.Topics.First();
             var partitions = metadata.Topics.First().Partitions;
             List<TopicPartitionOffset> topicPartitionOffsets = new List<TopicPartitionOffset>();
-            foreach(var partition in partitions)
+            foreach (var partition in partitions)
             {
                 watermarkNames.Add(topicName + "_" + partition.PartitionId);
 
@@ -226,7 +226,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                     var ev = this._valueDeserializer.Deserialize(_keyDeserializer, result.Message.Value, result.Message.Key);
                     rows.Add(ev);
                 }
-                
+
                 if (result == null || rows.Count >= 100)
                 {
                     await output.SendAsync(new StreamEventBatch(rows, readRelation.OutputLength));
@@ -234,7 +234,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                     _eventsProcessed.Add(rows.Count);
                     // Check offsets
                     bool offsetsReached = true;
-                    foreach(var kv in beforeStartOffsets)
+                    foreach (var kv in beforeStartOffsets)
                     {
                         if (_state.Value.PartitionOffsets.TryGetValue(kv.Key, out var currentOffset))
                         {

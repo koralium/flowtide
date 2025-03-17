@@ -20,12 +20,7 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Buffer
@@ -77,7 +72,7 @@ namespace FlowtideDotNet.Core.Operators.Buffer
 
                 for (int i = 0; i < page.Keys._data.Columns.Count; i++)
                 {
-                     columns[i] = page.Keys._data.Columns[i].Copy(MemoryAllocator);
+                    columns[i] = page.Keys._data.Columns[i].Copy(MemoryAllocator);
                 }
                 _eventsCounter.Add(weights.Count);
                 yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));

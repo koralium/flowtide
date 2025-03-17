@@ -25,38 +25,38 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             this.position = position;
         }
 
-        public long Length 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 4); 
-                return o != 0 ? ReadUtils.GetLong(in span, o + position) : (long)0; 
-            } 
+        public long Length
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 4);
+                return o != 0 ? ReadUtils.GetLong(in span, o + position) : (long)0;
+            }
         }
 
-        public int NodesLength 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 6); 
-                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0; 
-            } 
+        public int NodesLength
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 6);
+                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0;
+            }
         }
 
-        public FieldNodeStruct Nodes(int j) 
-        { 
+        public FieldNodeStruct Nodes(int j)
+        {
             int o = ReadUtils.__offset(in span, in position, 6);
             var location = ReadUtils.__vector(in span, in position, o) + j * 16;
-            return new FieldNodeStruct(span, location); 
+            return new FieldNodeStruct(span, location);
         }
 
-        public int BuffersLength 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 8); 
-                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0; 
-            } 
+        public int BuffersLength
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 8);
+                return o != 0 ? ReadUtils.__vector_len(in span, in position, o) : 0;
+            }
         }
 
         public int BuffersStartIndex
@@ -69,8 +69,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
         }
 
-        public BufferStruct Buffers(int j) 
-        { 
+        public BufferStruct Buffers(int j)
+        {
             int o = ReadUtils.__offset(in span, in position, 8);
             var location = ReadUtils.__vector(in span, in position, o) + j * 16;
             return new BufferStruct(span, location);
@@ -85,17 +85,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
         }
 
-        public BodyCompressionStruct Compression 
-        { 
-            get 
-            { 
-                int o = ReadUtils.__offset(in span, in position, 10); 
+        public BodyCompressionStruct Compression
+        {
+            get
+            {
+                int o = ReadUtils.__offset(in span, in position, 10);
                 if (o != 0)
                 {
                     return new BodyCompressionStruct(span, ReadUtils.__indirect(in span, position + o));
                 }
                 return default;
-            } 
+            }
         }
     }
 }

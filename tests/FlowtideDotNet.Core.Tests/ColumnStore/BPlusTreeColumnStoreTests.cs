@@ -10,24 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
-using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Storage;
-using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.Extensions.Logging.Abstractions;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.Metrics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
 {
@@ -59,7 +51,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             {
                 valueColumn.Add(new Int64Value(i));
             }
-            var insertBatch = new EventBatchData([ valueColumn ]);
+            var insertBatch = new EventBatchData([valueColumn]);
 
             for (int i = 0; i < 4; i++)
             {

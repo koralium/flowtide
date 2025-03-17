@@ -10,21 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Egress;
-using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Base.Metrics.Counter;
 using FlowtideDotNet.Base.Metrics.Gauge;
+using FlowtideDotNet.Base.Utils;
+using FlowtideDotNet.Base.Vertices;
+using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using System.Diagnostics.Metrics;
-using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Storage.Memory;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {

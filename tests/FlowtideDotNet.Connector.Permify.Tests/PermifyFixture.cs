@@ -14,7 +14,6 @@ using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
 using Grpc.Net.Client;
-using Testcontainers.PostgreSql;
 
 namespace FlowtideDotNet.Connector.Permify.Tests
 {

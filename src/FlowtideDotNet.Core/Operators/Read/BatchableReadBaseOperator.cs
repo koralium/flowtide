@@ -18,13 +18,7 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Read
@@ -118,33 +112,33 @@ namespace FlowtideDotNet.Core.Operators.Read
                 };
             }
 
-            _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp", 
+            _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp",
                 new BPlusTreeOptions<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>()
-            {
-                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
-                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
-                ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                MemoryAllocator = MemoryAllocator
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                    KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                    ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
             await _fullLoadTempTree.Clear();
 
-            _persistentTree = await stateManagerClient.GetOrCreateTree("persistent", 
+            _persistentTree = await stateManagerClient.GetOrCreateTree("persistent",
                 new BPlusTreeOptions<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>()
-            {
-                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
-                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
-                ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                MemoryAllocator = MemoryAllocator
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                    KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                    ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
 
-            _deletionsTree = await stateManagerClient.GetOrCreateTree("deletions", 
+            _deletionsTree = await stateManagerClient.GetOrCreateTree("deletions",
                 new BPlusTreeOptions<string, int, ListKeyContainer<string>, ListValueContainer<int>>()
-            {
-                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
-                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                MemoryAllocator = MemoryAllocator
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                    KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
             await _deletionsTree.Clear();
         }
 
@@ -203,7 +197,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                                 updated = true;
                             }
                             outputList.Add(new RowEvent(-1, 0, ArrayRowData.Create(current.RowData, readRelation.Emit)));
-                            
+
                             return (input, updated ? GenericWriteOperation.Upsert : GenericWriteOperation.Delete);
                         }
                         if (_filter != null)
@@ -266,7 +260,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                     throw new NotSupportedException("Full load does not support deletions");
                 }
 
-                
+
                 var key = e.Key;
                 await _fullLoadTempTree.Upsert(key, e.RowEvent);
                 await _persistentTree.RMW(key, e.RowEvent, (input, current, exist) =>

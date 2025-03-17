@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Substrait.Expressions.IfThen
         public override int GetHashCode()
         {
             var code = new HashCode();
-            foreach(var ifClause in Ifs)
+            foreach (var ifClause in Ifs)
             {
                 code.Add(ifClause);
             }

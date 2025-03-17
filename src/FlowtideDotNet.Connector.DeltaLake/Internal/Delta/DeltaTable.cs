@@ -11,16 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 {
@@ -42,7 +34,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             _version = version;
             _schema = schema;
             // Read schema
-            
+
         }
 
         public List<DeltaAddAction> AddFiles => _addFiles;

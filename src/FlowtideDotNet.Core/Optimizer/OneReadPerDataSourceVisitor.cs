@@ -49,8 +49,8 @@ namespace FlowtideDotNet.Core.Optimizer
                     return new ReferenceRelation()
                     {
                         RelationId = relationId
-                    };   
-                }   
+                    };
+                }
             }
             return base.VisitReadRelation(readRelation, state);
         }

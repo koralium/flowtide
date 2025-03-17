@@ -14,12 +14,6 @@ using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowEncoders
 {
@@ -31,7 +25,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
 
         public void AddValue(int index, ref AddToColumnFunc func)
         {
-            if (_array == null) 
+            if (_array == null)
             {
                 func.AddValue(NullValue.Instance);
                 return;

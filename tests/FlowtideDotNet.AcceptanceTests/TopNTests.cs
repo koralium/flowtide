@@ -10,11 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -36,7 +31,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 SELECT TOP 1 userkey 
                 FROM users");
             });
-            
+
             Assert.Equal("Fetch operation (top or limit) is not supported without an order by", ex.Message);
         }
 
@@ -48,7 +43,7 @@ namespace FlowtideDotNet.AcceptanceTests
             INSERT INTO output 
             SELECT TOP 1 userkey 
             FROM users
-            ORDER BY userkey");  
+            ORDER BY userkey");
 
             await WaitForUpdate();
 

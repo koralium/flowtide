@@ -13,16 +13,8 @@
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.OpenFGA.Extensions;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Core.Engine;
 using OpenFga.Sdk.Client;
-using OpenFga.Sdk.Client.Model;
 using OpenFga.Sdk.Model;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Tests
 {
@@ -34,8 +26,8 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
         private readonly Func<OpenFgaClient, IAsyncEnumerable<TupleKey>>? deleteFilter;
 
         public OpenFgaTestStream(
-            string testName, 
-            ClientConfiguration clientConfiguration, 
+            string testName,
+            ClientConfiguration clientConfiguration,
             bool addReadResolver,
             bool addWriteResolver,
             Func<OpenFgaClient, IAsyncEnumerable<TupleKey>>? deleteFilter = null) : base(testName)
@@ -48,7 +40,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
 
         protected override void AddWriteResolvers(IConnectorManager factory)
         {
-            if (addWriteResolver) 
+            if (addWriteResolver)
             {
                 factory.AddOpenFGASink("openfga", new OpenFgaSinkOptions
                 {

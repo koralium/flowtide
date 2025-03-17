@@ -19,15 +19,10 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using SqlParser.Ast;
-using System;
 using System.Buffers;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -135,7 +130,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end, SpanByteComparer.Instance);
             }
-            
+
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
@@ -270,7 +265,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             arrowSerializer.AddBufferForward(_binaryList.OffsetMemory.Length);
             arrowSerializer.AddBufferForward(_binaryList.DataMemory.Length);
-            
+
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)

@@ -14,9 +14,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
-using FlowtideDotNet.Substrait.Relations;
 using Stowage;
-using System.Collections.Generic;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 {

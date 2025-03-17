@@ -11,9 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Utils;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-using System.Text.Json;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
@@ -204,12 +202,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     };
                     var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
                     VertexHandler vertexHandler = new VertexHandler(
-                        _context.streamName, 
-                        block.Key, 
-                        _context.TryScheduleCheckpointIn, 
-                        _context.AddTrigger, 
-                        _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName), 
-                        blockStateClient, 
+                        _context.streamName,
+                        block.Key,
+                        _context.TryScheduleCheckpointIn,
+                        _context.AddTrigger,
+                        _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
+                        blockStateClient,
                         _context.loggerFactory,
                         _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
                     await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler);
@@ -225,12 +223,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     };
                     var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
                     VertexHandler vertexHandler = new VertexHandler(
-                        _context.streamName, 
-                        block.Key, 
-                        _context.TryScheduleCheckpointIn, 
-                        _context.AddTrigger, 
-                        _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName), 
-                        blockStateClient, 
+                        _context.streamName,
+                        block.Key,
+                        _context.TryScheduleCheckpointIn,
+                        _context.AddTrigger,
+                        _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
+                        blockStateClient,
                         _context.loggerFactory,
                         _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
                     await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler);
@@ -247,18 +245,18 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     };
                     var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
                     VertexHandler vertexHandler = new VertexHandler(
-                        _context.streamName, 
-                        block.Key, 
-                        _context.TryScheduleCheckpointIn, 
-                        _context.AddTrigger, 
-                        _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName), 
-                        blockStateClient, 
+                        _context.streamName,
+                        block.Key,
+                        _context.TryScheduleCheckpointIn,
+                        _context.AddTrigger,
+                        _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
+                        blockStateClient,
                         _context.loggerFactory,
                         _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
                     await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler);
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
 
                 await _context.OnFailure(e);

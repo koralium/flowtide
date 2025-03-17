@@ -13,9 +13,6 @@
 using Antlr4.Runtime.Misc;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.Memory;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
 {
@@ -32,9 +29,9 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
         {
             var visitor = new ColumnValueVisitor(dataType);
 
-            
+
             Column result = new Column(GlobalMemoryManager.Instance);
-            foreach(var val in context.literal())
+            foreach (var val in context.literal())
             {
                 result.Add(visitor.Visit(val));
             }
