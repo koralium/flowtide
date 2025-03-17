@@ -28,6 +28,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using Serilog;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
