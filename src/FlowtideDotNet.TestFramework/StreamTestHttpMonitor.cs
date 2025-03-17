@@ -29,7 +29,7 @@ namespace FlowtideDotNet.TestFramework
             do
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var result = await httpClient.GetFromJsonAsync<StreamTestInformation>($"{testInformationEndpointUrl}?stream={streamName}");
+                var result = await httpClient.GetFromJsonAsync<StreamTestInformation>($"{testInformationEndpointUrl}?stream={streamName}", cancellationToken);
 
                 if (result == null)
                 {
