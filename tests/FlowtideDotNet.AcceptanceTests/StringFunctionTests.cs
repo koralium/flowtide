@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using System.Text;
+using System.Text.RegularExpressions;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -205,6 +206,16 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream("INSERT INTO output SELECT string_split(concat(firstName, ' ', lastName), ' ') as NameParts FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { NameParts = ($"{x.FirstName} {x.LastName}").Split(' ') }));
+        }
+
+        [Fact]
+        public async Task RegexStringSplit()
+        {
+            var pattern = @"\s";
+            GenerateData();
+            await StartStream($"INSERT INTO output SELECT regexp_string_split(concat(firstName, ' ', lastName), '{pattern}') as NameParts FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { FirstLetter = Regex.Split($"{x.FirstName} {x.LastName}", pattern) }));
         }
     }
 }
