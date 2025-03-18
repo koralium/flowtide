@@ -43,7 +43,7 @@ namespace AspireSamples.DeltaLakeSourceSample
             DataGenerator dataGenerator = new DataGenerator();
 
             var dataInsert = DataInsertResource.AddDataInsert(builder, "data-copy",
-                async (logger, statusUpdate, token) =>
+                async (logger, statusUpdate, resource, token) =>
 
                 {
                     statusUpdate("Copying data to Azure Blob Storage");
@@ -84,7 +84,7 @@ namespace AspireSamples.DeltaLakeSourceSample
                         await remoteFile.FlushAsync();
                     }
                 },
-                (logger, token) => Task.CompletedTask)
+                (logger, resource, token) => Task.CompletedTask)
                 .WaitFor(blobs);
 
             var stream = builder.AddProject<DeltaLakeSourceUsage>("stream")

@@ -21,7 +21,21 @@ namespace FlowtideDotNet.DependencyInjection
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(name, nameof(name));
 
+            // Search services for an existing builder with the same key
+            var existingBuilderObj = services.FirstOrDefault(x => 
+                x.IsKeyedService && 
+                (x.ServiceKey?.Equals(name) ?? false) && 
+                x.ServiceType == typeof(FlowtideDIBuilder));
+            
+            if (existingBuilderObj != null && existingBuilderObj.KeyedImplementationInstance is FlowtideDIBuilder existingBuilder)
+            {
+                return existingBuilder;
+            }
+
             var builder = new FlowtideDIBuilder(name, services);
+
+            // Add the builder to DI so it can be fetched again.
+            services.AddKeyedSingleton(name, builder);
             services.AddKeyedSingleton(name, (provider, key) =>
             {
                 return builder.Build(provider);

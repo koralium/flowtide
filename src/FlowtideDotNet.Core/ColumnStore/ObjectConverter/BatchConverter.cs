@@ -23,6 +23,8 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
         private readonly IReadOnlyList<IObjectColumnConverter> converters;
         private readonly Func<object>? createObject;
 
+        internal IReadOnlyList<ObjectConverterPropertyInfo> Properties => properties;
+
         public BatchConverter(IReadOnlyList<ObjectConverterPropertyInfo> properties, IReadOnlyList<IObjectColumnConverter> converters, Func<object>? createObject)
         {
             this.properties = properties;
