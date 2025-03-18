@@ -80,7 +80,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Li
         {
             if (function.Arguments.Count != 1)
             {
-                throw new InvalidOperationException("List_agg must have one argument.");
+                throw new InvalidOperationException("list_union_distinct_agg must have one argument.");
             }
             var arg = visitor.Visit(function.Arguments[0], parametersInfo);
 
