@@ -202,7 +202,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task StringSplit()
         {
             GenerateData();
-            await StartStream("INSERT INTO output SELECT string_split(concat(firstName, ' ',lastName), ' ') as NameParts FROM users");
+            await StartStream("INSERT INTO output SELECT string_split(concat(firstName, ' ', lastName), ' ') as NameParts FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { NameParts = ($"{x.FirstName} {x.LastName}").Split(' ') }));
         }
