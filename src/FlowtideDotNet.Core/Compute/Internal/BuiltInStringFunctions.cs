@@ -309,6 +309,11 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 return FlxValue.FromBytes(FlexBuffer.From(result));
             }
 
+            if (splitStr.ValueType != FlexBuffers.Type.String)
+            {
+                return NullValue;
+            }
+
             var split = val.AsString.Split([splitStr.AsString], StringSplitOptions.None);
             return FlxValue.FromBytes(FlexBuffer.From(split));
         }
