@@ -47,6 +47,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
                     }
                     return new DoubleValue(double.Parse(value, CultureInfo.InvariantCulture));
                 case "str":
+                    value = value.Trim('\'');
                     return new StringValue(value);
                 case "dec":
                     return new DecimalValue(decimal.Parse(value, CultureInfo.InvariantCulture));

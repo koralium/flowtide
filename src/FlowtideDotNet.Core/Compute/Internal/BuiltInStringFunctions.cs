@@ -13,6 +13,7 @@
 using FlexBuffers;
 using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
 using FlowtideDotNet.Substrait.FunctionExtensions;
+using System.Buffers;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -86,6 +87,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 });
 
             StringAggAggregation.Register(functionsRegister);
+
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.StringSplit, (x, y) => StringSplitImplementation(x, y));
         }
 
         private static FlxValue ToStringImplementation(in FlxValue val)
@@ -291,6 +294,23 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 return NullValue;
             }
             return FlxValue.FromBytes(FlexBuffer.SingleValue(val.AsString.Length));
+        }
+
+        private static FlxValue StringSplitImplementation(in FlxValue val, in FlxValue splitStr)
+        {
+            if (val.ValueType != FlexBuffers.Type.String)
+            {
+                return NullValue;
+            }
+
+            if (splitStr.ValueType == FlexBuffers.Type.Null)
+            {
+                var result = new string[] { val.AsString };
+                return FlxValue.FromBytes(FlexBuffer.From(result));
+            }
+
+            var split = val.AsString.Split([splitStr.AsString], StringSplitOptions.None);
+            return FlxValue.FromBytes(FlexBuffer.From(split));
         }
     }
 }
