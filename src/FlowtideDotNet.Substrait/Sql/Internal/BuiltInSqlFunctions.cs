@@ -657,6 +657,34 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new InvalidOperationException("list_agg must have exactly one argument, and not be '*'");
             });
 
+            sqlFunctionRegister.RegisterAggregateFunction("list_union_distinct_agg", (f, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("list_union_distinct_agg must have exactly one argument, and not be '*'");
+                }
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException("list_union_distinct_agg must have exactly one argument, and not be '*'");
+                }
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData);
+
+                    return new AggregateResponse(
+                        new AggregateFunction()
+                        {
+                            ExtensionUri = FunctionsList.Uri,
+                            ExtensionName = FunctionsList.ListUnionDistinctAgg,
+                            Arguments = new List<Expressions.Expression>() { argExpr.Expr }
+                        },
+                        new ListType(argExpr.Type)
+                        );
+                }
+                throw new InvalidOperationException("list_union_distinct_agg must have exactly one argument, and not be '*'");
+            });
+
             sqlFunctionRegister.RegisterAggregateFunction("string_agg", (f, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);

@@ -141,5 +141,29 @@ namespace FlowtideDotNet.AcceptanceTests
 
             Assert.Equal(999, rows2.Count);
         }
+
+        [Fact]
+        public async Task ListUnionDistinctAgg()
+        {
+            await StartStream(@"
+                CREATE VIEW testdata AS
+                SELECT 
+                list('a', 'b') as list
+                UNION ALL
+                SELECT
+                list('b', 'c') as list;
+
+                INSERT INTO output 
+                SELECT 
+                    list_union_distinct_agg(list)
+                FROM testdata
+                ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new {list = new List<string>(){ "a", "b", "c" }}
+            });
+        }
     }
 }
