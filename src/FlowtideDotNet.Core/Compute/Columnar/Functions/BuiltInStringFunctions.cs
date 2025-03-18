@@ -10,7 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.StringAgg;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.FunctionExtensions;
@@ -177,6 +179,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Decode, typeof(BuiltInStringFunctions), nameof(StringBase64DecodeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.CharLength, typeof(BuiltInStringFunctions), nameof(CharLengthImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StrPos, typeof(BuiltInStringFunctions), nameof(StrPosImplementation));
+
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringSplit, typeof(BuiltInStringFunctions), nameof(StringSplitImplementation));
         }
 
         private static bool SubstringTryGetParameters<T1, T2, T3>(
@@ -713,6 +717,39 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
             result._type = ArrowTypeId.Int64;
             result._int64Value = new Int64Value(value.AsString.ToString().IndexOf(toFind.AsString.ToString(), StringComparison.InvariantCultureIgnoreCase) + 1);
+            return result;
+        }
+
+        private static DataValueContainer StringSplitImplementation<T1, T2>(in T1 val, in T2 splitStr, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (val.IsNull || val.Type != ArrowTypeId.String)
+            {
+                return result;
+            }
+
+            if (splitStr.IsNull)
+            {
+                result._type = ArrowTypeId.List;
+#pragma warning disable S3220 // Method calls should not resolve ambiguously to overloads with "params"
+                result._listValue = new ListValue(val);
+#pragma warning restore S3220 // Method calls should not resolve ambiguously to overloads with "params"
+                return result;
+            }
+
+            if (splitStr.Type != ArrowTypeId.String)
+            {
+                return result;
+            }
+
+            var split = val.AsString.ToString()
+                .Split([splitStr.AsString.ToString()], StringSplitOptions.None)
+                .Select(s => (IDataValue)new StringValue(s))
+                .ToArray();
+
+            result._type = ArrowTypeId.List;
+            result._listValue = new ListValue(split);
             return result;
         }
 
