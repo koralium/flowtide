@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Li
             {
                 searchPrimaryKeys.Add(i);
             }
-            var tree = await stateManagerClient.GetOrCreateTree("listuniondistintaggtree",
+            var tree = await stateManagerClient.GetOrCreateTree("listuniondistinctaggtree",
                 new BPlusTreeOptions<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>>()
                 {
                     Comparer = new ListAggInsertComparer(groupingLength),
