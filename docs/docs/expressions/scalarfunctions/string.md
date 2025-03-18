@@ -219,6 +219,8 @@ Splits a string into a collection of substrings based on the specified delimiter
 
 _If the provided delimiter character is null, the original string will be returned as the only element in the resulting collection._
 
+_If the provided delimiter character is not a string, null will be returned._
+
 ### SQL Usage
 
 ```sql
