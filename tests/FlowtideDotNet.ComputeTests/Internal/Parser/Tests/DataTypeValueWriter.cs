@@ -24,6 +24,10 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
             {
                 return NullValue.Instance;
             }
+            if (dataType.StartsWith("LIST<", StringComparison.OrdinalIgnoreCase))
+            {
+                return ParseList(value, dataType);
+            }
             switch (dataType)
             {
                 case "i8":
@@ -61,6 +65,19 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
 
             }
             throw new NotImplementedException(dataType);
+        }
+
+        private static IDataValue ParseList(string value, string dataType)
+        {
+            // parse inner type LIST<inner>
+            var innerType = dataType.Substring(5, dataType.Length - 6);
+            var values = value.TrimStart('[').TrimEnd(']').Split(',');
+            var listValues = new List<IDataValue>();
+            foreach (var val in values)
+            {
+                listValues.Add(WriteDataValue(val, innerType));
+            }
+            return new ListValue(listValues);
         }
     }
 }
