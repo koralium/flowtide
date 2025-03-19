@@ -181,6 +181,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StrPos, typeof(BuiltInStringFunctions), nameof(StrPosImplementation));
 
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringSplit, typeof(BuiltInStringFunctions), nameof(StringSplitImplementation));
+
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.RegexStringSplit, typeof(BuiltInStringFunctions), nameof(RegexStringSplitImplementation));
         }
 
         private static bool SubstringTryGetParameters<T1, T2, T3>(
@@ -753,5 +755,23 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             return result;
         }
 
+        private static DataValueContainer RegexStringSplitImplementation<T1, T2>(in T1 val, in T2 pattern, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (val.Type != ArrowTypeId.String || pattern.Type != ArrowTypeId.String)
+            {
+                return result;
+            }
+
+            // Explicit capture is required to allow unnamed groups (parentheses) to be noncapturing groups (substrait test requirement)
+            var split = Regex.Split(val.AsString.ToString(), pattern.AsString.ToString(), RegexOptions.ExplicitCapture)
+                .Select(s => (IDataValue)new StringValue(s))
+                .ToArray();
+
+            result._type = ArrowTypeId.List;
+            result._listValue = new ListValue(split);
+            return result;
+        }
     }
 }
