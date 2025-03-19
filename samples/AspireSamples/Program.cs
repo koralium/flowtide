@@ -13,12 +13,16 @@
 using AspireSamples.DeltaLakeSourceSample;
 using AspireSamples.ElasticsearchExample;
 using AspireSamples.MongoDbToConsole;
+using Microsoft.Extensions.Configuration;
 using Spectre.Console;
 using SqlServerToSqlServerAspire.SqlServerToSqlServer;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-var sample = AnsiConsole.Prompt(
+string? sample = builder.Configuration.GetValue<string?>("sample");
+if (sample == null)
+{
+    sample = AnsiConsole.Prompt(
     new SelectionPrompt<string>()
         .Title("Select sample:")
         .PageSize(10)
@@ -29,6 +33,7 @@ var sample = AnsiConsole.Prompt(
             "DeltaLake-Source, Replay history",
             "SqlServer-To-Elasticsearch"
         }));
+}
 
 switch (sample)
 {

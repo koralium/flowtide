@@ -48,6 +48,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return new BinaryValue(blob.ToArray());
                 case FlexBuffers.Type.Map:
                     return MapToDataValue(flxValue);
+                case FlexBuffers.Type.VectorString:
                 case FlexBuffers.Type.Vector:
                     return ListToDataValue(flxValue);
             }

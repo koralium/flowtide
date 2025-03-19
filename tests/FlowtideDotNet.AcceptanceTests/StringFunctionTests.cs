@@ -197,5 +197,14 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.IndexOf(start) + 1 }));
         }
+
+        [Fact]
+        public async Task StringSplit()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT string_split(concat(firstName, ' ', lastName), ' ') as NameParts FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { NameParts = ($"{x.FirstName} {x.LastName}").Split(' ') }));
+        }
     }
 }

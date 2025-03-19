@@ -10,26 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
-namespace FlowtideDotNet.Storage.StateManager
-{
-    public interface IStateManager
-    {
-        bool Initialized { get; }
-        Task InitializeAsync();
-
-        long CurrentVersion { get; }
-
-        IStateManagerClient GetOrCreateClient(string name, TagList tagList = default);
-
-        Task Compact();
-
-        ValueTask CheckpointAsync(bool includeIndex = false);
-    }
-
-    public interface IStateManager<TMetadata> : IStateManager
-    {
-        TMetadata? Metadata { get; set; }
-    }
-}
+[assembly: InternalsVisibleTo("FlowtideDotNet.TestFramework.Tests")]
