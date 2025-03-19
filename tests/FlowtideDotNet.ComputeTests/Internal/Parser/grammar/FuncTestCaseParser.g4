@@ -102,6 +102,7 @@ literal
     | TimestampTzLiteral
     | IntervalYearLiteral
     | IntervalDayLiteral
+    | literalList
     ;
 
 qualifiedAggregateFuncArgs
@@ -289,6 +290,7 @@ parameterizedType
     | intervalDayType
     | precisionTimestampType
     | precisionTimestampTZType
+    | listType
 // TODO implement the rest of the parameterized types
 //  | Struct isnull='?'? Lt expr (Comma expr)* Gt #struct
 //  | NStruct isnull='?'? Lt Identifier expr (Comma Identifier expr)* Gt #nStruct
