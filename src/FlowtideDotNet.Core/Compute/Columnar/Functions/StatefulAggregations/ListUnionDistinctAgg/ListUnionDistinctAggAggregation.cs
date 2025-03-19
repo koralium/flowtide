@@ -21,7 +21,7 @@ using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Linq.Expressions;
 
-namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.ListUnionAgg
+namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.ListUnionDistinctAgg
 {
     internal class ColumnListUnionDistinctAggAggregationSingleton
     {
@@ -130,12 +130,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Li
 
             for (int i = 0; i < list.Count; i++)
             {
-                var listalue = list.GetAt(i);
+                var listvalue = list.GetAt(i);
                 var columnRowRef = new ListAggColumnRowReference()
                 {
                     batch = groupingKey.referenceBatch,
                     index = groupingKey.RowIndex,
-                    insertValue = listalue
+                    insertValue = listvalue
                 };
 
                 await singleton.Tree.RMWNoResult(columnRowRef, (int)weight, (input, current, exists) =>

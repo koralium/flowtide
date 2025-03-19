@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations;
-using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.ListUnionAgg;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.ListUnionDistinctAgg;
 using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
 using FlowtideDotNet.Core.Compute.Internal.TableFunctions;
 
