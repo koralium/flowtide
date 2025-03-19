@@ -722,6 +722,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "len", FunctionsString.Uri, FunctionsString.CharLength);
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "strpos", FunctionsString.Uri, FunctionsString.StrPos);
+            
+           RegisterTwoVariableScalarFunction(sqlFunctionRegister, "string_split", FunctionsString.Uri, FunctionsString.StringSplit);
 
             // Table functions
             UnnestSqlFunction.AddUnnest(sqlFunctionRegister);

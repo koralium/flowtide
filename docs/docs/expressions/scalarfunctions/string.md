@@ -210,3 +210,19 @@ index 1 for the first character.
 ```sql
 SELECT strpos(c1, 'abc') FROM ...
 ```
+
+## String split
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#string_split)
+
+Splits a string into a collection of substrings based on the specified delimiter character. 
+
+_If the provided delimiter character is null, the original string will be returned as the only element in the resulting collection._
+
+_If the provided delimiter character is not a string, null will be returned._
+
+### SQL Usage
+
+```sql
+SELECT string_split('a b', ' ') ...
+```
