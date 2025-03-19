@@ -28,7 +28,6 @@ using IToken = Antlr4.Runtime.IToken;
 /// <see cref="FuncTestCaseParser"/>.
 /// </summary>
 [System.CodeDom.Compiler.GeneratedCode("ANTLR", "4.13.1")]
-[System.CLSCompliant(false)]
 public interface IFuncTestCaseParserListener : IParseTreeListener {
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="FuncTestCaseParser.doc"/>.
