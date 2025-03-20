@@ -226,3 +226,17 @@ _If the provided delimiter character is not a string, null will be returned._
 ```sql
 SELECT string_split('a b', ' ') ...
 ```
+
+## Regexp string split
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#regexp_string_split)
+
+Splits a string into a collection of substrings based on the specified pattern.
+
+_If any of the arguments is not string, null will be returned._
+
+### SQL Usage
+
+```sql
+SELECT regexp_string_split('a b', '\s') ...
+```
