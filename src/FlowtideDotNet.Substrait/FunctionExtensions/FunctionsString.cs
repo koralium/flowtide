@@ -32,6 +32,7 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string StrPos = "strpos";
         public const string StringSplit = "string_split";
         public const string RegexStringSplit = "regexp_string_split";
+        public const string ToJson = "to_json";
 
         public const string StringAgg = "string_agg";
     }

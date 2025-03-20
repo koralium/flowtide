@@ -110,5 +110,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             sb.Append("}");
             return sb.ToString();
         }
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitReferenceMapValue(in this);
+        }
     }
 }

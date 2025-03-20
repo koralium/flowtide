@@ -240,3 +240,15 @@ _If any of the arguments is not string, null will be returned._
 ```sql
 SELECT regexp_string_split('a b', '\s') ...
 ```
+
+## To Json
+
+This function does not have a substrait definition.
+
+Converts an object into json stored as a string.
+
+### SQL Usage
+
+```
+SELECT to_json(column1) ...
+```

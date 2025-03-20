@@ -86,5 +86,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return $"[{String.Join(',', ListValues().Select(x => x.ToString()))}]";
         }
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitReferenceListValue(in this);
+        }
     }
 }

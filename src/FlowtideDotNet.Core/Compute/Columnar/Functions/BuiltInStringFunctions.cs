@@ -13,6 +13,7 @@
 using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Json;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.StringAgg;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.FunctionExtensions;
@@ -23,6 +24,8 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using static SqlParser.Ast.MatchRecognizeSymbol;
+using static SqlParser.Ast.Partition;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
@@ -183,6 +186,18 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringSplit, typeof(BuiltInStringFunctions), nameof(StringSplitImplementation));
 
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.RegexStringSplit, typeof(BuiltInStringFunctions), nameof(RegexStringSplitImplementation));
+
+            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.ToJson, (func, parameters, visitor) =>
+            {
+                var expr = visitor.Visit(func.Arguments[0], parameters)!;
+
+                MethodInfo? toStringMethod = typeof(BuiltInStringFunctions).GetMethod(nameof(ToJsonImplementation), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                Debug.Assert(toStringMethod != null);
+                var genericMethod = toStringMethod.MakeGenericMethod(expr.Type);
+                var jsonWriterConstant = Expression.Constant(new DataValueJsonWriter());
+                var resultContainer = Expression.Constant(new DataValueContainer());
+                return System.Linq.Expressions.Expression.Call(genericMethod, expr, resultContainer, jsonWriterConstant);
+            });
         }
 
         private static bool SubstringTryGetParameters<T1, T2, T3>(
@@ -772,6 +787,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
             result._type = ArrowTypeId.List;
             result._listValue = new ListValue(split);
+            return result;
+        }
+
+        private static DataValueContainer ToJsonImplementation<T1>(in T1 val, DataValueContainer result, DataValueJsonWriter writer)
+            where T1 : IDataValue
+        {
+            writer.Reset();
+            writer.Visit(in val);
+            writer.Flush();
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(writer.WrittenMemory);
             return result;
         }
     }
