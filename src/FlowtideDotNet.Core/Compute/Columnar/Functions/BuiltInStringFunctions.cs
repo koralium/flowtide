@@ -189,6 +189,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
             functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.ToJson, (func, parameters, visitor) =>
             {
+                if (func.Arguments.Count != 1)
+                {
+                    throw new InvalidOperationException("to_json function must have exactly 1 argument.");
+                }
                 var expr = visitor.Visit(func.Arguments[0], parameters)!;
 
                 MethodInfo? toStringMethod = typeof(BuiltInStringFunctions).GetMethod(nameof(ToJsonImplementation), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
