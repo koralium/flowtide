@@ -761,6 +761,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         {
             if (val.Type != ArrowTypeId.String || pattern.Type != ArrowTypeId.String)
             {
+                result._type = ArrowTypeId.Null;
                 return result;
             }
 
