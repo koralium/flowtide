@@ -238,5 +238,5 @@ _If any of the arguments is not string, null will be returned._
 ### SQL Usage
 
 ```sql
-SELECT string_split('a b', '\s') ...
+SELECT regexp_string_split('a b', '\s') ...
 ```
