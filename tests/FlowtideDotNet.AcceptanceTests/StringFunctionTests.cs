@@ -229,5 +229,16 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { json = JsonSerializer.Serialize(new {firstName = x.FirstName, lastName = x.LastName}) }));
         }
+
+        [Fact]
+        public async Task FromJsonWithMap()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output 
+            SELECT from_json(to_json(map('firstName', firstName, 'lastName', lastName))) as json FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { json = new { firstName = x.FirstName, lastName = x.LastName } }));
+        }
     }
 }

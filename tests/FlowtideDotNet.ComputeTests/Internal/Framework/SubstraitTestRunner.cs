@@ -127,15 +127,32 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
             }
             Column resultColumn = Column.Create(GlobalMemoryManager.Instance);
             // Run once to try and reduce IL compile time for output
-            compiledMethod(new EventBatchData(columns), 0, resultColumn);
+            if (parsedTest.Expected.ExpectError)
+            {
+                Assert.ThrowsAny<Exception>(() => compiledMethod(new EventBatchData(columns), 0, resultColumn));
+            }
+            else
+            {
+                compiledMethod(new EventBatchData(columns), 0, resultColumn);
+            }
             resultColumn.Clear();
             Stopwatch sw = new();
             sw.Start();
-            compiledMethod(new EventBatchData(columns), 0, resultColumn);
+            if (parsedTest.Expected.ExpectError)
+            {
+                Assert.ThrowsAny<Exception>(() => compiledMethod(new EventBatchData(columns), 0, resultColumn));
+            }
+            else
+            {
+                compiledMethod(new EventBatchData(columns), 0, resultColumn);
+            }
             sw.Stop();
 
-            var actual = resultColumn.GetValueAt(0, default);
-            Assert.Equal(parsedTest.Expected.ExpectedValue, actual, (x, y) => DataValueComparer.CompareTo(x!, y!) == 0);
+            if (!parsedTest.Expected.ExpectError)
+            {
+                var actual = resultColumn.GetValueAt(0, default);
+                Assert.Equal(parsedTest.Expected.ExpectedValue, actual, (x, y) => DataValueComparer.CompareTo(x!, y!) == 0);
+            }
             return new(sw.Elapsed);
         }
 
