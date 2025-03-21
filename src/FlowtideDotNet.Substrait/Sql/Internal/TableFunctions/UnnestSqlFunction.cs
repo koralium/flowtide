@@ -39,6 +39,13 @@ namespace FlowtideDotNet.Substrait.Sql.Internal.TableFunctions
                         columnName = arg.TableAlias;
                     }
 
+                    SubstraitBaseType outputType = new AnyType();
+
+                    if (result.Type is ListType listType)
+                    {
+                        outputType = listType.ValueType;
+                    }
+                    
                     NamedStruct outputSchema = new NamedStruct()
                     {
                         Names = new List<string>() { columnName },
@@ -46,7 +53,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal.TableFunctions
                         {
                             Types = new List<SubstraitBaseType>()
                             {
-                                new AnyType()
+                                outputType
                             }
                         }
                     };

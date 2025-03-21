@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
 {
@@ -48,16 +49,38 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
             return new EventBatchData(columns);
         }
 
-        /// <summary>
-        /// Special function used in unit tests that retuns the rows in sorted order to easily compare with expected results
-        /// 
-        /// This method is not optimized at all and reuses code and does alot of memory copy to reuse components, so dont use it for other things than unit tests.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="objects"></param>
-        /// <param name="memoryAllocator"></param>
-        /// <returns></returns>
-        public static EventBatchData ConvertToBatchSorted<T>(IEnumerable<T> objects, IMemoryAllocator memoryAllocator)
+        public NamedStruct GetSchema()
+        {
+            List<string> columnNames = new List<string>();
+            List<SubstraitBaseType> types = new List<SubstraitBaseType>();
+
+            for (int i = 0; i < properties.Count; i++)
+            {
+                var property = properties[i];
+                columnNames.Add(property.Name!);
+                types.Add(converters[i].GetSubstraitType());
+            }
+
+            return new NamedStruct()
+            {
+                Names = columnNames,
+                Struct = new Struct()
+                {
+                    Types = types
+                }
+            };
+        }
+
+            /// <summary>
+            /// Special function used in unit tests that retuns the rows in sorted order to easily compare with expected results
+            /// 
+            /// This method is not optimized at all and reuses code and does alot of memory copy to reuse components, so dont use it for other things than unit tests.
+            /// </summary>
+            /// <typeparam name="T"></typeparam>
+            /// <param name="objects"></param>
+            /// <param name="memoryAllocator"></param>
+            /// <returns></returns>
+            public static EventBatchData ConvertToBatchSorted<T>(IEnumerable<T> objects, IMemoryAllocator memoryAllocator)
         {
             var converter = GetBatchConverter(typeof(T));
 

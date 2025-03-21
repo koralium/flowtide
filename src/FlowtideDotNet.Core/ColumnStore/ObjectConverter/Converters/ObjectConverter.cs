@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
+using FlowtideDotNet.Substrait.Type;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
@@ -113,6 +114,11 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 
             }
             addFunc.AddValue(new MapValue(values));
+        }
+
+        public SubstraitBaseType GetSubstraitType()
+        {
+            return new MapType(new AnyType(), new AnyType());
         }
     }
 }
