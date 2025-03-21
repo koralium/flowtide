@@ -23,6 +23,7 @@ using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using static SqlParser.Ast.MatchRecognizeSymbol;
 using static SqlParser.Ast.Partition;
@@ -202,6 +203,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 var resultContainer = Expression.Constant(new DataValueContainer());
                 return System.Linq.Expressions.Expression.Call(genericMethod, expr, resultContainer, jsonWriterConstant);
             });
+
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.FromJson, typeof(BuiltInStringFunctions), nameof(FromJsonImplementation));
         }
 
         private static bool SubstringTryGetParameters<T1, T2, T3>(
@@ -803,6 +806,66 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             result._type = ArrowTypeId.String;
             result._stringValue = new StringValue(writer.WrittenMemory);
             return result;
+        }
+
+        private static IDataValue FromJsonImplementation<T1>(in T1 val)
+            where T1 : IDataValue
+        {
+            if (val.Type != ArrowTypeId.String && val.Type != ArrowTypeId.Binary)
+            {
+                return NullValue.Instance;
+            }
+
+            if (val.Type == ArrowTypeId.String)
+            {
+                Utf8JsonReader reader = new Utf8JsonReader(val.AsString.Span);
+                try
+                {
+                    return DataValueJsonReader.Read(ref reader);
+                }
+                catch (JsonException)
+                {
+                    return NullValue.Instance;
+                }
+            }
+            else
+            {
+                Utf8JsonReader reader = new Utf8JsonReader(val.AsBinary);
+                try
+                {
+                    return DataValueJsonReader.Read(ref reader);
+                }
+                catch (JsonException)
+                {
+                    return NullValue.Instance;
+                }
+            }
+
+               
+        }
+
+        private static IDataValue FromJsonImplementation_error_handling__ERROR<T1>(in T1 val)
+            where T1 : IDataValue
+        {
+            if (val.Type == ArrowTypeId.Null)
+            {
+                return NullValue.Instance;
+            }
+            if (val.Type != ArrowTypeId.String && val.Type != ArrowTypeId.Binary)
+            {
+                throw new ArgumentException("FromJson function must have a string or binary argument.");
+            }
+
+            if (val.Type == ArrowTypeId.String)
+            {
+                Utf8JsonReader reader = new Utf8JsonReader(val.AsString.Span);
+                return DataValueJsonReader.Read(ref reader);
+            }
+            else
+            {
+                Utf8JsonReader reader = new Utf8JsonReader(val.AsBinary);
+                return DataValueJsonReader.Read(ref reader);
+            }
         }
     }
 }

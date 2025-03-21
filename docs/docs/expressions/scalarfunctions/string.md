@@ -249,6 +249,18 @@ Converts an object into json stored as a string.
 
 ### SQL Usage
 
-```
+```sql
 SELECT to_json(column1) ...
+```
+
+## From Json
+
+This function does not have a substrait definition.
+
+Converts a JSON string to flowtide data objects. It is also possible to use a binary value in utf8 encoding as the input.
+
+### SQL Usage
+
+```sql
+SELECT from_json(myjsoncolumn) ...
 ```
