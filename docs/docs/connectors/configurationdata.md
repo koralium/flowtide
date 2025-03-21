@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Configuration Data
 
-It is possible to use data from IConifugration as a data source, this can be useful if one wants to use configuration inside the stream, for instance to
+It is possible to use data from IConfiguration as a data source, this can be useful if one wants to use configuration inside the stream, for instance to
 filter out rows that do not exist in the configuration.
 
 ## Options Data Source
