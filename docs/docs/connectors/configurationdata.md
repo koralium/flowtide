@@ -12,8 +12,7 @@ filter out rows that do not exist in the configuration.
 The options data source uses `IOptionsMonitor<TOptions>` to listen to changes and to get the configuration settings.
 
 The Options data source is built-in as a default connector when installing FlowtideDotNet, so no extra nuget package is required.
-Options are added with the `AddOptionsSource<TOptions>` method on the connector maanger.
-
+Options are added with the `AddOptionsSource<TOptions>` method on the connector manager.
 One of the main benefits of this connector comes if you have a configuration provider that allows reloading, then data can be updated
 without restarting the stream.
 
