@@ -25,6 +25,8 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using static SqlParser.Ast.MatchRecognizeSymbol;
+using static SqlParser.Ast.Partition;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {

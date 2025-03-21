@@ -216,7 +216,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream($"INSERT INTO output SELECT regexp_string_split(concat(firstName, ' ', lastName), '{pattern}') as NameParts FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { FirstLetter = Regex.Split($"{x.FirstName} {x.LastName}", pattern) }));
+            AssertCurrentDataEqual(Users.Select(x => new { NameParts = Regex.Split($"{x.FirstName} {x.LastName}", pattern) }));
         }
 
         [Fact]
