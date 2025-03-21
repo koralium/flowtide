@@ -10,17 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Substrait.Type;
-
-namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders
+namespace FlowtideDotNet.Core.Sources.Configuration.Internal
 {
-    public interface IObjectColumnConverter
+    internal class OptionsMonitorState<TOptions>
     {
-        void Serialize(object obj, ref AddToColumnFunc addFunc);
+        public long Version { get; set; }
 
-        object Deserialize<T>(T value)
-            where T : IDataValue;
+        public TOptions? Options { get; set; }
 
-        SubstraitBaseType GetSubstraitType();
+        /// <summary>
+        /// Contains the options as json, used to compare for actual changes
+        /// </summary>
+        public string JsonFormatted { get; set; } = string.Empty;
     }
 }
