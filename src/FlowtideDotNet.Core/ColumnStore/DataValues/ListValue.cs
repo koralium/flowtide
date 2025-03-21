@@ -52,6 +52,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitListValue(in this);
+        }
+
         public void CopyToContainer(DataValueContainer container)
         {
             container._type = ArrowTypeId.List;

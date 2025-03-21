@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Xunit.Abstractions;
 
@@ -216,6 +217,17 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream($"INSERT INTO output SELECT regexp_string_split(concat(firstName, ' ', lastName), '{pattern}') as NameParts FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { NameParts = Regex.Split($"{x.FirstName} {x.LastName}", pattern) }));
+        }
+
+        [Fact]
+        public async Task ToJsonWithMap()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output 
+            SELECT to_json(map('firstName', firstName, 'lastName', lastName)) as json FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { json = JsonSerializer.Serialize(new {firstName = x.FirstName, lastName = x.LastName}) }));
         }
     }
 }

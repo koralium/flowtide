@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -48,6 +49,11 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitDecimalValue(in this);
+        }
+
         public void CopyToContainer(DataValueContainer container)
         {
             container._type = ArrowTypeId.Decimal128;
@@ -58,5 +64,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return value.ToString();
         }
+
+
     }
 }

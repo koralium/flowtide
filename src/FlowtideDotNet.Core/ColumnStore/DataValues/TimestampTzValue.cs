@@ -105,5 +105,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         {
             return ToDateTimeOffset().ToString("yyyy-MM-ddTHH:mm:ss.fffffffzzz");
         }
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitTimestampTzValue(in this);
+        }
     }
 }

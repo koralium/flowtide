@@ -69,5 +69,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             container._type = ArrowTypeId.String;
             container._stringValue = this;
         }
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitStringValue(in this);
+        }
     }
 }

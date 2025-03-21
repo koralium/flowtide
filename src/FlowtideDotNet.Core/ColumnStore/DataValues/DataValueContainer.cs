@@ -56,6 +56,67 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public TimestampTzValue AsTimestamp => _timestampValue;
 
+        public void Accept(in DataValueVisitor visitor)
+        {
+            switch (Type)
+            {
+                case ArrowTypeId.Null:
+                    visitor.VisitNullValue(in NullValue.Instance);
+                    break;
+                case ArrowTypeId.Int64:
+                    visitor.VisitInt64Value(in _int64Value);
+                    break;
+                case ArrowTypeId.Double:
+                    visitor.VisitDoubleValue(in _doubleValue);
+                    break;
+                case ArrowTypeId.String:
+                    visitor.VisitStringValue(in _stringValue);
+                    break;
+                case ArrowTypeId.Binary:
+                    visitor.VisitBinaryValue(in _binaryValue);
+                    break;
+                case ArrowTypeId.Boolean:
+                    visitor.VisitBoolValue(in _boolValue);
+                    break;
+                case ArrowTypeId.Decimal128:
+                    visitor.VisitDecimalValue(in _decimalValue);
+                    break;
+                case ArrowTypeId.Timestamp:
+                    visitor.VisitTimestampTzValue(in _timestampValue);
+                    break;
+                case ArrowTypeId.List:
+                    if (_listValue is ListValue listVal)
+                    {
+                        visitor.VisitListValue(in listVal);
+                    }
+                    else if (_listValue is ReferenceListValue refListVal)
+                    {
+                        visitor.VisitReferenceListValue(in refListVal);
+                    }
+                    else
+                    {
+                        throw new System.InvalidOperationException($"Unknown list type: {_listValue!.GetType()}");
+                    }
+                    break;
+                case ArrowTypeId.Map:
+                    if (_mapValue is MapValue mapVal)
+                    {
+                        visitor.VisitMapValue(in mapVal);
+                    }
+                    else if (_mapValue is ReferenceMapValue refMapVal)
+                    {
+                        visitor.VisitReferenceMapValue(in refMapVal);
+                    }
+                    else
+                    {
+                        throw new System.InvalidOperationException($"Unknown map type: {_mapValue!.GetType()}");
+                    }
+                    break;
+                default:
+                    throw new System.InvalidOperationException($"Unknown type: {Type}");
+            }
+        }
+
         public void CopyToContainer(DataValueContainer container)
         {
             container._type = _type;

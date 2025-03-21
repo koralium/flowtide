@@ -27,6 +27,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Parser.Tests
                 BuildParseTree = true
             };
             parser.RemoveErrorListeners();
+            parser.AddErrorListener(new ErrorListener());
 
             var context = parser.testCase();
 

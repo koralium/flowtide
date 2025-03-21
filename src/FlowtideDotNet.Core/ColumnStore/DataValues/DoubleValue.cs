@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -45,6 +46,11 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitDoubleValue(in this);
+        }
+
         public int CompareTo(in IDataValue other)
         {
             return AsDouble.CompareTo(other.AsDouble);
@@ -60,5 +66,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return AsDouble.ToString();
         }
+
     }
 }

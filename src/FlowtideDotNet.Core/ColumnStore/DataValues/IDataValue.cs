@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -40,5 +41,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         TimestampTzValue AsTimestamp { get; }
 
         void CopyToContainer(DataValueContainer container);
+
+        void Accept(in DataValueVisitor visitor);
     }
 }
