@@ -164,10 +164,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 if (_context._streamVersionInformation != null)
                 {
                     _context._logger.CheckingStreamHashConsistency(_context.streamName);
-                    if (_context._streamVersionInformation.Version != _context._lastState.StrreamVersion)
-                    {
-                        throw new InvalidOperationException("Stream version missmatch, the version stored in storage is different than the version used.");
-                    }
                     if (_context._streamVersionInformation.Hash != _context._lastState.StreamHash)
                     {
                         throw new InvalidOperationException("Stream plan hash stored in storage is different than the hash used.");

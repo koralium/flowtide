@@ -14,21 +14,18 @@ namespace FlowtideDotNet.Base.Engine
 {
     public class StreamState
     {
-        public static readonly StreamState NullState = new StreamState(-1, 0, string.Empty);
+        public static readonly StreamState NullState = new StreamState(-1, string.Empty);
 
         /// <summary>
         /// The stream time this checkpoint refers to.
         /// </summary>
         public long Time { get; }
 
-        public long StrreamVersion { get; }
-
         public string StreamHash { get; }
 
-        public StreamState(long time, long strreamVersion, string streamHash)
+        public StreamState(long time, string streamHash)
         {
             Time = time;
-            StrreamVersion = strreamVersion;
             StreamHash = streamHash;
         }
     }

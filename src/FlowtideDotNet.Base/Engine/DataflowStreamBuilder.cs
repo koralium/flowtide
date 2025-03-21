@@ -30,6 +30,7 @@ namespace FlowtideDotNet.Base.Engine
         private StreamState? _state;
         private IStateHandler? _stateHandler;
         private readonly string _streamName;
+        private string _version = "";
         private IStreamScheduler? _streamScheduler;
         private StateManagerOptions? _stateManagerOptions;
         private ILoggerFactory? _loggerFactory;
@@ -96,9 +97,9 @@ namespace FlowtideDotNet.Base.Engine
             return this;
         }
 
-        public DataflowStreamBuilder SetVersionInformation(long streamVersion, string hash)
+        public DataflowStreamBuilder SetVersionInformation(string hash, string version)
         {
-            _streamVersionInformation = new StreamVersionInformation(streamVersion, hash);
+            _streamVersionInformation = new StreamVersionInformation(hash, version);
             return this;
         }
 
@@ -138,6 +139,13 @@ namespace FlowtideDotNet.Base.Engine
             return this;
         }
 
+        public DataflowStreamBuilder SetVersion(string version)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(version);
+            _version = version;
+            return this;
+        }
+
         public DataflowStream Build()
         {
             if (_stateManagerOptions == null)
@@ -155,6 +163,7 @@ namespace FlowtideDotNet.Base.Engine
 
             var streamContext = new StreamContext(
                 _streamName,
+                _version,
                 _propagatorBlocks,
                 _ingressBlocks,
                 _egressBlocks,

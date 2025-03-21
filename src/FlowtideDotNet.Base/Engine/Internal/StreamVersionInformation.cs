@@ -14,16 +14,14 @@ namespace FlowtideDotNet.Base.Engine.Internal
 {
     internal class StreamVersionInformation
     {
-        public StreamVersionInformation(long version, string hash)
+        public StreamVersionInformation(string hash, string version)
         {
-            Version = version;
             Hash = hash;
+            Version = version;
         }
-
-        public long Version { get; }
 
         public string Hash { get; }
 
-
+        public string Version { get; }
     }
 }
