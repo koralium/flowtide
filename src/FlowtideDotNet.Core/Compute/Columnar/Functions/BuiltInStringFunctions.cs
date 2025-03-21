@@ -811,20 +811,37 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         private static IDataValue FromJsonImplementation<T1>(in T1 val)
             where T1 : IDataValue
         {
-            if (val.Type != ArrowTypeId.String)
+            if (val.Type != ArrowTypeId.String && val.Type != ArrowTypeId.Binary)
             {
                 return NullValue.Instance;
             }
 
-            Utf8JsonReader reader = new Utf8JsonReader(val.AsString.Span);
-            try
+            if (val.Type == ArrowTypeId.String)
             {
-                return DataValueJsonReader.Read(ref reader);
+                Utf8JsonReader reader = new Utf8JsonReader(val.AsString.Span);
+                try
+                {
+                    return DataValueJsonReader.Read(ref reader);
+                }
+                catch (JsonException)
+                {
+                    return NullValue.Instance;
+                }
             }
-            catch (JsonException)
+            else
             {
-                return NullValue.Instance;
-            }   
+                Utf8JsonReader reader = new Utf8JsonReader(val.AsBinary);
+                try
+                {
+                    return DataValueJsonReader.Read(ref reader);
+                }
+                catch (JsonException)
+                {
+                    return NullValue.Instance;
+                }
+            }
+
+               
         }
 
         private static IDataValue FromJsonImplementation_error_handling__ERROR<T1>(in T1 val)
@@ -834,13 +851,21 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             {
                 return NullValue.Instance;
             }
-            if (val.Type != ArrowTypeId.String)
+            if (val.Type != ArrowTypeId.String && val.Type != ArrowTypeId.Binary)
             {
-                throw new ArgumentException("FromJson function must have a string argument.");
+                throw new ArgumentException("FromJson function must have a string or binary argument.");
             }
 
-            Utf8JsonReader reader = new Utf8JsonReader(val.AsString.Span);
-            return DataValueJsonReader.Read(ref reader);
+            if (val.Type == ArrowTypeId.String)
+            {
+                Utf8JsonReader reader = new Utf8JsonReader(val.AsString.Span);
+                return DataValueJsonReader.Read(ref reader);
+            }
+            else
+            {
+                Utf8JsonReader reader = new Utf8JsonReader(val.AsBinary);
+                return DataValueJsonReader.Read(ref reader);
+            }
         }
     }
 }

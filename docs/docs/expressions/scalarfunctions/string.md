@@ -257,7 +257,7 @@ SELECT to_json(column1) ...
 
 This function does not have a substrait definition.
 
-Converts a JSON string to flowtide data objects.
+Converts a JSON string to flowtide data objects. It is also possible to use a binary value in utf8 encoding as the input.
 
 ### SQL Usage
 

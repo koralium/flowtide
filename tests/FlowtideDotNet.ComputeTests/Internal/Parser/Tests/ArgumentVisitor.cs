@@ -15,6 +15,7 @@ using FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using System.Globalization;
+using System.Text;
 
 namespace FlowtideDotNet.ComputeTests.Internal.Tests
 {
@@ -49,7 +50,11 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
 
         public override IDataValue VisitFixedBinaryArg([NotNull] FuncTestCaseParser.FixedBinaryArgContext context)
         {
-            throw new NotImplementedException();
+            var text = context.GetText();
+
+            text = text.Trim('\'');
+
+            return new BinaryValue(Encoding.UTF8.GetBytes(text));
         }
 
         public override IDataValue VisitStringArg([NotNull] FuncTestCaseParser.StringArgContext context)
