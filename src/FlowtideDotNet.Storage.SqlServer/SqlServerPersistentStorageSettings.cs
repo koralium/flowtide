@@ -42,6 +42,12 @@ namespace FlowtideDotNet.Storage.SqlServer
         /// Gets or sets the name of the stream page table, can include schema and database name.
         /// </summary>
         public string StreamPageTableName { get; set; } = "[dbo].[StreamPages]";
+
+        /// <summary>
+        /// If set to true, flowtide versioning will be used, if a new version is detected, a new stream will be created.
+        /// If set to false, the flowtide stream name the stream is considered the same independant of version and will not be recreated.
+        /// </summary>
+        public bool UseFlowtideVersioning { get; set; } = true;
     }
 
     /// <summary>

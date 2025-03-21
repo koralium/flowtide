@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Storage.StateManager
     public interface IStateManager
     {
         bool Initialized { get; }
-        Task InitializeAsync();
+        Task InitializeAsync(StreamVersionInformation? streamVersionInformation);
 
         long CurrentVersion { get; }
 

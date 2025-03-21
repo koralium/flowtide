@@ -386,7 +386,7 @@ namespace FlowtideDotNet.Storage.StateManager
 
         internal abstract StateManagerMetadata NewMetadata();
 
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(StreamVersionInformation? streamVersionInformation = null)
         {
             bool newMetadata = false;
             Setup();
@@ -394,7 +394,7 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
             m_lruTable.Clear();
-            await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName)).ConfigureAwait(false);
+            await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, streamVersionInformation)).ConfigureAwait(false);
 
             if (m_persistentStorage.TryGetValue(1, out var metadataBytes))
             {

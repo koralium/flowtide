@@ -18,6 +18,7 @@ using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
