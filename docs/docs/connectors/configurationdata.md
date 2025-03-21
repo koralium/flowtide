@@ -89,4 +89,4 @@ WHERE e.excludedId is null;
 ```
 
 The buffered view helps with performance where it buffers the changes from the `UNNEST` statement so only changing rows are returned.
-We can then do a left join to match with the exluded ids but only return rows where there was no match.
+We can then do a left join to match with the excluded ids but only return rows where there was no match.
