@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Json
                 case JsonTokenType.StartArray:
                     return ParseArray(ref reader);
             }
-            throw new NotImplementedException();
+            throw new JsonException($"Unknown json token type {reader.TokenType}");
         }
 
         private static IDataValue ParseArray(ref Utf8JsonReader reader)

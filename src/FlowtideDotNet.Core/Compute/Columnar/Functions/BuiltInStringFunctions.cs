@@ -821,7 +821,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             {
                 return DataValueJsonReader.Read(ref reader);
             }
-            catch
+            catch (JsonException)
             {
                 return NullValue.Instance;
             }   
