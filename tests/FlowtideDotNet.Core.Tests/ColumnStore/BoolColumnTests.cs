@@ -13,6 +13,10 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Storage.Memory;
+using System;
+using System.Collections.Generic;
+using System.IO.Hashing;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 
@@ -179,6 +183,32 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             {
                 Assert.Equal(expected[i], copy.GetValueAt(i, default).AsBool);
             }
+        }
+
+        [Fact]
+        public void TestAddToHash()
+        {
+            var column = new Column(GlobalMemoryManager.Instance)
+            {
+                new BoolValue(true),
+                new BoolValue(false)
+            };
+
+            var hash = new XxHash32();
+            column.AddToHash(0, default, hash);
+            var columnTrueHash = hash.GetHashAndReset();
+
+            column.GetValueAt(0, default).AddToHash(hash);
+            var valueTrueHash = hash.GetHashAndReset();
+
+            column.AddToHash(1, default, hash);
+            var columnFalseHash = hash.GetHashAndReset();
+
+            column.GetValueAt(1, default).AddToHash(hash);
+            var valueFalseHash = hash.GetHashAndReset();
+
+            Assert.Equal(columnTrueHash, valueTrueHash);
+            Assert.Equal(columnFalseHash, valueFalseHash);
         }
     }
 }

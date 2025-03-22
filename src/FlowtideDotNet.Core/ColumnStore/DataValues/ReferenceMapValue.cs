@@ -13,6 +13,9 @@
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
 using System.Collections;
+using System.Collections.Generic;
+using System.IO.Hashing;
+using System.Linq;
 using System.Text;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -49,6 +52,18 @@ namespace FlowtideDotNet.Core.ColumnStore
         public bool IsNull => false;
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            var length = GetLength();
+            for (int i = 0; i < length; i++)
+            {
+                var key = GetKeyAt(i);
+                var value = GetValueAt(i);
+                key.AddToHash(hashAlgorithm);
+                value.AddToHash(hashAlgorithm);
+            }
+        }
 
         public void CopyToContainer(DataValueContainer container)
         {

@@ -23,6 +23,7 @@ using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using System.Collections;
 using System.Text.Json;
+using System.IO.Hashing;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -583,6 +584,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new MapColumn(_keyColumn.Copy(memoryAllocator), _valueColumn.Copy(memoryAllocator), _offsets.Copy(memoryAllocator));
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            var (startOffset, endOffset) = GetOffsets(index);
+
+            for (int i = startOffset; i < endOffset; i++)
+            {
+                _keyColumn.AddToHash(i, default, hashAlgorithm);
+                _valueColumn.AddToHash(i, default, hashAlgorithm);
+            }
         }
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)

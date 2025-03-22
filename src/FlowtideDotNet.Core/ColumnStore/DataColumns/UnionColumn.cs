@@ -21,6 +21,9 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using System.Collections;
+using System.Collections.Generic;
+using System.IO.Hashing;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
@@ -768,6 +771,18 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
 
             return new UnionColumn(columns, _typeList.Copy(memoryAllocator), _offsets.Copy(memoryAllocator), _typeIds.ToArray(), memoryAllocator);
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            var valueColumnIndex = _typeList[index];
+            if (valueColumnIndex == 0)
+            {
+                hashAlgorithm.Append(ByteArrayUtils.nullBytes);
+                return;
+            }
+            var valueColumn = _valueColumns[valueColumnIndex];
+            valueColumn.AddToHash(_offsets.Get(index), child, hashAlgorithm);
         }
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)

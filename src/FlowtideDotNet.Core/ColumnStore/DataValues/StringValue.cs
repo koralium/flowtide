@@ -13,6 +13,9 @@
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
 using System.Diagnostics;
+using System.IO.Hashing;
+using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -73,6 +76,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void Accept(in DataValueVisitor visitor)
         {
             visitor.VisitStringValue(in this);
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            hashAlgorithm.Append(_utf8.Span);
         }
     }
 }

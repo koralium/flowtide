@@ -48,6 +48,11 @@ namespace FlowtideDotNet.Base
             StartTime = startTime;
         }
 
+        public Watermark(IImmutableDictionary<string, long> watermarks, DateTimeOffset startTime, string? sourceOperatorId) : this(watermarks, startTime)
+        {
+            SourceOperatorId = sourceOperatorId;
+        }
+
         public IImmutableDictionary<string, long> Watermarks { get; }
 
         public DateTimeOffset StartTime { get; }
